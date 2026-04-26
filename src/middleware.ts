@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { getSupabaseUrl } from "@/lib/supabase/config";
+
 const protectedRoutes = ["/dashboard"];
 const authRoutes = ["/login"];
 
@@ -9,12 +11,13 @@ export async function middleware(request: NextRequest) {
     request,
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseAnonKey) {
     return response;
   }
+
+  const supabaseUrl = getSupabaseUrl();
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
