@@ -41,8 +41,7 @@ The lead form posts to `/api/leads`. If Supabase env vars are missing, the UI st
 4. Add this Google OAuth callback URL in Google Cloud and Supabase provider settings:
    - `https://oqcudhmnsmqwlfzlrvfw.supabase.co/auth/v1/callback`
 5. Add these app redirect URLs in Supabase Auth URL configuration:
-   - `http3000://https://digiconnectdukanfaizalam.vercel.app:/auth/callback`
-   - `https://your-domain.com/auth/callback`
+   - `https://digiconnectdukanfaizalam.vercel.app/auth/callback`
 6. Visit `/login` for Google sign-in and `/dashboard` for the protected account page.
 ## Deployment
 
