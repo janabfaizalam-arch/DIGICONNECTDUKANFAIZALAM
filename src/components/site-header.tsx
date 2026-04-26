@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { PhoneCall } from "lucide-react";
+import { LayoutDashboard, LogIn, PhoneCall } from "lucide-react";
 
 import { contactDetails } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth";
+import { Button, buttonVariants } from "@/components/ui/button";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const user = await getCurrentUser();
+  const authHref = user ? "/dashboard" : "/login";
+  const authLabel = user ? "Dashboard" : "Login";
+  const AuthIcon = user ? LayoutDashboard : LogIn;
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/40 bg-white/80 backdrop-blur-xl">
       <div className="container-shell flex h-16 items-center justify-between gap-4">
@@ -31,12 +37,18 @@ export function SiteHeader() {
             Contact
           </Link>
         </nav>
-        <a href={`tel:${contactDetails.phone}`} className="hidden md:block">
-          <Button size="default">
+        <div className="hidden items-center gap-3 md:flex">
+          <Link href={authHref} className={buttonVariants({ variant: "outline", size: "default" })}>
+            <AuthIcon className="h-4 w-4" />
+            {authLabel}
+          </Link>
+          <a href={`tel:${contactDetails.phone}`}>
+            <Button size="default">
             <PhoneCall className="h-4 w-4" />
             Call Now
-          </Button>
-        </a>
+            </Button>
+          </a>
+        </div>
       </div>
     </header>
   );
