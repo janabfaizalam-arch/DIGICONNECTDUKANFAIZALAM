@@ -1,5 +1,21 @@
 import type { ApplicationStatus, PaymentStatus } from "@/lib/portal-data";
 
+export type LeadStatus = "new" | "in_progress" | "completed";
+
+export type Lead = {
+  id: string;
+  name: string;
+  mobile: string;
+  service: string;
+  message: string | null;
+  status: LeadStatus;
+  file_name: string | null;
+  file_url: string | null;
+  file_type: string | null;
+  storage_path: string | null;
+  created_at: string;
+};
+
 export type PortalUser = {
   id: string;
   full_name: string | null;

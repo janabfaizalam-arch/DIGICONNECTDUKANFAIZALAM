@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AdminApplications } from "@/components/portal/admin-applications";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
-import type { Application } from "@/lib/portal-types";
+import type { Lead } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -19,16 +19,16 @@ export default async function AdminPage() {
   }
 
   const supabase = getSupabaseAdmin();
-  let applications: Application[] = [];
+  let leads: Lead[] = [];
 
   if (supabase) {
     const { data } = await supabase
-      .from("applications")
-      .select("*, users(*), documents:application_documents(*), payments(*), invoices(*), ratings(*)")
+      .from("leads")
+      .select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at")
       .order("created_at", { ascending: false });
 
-    applications = (data ?? []) as Application[];
+    leads = (data ?? []) as Lead[];
   }
 
-  return <AdminApplications applications={applications} />;
+  return <AdminApplications leads={leads} />;
 }
