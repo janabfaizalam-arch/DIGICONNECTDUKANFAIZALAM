@@ -9,6 +9,7 @@ function cleanFileName(name: string) {
 }
 
 const allowedUploadTypes = ["application/pdf", "image/jpeg", "image/png"];
+const maxFileSize = 5 * 1024 * 1024;
 
 async function uploadFile({
   applicationId,
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
 
     if (!user) {
-      return NextResponse.json({ message: "Please login to apply." }, { status: 401 });
+      return NextResponse.json({ error: "Please login to apply." }, { status: 401 });
     }
 
     await syncUserProfile(user);
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
-      return NextResponse.json({ message: "Supabase service role key is missing." }, { status: 500 });
+      return NextResponse.json({ error: "Supabase service role key is missing." }, { status: 500 });
     }
 
     const formData = await request.formData();
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     const service = getServiceBySlug(serviceSlug);
 
     if (!service) {
-      return NextResponse.json({ message: "Service not found." }, { status: 404 });
+      return NextResponse.json({ error: "Service not found." }, { status: 404 });
     }
 
     const requiredFields = [
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       const value = String(formData.get(fieldName) ?? "").trim();
 
       if (!value) {
-        return NextResponse.json({ message: `${label} required hai.` }, { status: 400 });
+        return NextResponse.json({ error: `${label} required hai.` }, { status: 400 });
       }
 
       data[fieldName] = value;
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
       const value = String(formData.get(field.name) ?? "").trim();
 
       if ((field.required ?? true) && !value) {
-        return NextResponse.json({ message: `${field.label} required hai.` }, { status: 400 });
+        return NextResponse.json({ error: `${field.label} required hai.` }, { status: 400 });
       }
 
       data[field.name] = value;
@@ -110,24 +111,32 @@ export async function POST(request: Request) {
 
     for (const document of documentFiles) {
       if (!(document.file instanceof File) || document.file.size === 0) {
-        return NextResponse.json({ message: `${document.documentType} upload required hai.` }, { status: 400 });
+        return NextResponse.json({ error: `${document.documentType} upload required hai.` }, { status: 400 });
       }
     }
 
     if (documentFiles.some(({ file }) => file instanceof File && !allowedUploadTypes.includes(file.type))) {
-      return NextResponse.json({ message: "Sirf PDF, JPG ya PNG documents upload karein." }, { status: 400 });
+      return NextResponse.json({ error: "Sirf PDF, JPG ya PNG documents upload karein." }, { status: 400 });
+    }
+
+    if (documentFiles.some(({ file }) => file instanceof File && file.size > maxFileSize)) {
+      return NextResponse.json({ error: "Har document 5MB se chhota hona chahiye." }, { status: 400 });
     }
 
     if (!paymentUtr) {
-      return NextResponse.json({ message: "UTR number required hai." }, { status: 400 });
+      return NextResponse.json({ error: "UTR number required hai." }, { status: 400 });
     }
 
     if (!(paymentScreenshot instanceof File) || paymentScreenshot.size === 0) {
-      return NextResponse.json({ message: "Payment screenshot required hai." }, { status: 400 });
+      return NextResponse.json({ error: "Payment screenshot required hai." }, { status: 400 });
     }
 
     if (!allowedUploadTypes.includes(paymentScreenshot.type)) {
-      return NextResponse.json({ message: "Payment screenshot PDF, JPG ya PNG format me upload karein." }, { status: 400 });
+      return NextResponse.json({ error: "Payment screenshot PDF, JPG ya PNG format me upload karein." }, { status: 400 });
+    }
+
+    if (paymentScreenshot.size > maxFileSize) {
+      return NextResponse.json({ error: "Payment screenshot 5MB se chhota hona chahiye." }, { status: 400 });
     }
 
     const { data: application, error: applicationError } = await supabase
@@ -144,7 +153,7 @@ export async function POST(request: Request) {
       .single();
 
     if (applicationError || !application) {
-      return NextResponse.json({ message: "Application submit nahi ho payi." }, { status: 500 });
+      return NextResponse.json({ error: "Application submit nahi ho payi." }, { status: 500 });
     }
 
     const uploadedDocuments = [];
@@ -234,7 +243,7 @@ export async function POST(request: Request) {
       .single();
 
     if (invoiceError || !invoice) {
-      return NextResponse.json({ message: "Invoice generate nahi ho payi." }, { status: 500 });
+      return NextResponse.json({ error: "Invoice generate nahi ho payi." }, { status: 500 });
     }
 
     await supabase.from("notifications").insert({
@@ -251,7 +260,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Something went wrong. Please try again." },
+      { error: error instanceof Error ? error.message : "Something went wrong. Please try again." },
       { status: 500 },
     );
   }

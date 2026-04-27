@@ -25,6 +25,21 @@ type ApplicationFormService = {
   }[];
 };
 
+const maxFileSize = 5 * 1024 * 1024;
+const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
+
+function validateFile(file: File, label: string) {
+  if (!allowedFileTypes.includes(file.type)) {
+    return `${label} PDF, JPG ya PNG format me upload karein.`;
+  }
+
+  if (file.size > maxFileSize) {
+    return `${label} 5MB se chhota hona chahiye.`;
+  }
+
+  return null;
+}
+
 export function ServiceApplicationForm({ service }: { service: ApplicationFormService }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -48,10 +63,32 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         showToast(`Please upload ${documentType}`, "error");
         return;
       }
+
+      const validationError = validateFile(files[0], documentType);
+
+      if (validationError) {
+        showToast(validationError, "error");
+        return;
+      }
     }
 
     if (Object.keys(selectedDocuments).length !== service.documents.length) {
       showToast("Please upload all required documents", "error");
+      return;
+    }
+
+    const paymentScreenshotInput = event.currentTarget.elements.namedItem("paymentScreenshot") as HTMLInputElement | null;
+    const paymentScreenshot = paymentScreenshotInput?.files?.[0];
+
+    if (!paymentScreenshot) {
+      showToast("Payment screenshot upload karein.", "error");
+      return;
+    }
+
+    const paymentValidationError = validateFile(paymentScreenshot, "Payment screenshot");
+
+    if (paymentValidationError) {
+      showToast(paymentValidationError, "error");
       return;
     }
 
@@ -61,13 +98,20 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           method: "POST",
           body: formData,
         });
-        const result = (await response.json()) as { message: string; applicationId?: string; invoiceId?: string };
+        const text = await response.text();
+        let result: { message?: string; error?: string; applicationId?: string; invoiceId?: string };
 
-        if (!response.ok || !result.applicationId || !result.invoiceId) {
-          throw new Error(result.message);
+        try {
+          result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
+        } catch {
+          throw new Error(text || "Server ne valid response nahi diya. File size check karke dobara try karein.");
         }
 
-        showToast(result.message);
+        if (!response.ok || !result.applicationId || !result.invoiceId) {
+          throw new Error(result.message ?? result.error ?? "Application submit nahi ho payi.");
+        }
+
+        showToast(result.message ?? "Application submit ho gayi.");
         router.push(`/invoice/${result.invoiceId}`);
         router.refresh();
       } catch (error) {
@@ -160,6 +204,16 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
                             return next;
                           }
 
+                          const validationError = validateFile(file, document);
+
+                          if (validationError) {
+                            event.target.value = "";
+                            showToast(validationError, "error");
+                            const next = { ...current };
+                            delete next[document];
+                            return next;
+                          }
+
                           return {
                             ...current,
                             [document]: {
@@ -214,7 +268,25 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             required
             accept=".pdf,.jpg,.jpeg,.png"
             className="mt-3"
-            onChange={(event) => setPaymentProofName(event.target.files?.[0]?.name ?? "")}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+
+              if (!file) {
+                setPaymentProofName("");
+                return;
+              }
+
+              const validationError = validateFile(file, "Payment screenshot");
+
+              if (validationError) {
+                event.target.value = "";
+                setPaymentProofName("");
+                showToast(validationError, "error");
+                return;
+              }
+
+              setPaymentProofName(file.name);
+            }}
           />
           {paymentProofName ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentProofName}</p> : null}
         </Card>
