@@ -15,9 +15,11 @@ function jsonError(message: string, status: number) {
 
 export async function POST(request: Request) {
   try {
+    console.log("[api/lead] POST request received");
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
+      console.error("[api/lead] Missing SUPABASE_SERVICE_ROLE_KEY or Supabase URL");
       return jsonError("Supabase service role key is missing on the server.", 500);
     }
 
@@ -28,7 +30,15 @@ export async function POST(request: Request) {
     const message = String(formData.get("message") ?? "").trim();
     const file = formData.get("file");
 
+    console.log("[api/lead] Parsed payload", {
+      hasName: Boolean(name),
+      mobile,
+      service,
+      hasFile: file instanceof File && file.size > 0,
+    });
+
     if (!name || !mobile || !service) {
+      console.error("[api/lead] Validation failed: missing required field");
       return jsonError("Name, mobile aur service required hai.", 400);
     }
 
@@ -46,10 +56,12 @@ export async function POST(request: Request) {
 
     if (file instanceof File && file.size > 0) {
       if (!allowedFileTypes.includes(file.type)) {
+        console.error("[api/lead] Invalid file type", { type: file.type });
         return jsonError("File PDF, JPG ya PNG format me upload karein.", 400);
       }
 
       if (file.size > maxFileSize) {
+        console.error("[api/lead] File too large", { size: file.size });
         return jsonError("File 5MB se chhoti honi chahiye.", 400);
       }
 
@@ -60,6 +72,7 @@ export async function POST(request: Request) {
       });
 
       if (uploadError) {
+        console.error("[api/lead] Storage upload failed", uploadError);
         return jsonError(uploadError.message, 500);
       }
 
@@ -83,14 +96,17 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      console.error("[api/lead] Lead insert failed", error);
       return jsonError(error.message, 500);
     }
 
+    console.log("[api/lead] Lead inserted successfully", { mobile, service });
     return NextResponse.json({
       message: "Thank you. Hamari team aapse jaldi contact karegi.",
       ok: true,
     });
   } catch (error) {
+    console.error("[api/lead] Unhandled error", error);
     return jsonError(error instanceof Error ? error.message : "Lead submit nahi ho paya.", 500);
   }
 }
