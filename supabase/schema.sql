@@ -5,6 +5,10 @@ create table if not exists public.leads (
   service text not null,
   message text default '',
   status text not null default 'new' check (status in ('new', 'in_progress', 'completed')),
+  file_name text,
+  file_url text,
+  file_type text,
+  storage_path text,
   created_at timestamptz not null default now()
 );
 
@@ -12,6 +16,12 @@ create index if not exists leads_created_at_idx on public.leads (created_at desc
 
 alter table public.leads
   add column if not exists status text not null default 'new';
+
+alter table public.leads
+  add column if not exists file_name text,
+  add column if not exists file_url text,
+  add column if not exists file_type text,
+  add column if not exists storage_path text;
 
 do $$
 begin
@@ -241,3 +251,14 @@ drop policy if exists "Public can read documents bucket" on storage.objects;
 create policy "Public can read documents bucket" on storage.objects
   for select to public
   using (bucket_id = 'documents');
+
+-- Optional: only needed if you upload directly from the browser with the anon key.
+-- The public lead form in this app uploads files through /api/lead using SUPABASE_SERVICE_ROLE_KEY,
+-- so this policy is not required for that server-side flow.
+drop policy if exists "Public can upload lead files" on storage.objects;
+create policy "Public can upload lead files" on storage.objects
+  for insert to anon
+  with check (
+    bucket_id = 'documents'
+    and (storage.foldername(name))[1] = 'public-leads'
+  );
