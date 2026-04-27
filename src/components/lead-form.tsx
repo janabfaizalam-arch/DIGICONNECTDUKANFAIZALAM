@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { services } from "@/lib/constants";
+import { useToast } from "@/components/providers/toast-provider";
 
 const initialState = {
   name: "",
@@ -19,6 +20,7 @@ export function LeadForm() {
   const [form, setForm] = useState(initialState);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { showToast } = useToast();
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,6 +40,9 @@ export function LeadForm() {
 
       if (response.ok) {
         setForm(initialState);
+        showToast(result.message);
+      } else {
+        showToast(result.message, "error");
       }
     });
   };
