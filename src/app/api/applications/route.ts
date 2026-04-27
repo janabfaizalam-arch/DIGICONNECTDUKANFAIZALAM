@@ -102,14 +102,19 @@ export async function POST(request: Request) {
     }
 
     const paymentUtr = String(formData.get("utrNumber") ?? "").trim();
-    const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File && item.size > 0);
+    const documentFiles = service.documents.map((documentType) => ({
+      documentType,
+      file: formData.get(`document_${documentType}`),
+    }));
     const paymentScreenshot = formData.get("paymentScreenshot");
 
-    if (documentFiles.length === 0) {
-      return NextResponse.json({ message: "Kam se kam 1 document upload karein." }, { status: 400 });
+    for (const document of documentFiles) {
+      if (!(document.file instanceof File) || document.file.size === 0) {
+        return NextResponse.json({ message: `${document.documentType} upload required hai.` }, { status: 400 });
+      }
     }
 
-    if (documentFiles.some((file) => !allowedUploadTypes.includes(file.type))) {
+    if (documentFiles.some(({ file }) => file instanceof File && !allowedUploadTypes.includes(file.type))) {
       return NextResponse.json({ message: "Sirf PDF, JPG ya PNG documents upload karein." }, { status: 400 });
     }
 
@@ -145,7 +150,11 @@ export async function POST(request: Request) {
     const uploadedDocuments = [];
     const documentUrls = [];
 
-    for (const file of documentFiles) {
+    for (const { documentType, file } of documentFiles) {
+      if (!(file instanceof File)) {
+        continue;
+      }
+
       const uploaded = await uploadFile({
         applicationId: application.id,
         userId: user.id,
@@ -155,6 +164,7 @@ export async function POST(request: Request) {
 
       if (uploaded) {
         documentUrls.push({
+          document_type: documentType,
           name: file.name,
           url: uploaded.url,
           type: file.type,
@@ -162,7 +172,7 @@ export async function POST(request: Request) {
         uploadedDocuments.push({
           application_id: application.id,
           user_id: user.id,
-          document_type: "customer_document",
+          document_type: documentType,
           file_name: file.name,
           file_url: uploaded.url,
           file_type: file.type,

@@ -29,7 +29,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   const router = useRouter();
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [documentCount, setDocumentCount] = useState(0);
+  const [selectedDocuments, setSelectedDocuments] = useState<Record<string, { documentType: string; file: File }>>({});
   const [paymentProofName, setPaymentProofName] = useState("");
   const upiId = "7007595931@upi";
   const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${service.amount}&cu=INR`;
@@ -38,11 +38,20 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const files = (event.currentTarget.elements.namedItem("documents") as HTMLInputElement | null)?.files;
     formData.set("serviceSlug", service.slug);
 
-    if (!files || files.length === 0) {
-      showToast("Please upload documents", "error");
+    for (const documentType of service.documents) {
+      const input = event.currentTarget.elements.namedItem(`document_${documentType}`) as HTMLInputElement | null;
+      const files = input?.files;
+
+      if (!files || files.length === 0) {
+        showToast(`Please upload ${documentType}`, "error");
+        return;
+      }
+    }
+
+    if (Object.keys(selectedDocuments).length !== service.documents.length) {
+      showToast("Please upload all required documents", "error");
       return;
     }
 
@@ -127,27 +136,46 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           <div className="flex items-start gap-3">
             <FileUp className="mt-1 h-5 w-5 text-[var(--primary)]" />
             <div>
-              <p className="font-black text-slate-950">Documents Upload</p>
+              <p className="font-black text-slate-950">Required Documents Upload</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Multiple documents upload karein. PDF, JPG, PNG supported.
+                Har required document ke liye alag file upload karein. PDF, JPG, PNG supported.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-4 grid gap-3">
                 {service.documents.map((document) => (
-                  <span key={document} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                    {document}
-                  </span>
+                  <label key={document} className="rounded-2xl border bg-white p-4">
+                    <span className="block text-sm font-black text-slate-950">{document}</span>
+                    <Input
+                      name={`document_${document}`}
+                      type="file"
+                      required
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="mt-3"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+
+                        setSelectedDocuments((current) => {
+                          if (!file) {
+                            const next = { ...current };
+                            delete next[document];
+                            return next;
+                          }
+
+                          return {
+                            ...current,
+                            [document]: {
+                              documentType: document,
+                              file,
+                            },
+                          };
+                        });
+                      }}
+                    />
+                    <span className="mt-2 block text-xs font-bold text-blue-700">
+                      {selectedDocuments[document]?.file.name ?? "No file selected"}
+                    </span>
+                  </label>
                 ))}
               </div>
-              <Input
-                name="documents"
-                type="file"
-                multiple
-                required
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="mt-4"
-                onChange={(event) => setDocumentCount(event.target.files?.length ?? 0)}
-              />
-              {documentCount > 0 ? <p className="mt-2 text-xs font-bold text-blue-700">{documentCount} file selected</p> : null}
             </div>
           </div>
         </div>
