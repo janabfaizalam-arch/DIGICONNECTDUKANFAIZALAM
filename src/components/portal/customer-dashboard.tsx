@@ -94,8 +94,13 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                           <p className="font-black text-slate-950">{application.service_name}</p>
-                          <p className="mt-1 font-mono text-xs text-slate-500">ID: {application.id.slice(0, 8).toUpperCase()} • {formatDate(application.created_at)}</p>
+                          <p className="mt-1 font-mono text-xs text-slate-500">
+                            ID: {application.id.slice(0, 8).toUpperCase()} | {formatDate(application.created_at)}
+                          </p>
                           <p className="mt-2 text-sm font-bold text-slate-700">{formatCurrency(application.amount)}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            Uploaded documents: {application.documents?.length ?? 0}
+                          </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <StatusBadge status={application.status} />
@@ -112,6 +117,17 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                             <Download className="h-4 w-4" />
                             Invoice
                           </Link>
+                        ) : null}
+                        {application.final_document_url ? (
+                          <a
+                            href={application.final_document_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white"
+                          >
+                            <Download className="h-4 w-4" />
+                            Certificate
+                          </a>
                         ) : null}
                         <Link href={`/services/${application.service_slug}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-orange-500 px-4 text-sm font-bold text-white">
                           <RotateCcw className="h-4 w-4" />

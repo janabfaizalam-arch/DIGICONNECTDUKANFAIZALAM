@@ -9,9 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { formatCurrency, type PortalService, upiDetails } from "@/lib/portal-data";
+import { formatCurrency, upiDetails } from "@/lib/portal-data";
 
-export function ServiceApplicationForm({ service }: { service: PortalService }) {
+type ApplicationFormService = {
+  title: string;
+  slug: string;
+  amount: number;
+  description: string;
+  documents: string[];
+};
+
+export function ServiceApplicationForm({ service }: { service: ApplicationFormService }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -48,28 +56,22 @@ export function ServiceApplicationForm({ service }: { service: PortalService }) 
     <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <Card className="rounded-2xl p-5 md:p-6">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Service Form</p>
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
           <h2 className="mt-2 text-2xl font-black text-slate-950">{service.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{service.description}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Form fill karein, documents upload karein, UPI payment detail add karein aur application dashboard me track karein.
+          </p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {service.fields.map((field) => {
-            const commonProps = {
-              name: field.name,
-              required: field.required,
-              placeholder: field.label,
-              "aria-label": field.label,
-            };
-
-            if (field.type === "textarea") {
-              return (
-                <Textarea key={field.name} {...commonProps} className="min-h-28 md:col-span-2" />
-              );
-            }
-
-            return <Input key={field.name} {...commonProps} type={field.type ?? "text"} />;
-          })}
+          <Input name="name" placeholder="Name" aria-label="Name" required />
+          <Input name="mobile" placeholder="Mobile" aria-label="Mobile" inputMode="numeric" pattern="[0-9]{10}" required />
+          <Input name="email" placeholder="Email" aria-label="Email" type="email" required />
+          <Input name="service" value={service.title} aria-label="Service" readOnly className="bg-slate-50 font-semibold" />
+          <Input name="address" placeholder="Address" aria-label="Address" required className="md:col-span-2" />
+          <Input name="city" placeholder="City" aria-label="City" required />
+          <Input name="state" placeholder="State" aria-label="State" />
+          <Textarea name="message" placeholder="Message" aria-label="Message" className="min-h-28 md:col-span-2" />
         </div>
 
         <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-5">

@@ -68,16 +68,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Service not found." }, { status: 404 });
     }
 
-    const data: Record<string, string> = {};
+    const requiredFields = [
+      ["name", "Name"],
+      ["mobile", "Mobile"],
+      ["email", "Email"],
+      ["address", "Address"],
+      ["city", "City"],
+    ] as const;
+    const data: Record<string, string> = {
+      service: service.title,
+      state: String(formData.get("state") ?? "").trim(),
+      message: String(formData.get("message") ?? "").trim(),
+    };
 
-    for (const field of service.fields) {
-      const value = String(formData.get(field.name) ?? "").trim();
+    for (const [fieldName, label] of requiredFields) {
+      const value = String(formData.get(fieldName) ?? "").trim();
 
-      if (field.required && !value) {
-        return NextResponse.json({ message: `${field.label} required hai.` }, { status: 400 });
+      if (!value) {
+        return NextResponse.json({ message: `${label} required hai.` }, { status: 400 });
       }
 
-      data[field.name] = value;
+      data[fieldName] = value;
     }
 
     const paymentUtr = String(formData.get("utrNumber") ?? "").trim();

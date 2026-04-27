@@ -14,7 +14,7 @@ import {
   Star,
 } from "lucide-react";
 
-import { ServiceLeadForm } from "@/components/portal/service-lead-form";
+import { ServiceApplicationForm } from "@/components/portal/service-application-form";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { contactDetails } from "@/lib/constants";
@@ -258,7 +258,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           </Card>
         </section>
 
-        <section id="apply" className="mt-10 grid gap-6 lg:grid-cols-[1fr_420px]">
+        <section className="mt-10">
           <Card className="rounded-2xl p-6">
             <h2 className="text-2xl font-black text-slate-950">FAQ</h2>
             <div className="mt-6 space-y-4">
@@ -275,17 +275,18 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               ))}
             </div>
           </Card>
+        </section>
 
-          <Card className="rounded-2xl p-6">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Apply Now</p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950">{service.title} Application Form</h2>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
-              Name, mobile aur message submit karein. Team aapse jaldi contact karegi.
-            </p>
-            <div className="mt-5">
-              <ServiceLeadForm serviceTitle={service.title} />
-            </div>
-          </Card>
+        <section id="apply" className="mt-10 scroll-mt-24">
+          <ServiceApplicationForm
+            service={{
+              title: service.title,
+              slug: service.slug,
+              amount: service.amount,
+              description: service.description,
+              documents: service.documents,
+            }}
+          />
         </section>
 
         <section className="mt-10">
