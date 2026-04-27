@@ -13,11 +13,11 @@ export async function middleware(request: NextRequest) {
 
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseAnonKey) {
+  const supabaseUrl = getSupabaseUrl();
+
+  if (!supabaseUrl || !supabaseAnonKey) {
     return response;
   }
-
-  const supabaseUrl = getSupabaseUrl();
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {

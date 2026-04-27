@@ -24,7 +24,6 @@ Create `.env.local` from `.env.example` and add:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_SUPABASE_REDIRECT_PATH`
 
 ## Supabase
 
@@ -36,12 +35,9 @@ The lead form posts to `/api/leads`. If Supabase env vars are missing, the UI st
 
 1. In Supabase Auth, enable the Google provider.
 2. Add your Google OAuth client credentials in Supabase.
-3. Use this Supabase project URL in your app environment:
-   - `https://oqcudhmnsmqwlfzlrvfw.supabase.co`
-4. Add this Google OAuth callback URL in Google Cloud and Supabase provider settings:
-   - `https://oqcudhmnsmqwlfzlrvfw.supabase.co/auth/v1/callback`
-5. Add these app redirect URLs in Supabase Auth URL configuration:
-   - `https://digiconnectdukanfaizalam.vercel.app/auth/callback`
+3. Set `NEXT_PUBLIC_SUPABASE_URL` in your app environment to your Supabase project URL.
+4. Add the Supabase provider callback URL in Google Cloud and Supabase provider settings.
+5. Add `${NEXT_PUBLIC_SITE_URL}/auth/callback` in Supabase Auth URL configuration.
 6. Visit `/login` for Google sign-in and `/dashboard` for the protected account page.
 ## Deployment
 

@@ -1,6 +1,0 @@
-export function getAuthRedirectUrl() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://digiconnectdukanfaizalam.vercel.app";
-  const redirectPath = process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_PATH || "/auth/callback";
-
-  return new URL(redirectPath, siteUrl).toString();
-}

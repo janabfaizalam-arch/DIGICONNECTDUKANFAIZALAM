@@ -1,43 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { getAuthRedirectUrl } from "@/lib/auth-config";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-const popupFeatures = "width=520,height=720,menubar=no,toolbar=no,status=no";
-
 export function LoginCard() {
-  const router = useRouter();
   const { showToast } = useToast();
   const [isPending, setIsPending] = useState(false);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-
-      if (event.data?.type === "supabase-auth-success") {
-        showToast("Login successful. Dashboard open ho raha hai.");
-        router.replace("/dashboard");
-        router.refresh();
-      }
-
-      if (event.data?.type === "supabase-auth-error") {
-        setIsPending(false);
-        showToast(event.data.message ?? "Login failed. Please try again.", "error");
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [router, showToast]);
 
   const handleGoogleLogin = async () => {
     setIsPending(true);
@@ -49,15 +22,18 @@ export function LoginCard() {
         throw new Error("Supabase environment variables are missing.");
       }
 
+      if (!process.env.NEXT_PUBLIC_SITE_URL) {
+        throw new Error("Site URL environment variable is missing.");
+      }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: getAuthRedirectUrl(),
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
           queryParams: {
             access_type: "offline",
             prompt: "select_account",
           },
-          skipBrowserRedirect: true,
         },
       });
 
@@ -65,19 +41,12 @@ export function LoginCard() {
         throw error;
       }
 
-      const popup = window.open(data.url, "google-auth-popup", popupFeatures);
-
-      if (!popup) {
-        window.location.href = data.url;
+      if (data.url) {
+        window.location.assign(data.url);
         return;
       }
 
-      const timer = window.setInterval(() => {
-        if (popup.closed) {
-          window.clearInterval(timer);
-          setIsPending(false);
-        }
-      }, 600);
+      throw new Error("Google login URL generate nahi ho paya. Please try again.");
     } catch (error) {
       setIsPending(false);
       showToast(error instanceof Error ? error.message : "Network issue. Please try again.", "error");

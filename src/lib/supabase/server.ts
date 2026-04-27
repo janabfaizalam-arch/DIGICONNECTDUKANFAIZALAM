@@ -6,11 +6,11 @@ import { getSupabaseUrl } from "@/lib/supabase/config";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function getSupabaseServerClient() {
-  if (!supabaseAnonKey) {
+  const supabaseUrl = getSupabaseUrl();
+
+  if (!supabaseUrl || !supabaseAnonKey) {
     return null;
   }
-
-  const supabaseUrl = getSupabaseUrl();
 
   const cookieStore = await cookies();
 
