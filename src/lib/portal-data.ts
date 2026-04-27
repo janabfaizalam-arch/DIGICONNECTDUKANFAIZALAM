@@ -46,34 +46,27 @@ export type PortalService = {
   recommended: string[];
 };
 
-const baseFields: ServiceField[] = [
-  { name: "name", label: "Name", required: true },
-  { name: "mobile", label: "Mobile", type: "tel", required: true },
-  { name: "email", label: "Email", type: "email", required: true },
-  { name: "aadhaarNumber", label: "Aadhaar Number" },
-  { name: "address", label: "Address", type: "textarea", required: true },
-  { name: "state", label: "State", required: true },
-  { name: "message", label: "Message", type: "textarea" },
+const gstFields: ServiceField[] = [
+  { name: "businessName", label: "Business Name", required: true },
+  { name: "panNumber", label: "PAN", required: true },
 ];
 
-const gstFields: ServiceField[] = [
-  { name: "name", label: "Name", required: true },
-  { name: "mobile", label: "Mobile", type: "tel", required: true },
-  { name: "email", label: "Email", type: "email", required: true },
-  { name: "businessName", label: "Business Name", required: true },
-  { name: "businessType", label: "Business Type", required: true },
-  { name: "panNumber", label: "PAN Number", required: true },
-  { name: "aadhaarNumber", label: "Aadhaar Number", required: true },
-  { name: "address", label: "Address", type: "textarea", required: true },
-  { name: "state", label: "State", required: true },
-  { name: "message", label: "Message", type: "textarea" },
+const panFields: ServiceField[] = [
+  { name: "fullName", label: "Full Name", required: true },
+  { name: "fatherName", label: "Father's Name", required: true },
 ];
+
+const aadhaarFields: ServiceField[] = [
+  { name: "aadhaarNumber", label: "Aadhaar Number", required: true },
+];
+
+const noExtraFields: ServiceField[] = [];
 
 export const portalServices: PortalService[] = [
   {
     title: "GST Registration",
     slug: "gst-registration",
-    amount: 1499,
+    amount: 499,
     icon: Building2,
     description: "Business GST registration ke liye guided form, document upload aur status tracking.",
     documents: ["PAN Card", "Aadhaar Card", "Business Address Proof", "Bank Details", "Photo"],
@@ -83,21 +76,21 @@ export const portalServices: PortalService[] = [
   {
     title: "PAN Card",
     slug: "pan-card",
-    amount: 299,
+    amount: 199,
     icon: FileCheck2,
     description: "New PAN, correction aur reprint support document guidance ke saath.",
     documents: ["Aadhaar Card", "Photo", "Signature", "Mobile linked with Aadhaar"],
-    fields: baseFields,
+    fields: panFields,
     recommended: ["gst-registration", "voter-id", "passport"],
   },
   {
     title: "Aadhaar Update",
     slug: "aadhaar-update",
-    amount: 199,
+    amount: 99,
     icon: IdCard,
     description: "Aadhaar demographic update aur print support ke liye request submit karein.",
     documents: ["Aadhaar Card", "Address Proof", "DOB Proof"],
-    fields: baseFields,
+    fields: aadhaarFields,
     recommended: ["pan-card", "voter-id", "ration-card"],
   },
   {
@@ -107,7 +100,7 @@ export const portalServices: PortalService[] = [
     icon: BadgeCheck,
     description: "New voter ID, correction aur address change ke liye application support.",
     documents: ["Photo", "Aadhaar Card", "Address Proof", "Age Proof"],
-    fields: baseFields,
+    fields: noExtraFields,
     recommended: ["aadhaar-update", "ration-card", "domicile-certificate"],
   },
   {
@@ -117,7 +110,7 @@ export const portalServices: PortalService[] = [
     icon: WalletCards,
     description: "Ration card apply, member add aur correction ke liye complete support.",
     documents: ["Aadhaar Cards", "Family Photo", "Income Proof", "Address Proof"],
-    fields: baseFields,
+    fields: noExtraFields,
     recommended: ["income-caste-domicile-certificate", "aadhaar-update", "voter-id"],
   },
   {
@@ -127,7 +120,7 @@ export const portalServices: PortalService[] = [
     icon: ShieldCheck,
     description: "Passport application form filling, appointment guidance aur document checklist.",
     documents: ["Aadhaar Card", "PAN Card", "Address Proof", "DOB Proof", "Photo"],
-    fields: baseFields,
+    fields: noExtraFields,
     recommended: ["pan-card", "voter-id", "driving-licence"],
   },
   {
@@ -137,7 +130,7 @@ export const portalServices: PortalService[] = [
     icon: CarFront,
     description: "Learner, permanent licence aur renewal support with online application tracking.",
     documents: ["Aadhaar Card", "Address Proof", "Age Proof", "Photo"],
-    fields: baseFields,
+    fields: noExtraFields,
     recommended: ["passport", "voter-id", "pan-card"],
   },
   {
@@ -157,7 +150,7 @@ export const portalServices: PortalService[] = [
     icon: FileSearch,
     description: "Income, caste, domicile aur local certificates ke liye application support.",
     documents: ["Aadhaar Card", "Photo", "Address Proof", "Existing Certificate if any"],
-    fields: baseFields,
+    fields: noExtraFields,
     recommended: ["ration-card", "voter-id", "aadhaar-update"],
   },
   {
@@ -187,7 +180,7 @@ export const portalServices: PortalService[] = [
     icon: HeartHandshake,
     description: "Jo service list me nahi hai, uske liye request submit karein. Team guide karegi.",
     documents: ["Relevant Documents", "Aadhaar Card", "Mobile Number"],
-    fields: baseFields,
+    fields: noExtraFields,
     recommended: ["pan-card", "aadhaar-update", "income-caste-domicile-certificate"],
   },
 ];

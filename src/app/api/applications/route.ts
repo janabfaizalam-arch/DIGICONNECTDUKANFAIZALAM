@@ -91,6 +91,16 @@ export async function POST(request: Request) {
       data[fieldName] = value;
     }
 
+    for (const field of service.fields) {
+      const value = String(formData.get(field.name) ?? "").trim();
+
+      if ((field.required ?? true) && !value) {
+        return NextResponse.json({ message: `${field.label} required hai.` }, { status: 400 });
+      }
+
+      data[field.name] = value;
+    }
+
     const paymentUtr = String(formData.get("utrNumber") ?? "").trim();
     const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File && item.size > 0);
     const paymentScreenshot = formData.get("paymentScreenshot");
@@ -133,6 +143,7 @@ export async function POST(request: Request) {
     }
 
     const uploadedDocuments = [];
+    const documentUrls = [];
 
     for (const file of documentFiles) {
       const uploaded = await uploadFile({
@@ -143,6 +154,11 @@ export async function POST(request: Request) {
       });
 
       if (uploaded) {
+        documentUrls.push({
+          name: file.name,
+          url: uploaded.url,
+          type: file.type,
+        });
         uploadedDocuments.push({
           application_id: application.id,
           user_id: user.id,
@@ -157,6 +173,15 @@ export async function POST(request: Request) {
 
     if (uploadedDocuments.length > 0) {
       await supabase.from("application_documents").insert(uploadedDocuments);
+      await supabase
+        .from("applications")
+        .update({
+          form_data: {
+            ...data,
+            documents: documentUrls,
+          },
+        })
+        .eq("id", application.id);
     }
 
     let paymentScreenshotUrl = "";

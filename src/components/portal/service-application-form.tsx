@@ -17,6 +17,12 @@ type ApplicationFormService = {
   amount: number;
   description: string;
   documents: string[];
+  fields: {
+    name: string;
+    label: string;
+    type?: "text" | "email" | "tel" | "textarea";
+    required?: boolean;
+  }[];
 };
 
 export function ServiceApplicationForm({ service }: { service: ApplicationFormService }) {
@@ -26,18 +32,17 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   const [documentCount, setDocumentCount] = useState(0);
   const [paymentProofName, setPaymentProofName] = useState("");
   const upiId = "7007595931@upi";
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-    `upi://pay?pa=${upiId}`,
-  )}`;
+  const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${service.amount}&cu=INR`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File && item.size > 0);
+    const files = (event.currentTarget.elements.namedItem("documents") as HTMLInputElement | null)?.files;
     formData.set("serviceSlug", service.slug);
 
-    if (documentFiles.length === 0) {
-      showToast("Kam se kam 1 document upload karein.", "error");
+    if (!files || files.length === 0) {
+      showToast("Please upload documents", "error");
       return;
     }
 
@@ -74,12 +79,48 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Input name="name" placeholder="Name" aria-label="Name" required />
-          <Input name="mobile" placeholder="Mobile" aria-label="Mobile" inputMode="numeric" pattern="[0-9]{10}" required />
-          <Input name="email" placeholder="Email" aria-label="Email" type="email" required />
-          <Input name="service" value={service.title} aria-label="Service" readOnly className="bg-slate-50 font-semibold" />
-          <Input name="city" placeholder="City" aria-label="City" required />
-          <Textarea name="message" placeholder="Message" aria-label="Message" required className="min-h-28 md:col-span-2" />
+          <Input name="name" placeholder="Name" aria-label="Name" required className="h-14 text-base" />
+          <Input
+            name="mobile"
+            placeholder="Mobile"
+            aria-label="Mobile"
+            inputMode="numeric"
+            pattern="[0-9]{10}"
+            required
+            className="h-14 text-base"
+          />
+          <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-14 text-base" />
+          <Input
+            name="service"
+            value={service.title}
+            aria-label="Service"
+            readOnly
+            className="h-14 bg-slate-50 text-base font-semibold"
+          />
+          <Input name="city" placeholder="City" aria-label="City" required className="h-14 text-base" />
+          {service.fields.map((field) =>
+            field.type === "textarea" ? (
+              <Textarea
+                key={field.name}
+                name={field.name}
+                placeholder={field.label}
+                aria-label={field.label}
+                required={field.required ?? true}
+                className="min-h-28 text-base md:col-span-2"
+              />
+            ) : (
+              <Input
+                key={field.name}
+                name={field.name}
+                placeholder={field.label}
+                aria-label={field.label}
+                type={field.type ?? "text"}
+                required={field.required ?? true}
+                className="h-14 text-base"
+              />
+            ),
+          )}
+          <Textarea name="message" placeholder="Message" aria-label="Message" required className="min-h-28 text-base md:col-span-2" />
         </div>
 
         <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-5">
@@ -102,7 +143,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
                 type="file"
                 multiple
                 required
-                accept="application/pdf,image/jpeg,image/png"
+                accept=".pdf,.jpg,.jpeg,.png"
                 className="mt-4"
                 onChange={(event) => setDocumentCount(event.target.files?.length ?? 0)}
               />
@@ -119,7 +160,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
               <IndianRupee className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-500">Service Amount</p>
+              <p className="text-sm font-semibold text-slate-500">Service Price</p>
               <p className="text-2xl font-black text-slate-950">{formatCurrency(service.amount)}</p>
             </div>
           </div>
@@ -135,21 +176,22 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <img src={qrUrl} alt="UPI QR" className="mx-auto h-44 w-44 rounded-xl object-contain" />
             <p className="mt-4 text-sm font-semibold text-slate-500">UPI ID</p>
             <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{upiId}</p>
+            <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(service.amount)}</p>
           </div>
           <p className="mt-4 text-sm font-semibold text-slate-700">Payment karne ke baad UTR number daalein</p>
-          <Input name="utrNumber" placeholder="UTR Number" required className="mt-3" />
+          <Input name="utrNumber" placeholder="UTR Number" required className="mt-3 h-14 text-base" />
           <Input
             name="paymentScreenshot"
             type="file"
             required
-            accept="application/pdf,image/jpeg,image/png"
+            accept=".pdf,.jpg,.jpeg,.png"
             className="mt-3"
             onChange={(event) => setPaymentProofName(event.target.files?.[0]?.name ?? "")}
           />
           {paymentProofName ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentProofName}</p> : null}
         </Card>
 
-        <Button type="submit" size="lg" disabled={isPending} className="h-14 w-full rounded-2xl">
+        <Button type="submit" size="lg" disabled={isPending} className="sticky bottom-3 z-20 h-14 w-full rounded-2xl shadow-lg">
           {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
           Submit Application
         </Button>

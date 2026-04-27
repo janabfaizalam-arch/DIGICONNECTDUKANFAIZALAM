@@ -82,6 +82,7 @@ export default async function ApplyPage({ params }: PageProps) {
               amount: service.amount,
               description: service.description,
               documents: service.documents,
+              fields: service.fields,
             }}
           />
         </div>
