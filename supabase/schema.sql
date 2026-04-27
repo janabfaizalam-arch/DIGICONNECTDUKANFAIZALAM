@@ -158,6 +158,10 @@ insert into storage.buckets (id, name, public)
 values ('application-documents', 'application-documents', false)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('documents', 'documents', true)
+on conflict (id) do update set public = true;
+
 alter table public.users enable row level security;
 alter table public.services enable row level security;
 alter table public.applications enable row level security;
@@ -219,3 +223,21 @@ create policy "Customers can rate completed own applications" on public.ratings
       and applications.status = 'completed'
     )
   );
+
+drop policy if exists "Authenticated users can upload documents" on storage.objects;
+create policy "Authenticated users can upload documents" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'documents'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Authenticated users can read documents" on storage.objects;
+create policy "Authenticated users can read documents" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'documents');
+
+drop policy if exists "Public can read documents bucket" on storage.objects;
+create policy "Public can read documents bucket" on storage.objects
+  for select to public
+  using (bucket_id = 'documents');

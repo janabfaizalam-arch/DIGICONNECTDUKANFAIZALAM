@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUp, IndianRupee, LoaderCircle, QrCode } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/portal-data";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type ApplicationFormService = {
   title: string;
@@ -27,6 +28,7 @@ type ApplicationFormService = {
 
 const maxFileSize = 5 * 1024 * 1024;
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
+const requestTimeoutMs = 30_000;
 
 function validateFile(file: File, label: string) {
   if (!allowedFileTypes.includes(file.type)) {
@@ -40,31 +42,50 @@ function validateFile(file: File, label: string) {
   return null;
 }
 
+function cleanFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
+}
+
+function withTimeout<T>(promise: Promise<T>, message: string) {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), requestTimeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
 export function ServiceApplicationForm({ service }: { service: ApplicationFormService }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<Record<string, { documentType: string; file: File }>>({});
-  const [paymentProofName, setPaymentProofName] = useState("");
+  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
   const upiId = "7007595931@upi";
   const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${service.amount}&cu=INR`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    formData.set("serviceSlug", service.slug);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const supabase = getSupabaseBrowserClient();
+
+    if (!supabase) {
+      showToast("Supabase configuration missing hai.", "error");
+      return;
+    }
 
     for (const documentType of service.documents) {
-      const input = event.currentTarget.elements.namedItem(`document_${documentType}`) as HTMLInputElement | null;
-      const files = input?.files;
+      const selectedDocument = selectedDocuments[documentType];
 
-      if (!files || files.length === 0) {
+      if (!selectedDocument?.file) {
         showToast(`Please upload ${documentType}`, "error");
         return;
       }
 
-      const validationError = validateFile(files[0], documentType);
+      const validationError = validateFile(selectedDocument.file, documentType);
 
       if (validationError) {
         showToast(validationError, "error");
@@ -76,9 +97,6 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       showToast("Please upload all required documents", "error");
       return;
     }
-
-    const paymentScreenshotInput = event.currentTarget.elements.namedItem("paymentScreenshot") as HTMLInputElement | null;
-    const paymentScreenshot = paymentScreenshotInput?.files?.[0];
 
     if (!paymentScreenshot) {
       showToast("Payment screenshot upload karein.", "error");
@@ -92,32 +110,135 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/applications", {
-          method: "POST",
-          body: formData,
-        });
-        const text = await response.text();
-        let result: { message?: string; error?: string; applicationId?: string; invoiceId?: string };
+    setIsSubmitting(true);
 
-        try {
-          result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
-        } catch {
-          throw new Error(text || "Server ne valid response nahi diya. File size check karke dobara try karein.");
-        }
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-        if (!response.ok || !result.applicationId || !result.invoiceId) {
-          throw new Error(result.message ?? result.error ?? "Application submit nahi ho payi.");
-        }
-
-        showToast(result.message ?? "Application submit ho gayi.");
-        router.push(`/invoice/${result.invoiceId}`);
-        router.refresh();
-      } catch (error) {
-        showToast(error instanceof Error ? error.message : "Application submit nahi ho payi.", "error");
+      if (userError || !user) {
+        throw new Error("Please login to apply.");
       }
-    });
+
+      setProgressText("Uploading documents...");
+
+      const uploadedDocuments = [];
+
+      for (const documentType of service.documents) {
+        const selectedDocument = selectedDocuments[documentType];
+
+        if (!selectedDocument?.file) {
+          throw new Error(`Please upload ${documentType}`);
+        }
+
+        const file = selectedDocument.file;
+        const path = `${user.id}/${service.slug}/documents/${Date.now()}-${cleanFileName(documentType)}-${cleanFileName(file.name)}`;
+        const { error: uploadError } = await withTimeout(
+          supabase.storage.from("documents").upload(path, file, {
+            contentType: file.type,
+            upsert: false,
+          }),
+          "Document upload 30 seconds se zyada le raha hai. File size check karke dobara try karein.",
+        );
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { data } = supabase.storage.from("documents").getPublicUrl(path);
+        uploadedDocuments.push({
+          document_type: documentType,
+          file_name: file.name,
+          file_url: data.publicUrl,
+          file_type: file.type,
+          storage_path: path,
+        });
+      }
+
+      const screenshotPath = `${user.id}/${service.slug}/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
+      const { error: screenshotUploadError } = await withTimeout(
+        supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
+          contentType: paymentScreenshot.type,
+          upsert: false,
+        }),
+        "Payment screenshot upload 30 seconds se zyada le raha hai.",
+      );
+
+      if (screenshotUploadError) {
+        throw new Error(screenshotUploadError.message);
+      }
+
+      const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
+      const details: Record<string, string> = {};
+
+      for (const field of service.fields) {
+        details[field.name] = String(formData.get(field.name) ?? "").trim();
+      }
+
+      setProgressText("Saving application...");
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceSlug: service.slug,
+          price: service.amount,
+          customer: {
+            name: String(formData.get("name") ?? "").trim(),
+            mobile: String(formData.get("mobile") ?? "").trim(),
+            email: String(formData.get("email") ?? "").trim(),
+            city: String(formData.get("city") ?? "").trim(),
+            message: String(formData.get("message") ?? "").trim(),
+          },
+          details,
+          utrNumber: String(formData.get("utrNumber") ?? "").trim(),
+          documents: uploadedDocuments,
+          paymentScreenshot: {
+            file_name: paymentScreenshot.name,
+            file_url: screenshotPublicUrl.publicUrl,
+            file_type: paymentScreenshot.type,
+            storage_path: screenshotPath,
+          },
+        }),
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(timeoutId));
+
+      setProgressText("Generating invoice...");
+
+      const text = await response.text();
+      let result: { message?: string; error?: string; applicationId?: string; invoiceId?: string };
+
+      try {
+        result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
+      } catch {
+        throw new Error(text || "Server ne valid response nahi diya. Dobara try karein.");
+      }
+
+      if (!response.ok || !result.applicationId || !result.invoiceId) {
+        throw new Error(result.message ?? result.error ?? "Application submit nahi ho payi.");
+      }
+
+      showToast(result.message ?? "Application submit ho gayi.");
+      router.push(`/invoice/${result.invoiceId}`);
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof DOMException && error.name === "AbortError"
+          ? "Request 30 seconds se zyada le raha hai. Please dobara try karein."
+          : error instanceof Error
+            ? error.message
+            : "Application submit nahi ho payi.";
+      showToast(message, "error");
+    } finally {
+      setIsSubmitting(false);
+      setProgressText("");
+    }
   };
 
   return (
@@ -272,7 +393,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
               const file = event.target.files?.[0];
 
               if (!file) {
-                setPaymentProofName("");
+                setPaymentScreenshot(null);
                 return;
               }
 
@@ -280,20 +401,20 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
 
               if (validationError) {
                 event.target.value = "";
-                setPaymentProofName("");
+                setPaymentScreenshot(null);
                 showToast(validationError, "error");
                 return;
               }
 
-              setPaymentProofName(file.name);
+              setPaymentScreenshot(file);
             }}
           />
-          {paymentProofName ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentProofName}</p> : null}
+          {paymentScreenshot ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentScreenshot.name}</p> : null}
         </Card>
 
-        <Button type="submit" size="lg" disabled={isPending} className="sticky bottom-3 z-20 h-14 w-full rounded-2xl shadow-lg">
-          {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
-          Submit Application
+        <Button type="submit" size="lg" disabled={isSubmitting} className="sticky bottom-3 z-20 h-14 w-full rounded-2xl shadow-lg">
+          {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
+          {progressText || "Submit Application"}
         </Button>
       </div>
     </form>
