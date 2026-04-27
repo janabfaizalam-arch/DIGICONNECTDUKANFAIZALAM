@@ -14,7 +14,6 @@ import {
   Star,
 } from "lucide-react";
 
-import { ServiceApplicationForm } from "@/components/portal/service-application-form";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { contactDetails } from "@/lib/constants";
@@ -133,10 +132,10 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <a href="#apply" className={buttonVariants({ size: "lg" })}>
+              <Link href={`/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
                 Apply Now
                 <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
               <a
                 href={`https://wa.me/${contactDetails.whatsapp}?text=${whatsappMessage}`}
                 target="_blank"
@@ -275,18 +274,6 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               ))}
             </div>
           </Card>
-        </section>
-
-        <section id="apply" className="mt-10 scroll-mt-24">
-          <ServiceApplicationForm
-            service={{
-              title: service.title,
-              slug: service.slug,
-              amount: service.amount,
-              description: service.description,
-              documents: service.documents,
-            }}
-          />
         </section>
 
         <section className="mt-10">

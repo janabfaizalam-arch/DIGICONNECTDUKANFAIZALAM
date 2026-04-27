@@ -8,6 +8,8 @@ function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
 }
 
+const allowedUploadTypes = ["application/pdf", "image/jpeg", "image/png"];
+
 async function uploadFile({
   applicationId,
   userId,
@@ -72,13 +74,11 @@ export async function POST(request: Request) {
       ["name", "Name"],
       ["mobile", "Mobile"],
       ["email", "Email"],
-      ["address", "Address"],
       ["city", "City"],
+      ["message", "Message"],
     ] as const;
     const data: Record<string, string> = {
       service: service.title,
-      state: String(formData.get("state") ?? "").trim(),
-      message: String(formData.get("message") ?? "").trim(),
     };
 
     for (const [fieldName, label] of requiredFields) {
@@ -92,8 +92,28 @@ export async function POST(request: Request) {
     }
 
     const paymentUtr = String(formData.get("utrNumber") ?? "").trim();
-    const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File);
+    const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File && item.size > 0);
     const paymentScreenshot = formData.get("paymentScreenshot");
+
+    if (documentFiles.length === 0) {
+      return NextResponse.json({ message: "Kam se kam 1 document upload karein." }, { status: 400 });
+    }
+
+    if (documentFiles.some((file) => !allowedUploadTypes.includes(file.type))) {
+      return NextResponse.json({ message: "Sirf PDF, JPG ya PNG documents upload karein." }, { status: 400 });
+    }
+
+    if (!paymentUtr) {
+      return NextResponse.json({ message: "UTR number required hai." }, { status: 400 });
+    }
+
+    if (!(paymentScreenshot instanceof File) || paymentScreenshot.size === 0) {
+      return NextResponse.json({ message: "Payment screenshot required hai." }, { status: 400 });
+    }
+
+    if (!allowedUploadTypes.includes(paymentScreenshot.type)) {
+      return NextResponse.json({ message: "Payment screenshot PDF, JPG ya PNG format me upload karein." }, { status: 400 });
+    }
 
     const { data: application, error: applicationError } = await supabase
       .from("applications")
@@ -163,7 +183,7 @@ export async function POST(request: Request) {
       storage_path: paymentStoragePath || null,
     });
 
-    const { data: invoice } = await supabase
+    const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .insert({
         application_id: application.id,
@@ -178,6 +198,10 @@ export async function POST(request: Request) {
       .select("id")
       .single();
 
+    if (invoiceError || !invoice) {
+      return NextResponse.json({ message: "Invoice generate nahi ho payi." }, { status: 500 });
+    }
+
     await supabase.from("notifications").insert({
       user_id: user.id,
       application_id: application.id,
@@ -188,7 +212,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       message: "Application submit ho gayi. Dashboard me status track karein.",
       applicationId: application.id,
-      invoiceId: invoice?.id,
+      invoiceId: invoice.id,
     });
   } catch (error) {
     return NextResponse.json(

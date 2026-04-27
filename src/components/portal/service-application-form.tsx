@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { formatCurrency, upiDetails } from "@/lib/portal-data";
+import { formatCurrency } from "@/lib/portal-data";
 
 type ApplicationFormService = {
   title: string;
@@ -25,11 +25,21 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   const [isPending, startTransition] = useTransition();
   const [documentCount, setDocumentCount] = useState(0);
   const [paymentProofName, setPaymentProofName] = useState("");
+  const upiId = "7007595931@upi";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+    `upi://pay?pa=${upiId}`,
+  )}`;
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File && item.size > 0);
     formData.set("serviceSlug", service.slug);
+
+    if (documentFiles.length === 0) {
+      showToast("Kam se kam 1 document upload karein.", "error");
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -37,14 +47,14 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           method: "POST",
           body: formData,
         });
-        const result = (await response.json()) as { message: string; applicationId?: string };
+        const result = (await response.json()) as { message: string; applicationId?: string; invoiceId?: string };
 
-        if (!response.ok || !result.applicationId) {
+        if (!response.ok || !result.applicationId || !result.invoiceId) {
           throw new Error(result.message);
         }
 
         showToast(result.message);
-        router.push(`/dashboard/applications/${result.applicationId}`);
+        router.push(`/invoice/${result.invoiceId}`);
         router.refresh();
       } catch (error) {
         showToast(error instanceof Error ? error.message : "Application submit nahi ho payi.", "error");
@@ -68,10 +78,8 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           <Input name="mobile" placeholder="Mobile" aria-label="Mobile" inputMode="numeric" pattern="[0-9]{10}" required />
           <Input name="email" placeholder="Email" aria-label="Email" type="email" required />
           <Input name="service" value={service.title} aria-label="Service" readOnly className="bg-slate-50 font-semibold" />
-          <Input name="address" placeholder="Address" aria-label="Address" required className="md:col-span-2" />
           <Input name="city" placeholder="City" aria-label="City" required />
-          <Input name="state" placeholder="State" aria-label="State" />
-          <Textarea name="message" placeholder="Message" aria-label="Message" className="min-h-28 md:col-span-2" />
+          <Textarea name="message" placeholder="Message" aria-label="Message" required className="min-h-28 md:col-span-2" />
         </div>
 
         <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-5">
@@ -93,7 +101,8 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
                 name="documents"
                 type="file"
                 multiple
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                required
+                accept="application/pdf,image/jpeg,image/png"
                 className="mt-4"
                 onChange={(event) => setDocumentCount(event.target.files?.length ?? 0)}
               />
@@ -122,22 +131,18 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <p className="font-black text-slate-950">UPI Payment</p>
           </div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-center">
-            {upiDetails.qrImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={upiDetails.qrImageUrl} alt="UPI QR" className="mx-auto h-44 w-44 rounded-xl object-contain" />
-            ) : (
-              <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-xl border border-dashed bg-white text-sm font-bold text-slate-500">
-                UPI QR
-              </div>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrUrl} alt="UPI QR" className="mx-auto h-44 w-44 rounded-xl object-contain" />
             <p className="mt-4 text-sm font-semibold text-slate-500">UPI ID</p>
-            <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{upiDetails.upiId}</p>
+            <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{upiId}</p>
           </div>
-          <Input name="utrNumber" placeholder="UTR / Transaction ID" className="mt-4" />
+          <p className="mt-4 text-sm font-semibold text-slate-700">Payment karne ke baad UTR number daalein</p>
+          <Input name="utrNumber" placeholder="UTR Number" required className="mt-3" />
           <Input
             name="paymentScreenshot"
             type="file"
-            accept=".jpg,.jpeg,.png,.webp,.pdf"
+            required
+            accept="application/pdf,image/jpeg,image/png"
             className="mt-3"
             onChange={(event) => setPaymentProofName(event.target.files?.[0]?.name ?? "")}
           />

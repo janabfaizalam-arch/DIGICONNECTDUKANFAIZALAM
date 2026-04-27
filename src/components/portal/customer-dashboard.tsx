@@ -101,6 +101,21 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                           <p className="mt-1 text-xs font-semibold text-slate-500">
                             Uploaded documents: {application.documents?.length ?? 0}
                           </p>
+                          {application.documents?.length ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {application.documents.slice(0, 3).map((document) => (
+                                <a
+                                  key={document.id}
+                                  href={document.file_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex h-8 items-center justify-center rounded-full bg-blue-50 px-3 text-xs font-bold text-[var(--primary)]"
+                                >
+                                  {document.file_name}
+                                </a>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <StatusBadge status={application.status} />
