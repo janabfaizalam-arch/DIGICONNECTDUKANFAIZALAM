@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
-import { LeadsDashboard, type Lead } from "@/components/dashboard/leads-dashboard";
-import { getCurrentUser } from "@/lib/auth";
+import { CustomerDashboard } from "@/components/portal/customer-dashboard";
+import { getCurrentUser, syncUserProfile } from "@/lib/auth";
+import type { Application, NotificationItem } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -13,25 +14,33 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const name = user.user_metadata.full_name ?? user.user_metadata.name ?? "User";
-  const email = user.email ?? "";
-  const supabase = getSupabaseAdmin();
+  await syncUserProfile(user);
 
-  let leads: Lead[] = [];
+  const supabase = getSupabaseAdmin();
+  const name = user.user_metadata.full_name ?? user.user_metadata.name ?? "Customer";
+  const email = user.email ?? "";
+  const avatarUrl = user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "";
+  let applications: Application[] = [];
+  let notifications: NotificationItem[] = [];
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("leads")
-      .select("id, name, mobile, service, message, status, created_at")
-      .order("created_at", { ascending: false });
+    const [{ data: applicationData }, { data: notificationData }] = await Promise.all([
+      supabase
+        .from("applications")
+        .select("*, documents:application_documents(*), payments(*), invoices(*), ratings(*)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
 
-    if (!error && data) {
-      leads = data.map((lead) => ({
-        ...lead,
-        status: (lead.status ?? "new") as Lead["status"],
-      }));
-    }
+    applications = (applicationData ?? []) as Application[];
+    notifications = (notificationData ?? []) as NotificationItem[];
   }
 
-  return <LeadsDashboard initialLeads={leads} name={name} email={email} />;
+  return <CustomerDashboard applications={applications} notifications={notifications} profile={{ name, email, avatarUrl }} />;
 }

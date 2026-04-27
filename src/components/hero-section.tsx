@@ -2,6 +2,7 @@ import { ArrowRight, BadgeCheck, MapPin, PhoneCall, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button";
 import { contactDetails } from "@/lib/constants";
+import Link from "next/link";
 
 export function HeroSection() {
   return (
@@ -25,12 +26,12 @@ export function HeroSection() {
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <a href={`tel:${contactDetails.phone}`}>
+            <Link href="/services">
               <Button size="lg">
-                <PhoneCall className="h-4 w-4" />
-                Call Now
+                Apply Online
+                <ArrowRight className="h-4 w-4" />
               </Button>
-            </a>
+            </Link>
             <a href={`https://wa.me/${contactDetails.whatsapp}?text=Aaj%20hi%20apply%20karna%20hai`} target="_blank" rel="noreferrer">
               <Button size="lg" variant="secondary">
                 WhatsApp Now

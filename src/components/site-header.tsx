@@ -24,13 +24,13 @@ export async function SiteHeader() {
           </div>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-          <Link href="#services" className="hover:text-[var(--primary)]">
+          <Link href="/services" className="hover:text-[var(--primary)]">
             Services
           </Link>
           <Link href="#process" className="hover:text-[var(--primary)]">
             Process
           </Link>
-          <Link href="#lead-form" className="hover:text-[var(--primary)]">
+          <Link href="/services" className="hover:text-[var(--primary)]">
             Apply Now
           </Link>
           <Link href="#contact" className="hover:text-[var(--primary)]">

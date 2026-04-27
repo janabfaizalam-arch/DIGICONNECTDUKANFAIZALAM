@@ -1,0 +1,188 @@
+import { NextResponse } from "next/server";
+
+import { getCurrentUser, syncUserProfile } from "@/lib/auth";
+import { createInvoiceNumber, getServiceBySlug } from "@/lib/portal-data";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+
+function cleanFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
+}
+
+async function uploadFile({
+  applicationId,
+  userId,
+  file,
+  folder,
+}: {
+  applicationId: string;
+  userId: string;
+  file: File;
+  folder: "documents" | "payments";
+}) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase || file.size === 0) {
+    return null;
+  }
+
+  const path = `${userId}/${applicationId}/${folder}/${Date.now()}-${cleanFileName(file.name)}`;
+  const bytes = await file.arrayBuffer();
+  const { error } = await supabase.storage.from("application-documents").upload(path, bytes, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const { data } = await supabase.storage.from("application-documents").createSignedUrl(path, 60 * 60 * 24 * 365);
+
+  return {
+    path,
+    url: data?.signedUrl ?? "",
+  };
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ message: "Please login to apply." }, { status: 401 });
+    }
+
+    await syncUserProfile(user);
+
+    const supabase = getSupabaseAdmin();
+
+    if (!supabase) {
+      return NextResponse.json({ message: "Supabase service role key is missing." }, { status: 500 });
+    }
+
+    const formData = await request.formData();
+    const serviceSlug = String(formData.get("serviceSlug") ?? "");
+    const service = getServiceBySlug(serviceSlug);
+
+    if (!service) {
+      return NextResponse.json({ message: "Service not found." }, { status: 404 });
+    }
+
+    const data: Record<string, string> = {};
+
+    for (const field of service.fields) {
+      const value = String(formData.get(field.name) ?? "").trim();
+
+      if (field.required && !value) {
+        return NextResponse.json({ message: `${field.label} required hai.` }, { status: 400 });
+      }
+
+      data[field.name] = value;
+    }
+
+    const paymentUtr = String(formData.get("utrNumber") ?? "").trim();
+    const documentFiles = formData.getAll("documents").filter((item): item is File => item instanceof File);
+    const paymentScreenshot = formData.get("paymentScreenshot");
+
+    const { data: application, error: applicationError } = await supabase
+      .from("applications")
+      .insert({
+        user_id: user.id,
+        service_slug: service.slug,
+        service_name: service.title,
+        amount: service.amount,
+        form_data: data,
+        status: "new",
+      })
+      .select("id")
+      .single();
+
+    if (applicationError || !application) {
+      return NextResponse.json({ message: "Application submit nahi ho payi." }, { status: 500 });
+    }
+
+    const uploadedDocuments = [];
+
+    for (const file of documentFiles) {
+      const uploaded = await uploadFile({
+        applicationId: application.id,
+        userId: user.id,
+        file,
+        folder: "documents",
+      });
+
+      if (uploaded) {
+        uploadedDocuments.push({
+          application_id: application.id,
+          user_id: user.id,
+          document_type: "customer_document",
+          file_name: file.name,
+          file_url: uploaded.url,
+          file_type: file.type,
+          storage_path: uploaded.path,
+        });
+      }
+    }
+
+    if (uploadedDocuments.length > 0) {
+      await supabase.from("application_documents").insert(uploadedDocuments);
+    }
+
+    let paymentScreenshotUrl = "";
+    let paymentStoragePath = "";
+
+    if (paymentScreenshot instanceof File && paymentScreenshot.size > 0) {
+      const uploaded = await uploadFile({
+        applicationId: application.id,
+        userId: user.id,
+        file: paymentScreenshot,
+        folder: "payments",
+      });
+      paymentScreenshotUrl = uploaded?.url ?? "";
+      paymentStoragePath = uploaded?.path ?? "";
+    }
+
+    await supabase.from("payments").insert({
+      application_id: application.id,
+      user_id: user.id,
+      amount: service.amount,
+      status: "pending",
+      utr_number: paymentUtr || null,
+      screenshot_url: paymentScreenshotUrl || null,
+      storage_path: paymentStoragePath || null,
+    });
+
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .insert({
+        application_id: application.id,
+        user_id: user.id,
+        invoice_number: createInvoiceNumber(),
+        customer_name: data.name || user.user_metadata.full_name || "Customer",
+        customer_email: data.email || user.email || "",
+        service_name: service.title,
+        amount: service.amount,
+        payment_status: "pending",
+      })
+      .select("id")
+      .single();
+
+    await supabase.from("notifications").insert({
+      user_id: user.id,
+      application_id: application.id,
+      title: "Application received",
+      message: `${service.title} request receive ho gayi hai. Team jaldi verify karegi.`,
+    });
+
+    return NextResponse.json({
+      message: "Application submit ho gayi. Dashboard me status track karein.",
+      applicationId: application.id,
+      invoiceId: invoice?.id,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Something went wrong. Please try again." },
+      { status: 500 },
+    );
+  }
+}
