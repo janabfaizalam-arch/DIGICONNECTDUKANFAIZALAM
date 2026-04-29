@@ -64,6 +64,7 @@ export type Payment = {
   status: PaymentStatus;
   utr_number: string | null;
   screenshot_url: string | null;
+  storage_path?: string | null;
   created_at: string;
 };
 
@@ -112,7 +113,7 @@ export type Application = {
   service_slug: string;
   service_name: string;
   amount: number;
-  form_data: Record<string, unknown>;
+  form_data: Record<string, unknown> | null;
   status: ApplicationStatus;
   final_document_url: string | null;
   final_document_name: string | null;

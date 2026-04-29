@@ -7,7 +7,7 @@ import { RatingForm } from "@/components/portal/rating-form";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
-import type { Application } from "@/lib/portal-types";
+import type { Application, ApplicationDocument, Invoice, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +16,16 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 function displayValue(value: unknown) {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
 
-  return JSON.stringify(value);
+  return "";
 }
 
 export default async function CustomerApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +44,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
 
   const { data } = await supabase
     .from("applications")
-    .select("*, documents:application_documents(*), payments(*), invoices(*), ratings(*)")
+    .select("*")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -49,7 +53,30 @@ export default async function CustomerApplicationDetailPage({ params }: { params
     notFound();
   }
 
-  const application = data as Application;
+  const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.all([
+    supabase
+      .from("application_documents")
+      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+      .eq("application_id", id),
+    supabase
+      .from("payments")
+      .select("id, application_id, amount, status, utr_number, screenshot_url, storage_path, created_at")
+      .eq("application_id", id),
+    supabase
+      .from("invoices")
+      .select("id, application_id, invoice_number, customer_name, customer_email, service_name, amount, payment_status, created_at")
+      .eq("application_id", id),
+    supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").eq("application_id", id),
+  ]);
+
+  const application = {
+    ...(data as Application),
+    documents: (documentsResult.data ?? []) as ApplicationDocument[],
+    payments: (paymentsResult.data ?? []) as Payment[],
+    invoices: (invoicesResult.data ?? []) as Invoice[],
+    ratings: (ratingsResult.data ?? []) as Rating[],
+  };
+  const formData = asRecord(application.form_data);
   const payment = application.payments?.[0];
   const invoice = application.invoices?.[0];
   const rating = application.ratings?.[0];
@@ -77,7 +104,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
             </div>
 
             <div className="mt-6 grid gap-3 md:grid-cols-2">
-              {Object.entries(application.form_data).map(([key, value]) => (
+              {Object.entries(formData).map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
                   <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>

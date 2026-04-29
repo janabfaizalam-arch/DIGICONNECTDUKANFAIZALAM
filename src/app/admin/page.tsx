@@ -2,28 +2,45 @@ import { redirect } from "next/navigation";
 
 import { AdminApplications } from "@/components/portal/admin-applications";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
-import type { AdminApplicationRow, Application, Lead } from "@/lib/portal-types";
+import type { AdminApplicationRow, Application, ApplicationDocument, Invoice, Lead, Payment } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-function readText(value: unknown) {
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function textValue(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-function applicationToAdminRow(application: Application): AdminApplicationRow {
-  const payment = application.payments?.[0];
-  const invoice = application.invoices?.[0];
-  const documents = application.documents ?? [];
+function groupByApplicationId<T extends { application_id: string }>(items: T[] = []) {
+  return items.reduce<Record<string, T[]>>((grouped, item) => {
+    grouped[item.application_id] = [...(grouped[item.application_id] ?? []), item];
+    return grouped;
+  }, {});
+}
+
+function applicationToAdminRow(
+  application: Application,
+  documentsByApplicationId: Record<string, ApplicationDocument[]>,
+  paymentsByApplicationId: Record<string, Payment[]>,
+  invoicesByApplicationId: Record<string, Invoice[]>,
+): AdminApplicationRow {
+  const formData = asRecord(application.form_data);
+  const documents = documentsByApplicationId[application.id] ?? [];
+  const payment = paymentsByApplicationId[application.id]?.[0];
+  const invoice = invoicesByApplicationId[application.id]?.[0];
 
   return {
     id: `application-${application.id}`,
     source: "application",
     application_id: application.id,
-    customer_name: readText(application.form_data.name) || application.users?.full_name || "Customer",
-    mobile: readText(application.form_data.mobile),
+    customer_name: textValue(formData.name) || "Customer",
+    mobile: textValue(formData.mobile),
     service: application.service_name,
-    message: readText(application.form_data.message),
+    message: textValue(formData.message),
     uploaded_files: documents.map((document) => ({
       id: document.id,
       file_name: document.file_name,
@@ -83,18 +100,48 @@ export default async function AdminPage() {
 
   if (supabase) {
     const [{ data: applicationData }, { data: leadData }] = await Promise.all([
-      supabase
-        .from("applications")
-        .select("*, users(*), documents:application_documents(*), payments(*), invoices(*)")
-        .order("created_at", { ascending: false }),
+      supabase.from("applications").select("*").order("created_at", { ascending: false }),
       supabase
         .from("leads")
         .select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at")
         .order("created_at", { ascending: false }),
     ]);
 
+    const applications = (applicationData ?? []) as Application[];
+    const applicationIds = applications.map((application) => application.id);
+    let documents: ApplicationDocument[] = [];
+    let payments: Payment[] = [];
+    let invoices: Invoice[] = [];
+
+    if (applicationIds.length > 0) {
+      const [documentsResult, paymentsResult, invoicesResult] = await Promise.all([
+        supabase
+          .from("application_documents")
+          .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+          .in("application_id", applicationIds),
+        supabase
+          .from("payments")
+          .select("id, application_id, amount, status, utr_number, screenshot_url, storage_path, created_at")
+          .in("application_id", applicationIds),
+        supabase
+          .from("invoices")
+          .select("id, application_id, invoice_number, customer_name, customer_email, service_name, amount, payment_status, created_at")
+          .in("application_id", applicationIds),
+      ]);
+
+      documents = (documentsResult.data ?? []) as ApplicationDocument[];
+      payments = (paymentsResult.data ?? []) as Payment[];
+      invoices = (invoicesResult.data ?? []) as Invoice[];
+    }
+
+    const documentsByApplicationId = groupByApplicationId(documents);
+    const paymentsByApplicationId = groupByApplicationId(payments);
+    const invoicesByApplicationId = groupByApplicationId(invoices);
+
     rows = [
-      ...((applicationData ?? []) as Application[]).map(applicationToAdminRow),
+      ...applications.map((application) =>
+        applicationToAdminRow(application, documentsByApplicationId, paymentsByApplicationId, invoicesByApplicationId),
+      ),
       ...((leadData ?? []) as Lead[]).map(leadToAdminRow),
     ].sort((first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime());
   }

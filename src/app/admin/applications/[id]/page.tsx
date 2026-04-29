@@ -7,7 +7,7 @@ import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
-import type { Application } from "@/lib/portal-types";
+import type { AdminNote, Application, ApplicationDocument, Invoice, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +16,16 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 function displayValue(value: unknown) {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
 
-  return JSON.stringify(value);
+  return "";
 }
 
 export default async function AdminApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,7 +48,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
   const { data } = await supabase
     .from("applications")
-    .select("*, users(*), documents:application_documents(*), payments(*), invoices(*), admin_notes(*), ratings(*)")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -52,9 +56,34 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     notFound();
   }
 
-  const application = data as Application;
+  const [documentsResult, paymentsResult, invoicesResult, notesResult, ratingsResult] = await Promise.all([
+    supabase
+      .from("application_documents")
+      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+      .eq("application_id", id),
+    supabase
+      .from("payments")
+      .select("id, application_id, amount, status, utr_number, screenshot_url, storage_path, created_at")
+      .eq("application_id", id),
+    supabase
+      .from("invoices")
+      .select("id, application_id, invoice_number, customer_name, customer_email, service_name, amount, payment_status, created_at")
+      .eq("application_id", id),
+    supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id),
+    supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").eq("application_id", id),
+  ]);
+
+  const application = {
+    ...(data as Application),
+    documents: (documentsResult.data ?? []) as ApplicationDocument[],
+    payments: (paymentsResult.data ?? []) as Payment[],
+    invoices: (invoicesResult.data ?? []) as Invoice[],
+    admin_notes: (notesResult.data ?? []) as AdminNote[],
+    ratings: (ratingsResult.data ?? []) as Rating[],
+  };
+  const formData = asRecord(application.form_data);
   const payment = application.payments?.[0];
-  const customerMobile = displayValue(application.form_data.mobile ?? "");
+  const customerMobile = displayValue(formData.mobile);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -81,8 +110,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <div className="mt-6 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Customer</p>
-                <p className="mt-1 font-black text-slate-950">{displayValue(application.form_data.name ?? application.users?.full_name ?? "Customer")}</p>
-                <p className="mt-1 text-sm text-slate-600">{displayValue(application.form_data.email ?? application.users?.email ?? "")}</p>
+                <p className="mt-1 font-black text-slate-950">{displayValue(formData.name) || "Customer"}</p>
+                <p className="mt-1 text-sm text-slate-600">{displayValue(formData.email)}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Mobile</p>
@@ -96,7 +125,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
             <h2 className="mt-6 text-lg font-black text-slate-950">Form Details</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {Object.entries(application.form_data).map(([key, value]) => (
+              {Object.entries(formData).map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
                   <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
