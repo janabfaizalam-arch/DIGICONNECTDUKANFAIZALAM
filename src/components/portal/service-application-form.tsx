@@ -113,41 +113,6 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
     setIsSubmitting(true);
 
     try {
-      const leadFormData = new FormData();
-      leadFormData.set("name", String(formData.get("name") ?? "").trim());
-      leadFormData.set("mobile", String(formData.get("mobile") ?? "").trim());
-      leadFormData.set("service", service.title);
-      leadFormData.set("message", String(formData.get("message") ?? "").trim());
-
-      console.log("[ServiceApplicationForm] POST /api/lead started", {
-        service: service.title,
-        mobile: leadFormData.get("mobile"),
-      });
-      setProgressText("Saving lead...");
-
-      const leadResponse = await fetch("/api/lead", {
-        method: "POST",
-        body: leadFormData,
-      });
-      const leadText = await leadResponse.text();
-      let leadResult: { message?: string; error?: string; ok?: boolean };
-
-      try {
-        leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
-      } catch {
-        leadResult = { error: leadText || "Lead API ne valid response nahi diya." };
-      }
-
-      console.log("[ServiceApplicationForm] POST /api/lead completed", {
-        ok: leadResponse.ok,
-        status: leadResponse.status,
-        result: leadResult,
-      });
-
-      if (!leadResponse.ok || !leadResult.ok) {
-        throw new Error(leadResult.error ?? leadResult.message ?? "Lead save nahi ho paya.");
-      }
-
       const {
         data: { user },
         error: userError,

@@ -16,6 +16,14 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
+function displayValue(value: unknown) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
 export default async function CustomerApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
 
@@ -72,7 +80,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
               {Object.entries(application.form_data).map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
-                  <p className="mt-1 break-words text-sm font-bold text-slate-900">{value}</p>
+                  <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
                 </div>
               ))}
             </div>

@@ -45,9 +45,11 @@ function required(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    console.log("[api/applications] POST request received");
     const user = await getCurrentUser();
 
     if (!user) {
+      console.error("[api/applications] Unauthorized application submit");
       return jsonError("Please login to apply.", 401);
     }
 
@@ -56,6 +58,7 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
+      console.error("[api/applications] Missing SUPABASE_SERVICE_ROLE_KEY or Supabase URL");
       return jsonError("Supabase service role key is missing.", 500);
     }
 
@@ -64,12 +67,14 @@ export async function POST(request: Request) {
     try {
       body = (await request.json()) as ApplicationPayload;
     } catch {
+      console.error("[api/applications] Invalid JSON payload");
       return jsonError("Invalid JSON payload.", 400);
     }
 
     const service = getServiceBySlug(String(body.serviceSlug ?? ""));
 
     if (!service) {
+      console.error("[api/applications] Service not found", { serviceSlug: body.serviceSlug });
       return jsonError("Service not found.", 404);
     }
 
@@ -84,6 +89,7 @@ export async function POST(request: Request) {
 
     for (const [fieldName, label] of requiredCustomerFields) {
       if (!required(customer[fieldName])) {
+        console.error("[api/applications] Missing required customer field", { fieldName });
         return jsonError(`${label} required hai.`, 400);
       }
     }
@@ -92,15 +98,21 @@ export async function POST(request: Request) {
 
     for (const field of service.fields) {
       if ((field.required ?? true) && !required(details[field.name])) {
+        console.error("[api/applications] Missing required service field", { fieldName: field.name });
         return jsonError(`${field.label} required hai.`, 400);
       }
     }
 
     if (!required(body.utrNumber)) {
+      console.error("[api/applications] Missing UTR number");
       return jsonError("UTR number required hai.", 400);
     }
 
     if (!Array.isArray(body.documents) || body.documents.length !== service.documents.length) {
+      console.error("[api/applications] Invalid document count", {
+        expected: service.documents.length,
+        received: body.documents?.length,
+      });
       return jsonError("Sabhi required documents upload karein.", 400);
     }
 
@@ -108,11 +120,13 @@ export async function POST(request: Request) {
       const uploaded = body.documents.find((document) => document.document_type === documentType);
 
       if (!uploaded?.file_name || !uploaded.file_url) {
+        console.error("[api/applications] Missing uploaded document metadata", { documentType });
         return jsonError(`${documentType} upload required hai.`, 400);
       }
     }
 
     if (!body.paymentScreenshot?.file_name || !body.paymentScreenshot.file_url) {
+      console.error("[api/applications] Missing payment screenshot metadata");
       return jsonError("Payment screenshot required hai.", 400);
     }
 
@@ -124,8 +138,14 @@ export async function POST(request: Request) {
       city: customer.city!.trim(),
       message: customer.message!.trim(),
       ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
-      documents: body.documents,
     };
+
+    console.log("[api/applications] Inserting application", {
+      userId: user.id,
+      serviceSlug: service.slug,
+      documents: body.documents.length,
+      hasPaymentScreenshot: Boolean(body.paymentScreenshot.storage_path),
+    });
 
     const { data: application, error: applicationError } = await supabase
       .from("applications")
@@ -141,6 +161,7 @@ export async function POST(request: Request) {
       .single();
 
     if (applicationError || !application) {
+      console.error("[api/applications] Application insert failed", applicationError);
       return jsonError("Application submit nahi ho payi.", 500);
     }
 
@@ -157,6 +178,10 @@ export async function POST(request: Request) {
     const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
 
     if (documentsError) {
+      console.error("[api/applications] Document metadata insert failed", {
+        applicationId: application.id,
+        error: documentsError,
+      });
       return jsonError("Documents save nahi ho paye.", 500);
     }
 
@@ -171,6 +196,10 @@ export async function POST(request: Request) {
     });
 
     if (paymentError) {
+      console.error("[api/applications] Payment insert failed", {
+        applicationId: application.id,
+        error: paymentError,
+      });
       return jsonError("Payment details save nahi ho payi.", 500);
     }
 
@@ -190,14 +219,30 @@ export async function POST(request: Request) {
       .single();
 
     if (invoiceError || !invoice) {
+      console.error("[api/applications] Invoice insert failed", {
+        applicationId: application.id,
+        error: invoiceError,
+      });
       return jsonError("Invoice generate nahi ho payi.", 500);
     }
 
-    await supabase.from("notifications").insert({
+    const { error: notificationError } = await supabase.from("notifications").insert({
       user_id: user.id,
       application_id: application.id,
       title: "Application received",
       message: `${service.title} request receive ho gayi hai. Team jaldi verify karegi.`,
+    });
+
+    if (notificationError) {
+      console.error("[api/applications] Notification insert failed", {
+        applicationId: application.id,
+        error: notificationError,
+      });
+    }
+
+    console.log("[api/applications] Application flow completed", {
+      applicationId: application.id,
+      invoiceId: invoice.id,
     });
 
     return NextResponse.json({
@@ -206,6 +251,7 @@ export async function POST(request: Request) {
       invoiceId: invoice.id,
     });
   } catch (error) {
+    console.error("[api/applications] Unhandled error", error);
     return jsonError(error instanceof Error ? error.message : "Something went wrong. Please try again.", 500);
   }
 }

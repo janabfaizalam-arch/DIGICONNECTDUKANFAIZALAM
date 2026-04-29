@@ -16,6 +16,14 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
+function displayValue(value: unknown) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
 export default async function AdminApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
 
@@ -46,7 +54,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
   const application = data as Application;
   const payment = application.payments?.[0];
-  const customerMobile = application.form_data.mobile ?? "";
+  const customerMobile = displayValue(application.form_data.mobile ?? "");
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -73,8 +81,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <div className="mt-6 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Customer</p>
-                <p className="mt-1 font-black text-slate-950">{application.form_data.name ?? application.users?.full_name ?? "Customer"}</p>
-                <p className="mt-1 text-sm text-slate-600">{application.form_data.email ?? application.users?.email}</p>
+                <p className="mt-1 font-black text-slate-950">{displayValue(application.form_data.name ?? application.users?.full_name ?? "Customer")}</p>
+                <p className="mt-1 text-sm text-slate-600">{displayValue(application.form_data.email ?? application.users?.email ?? "")}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Mobile</p>
@@ -91,7 +99,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               {Object.entries(application.form_data).map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
-                  <p className="mt-1 break-words text-sm font-bold text-slate-900">{value}</p>
+                  <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
                 </div>
               ))}
             </div>
