@@ -1,9 +1,22 @@
 const whatsappNumber = "917007595931";
 
-export function generateWhatsAppLink(serviceName?: string) {
-  const message = serviceName
-    ? `I want to apply for ${serviceName}. Please share required documents and charges.`
-    : "I want to apply for a service from DigiConnect Dukan. Please share details.";
+function normalizeMobile(mobile?: string) {
+  const digits = String(mobile ?? "").replace(/\D/g, "");
 
-  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+  if (!digits) {
+    return whatsappNumber;
+  }
+
+  return digits.length === 10 ? `91${digits}` : digits;
+}
+
+export function generateWhatsAppLink(mobileOrServiceName?: string, customMessage?: string) {
+  const message = customMessage
+    ? customMessage
+    : mobileOrServiceName
+      ? `I want to apply for ${mobileOrServiceName}. Please share required documents and charges.`
+      : "I want to apply for a service from DigiConnect Dukan. Please share details.";
+  const recipient = customMessage ? normalizeMobile(mobileOrServiceName) : whatsappNumber;
+
+  return `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
 }

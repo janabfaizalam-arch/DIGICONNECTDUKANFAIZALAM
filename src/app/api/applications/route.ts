@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, syncUserProfile } from "@/lib/auth";
-import { createInvoiceNumber, getServiceBySlug } from "@/lib/portal-data";
+import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
+import { createInvoiceForApplication } from "@/lib/crm";
+import { getServiceBySlug } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type UploadedDocument = {
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     }
 
     await syncUserProfile(user);
+    const role = await getCurrentUserRole(user);
 
     const supabase = getSupabaseAdmin();
 
@@ -131,6 +133,12 @@ export async function POST(request: Request) {
         amount: service.amount,
         form_data: formData,
         status: "new",
+        created_by: user.id,
+        source: "online",
+        payment_status: "pending",
+        payment_screenshot_url: body.paymentScreenshot.file_url,
+        payment_screenshot_path: body.paymentScreenshot.storage_path ?? null,
+        submitted_by_role: role,
       })
       .select("id")
       .single();
@@ -168,22 +176,18 @@ export async function POST(request: Request) {
       return jsonError("Payment details could not be saved.", 500);
     }
 
-    const { data: invoice, error: invoiceError } = await supabase
-      .from("invoices")
-      .insert({
-        application_id: application.id,
-        user_id: user.id,
-        invoice_number: createInvoiceNumber(),
-        customer_name: customer.name!.trim(),
-        customer_email: customer.email!.trim(),
-        service_name: service.title,
-        amount: service.amount,
-        payment_status: "pending",
-      })
-      .select("id")
-      .single();
+    const invoice = await createInvoiceForApplication({
+      applicationId: application.id,
+      userId: user.id,
+      customerName: customer.name!.trim(),
+      customerEmail: customer.email!.trim(),
+      customerMobile: customer.mobile!.trim(),
+      serviceName: service.title,
+      amount: service.amount,
+      paymentStatus: "pending",
+    });
 
-    if (invoiceError || !invoice) {
+    if (!invoice) {
       return jsonError("Invoice could not be generated.", 500);
     }
 

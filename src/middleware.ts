@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseUrl } from "@/lib/supabase/config";
 
-const protectedRoutes = ["/dashboard", "/admin", "/apply"];
+const protectedRoutes = ["/dashboard", "/admin", "/agent", "/apply"];
 const authRoutes = ["/login"];
 
 export async function middleware(request: NextRequest) {

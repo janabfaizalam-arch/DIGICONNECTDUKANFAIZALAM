@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AdminApplicationRow } from "@/lib/portal-types";
+import { formatCurrency } from "@/lib/portal-data";
+import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
 import { cn } from "@/lib/utils";
 
 function formatDate(date: string) {
@@ -75,19 +76,41 @@ function FileLinks({ row }: { row: AdminApplicationRow }) {
   );
 }
 
-export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
+export function AdminApplications({ rows, agents = [] }: { rows: AdminApplicationRow[]; agents?: PortalUser[] }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [agentFilter, setAgentFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [sortOrder, setSortOrder] = useState<"latest" | "oldest">("latest");
   const totalLeads = rows.length;
+  const todayStamp = new Date().toISOString().slice(0, 10);
+  const todayLeads = rows.filter((row) => row.created_at.slice(0, 10) === todayStamp).length;
   const newCount = rows.filter((row) => row.application_status === "new").length;
-  const inProgressCount = rows.filter((row) =>
-    ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status),
-  ).length;
   const completedCount = rows.filter((row) => row.application_status === "completed").length;
-  const rejectedCount = rows.filter((row) => row.application_status === "rejected").length;
-  const withFilesCount = rows.filter((row) => row.uploaded_files.length > 0).length;
+  const paymentPendingCount = rows.filter((row) => row.payment_status === "pending").length;
+  const commissionPendingTotal = rows
+    .filter((row) => row.commission_status === "pending")
+    .reduce((total, row) => total + Number(row.commission_amount ?? 0), 0);
+  const agentPerformance = useMemo(
+    () =>
+      agents.map((agent) => {
+        const agentRows = rows.filter((row) => row.agent_id === agent.id);
+        const completed = agentRows.filter((row) => row.application_status === "completed").length;
+        const commission = agentRows.reduce((total, row) => total + Number(row.commission_amount ?? 0), 0);
+
+        return {
+          id: agent.id,
+          name: agent.full_name || agent.email,
+          total: agentRows.length,
+          completed,
+          commission,
+        };
+      }),
+    [agents, rows],
+  );
   const services = useMemo(() => Array.from(new Set(rows.map((row) => row.service))).sort(), [rows]);
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -104,9 +127,14 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
           row.application_status === statusFilter ||
           (statusFilter === "in_progress" &&
             ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status));
+        const matchesPayment = paymentFilter === "all" || row.payment_status === paymentFilter;
+        const matchesAgent = agentFilter === "all" || row.agent_id === agentFilter;
         const matchesService = serviceFilter === "all" || row.service === serviceFilter;
+        const rowDate = row.created_at.slice(0, 10);
+        const matchesDateFrom = !dateFrom || rowDate >= dateFrom;
+        const matchesDateTo = !dateTo || rowDate <= dateTo;
 
-        return matchesSearch && matchesStatus && matchesService;
+        return matchesSearch && matchesStatus && matchesPayment && matchesAgent && matchesService && matchesDateFrom && matchesDateTo;
       })
       .sort((first, second) => {
         const firstTime = new Date(first.created_at).getTime();
@@ -114,13 +142,25 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
 
         return sortOrder === "latest" ? secondTime - firstTime : firstTime - secondTime;
       });
-  }, [rows, search, serviceFilter, sortOrder, statusFilter]);
-  const hasFilters = search || statusFilter !== "all" || serviceFilter !== "all" || sortOrder !== "latest";
+  }, [rows, search, serviceFilter, sortOrder, statusFilter, paymentFilter, agentFilter, dateFrom, dateTo]);
+  const hasFilters =
+    search ||
+    statusFilter !== "all" ||
+    paymentFilter !== "all" ||
+    agentFilter !== "all" ||
+    serviceFilter !== "all" ||
+    dateFrom ||
+    dateTo ||
+    sortOrder !== "latest";
 
   function clearFilters() {
     setSearch("");
     setStatusFilter("all");
+    setPaymentFilter("all");
+    setAgentFilter("all");
     setServiceFilter("all");
+    setDateFrom("");
+    setDateTo("");
     setSortOrder("latest");
   }
 
@@ -137,12 +177,12 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {[
-            ["Total Leads", totalLeads, "text-slate-950"],
-            ["New", newCount, "text-blue-700"],
-            ["In Progress", inProgressCount, "text-orange-600"],
+            ["Total Applications", totalLeads, "text-slate-950"],
+            ["Today Leads", todayLeads, "text-blue-700"],
+            ["Pending", newCount, "text-orange-600"],
             ["Completed", completedCount, "text-emerald-600"],
-            ["Rejected", rejectedCount, "text-red-600"],
-            ["With Files", withFilesCount, "text-indigo-600"],
+            ["Payment Pending", paymentPendingCount, "text-red-600"],
+            ["Commission Pending", formatCurrency(commissionPendingTotal), "text-indigo-600"],
           ].map(([label, value, tone]) => (
             <Card key={label} className="rounded-2xl p-4">
               <p className="text-xs font-medium text-slate-500">{label}</p>
@@ -152,7 +192,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
         </div>
 
         <Card className="rounded-2xl p-4 md:p-6">
-          <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_180px_220px_170px_auto]">
+          <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_160px_160px_180px_200px_150px_150px_150px_auto]">
             <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, mobile, or service" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger aria-label="Status filter">
@@ -165,6 +205,30 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                 <SelectItem value="in_process">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+              <SelectTrigger aria-label="Payment status filter">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Payment</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="verified">Verified</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={agentFilter} onValueChange={setAgentFilter}>
+              <SelectTrigger aria-label="Agent filter">
+                <SelectValue placeholder="Agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Agent</SelectItem>
+                {agents.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    {agent.full_name || agent.email}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={serviceFilter} onValueChange={setServiceFilter}>
@@ -189,6 +253,8 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                 <SelectItem value="oldest">Oldest</SelectItem>
               </SelectContent>
             </Select>
+            <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Date from" />
+            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} aria-label="Date to" />
             <button
               type="button"
               onClick={clearFilters}
@@ -199,6 +265,30 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
               Clear
             </button>
           </div>
+          {agentPerformance.length > 0 ? (
+            <div className="mb-5 overflow-hidden rounded-2xl border">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead>Agent</TableHead>
+                    <TableHead>Total Leads</TableHead>
+                    <TableHead>Completed</TableHead>
+                    <TableHead>Commission</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agentPerformance.map((agent) => (
+                    <TableRow key={agent.id}>
+                      <TableCell className="font-bold text-slate-950">{agent.name}</TableCell>
+                      <TableCell>{agent.total}</TableCell>
+                      <TableCell>{agent.completed}</TableCell>
+                      <TableCell>{formatCurrency(agent.commission)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : null}
           {rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
               <ShieldCheck className="mx-auto h-8 w-8 text-[var(--primary)]" />
@@ -218,6 +308,8 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                       <TableHead>File Type</TableHead>
                       <TableHead>Payment</TableHead>
                       <TableHead>Invoice</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Commission</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Open</TableHead>
@@ -244,6 +336,10 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                           </TableCell>
                           <TableCell>
                             <StatusPill status={row.invoice_status} />
+                          </TableCell>
+                          <TableCell className="text-sm font-medium text-slate-700">{row.agent_name || "-"}</TableCell>
+                          <TableCell className="text-sm font-bold text-slate-900">
+                            {row.commission_amount ? formatCurrency(row.commission_amount) : "-"}
                           </TableCell>
                           <TableCell>
                             <StatusPill status={row.application_status} />
@@ -293,6 +389,9 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                       <StatusPill status={row.payment_status} />
                       <StatusPill status={row.invoice_status} />
                     </div>
+                    <p className="mt-3 text-xs font-medium text-slate-500">
+                      Agent: {row.agent_name || "-"} | Commission: {row.commission_amount ? formatCurrency(row.commission_amount) : "-"}
+                    </p>
                     <p className="mt-3 text-xs font-medium text-slate-500">
                       Files uploaded: {row.uploaded_files.length}
                     </p>

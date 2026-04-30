@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { PrintButton } from "@/components/portal/print-button";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isAdminRole, isAgentRole } from "@/lib/auth";
 import { formatCurrency, paymentStatusLabels } from "@/lib/portal-data";
 import type { Invoice } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -22,6 +22,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   if (!user) {
     redirect("/login");
   }
+  const role = await getCurrentUserRole(user);
 
   const { id } = await params;
   const supabase = getSupabaseAdmin();
@@ -30,19 +31,30 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     notFound();
   }
 
-  let query = supabase.from("invoices").select("*").eq("id", id);
-
-  if (!isAdminUser(user)) {
-    query = query.eq("user_id", user.id);
-  }
-
-  const { data } = await query.single();
+  const { data } = await supabase.from("invoices").select("*").eq("id", id).single();
 
   if (!data) {
     notFound();
   }
 
   const invoice = data as Invoice;
+
+  if (!isAdminRole(role) && invoice.user_id !== user.id) {
+    if (!isAgentRole(role)) {
+      notFound();
+    }
+
+    const { data: application } = await supabase
+      .from("applications")
+      .select("id")
+      .eq("id", invoice.application_id)
+      .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
+      .maybeSingle();
+
+    if (!application) {
+      notFound();
+    }
+  }
 
   return (
     <main className="min-h-screen px-3 py-4 md:px-8 md:py-10 print:min-h-0 print:bg-white print:p-0">

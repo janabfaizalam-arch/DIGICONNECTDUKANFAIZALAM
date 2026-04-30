@@ -29,7 +29,52 @@ export function isAdminUser(user: User | null) {
   const role = String(user.user_metadata.role ?? "").toLowerCase();
   const email = (user.email ?? "").toLowerCase();
 
-  return role === "admin" || adminEmails.includes(email);
+  return role === "super_admin" || role === "admin" || adminEmails.includes(email);
+}
+
+export type AppRole = "super_admin" | "admin" | "agent" | "customer";
+
+export function isAdminRole(role: AppRole | string | null | undefined) {
+  return role === "super_admin" || role === "admin";
+}
+
+export function isAgentRole(role: AppRole | string | null | undefined) {
+  return role === "super_admin" || role === "admin" || role === "agent";
+}
+
+export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
+  if (!user) {
+    return "customer";
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const metadataRole = String(user.user_metadata.role ?? "").toLowerCase();
+
+  if (metadataRole === "super_admin" || metadataRole === "admin" || metadataRole === "agent") {
+    return metadataRole as AppRole;
+  }
+
+  if (isAdminUser(user)) {
+    return "admin";
+  }
+
+  if (!supabaseAdmin) {
+    return "customer";
+  }
+
+  const { data: profile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+
+  if (profile?.role && ["super_admin", "admin", "agent", "customer"].includes(String(profile.role))) {
+    return profile.role as AppRole;
+  }
+
+  const { data: portalUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
+
+  if (portalUser?.role && ["super_admin", "admin", "agent", "customer"].includes(String(portalUser.role))) {
+    return portalUser.role as AppRole;
+  }
+
+  return "customer";
 }
 
 export async function syncUserProfile(user: User) {
@@ -39,12 +84,18 @@ export async function syncUserProfile(user: User) {
     return;
   }
 
+  const adminRole = isAdminUser(user) ? "admin" : null;
+  const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
+  const role = adminRole ?? existingProfile?.role ?? existingUser?.role ?? "customer";
+
   await supabaseAdmin.from("profiles").upsert(
     {
       id: user.id,
       full_name: user.user_metadata.full_name ?? user.user_metadata.name ?? "",
       email: user.email ?? "",
       avatar_url: user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "",
+      role,
       updated_at: new Date().toISOString(),
     },
     {
@@ -58,7 +109,7 @@ export async function syncUserProfile(user: User) {
       full_name: user.user_metadata.full_name ?? user.user_metadata.name ?? "",
       email: user.email ?? "",
       avatar_url: user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "",
-      role: isAdminUser(user) ? "admin" : "customer",
+      role,
       updated_at: new Date().toISOString(),
     },
     {

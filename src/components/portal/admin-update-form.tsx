@@ -16,6 +16,7 @@ import {
   type ApplicationStatus,
   type PaymentStatus,
 } from "@/lib/portal-data";
+import type { PortalUser } from "@/lib/portal-types";
 
 const adminStatuses: ApplicationStatus[] = ["new", "in_process", "completed", "rejected"];
 
@@ -25,12 +26,16 @@ export function AdminUpdateForm({
   currentPaymentStatus,
   customerMobile,
   serviceName,
+  agents = [],
+  assignedAgentId = "",
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus;
   currentPaymentStatus: PaymentStatus;
   customerMobile: string;
   serviceName: string;
+  agents?: PortalUser[];
+  assignedAgentId?: string;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(currentPaymentStatus);
@@ -92,6 +97,20 @@ export function AdminUpdateForm({
           {paymentStatuses.map((item) => (
             <SelectItem key={item} value={item}>
               {paymentStatusLabels[item]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>
+        <SelectTrigger aria-label="Assigned agent">
+          <SelectValue placeholder="Assign agent" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">No agent</SelectItem>
+          {agents.map((agent) => (
+            <SelectItem key={agent.id} value={agent.id}>
+              {agent.full_name || agent.email}
             </SelectItem>
           ))}
         </SelectContent>
