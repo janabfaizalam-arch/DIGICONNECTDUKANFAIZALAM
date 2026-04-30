@@ -57,7 +57,7 @@ function withTimeout<T>(promise: Promise<T>, message: string) {
 
 export function ServiceApplicationForm({ service }: { service: ApplicationFormService }) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<Record<string, { documentType: string; file: File }>>({});
@@ -73,7 +73,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
     const supabase = createClient();
 
     if (!supabase) {
-      showToast("Supabase configuration is missing.", "error");
+      toastError("Supabase configuration is missing.");
       return;
     }
 
@@ -81,32 +81,32 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       const selectedDocument = selectedDocuments[documentType];
 
       if (!selectedDocument?.file) {
-        showToast(`Please upload ${documentType}`, "error");
+        toastError(`Please upload ${documentType}`);
         return;
       }
 
       const validationError = validateFile(selectedDocument.file, documentType);
 
       if (validationError) {
-        showToast(validationError, "error");
+        toastError(validationError);
         return;
       }
     }
 
     if (Object.keys(selectedDocuments).length !== service.documents.length) {
-      showToast("Please upload all required documents", "error");
+      toastError("Please upload all required documents");
       return;
     }
 
     if (!paymentScreenshot) {
-      showToast("Please upload payment screenshot.", "error");
+      toastError("Please upload payment screenshot.");
       return;
     }
 
     const paymentValidationError = validateFile(paymentScreenshot, "Payment screenshot");
 
     if (paymentValidationError) {
-      showToast(paymentValidationError, "error");
+      toastError(paymentValidationError);
       return;
     }
 
@@ -260,7 +260,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         throw new Error(result.message ?? result.error ?? "Application submission failed.");
       }
 
-      showToast(result.message ?? "Application submitted successfully.");
+      success(result.message ?? "Application submitted successfully.");
       router.push(`/invoice/${result.invoiceId}`);
       router.refresh();
     } catch (error) {
@@ -270,7 +270,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           : error instanceof Error
             ? error.message
             : "Application submission failed.";
-      showToast(message, "error");
+      toastError(message);
     } finally {
       setIsSubmitting(false);
       setProgressText("");
@@ -367,7 +367,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
 
                           if (validationError) {
                             event.target.value = "";
-                            showToast(validationError, "error");
+                            toastError(validationError);
                             const next = { ...current };
                             delete next[document];
                             return next;
@@ -440,7 +440,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
                 if (validationError) {
                   event.target.value = "";
                   setPaymentScreenshot(null);
-                  showToast(validationError, "error");
+                  toastError(validationError);
                   return;
                 }
 

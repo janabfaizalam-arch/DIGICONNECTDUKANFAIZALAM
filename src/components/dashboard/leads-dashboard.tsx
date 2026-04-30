@@ -100,7 +100,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
   const [search, setSearch] = useState("");
   const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
 
   useEffect(() => {
     const supabase = createClient();
@@ -182,10 +182,10 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
         }
 
         setLeads((current) => current.map((lead) => (lead.id === leadId ? result.lead! : lead)));
-        showToast("Lead status updated.");
+        success("Lead status updated.");
       } catch (error) {
         setLeads(previousLeads);
-        showToast(error instanceof Error ? error.message : "Lead update failed.", "error");
+        toastError(error instanceof Error ? error.message : "Lead update failed.");
       } finally {
         setPendingLeadId(null);
       }

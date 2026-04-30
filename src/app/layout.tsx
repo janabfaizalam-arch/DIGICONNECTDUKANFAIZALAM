@@ -74,12 +74,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
-        <SiteHeader />
-        <ToastProvider>{children}</ToastProvider>
-        <StickyMobileCta />
-        <Script id="organization-schema" type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </Script>
+        <ToastProvider>
+          <SiteHeader />
+          {children}
+          <StickyMobileCta />
+          <Script id="organization-schema" type="application/ld+json">
+            {JSON.stringify(organizationSchema)}
+          </Script>
+        </ToastProvider>
       </body>
     </html>
   );

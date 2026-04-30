@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string }) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -31,11 +31,11 @@ export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string
           throw new Error(result.message ?? "Agent could not be created.");
         }
 
-        showToast(result.message ?? "Agent created.");
+        success(result.message ?? "Agent created.");
         router.push("/admin/agents");
         router.refresh();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Agent could not be created.", "error");
+        toastError(error instanceof Error ? error.message : "Agent could not be created.");
       }
     });
   }

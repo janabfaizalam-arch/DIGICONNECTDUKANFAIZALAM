@@ -23,7 +23,7 @@ export function AgentApplicationForm({
   defaultCustomerId?: string;
 }) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? "");
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
@@ -51,11 +51,11 @@ export function AgentApplicationForm({
           throw new Error(result.message ?? "Application could not be created.");
         }
 
-        showToast(result.message ?? "Application created.");
+        success(result.message ?? "Application created.");
         router.push(`/agent/applications/${result.applicationId}`);
         router.refresh();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Application could not be created.", "error");
+        toastError(error instanceof Error ? error.message : "Application could not be created.");
       }
     });
   }

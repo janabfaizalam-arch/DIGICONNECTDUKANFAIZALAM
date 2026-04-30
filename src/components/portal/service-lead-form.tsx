@@ -21,7 +21,7 @@ const initialState = {
 export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
   const [form, setForm] = useState(initialState);
   const [isPending, startTransition] = useTransition();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -45,9 +45,9 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
         }
 
         setForm(initialState);
-        showToast(result.message);
+        success(result.message);
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Request submission failed.", "error");
+        toastError(error instanceof Error ? error.message : "Request submission failed.");
       }
     });
   };

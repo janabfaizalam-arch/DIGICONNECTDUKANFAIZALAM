@@ -8,7 +8,7 @@ import { useToast } from "@/components/providers/toast-provider";
 
 export function AgentStatusButton({ agentId, isActive }: { agentId: string; isActive: boolean }) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function updateStatus() {
@@ -27,10 +27,10 @@ export function AgentStatusButton({ agentId, isActive }: { agentId: string; isAc
           throw new Error(result.message ?? "Agent status update failed.");
         }
 
-        showToast(result.message ?? "Agent updated.");
+        success(result.message ?? "Agent updated.");
         router.refresh();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Agent status update failed.", "error");
+        toastError(error instanceof Error ? error.message : "Agent status update failed.");
       }
     });
   }

@@ -40,7 +40,7 @@ export function AdminUpdateForm({
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(currentPaymentStatus);
   const [isPending, startTransition] = useTransition();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const router = useRouter();
   const digits = customerMobile.replace(/\D/g, "");
   const whatsappNumber = digits.length === 10 ? `91${digits}` : digits;
@@ -66,10 +66,10 @@ export function AdminUpdateForm({
           throw new Error(result.message);
         }
 
-        showToast(result.message);
+        success(result.message);
         router.refresh();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Update failed.", "error");
+        toastError(error instanceof Error ? error.message : "Update failed.");
       }
     });
   };

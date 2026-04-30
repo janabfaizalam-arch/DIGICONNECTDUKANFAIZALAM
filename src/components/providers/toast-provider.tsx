@@ -3,58 +3,91 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { CheckCircle2, CircleAlert, X } from "lucide-react";
 
-type ToastVariant = "success" | "error";
+type ToastVariant = "default" | "success" | "error";
 
-type ToastState = {
-  id: number;
-  title: string;
-  variant: ToastVariant;
+type Toast = {
+  id: string;
+  title?: string;
+  description?: string;
+  variant?: ToastVariant;
 };
 
 type ToastContextValue = {
-  showToast: (title: string, variant?: ToastVariant) => void;
+  toasts: Toast[];
+  toast: (toast: Omit<Toast, "id">) => void;
+  success: (title: string, description?: string) => void;
+  error: (title: string, description?: string) => void;
+  dismiss: (id: string) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastState[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((title: string, variant: ToastVariant = "success") => {
-    const id = Date.now();
-    setToasts((current) => [...current, { id, title, variant }]);
+  const dismiss = useCallback((id: string) => {
+    setToasts((items) => items.filter((item) => item.id !== id));
+  }, []);
 
+  const toast = useCallback((input: Omit<Toast, "id">) => {
     if (typeof window === "undefined") {
       return;
     }
 
-    setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 3500);
-  }, []);
+    const id = crypto.randomUUID();
+    setToasts((items) => [...items, { id, ...input }]);
 
-  const value = useMemo(() => ({ showToast }), [showToast]);
+    setTimeout(() => {
+      dismiss(id);
+    }, 4000);
+  }, [dismiss]);
+
+  const success = useCallback(
+    (title: string, description?: string) => toast({ title, description, variant: "success" }),
+    [toast],
+  );
+
+  const error = useCallback(
+    (title: string, description?: string) => toast({ title, description, variant: "error" }),
+    [toast],
+  );
+
+  const value = useMemo(
+    () => ({
+      toasts,
+      toast,
+      success,
+      error,
+      dismiss,
+    }),
+    [dismiss, error, success, toast, toasts],
+  );
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed right-4 top-4 z-[60] flex w-[min(92vw,360px)] flex-col gap-3">
-        {toasts.map((toast) => (
+      <div className="pointer-events-none fixed right-4 top-4 z-[100] flex w-[min(92vw,360px)] flex-col gap-3">
+        {toasts.map((item) => (
           <div
-            key={toast.id}
+            key={item.id}
             className="pointer-events-auto flex items-start gap-3 rounded-3xl border bg-white p-4 shadow-soft"
             role="status"
             aria-live="polite"
           >
-            {toast.variant === "success" ? (
+            {item.variant === "success" ? (
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-            ) : (
+            ) : item.variant === "error" ? (
               <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+            ) : (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
             )}
-            <p className="flex-1 text-sm font-medium text-slate-700">{toast.title}</p>
+            <div className="flex-1">
+              {item.title ? <p className="text-sm font-medium text-slate-700">{item.title}</p> : null}
+              {item.description ? <p className="mt-1 text-sm text-slate-600">{item.description}</p> : null}
+            </div>
             <button
               type="button"
-              onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
+              onClick={() => dismiss(item.id)}
               className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               aria-label="Dismiss notification"
             >

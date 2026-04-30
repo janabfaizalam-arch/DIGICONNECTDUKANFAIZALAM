@@ -16,7 +16,7 @@ type LogoutButtonProps = {
 
 export function LogoutButton({ className, onLoggedOut, variant = "outline" }: LogoutButtonProps) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { error: toastError } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -40,7 +40,7 @@ export function LogoutButton({ className, onLoggedOut, variant = "outline" }: Lo
       router.refresh();
     } catch (error) {
       setIsLoggingOut(false);
-      showToast(error instanceof Error ? error.message : "Logout failed. Please try again.", "error");
+      toastError(error instanceof Error ? error.message : "Logout failed. Please try again.");
     }
   };
 

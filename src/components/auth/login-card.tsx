@@ -20,7 +20,7 @@ export function LoginCard({
   eyebrow = "Secure Login",
   description = "Sign in and continue to your secure DigiConnect Dukan workspace.",
 }: LoginCardProps) {
-  const { showToast } = useToast();
+  const { error: toastError } = useToast();
   const [isPending, setIsPending] = useState(false);
   const [isPasswordPending, setIsPasswordPending] = useState(false);
 
@@ -65,7 +65,7 @@ export function LoginCard({
       throw new Error("Google login URL could not be generated. Please try again.");
     } catch (error) {
       setIsPending(false);
-      showToast(error instanceof Error ? error.message : "Network issue. Please try again.", "error");
+      toastError(error instanceof Error ? error.message : "Network issue. Please try again.");
     }
   };
 
@@ -96,7 +96,7 @@ export function LoginCard({
       window.location.assign("/login");
     } catch (error) {
       setIsPasswordPending(false);
-      showToast(error instanceof Error ? error.message : "Login failed. Please try again.", "error");
+      toastError(error instanceof Error ? error.message : "Login failed. Please try again.");
     }
   };
 

@@ -8,7 +8,7 @@ import { useToast } from "@/components/providers/toast-provider";
 
 export function CommissionActions({ commissionId }: { commissionId: string }) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function update(status: "approved" | "paid") {
@@ -27,10 +27,10 @@ export function CommissionActions({ commissionId }: { commissionId: string }) {
           throw new Error(result.message ?? "Commission update failed.");
         }
 
-        showToast(result.message ?? "Commission updated.");
+        success(result.message ?? "Commission updated.");
         router.refresh();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Commission update failed.", "error");
+        toastError(error instanceof Error ? error.message : "Commission update failed.");
       }
     });
   }

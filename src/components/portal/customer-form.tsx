@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export function CustomerForm() {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
   const [redirectToApplication, setRedirectToApplication] = useState(true);
 
@@ -32,11 +32,11 @@ export function CustomerForm() {
           throw new Error(result.message ?? "Customer could not be created.");
         }
 
-        showToast(result.message ?? "Customer created.");
+        success(result.message ?? "Customer created.");
         router.push(redirectToApplication ? `/agent/applications/new?customerId=${result.customerId}` : "/agent");
         router.refresh();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Customer could not be created.", "error");
+        toastError(error instanceof Error ? error.message : "Customer could not be created.");
       }
     });
   }

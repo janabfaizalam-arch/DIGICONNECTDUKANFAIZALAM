@@ -12,7 +12,7 @@ export function RatingForm({ applicationId, existingRating }: { applicationId: s
   const [rating, setRating] = useState(existingRating ?? 5);
   const [feedback, setFeedback] = useState("");
   const [isPending, startTransition] = useTransition();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
 
   const submitRating = () => {
     startTransition(async () => {
@@ -28,9 +28,9 @@ export function RatingForm({ applicationId, existingRating }: { applicationId: s
           throw new Error(result.message);
         }
 
-        showToast(result.message);
+        success(result.message);
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Rating could not be saved.", "error");
+        toastError(error instanceof Error ? error.message : "Rating could not be saved.");
       }
     });
   };

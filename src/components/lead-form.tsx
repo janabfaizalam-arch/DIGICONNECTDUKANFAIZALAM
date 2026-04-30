@@ -20,7 +20,7 @@ export function LeadForm() {
   const [form, setForm] = useState(initialState);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const { showToast } = useToast();
+  const { success, error: toastError } = useToast();
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -52,9 +52,9 @@ export function LeadForm() {
       if (response.ok) {
         setForm(initialState);
         event.currentTarget.reset();
-        showToast(message);
+        success(message);
       } else {
-        showToast(message, "error");
+        toastError(message);
       }
     });
   };
