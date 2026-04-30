@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { LoaderCircle, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { LoaderCircle } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
@@ -54,10 +55,15 @@ export function LoginCard() {
   };
 
   return (
-    <div className="glass-panel shadow-soft w-full max-w-md rounded-[2rem] border p-8 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--primary)] text-white">
-        <ShieldCheck className="h-7 w-7" />
-      </div>
+    <div className="glass-panel shadow-soft w-full max-w-md rounded-[2rem] border p-6 text-center md:p-8">
+      <Image
+        src="/logo-navbar.png"
+        alt="DigiConnect Dukan Logo"
+        width={260}
+        height={111}
+        priority
+        className="mx-auto h-auto w-56 object-contain md:w-64"
+      />
       <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Secure Login</p>
       <h1 className="mt-3 text-3xl font-bold text-slate-950">Continue with Google</h1>
       <p className="mt-4 text-base leading-relaxed text-slate-600">Sign in with Google and track your services securely.</p>

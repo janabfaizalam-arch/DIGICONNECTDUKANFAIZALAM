@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ExternalLink, FileText, ReceiptText, ShieldCheck } from "lucide-react";
+import { ExternalLink, FileText, ReceiptText, RotateCcw, ShieldCheck } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -79,24 +79,50 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
-  const applicationCount = rows.filter((row) => row.source === "application").length;
+  const [sortOrder, setSortOrder] = useState<"latest" | "oldest">("latest");
+  const totalLeads = rows.length;
+  const newCount = rows.filter((row) => row.application_status === "new").length;
+  const inProgressCount = rows.filter((row) =>
+    ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status),
+  ).length;
+  const completedCount = rows.filter((row) => row.application_status === "completed").length;
+  const rejectedCount = rows.filter((row) => row.application_status === "rejected").length;
   const withFilesCount = rows.filter((row) => row.uploaded_files.length > 0).length;
   const services = useMemo(() => Array.from(new Set(rows.map((row) => row.service))).sort(), [rows]);
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return rows.filter((row) => {
-      const matchesSearch =
-        !query ||
-        row.customer_name.toLowerCase().includes(query) ||
-        row.mobile.toLowerCase().includes(query) ||
-        row.service.toLowerCase().includes(query);
-      const matchesStatus = statusFilter === "all" || row.application_status === statusFilter;
-      const matchesService = serviceFilter === "all" || row.service === serviceFilter;
+    return rows
+      .filter((row) => {
+        const matchesSearch =
+          !query ||
+          row.customer_name.toLowerCase().includes(query) ||
+          row.mobile.toLowerCase().includes(query) ||
+          row.service.toLowerCase().includes(query);
+        const matchesStatus =
+          statusFilter === "all" ||
+          row.application_status === statusFilter ||
+          (statusFilter === "in_progress" &&
+            ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status));
+        const matchesService = serviceFilter === "all" || row.service === serviceFilter;
 
-      return matchesSearch && matchesStatus && matchesService;
-    });
-  }, [rows, search, serviceFilter, statusFilter]);
+        return matchesSearch && matchesStatus && matchesService;
+      })
+      .sort((first, second) => {
+        const firstTime = new Date(first.created_at).getTime();
+        const secondTime = new Date(second.created_at).getTime();
+
+        return sortOrder === "latest" ? secondTime - firstTime : firstTime - secondTime;
+      });
+  }, [rows, search, serviceFilter, sortOrder, statusFilter]);
+  const hasFilters = search || statusFilter !== "all" || serviceFilter !== "all" || sortOrder !== "latest";
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setServiceFilter("all");
+    setSortOrder("latest");
+  }
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -109,24 +135,25 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="rounded-2xl p-5">
-            <p className="text-sm font-medium text-slate-500">Total Records</p>
-            <p className="mt-2 text-3xl font-bold text-slate-950">{rows.length}</p>
-          </Card>
-          <Card className="rounded-2xl p-5">
-            <p className="text-sm font-medium text-slate-500">Applications</p>
-            <p className="mt-2 text-3xl font-bold text-blue-700">{applicationCount}</p>
-          </Card>
-          <Card className="rounded-2xl p-5">
-            <p className="text-sm font-medium text-slate-500">With Files</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-600">{withFilesCount}</p>
-          </Card>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {[
+            ["Total Leads", totalLeads, "text-slate-950"],
+            ["New", newCount, "text-blue-700"],
+            ["In Progress", inProgressCount, "text-orange-600"],
+            ["Completed", completedCount, "text-emerald-600"],
+            ["Rejected", rejectedCount, "text-red-600"],
+            ["With Files", withFilesCount, "text-indigo-600"],
+          ].map(([label, value, tone]) => (
+            <Card key={label} className="rounded-2xl p-4">
+              <p className="text-xs font-medium text-slate-500">{label}</p>
+              <p className={cn("mt-2 text-2xl font-bold", tone as string)}>{value}</p>
+            </Card>
+          ))}
         </div>
 
         <Card className="rounded-2xl p-4 md:p-6">
-          <div className="mb-5 grid gap-3 md:grid-cols-[1fr_220px_260px]">
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
+          <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_180px_220px_170px_auto]">
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, mobile, or service" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger aria-label="Status filter">
                 <SelectValue placeholder="Status" />
@@ -153,6 +180,24 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "latest" | "oldest")}>
+              <SelectTrigger aria-label="Sort filter">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="latest">Latest</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={clearFilters}
+              disabled={!hasFilters}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-medium text-slate-700 disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Clear
+            </button>
           </div>
           {rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
@@ -232,7 +277,13 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-bold text-slate-950">{row.customer_name}</p>
-                        <p className="mt-1 font-mono text-sm text-slate-600">{row.mobile || "-"}</p>
+                        {row.mobile ? (
+                          <a href={`tel:${row.mobile}`} className="mt-1 block font-mono text-sm text-[var(--primary)]">
+                            {row.mobile}
+                          </a>
+                        ) : (
+                          <p className="mt-1 font-mono text-sm text-slate-600">-</p>
+                        )}
                       </div>
                       <StatusPill status={row.application_status} />
                     </div>
@@ -242,9 +293,9 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                       <StatusPill status={row.payment_status} />
                       <StatusPill status={row.invoice_status} />
                     </div>
-                    <div className="mt-4">
-                      <FileLinks row={row} />
-                    </div>
+                    <p className="mt-3 text-xs font-medium text-slate-500">
+                      Files uploaded: {row.uploaded_files.length}
+                    </p>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <span className="inline-flex h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
                         <ReceiptText className="h-4 w-4" />
@@ -256,9 +307,13 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                           className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-xs font-bold text-white"
                         >
                           <ExternalLink className="h-4 w-4" />
-                          Open
+                          View Details
                         </Link>
-                      ) : null}
+                      ) : (
+                        <span className="inline-flex h-9 items-center justify-center rounded-full bg-slate-100 px-4 text-xs font-bold text-slate-500">
+                          Public Lead
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -1,0 +1,103 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, MessageCircleMore, PhoneCall } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { contactDetails } from "@/lib/constants";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
+
+const menuLinks = [
+  { href: "/", label: "Home" },
+  { href: "/services", label: "Services" },
+  { href: "/#lead-form", label: "Apply Now" },
+  { href: "/dashboard", label: "Dashboard" },
+];
+
+export function MobileMenu() {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={menuRef} className="relative md:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-controls="mobile-navigation"
+        className="flex h-10 w-10 items-center justify-center rounded-full border bg-white text-[var(--primary)] shadow-sm"
+      >
+        <Menu className="h-5 w-5" />
+        <span className="sr-only">Open navigation menu</span>
+      </button>
+      {open ? (
+        <div id="mobile-navigation" className="absolute right-0 top-12 w-72 rounded-2xl border bg-white p-3 shadow-soft">
+          <nav className="grid gap-1 text-sm font-medium text-slate-700">
+            {menuLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-4 py-3 hover:bg-[var(--muted)] hover:text-[var(--primary)]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-3 grid gap-2 border-t pt-3">
+            <a
+              href={generateWhatsAppLink()}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--secondary)] px-4 text-sm font-bold text-white"
+            >
+              <MessageCircleMore className="h-4 w-4" />
+              Contact Now
+            </a>
+            <a
+              href={`tel:${contactDetails.primaryPhone}`}
+              onClick={() => setOpen(false)}
+              className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white"
+            >
+              <PhoneCall className="h-4 w-4" />
+              Call Now
+            </a>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

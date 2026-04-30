@@ -17,7 +17,8 @@ export function ServicesSection() {
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {services.map(({ title, slug, icon: Icon }) => (
-            <Card key={slug} className="group rounded-2xl border-white/80 p-5 transition hover:-translate-y-1 hover:border-[var(--primary)]/25">
+            <Card key={slug} className="group relative rounded-2xl border-white/80 p-4 transition hover:-translate-y-1 hover:border-[var(--primary)]/25 md:p-5">
+              <Link href={`/services/${slug}`} aria-label={`View ${title} details`} className="absolute inset-0 rounded-2xl" />
               <div className="flex items-start justify-between gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--muted)] text-[var(--primary)]">
                   <Icon className="h-5 w-5" />
@@ -28,7 +29,7 @@ export function ServicesSection() {
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 Document guidance, online form support, and expert follow-up.
               </p>
-              <Link href={`/apply/${slug}`} className={buttonVariants({ size: "default", className: "mt-5 w-full" })}>
+              <Link href={`/apply/${slug}`} className={buttonVariants({ size: "default", className: "relative z-10 mt-5 w-full" })}>
                 Apply Now
               </Link>
             </Card>

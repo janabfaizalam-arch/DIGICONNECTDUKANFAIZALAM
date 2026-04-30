@@ -10,13 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  applicationStatuses,
   paymentStatuses,
   paymentStatusLabels,
   statusLabels,
   type ApplicationStatus,
   type PaymentStatus,
 } from "@/lib/portal-data";
+
+const adminStatuses: ApplicationStatus[] = ["new", "in_process", "completed", "rejected"];
 
 export function AdminUpdateForm({
   applicationId,
@@ -75,7 +76,7 @@ export function AdminUpdateForm({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {applicationStatuses.map((item) => (
+          {adminStatuses.map((item) => (
             <SelectItem key={item} value={item}>
               {statusLabels[item]}
             </SelectItem>

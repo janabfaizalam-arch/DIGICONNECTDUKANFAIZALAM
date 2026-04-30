@@ -1,9 +1,22 @@
+"use client";
+
 import { MessageCircleMore, PhoneCall } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 import { contactDetails } from "@/lib/constants";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
+function isMarketingPath(pathname: string) {
+  return pathname === "/" || pathname === "/services" || pathname.startsWith("/services/");
+}
+
 export function StickyMobileCta() {
+  const pathname = usePathname();
+
+  if (!isMarketingPath(pathname)) {
+    return null;
+  }
+
   return (
     <>
       <a
@@ -11,11 +24,11 @@ export function StickyMobileCta() {
         target="_blank"
         rel="noreferrer"
         aria-label="WhatsApp DigiConnect Dukan"
-        className="fixed bottom-24 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl md:bottom-6 md:h-14 md:w-14"
+        className="floating-whatsapp fixed bottom-24 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl md:bottom-6 md:h-14 md:w-14"
       >
         <MessageCircleMore className="h-6 w-6 md:h-7 md:w-7" />
       </a>
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-white/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+      <div className="sticky-mobile-cta fixed inset-x-0 bottom-0 z-50 border-t bg-white/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">
           <a
             href={`tel:${contactDetails.primaryPhone}`}

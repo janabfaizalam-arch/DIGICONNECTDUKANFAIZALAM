@@ -6,10 +6,10 @@ import Link from "next/link";
 
 export function HeroSection() {
   return (
-    <section className="overflow-hidden pb-12 pt-6 md:pb-20 md:pt-14">
-      <div className="container-shell grid items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-5">
-          <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-2 text-xs font-medium text-[var(--primary)] shadow-soft sm:px-4 sm:text-sm">
+    <section className="overflow-hidden pb-8 pt-4 md:pb-20 md:pt-14">
+      <div className="container-shell grid items-center gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-4 md:space-y-5">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-xs font-medium text-[var(--primary)] shadow-soft sm:px-4 sm:text-sm">
             <MapPin className="h-4 w-4" />
             <span className="truncate">Available across India through online digital services</span>
           </div>
@@ -20,7 +20,7 @@ export function HeroSection() {
             <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl md:text-5xl">
               All Digital &amp; Government Services Across India
             </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg md:leading-relaxed">
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base md:text-lg md:leading-relaxed">
               Apply online for PAN, Aadhaar, GST, Passport and more through a professional service platform.
             </p>
             <p className="max-w-2xl text-sm font-medium text-gray-600 md:text-lg">
@@ -38,17 +38,17 @@ export function HeroSection() {
             </a>
           </div>
           <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-            <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
+            <div className="rounded-2xl border bg-white/85 p-3 shadow-soft md:p-4">
               <BadgeCheck className="mb-3 h-5 w-5 text-[var(--secondary)]" />
               <p className="font-medium text-slate-900">Same Day Service Available</p>
               <p className="mt-1 text-xs leading-5">Quick start for urgent services.</p>
             </div>
-            <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
+            <div className="rounded-2xl border bg-white/85 p-3 shadow-soft md:p-4">
               <Shield className="mb-3 h-5 w-5 text-[var(--primary)]" />
               <p className="font-medium text-slate-900">Secure Handling</p>
               <p className="mt-1 text-xs leading-5">Documents handled carefully.</p>
             </div>
-            <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
+            <div className="rounded-2xl border bg-white/85 p-3 shadow-soft md:p-4">
               <PhoneCall className="mb-3 h-5 w-5 text-[var(--secondary)]" />
               <p className="font-medium text-slate-900">Online Support</p>
               <p className="mt-1 text-xs leading-5">Help before and after applying.</p>

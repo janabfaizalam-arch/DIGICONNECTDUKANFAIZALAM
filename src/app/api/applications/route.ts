@@ -12,13 +12,6 @@ type UploadedDocument = {
   storage_path?: string;
 };
 
-type UploadedPaymentScreenshot = {
-  file_name: string;
-  file_url: string;
-  file_type?: string;
-  storage_path?: string;
-};
-
 type ApplicationPayload = {
   serviceSlug?: string;
   price?: number;
@@ -32,7 +25,6 @@ type ApplicationPayload = {
   details?: Record<string, string>;
   utrNumber?: string;
   documents?: UploadedDocument[];
-  paymentScreenshot?: UploadedPaymentScreenshot;
 };
 
 function jsonError(message: string, status: number) {
@@ -112,10 +104,6 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!body.paymentScreenshot?.file_name || !body.paymentScreenshot.file_url) {
-      return jsonError("Payment screenshot is required.", 400);
-    }
-
     const formData = {
       service: service.title,
       name: customer.name!.trim(),
@@ -166,8 +154,8 @@ export async function POST(request: Request) {
       amount: service.amount,
       status: "pending",
       utr_number: body.utrNumber!.trim(),
-      screenshot_url: body.paymentScreenshot.file_url,
-      storage_path: body.paymentScreenshot.storage_path ?? null,
+      screenshot_url: null,
+      storage_path: null,
     });
 
     if (paymentError) {
