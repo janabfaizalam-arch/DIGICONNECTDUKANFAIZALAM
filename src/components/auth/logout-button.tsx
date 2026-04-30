@@ -10,10 +10,11 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type LogoutButtonProps = {
   className?: string;
+  onLoggedOut?: () => void;
   variant?: "default" | "secondary" | "outline" | "ghost";
 };
 
-export function LogoutButton({ className, variant = "outline" }: LogoutButtonProps) {
+export function LogoutButton({ className, onLoggedOut, variant = "outline" }: LogoutButtonProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -34,6 +35,7 @@ export function LogoutButton({ className, variant = "outline" }: LogoutButtonPro
         throw error;
       }
 
+      onLoggedOut?.();
       router.replace("/");
       router.refresh();
     } catch (error) {

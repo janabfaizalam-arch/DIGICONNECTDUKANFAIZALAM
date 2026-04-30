@@ -2,16 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogIn, Menu, MessageCircleMore, PhoneCall } from "lucide-react";
+import { LayoutDashboard, LogIn, Menu, PhoneCall } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { contactDetails } from "@/lib/constants";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const menuLinks = [
   { href: "/", label: "Home" },
-  { href: "/#services", label: "Services" },
   { href: "/#about", label: "About" },
   { href: "/#gallery", label: "Gallery" },
   { href: "/#contact", label: "Contact" },
@@ -85,24 +83,6 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
             ))}
           </nav>
           <div className="mt-3 grid gap-2 border-t pt-3">
-            <a
-              href={generateWhatsAppLink()}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setOpen(false)}
-              className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--secondary)] px-4 text-sm font-bold text-white"
-            >
-              <MessageCircleMore className="h-4 w-4" />
-              Contact Now
-            </a>
-            <a
-              href={`tel:${contactDetails.primaryPhone}`}
-              onClick={() => setOpen(false)}
-              className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white"
-            >
-              <PhoneCall className="h-4 w-4" />
-              Call Now
-            </a>
             {isLoggedIn && panelHref && panelLabel ? (
               <>
                 <Link
@@ -113,17 +93,27 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
                   <LayoutDashboard className="h-4 w-4" />
                   {panelLabel}
                 </Link>
-                <LogoutButton className="h-11 w-full" />
+                <LogoutButton className="h-11 w-full" onLoggedOut={() => setOpen(false)} />
               </>
             ) : (
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
-              >
-                <LogIn className="h-4 w-4" />
-                Login
-              </Link>
+              <>
+                <a
+                  href={`tel:${contactDetails.primaryPhone}`}
+                  onClick={() => setOpen(false)}
+                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white"
+                >
+                  <PhoneCall className="h-4 w-4" />
+                  Call Now
+                </a>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Login
+                </Link>
+              </>
             )}
           </div>
         </div>
