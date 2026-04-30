@@ -5,7 +5,7 @@ import { ArrowLeft, Download, FileText, RotateCcw } from "lucide-react";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { RatingForm } from "@/components/portal/rating-form";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application, ApplicationDocument, Invoice, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -33,6 +33,12 @@ export default async function CustomerApplicationDetailPage({ params }: { params
 
   if (!user) {
     redirect("/login");
+  }
+
+  const role = await getCurrentUserRole(user);
+
+  if (!isCustomerRole(role)) {
+    redirect(getRoleHome(role));
   }
 
   const { id } = await params;

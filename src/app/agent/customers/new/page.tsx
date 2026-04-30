@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { CustomerForm } from "@/components/portal/customer-form";
-import { getCurrentUser, getCurrentUserRole, isAgentRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isOnlyAgentRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +15,8 @@ export default async function NewCustomerPage() {
     redirect("/login");
   }
 
-  if (!isAgentRole(role)) {
-    redirect("/dashboard");
+  if (!isOnlyAgentRole(role)) {
+    redirect(getRoleHome(role));
   }
 
   return (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Bell, Download, FileText, Plus, RotateCcw } from "lucide-react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import type { Application, NotificationItem } from "@/lib/portal-types";
@@ -49,6 +50,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
             <Plus className="h-4 w-4" />
             New Application
           </Link>
+          <LogoutButton className="h-12" />
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

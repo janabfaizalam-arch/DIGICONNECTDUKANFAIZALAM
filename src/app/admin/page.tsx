@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, FilePlus2, HandCoins, UserPlus, UsersRound } from "lucide-react";
+import { ClipboardList, HandCoins, UserPlus, UsersRound } from "lucide-react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
@@ -69,17 +70,19 @@ export default async function AdminPage() {
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Super Admin</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-950 md:text-5xl">Super Admin Control Room</h1>
-          <p className="mt-3 max-w-2xl text-slate-600">Manage agents, applications, customer records, payments, invoices, and commissions from one clean workspace.</p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Admin</p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-950 md:text-5xl">Admin Control Room</h1>
+            <p className="mt-3 max-w-2xl text-slate-600">Manage agents, applications, customer records, payments, invoices, and commissions from one clean workspace.</p>
+          </div>
+          <LogoutButton className="h-11 w-full md:w-auto" />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {[
             ["/admin/agents/new", "Create Agent", UserPlus],
             ["/admin/customers", "Add Customer", UsersRound],
-            ["/agent/applications/new", "New Application", FilePlus2],
             ["/admin/commissions", "View Commissions", HandCoins],
             ["/admin/applications", "View Applications", ClipboardList],
           ].map(([href, label, Icon]) => (

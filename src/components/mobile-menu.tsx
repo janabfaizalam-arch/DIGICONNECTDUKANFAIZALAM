@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, MessageCircleMore, PhoneCall } from "lucide-react";
+import { LogIn, Menu, MessageCircleMore, PhoneCall } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { contactDetails } from "@/lib/constants";
@@ -10,9 +10,10 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const menuLinks = [
   { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
-  { href: "/#lead-form", label: "Apply Now" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/#services", label: "Services" },
+  { href: "/#about", label: "About" },
+  { href: "/#gallery", label: "Gallery" },
+  { href: "/#contact", label: "Contact" },
 ];
 
 export function MobileMenu() {
@@ -95,6 +96,14 @@ export function MobileMenu() {
               <PhoneCall className="h-4 w-4" />
               Call Now
             </a>
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
+            >
+              <LogIn className="h-4 w-4" />
+              Login
+            </Link>
           </div>
         </div>
       ) : null}

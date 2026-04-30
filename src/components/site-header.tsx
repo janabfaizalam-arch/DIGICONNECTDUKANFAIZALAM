@@ -1,22 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
-import { PhoneCall } from "lucide-react";
+import { LogIn, PhoneCall } from "lucide-react";
 
 import { contactDetails } from "@/lib/constants";
-import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "@/components/mobile-menu";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
-  { href: "/#lead-form", label: "Apply Now" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/#services", label: "Services" },
+  { href: "/#about", label: "About" },
+  { href: "/#gallery", label: "Gallery" },
+  { href: "/#contact", label: "Contact" },
 ];
 
 export async function SiteHeader() {
-  await getCurrentUser();
-
   return (
     <header className="site-header sticky top-0 z-40 border-b border-white/50 bg-white/90 backdrop-blur-xl print:hidden">
       <div className="container-shell flex min-h-12 items-center justify-between gap-3 py-1 md:min-h-16 md:gap-4 md:py-2">
@@ -39,11 +37,15 @@ export async function SiteHeader() {
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           <a href={`tel:${contactDetails.primaryPhone}`}>
-            <Button size="default">
+            <Button size="default" variant="outline">
               <PhoneCall className="h-4 w-4" />
               Call Now
             </Button>
           </a>
+          <Link href="/login" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
+            <LogIn className="h-4 w-4" />
+            Login
+          </Link>
         </div>
         <MobileMenu />
       </div>

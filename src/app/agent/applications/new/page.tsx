@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AgentApplicationForm } from "@/components/portal/agent-application-form";
-import { getCurrentUser, getCurrentUserRole, isAgentRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isOnlyAgentRole } from "@/lib/auth";
 import { getServiceCatalog } from "@/lib/crm";
 import type { Customer } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -22,8 +22,8 @@ export default async function NewAgentApplicationPage({
     redirect("/login");
   }
 
-  if (!isAgentRole(role)) {
-    redirect("/dashboard");
+  if (!isOnlyAgentRole(role)) {
+    redirect(getRoleHome(role));
   }
 
   const params = await searchParams;

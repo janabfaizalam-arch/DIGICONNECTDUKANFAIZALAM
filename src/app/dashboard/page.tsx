@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { CustomerDashboard } from "@/components/portal/customer-dashboard";
-import { getCurrentUser, syncUserProfile } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import type { Application, ApplicationDocument, Invoice, NotificationItem, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -22,6 +22,11 @@ export default async function DashboardPage() {
   }
 
   await syncUserProfile(user);
+  const role = await getCurrentUserRole(user);
+
+  if (!isCustomerRole(role)) {
+    redirect(getRoleHome(role));
+  }
 
   const supabase = getSupabaseAdmin();
   const name = user.user_metadata.full_name ?? user.user_metadata.name ?? "Customer";

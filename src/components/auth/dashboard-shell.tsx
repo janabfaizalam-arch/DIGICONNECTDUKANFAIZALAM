@@ -1,14 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { LoaderCircle, LogOut, ShieldCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
 
-import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { Card } from "@/components/ui/card";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type DashboardShellProps = {
   name: string;
@@ -17,35 +13,6 @@ type DashboardShellProps = {
 };
 
 export function DashboardShell({ name, email, avatarUrl }: DashboardShellProps) {
-  const router = useRouter();
-  const { showToast } = useToast();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-
-    try {
-      const supabase = getSupabaseBrowserClient();
-
-      if (!supabase) {
-        throw new Error("Supabase environment variables are missing.");
-      }
-
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw error;
-      }
-
-      showToast("Logout successful.");
-      router.replace("/login");
-      router.refresh();
-    } catch (error) {
-      setIsLoggingOut(false);
-      showToast(error instanceof Error ? error.message : "Logout failed. Please try again.", "error");
-    }
-  };
-
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="glass-panel w-full max-w-3xl rounded-[2rem] border-white/70 p-6 md:p-10">
@@ -71,10 +38,7 @@ export function DashboardShell({ name, email, avatarUrl }: DashboardShellProps) 
               <p className="mt-2 text-slate-600">Your account is secure and the session is active.</p>
             </div>
           </div>
-          <Button type="button" onClick={handleLogout} disabled={isLoggingOut} variant="outline" className="h-12">
-            {isLoggingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            Logout
-          </Button>
+          <LogoutButton className="h-12" />
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">

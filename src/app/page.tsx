@@ -1,7 +1,6 @@
 import { ContactSection } from "@/components/contact-section";
+import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { HeroSection } from "@/components/hero-section";
-import { LeadSection } from "@/components/lead-section";
-import { ProcessSection } from "@/components/process-section";
 import { ServicesSection } from "@/components/services-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
@@ -13,9 +12,8 @@ export default function Home() {
         <HeroSection />
         <ServicesSection />
         <WhyChooseUsSection />
-        <ProcessSection />
+        <PhotoGallerySection />
         <TestimonialsSection />
-        <LeadSection />
         <ContactSection />
       </main>
     </>

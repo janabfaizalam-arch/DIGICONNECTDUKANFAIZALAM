@@ -42,6 +42,14 @@ export function isAgentRole(role: AppRole | string | null | undefined) {
   return role === "super_admin" || role === "admin" || role === "agent";
 }
 
+export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
+  return role === "agent";
+}
+
+export function isCustomerRole(role: AppRole | string | null | undefined) {
+  return role === "customer";
+}
+
 export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   if (!user) {
     return "customer";

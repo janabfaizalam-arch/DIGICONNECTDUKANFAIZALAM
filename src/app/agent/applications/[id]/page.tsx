@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, getCurrentUserRole, isAgentRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isOnlyAgentRole } from "@/lib/auth";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
 import { formatCurrency } from "@/lib/portal-data";
@@ -24,8 +24,8 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
     redirect("/login");
   }
 
-  if (!isAgentRole(role)) {
-    redirect("/dashboard");
+  if (!isOnlyAgentRole(role)) {
+    redirect(getRoleHome(role));
   }
 
   const { id } = await params;

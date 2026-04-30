@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FilePlus2, UsersRound } from "lucide-react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, getCurrentUserRole, isAgentRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isOnlyAgentRole } from "@/lib/auth";
 import { getCustomerName, hydrateApplications } from "@/lib/crm";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application, Commission } from "@/lib/portal-types";
@@ -23,8 +24,8 @@ export default async function AgentDashboardPage() {
     redirect("/login");
   }
 
-  if (!isAgentRole(role)) {
-    redirect("/dashboard");
+  if (!isOnlyAgentRole(role)) {
+    redirect(getRoleHome(role));
   }
 
   const supabase = getSupabaseAdmin();
@@ -59,6 +60,7 @@ export default async function AgentDashboardPage() {
             <h1 className="mt-2 text-3xl font-bold text-slate-950">My Leads and Commission</h1>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
+            <LogoutButton className="h-11" />
             <Link href="/agent/customers/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
               <UsersRound className="h-4 w-4" />
               New Customer

@@ -12,7 +12,7 @@ const trustItems = [
 
 export function WhyChooseUsSection() {
   return (
-    <section className="section-pad bg-white/35">
+    <section id="about" className="section-pad bg-white/35">
       <div className="container-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-soft md:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-orange-300">Why Choose Us</p>

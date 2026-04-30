@@ -28,7 +28,7 @@ export function HeroSection() {
             </p>
           </div>
           <div className="grid gap-3 min-[420px]:grid-cols-2 sm:flex sm:flex-row">
-            <Link href="#lead-form" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
+            <Link href="/services" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
               Apply Now
               <ArrowRight className="h-4 w-4" />
             </Link>

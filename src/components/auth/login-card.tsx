@@ -2,14 +2,24 @@
 
 import { type FormEvent, useState } from "react";
 import Image from "next/image";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, LockKeyhole } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-export function LoginCard() {
+type LoginCardProps = {
+  title?: string;
+  eyebrow?: string;
+  description?: string;
+};
+
+export function LoginCard({
+  title = "Customer Login",
+  eyebrow = "Secure Login",
+  description = "Sign in and continue to your secure DigiConnect Dukan workspace.",
+}: LoginCardProps) {
   const { showToast } = useToast();
   const [isPending, setIsPending] = useState(false);
   const [isPasswordPending, setIsPasswordPending] = useState(false);
@@ -92,10 +102,10 @@ export function LoginCard() {
         priority
         className="mx-auto h-auto w-56 object-contain md:w-64"
       />
-      <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Secure Login</p>
-      <h1 className="mt-3 text-3xl font-bold text-slate-950">Continue with Google</h1>
-      <p className="mt-4 text-base leading-relaxed text-slate-600">Sign in with Google and track your services securely.</p>
-      <p className="mt-1 text-sm text-slate-500">Fast, secure, and easy login</p>
+      <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">{eyebrow}</p>
+      <h1 className="mt-3 text-3xl font-bold text-slate-950">{title}</h1>
+      <p className="mt-4 text-base leading-relaxed text-slate-600">{description}</p>
+      <p className="mt-1 text-sm text-slate-500">Fast, secure, and role-based access</p>
 
       <form onSubmit={handlePasswordLogin} className="mt-6 grid gap-3 text-left">
         <input
@@ -113,7 +123,7 @@ export function LoginCard() {
           className="h-12 rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none"
         />
         <Button type="submit" disabled={isPasswordPending} className="h-12 w-full rounded-2xl">
-          {isPasswordPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
+          {isPasswordPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
           Login
         </Button>
       </form>
@@ -130,7 +140,7 @@ export function LoginCard() {
       </Button>
 
       <div className="mt-6 rounded-2xl bg-[var(--muted)] px-4 py-3 text-left text-sm text-slate-600">
-        Your session will be created automatically and you will be redirected to the secure dashboard.
+        Your session will be created automatically and redirected according to your account role.
       </div>
     </div>
   );
