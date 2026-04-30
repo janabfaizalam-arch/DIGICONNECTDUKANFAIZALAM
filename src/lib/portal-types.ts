@@ -50,8 +50,12 @@ export type PortalUser = {
   avatar_url: string | null;
   role?: string | null;
   mobile?: string | null;
+  agent_code?: string | null;
+  commission_type?: "fixed" | "percentage" | null;
+  commission_value?: number | null;
   commission_rate?: number | null;
   active?: boolean | null;
+  is_active?: boolean | null;
 };
 
 export type Customer = {

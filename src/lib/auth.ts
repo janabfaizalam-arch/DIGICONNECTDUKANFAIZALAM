@@ -77,6 +77,18 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   return "customer";
 }
 
+export function getRoleHome(role: AppRole | string | null | undefined) {
+  if (isAdminRole(role)) {
+    return "/admin";
+  }
+
+  if (role === "agent") {
+    return "/agent";
+  }
+
+  return "/dashboard";
+}
+
 export async function syncUserProfile(user: User) {
   const supabaseAdmin = getSupabaseAdmin();
 
@@ -84,7 +96,9 @@ export async function syncUserProfile(user: User) {
     return;
   }
 
-  const adminRole = isAdminUser(user) ? "admin" : null;
+  const superAdminEmails = ["janabfaizalam@gmail.com"];
+  const email = (user.email ?? "").toLowerCase();
+  const adminRole = superAdminEmails.includes(email) ? "super_admin" : isAdminUser(user) ? "admin" : null;
   const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
   const role = adminRole ?? existingProfile?.role ?? existingUser?.role ?? "customer";

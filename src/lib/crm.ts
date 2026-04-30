@@ -77,7 +77,7 @@ export async function getAgents() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, email, avatar_url, role, mobile, commission_rate, active")
+    .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
     .in("role", ["agent", "admin", "super_admin"])
     .order("full_name", { ascending: true });
 
@@ -97,6 +97,14 @@ export function getCustomerMobile(application: Application) {
 }
 
 export function calculateCommission(service: ServiceCatalogItem, agent?: PortalUser | null) {
+  if (agent?.commission_type === "fixed" && typeof agent.commission_value === "number" && agent.commission_value > 0) {
+    return agent.commission_value;
+  }
+
+  if (agent?.commission_type === "percentage" && typeof agent.commission_value === "number" && agent.commission_value > 0) {
+    return Math.round((service.amount * agent.commission_value) / 100);
+  }
+
   if (typeof agent?.commission_rate === "number" && agent.commission_rate > 0) {
     return Math.round((service.amount * agent.commission_rate) / 100);
   }

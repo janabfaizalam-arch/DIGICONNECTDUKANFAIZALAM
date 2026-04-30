@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import Image from "next/image";
 import { LoaderCircle } from "lucide-react";
 
@@ -12,6 +12,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 export function LoginCard() {
   const { showToast } = useToast();
   const [isPending, setIsPending] = useState(false);
+  const [isPasswordPending, setIsPasswordPending] = useState(false);
 
   const handleGoogleLogin = async () => {
     setIsPending(true);
@@ -54,6 +55,33 @@ export function LoginCard() {
     }
   };
 
+  const handlePasswordLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsPasswordPending(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+
+      if (!supabase) {
+        throw new Error("Supabase environment variables are missing.");
+      }
+
+      const formData = new FormData(event.currentTarget);
+      const email = String(formData.get("email") ?? "").trim();
+      const password = String(formData.get("password") ?? "");
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        throw error;
+      }
+
+      window.location.assign("/login");
+    } catch (error) {
+      setIsPasswordPending(false);
+      showToast(error instanceof Error ? error.message : "Login failed. Please try again.", "error");
+    }
+  };
+
   return (
     <div className="glass-panel shadow-soft w-full max-w-md rounded-[2rem] border p-6 text-center md:p-8">
       <Image
@@ -68,6 +96,27 @@ export function LoginCard() {
       <h1 className="mt-3 text-3xl font-bold text-slate-950">Continue with Google</h1>
       <p className="mt-4 text-base leading-relaxed text-slate-600">Sign in with Google and track your services securely.</p>
       <p className="mt-1 text-sm text-slate-500">Fast, secure, and easy login</p>
+
+      <form onSubmit={handlePasswordLogin} className="mt-6 grid gap-3 text-left">
+        <input
+          name="email"
+          type="email"
+          required
+          placeholder="Email"
+          className="h-12 rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none"
+        />
+        <input
+          name="password"
+          type="password"
+          required
+          placeholder="Password"
+          className="h-12 rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none"
+        />
+        <Button type="submit" disabled={isPasswordPending} className="h-12 w-full rounded-2xl">
+          {isPasswordPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
+          Login
+        </Button>
+      </form>
 
       <Button
         type="button"

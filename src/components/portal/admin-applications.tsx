@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ExternalLink, FileText, ReceiptText, RotateCcw, ShieldCheck } from "lucide-react";
+import { ExternalLink, ReceiptText, RotateCcw, ShieldCheck } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,30 +49,6 @@ function StatusPill({ status }: { status: string | null }) {
     <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1", statusClass(status))}>
       {statusLabel(status)}
     </span>
-  );
-}
-
-function FileLinks({ row }: { row: AdminApplicationRow }) {
-  if (row.uploaded_files.length === 0) {
-    return <span className="text-sm text-slate-400">No file</span>;
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {row.uploaded_files.map((file) => (
-        <a
-          key={file.id}
-          href={file.file_url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white"
-          title={[file.document_type, file.file_type, file.storage_path].filter(Boolean).join(" | ")}
-        >
-          <FileText className="h-4 w-4 shrink-0" />
-          <span className="max-w-[180px] truncate">{file.file_name}</span>
-        </a>
-      ))}
-    </div>
   );
 }
 
@@ -168,11 +144,9 @@ export function AdminApplications({ rows, agents = [] }: { rows: AdminApplicatio
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Admin Panel</p>
-          <h1 className="mt-3 text-3xl font-bold text-slate-950 md:text-5xl">Applications Control Room</h1>
-          <p className="mt-3 text-slate-600">
-            Customer applications, uploaded documents, payment proof, and public leads are listed latest first.
-          </p>
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Applications</p>
+          <h1 className="mt-3 text-3xl font-bold text-slate-950 md:text-5xl">Applications List</h1>
+          <p className="mt-3 text-slate-600">Clean application tracking. Files and payment proof are available inside the detail page.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -303,47 +277,26 @@ export function AdminApplications({ rows, agents = [] }: { rows: AdminApplicatio
                       <TableHead>Customer</TableHead>
                       <TableHead>Mobile</TableHead>
                       <TableHead>Service</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>File</TableHead>
-                      <TableHead>File Type</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Commission</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Open</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Created Date</TableHead>
+                      <TableHead>Details</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRows.map((row) => {
-                      const firstFile = row.uploaded_files[0];
-
-                      return (
+                    {filteredRows.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell className="font-bold text-slate-950">{row.customer_name}</TableCell>
                           <TableCell className="font-mono text-sm text-slate-700">{row.mobile || "-"}</TableCell>
                           <TableCell className="font-medium text-slate-700">{row.service}</TableCell>
-                          <TableCell className="max-w-[240px] text-sm text-slate-600">{row.message || "-"}</TableCell>
                           <TableCell>
-                            <FileLinks row={row} />
-                          </TableCell>
-                          <TableCell className="max-w-[160px] break-all text-xs font-medium text-slate-500">
-                            {firstFile?.file_type || "-"}
+                            <StatusPill status={row.application_status} />
                           </TableCell>
                           <TableCell>
                             <StatusPill status={row.payment_status} />
                           </TableCell>
-                          <TableCell>
-                            <StatusPill status={row.invoice_status} />
-                          </TableCell>
                           <TableCell className="text-sm font-medium text-slate-700">{row.agent_name || "-"}</TableCell>
-                          <TableCell className="text-sm font-bold text-slate-900">
-                            {row.commission_amount ? formatCurrency(row.commission_amount) : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <StatusPill status={row.application_status} />
-                          </TableCell>
                           <TableCell className="font-mono text-xs text-slate-500">{formatDate(row.created_at)}</TableCell>
                           <TableCell>
                             {row.application_id ? (
@@ -361,8 +314,7 @@ export function AdminApplications({ rows, agents = [] }: { rows: AdminApplicatio
                             )}
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
+                    ))}
                   </TableBody>
                 </Table>
               </div>
@@ -384,16 +336,11 @@ export function AdminApplications({ rows, agents = [] }: { rows: AdminApplicatio
                       <StatusPill status={row.application_status} />
                     </div>
                     <p className="mt-3 text-sm font-bold text-slate-800">{row.service}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">{row.message || "-"}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <StatusPill status={row.payment_status} />
-                      <StatusPill status={row.invoice_status} />
                     </div>
                     <p className="mt-3 text-xs font-medium text-slate-500">
                       Agent: {row.agent_name || "-"} | Commission: {row.commission_amount ? formatCurrency(row.commission_amount) : "-"}
-                    </p>
-                    <p className="mt-3 text-xs font-medium text-slate-500">
-                      Files uploaded: {row.uploaded_files.length}
                     </p>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <span className="inline-flex h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">

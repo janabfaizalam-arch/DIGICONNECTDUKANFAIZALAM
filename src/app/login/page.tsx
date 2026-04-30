@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 
 import { LoginCard } from "@/components/auth/login-card";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome } from "@/lib/auth";
 
 export default async function LoginPage() {
   const user = await getCurrentUser();
 
   if (user) {
-    redirect("/dashboard");
+    const role = await getCurrentUserRole(user);
+    redirect(getRoleHome(role));
   }
 
   return (

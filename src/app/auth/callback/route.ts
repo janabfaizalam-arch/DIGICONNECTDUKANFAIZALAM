@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { syncUserProfile } from "@/lib/auth";
+import { getCurrentUserRole, getRoleHome, syncUserProfile } from "@/lib/auth";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -29,6 +29,7 @@ export async function GET(request: Request) {
   }
 
   await syncUserProfile(data.user);
+  const role = await getCurrentUserRole(data.user);
 
-  return NextResponse.redirect(new URL("/dashboard", requestUrl.origin));
+  return NextResponse.redirect(new URL(getRoleHome(role), requestUrl.origin));
 }
