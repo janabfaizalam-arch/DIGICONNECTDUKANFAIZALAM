@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 
 import { ToastProvider } from "@/components/providers/toast-provider";
+import { SiteHeader } from "@/components/site-header";
 import { StickyMobileCta } from "@/components/sticky-mobile-cta";
 import "./globals.css";
 
@@ -75,6 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <SiteHeader />
         <ToastProvider>{children}</ToastProvider>
         <StickyMobileCta />
         <Script id="local-business-schema" type="application/ld+json">
