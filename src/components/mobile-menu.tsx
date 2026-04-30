@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, Menu, MessageCircleMore, PhoneCall } from "lucide-react";
+import { LayoutDashboard, LogIn, Menu, MessageCircleMore, PhoneCall } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { contactDetails } from "@/lib/constants";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
@@ -16,7 +17,13 @@ const menuLinks = [
   { href: "/#contact", label: "Contact" },
 ];
 
-export function MobileMenu() {
+type MobileMenuProps = {
+  isLoggedIn: boolean;
+  panelHref: string | null;
+  panelLabel: string | null;
+};
+
+export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -96,14 +103,28 @@ export function MobileMenu() {
               <PhoneCall className="h-4 w-4" />
               Call Now
             </a>
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
-            >
-              <LogIn className="h-4 w-4" />
-              Login
-            </Link>
+            {isLoggedIn && panelHref && panelLabel ? (
+              <>
+                <Link
+                  href={panelHref}
+                  onClick={() => setOpen(false)}
+                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  {panelLabel}
+                </Link>
+                <LogoutButton className="h-11 w-full" />
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
+              >
+                <LogIn className="h-4 w-4" />
+                Login
+              </Link>
+            )}
           </div>
         </div>
       ) : null}
