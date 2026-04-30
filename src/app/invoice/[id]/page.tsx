@@ -58,18 +58,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <Card className="rounded-2xl p-6 md:p-10 print:shadow-none">
           <div className="flex flex-col gap-6 border-b pb-6 md:flex-row md:items-start md:justify-between">
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm print:border-slate-200">
-                <Image
-                  src="/logo-navbar.png"
-                  alt="DigiConnect Dukan Logo"
-                  width={220}
-                  height={72}
-                  className="h-11 w-36 object-contain object-left"
-                />
-              </div>
+              <Image
+                src="/logo-navbar.png"
+                alt="DigiConnect Dukan Logo"
+                width={220}
+                height={94}
+                priority
+                className="h-auto w-[180px] shrink-0 object-contain md:w-[220px] print:w-[190px]"
+              />
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Invoice</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-950">DigiConnect Dukan</h1>
                 <p className="mt-2 text-sm text-slate-600">Powered by RNoS India Pvt Ltd</p>
               </div>
             </div>

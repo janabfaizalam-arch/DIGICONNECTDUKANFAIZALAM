@@ -76,3 +76,21 @@ body {
 .shadow-soft {
   box-shadow: 0 20px 80px rgba(15, 23, 42, 0.08);
 }
+
+@keyframes logo-load {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.9;
+    transform: scale(1.03);
+  }
+}
+
+@utility animate-logo-load {
+  animation: logo-load 1.6s ease-in-out infinite alternate;
+}

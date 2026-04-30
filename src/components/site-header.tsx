@@ -25,10 +25,10 @@ export async function SiteHeader() {
           <Image
             src="/logo-navbar.png"
             alt="DigiConnect Dukan Logo"
-            width={280}
-            height={92}
+            width={1920}
+            height={819}
             priority
-            className="h-8 w-[140px] object-contain object-left sm:h-10 sm:w-[178px] lg:h-11 lg:w-[220px]"
+            className="h-8 w-auto object-contain sm:h-9 lg:h-11"
           />
         </Link>
         <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 md:flex">
