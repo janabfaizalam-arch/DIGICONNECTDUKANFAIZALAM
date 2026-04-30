@@ -63,7 +63,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
       .eq("application_id", id),
     supabase
       .from("payments")
-      .select("id, application_id, amount, status, utr_number, screenshot_url, storage_path, created_at")
+      .select("id, application_id, amount, status, screenshot_url, storage_path, created_at")
       .eq("application_id", id),
     supabase
       .from("invoices")
@@ -151,12 +151,11 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               <>
                 <h2 className="mt-6 text-lg font-bold text-slate-950">Payment Details</h2>
                 <div className="mt-3 rounded-2xl bg-slate-50 p-4">
-                  <p className="text-sm font-bold text-slate-700">UTR: {payment.utr_number ?? "Not provided"}</p>
                   <p className="mt-1 text-sm text-slate-600">Submitted: {formatDate(payment.created_at)}</p>
                   {payment.screenshot_url ? (
                     <a href={payment.screenshot_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
                       <Download className="h-4 w-4" />
-                      View Payment File
+                      View Payment Proof
                     </a>
                   ) : null}
                 </div>

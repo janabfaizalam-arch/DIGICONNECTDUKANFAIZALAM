@@ -121,7 +121,7 @@ export default async function AdminPage() {
           .in("application_id", applicationIds),
         supabase
           .from("payments")
-          .select("id, application_id, amount, status, utr_number, screenshot_url, storage_path, created_at")
+          .select("id, application_id, amount, status, screenshot_url, storage_path, created_at")
           .in("application_id", applicationIds),
         supabase
           .from("invoices")

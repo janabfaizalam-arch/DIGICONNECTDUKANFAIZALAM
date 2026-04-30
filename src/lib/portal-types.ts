@@ -62,7 +62,6 @@ export type Payment = {
   application_id: string;
   amount: number;
   status: PaymentStatus;
-  utr_number: string | null;
   screenshot_url: string | null;
   storage_path?: string | null;
   created_at: string;

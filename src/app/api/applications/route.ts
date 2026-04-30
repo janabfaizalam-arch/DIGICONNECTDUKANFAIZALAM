@@ -12,6 +12,13 @@ type UploadedDocument = {
   storage_path?: string;
 };
 
+type UploadedPaymentScreenshot = {
+  file_name: string;
+  file_url: string;
+  file_type?: string;
+  storage_path?: string;
+};
+
 type ApplicationPayload = {
   serviceSlug?: string;
   price?: number;
@@ -23,8 +30,8 @@ type ApplicationPayload = {
     message?: string;
   };
   details?: Record<string, string>;
-  utrNumber?: string;
   documents?: UploadedDocument[];
+  paymentScreenshot?: UploadedPaymentScreenshot;
 };
 
 function jsonError(message: string, status: number) {
@@ -88,10 +95,6 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!required(body.utrNumber)) {
-      return jsonError("UTR number is required.", 400);
-    }
-
     if (!Array.isArray(body.documents) || body.documents.length !== service.documents.length) {
       return jsonError("Please upload all required documents.", 400);
     }
@@ -102,6 +105,10 @@ export async function POST(request: Request) {
       if (!uploaded?.file_name || !uploaded.file_url) {
         return jsonError(`${documentType} upload is required.`, 400);
       }
+    }
+
+    if (!body.paymentScreenshot?.file_name || !body.paymentScreenshot.file_url) {
+      return jsonError("Please upload payment screenshot.", 400);
     }
 
     const formData = {
@@ -153,9 +160,8 @@ export async function POST(request: Request) {
       user_id: user.id,
       amount: service.amount,
       status: "pending",
-      utr_number: body.utrNumber!.trim(),
-      screenshot_url: null,
-      storage_path: null,
+      screenshot_url: body.paymentScreenshot.file_url,
+      storage_path: body.paymentScreenshot.storage_path ?? null,
     });
 
     if (paymentError) {

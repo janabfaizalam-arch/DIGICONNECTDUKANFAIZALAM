@@ -61,6 +61,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<Record<string, { documentType: string; file: File }>>({});
+  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
   const upiId = "7007595931@upi";
   const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${service.amount}&cu=INR`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
@@ -94,6 +95,18 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
 
     if (Object.keys(selectedDocuments).length !== service.documents.length) {
       showToast("Please upload all required documents", "error");
+      return;
+    }
+
+    if (!paymentScreenshot) {
+      showToast("Please upload payment screenshot.", "error");
+      return;
+    }
+
+    const paymentValidationError = validateFile(paymentScreenshot, "Payment screenshot");
+
+    if (paymentValidationError) {
+      showToast(paymentValidationError, "error");
       return;
     }
 
@@ -179,6 +192,22 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         });
       }
 
+      setProgressText("Uploading payment proof...");
+
+      const screenshotPath = `${user.id}/${service.slug}/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
+      const { error: screenshotUploadError } = await withTimeout(
+        supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
+          contentType: paymentScreenshot.type,
+          upsert: false,
+        }),
+        "Payment screenshot upload is taking longer than 30 seconds.",
+      );
+
+      if (screenshotUploadError) {
+        throw new Error(screenshotUploadError.message);
+      }
+
+      const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
       const details: Record<string, string> = {};
 
       for (const field of service.fields) {
@@ -205,8 +234,13 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             message: String(formData.get("message") ?? "").trim(),
           },
           details,
-          utrNumber: String(formData.get("utrNumber") ?? "").trim(),
           documents: uploadedDocuments,
+          paymentScreenshot: {
+            file_name: paymentScreenshot.name,
+            file_url: screenshotPublicUrl.publicUrl,
+            file_type: paymentScreenshot.type,
+            storage_path: screenshotPath,
+          },
         }),
         signal: controller.signal,
       }).finally(() => window.clearTimeout(timeoutId));
@@ -385,8 +419,36 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <p className="mt-1 break-all font-mono text-sm font-bold text-slate-950">{upiId}</p>
             <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(service.amount)}</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-slate-700">Enter the UTR number after completing payment.</p>
-          <Input name="utrNumber" placeholder="UTR Number" required className="mt-3 h-12 text-sm" />
+          <label className="mt-4 block">
+            <span className="text-sm font-medium text-slate-700">Upload Payment Screenshot</span>
+            <Input
+              name="paymentScreenshot"
+              type="file"
+              required
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="mt-3"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                if (!file) {
+                  setPaymentScreenshot(null);
+                  return;
+                }
+
+                const validationError = validateFile(file, "Payment screenshot");
+
+                if (validationError) {
+                  event.target.value = "";
+                  setPaymentScreenshot(null);
+                  showToast(validationError, "error");
+                  return;
+                }
+
+                setPaymentScreenshot(file);
+              }}
+            />
+          </label>
+          {paymentScreenshot ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentScreenshot.name}</p> : null}
         </Card>
 
         <Button type="submit" size="lg" disabled={isSubmitting} className="sticky bottom-3 mb-4 h-14 w-full rounded-2xl shadow-lg md:static md:mb-0">
