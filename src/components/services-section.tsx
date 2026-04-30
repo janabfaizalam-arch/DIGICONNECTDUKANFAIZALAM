@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { SectionHeading } from "@/components/section-heading";
 import { services } from "@/lib/constants";
 
@@ -14,8 +16,8 @@ export function ServicesSection() {
           description="Government applications, online forms, business registrations aur document support sab ek clean, guided process mein."
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {services.map(({ title, icon: Icon }) => (
-            <Card key={title} className="group rounded-[1.75rem] border-white/80 p-5 transition hover:-translate-y-1 hover:border-[var(--primary)]/25">
+          {services.map(({ title, slug, icon: Icon }) => (
+            <Card key={slug} className="group rounded-[1.75rem] border-white/80 p-5 transition hover:-translate-y-1 hover:border-[var(--primary)]/25">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--muted)] text-[var(--primary)]">
                   <Icon className="h-5 w-5" />
@@ -26,6 +28,9 @@ export function ServicesSection() {
               <p className="mt-2 text-sm leading-7 text-slate-600">
                 Application support, document guidance aur follow-up updates ek hi trusted desk se.
               </p>
+              <Link href={`/apply/${slug}`} className={buttonVariants({ size: "default", className: "mt-5 w-full" })}>
+                Apply Now
+              </Link>
             </Card>
           ))}
         </div>

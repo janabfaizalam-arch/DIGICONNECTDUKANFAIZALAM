@@ -7,10 +7,10 @@ export function ProcessSection() {
       <div className="container-shell space-y-12">
         <SectionHeading
           eyebrow="Process"
-          title="Simple 4-step process jo local customers ke liye easy aur transparent hai"
+          title="Simple 3-step process jo local customers ke liye easy aur transparent hai"
           description="Har application ko ek guided workflow mein handle kiya jata hai, jisse status samajhna aur documents complete rakhna aasaan ho."
         />
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {processSteps.map((step, index) => (
             <div key={step} className="rounded-[1.75rem] border bg-white p-6 shadow-soft">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--primary)] text-lg font-bold text-white">

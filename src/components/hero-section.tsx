@@ -1,7 +1,7 @@
 import { ArrowRight, BadgeCheck, MapPin, PhoneCall, Shield } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { contactDetails } from "@/lib/constants";
+import { buttonVariants } from "@/components/ui/button";
+import { createWhatsappLink } from "@/lib/constants";
 import Link from "next/link";
 
 export function HeroSection() {
@@ -15,34 +15,29 @@ export function HeroSection() {
           </div>
           <div className="space-y-4">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--secondary)]">
-              Har digital aur government service ek jagah
+              Same Day Service Available
             </p>
             <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 md:text-6xl">
-              All Digital &amp; Government Services Under One Roof
+              All Digital &amp; Government Services in Orai &amp; Jalaun
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-slate-600">
-              PAN Card, Aadhaar Update, Voter ID, Ration Card, Certificates, GST, MSME aur online forms ke liye trusted
-              service center.
+              PAN Card, Aadhaar Update, Voter ID, Passport, GST - Sab kuch ek hi jagah
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link href="/services">
-              <Button size="lg">
-                Apply Online
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+            <Link href="#lead-form" className={buttonVariants({ size: "lg" })}>
+              Apply Now
+              <ArrowRight className="h-4 w-4" />
             </Link>
-            <a href={`https://wa.me/${contactDetails.whatsapp}?text=Aaj%20hi%20apply%20karna%20hai`} target="_blank" rel="noreferrer">
-              <Button size="lg" variant="secondary">
-                WhatsApp Now
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+            <a href={createWhatsappLink("Hero CTA")} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: "secondary" })}>
+              WhatsApp Now
+              <ArrowRight className="h-4 w-4" />
             </a>
           </div>
           <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
             <div className="rounded-3xl border bg-white/85 p-4 shadow-soft">
               <BadgeCheck className="mb-3 h-5 w-5 text-[var(--secondary)]" />
-              <p className="font-semibold text-slate-900">Aaj hi apply karein</p>
+              <p className="font-semibold text-slate-900">Same Day Service Available</p>
               <p>Quick start for urgent digital services.</p>
             </div>
             <div className="rounded-3xl border bg-white/85 p-4 shadow-soft">

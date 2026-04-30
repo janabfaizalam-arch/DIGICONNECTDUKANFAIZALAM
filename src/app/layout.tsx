@@ -2,17 +2,21 @@ import type { Metadata } from "next";
 import Script from "next/script";
 
 import { ToastProvider } from "@/components/providers/toast-provider";
+import { StickyMobileCta } from "@/components/sticky-mobile-cta";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "DigiConnect Dukan | All Digital & Government Services in Orai & Jalaun",
+  title: "DigiConnect Dukan – Online Services in Orai & Jalaun",
   description:
     "DigiConnect Dukan offers PAN Card, Aadhaar Update, Voter ID, Ration Card, GST, MSME, certificates and more for customers in Orai, Jalaun and nearby areas.",
   keywords: [
     "DigiConnect Dukan",
+    "PAN Card Orai",
+    "Aadhaar Update Jalaun",
+    "Online Services Near Me",
     "Orai digital services",
     "Jalaun Aadhaar update",
     "PAN card apply Orai",
@@ -72,6 +76,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ToastProvider>{children}</ToastProvider>
+        <StickyMobileCta />
         <Script id="local-business-schema" type="application/ld+json">
           {JSON.stringify(localBusinessSchema)}
         </Script>

@@ -9,9 +9,9 @@ export function LeadSection() {
       <div className="container-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-[2rem] bg-[linear-gradient(135deg,#0f5db8_0%,#0a2f5e_100%)] p-8 text-white shadow-soft md:p-10">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-200">Lead Form</p>
-          <h2 className="mt-4 text-3xl font-black md:text-4xl">Call karein ya WhatsApp par message bhejein</h2>
+          <h2 className="mt-4 text-3xl font-black md:text-4xl">Aaj hi apply karein - Fast service</h2>
           <p className="mt-4 max-w-xl text-base leading-8 text-white/80">
-            Inquiry submit karein aur team aapse jaldi contact karegi. Admin-friendly lead capture Supabase integration ke saath ready hai.
+            Inquiry submit karein aur team aapse jaldi contact karegi. Same day service available hai selected applications par.
           </p>
           <div className="mt-8 space-y-4">
             <a href={`tel:${contactDetails.phone}`} className="flex items-center gap-3 text-white/90">

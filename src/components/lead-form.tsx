@@ -16,12 +16,8 @@ const initialState = {
   message: "",
 };
 
-const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
-const maxFileSize = 5 * 1024 * 1024;
-
 export function LeadForm() {
   const [form, setForm] = useState(initialState);
-  const [file, setFile] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
@@ -30,25 +26,11 @@ export function LeadForm() {
     event.preventDefault();
     setFeedback(null);
 
-    if (file && !allowedFileTypes.includes(file.type)) {
-      showToast("File PDF, JPG ya PNG format me upload karein.", "error");
-      return;
-    }
-
-    if (file && file.size > maxFileSize) {
-      showToast("File 5MB se chhoti honi chahiye.", "error");
-      return;
-    }
-
     const formData = new FormData();
     formData.set("name", form.name);
     formData.set("mobile", form.mobile);
     formData.set("service", form.service);
     formData.set("message", form.message);
-
-    if (file) {
-      formData.set("file", file);
-    }
 
     startTransition(async () => {
       const response = await fetch("/api/lead", {
@@ -69,7 +51,6 @@ export function LeadForm() {
 
       if (response.ok) {
         setForm(initialState);
-        setFile(null);
         event.currentTarget.reset();
         showToast(message);
       } else {
@@ -116,14 +97,8 @@ export function LeadForm() {
         placeholder="Message"
         name="message"
       />
-      <Input
-        type="file"
-        name="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-      />
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isPending}>
-        {isPending ? "Submitting..." : "Aaj hi apply karein"}
+        {isPending ? "Submitting..." : "Aaj hi apply karein - Fast service"}
       </Button>
       {feedback ? <p className="text-sm font-medium text-slate-600">{feedback}</p> : null}
     </form>

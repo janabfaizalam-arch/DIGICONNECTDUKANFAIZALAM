@@ -4,7 +4,7 @@ import { LeadSection } from "@/components/lead-section";
 import { ProcessSection } from "@/components/process-section";
 import { ServicesSection } from "@/components/services-section";
 import { SiteHeader } from "@/components/site-header";
-import { StickyMobileCta } from "@/components/sticky-mobile-cta";
+import { TestimonialsSection } from "@/components/testimonials-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
 
 export default function Home() {
@@ -16,10 +16,10 @@ export default function Home() {
         <ServicesSection />
         <WhyChooseUsSection />
         <ProcessSection />
+        <TestimonialsSection />
         <LeadSection />
         <ContactSection />
       </main>
-      <StickyMobileCta />
     </>
   );
 }
