@@ -2,12 +2,12 @@
 
 :root {
   --background: #f4f8fc;
-  --foreground: #0f172a;
+  --foreground: #0b1f3a;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #0b1f3a;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #0f5db8;
+  --popover-foreground: #0b1f3a;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
   --secondary: #f97316;
   --secondary-foreground: #ffffff;
@@ -15,9 +15,9 @@
   --muted-foreground: #4b5d75;
   --accent: #fff3e8;
   --accent-foreground: #9a3412;
-  --border: rgba(15, 93, 184, 0.12);
-  --input: rgba(15, 93, 184, 0.12);
-  --ring: rgba(15, 93, 184, 0.35);
+  --border: rgba(37, 99, 235, 0.12);
+  --input: rgba(37, 99, 235, 0.12);
+  --ring: rgba(37, 99, 235, 0.35);
   --radius: 1.25rem;
 }
 
@@ -38,7 +38,7 @@ body {
 }
 
 ::selection {
-  background: rgba(15, 93, 184, 0.2);
+  background: rgba(37, 99, 235, 0.2);
 }
 
 .container-shell {

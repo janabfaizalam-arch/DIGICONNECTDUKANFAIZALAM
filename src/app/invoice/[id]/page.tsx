@@ -60,11 +60,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm print:border-slate-200">
                 <Image
-                  src="/digiconnect-logo.png"
+                  src="/logo-navbar.png"
                   alt="DigiConnect Dukan Logo"
-                  width={80}
-                  height={50}
-                  className="h-11 w-16 object-contain"
+                  width={220}
+                  height={72}
+                  className="h-11 w-36 object-contain object-left"
                 />
               </div>
               <div>

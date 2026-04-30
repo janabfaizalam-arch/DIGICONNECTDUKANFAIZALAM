@@ -23,6 +23,9 @@ export function HeroSection() {
             <p className="max-w-2xl text-lg leading-8 text-slate-600">
               PAN Card, Aadhaar Update, Voter ID, Passport, GST - Sab kuch ek hi jagah
             </p>
+            <p className="max-w-2xl text-base font-medium text-gray-600 md:text-lg">
+              Connecting People, Empowering Digital India
+            </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="#lead-form" className={buttonVariants({ size: "lg" })}>

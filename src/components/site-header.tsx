@@ -21,21 +21,15 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/40 bg-white/80 backdrop-blur-xl">
       <div className="container-shell flex min-h-16 items-center justify-between gap-4 py-2">
-        <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="DigiConnect Dukan home">
-          <div className="flex h-11 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm">
-            <Image
-              src="/digiconnect-logo.png"
-              alt="DigiConnect Dukan Logo"
-              width={64}
-              height={40}
-              priority
-              className="h-9 w-12 object-contain"
-            />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-slate-950 sm:text-base">DigiConnect Dukan</p>
-            <p className="hidden text-xs text-slate-500 sm:block">Digital & Government Services</p>
-          </div>
+        <Link href="/" className="flex min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
+          <Image
+            src="/logo-navbar.png"
+            alt="DigiConnect Dukan Logo"
+            width={280}
+            height={92}
+            priority
+            className="h-10 w-[154px] object-contain object-left sm:h-11 sm:w-[190px] lg:w-[220px]"
+          />
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
           {navLinks.map((link) => (
@@ -56,7 +50,7 @@ export async function SiteHeader() {
             </Button>
           </a>
         </div>
-        <details className="group relative md:hidden">
+        <details className="relative md:hidden">
           <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border bg-white text-[var(--primary)] shadow-sm marker:hidden">
             <Menu className="h-5 w-5" />
             <span className="sr-only">Open navigation menu</span>
