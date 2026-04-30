@@ -5,7 +5,7 @@ import { getSupabaseUrl } from "@/lib/supabase/config";
 
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export async function getSupabaseServerClient() {
+async function createSupabaseServerClient({ canSetCookies }: { canSetCookies: boolean }) {
   const supabaseUrl = getSupabaseUrl();
 
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -20,10 +20,22 @@ export async function getSupabaseServerClient() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
+        if (!canSetCookies) {
+          return;
+        }
+
         cookiesToSet.forEach(({ name, value, options }) => {
           cookieStore.set(name, value, options);
         });
       },
     },
   });
+}
+
+export async function getSupabaseServerClient() {
+  return createSupabaseServerClient({ canSetCookies: false });
+}
+
+export async function getSupabaseRouteHandlerClient() {
+  return createSupabaseServerClient({ canSetCookies: true });
 }
