@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
 export type LeadStatus = "new" | "in_progress" | "completed";
@@ -103,7 +103,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
   const { showToast } = useToast();
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = createClient();
 
     if (!supabase) {
       return;

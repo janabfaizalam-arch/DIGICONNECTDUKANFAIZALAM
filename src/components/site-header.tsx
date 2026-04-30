@@ -3,12 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { LayoutDashboard, LogIn, PhoneCall } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { contactDetails } from "@/lib/constants";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "@/components/mobile-menu";
 
@@ -58,7 +58,7 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
     return "admin";
   }
 
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
 
   if (!supabase) {
     return "customer";
@@ -96,6 +96,7 @@ function getPanelConfig(role: AppRole | null) {
 export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
 
   useEffect(() => {
@@ -103,7 +104,6 @@ export function SiteHeader() {
       return;
     }
 
-    const supabase = getSupabaseBrowserClient();
     let isMounted = true;
 
     if (!supabase) {
@@ -139,7 +139,7 @@ export function SiteHeader() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <header className="site-header sticky top-0 z-40 border-b border-white/50 bg-white/90 backdrop-blur-xl print:hidden">

@@ -1,19 +1,17 @@
+"use client";
+
 import { createBrowserClient } from "@supabase/ssr";
 
-import { getSupabaseUrl } from "@/lib/supabase/config";
+export function createClient() {
+  if (typeof window === "undefined") return null;
 
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export function getSupabaseBrowserClient() {
-  if (typeof window === "undefined") {
+  if (!url || !key) {
+    console.error("Missing Supabase ENV");
     return null;
   }
 
-  const supabaseUrl = getSupabaseUrl();
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(url, key);
 }

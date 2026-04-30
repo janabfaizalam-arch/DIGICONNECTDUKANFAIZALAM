@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/portal-data";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createClient } from "@/lib/supabase/browser";
 
 type ApplicationFormService = {
   title: string;
@@ -70,7 +70,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const supabase = getSupabaseBrowserClient();
+    const supabase = createClient();
 
     if (!supabase) {
       showToast("Supabase configuration is missing.", "error");

@@ -7,7 +7,7 @@ import { LoaderCircle, LockKeyhole } from "lucide-react";
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createClient } from "@/lib/supabase/browser";
 
 type LoginCardProps = {
   title?: string;
@@ -28,7 +28,7 @@ export function LoginCard({
     setIsPending(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
+      const supabase = createClient();
 
       if (!supabase) {
         throw new Error("Supabase environment variables are missing.");
@@ -74,7 +74,7 @@ export function LoginCard({
     setIsPasswordPending(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
+      const supabase = createClient();
 
       if (!supabase) {
         throw new Error("Supabase environment variables are missing.");

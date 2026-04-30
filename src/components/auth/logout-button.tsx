@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createClient } from "@/lib/supabase/browser";
 
 type LogoutButtonProps = {
   className?: string;
@@ -23,7 +23,7 @@ export function LogoutButton({ className, onLoggedOut, variant = "outline" }: Lo
     setIsLoggingOut(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
+      const supabase = createClient();
 
       if (!supabase) {
         throw new Error("Supabase environment variables are missing.");
