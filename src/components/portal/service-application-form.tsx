@@ -217,7 +217,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       setProgressText("Saving application...");
 
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+      const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
       const response = await fetch("/api/applications", {
         method: "POST",
         headers: {
@@ -243,7 +243,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           },
         }),
         signal: controller.signal,
-      }).finally(() => window.clearTimeout(timeoutId));
+      }).finally(() => clearTimeout(timeoutId));
 
       setProgressText("Generating invoice...");
 

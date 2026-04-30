@@ -54,6 +54,10 @@ export function LoginCard({
       }
 
       if (data.url) {
+        if (typeof window === "undefined") {
+          return;
+        }
+
         window.location.assign(data.url);
         return;
       }
@@ -83,6 +87,10 @@ export function LoginCard({
 
       if (error) {
         throw error;
+      }
+
+      if (typeof window === "undefined") {
+        return;
       }
 
       window.location.assign("/login");

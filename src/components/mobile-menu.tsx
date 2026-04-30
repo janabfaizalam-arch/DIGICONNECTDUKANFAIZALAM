@@ -31,6 +31,10 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
   }, [pathname]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     if (!open) {
       return;
     }

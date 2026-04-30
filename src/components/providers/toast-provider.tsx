@@ -24,6 +24,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = Date.now();
     setToasts((current) => [...current, { id, title, variant }]);
 
+    if (typeof window === "undefined") {
+      return;
+    }
+
     window.setTimeout(() => {
       setToasts((current) => current.filter((toast) => toast.id !== id));
     }, 3500);

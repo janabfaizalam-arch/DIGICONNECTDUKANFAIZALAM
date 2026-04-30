@@ -99,6 +99,10 @@ export function SiteHeader() {
   const panelConfig = getPanelConfig(role);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     const supabase = getSupabaseBrowserClient();
     let isMounted = true;
 
@@ -114,11 +118,15 @@ export function SiteHeader() {
       }
 
       setUser(nextUser);
-      setRole(nextUser ? await resolveRole(nextUser) : null);
+      const nextRole = nextUser ? await resolveRole(nextUser) : null;
+
+      if (isMounted) {
+        setRole(nextRole);
+      }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      void syncUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data }) => {
+      void syncUser(data.session?.user || null);
     });
 
     const {
