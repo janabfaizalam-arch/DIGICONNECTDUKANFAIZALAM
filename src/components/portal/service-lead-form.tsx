@@ -47,7 +47,7 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
         setForm(initialState);
         showToast(result.message);
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Request submit nahi ho payi.", "error");
+        showToast(error instanceof Error ? error.message : "Request submission failed.", "error");
       }
     });
   };

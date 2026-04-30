@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, MessageCircleMore, PhoneCall } from "lucide-react";
 
-import { contactDetails, createWhatsappLink } from "@/lib/constants";
+import { contactDetails } from "@/lib/constants";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
@@ -39,7 +40,7 @@ export async function SiteHeader() {
           ))}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
-          <a href={`tel:${contactDetails.officePhone}`}>
+          <a href={`tel:${contactDetails.primaryPhone}`}>
             <Button size="default">
               <PhoneCall className="h-4 w-4" />
               Call Now
@@ -64,16 +65,16 @@ export async function SiteHeader() {
             </nav>
             <div className="mt-3 grid gap-2 border-t pt-3">
               <a
-                href={createWhatsappLink("Mobile Navbar")}
+                href={generateWhatsAppLink()}
                 target="_blank"
                 rel="noreferrer"
                 className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--secondary)] px-4 text-sm font-bold text-white"
               >
                 <MessageCircleMore className="h-4 w-4" />
-                WhatsApp Now
+                Contact Now
               </a>
               <a
-                href={`tel:${contactDetails.officePhone}`}
+                href={`tel:${contactDetails.primaryPhone}`}
                 className="flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white"
               >
                 <PhoneCall className="h-4 w-4" />

@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     for (const [fieldName, label] of requiredCustomerFields) {
       if (!required(customer[fieldName])) {
-        return jsonError(`${label} required hai.`, 400);
+        return jsonError(`${label} is required.`, 400);
       }
     }
 
@@ -92,28 +92,28 @@ export async function POST(request: Request) {
 
     for (const field of service.fields) {
       if ((field.required ?? true) && !required(details[field.name])) {
-        return jsonError(`${field.label} required hai.`, 400);
+        return jsonError(`${field.label} is required.`, 400);
       }
     }
 
     if (!required(body.utrNumber)) {
-      return jsonError("UTR number required hai.", 400);
+      return jsonError("UTR number is required.", 400);
     }
 
     if (!Array.isArray(body.documents) || body.documents.length !== service.documents.length) {
-      return jsonError("Sabhi required documents upload karein.", 400);
+      return jsonError("Please upload all required documents.", 400);
     }
 
     for (const documentType of service.documents) {
       const uploaded = body.documents.find((document) => document.document_type === documentType);
 
       if (!uploaded?.file_name || !uploaded.file_url) {
-        return jsonError(`${documentType} upload required hai.`, 400);
+        return jsonError(`${documentType} upload is required.`, 400);
       }
     }
 
     if (!body.paymentScreenshot?.file_name || !body.paymentScreenshot.file_url) {
-      return jsonError("Payment screenshot required hai.", 400);
+      return jsonError("Payment screenshot is required.", 400);
     }
 
     const formData = {
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
       .single();
 
     if (applicationError || !application) {
-      return jsonError("Application submit nahi ho payi.", 500);
+      return jsonError("Application submission failed.", 500);
     }
 
     const documentsToInsert = body.documents.map((document) => ({
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
     const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
 
     if (documentsError) {
-      return jsonError("Documents save nahi ho paye.", 500);
+      return jsonError("Documents could not be saved.", 500);
     }
 
     const { error: paymentError } = await supabase.from("payments").insert({
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
     });
 
     if (paymentError) {
-      return jsonError("Payment details save nahi ho payi.", 500);
+      return jsonError("Payment details could not be saved.", 500);
     }
 
     const { data: invoice, error: invoiceError } = await supabase
@@ -190,18 +190,18 @@ export async function POST(request: Request) {
       .single();
 
     if (invoiceError || !invoice) {
-      return jsonError("Invoice generate nahi ho payi.", 500);
+      return jsonError("Invoice could not be generated.", 500);
     }
 
     await supabase.from("notifications").insert({
       user_id: user.id,
       application_id: application.id,
       title: "Application received",
-      message: `${service.title} request receive ho gayi hai. Team jaldi verify karegi.`,
+      message: `${service.title} request has been received. Our team will verify it shortly.`,
     });
 
     return NextResponse.json({
-      message: "Application submit ho gayi. Dashboard me status track karein.",
+      message: "Application submitted successfully. Track the status in your dashboard.",
       applicationId: application.id,
       invoiceId: invoice.id,
     });

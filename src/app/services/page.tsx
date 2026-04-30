@@ -6,6 +6,7 @@ import { formatCurrency, portalServices } from "@/lib/portal-data";
 
 export const metadata = {
   title: "Services | DigiConnect Dukan",
+  description: "Apply online for PAN, Aadhaar, GST, Passport, Voter ID, and other digital services across India.",
 };
 
 export default function ServicesPage() {
@@ -14,9 +15,9 @@ export default function ServicesPage() {
       <div className="mx-auto max-w-7xl">
         <div className="max-w-3xl">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Digital Services Portal</p>
-          <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">Service select karein aur online apply karein</h1>
+          <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">Select a service and apply online</h1>
           <p className="mt-4 text-base leading-relaxed text-slate-600">
-            Google login, form, documents, UPI payment, invoice aur status tracking ek simple flow mein.
+            Google login, forms, documents, UPI payment, invoice, and status tracking are available in one simple flow.
           </p>
         </div>
 

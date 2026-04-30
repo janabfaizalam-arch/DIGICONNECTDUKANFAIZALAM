@@ -68,7 +68,7 @@ export function DashboardShell({ name, email, avatarUrl }: DashboardShellProps) 
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Dashboard</p>
               <h1 className="mt-2 text-3xl font-bold text-slate-950">Welcome, {name}</h1>
-              <p className="mt-2 text-slate-600">Aapka account secure hai aur session active hai.</p>
+              <p className="mt-2 text-slate-600">Your account is secure and the session is active.</p>
             </div>
           </div>
           <Button type="button" onClick={handleLogout} disabled={isLoggingOut} variant="outline" className="h-12">

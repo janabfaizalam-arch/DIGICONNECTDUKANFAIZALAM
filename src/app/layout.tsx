@@ -23,36 +23,28 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "DigiConnect Dukan | Digital & Government Services in Orai, Jalaun",
+  title: "DigiConnect Dukan – Digital & Government Services Across India",
   description:
-    "DigiConnect Dukan Orai aur Jalaun ka trusted digital service center hai. PAN card, Aadhaar update, voter ID, GST, passport assistance, certificates aur government services ke liye apply karein.",
+    "Apply online for PAN Card, Aadhaar Update, GST Registration, Passport, and other digital services across India. Fast and reliable service.",
   keywords: [
-    "DigiConnect Dukan",
-    "PAN Card Orai",
-    "Aadhaar Update Jalaun",
-    "Online Services Near Me",
-    "Orai digital services",
-    "Jalaun Aadhaar update",
-    "PAN card apply Orai",
-    "GST registration Jalaun",
-    "passport assistance Orai",
-    "government services in Jalaun",
-    "digital services in Orai",
-    "DigiConnect Dukan government services",
-    "government services near me",
+    "Digital services India",
+    "PAN card apply online",
+    "Aadhaar update",
+    "GST registration",
+    "passport assistance India",
   ],
   openGraph: {
-    title: "DigiConnect Dukan | Digital & Government Services in Orai",
+    title: "DigiConnect Dukan | Digital & Government Services Across India",
     description:
-      "Orai and Jalaun ka trusted local center for PAN card, Aadhaar update, Voter ID, GST, passport assistance and online government services.",
+      "Apply online for PAN Card, Aadhaar Update, GST Registration, Passport, and other digital services across India.",
     type: "website",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "DigiConnect Dukan | Digital Services in Orai & Jalaun",
+    title: "DigiConnect Dukan | Digital Services Across India",
     description:
-      "Trusted local service center in Orai and Jalaun for digital and government services.",
+      "Fast and reliable digital service platform for customers across India.",
   },
   alternates: {
     canonical: "/",
@@ -64,30 +56,14 @@ export const metadata: Metadata = {
   },
 };
 
-const localBusinessSchema = {
+const organizationSchema = {
   "@context": "https://schema.org",
-  "@type": "LocalBusiness",
+  "@type": "Organization",
   name: "DigiConnect Dukan",
   url: siteUrl,
   email: "digiconnectdukan@rnos.in",
-  telephone: ["9305086491", "7007595931"],
-  areaServed: ["Orai", "Jalaun", "Uttar Pradesh"],
-  address: [
-    {
-      "@type": "PostalAddress",
-      streetAddress: "Machchhar Choraha",
-      addressLocality: "Orai",
-      addressRegion: "Uttar Pradesh",
-      addressCountry: "IN",
-    },
-    {
-      "@type": "PostalAddress",
-      streetAddress: "Tehsil Road",
-      addressLocality: "Jalaun",
-      addressRegion: "Uttar Pradesh",
-      addressCountry: "IN",
-    },
-  ],
+  telephone: "7007595931",
+  areaServed: "IN",
 };
 
 export default function RootLayout({
@@ -101,8 +77,8 @@ export default function RootLayout({
         <SiteHeader />
         <ToastProvider>{children}</ToastProvider>
         <StickyMobileCta />
-        <Script id="local-business-schema" type="application/ld+json">
-          {JSON.stringify(localBusinessSchema)}
+        <Script id="organization-schema" type="application/ld+json">
+          {JSON.stringify(organizationSchema)}
         </Script>
       </body>
     </html>

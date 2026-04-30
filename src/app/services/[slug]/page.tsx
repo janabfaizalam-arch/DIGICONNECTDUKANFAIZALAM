@@ -16,7 +16,7 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { contactDetails } from "@/lib/constants";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { formatCurrency, getServiceBySlug, portalServices, type PortalService } from "@/lib/portal-data";
 
 type PageProps = {
@@ -24,17 +24,17 @@ type PageProps = {
 };
 
 const genericBenefits = [
-  "Fast service - same day process",
+  "Fast online processing",
   "Document guidance before submission",
-  "Local support on call and WhatsApp",
+  "Support through call and WhatsApp",
   "Application status follow-up by team",
 ];
 
 const processSteps = [
-  "Service request submit karein",
-  "Team documents verify karegi",
-  "Application online process hoga",
-  "Completion par update aur document milega",
+  "Submit your service request",
+  "Team verifies required documents",
+  "Application is processed online",
+  "Receive completion update and documents",
 ];
 
 function getServiceContent(service: PortalService) {
@@ -42,28 +42,28 @@ function getServiceContent(service: PortalService) {
 
   return {
     what:
-      `${service.title} service me DigiConnect Dukan customer details, documents aur online process ko properly handle karta hai. ${service.description}`,
+      `${service.title} is handled through DigiConnect Dukan with guided details, document submission, and online process support. ${service.description}`,
     benefits: genericBenefits,
     whoNeeds:
       lowerTitle.includes("gst") || lowerTitle.includes("msme") || lowerTitle.includes("license")
         ? ["Shop owners", "Small business owners", "Online sellers", "New entrepreneurs"]
-        : ["Students", "Families", "Job applicants", "Local citizens"],
+        : ["Students", "Families", "Job applicants", "Indian citizens"],
     faqs: [
       {
-        question: `${service.title} ke liye kitna time lagta hai?`,
-        answer: "Basic request same day start ho jati hai. Final completion department process aur document verification par depend karta hai.",
+        question: `How long does ${service.title} take?`,
+        answer: "Most requests are started quickly. Final completion depends on department processing and document verification.",
       },
       {
-        question: "Documents original chahiye ya copy?",
-        answer: "Usually clear photo/PDF copy enough hoti hai. Agar original verification required hua to team aapko guide karegi.",
+        question: "Do I need original documents or copies?",
+        answer: "Usually a clear photo or PDF copy is enough. If original verification is required, our team will guide you.",
       },
       {
-        question: "Kya WhatsApp par documents bhej sakte hain?",
-        answer: "Haan, aap form submit karke WhatsApp par bhi documents share kar sakte hain.",
+        question: "Can I share documents on WhatsApp?",
+        answer: "Yes, after submitting the form, you can share documents through WhatsApp when requested by the team.",
       },
       {
-        question: "Payment kab karna hota hai?",
-        answer: "Team details verify karne ke baad UPI payment confirm kar sakti hai. Urgent work ke liye advance payment bhi possible hai.",
+        question: "When do I need to pay?",
+        answer: "Payment can be completed after service details are confirmed. Some urgent services may require advance payment.",
       },
     ],
   };
@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${service.title} | DigiConnect Dukan`,
-    description: `${service.title} ke liye fast local support, required documents, process steps aur online request form.`,
+    description: `Fast online support, required documents, process steps, and request form for ${service.title}.`,
     alternates: {
       canonical: `/services/${service.slug}`,
     },
@@ -103,7 +103,6 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   }
 
   const content = getServiceContent(service);
-  const whatsappMessage = encodeURIComponent(`${service.title} ke liye apply karna hai`);
   const ServiceIcon = service.icon;
 
   return (
@@ -118,7 +117,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--primary)] shadow-soft">
               <Clock className="h-4 w-4" />
-              Fast service - same day process
+              Fast online service
             </div>
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">
@@ -128,7 +127,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 {service.title}
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
-                Fast service - same day process. Documents, online form filling aur follow-up support ek trusted local desk se.
+                Fast processing with document guidance, online form support, and reliable follow-up.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -137,7 +136,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <a
-                href={`https://wa.me/${contactDetails.whatsapp}?text=${whatsappMessage}`}
+                href={generateWhatsAppLink(service.title)}
                 target="_blank"
                 rel="noreferrer"
                 className={buttonVariants({ variant: "secondary", size: "lg" })}
@@ -156,7 +155,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <p className="mt-4 max-w-md text-sm leading-relaxed text-white/75">{service.description}</p>
             </div>
             <div className="grid gap-3 bg-white p-5 sm:grid-cols-3">
-              {["Verified Process", "Local Support", "Easy Tracking"].map((item) => (
+              {["Verified Process", "Online Support", "Easy Tracking"].map((item) => (
                 <div key={item} className="rounded-2xl bg-slate-50 p-4">
                   <BadgeCheck className="h-5 w-5 text-[var(--secondary)]" />
                   <p className="mt-3 text-sm font-bold text-slate-950">{item}</p>
@@ -222,7 +221,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                   <div className="rounded-2xl bg-slate-50 p-4">
                     <p className="font-bold text-slate-950">{step}</p>
                     <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                      Team aapko har important update call ya WhatsApp par share karegi.
+                      Our team shares every important update through call, WhatsApp, or dashboard.
                     </p>
                   </div>
                 </div>
@@ -233,7 +232,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <Card className="rounded-2xl p-6">
             <h2 className="text-2xl font-bold text-slate-950">Image / Proof Section</h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              DigiConnect Dukan application proof, payment confirmation aur completed document update ko organized way me track karta hai.
+              DigiConnect Dukan keeps application proof, payment confirmation, and completed document updates organized.
             </p>
             <div className="mt-6 rounded-[1.75rem] bg-slate-950 p-5 text-white">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -282,7 +281,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <div>
                 <h2 className="text-2xl font-bold text-slate-950">Rating & Reviews</h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  Local customers DigiConnect Dukan ko fast process, document guidance aur follow-up support ke liye prefer karte hain.
+                  Customers choose DigiConnect Dukan for fast processing, document guidance, and reliable follow-up support.
                 </p>
               </div>
               <div className="flex items-center gap-1 rounded-full bg-orange-50 px-4 py-2 text-orange-600">
@@ -294,9 +293,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             </div>
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               {[
-                ["Fast response", "Same day me process start ho gaya aur documents clear bata diye."],
-                ["Helpful team", "WhatsApp par updates milte rahe, kaafi easy process tha."],
-                ["Trusted service", "Local office aur online support dono se confidence mila."],
+                ["Fast response", "The process started quickly and the required documents were explained clearly."],
+                ["Helpful team", "I received timely WhatsApp updates and the process was easy."],
+                ["Trusted service", "Online support and clear follow-up made the application simple."],
               ].map(([title, review]) => (
                 <div key={title} className="rounded-2xl bg-slate-50 p-5">
                   <p className="font-bold text-slate-950">{title}</p>

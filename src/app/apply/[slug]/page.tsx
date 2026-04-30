@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: service ? `Apply for ${service.title} | DigiConnect Dukan` : "Apply | DigiConnect Dukan",
     description: service
-      ? `${service.title} ke liye full application form, document upload, UPI payment aur invoice generation.`
+      ? `Complete online application form, document upload, UPI payment, and invoice generation for ${service.title}.`
       : "DigiConnect Dukan application form.",
   };
 }
@@ -64,13 +64,13 @@ export default async function ApplyPage({ params }: PageProps) {
               Apply for {service.title}
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              Details fill karein, documents upload karein aur UPI payment proof submit karein. Team status update dashboard aur call/WhatsApp par share karegi.
+              Fill in your details, upload documents, and submit UPI payment proof. Our team will share updates through your dashboard, call, or WhatsApp.
             </p>
             <div className="mt-6 space-y-3 text-sm font-medium text-slate-700">
-              <p>1. Details fill karein</p>
-              <p>2. Documents upload karein</p>
-              <p>3. UPI payment proof submit karein</p>
-              <p>4. Invoice receive karein</p>
+              <p>1. Fill in your details</p>
+              <p>2. Upload required documents</p>
+              <p>3. Submit UPI payment proof</p>
+              <p>4. Receive invoice and updates</p>
             </div>
           </Card>
 

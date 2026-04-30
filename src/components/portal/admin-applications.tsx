@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { ExternalLink, FileText, ReceiptText, ShieldCheck } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AdminApplicationRow } from "@/lib/portal-types";
 import { cn } from "@/lib/utils";
@@ -11,6 +16,10 @@ function formatDate(date: string) {
 }
 
 function statusLabel(status: string) {
+  if (["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(status)) {
+    return "In Progress";
+  }
+
   return status.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
@@ -67,8 +76,27 @@ function FileLinks({ row }: { row: AdminApplicationRow }) {
 }
 
 export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
   const applicationCount = rows.filter((row) => row.source === "application").length;
   const withFilesCount = rows.filter((row) => row.uploaded_files.length > 0).length;
+  const services = useMemo(() => Array.from(new Set(rows.map((row) => row.service))).sort(), [rows]);
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return rows.filter((row) => {
+      const matchesSearch =
+        !query ||
+        row.customer_name.toLowerCase().includes(query) ||
+        row.mobile.toLowerCase().includes(query) ||
+        row.service.toLowerCase().includes(query);
+      const matchesStatus = statusFilter === "all" || row.application_status === statusFilter;
+      const matchesService = serviceFilter === "all" || row.service === serviceFilter;
+
+      return matchesSearch && matchesStatus && matchesService;
+    });
+  }, [rows, search, serviceFilter, statusFilter]);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -77,7 +105,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Admin Panel</p>
           <h1 className="mt-3 text-3xl font-bold text-slate-950 md:text-5xl">Applications Control Room</h1>
           <p className="mt-3 text-slate-600">
-            Customer applications, uploaded documents, payment proof aur public leads yahan latest first dikhte hain.
+            Customer applications, uploaded documents, payment proof, and public leads are listed latest first.
           </p>
         </div>
 
@@ -97,6 +125,35 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
         </div>
 
         <Card className="rounded-2xl p-4 md:p-6">
+          <div className="mb-5 grid gap-3 md:grid-cols-[1fr_220px_260px]">
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Status filter">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Status</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="in_process">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={serviceFilter} onValueChange={setServiceFilter}>
+              <SelectTrigger aria-label="Service filter">
+                <SelectValue placeholder="Service" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Service</SelectItem>
+                {services.map((service) => (
+                  <SelectItem key={service} value={service}>
+                    {service}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
               <ShieldCheck className="mx-auto h-8 w-8 text-[var(--primary)]" />
@@ -122,7 +179,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((row) => {
+                    {filteredRows.map((row) => {
                       const firstFile = row.uploaded_files[0];
 
                       return (
@@ -170,7 +227,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
               </div>
 
               <div className="grid gap-3 lg:hidden">
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <div key={row.id} className="rounded-2xl border bg-white p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>

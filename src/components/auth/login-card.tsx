@@ -46,7 +46,7 @@ export function LoginCard() {
         return;
       }
 
-      throw new Error("Google login URL generate nahi ho paya. Please try again.");
+      throw new Error("Google login URL could not be generated. Please try again.");
     } catch (error) {
       setIsPending(false);
       showToast(error instanceof Error ? error.message : "Network issue. Please try again.", "error");
@@ -60,8 +60,8 @@ export function LoginCard() {
       </div>
       <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Secure Login</p>
       <h1 className="mt-3 text-3xl font-bold text-slate-950">Continue with Google</h1>
-      <p className="mt-4 text-base leading-relaxed text-slate-600">Google se login karein aur apni service track karein</p>
-      <p className="mt-1 text-sm text-slate-500">Fast, secure aur easy login</p>
+      <p className="mt-4 text-base leading-relaxed text-slate-600">Sign in with Google and track your services securely.</p>
+      <p className="mt-1 text-sm text-slate-500">Fast, secure, and easy login</p>
 
       <Button
         type="button"
@@ -75,7 +75,7 @@ export function LoginCard() {
       </Button>
 
       <div className="mt-6 rounded-2xl bg-[var(--muted)] px-4 py-3 text-left text-sm text-slate-600">
-        Session automatically create hogi aur aapko secure dashboard par redirect kar diya jayega.
+        Your session will be created automatically and you will be redirected to the secure dashboard.
       </div>
     </div>
   );

@@ -39,7 +39,7 @@ export function AdminUpdateForm({
   const digits = customerMobile.replace(/\D/g, "");
   const whatsappNumber = digits.length === 10 ? `91${digits}` : digits;
   const whatsappMessage = encodeURIComponent(
-    `DigiConnect Dukan update: Aapki ${serviceName} application ka status ab ${statusLabels[status]} hai.`,
+    `DigiConnect Dukan update: Your ${serviceName} application status is now ${statusLabels[status]}.`,
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     if (!name || !mobile || !service) {
       console.error("[api/lead] Validation failed: missing required field");
-      return jsonError("Name, mobile aur service required hai.", 400);
+      return jsonError("Name, mobile number, and service are required.", 400);
     }
 
     let fileMetadata: {
@@ -57,12 +57,12 @@ export async function POST(request: Request) {
     if (file instanceof File && file.size > 0) {
       if (!allowedFileTypes.includes(file.type)) {
         console.error("[api/lead] Invalid file type", { type: file.type });
-        return jsonError("File PDF, JPG ya PNG format me upload karein.", 400);
+        return jsonError("File must be uploaded in PDF, JPG, or PNG format.", 400);
       }
 
       if (file.size > maxFileSize) {
         console.error("[api/lead] File too large", { size: file.size });
-        return jsonError("File 5MB se chhoti honi chahiye.", 400);
+        return jsonError("File must be smaller than 5MB.", 400);
       }
 
       const storagePath = `public-leads/${Date.now()}-${cleanFileName(file.name)}`;
@@ -102,11 +102,11 @@ export async function POST(request: Request) {
 
     console.log("[api/lead] Lead inserted successfully", { mobile, service });
     return NextResponse.json({
-      message: "Thank you. Hamari team aapse jaldi contact karegi.",
+      message: "Thank you. Our team will contact you shortly.",
       ok: true,
     });
   } catch (error) {
     console.error("[api/lead] Unhandled error", error);
-    return jsonError(error instanceof Error ? error.message : "Lead submit nahi ho paya.", 500);
+    return jsonError(error instanceof Error ? error.message : "Lead submission failed.", 500);
   }
 }

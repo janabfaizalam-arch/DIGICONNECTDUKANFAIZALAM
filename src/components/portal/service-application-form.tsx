@@ -32,11 +32,11 @@ const requestTimeoutMs = 30_000;
 
 function validateFile(file: File, label: string) {
   if (!allowedFileTypes.includes(file.type)) {
-    return `${label} PDF, JPG ya PNG format me upload karein.`;
+    return `${label} must be uploaded in PDF, JPG, or PNG format.`;
   }
 
   if (file.size > maxFileSize) {
-    return `${label} 5MB se chhota hona chahiye.`;
+    return `${label} must be smaller than 5MB.`;
   }
 
   return null;
@@ -73,7 +73,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
     const supabase = getSupabaseBrowserClient();
 
     if (!supabase) {
-      showToast("Supabase configuration missing hai.", "error");
+      showToast("Supabase configuration is missing.", "error");
       return;
     }
 
@@ -99,7 +99,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
     }
 
     if (!paymentScreenshot) {
-      showToast("Payment screenshot upload karein.", "error");
+      showToast("Please upload the payment screenshot.", "error");
       return;
     }
 
@@ -135,7 +135,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       try {
         leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
       } catch {
-        leadResult = { error: leadText || "Lead API ne valid response nahi diya." };
+        leadResult = { error: leadText || "The lead API did not return a valid response." };
       }
 
       console.log("[ServiceApplicationForm] POST /api/lead completed", {
@@ -145,7 +145,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       });
 
       if (!leadResponse.ok || !leadResult.ok) {
-        throw new Error(leadResult.error ?? leadResult.message ?? "Lead save nahi ho paya.");
+        throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
       }
 
       const {
@@ -175,7 +175,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             contentType: file.type,
             upsert: false,
           }),
-          "Document upload 30 seconds se zyada le raha hai. File size check karke dobara try karein.",
+          "Document upload is taking longer than 30 seconds. Please check the file size and try again.",
         );
 
         if (uploadError) {
@@ -198,7 +198,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           contentType: paymentScreenshot.type,
           upsert: false,
         }),
-        "Payment screenshot upload 30 seconds se zyada le raha hai.",
+        "Payment screenshot upload is taking longer than 30 seconds.",
       );
 
       if (screenshotUploadError) {
@@ -252,23 +252,23 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       try {
         result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
       } catch {
-        throw new Error(text || "Server ne valid response nahi diya. Dobara try karein.");
+        throw new Error(text || "The server did not return a valid response. Please try again.");
       }
 
       if (!response.ok || !result.applicationId || !result.invoiceId) {
-        throw new Error(result.message ?? result.error ?? "Application submit nahi ho payi.");
+        throw new Error(result.message ?? result.error ?? "Application submission failed.");
       }
 
-      showToast(result.message ?? "Application submit ho gayi.");
+      showToast(result.message ?? "Application submitted successfully.");
       router.push(`/invoice/${result.invoiceId}`);
       router.refresh();
     } catch (error) {
       const message =
         error instanceof DOMException && error.name === "AbortError"
-          ? "Request 30 seconds se zyada le raha hai. Please dobara try karein."
+          ? "The request is taking longer than 30 seconds. Please try again."
           : error instanceof Error
             ? error.message
-            : "Application submit nahi ho payi.";
+            : "Application submission failed.";
       showToast(message, "error");
     } finally {
       setIsSubmitting(false);
@@ -283,7 +283,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
           <h2 className="mt-2 text-2xl font-bold text-slate-950">{service.title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            Form fill karein, documents upload karein, UPI payment detail add karein aur application dashboard me track karein.
+            Fill the form, upload documents, add UPI payment details, and track your application in the dashboard.
           </p>
         </div>
 
@@ -338,7 +338,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <div>
               <p className="font-bold text-slate-950">Required Documents Upload</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                Step-wise upload karein. Har document ke liye PDF, JPG ya PNG file supported hai.
+                Upload each document step by step. PDF, JPG, and PNG files are supported.
               </p>
               <div className="mt-4 grid gap-3">
                 {service.documents.map((document, index) => (
@@ -418,7 +418,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <p className="mt-1 break-all font-mono text-sm font-bold text-slate-950">{upiId}</p>
             <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(service.amount)}</p>
           </div>
-          <p className="mt-4 text-sm font-medium text-slate-700">Payment karne ke baad UTR number daalein</p>
+          <p className="mt-4 text-sm font-medium text-slate-700">Enter the UTR number after completing payment.</p>
           <Input name="utrNumber" placeholder="UTR Number" required className="mt-3 h-12 text-sm" />
           <Input
             name="paymentScreenshot"

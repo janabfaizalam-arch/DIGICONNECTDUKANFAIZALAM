@@ -12,8 +12,8 @@ export function ServicesSection() {
       <div className="container-shell space-y-8 md:space-y-10">
         <SectionHeading
           eyebrow="Services"
-          title="Local customers ke liye complete digital service portfolio"
-          description="Government applications, online forms, business registrations aur document support sab ek clean, guided process mein."
+          title="Complete digital service portfolio across India"
+          description="Government applications, online forms, business registrations, and document support through one guided process."
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {services.map(({ title, slug, icon: Icon }) => (
@@ -26,7 +26,7 @@ export function ServicesSection() {
               </div>
               <h3 className="mt-5 text-base font-bold text-slate-900 md:text-lg">{title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Document guidance, online form support aur team follow-up.
+                Document guidance, online form support, and expert follow-up.
               </p>
               <Link href={`/apply/${slug}`} className={buttonVariants({ size: "default", className: "mt-5 w-full" })}>
                 Apply Now

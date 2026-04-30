@@ -16,6 +16,8 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { generateWhatsAppLink } from "@/lib/whatsapp";
+
 export const services = [
   { title: "Aadhaar Card Update & Print", slug: "aadhaar-update", icon: IdCard },
   { title: "PAN Card Apply/Correction", slug: "pan-card", icon: FileCheck2 },
@@ -36,61 +38,55 @@ export const services = [
 
 export const features = [
   {
-    title: "Fast Same Day Process",
-    description: "Urgent requests par quick start aur clear next-step update.",
+    title: "Fast Processing",
+    description: "Quick application handling with clear next-step updates.",
   },
   {
-    title: "Local Office Support",
-    description: "Orai aur Jalaun offices par direct customer assistance.",
+    title: "Expert Guidance",
+    description: "Clear document guidance before you submit your request.",
   },
   {
-    title: "Document Guidance",
-    description: "Form submit karne se pehle required papers ki simple checklist.",
+    title: "Secure Data Handling",
+    description: "Customer documents are handled with care and privacy.",
   },
   {
-    title: "Secure & Private Handling",
-    description: "Customer documents ko carefully aur responsibly handle kiya jata hai.",
+    title: "Pan India Service",
+    description: "Online digital services are available across India.",
+  },
+  {
+    title: "Online Support",
+    description: "Get help before and after your application through call or WhatsApp.",
   },
   {
     title: "Powered by RNoS India Pvt Ltd",
-    description: "Professional process, organized records aur reliable support.",
-  },
-  {
-    title: "Call/WhatsApp Support",
-    description: "Application se pehle aur baad me quick help available.",
+    description: "Professional process, organized records, and reliable service support.",
   },
 ];
 
 export const processSteps = [
   {
-    title: "Apply Online / WhatsApp",
-    description: "Service choose karke form bharein ya WhatsApp par request bhejein.",
+    title: "Apply Online",
+    description: "Choose a service and submit your request through the online form.",
   },
   {
     title: "Submit Documents",
-    description: "Team aapko exact document list batayegi, phir files submit karein.",
+    description: "Our team shares the required document list and helps you submit files.",
   },
   {
     title: "Get Service Update",
-    description: "Process start hote hi status update call ya WhatsApp par milta rahega.",
+    description: "Track progress through dashboard updates, calls, and WhatsApp support.",
   },
 ];
 
 export const contactDetails = {
-  phone: "9305086491",
-  ownerPhone: "7007595931",
-  officePhone: "9305086491",
+  phone: "7007595931",
+  primaryPhone: "7007595931",
+  officeSupportPhone: "9305086491",
   email: "digiconnectdukan@rnos.in",
   website: "https://www.rnos.in",
-  whatsapp: "917007595931",
-  offices: [
-    "Machchhar Choraha, Orai",
-    "Tehsil Road, Jalaun",
-  ],
+  availability: "Service available across India",
 };
 
-export function createWhatsappLink(source = "Website") {
-  const message = `Mujhe service chahiye. Source: ${source}`;
-
-  return `https://wa.me/${contactDetails.whatsapp}?text=${encodeURIComponent(message)}`;
+export function createWhatsappLink(serviceName?: string) {
+  return generateWhatsAppLink(serviceName);
 }

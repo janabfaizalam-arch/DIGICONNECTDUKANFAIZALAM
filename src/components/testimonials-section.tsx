@@ -5,18 +5,18 @@ import { SectionHeading } from "@/components/section-heading";
 const testimonials = [
   {
     name: "Rahul Verma",
-    location: "Orai",
-    quote: "PAN correction aur Aadhaar update ka process clear tha. Same day guidance mil gayi.",
+    location: "India",
+    quote: "The PAN card application process was fast and smooth.",
   },
   {
     name: "Neha Gupta",
-    location: "Jalaun",
-    quote: "Documents ki list pehle hi mil gayi, isliye voter ID application quickly submit ho gaya.",
+    location: "India",
+    quote: "Clear guidance for Aadhaar update and document submission.",
   },
   {
     name: "Amit Sahu",
-    location: "Kalpi Road",
-    quote: "GST registration ke liye local support chahiye tha. Team ne form aur follow-up dono handle kiya.",
+    location: "India",
+    quote: "Very helpful support for GST registration.",
   },
 ];
 
@@ -26,8 +26,8 @@ export function TestimonialsSection() {
       <div className="container-shell space-y-12">
         <SectionHeading
           eyebrow="Testimonials"
-          title="Local customers trust DigiConnect Dukan"
-          description="Orai aur Jalaun ke users ke liye fast response, clear documents aur practical application support."
+          title="Customers trust DigiConnect Dukan"
+          description="Fast response, clear document guidance, and reliable application support for customers across India."
         />
         <div className="grid gap-4 md:grid-cols-3">
           {testimonials.map((testimonial) => (

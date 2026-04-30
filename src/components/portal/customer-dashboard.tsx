@@ -41,7 +41,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
             )}
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Dashboard</p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-950">Namaste, {profile.name}</h1>
+              <h1 className="mt-2 text-3xl font-bold text-slate-950">Welcome, {profile.name}</h1>
               <p className="mt-1 text-sm text-slate-600">{profile.email}</p>
             </div>
           </div>
@@ -71,14 +71,14 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold text-slate-950">My Applications</h2>
-                <p className="mt-1 text-sm text-slate-600">Application status, invoice aur final document yahan milega.</p>
+                <p className="mt-1 text-sm text-slate-600">Track application status, invoices, and final documents here.</p>
               </div>
             </div>
 
             {applications.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
-                <p className="text-lg font-bold text-slate-950">Abhi koi application submit nahi hui.</p>
-                <p className="mt-2 text-sm text-slate-600">New request start karne ke liye service select karein.</p>
+                <p className="text-lg font-bold text-slate-950">No application has been submitted yet.</p>
+                <p className="mt-2 text-sm text-slate-600">Select a service to start a new request.</p>
                 <Link href="/services" className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
                   New Application
                 </Link>
@@ -163,7 +163,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
             </div>
             <div className="mt-4 space-y-3">
               {notifications.length === 0 ? (
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Status update notifications yahan aayengi.</p>
+                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Status update notifications will appear here.</p>
               ) : (
                 notifications.map((notification) => (
                   <div key={notification.id} className="rounded-2xl bg-slate-50 p-4">

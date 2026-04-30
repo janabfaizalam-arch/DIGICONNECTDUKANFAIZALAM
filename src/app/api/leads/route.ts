@@ -43,10 +43,10 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ message: "Lead save nahi ho paya. Kripya call ya WhatsApp karein." }, { status: 500 });
+      return NextResponse.json({ message: "Lead could not be saved. Please call or WhatsApp us." }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Thank you. Hamari team aapse jaldi contact karegi." });
+    return NextResponse.json({ message: "Thank you. Our team will contact you shortly." });
   } catch {
     return NextResponse.json({ message: "Something went wrong. Please try again." }, { status: 500 });
   }
@@ -80,7 +80,7 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ message: "Lead status update nahi ho paya." }, { status: 500 });
+      return NextResponse.json({ message: "Lead status could not be updated." }, { status: 500 });
     }
 
     return NextResponse.json({ lead: data });

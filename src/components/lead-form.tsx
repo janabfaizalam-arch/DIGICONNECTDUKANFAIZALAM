@@ -43,10 +43,10 @@ export function LeadForm() {
       try {
         result = JSON.parse(text) as { message?: string; error?: string };
       } catch {
-        result = { error: text || "Server response valid nahi hai." };
+        result = { error: text || "The server response was not valid." };
       }
 
-      const message = result.message ?? result.error ?? "Lead submit nahi ho paya.";
+      const message = result.message ?? result.error ?? "Lead submission failed.";
       setFeedback(message);
 
       if (response.ok) {
@@ -98,10 +98,10 @@ export function LeadForm() {
         name="message"
       />
       <p className="text-sm font-medium leading-relaxed text-slate-600">
-        Form submit karne ke baad team aapse jaldi contact karegi.
+        Our team will contact you shortly after submission.
       </p>
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isPending}>
-        {isPending ? "Submitting..." : "Aaj hi apply karein - Fast service"}
+        {isPending ? "Submitting..." : "Get Started"}
       </Button>
       {feedback ? <p className="text-sm font-medium text-slate-600">{feedback}</p> : null}
     </form>

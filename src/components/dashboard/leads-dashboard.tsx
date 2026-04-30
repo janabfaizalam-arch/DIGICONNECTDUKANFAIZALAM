@@ -24,7 +24,7 @@ export type Lead = {
   created_at: string;
 };
 
-type FilterValue = "all" | "new" | "completed";
+type FilterValue = "all" | "new" | "in_progress" | "completed";
 
 type LeadsDashboardProps = {
   initialLeads: Lead[];
@@ -182,7 +182,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
         }
 
         setLeads((current) => current.map((lead) => (lead.id === leadId ? result.lead! : lead)));
-        showToast("Lead status update ho gaya.");
+        showToast("Lead status updated.");
       } catch (error) {
         setLeads(previousLeads);
         showToast(error instanceof Error ? error.message : "Lead update failed.", "error");
@@ -201,7 +201,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
               DigiConnect Dukan
             </p>
             <h1 className="mt-3 text-3xl font-bold text-slate-950 md:text-5xl">Customer Leads Dashboard</h1>
-            <p className="mt-3 text-base font-medium text-slate-600">Sabhi customer requests yahan track karein</p>
+            <p className="mt-3 text-base font-medium text-slate-600">Track all customer requests from one dashboard.</p>
           </div>
           <div className="rounded-2xl border bg-white px-4 py-3 shadow-soft">
             <p className="text-sm font-bold text-slate-950">{name}</p>
@@ -227,8 +227,8 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                 className="pl-11"
               />
             </div>
-            <div className="grid grid-cols-3 rounded-2xl bg-slate-100 p-1 text-sm font-bold text-slate-600 md:w-[360px]">
-              {(["all", "new", "completed"] as FilterValue[]).map((item) => (
+            <div className="grid grid-cols-4 rounded-2xl bg-slate-100 p-1 text-sm font-bold text-slate-600 md:w-[480px]">
+              {(["all", "new", "in_progress", "completed"] as FilterValue[]).map((item) => (
                 <button
                   key={item}
                   type="button"
@@ -238,7 +238,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                     filter === item ? "bg-white text-[var(--primary)] shadow-sm" : "hover:bg-white/70",
                   )}
                 >
-                  {item === "all" ? "All" : item === "new" ? "New" : "Completed"}
+                  {item === "all" ? "All" : item === "new" ? "New" : item === "in_progress" ? "In Progress" : "Completed"}
                 </button>
               ))}
             </div>
@@ -246,13 +246,13 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
 
           {leads.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/50 p-8 text-center">
-              <p className="text-lg font-bold text-slate-950">Abhi koi lead nahi hai</p>
-              <p className="mt-2 text-sm text-slate-600">Website form se new requests yahan automatically dikhengi.</p>
+              <p className="text-lg font-bold text-slate-950">No leads yet</p>
+              <p className="mt-2 text-sm text-slate-600">New requests from the website form will appear here automatically.</p>
             </div>
           ) : visibleLeads.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed bg-orange-50/60 p-8 text-center">
               <p className="text-lg font-bold text-slate-950">No matching leads</p>
-              <p className="mt-2 text-sm text-slate-600">Filter ya mobile search thoda adjust karke dekhein.</p>
+              <p className="mt-2 text-sm text-slate-600">Adjust the filter or mobile search and try again.</p>
             </div>
           ) : (
             <>

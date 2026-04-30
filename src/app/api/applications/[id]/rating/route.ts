@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     if (application.status !== "completed") {
-      return NextResponse.json({ message: "Rating completion ke baad hi allowed hai." }, { status: 400 });
+      return NextResponse.json({ message: "Rating is allowed only after completion." }, { status: 400 });
     }
 
     const { error } = await supabase.from("ratings").upsert(
@@ -50,10 +50,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
 
     if (error) {
-      return NextResponse.json({ message: "Rating save nahi ho payi." }, { status: 500 });
+      return NextResponse.json({ message: "Rating could not be saved." }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Dhanyavaad. Aapka feedback save ho gaya." });
+    return NextResponse.json({ message: "Thank you. Your feedback has been saved." });
   } catch {
     return NextResponse.json({ message: "Something went wrong. Please try again." }, { status: 500 });
   }

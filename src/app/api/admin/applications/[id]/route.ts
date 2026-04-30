@@ -76,7 +76,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { error } = await supabase.from("applications").update(updates).eq("id", id);
 
     if (error) {
-      return NextResponse.json({ message: "Application update nahi ho payi." }, { status: 500 });
+      return NextResponse.json({ message: "Application could not be updated." }, { status: 500 });
     }
 
     if (paymentStatuses.includes(paymentStatus as never)) {
@@ -98,11 +98,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         user_id: application.user_id,
         application_id: id,
         title: "Application status updated",
-        message: `${application.service_name} ka status ab ${updates.status.replace(/_/g, " ")} hai.`,
+        message: `${application.service_name} status is now ${updates.status.replace(/_/g, " ")}.`,
       });
     }
 
-    return NextResponse.json({ message: "Application update ho gayi." });
+    return NextResponse.json({ message: "Application updated successfully." });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Something went wrong. Please try again." },
