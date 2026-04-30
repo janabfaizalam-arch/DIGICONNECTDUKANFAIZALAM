@@ -7,7 +7,7 @@ import { contactDetails } from "@/lib/constants";
 export function ContactSection() {
   return (
     <section id="contact" className="section-pad pt-0">
-      <div className="container-shell rounded-[2rem] border bg-white/90 p-8 shadow-soft md:p-10">
+      <div className="container-shell rounded-3xl border bg-white/90 p-6 shadow-soft md:p-10">
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Contact</p>
@@ -37,9 +37,9 @@ export function ContactSection() {
             </div>
             <div className="rounded-[1.75rem] border p-6">
               <Phone className="h-5 w-5 text-[var(--primary)]" />
-              <p className="mt-4 text-sm font-semibold text-slate-500">Contact</p>
+              <p className="mt-4 text-sm font-semibold text-slate-500">Primary Call / Customer Care</p>
               <p className="mt-1 text-lg font-bold text-slate-950">{contactDetails.phone}</p>
-              <p className="mt-1 text-sm text-slate-600">Office Contact: {contactDetails.officePhone}</p>
+              <p className="mt-1 text-sm text-slate-600">Owner Contact: {contactDetails.ownerPhone}</p>
             </div>
             <div className="rounded-[1.75rem] border p-6">
               <Mail className="h-5 w-5 text-[var(--primary)]" />

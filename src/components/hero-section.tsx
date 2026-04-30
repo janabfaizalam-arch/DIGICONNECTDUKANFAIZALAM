@@ -6,59 +6,59 @@ import Link from "next/link";
 
 export function HeroSection() {
   return (
-    <section className="section-pad overflow-hidden pt-10 md:pt-16">
-      <div className="container-shell grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-2 text-sm font-medium text-[var(--primary)] shadow-soft">
+    <section className="overflow-hidden pb-12 pt-6 md:pb-20 md:pt-14">
+      <div className="container-shell grid items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-5">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-2 text-xs font-semibold text-[var(--primary)] shadow-soft sm:px-4 sm:text-sm">
             <MapPin className="h-4 w-4" />
-            Orai, Jalaun aur nearby areas ke liye trusted local service center
+            <span className="truncate">Orai, Jalaun aur nearby areas ke liye trusted service center</span>
           </div>
-          <div className="space-y-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--secondary)]">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--secondary)] sm:text-sm">
               Same Day Service Available
             </p>
-            <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 md:text-6xl">
+            <h1 className="max-w-3xl text-3xl font-black leading-tight text-slate-950 sm:text-4xl md:text-6xl">
               All Digital &amp; Government Services in Orai &amp; Jalaun
             </h1>
-            <p className="max-w-2xl text-lg leading-8 text-slate-600">
-              PAN Card, Aadhaar Update, Voter ID, Passport, GST - Sab kuch ek hi jagah
+            <p className="max-w-2xl text-base leading-7 text-slate-600 md:text-lg md:leading-8">
+              PAN Card, Aadhaar Update, Voter ID, Passport, GST - sab kuch ek hi trusted local desk par.
             </p>
-            <p className="max-w-2xl text-base font-medium text-gray-600 md:text-lg">
+            <p className="max-w-2xl text-sm font-semibold text-gray-600 md:text-lg">
               Connecting People, Empowering Digital India
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link href="#lead-form" className={buttonVariants({ size: "lg" })}>
+          <div className="grid gap-3 min-[420px]:grid-cols-2 sm:flex sm:flex-row">
+            <Link href="#lead-form" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
               Apply Now
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <a href={createWhatsappLink("Hero CTA")} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: "secondary" })}>
+            <a href={createWhatsappLink("Hero CTA")} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: "secondary", className: "w-full sm:w-auto" })}>
               WhatsApp Now
               <ArrowRight className="h-4 w-4" />
             </a>
           </div>
           <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-            <div className="rounded-3xl border bg-white/85 p-4 shadow-soft">
+            <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
               <BadgeCheck className="mb-3 h-5 w-5 text-[var(--secondary)]" />
               <p className="font-semibold text-slate-900">Same Day Service Available</p>
-              <p>Quick start for urgent digital services.</p>
+              <p className="mt-1 text-xs leading-5">Quick start for urgent services.</p>
             </div>
-            <div className="rounded-3xl border bg-white/85 p-4 shadow-soft">
+            <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
               <Shield className="mb-3 h-5 w-5 text-[var(--primary)]" />
-              <p className="font-semibold text-slate-900">Fast service - same day process</p>
-              <p>Local expert team for fast document handling.</p>
+              <p className="font-semibold text-slate-900">Secure Handling</p>
+              <p className="mt-1 text-xs leading-5">Documents handled carefully.</p>
             </div>
-            <div className="rounded-3xl border bg-white/85 p-4 shadow-soft">
+            <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
               <PhoneCall className="mb-3 h-5 w-5 text-[var(--secondary)]" />
-              <p className="font-semibold text-slate-900">Call karein ya WhatsApp par message bhejein</p>
-              <p>Support available before and after application.</p>
+              <p className="font-semibold text-slate-900">Call/WhatsApp Support</p>
+              <p className="mt-1 text-xs leading-5">Help before and after apply.</p>
             </div>
           </div>
         </div>
-        <div className="relative">
+        <div className="relative hidden lg:block">
           <div className="absolute -left-10 top-12 h-44 w-44 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
           <div className="absolute -right-8 bottom-8 h-52 w-52 rounded-full bg-[var(--primary)]/15 blur-3xl" />
-          <div className="glass-panel shadow-soft relative rounded-[2rem] border p-6 md:p-8">
+          <div className="glass-panel shadow-soft relative rounded-3xl border p-6 md:p-8">
             <div className="rounded-[1.75rem] bg-slate-950 p-6 text-white">
               <p className="text-sm font-medium text-white/70">DigiConnect Dukan</p>
               <h2 className="mt-3 text-2xl font-bold">Trusted digital seva portal for local customers</h2>

@@ -277,7 +277,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   };
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <form onSubmit={onSubmit} className="grid gap-5 pb-4 lg:grid-cols-[1fr_340px]">
       <Card className="rounded-2xl p-5 md:p-6">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
@@ -287,8 +287,8 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           </p>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Input name="name" placeholder="Name" aria-label="Name" required className="h-14 text-base" />
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <Input name="name" placeholder="Name" aria-label="Name" required className="h-12 text-sm" />
           <Input
             name="mobile"
             placeholder="Mobile"
@@ -296,17 +296,17 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             inputMode="numeric"
             pattern="[0-9]{10}"
             required
-            className="h-14 text-base"
+            className="h-12 text-sm"
           />
-          <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-14 text-base" />
+          <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" />
           <Input
             name="service"
             value={service.title}
             aria-label="Service"
             readOnly
-            className="h-14 bg-slate-50 text-base font-semibold"
+            className="h-12 bg-slate-50 text-sm font-semibold"
           />
-          <Input name="city" placeholder="City" aria-label="City" required className="h-14 text-base" />
+          <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" />
           {service.fields.map((field) =>
             field.type === "textarea" ? (
               <Textarea
@@ -315,7 +315,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
                 placeholder={field.label}
                 aria-label={field.label}
                 required={field.required ?? true}
-                className="min-h-28 text-base md:col-span-2"
+                className="min-h-24 text-sm md:col-span-2"
               />
             ) : (
               <Input
@@ -325,25 +325,27 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
                 aria-label={field.label}
                 type={field.type ?? "text"}
                 required={field.required ?? true}
-                className="h-14 text-base"
+                className="h-12 text-sm"
               />
             ),
           )}
-          <Textarea name="message" placeholder="Message" aria-label="Message" required className="min-h-28 text-base md:col-span-2" />
+          <Textarea name="message" placeholder="Message" aria-label="Message" required className="min-h-24 text-sm md:col-span-2" />
         </div>
 
-        <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-5">
+        <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-4 md:p-5">
           <div className="flex items-start gap-3">
             <FileUp className="mt-1 h-5 w-5 text-[var(--primary)]" />
             <div>
               <p className="font-black text-slate-950">Required Documents Upload</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Har required document ke liye alag file upload karein. PDF, JPG, PNG supported.
+                Step-wise upload karein. Har document ke liye PDF, JPG ya PNG file supported hai.
               </p>
               <div className="mt-4 grid gap-3">
-                {service.documents.map((document) => (
+                {service.documents.map((document, index) => (
                   <label key={document} className="rounded-2xl border bg-white p-4">
-                    <span className="block text-sm font-black text-slate-950">{document}</span>
+                    <span className="block text-sm font-black text-slate-950">
+                      {String(index + 1).padStart(2, "0")}. {document}
+                    </span>
                     <Input
                       name={`document_${document}`}
                       type="file"
@@ -398,7 +400,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
               <IndianRupee className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-500">Service Price</p>
+              <p className="text-sm font-semibold text-slate-500">Fixed Amount</p>
               <p className="text-2xl font-black text-slate-950">{formatCurrency(service.amount)}</p>
             </div>
           </div>
@@ -417,7 +419,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(service.amount)}</p>
           </div>
           <p className="mt-4 text-sm font-semibold text-slate-700">Payment karne ke baad UTR number daalein</p>
-          <Input name="utrNumber" placeholder="UTR Number" required className="mt-3 h-14 text-base" />
+          <Input name="utrNumber" placeholder="UTR Number" required className="mt-3 h-12 text-sm" />
           <Input
             name="paymentScreenshot"
             type="file"
@@ -447,7 +449,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           {paymentScreenshot ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentScreenshot.name}</p> : null}
         </Card>
 
-        <Button type="submit" size="lg" disabled={isSubmitting} className="sticky bottom-3 z-20 h-14 w-full rounded-2xl shadow-lg">
+        <Button type="submit" size="lg" disabled={isSubmitting} className="mb-4 h-14 w-full rounded-2xl shadow-lg md:mb-0">
           {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
           {progressText || "Submit Application"}
         </Button>

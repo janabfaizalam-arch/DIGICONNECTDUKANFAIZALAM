@@ -28,7 +28,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
   const pending = applications.length - completed;
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen px-4 pb-10 pt-6 md:px-8 md:py-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex items-center gap-4">
@@ -77,10 +77,10 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
 
             {applications.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
-                <p className="text-lg font-black text-slate-950">Abhi koi application nahi hai</p>
-                <p className="mt-2 text-sm text-slate-600">Service select karke first request submit karein.</p>
+                <p className="text-lg font-black text-slate-950">Abhi koi application submit nahi hui.</p>
+                <p className="mt-2 text-sm text-slate-600">New request start karne ke liye service select karein.</p>
                 <Link href="/services" className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
-                  Apply Now
+                  New Application
                 </Link>
               </div>
             ) : (

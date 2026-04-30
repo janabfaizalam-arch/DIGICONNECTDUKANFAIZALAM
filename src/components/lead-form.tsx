@@ -60,7 +60,7 @@ export function LeadForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4 pb-3 md:pb-0">
       <div className="grid gap-4 md:grid-cols-2">
         <Input
           value={form.name}
@@ -97,6 +97,9 @@ export function LeadForm() {
         placeholder="Message"
         name="message"
       />
+      <p className="text-sm font-medium leading-6 text-slate-600">
+        Form submit karne ke baad team aapse jaldi contact karegi.
+      </p>
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isPending}>
         {isPending ? "Submitting..." : "Aaj hi apply karein - Fast service"}
       </Button>

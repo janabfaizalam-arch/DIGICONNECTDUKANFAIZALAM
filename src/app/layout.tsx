@@ -10,9 +10,9 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "DigiConnect Dukan – Online Services in Orai & Jalaun",
+  title: "DigiConnect Dukan | Digital & Government Services in Orai, Jalaun",
   description:
-    "DigiConnect Dukan offers PAN Card, Aadhaar Update, Voter ID, Ration Card, GST, MSME, certificates and more for customers in Orai, Jalaun and nearby areas.",
+    "DigiConnect Dukan Orai aur Jalaun ka trusted digital service center hai. PAN card, Aadhaar update, voter ID, GST, passport assistance, certificates aur government services ke liye apply karein.",
   keywords: [
     "DigiConnect Dukan",
     "PAN Card Orai",
@@ -22,18 +22,22 @@ export const metadata: Metadata = {
     "Jalaun Aadhaar update",
     "PAN card apply Orai",
     "GST registration Jalaun",
+    "passport assistance Orai",
+    "government services in Jalaun",
+    "digital services in Orai",
+    "DigiConnect Dukan government services",
     "government services near me",
   ],
   openGraph: {
-    title: "DigiConnect Dukan | All Digital & Government Services",
+    title: "DigiConnect Dukan | Digital & Government Services in Orai",
     description:
-      "Trusted local service center for Aadhaar, PAN, Voter ID, Ration Card, certificates, GST and online forms in Orai and Jalaun.",
+      "Orai and Jalaun ka trusted local center for PAN card, Aadhaar update, Voter ID, GST, passport assistance and online government services.",
     type: "website",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "DigiConnect Dukan | All Digital & Government Services",
+    title: "DigiConnect Dukan | Digital Services in Orai & Jalaun",
     description:
       "Trusted local service center in Orai and Jalaun for digital and government services.",
   },
@@ -48,7 +52,7 @@ const localBusinessSchema = {
   name: "DigiConnect Dukan",
   url: siteUrl,
   email: "digiconnectdukan@rnos.in",
-  telephone: ["7007595931", "9305086491"],
+  telephone: ["9305086491", "7007595931"],
   areaServed: ["Orai", "Jalaun", "Uttar Pradesh"],
   address: [
     {

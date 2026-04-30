@@ -3,12 +3,16 @@ import {
   BriefcaseBusiness,
   Building2,
   CarFront,
+  ClipboardCheck,
   FileBadge2,
   FileCheck2,
+  FileHeart,
   FileSearch,
   HeartHandshake,
+  HeartPulse,
   IdCard,
   Landmark,
+  Tractor,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
@@ -64,7 +68,7 @@ const noExtraFields: ServiceField[] = [];
 
 export const portalServices: PortalService[] = [
   {
-    title: "GST Registration",
+    title: "GST Registration & Filing",
     slug: "gst-registration",
     amount: 499,
     icon: Building2,
@@ -114,7 +118,27 @@ export const portalServices: PortalService[] = [
     recommended: ["income-caste-domicile-certificate", "aadhaar-update", "voter-id"],
   },
   {
-    title: "Passport",
+    title: "Labour Card / e-Shram Card",
+    slug: "labour-card-e-shram-card",
+    amount: 199,
+    icon: ClipboardCheck,
+    description: "Labour card aur e-Shram card registration ke liye simple application support.",
+    documents: ["Aadhaar Card", "Mobile Number", "Bank Details", "Photo"],
+    fields: noExtraFields,
+    recommended: ["ayushman-card", "pm-kisan-pension-schemes", "ration-card"],
+  },
+  {
+    title: "Ayushman Card",
+    slug: "ayushman-card",
+    amount: 199,
+    icon: HeartPulse,
+    description: "Ayushman Bharat card eligibility check, apply aur print support.",
+    documents: ["Aadhaar Card", "Ration Card", "Mobile Number"],
+    fields: noExtraFields,
+    recommended: ["ration-card", "aadhaar-update", "labour-card-e-shram-card"],
+  },
+  {
+    title: "Passport Assistance",
     slug: "passport",
     amount: 999,
     icon: ShieldCheck,
@@ -134,7 +158,17 @@ export const portalServices: PortalService[] = [
     recommended: ["passport", "voter-id", "pan-card"],
   },
   {
-    title: "MSME",
+    title: "Birth & Death Certificate",
+    slug: "birth-death-certificate",
+    amount: 299,
+    icon: FileHeart,
+    description: "Birth certificate aur death certificate apply/correction ke liye document guidance.",
+    documents: ["Aadhaar Card", "Hospital/Local Proof", "Address Proof", "Mobile Number"],
+    fields: noExtraFields,
+    recommended: ["aadhaar-update", "income-caste-domicile-certificate", "ration-card"],
+  },
+  {
+    title: "MSME Certificate",
     slug: "msme",
     amount: 499,
     icon: Landmark,
@@ -142,6 +176,16 @@ export const portalServices: PortalService[] = [
     documents: ["Aadhaar Card", "PAN Card", "Business Details", "Bank Details"],
     fields: gstFields,
     recommended: ["gst-registration", "trade-license", "food-license"],
+  },
+  {
+    title: "PM Kisan / Pension Schemes",
+    slug: "pm-kisan-pension-schemes",
+    amount: 199,
+    icon: Tractor,
+    description: "PM Kisan, pension aur welfare scheme forms ke liye local assistance.",
+    documents: ["Aadhaar Card", "Bank Details", "Land/Eligibility Proof", "Mobile Number"],
+    fields: noExtraFields,
+    recommended: ["income-caste-domicile-certificate", "ration-card", "ayushman-card"],
   },
   {
     title: "Income/Caste/Domicile Certificate",
@@ -164,7 +208,7 @@ export const portalServices: PortalService[] = [
     recommended: ["gst-registration", "msme", "trade-license"],
   },
   {
-    title: "Trade License",
+    title: "Trade License / Shop Act",
     slug: "trade-license",
     amount: 1499,
     icon: BriefcaseBusiness,
@@ -206,7 +250,7 @@ export const paymentStatusLabels: Record<PaymentStatus, string> = {
 };
 
 export const upiDetails = {
-  upiId: process.env.NEXT_PUBLIC_UPI_ID ?? "digiconnectdukan@upi",
+  upiId: process.env.NEXT_PUBLIC_UPI_ID ?? "7007595931@upi",
   payeeName: "DigiConnect Dukan",
   qrImageUrl: process.env.NEXT_PUBLIC_UPI_QR_URL ?? "",
 };

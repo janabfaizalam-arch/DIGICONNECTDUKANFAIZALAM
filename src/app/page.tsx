@@ -9,7 +9,7 @@ import { WhyChooseUsSection } from "@/components/why-choose-us-section";
 export default function Home() {
   return (
     <>
-      <main className="pb-24 md:pb-0">
+      <main className="pb-8 md:pb-0">
         <HeroSection />
         <ServicesSection />
         <WhyChooseUsSection />

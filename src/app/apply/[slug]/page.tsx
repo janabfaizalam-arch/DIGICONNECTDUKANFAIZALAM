@@ -45,27 +45,26 @@ export default async function ApplyPage({ params }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen px-4 pb-10 pt-5 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl">
         <Link href={`/services/${service.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
           Back to service
         </Link>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
-          <Card className="rounded-2xl p-6">
+        <div className="mt-5 grid gap-6 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
+          <Card className="rounded-2xl p-5 md:p-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <p className="mt-6 text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">
               Secure Application
             </p>
-            <h1 className="mt-3 text-3xl font-black text-slate-950 md:text-4xl">
+            <h1 className="mt-3 text-2xl font-black text-slate-950 md:text-4xl">
               Apply for {service.title}
             </h1>
             <p className="mt-4 text-sm leading-7 text-slate-600">
-              Form submit hone ke baad documents Supabase Storage me save honge, payment record create hoga,
-              invoice generate hogi, aur aap dashboard me status track kar paayenge.
+              Details fill karein, documents upload karein aur UPI payment proof submit karein. Team status update dashboard aur call/WhatsApp par share karegi.
             </p>
             <div className="mt-6 space-y-3 text-sm font-semibold text-slate-700">
               <p>1. Details fill karein</p>
