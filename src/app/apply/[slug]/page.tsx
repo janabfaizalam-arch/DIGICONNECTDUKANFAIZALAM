@@ -57,16 +57,16 @@ export default async function ApplyPage({ params }: PageProps) {
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <p className="mt-6 text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">
+            <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">
               Secure Application
             </p>
-            <h1 className="mt-3 text-2xl font-black text-slate-950 md:text-4xl">
+            <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">
               Apply for {service.title}
             </h1>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">
               Details fill karein, documents upload karein aur UPI payment proof submit karein. Team status update dashboard aur call/WhatsApp par share karegi.
             </p>
-            <div className="mt-6 space-y-3 text-sm font-semibold text-slate-700">
+            <div className="mt-6 space-y-3 text-sm font-medium text-slate-700">
               <p>1. Details fill karein</p>
               <p>2. Documents upload karein</p>
               <p>3. UPI payment proof submit karein</p>

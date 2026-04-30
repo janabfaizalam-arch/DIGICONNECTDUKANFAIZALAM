@@ -13,9 +13,9 @@ export default function ServicesPage() {
     <main className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Digital Services Portal</p>
-          <h1 className="mt-3 text-3xl font-black text-slate-950 md:text-5xl">Service select karein aur online apply karein</h1>
-          <p className="mt-4 text-base leading-8 text-slate-600">
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Digital Services Portal</p>
+          <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">Service select karein aur online apply karein</h1>
+          <p className="mt-4 text-base leading-relaxed text-slate-600">
             Google login, form, documents, UPI payment, invoice aur status tracking ek simple flow mein.
           </p>
         </div>
@@ -30,9 +30,9 @@ export default function ServicesPage() {
                   </div>
                   <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:text-[var(--secondary)]" />
                 </div>
-                <h2 className="mt-5 text-lg font-black text-slate-950">{title}</h2>
-                <p className="mt-2 min-h-14 text-sm leading-7 text-slate-600">{description}</p>
-                <p className="mt-4 text-sm font-black text-orange-600">Starting {formatCurrency(amount)}</p>
+                <h2 className="mt-5 text-lg font-bold text-slate-950">{title}</h2>
+                <p className="mt-2 min-h-14 text-sm leading-relaxed text-slate-600">{description}</p>
+                <p className="mt-4 text-sm font-bold text-orange-600">Starting {formatCurrency(amount)}</p>
               </Card>
             </Link>
           ))}

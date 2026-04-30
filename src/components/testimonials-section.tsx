@@ -37,7 +37,7 @@ export function TestimonialsSection() {
                   <Star key={index} className="h-4 w-4 fill-current" />
                 ))}
               </div>
-              <blockquote className="mt-5 text-sm leading-7 text-slate-600">&quot;{testimonial.quote}&quot;</blockquote>
+              <blockquote className="mt-5 text-sm leading-relaxed text-slate-600">&quot;{testimonial.quote}&quot;</blockquote>
               <figcaption className="mt-5">
                 <p className="font-bold text-slate-950">{testimonial.name}</p>
                 <p className="text-sm text-slate-500">{testimonial.location}</p>

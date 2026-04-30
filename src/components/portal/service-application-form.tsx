@@ -281,8 +281,8 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       <Card className="rounded-2xl p-5 md:p-6">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">{service.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <h2 className="mt-2 text-2xl font-bold text-slate-950">{service.title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Form fill karein, documents upload karein, UPI payment detail add karein aur application dashboard me track karein.
           </p>
         </div>
@@ -304,7 +304,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             value={service.title}
             aria-label="Service"
             readOnly
-            className="h-12 bg-slate-50 text-sm font-semibold"
+            className="h-12 bg-slate-50 text-sm font-medium"
           />
           <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" />
           {service.fields.map((field) =>
@@ -336,14 +336,14 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           <div className="flex items-start gap-3">
             <FileUp className="mt-1 h-5 w-5 text-[var(--primary)]" />
             <div>
-              <p className="font-black text-slate-950">Required Documents Upload</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="font-bold text-slate-950">Required Documents Upload</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
                 Step-wise upload karein. Har document ke liye PDF, JPG ya PNG file supported hai.
               </p>
               <div className="mt-4 grid gap-3">
                 {service.documents.map((document, index) => (
                   <label key={document} className="rounded-2xl border bg-white p-4">
-                    <span className="block text-sm font-black text-slate-950">
+                    <span className="block text-sm font-bold text-slate-950">
                       {String(index + 1).padStart(2, "0")}. {document}
                     </span>
                     <Input
@@ -400,8 +400,8 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
               <IndianRupee className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-500">Fixed Amount</p>
-              <p className="text-2xl font-black text-slate-950">{formatCurrency(service.amount)}</p>
+              <p className="text-sm font-medium text-slate-500">Fixed Amount</p>
+              <p className="text-2xl font-bold text-slate-950">{formatCurrency(service.amount)}</p>
             </div>
           </div>
         </Card>
@@ -409,16 +409,16 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         <Card className="rounded-2xl p-5">
           <div className="flex items-center gap-3">
             <QrCode className="h-5 w-5 text-[var(--primary)]" />
-            <p className="font-black text-slate-950">UPI Payment</p>
+            <p className="font-bold text-slate-950">UPI Payment</p>
           </div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qrUrl} alt="UPI QR" className="mx-auto h-44 w-44 rounded-xl object-contain" />
-            <p className="mt-4 text-sm font-semibold text-slate-500">UPI ID</p>
-            <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{upiId}</p>
+            <p className="mt-4 text-sm font-medium text-slate-500">UPI ID</p>
+            <p className="mt-1 break-all font-mono text-sm font-bold text-slate-950">{upiId}</p>
             <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(service.amount)}</p>
           </div>
-          <p className="mt-4 text-sm font-semibold text-slate-700">Payment karne ke baad UTR number daalein</p>
+          <p className="mt-4 text-sm font-medium text-slate-700">Payment karne ke baad UTR number daalein</p>
           <Input name="utrNumber" placeholder="UTR Number" required className="mt-3 h-12 text-sm" />
           <Input
             name="paymentScreenshot"

@@ -94,7 +94,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Application</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-950">{application.service_name}</h1>
+                <h1 className="mt-2 text-3xl font-bold text-slate-950">{application.service_name}</h1>
                 <p className="mt-2 font-mono text-xs text-slate-500">ID: {application.id}</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -113,7 +113,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
             </div>
 
             <div className="mt-6">
-              <h2 className="text-lg font-black text-slate-950">Submitted Documents</h2>
+              <h2 className="text-lg font-bold text-slate-950">Submitted Documents</h2>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 {application.documents?.length ? (
                   application.documents.map((document) => (
@@ -131,9 +131,9 @@ export default async function CustomerApplicationDetailPage({ params }: { params
 
           <div className="space-y-4">
             <Card className="rounded-2xl p-5">
-              <p className="text-sm font-semibold text-slate-500">Amount</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{formatCurrency(application.amount)}</p>
-              <p className="mt-4 text-sm font-semibold text-slate-500">Submitted</p>
+              <p className="text-sm font-medium text-slate-500">Amount</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">{formatCurrency(application.amount)}</p>
+              <p className="mt-4 text-sm font-medium text-slate-500">Submitted</p>
               <p className="mt-1 text-sm font-bold text-slate-900">{formatDate(application.created_at)}</p>
             </Card>
 

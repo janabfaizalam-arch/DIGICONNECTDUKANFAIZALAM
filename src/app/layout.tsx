@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
 
 import { ToastProvider } from "@/components/providers/toast-provider";
@@ -7,6 +8,18 @@ import { StickyMobileCta } from "@/components/sticky-mobile-cta";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-heading",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-body",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -84,7 +97,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
         <SiteHeader />
         <ToastProvider>{children}</ToastProvider>
         <StickyMobileCta />

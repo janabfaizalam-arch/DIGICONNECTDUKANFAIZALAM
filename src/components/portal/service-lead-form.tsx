@@ -70,7 +70,7 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
         pattern="[0-9]{10}"
         required
       />
-      <Input name="service" value={serviceTitle} readOnly aria-label="Service" className="bg-slate-50 font-semibold" />
+      <Input name="service" value={serviceTitle} readOnly aria-label="Service" className="bg-slate-50 font-medium" />
       <Textarea
         value={form.message}
         onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))}

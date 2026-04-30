@@ -35,13 +35,13 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
             {profile.avatarUrl ? (
               <Image src={profile.avatarUrl} alt={profile.name} width={64} height={64} className="h-16 w-16 rounded-2xl object-cover" unoptimized />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)] text-2xl font-black text-white">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)] text-2xl font-bold text-white">
                 {profile.name.charAt(0).toUpperCase()}
               </div>
             )}
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Dashboard</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950">Namaste, {profile.name}</h1>
+              <h1 className="mt-2 text-3xl font-bold text-slate-950">Namaste, {profile.name}</h1>
               <p className="mt-1 text-sm text-slate-600">{profile.email}</p>
             </div>
           </div>
@@ -53,16 +53,16 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="rounded-2xl p-5">
-            <p className="text-sm font-semibold text-slate-500">Total Applications</p>
-            <p className="mt-2 text-3xl font-black text-slate-950">{applications.length}</p>
+            <p className="text-sm font-medium text-slate-500">Total Applications</p>
+            <p className="mt-2 text-3xl font-bold text-slate-950">{applications.length}</p>
           </Card>
           <Card className="rounded-2xl p-5">
-            <p className="text-sm font-semibold text-slate-500">Pending Work</p>
-            <p className="mt-2 text-3xl font-black text-orange-600">{pending}</p>
+            <p className="text-sm font-medium text-slate-500">Pending Work</p>
+            <p className="mt-2 text-3xl font-bold text-orange-600">{pending}</p>
           </Card>
           <Card className="rounded-2xl p-5">
-            <p className="text-sm font-semibold text-slate-500">Completed</p>
-            <p className="mt-2 text-3xl font-black text-emerald-600">{completed}</p>
+            <p className="text-sm font-medium text-slate-500">Completed</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-600">{completed}</p>
           </Card>
         </div>
 
@@ -70,14 +70,14 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
           <Card className="rounded-2xl p-4 md:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-slate-950">My Applications</h2>
+                <h2 className="text-xl font-bold text-slate-950">My Applications</h2>
                 <p className="mt-1 text-sm text-slate-600">Application status, invoice aur final document yahan milega.</p>
               </div>
             </div>
 
             {applications.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
-                <p className="text-lg font-black text-slate-950">Abhi koi application submit nahi hui.</p>
+                <p className="text-lg font-bold text-slate-950">Abhi koi application submit nahi hui.</p>
                 <p className="mt-2 text-sm text-slate-600">New request start karne ke liye service select karein.</p>
                 <Link href="/services" className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
                   New Application
@@ -93,12 +93,12 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                     <div key={application.id} className="rounded-2xl border bg-white p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                          <p className="font-black text-slate-950">{application.service_name}</p>
+                          <p className="font-bold text-slate-950">{application.service_name}</p>
                           <p className="mt-1 font-mono text-xs text-slate-500">
                             ID: {application.id.slice(0, 8).toUpperCase()} | {formatDate(application.created_at)}
                           </p>
                           <p className="mt-2 text-sm font-bold text-slate-700">{formatCurrency(application.amount)}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                          <p className="mt-1 text-xs font-medium text-slate-500">
                             Uploaded documents: {application.documents?.length ?? 0}
                           </p>
                           {application.documents?.length ? (
@@ -159,7 +159,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
           <Card className="rounded-2xl p-5">
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-[var(--primary)]" />
-              <h2 className="text-lg font-black text-slate-950">Notifications</h2>
+              <h2 className="text-lg font-bold text-slate-950">Notifications</h2>
             </div>
             <div className="mt-4 space-y-3">
               {notifications.length === 0 ? (
@@ -167,8 +167,8 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
               ) : (
                 notifications.map((notification) => (
                   <div key={notification.id} className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-sm font-black text-slate-950">{notification.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{notification.message}</p>
+                    <p className="text-sm font-bold text-slate-950">{notification.title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">{notification.message}</p>
                   </div>
                 ))
               )}

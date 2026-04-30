@@ -97,7 +97,7 @@ export function LeadForm() {
         placeholder="Message"
         name="message"
       />
-      <p className="text-sm font-medium leading-6 text-slate-600">
+      <p className="text-sm font-medium leading-relaxed text-slate-600">
         Form submit karne ke baad team aapse jaldi contact karegi.
       </p>
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isPending}>

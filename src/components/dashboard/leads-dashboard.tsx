@@ -88,8 +88,8 @@ function StatCard({
       <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", toneClass)}>
         {tone === "green" ? <CheckCircle2 className="h-5 w-5" /> : <UsersRound className="h-5 w-5" />}
       </div>
-      <p className="mt-4 text-sm font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
+      <p className="mt-4 text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
     </Card>
   );
 }
@@ -200,7 +200,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">
               DigiConnect Dukan
             </p>
-            <h1 className="mt-3 text-3xl font-black text-slate-950 md:text-5xl">Customer Leads Dashboard</h1>
+            <h1 className="mt-3 text-3xl font-bold text-slate-950 md:text-5xl">Customer Leads Dashboard</h1>
             <p className="mt-3 text-base font-medium text-slate-600">Sabhi customer requests yahan track karein</p>
           </div>
           <div className="rounded-2xl border bg-white px-4 py-3 shadow-soft">
@@ -246,12 +246,12 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
 
           {leads.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed bg-blue-50/50 p-8 text-center">
-              <p className="text-lg font-black text-slate-950">Abhi koi lead nahi hai</p>
+              <p className="text-lg font-bold text-slate-950">Abhi koi lead nahi hai</p>
               <p className="mt-2 text-sm text-slate-600">Website form se new requests yahan automatically dikhengi.</p>
             </div>
           ) : visibleLeads.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed bg-orange-50/60 p-8 text-center">
-              <p className="text-lg font-black text-slate-950">No matching leads</p>
+              <p className="text-lg font-bold text-slate-950">No matching leads</p>
               <p className="mt-2 text-sm text-slate-600">Filter ya mobile search thoda adjust karke dekhein.</p>
             </div>
           ) : (
@@ -316,7 +316,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                               </Select>
                               <a
                                 href={`tel:${lead.mobile}`}
-                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-medium text-slate-900 transition hover:bg-slate-50"
                               >
                                 <Phone className="h-4 w-4" />
                                 Call
@@ -325,7 +325,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                                 href={`https://wa.me/${whatsappMobile}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700"
                               >
                                 <Send className="h-4 w-4" />
                                 WhatsApp
@@ -348,14 +348,14 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                     <div key={lead.id} className="rounded-2xl border bg-white p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-black text-slate-950">{lead.name}</p>
+                          <p className="font-bold text-slate-950">{lead.name}</p>
                           <p className="mt-1 font-mono text-sm text-slate-600">{lead.mobile}</p>
                         </div>
                         <span className={cn("shrink-0 rounded-full px-3 py-1 text-xs font-bold ring-1", statusClasses[lead.status])}>
                           {statusLabels[lead.status]}
                         </span>
                       </div>
-                      <p className="mt-3 text-sm font-semibold text-slate-700">{lead.service}</p>
+                      <p className="mt-3 text-sm font-medium text-slate-700">{lead.service}</p>
                       <p className="mt-2 font-mono text-xs text-slate-500">{formatLeadDate(lead.created_at)}</p>
                       <div className="mt-4 grid grid-cols-2 gap-2">
                         <Button
@@ -380,7 +380,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                         </Select>
                         <a
                           href={`tel:${lead.mobile}`}
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-semibold text-slate-900"
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-medium text-slate-900"
                         >
                           <Phone className="h-4 w-4" />
                           Call
@@ -389,7 +389,7 @@ export function LeadsDashboard({ initialLeads, name, email }: LeadsDashboardProp
                           href={`https://wa.me/${whatsappMobile}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-semibold text-white"
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-medium text-white"
                         >
                           <Send className="h-4 w-4" />
                           WhatsApp

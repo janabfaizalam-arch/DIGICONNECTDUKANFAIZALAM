@@ -75,7 +75,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Admin Panel</p>
-          <h1 className="mt-3 text-3xl font-black text-slate-950 md:text-5xl">Applications Control Room</h1>
+          <h1 className="mt-3 text-3xl font-bold text-slate-950 md:text-5xl">Applications Control Room</h1>
           <p className="mt-3 text-slate-600">
             Customer applications, uploaded documents, payment proof aur public leads yahan latest first dikhte hain.
           </p>
@@ -83,16 +83,16 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="rounded-2xl p-5">
-            <p className="text-sm font-semibold text-slate-500">Total Records</p>
-            <p className="mt-2 text-3xl font-black text-slate-950">{rows.length}</p>
+            <p className="text-sm font-medium text-slate-500">Total Records</p>
+            <p className="mt-2 text-3xl font-bold text-slate-950">{rows.length}</p>
           </Card>
           <Card className="rounded-2xl p-5">
-            <p className="text-sm font-semibold text-slate-500">Applications</p>
-            <p className="mt-2 text-3xl font-black text-blue-700">{applicationCount}</p>
+            <p className="text-sm font-medium text-slate-500">Applications</p>
+            <p className="mt-2 text-3xl font-bold text-blue-700">{applicationCount}</p>
           </Card>
           <Card className="rounded-2xl p-5">
-            <p className="text-sm font-semibold text-slate-500">With Files</p>
-            <p className="mt-2 text-3xl font-black text-emerald-600">{withFilesCount}</p>
+            <p className="text-sm font-medium text-slate-500">With Files</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-600">{withFilesCount}</p>
           </Card>
         </div>
 
@@ -100,7 +100,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
           {rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed bg-blue-50/60 p-8 text-center">
               <ShieldCheck className="mx-auto h-8 w-8 text-[var(--primary)]" />
-              <p className="mt-3 text-lg font-black text-slate-950">No applications yet</p>
+              <p className="mt-3 text-lg font-bold text-slate-950">No applications yet</p>
             </div>
           ) : (
             <>
@@ -129,12 +129,12 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                         <TableRow key={row.id}>
                           <TableCell className="font-bold text-slate-950">{row.customer_name}</TableCell>
                           <TableCell className="font-mono text-sm text-slate-700">{row.mobile || "-"}</TableCell>
-                          <TableCell className="font-semibold text-slate-700">{row.service}</TableCell>
+                          <TableCell className="font-medium text-slate-700">{row.service}</TableCell>
                           <TableCell className="max-w-[240px] text-sm text-slate-600">{row.message || "-"}</TableCell>
                           <TableCell>
                             <FileLinks row={row} />
                           </TableCell>
-                          <TableCell className="max-w-[160px] break-all text-xs font-semibold text-slate-500">
+                          <TableCell className="max-w-[160px] break-all text-xs font-medium text-slate-500">
                             {firstFile?.file_type || "-"}
                           </TableCell>
                           <TableCell>
@@ -174,13 +174,13 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[] }) {
                   <div key={row.id} className="rounded-2xl border bg-white p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-black text-slate-950">{row.customer_name}</p>
+                        <p className="font-bold text-slate-950">{row.customer_name}</p>
                         <p className="mt-1 font-mono text-sm text-slate-600">{row.mobile || "-"}</p>
                       </div>
                       <StatusPill status={row.application_status} />
                     </div>
                     <p className="mt-3 text-sm font-bold text-slate-800">{row.service}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{row.message || "-"}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">{row.message || "-"}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <StatusPill status={row.payment_status} />
                       <StatusPill status={row.invoice_status} />

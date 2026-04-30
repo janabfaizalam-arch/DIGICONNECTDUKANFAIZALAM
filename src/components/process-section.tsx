@@ -17,7 +17,7 @@ export function ProcessSection() {
                 0{index + 1}
               </div>
               <p className="mt-5 text-xl font-bold text-slate-900">{step.title}</p>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{step.description}</p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{step.description}</p>
             </div>
           ))}
         </div>

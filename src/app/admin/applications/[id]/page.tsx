@@ -98,7 +98,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Admin Application</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-950">{application.service_name}</h1>
+                <h1 className="mt-2 text-3xl font-bold text-slate-950">{application.service_name}</h1>
                 <p className="mt-2 font-mono text-xs text-slate-500">ID: {application.id}</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -110,20 +110,20 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <div className="mt-6 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Customer</p>
-                <p className="mt-1 font-black text-slate-950">{displayValue(formData.name) || "Customer"}</p>
+                <p className="mt-1 font-bold text-slate-950">{displayValue(formData.name) || "Customer"}</p>
                 <p className="mt-1 text-sm text-slate-600">{displayValue(formData.email)}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Mobile</p>
-                <p className="mt-1 font-mono font-black text-slate-950">{customerMobile || "Not provided"}</p>
+                <p className="mt-1 font-mono font-bold text-slate-950">{customerMobile || "Not provided"}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Amount</p>
-                <p className="mt-1 font-black text-slate-950">{formatCurrency(application.amount)}</p>
+                <p className="mt-1 font-bold text-slate-950">{formatCurrency(application.amount)}</p>
               </div>
             </div>
 
-            <h2 className="mt-6 text-lg font-black text-slate-950">Form Details</h2>
+            <h2 className="mt-6 text-lg font-bold text-slate-950">Form Details</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {Object.entries(formData).map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 p-4">
@@ -133,7 +133,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               ))}
             </div>
 
-            <h2 className="mt-6 text-lg font-black text-slate-950">Uploaded Documents</h2>
+            <h2 className="mt-6 text-lg font-bold text-slate-950">Uploaded Documents</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {application.documents?.length ? (
                 application.documents.map((document) => (
@@ -149,7 +149,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
             {payment ? (
               <>
-                <h2 className="mt-6 text-lg font-black text-slate-950">Payment Proof</h2>
+                <h2 className="mt-6 text-lg font-bold text-slate-950">Payment Proof</h2>
                 <div className="mt-3 rounded-2xl bg-slate-50 p-4">
                   <p className="text-sm font-bold text-slate-700">UTR: {payment.utr_number ?? "Not provided"}</p>
                   <p className="mt-1 text-sm text-slate-600">Submitted: {formatDate(payment.created_at)}</p>
@@ -166,7 +166,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
           <div className="space-y-4">
             <Card className="rounded-2xl p-5">
-              <h2 className="text-lg font-black text-slate-950">Update Work</h2>
+              <h2 className="text-lg font-bold text-slate-950">Update Work</h2>
               <div className="mt-4">
                 <AdminUpdateForm
                   applicationId={application.id}
@@ -179,12 +179,12 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             </Card>
 
             <Card className="rounded-2xl p-5">
-              <h2 className="text-lg font-black text-slate-950">Admin Notes</h2>
+              <h2 className="text-lg font-bold text-slate-950">Admin Notes</h2>
               <div className="mt-4 space-y-3">
                 {application.admin_notes?.length ? (
                   application.admin_notes.map((note) => (
                     <div key={note.id} className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm leading-6 text-slate-700">{note.note}</p>
+                      <p className="text-sm leading-relaxed text-slate-700">{note.note}</p>
                       {note.assigned_to ? <p className="mt-2 text-xs font-bold text-slate-500">Assigned: {note.assigned_to}</p> : null}
                     </div>
                   ))

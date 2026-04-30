@@ -58,9 +58,9 @@ export function LoginCard() {
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--primary)] text-white">
         <ShieldCheck className="h-7 w-7" />
       </div>
-      <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Secure Login</p>
-      <h1 className="mt-3 text-3xl font-black text-slate-950">Continue with Google</h1>
-      <p className="mt-4 text-base leading-8 text-slate-600">Google se login karein aur apni service track karein</p>
+      <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Secure Login</p>
+      <h1 className="mt-3 text-3xl font-bold text-slate-950">Continue with Google</h1>
+      <p className="mt-4 text-base leading-relaxed text-slate-600">Google se login karein aur apni service track karein</p>
       <p className="mt-1 text-sm text-slate-500">Fast, secure aur easy login</p>
 
       <Button

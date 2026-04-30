@@ -66,8 +66,8 @@ export function DashboardShell({ name, email, avatarUrl }: DashboardShellProps) 
               </div>
             )}
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Dashboard</p>
-              <h1 className="mt-2 text-3xl font-black text-slate-950">Welcome, {name}</h1>
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Dashboard</p>
+              <h1 className="mt-2 text-3xl font-bold text-slate-950">Welcome, {name}</h1>
               <p className="mt-2 text-slate-600">Aapka account secure hai aur session active hai.</p>
             </div>
           </div>
@@ -79,17 +79,17 @@ export function DashboardShell({ name, email, avatarUrl }: DashboardShellProps) 
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           <div className="rounded-[1.5rem] bg-[var(--muted)] p-5">
-            <p className="text-sm font-semibold text-slate-500">User Name</p>
+            <p className="text-sm font-medium text-slate-500">User Name</p>
             <p className="mt-2 text-lg font-bold text-slate-950">{name}</p>
           </div>
           <div className="rounded-[1.5rem] bg-white p-5 shadow-soft">
-            <p className="text-sm font-semibold text-slate-500">Email</p>
+            <p className="text-sm font-medium text-slate-500">Email</p>
             <p className="mt-2 break-all text-lg font-bold text-slate-950">{email}</p>
           </div>
           <div className="rounded-[1.5rem] bg-[var(--accent)] p-5">
             <div className="flex items-center gap-2 text-[var(--accent-foreground)]">
               <ShieldCheck className="h-5 w-5" />
-              <p className="text-sm font-semibold">Session Status</p>
+              <p className="text-sm font-medium">Session Status</p>
             </div>
             <p className="mt-2 text-lg font-bold text-slate-950">Authenticated</p>
           </div>

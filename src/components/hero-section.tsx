@@ -9,21 +9,21 @@ export function HeroSection() {
     <section className="overflow-hidden pb-12 pt-6 md:pb-20 md:pt-14">
       <div className="container-shell grid items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
-          <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-2 text-xs font-semibold text-[var(--primary)] shadow-soft sm:px-4 sm:text-sm">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-2 text-xs font-medium text-[var(--primary)] shadow-soft sm:px-4 sm:text-sm">
             <MapPin className="h-4 w-4" />
             <span className="truncate">Orai, Jalaun aur nearby areas ke liye trusted service center</span>
           </div>
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--secondary)] sm:text-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--secondary)] sm:text-sm">
               Same Day Service Available
             </p>
-            <h1 className="max-w-3xl text-3xl font-black leading-tight text-slate-950 sm:text-4xl md:text-6xl">
+            <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl md:text-5xl">
               All Digital &amp; Government Services in Orai &amp; Jalaun
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-slate-600 md:text-lg md:leading-8">
+            <p className="max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg md:leading-relaxed">
               PAN Card, Aadhaar Update, Voter ID, Passport, GST - sab kuch ek hi trusted local desk par.
             </p>
-            <p className="max-w-2xl text-sm font-semibold text-gray-600 md:text-lg">
+            <p className="max-w-2xl text-sm font-medium text-gray-600 md:text-lg">
               Connecting People, Empowering Digital India
             </p>
           </div>
@@ -40,17 +40,17 @@ export function HeroSection() {
           <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
             <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
               <BadgeCheck className="mb-3 h-5 w-5 text-[var(--secondary)]" />
-              <p className="font-semibold text-slate-900">Same Day Service Available</p>
+              <p className="font-medium text-slate-900">Same Day Service Available</p>
               <p className="mt-1 text-xs leading-5">Quick start for urgent services.</p>
             </div>
             <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
               <Shield className="mb-3 h-5 w-5 text-[var(--primary)]" />
-              <p className="font-semibold text-slate-900">Secure Handling</p>
+              <p className="font-medium text-slate-900">Secure Handling</p>
               <p className="mt-1 text-xs leading-5">Documents handled carefully.</p>
             </div>
             <div className="rounded-2xl border bg-white/85 p-4 shadow-soft">
               <PhoneCall className="mb-3 h-5 w-5 text-[var(--secondary)]" />
-              <p className="font-semibold text-slate-900">Call/WhatsApp Support</p>
+              <p className="font-medium text-slate-900">Call/WhatsApp Support</p>
               <p className="mt-1 text-xs leading-5">Help before and after apply.</p>
             </div>
           </div>
@@ -62,23 +62,23 @@ export function HeroSection() {
             <div className="rounded-[1.75rem] bg-slate-950 p-6 text-white">
               <p className="text-sm font-medium text-white/70">DigiConnect Dukan</p>
               <h2 className="mt-3 text-2xl font-bold">Trusted digital seva portal for local customers</h2>
-              <p className="mt-3 text-sm leading-7 text-white/75">
+              <p className="mt-3 text-sm leading-relaxed text-white/75">
                 Aadhaar se GST tak, documents, forms aur registrations ke liye ek professional support desk.
               </p>
             </div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-3xl bg-[var(--accent)] p-5">
-                <p className="text-sm font-semibold text-[var(--accent-foreground)]">Coverage Area</p>
+                <p className="text-sm font-medium text-[var(--accent-foreground)]">Coverage Area</p>
                 <p className="mt-2 text-lg font-bold text-slate-950">Orai, Jalaun & nearby towns</p>
               </div>
               <div className="rounded-3xl bg-[var(--muted)] p-5">
-                <p className="text-sm font-semibold text-slate-600">Support Window</p>
+                <p className="text-sm font-medium text-slate-600">Support Window</p>
                 <p className="mt-2 text-lg font-bold text-slate-950">Call, visit, or WhatsApp anytime</p>
               </div>
             </div>
             <div className="mt-6 rounded-3xl border border-dashed border-[var(--secondary)]/40 bg-white p-5">
-              <p className="text-sm font-semibold text-slate-900">Documents ready nahi hain?</p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
+              <p className="text-sm font-medium text-slate-900">Documents ready nahi hain?</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 Team aapko exact document guidance degi, taaki form reject na ho aur process smoothly complete ho.
               </p>
             </div>

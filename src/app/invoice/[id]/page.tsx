@@ -72,7 +72,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               </div>
             </div>
             <div className="text-left md:text-right">
-              <p className="font-mono text-sm font-black text-slate-950">{invoice.invoice_number}</p>
+              <p className="font-mono text-sm font-bold text-slate-950">{invoice.invoice_number}</p>
               <p className="mt-1 text-sm text-slate-600">{formatDate(invoice.created_at)}</p>
             </div>
           </div>
@@ -80,22 +80,22 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <div className="grid gap-6 border-b py-6 md:grid-cols-2">
             <div>
               <p className="text-xs font-bold uppercase text-slate-500">Bill To</p>
-              <p className="mt-2 font-black text-slate-950">{invoice.customer_name}</p>
+              <p className="mt-2 font-bold text-slate-950">{invoice.customer_name}</p>
               <p className="mt-1 text-sm text-slate-600">{invoice.customer_email}</p>
             </div>
             <div>
               <p className="text-xs font-bold uppercase text-slate-500">Payment Status</p>
-              <p className="mt-2 font-black text-slate-950">{paymentStatusLabels[invoice.payment_status]}</p>
+              <p className="mt-2 font-bold text-slate-950">{paymentStatusLabels[invoice.payment_status]}</p>
             </div>
           </div>
 
           <div className="py-6">
             <div className="grid grid-cols-[1fr_auto] gap-4 rounded-2xl bg-slate-50 p-4">
               <div>
-                <p className="font-black text-slate-950">{invoice.service_name}</p>
+                <p className="font-bold text-slate-950">{invoice.service_name}</p>
                 <p className="mt-1 text-sm text-slate-600">Digital service application support</p>
               </div>
-              <p className="font-black text-slate-950">{formatCurrency(invoice.amount)}</p>
+              <p className="font-bold text-slate-950">{formatCurrency(invoice.amount)}</p>
             </div>
           </div>
 
@@ -105,7 +105,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 <span>Subtotal</span>
                 <span>{formatCurrency(invoice.amount)}</span>
               </div>
-              <div className="mt-3 flex justify-between text-xl font-black text-slate-950">
+              <div className="mt-3 flex justify-between text-xl font-bold text-slate-950">
                 <span>Total</span>
                 <span>{formatCurrency(invoice.amount)}</span>
               </div>

@@ -37,7 +37,7 @@ export function RatingForm({ applicationId, existingRating }: { applicationId: s
 
   return (
     <div className="rounded-2xl border bg-white p-4">
-      <p className="font-black text-slate-950">Service rating dein</p>
+      <p className="font-bold text-slate-950">Service rating dein</p>
       <div className="mt-3 flex gap-1">
         {[1, 2, 3, 4, 5].map((item) => (
           <button key={item} type="button" onClick={() => setRating(item)} className="rounded-full p-1">

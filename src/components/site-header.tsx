@@ -52,7 +52,7 @@ export async function SiteHeader() {
             <span className="sr-only">Open navigation menu</span>
           </summary>
           <div className="absolute right-0 top-14 w-72 rounded-2xl border bg-white p-3 shadow-soft">
-            <nav className="grid gap-1 text-sm font-semibold text-slate-700">
+            <nav className="grid gap-1 text-sm font-medium text-slate-700">
               {navLinks.map((link) => (
                 <Link key={link.label} href={link.href} className="rounded-xl px-4 py-3 hover:bg-[var(--muted)] hover:text-[var(--primary)]">
                   {link.label}

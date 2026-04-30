@@ -25,7 +25,7 @@ export function ServicesSection() {
                 <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-[var(--secondary)]" />
               </div>
               <h3 className="mt-5 text-base font-bold text-slate-900 md:text-lg">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 Document guidance, online form support aur team follow-up.
               </p>
               <Link href={`/apply/${slug}`} className={buttonVariants({ size: "default", className: "mt-5 w-full" })}>
