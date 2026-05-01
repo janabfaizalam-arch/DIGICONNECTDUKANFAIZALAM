@@ -20,9 +20,9 @@ const navLinks = [
   { href: "/#contact", label: "Contact" },
 ];
 
-type AppRole = "super_admin" | "admin" | "agent" | "customer";
+type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
 
-const roleValues = ["super_admin", "admin", "agent", "customer"];
+const roleValues = ["super_admin", "admin", "agent", "staff", "customer"];
 
 function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
@@ -87,6 +87,10 @@ function getPanelConfig(role: AppRole | null) {
     return { href: "/agent", label: "Agent Panel" };
   }
 
+  if (role === "staff") {
+    return { href: "/staff/dashboard", label: "Staff Dashboard" };
+  }
+
   if (role === "customer") {
     return { href: "/customer/dashboard", label: "Dashboard" };
   }
@@ -102,6 +106,10 @@ function isCustomerShellPath(pathname: string) {
   );
 }
 
+function isStaffShellPath(pathname: string) {
+  return pathname === "/staff/dashboard" || pathname.startsWith("/staff/");
+}
+
 export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
@@ -109,7 +117,11 @@ export function SiteHeader() {
   const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
   const customerShell = isCustomerShellPath(pathname);
-  const logoHref = role === "customer" || customerShell ? "/customer/dashboard" : "/";
+  const staffShell = isStaffShellPath(pathname);
+  const logoHref = role === "staff" || staffShell ? "/staff/dashboard" : role === "customer" || customerShell ? "/customer/dashboard" : "/";
+  const appShell = customerShell || staffShell;
+  const appShellLabel = staffShell ? "Staff Dashboard" : "Customer Dashboard";
+  const appShellHref = staffShell ? "/staff/dashboard" : "/customer/dashboard";
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -166,10 +178,10 @@ export function SiteHeader() {
             className="max-h-10 w-auto object-contain sm:h-9 lg:h-11"
           />
         </Link>
-        {customerShell ? (
+        {appShell ? (
           <div className="hidden flex-1 items-center justify-center md:flex">
             <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-[var(--primary)]">
-              Customer Dashboard
+              {appShellLabel}
             </span>
           </div>
         ) : (
@@ -182,11 +194,11 @@ export function SiteHeader() {
           </nav>
         )}
         <div className="hidden items-center gap-3 md:flex">
-          {customerShell ? (
+          {appShell ? (
             <>
-              <Link href="/customer/dashboard" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
+              <Link href={appShellHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
                 <LayoutDashboard className="h-4 w-4" />
-                Dashboard
+                {staffShell ? "Staff Dashboard" : "Dashboard"}
               </Link>
               {user ? <LogoutButton className="h-11" /> : null}
             </>
@@ -213,11 +225,11 @@ export function SiteHeader() {
             </>
           )}
         </div>
-        {customerShell ? (
+        {appShell ? (
           <div className="flex items-center gap-2 md:hidden">
-            <Link href="/customer/dashboard" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white">
+            <Link href={appShellHref} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white">
               <LayoutDashboard className="h-4 w-4" />
-              Dashboard
+              {staffShell ? "Staff" : "Dashboard"}
             </Link>
             {user ? <LogoutButton className="h-10 px-3 text-xs" /> : null}
           </div>

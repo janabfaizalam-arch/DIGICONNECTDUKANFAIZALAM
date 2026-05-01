@@ -93,7 +93,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                   const payment = application.payments?.[0];
                   const invoice = application.invoices?.[0];
                   const latestNotification = notifications.find((notification) => notification.application_id === application.id);
-                  const adminMessage = application.internal_notes || latestNotification?.message || "No admin message yet.";
+                  const adminMessage = application.customer_message || latestNotification?.message || "No admin message yet.";
                   const paymentStatus = payment?.status ?? application.payment_status ?? "pending";
 
                   return (

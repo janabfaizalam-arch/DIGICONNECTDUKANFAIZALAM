@@ -155,6 +155,7 @@ export type Application = {
   customer_id?: string | null;
   created_by?: string | null;
   assigned_agent_id?: string | null;
+  assigned_staff_id?: string | null;
   service_id?: string | null;
   source?: "online" | "offline" | "agent_pos";
   service_slug: string;
@@ -166,6 +167,8 @@ export type Application = {
   final_document_name: string | null;
   assigned_to: string | null;
   internal_notes: string | null;
+  staff_note?: string | null;
+  customer_message?: string | null;
   payment_status?: PaymentStatus;
   payment_screenshot_url?: string | null;
   payment_screenshot_path?: string | null;

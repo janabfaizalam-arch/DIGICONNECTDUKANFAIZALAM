@@ -32,7 +32,7 @@ export function isAdminUser(user: User | null) {
   return role === "super_admin" || role === "admin" || adminEmails.includes(email);
 }
 
-export type AppRole = "super_admin" | "admin" | "agent" | "customer";
+export type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
 
 export function isAdminRole(role: AppRole | string | null | undefined) {
   return role === "super_admin" || role === "admin";
@@ -44,6 +44,10 @@ export function isAgentRole(role: AppRole | string | null | undefined) {
 
 export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
   return role === "agent";
+}
+
+export function isStaffRole(role: AppRole | string | null | undefined) {
+  return role === "staff";
 }
 
 export function isCustomerRole(role: AppRole | string | null | undefined) {
@@ -58,7 +62,7 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   const supabaseAdmin = getSupabaseAdmin();
   const metadataRole = String(user.user_metadata.role ?? "").toLowerCase();
 
-  if (metadataRole === "super_admin" || metadataRole === "admin" || metadataRole === "agent") {
+  if (metadataRole === "super_admin" || metadataRole === "admin" || metadataRole === "agent" || metadataRole === "staff") {
     return metadataRole as AppRole;
   }
 
@@ -72,14 +76,18 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
 
   const { data: profile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
 
-  if (profile?.role && ["super_admin", "admin", "agent", "customer"].includes(String(profile.role))) {
-    return profile.role as AppRole;
+  const profileRole = String(profile?.role ?? "");
+
+  if (["super_admin", "admin", "agent", "staff", "customer"].includes(profileRole)) {
+    return profileRole as AppRole;
   }
 
   const { data: portalUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
 
-  if (portalUser?.role && ["super_admin", "admin", "agent", "customer"].includes(String(portalUser.role))) {
-    return portalUser.role as AppRole;
+  const portalRole = String(portalUser?.role ?? "");
+
+  if (["super_admin", "admin", "agent", "staff", "customer"].includes(portalRole)) {
+    return portalRole as AppRole;
   }
 
   return "customer";
@@ -92,6 +100,10 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
 
   if (role === "agent") {
     return "/agent";
+  }
+
+  if (role === "staff") {
+    return "/staff/dashboard";
   }
 
   return getCustomerHome();

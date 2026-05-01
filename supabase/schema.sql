@@ -49,7 +49,7 @@ create table if not exists public.users (
   full_name text default '',
   email text not null,
   avatar_url text default '',
-  role text not null default 'customer' check (role in ('customer', 'admin')),
+  role text not null default 'customer' check (role in ('super_admin', 'admin', 'agent', 'staff', 'customer')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -77,6 +77,9 @@ create table if not exists public.applications (
   final_document_url text,
   final_document_name text,
   assigned_to text,
+  assigned_staff_id uuid references auth.users (id) on delete set null,
+  staff_note text,
+  customer_message text,
   internal_notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -84,6 +87,7 @@ create table if not exists public.applications (
 
 create index if not exists applications_user_id_idx on public.applications (user_id, created_at desc);
 create index if not exists applications_status_idx on public.applications (status);
+create index if not exists applications_assigned_staff_idx on public.applications (assigned_staff_id, created_at desc);
 
 create table if not exists public.application_documents (
   id uuid primary key default gen_random_uuid(),

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Headset, ShieldCheck, UserRound } from "lucide-react";
+import { Headset, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, getRoleHome } from "@/lib/auth";
@@ -17,6 +17,12 @@ const loginOptions = [
     description: "Track leads, customers, and commissions.",
     href: "/agent-login",
     icon: Headset,
+  },
+  {
+    title: "Staff Login",
+    description: "Manage assigned applications and updates.",
+    href: "/login/staff",
+    icon: UsersRound,
   },
   {
     title: "Customer Login",

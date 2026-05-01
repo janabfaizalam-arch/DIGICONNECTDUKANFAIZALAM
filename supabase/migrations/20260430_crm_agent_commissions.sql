@@ -6,7 +6,7 @@ create extension if not exists pgcrypto;
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'app_role') then
-    create type public.app_role as enum ('super_admin', 'admin', 'agent', 'customer');
+    create type public.app_role as enum ('super_admin', 'admin', 'agent', 'staff', 'customer');
   end if;
   if not exists (select 1 from pg_type where typname = 'application_source') then
     create type public.application_source as enum ('online', 'offline', 'agent_pos');
@@ -35,7 +35,7 @@ do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'users_role_check') then
     alter table public.users
-      add constraint users_role_check check (role in ('super_admin', 'admin', 'agent', 'customer'));
+      add constraint users_role_check check (role in ('super_admin', 'admin', 'agent', 'staff', 'customer'));
   end if;
 end
 $$;

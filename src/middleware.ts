@@ -3,10 +3,12 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseUrl } from "@/lib/supabase/config";
 
-const protectedRoutes = ["/dashboard", "/admin", "/agent", "/apply"];
-const authRoutes = ["/login", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
+const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/staff", "/apply"];
+const authRoutes = ["/login", "/login/customer", "/login/staff", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
 
-type AppRole = "super_admin" | "admin" | "agent" | "customer";
+type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
+
+const appRoles = ["super_admin", "admin", "agent", "staff", "customer"];
 
 function matchesRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
@@ -21,7 +23,11 @@ function getRoleHome(role: AppRole) {
     return "/agent";
   }
 
-  return "/dashboard";
+  if (role === "staff") {
+    return "/staff/dashboard";
+  }
+
+  return "/customer/dashboard";
 }
 
 function isAllowedForPath(pathname: string, role: AppRole) {
@@ -33,7 +39,11 @@ function isAllowedForPath(pathname: string, role: AppRole) {
     return role === "agent";
   }
 
-  if (matchesRoute(pathname, "/dashboard")) {
+  if (matchesRoute(pathname, "/staff")) {
+    return role === "staff";
+  }
+
+  if (matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer")) {
     return role === "customer";
   }
 
@@ -55,7 +65,7 @@ export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
     if (isProtectedRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
       return NextResponse.redirect(url);
     }
 
@@ -83,13 +93,13 @@ export async function middleware(request: NextRequest) {
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
     return NextResponse.redirect(url);
   }
 
   let role = String(user?.user_metadata.role ?? "").toLowerCase() as AppRole;
 
-  if (user && !["super_admin", "admin", "agent", "customer"].includes(role)) {
+  if (user && !appRoles.includes(role)) {
     const adminEmails = (process.env.ADMIN_EMAILS ?? process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
       .split(",")
       .map((email) => email.trim().toLowerCase())
@@ -104,14 +114,20 @@ export async function middleware(request: NextRequest) {
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
       const profileRole = String(profile?.role ?? "").toLowerCase();
 
-      if (["super_admin", "admin", "agent", "customer"].includes(profileRole)) {
+      if (appRoles.includes(profileRole)) {
         role = profileRole as AppRole;
       } else {
         const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
         const portalRole = String(portalUser?.role ?? "").toLowerCase();
-        role = ["super_admin", "admin", "agent", "customer"].includes(portalRole) ? (portalRole as AppRole) : "customer";
+        role = appRoles.includes(portalRole) ? (portalRole as AppRole) : "customer";
       }
     }
+  }
+
+  if (user && matchesRoute(pathname, "/login/staff")) {
+    const url = request.nextUrl.clone();
+    url.pathname = role === "staff" ? "/staff/dashboard" : "/unauthorized";
+    return NextResponse.redirect(url);
   }
 
   if (user && isAuthRoute) {
@@ -122,7 +138,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isProtectedRoute && !isAllowedForPath(pathname, role)) {
     const url = request.nextUrl.clone();
-    url.pathname = getRoleHome(role);
+    url.pathname = matchesRoute(pathname, "/staff") ? "/unauthorized" : getRoleHome(role);
     return NextResponse.redirect(url);
   }
 
