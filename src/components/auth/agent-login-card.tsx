@@ -33,22 +33,24 @@ export function AgentLoginCard() {
         throw error;
       }
 
-      const user = data.user;
-      let role = String(user?.user_metadata.role ?? "").toLowerCase();
-      let active = true;
+      const accessResponse = await fetch("/api/auth/agent-access", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const access = (await accessResponse.json()) as {
+        ok?: boolean;
+        reason?: string;
+        role?: string | null;
+        message?: string;
+      };
 
-      if (user && role !== "agent") {
-        const { data: profile } = await supabase.from("profiles").select("role, active, is_active").eq("id", user.id).maybeSingle();
-        role = String(profile?.role ?? "").toLowerCase();
-        active = profile?.active !== false && profile?.is_active !== false;
-      }
-
-      if (user && role !== "agent") {
-        const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
-        role = String(portalUser?.role ?? "").toLowerCase();
-      }
-
-      if (role !== "agent" || !active) {
+      if (!accessResponse.ok || !access.ok) {
+        console.error("[agent-login] Agent access denied.", {
+          userId: data.user?.id,
+          reason: access.reason,
+          role: access.role,
+          message: access.message,
+        });
         await supabase.auth.signOut();
         window.location.assign("/unauthorized");
         return;

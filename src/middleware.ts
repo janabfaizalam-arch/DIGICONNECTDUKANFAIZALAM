@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabaseUrl } from "@/lib/supabase/config";
 
 const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/staff", "/apply"];
-const authRoutes = ["/login", "/login/customer", "/login/staff", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
+const authRoutes = ["/login", "/login/agent", "/login/customer", "/login/staff", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
 
 type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
 
@@ -127,8 +127,29 @@ export async function middleware(request: NextRequest) {
   let isAgentActive = true;
 
   if (user && role === "agent") {
-    const { data: profile } = await supabase.from("profiles").select("active, is_active").eq("id", user.id).maybeSingle();
-    isAgentActive = profile?.active !== false && profile?.is_active !== false;
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("role, active, is_active").eq("id", user.id).maybeSingle();
+
+    if (profileError) {
+      console.error("[middleware:agent-auth] Profile lookup failed.", { userId: user.id, error: profileError.message });
+    }
+
+    if (!profile) {
+      console.error("[middleware:agent-auth] Agent profile missing.", { userId: user.id });
+      isAgentActive = false;
+    } else if (String(profile.role ?? "").toLowerCase() !== "agent") {
+      console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: profile.role });
+      isAgentActive = false;
+    } else {
+      isAgentActive = profile.active !== false && profile.is_active !== false;
+
+      if (!isAgentActive) {
+        console.error("[middleware:agent-auth] Agent profile inactive.", {
+          userId: user.id,
+          active: profile.active,
+          isActive: profile.is_active,
+        });
+      }
+    }
   }
 
   if (user && matchesRoute(pathname, "/login/agent")) {

@@ -46,34 +46,68 @@ export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
   return role === "agent";
 }
 
-export async function isActiveAgent(user: User | null) {
+export type AgentAccessResult =
+  | { ok: true; reason: "active_agent" }
+  | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "missing_server_config"; role?: AppRole | string | null };
+
+export async function getAgentAccessStatus(user: User | null): Promise<AgentAccessResult> {
   if (!user) {
-    return false;
+    console.error("[agent-auth] Missing authenticated user.");
+    return { ok: false, reason: "missing_user" };
   }
 
   const role = await getCurrentUserRole(user);
 
   if (!isOnlyAgentRole(role)) {
-    return false;
+    console.error("[agent-auth] User is not an agent.", { userId: user.id, role });
+    return { ok: false, reason: "wrong_role", role };
   }
 
   const supabaseAdmin = getSupabaseAdmin();
 
   if (!supabaseAdmin) {
-    return true;
+    console.error("[agent-auth] Missing Supabase service role configuration.");
+    return { ok: false, reason: "missing_server_config", role };
   }
 
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("active, is_active")
+    .select("id, role, active, is_active")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile) {
-    return true;
+  if (error) {
+    console.error("[agent-auth] Agent profile lookup failed.", { userId: user.id, error: error.message });
   }
 
-  return profile.active !== false && profile.is_active !== false;
+  if (!profile) {
+    console.error("[agent-auth] Agent profile is missing.", { userId: user.id });
+    return { ok: false, reason: "missing_profile", role };
+  }
+
+  const profileRole = String(profile.role ?? "").toLowerCase();
+
+  if (profileRole !== "agent") {
+    console.error("[agent-auth] Agent profile has wrong role.", { userId: user.id, profileRole });
+    return { ok: false, reason: "wrong_role", role: profileRole };
+  }
+
+  if (profile.active === false || profile.is_active === false) {
+    console.error("[agent-auth] Agent profile is inactive.", {
+      userId: user.id,
+      active: profile.active,
+      isActive: profile.is_active,
+    });
+    return { ok: false, reason: "inactive_profile", role };
+  }
+
+  return { ok: true, reason: "active_agent" };
+}
+
+export async function isActiveAgent(user: User | null) {
+  const access = await getAgentAccessStatus(user);
+
+  return access.ok;
 }
 
 export function isStaffRole(role: AppRole | string | null | undefined) {
