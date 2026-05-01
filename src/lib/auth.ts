@@ -46,6 +46,36 @@ export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
   return role === "agent";
 }
 
+export async function isActiveAgent(user: User | null) {
+  if (!user) {
+    return false;
+  }
+
+  const role = await getCurrentUserRole(user);
+
+  if (!isOnlyAgentRole(role)) {
+    return false;
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+
+  if (!supabaseAdmin) {
+    return true;
+  }
+
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("active, is_active")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    return true;
+  }
+
+  return profile.active !== false && profile.is_active !== false;
+}
+
 export function isStaffRole(role: AppRole | string | null | undefined) {
   return role === "staff";
 }
@@ -99,7 +129,7 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
   }
 
   if (role === "agent") {
-    return "/agent";
+    return "/agent/dashboard";
   }
 
   if (role === "staff") {

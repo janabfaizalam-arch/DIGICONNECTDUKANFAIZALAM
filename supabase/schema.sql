@@ -9,10 +9,15 @@ create table if not exists public.leads (
   file_url text,
   file_type text,
   storage_path text,
+  customer_name text,
+  city text,
+  notes text,
+  agent_id uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now()
 );
 
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
+create index if not exists leads_agent_idx on public.leads (agent_id, created_at desc);
 
 alter table public.leads
   add column if not exists status text not null default 'new';
@@ -67,6 +72,7 @@ create table if not exists public.services (
 create table if not exists public.applications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
+  agent_id uuid references auth.users (id) on delete set null,
   service_slug text not null,
   service_name text not null,
   amount numeric(10, 2) not null default 0,
@@ -193,6 +199,7 @@ values ('gallery', 'gallery', true)
 on conflict (id) do update set public = true;
 
 alter table public.users enable row level security;
+alter table public.leads enable row level security;
 alter table public.services enable row level security;
 alter table public.applications enable row level security;
 alter table public.application_documents enable row level security;
@@ -210,6 +217,11 @@ create policy "Users can read own profile" on public.users
 drop policy if exists "Users can update own profile" on public.users;
 create policy "Users can update own profile" on public.users
   for update using (auth.uid() = id);
+
+drop policy if exists "Agents manage own leads" on public.leads;
+create policy "Agents manage own leads" on public.leads
+  for all using (auth.uid() = agent_id)
+  with check (auth.uid() = agent_id);
 
 drop policy if exists "Anyone can read active services" on public.services;
 create policy "Anyone can read active services" on public.services

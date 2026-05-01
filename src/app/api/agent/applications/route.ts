@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, getCurrentUserRole, isAgentRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isActiveAgent } from "@/lib/auth";
 import { calculateCommission, cleanFileName, createInvoiceForApplication } from "@/lib/crm";
 import { createInvoiceNumber } from "@/lib/portal-data";
 import type { PortalUser, ServiceCatalogItem } from "@/lib/portal-types";
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
     const role = await getCurrentUserRole(user);
 
-    if (!user || !isAgentRole(role)) {
+    if (!user || !(await isActiveAgent(user))) {
       return jsonError("Agent access required.", 403);
     }
 
@@ -164,6 +164,7 @@ export async function POST(request: Request) {
       .from("applications")
       .insert({
         customer_id: resolvedCustomerId,
+        agent_id: user.id,
         created_by: user.id,
         assigned_agent_id: user.id,
         service_id: service.id,

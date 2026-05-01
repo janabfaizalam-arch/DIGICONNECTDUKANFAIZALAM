@@ -75,6 +75,7 @@ create table if not exists public.service_catalog (
 
 alter table public.applications
   alter column user_id drop not null,
+  add column if not exists agent_id uuid references auth.users (id) on delete set null,
   add column if not exists customer_id uuid references public.customers (id) on delete set null,
   add column if not exists created_by uuid references auth.users (id) on delete set null,
   add column if not exists assigned_agent_id uuid references auth.users (id) on delete set null,

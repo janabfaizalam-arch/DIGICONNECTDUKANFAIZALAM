@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, getCurrentUserRole, getRoleHome, isOnlyAgentRole } from "@/lib/auth";
+import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
 import { formatCurrency } from "@/lib/portal-data";
@@ -18,14 +18,13 @@ function formatDate(date: string) {
 
 export default async function AgentApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
-  const role = await getCurrentUserRole(user);
 
   if (!user) {
-    redirect("/login");
+    redirect("/login/agent");
   }
 
-  if (!isOnlyAgentRole(role)) {
-    redirect(getRoleHome(role));
+  if (!(await isActiveAgent(user))) {
+    redirect("/unauthorized");
   }
 
   const { id } = await params;
@@ -39,7 +38,7 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
     .from("applications")
     .select("*")
     .eq("id", id)
-    .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
+    .or(`agent_id.eq.${user.id},created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
     .single();
 
   if (!data) {
@@ -53,7 +52,7 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-5xl space-y-5">
-        <Link href="/agent" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+        <Link href="/agent/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
           Back to agent panel
         </Link>

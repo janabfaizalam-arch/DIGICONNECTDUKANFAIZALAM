@@ -33,7 +33,7 @@ export function CustomerForm() {
         }
 
         success(result.message ?? "Customer created.");
-        router.push(redirectToApplication ? `/agent/applications/new?customerId=${result.customerId}` : "/agent");
+        router.push(redirectToApplication ? `/agent/applications/new?customerId=${result.customerId}` : "/agent/dashboard");
         router.refresh();
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Customer could not be created.");

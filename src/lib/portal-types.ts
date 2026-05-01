@@ -5,10 +5,14 @@ export type LeadStatus = "new" | "in_progress" | "completed";
 export type Lead = {
   id: string;
   name: string;
+  customer_name?: string | null;
   mobile: string;
   service: string;
+  city?: string | null;
   message: string | null;
+  notes?: string | null;
   status: LeadStatus;
+  agent_id?: string | null;
   file_name: string | null;
   file_url: string | null;
   file_type: string | null;

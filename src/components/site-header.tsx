@@ -110,6 +110,10 @@ function isStaffShellPath(pathname: string) {
   return pathname === "/staff/dashboard" || pathname.startsWith("/staff/");
 }
 
+function isAgentShellPath(pathname: string) {
+  return pathname === "/agent/dashboard" || pathname.startsWith("/agent/");
+}
+
 export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
@@ -118,10 +122,11 @@ export function SiteHeader() {
   const panelConfig = getPanelConfig(role);
   const customerShell = isCustomerShellPath(pathname);
   const staffShell = isStaffShellPath(pathname);
-  const logoHref = role === "staff" || staffShell ? "/staff/dashboard" : role === "customer" || customerShell ? "/customer/dashboard" : "/";
-  const appShell = customerShell || staffShell;
-  const appShellLabel = staffShell ? "Staff Dashboard" : "Customer Dashboard";
-  const appShellHref = staffShell ? "/staff/dashboard" : "/customer/dashboard";
+  const agentShell = isAgentShellPath(pathname);
+  const logoHref = role === "agent" || agentShell ? "/agent/dashboard" : role === "staff" || staffShell ? "/staff/dashboard" : role === "customer" || customerShell ? "/customer/dashboard" : "/";
+  const appShell = customerShell || staffShell || agentShell;
+  const appShellLabel = agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Customer Dashboard";
+  const appShellHref = agentShell ? "/agent/dashboard" : staffShell ? "/staff/dashboard" : "/customer/dashboard";
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -179,11 +184,26 @@ export function SiteHeader() {
           />
         </Link>
         {appShell ? (
-          <div className="hidden flex-1 items-center justify-center md:flex">
-            <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-[var(--primary)]">
-              {appShellLabel}
-            </span>
-          </div>
+          agentShell ? (
+            <nav className="hidden flex-1 items-center justify-center gap-3 text-sm font-bold text-slate-600 md:flex">
+              {[
+                ["/agent/dashboard", "Agent Dashboard"],
+                ["/agent/leads", "Leads"],
+                ["/agent/applications", "Applications"],
+                ["/agent/commissions", "Commissions"],
+              ].map(([href, label]) => (
+                <Link key={href} href={href} className="rounded-full px-3 py-2 hover:bg-blue-50 hover:text-[var(--primary)]">
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          ) : (
+            <div className="hidden flex-1 items-center justify-center md:flex">
+              <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-[var(--primary)]">
+                {appShellLabel}
+              </span>
+            </div>
+          )
         ) : (
           <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 md:flex">
             {navLinks.map((link) => (
@@ -198,7 +218,7 @@ export function SiteHeader() {
             <>
               <Link href={appShellHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
                 <LayoutDashboard className="h-4 w-4" />
-                {staffShell ? "Staff Dashboard" : "Dashboard"}
+                {agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Dashboard"}
               </Link>
               {user ? <LogoutButton className="h-11" /> : null}
             </>
@@ -226,11 +246,21 @@ export function SiteHeader() {
           )}
         </div>
         {appShell ? (
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex flex-wrap items-center justify-end gap-2 md:hidden">
             <Link href={appShellHref} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white">
               <LayoutDashboard className="h-4 w-4" />
-              {staffShell ? "Staff" : "Dashboard"}
+              {agentShell ? "Agent" : staffShell ? "Staff" : "Dashboard"}
             </Link>
+            {agentShell ? (
+              <>
+                <Link href="/agent/leads" className="inline-flex h-10 items-center justify-center rounded-full border bg-white px-3 text-xs font-bold text-slate-900">
+                  Leads
+                </Link>
+                <Link href="/agent/commissions" className="inline-flex h-10 items-center justify-center rounded-full border bg-white px-3 text-xs font-bold text-slate-900">
+                  Commissions
+                </Link>
+              </>
+            ) : null}
             {user ? <LogoutButton className="h-10 px-3 text-xs" /> : null}
           </div>
         ) : (

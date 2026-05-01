@@ -15,7 +15,7 @@ const loginOptions = [
   {
     title: "Agent Login",
     description: "Track leads, customers, and commissions.",
-    href: "/agent-login",
+    href: "/login/agent",
     icon: Headset,
   },
   {

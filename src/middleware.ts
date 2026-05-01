@@ -20,7 +20,7 @@ function getRoleHome(role: AppRole) {
   }
 
   if (role === "agent") {
-    return "/agent";
+    return "/agent/dashboard";
   }
 
   if (role === "staff") {
@@ -65,7 +65,7 @@ export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
     if (isProtectedRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
+      url.pathname = matchesRoute(pathname, "/agent") ? "/login/agent" : matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
       return NextResponse.redirect(url);
     }
 
@@ -93,7 +93,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
+    url.pathname = matchesRoute(pathname, "/agent") ? "/login/agent" : matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
     return NextResponse.redirect(url);
   }
 
@@ -124,6 +124,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  let isAgentActive = true;
+
+  if (user && role === "agent") {
+    const { data: profile } = await supabase.from("profiles").select("active, is_active").eq("id", user.id).maybeSingle();
+    isAgentActive = profile?.active !== false && profile?.is_active !== false;
+  }
+
+  if (user && matchesRoute(pathname, "/login/agent")) {
+    const url = request.nextUrl.clone();
+    url.pathname = role === "agent" && isAgentActive ? "/agent/dashboard" : "/unauthorized";
+    return NextResponse.redirect(url);
+  }
+
   if (user && matchesRoute(pathname, "/login/staff")) {
     const url = request.nextUrl.clone();
     url.pathname = role === "staff" ? "/staff/dashboard" : "/unauthorized";
@@ -138,7 +151,13 @@ export async function middleware(request: NextRequest) {
 
   if (user && isProtectedRoute && !isAllowedForPath(pathname, role)) {
     const url = request.nextUrl.clone();
-    url.pathname = matchesRoute(pathname, "/staff") ? "/unauthorized" : getRoleHome(role);
+    url.pathname = matchesRoute(pathname, "/agent") || matchesRoute(pathname, "/staff") ? "/unauthorized" : getRoleHome(role);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && matchesRoute(pathname, "/agent") && !isAgentActive) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/unauthorized";
     return NextResponse.redirect(url);
   }
 
