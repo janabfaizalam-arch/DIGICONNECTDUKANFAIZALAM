@@ -50,6 +50,15 @@ export type PortalService = {
   recommended: string[];
 };
 
+export const featuredServiceSlugs = [
+  "pan-card",
+  "aadhaar-update",
+  "voter-id",
+  "passport-assistance",
+  "driving-licence",
+  "gst-registration",
+] as const;
+
 const gstFields: ServiceField[] = [
   { name: "businessName", label: "Business Name", required: true },
   { name: "panNumber", label: "PAN", required: true },
@@ -85,7 +94,7 @@ export const portalServices: PortalService[] = [
     description: "Support for new PAN applications, corrections, and reprints with document guidance.",
     documents: ["Aadhaar Card", "Photo", "Signature", "Mobile linked with Aadhaar"],
     fields: panFields,
-    recommended: ["gst-registration", "voter-id", "passport"],
+    recommended: ["gst-registration", "voter-id", "passport-assistance"],
   },
   {
     title: "Aadhaar Update",
@@ -139,7 +148,7 @@ export const portalServices: PortalService[] = [
   },
   {
     title: "Passport Assistance",
-    slug: "passport",
+    slug: "passport-assistance",
     amount: 999,
     icon: ShieldCheck,
     description: "Passport form filling, appointment guidance, and document checklist support.",
@@ -155,7 +164,7 @@ export const portalServices: PortalService[] = [
     description: "Learner, permanent licence, and renewal support with online application tracking.",
     documents: ["Aadhaar Card", "Address Proof", "Age Proof", "Photo"],
     fields: noExtraFields,
-    recommended: ["passport", "voter-id", "pan-card"],
+    recommended: ["passport-assistance", "voter-id", "pan-card"],
   },
   {
     title: "Birth & Death Certificate",
@@ -230,8 +239,16 @@ export const portalServices: PortalService[] = [
 ];
 
 export function getServiceBySlug(slug: string) {
+  if (slug === "passport") {
+    return portalServices.find((service) => service.slug === "passport-assistance");
+  }
+
   return portalServices.find((service) => service.slug === slug);
 }
+
+export const featuredServices = featuredServiceSlugs
+  .map((slug) => getServiceBySlug(slug))
+  .filter((service): service is PortalService => Boolean(service));
 
 export const statusLabels: Record<ApplicationStatus, string> = {
   new: "New",

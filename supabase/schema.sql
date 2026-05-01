@@ -164,12 +164,28 @@ create table if not exists public.ratings (
 
 create index if not exists ratings_user_idx on public.ratings (user_id, created_at desc);
 
+create table if not exists public.gallery_images (
+  id uuid primary key default gen_random_uuid(),
+  title text,
+  image_url text not null,
+  storage_path text not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists gallery_images_created_at_idx on public.gallery_images (created_at desc);
+create index if not exists gallery_images_active_idx on public.gallery_images (active, created_at desc);
+
 insert into storage.buckets (id, name, public)
 values ('application-documents', 'application-documents', false)
 on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('documents', 'documents', true)
+on conflict (id) do update set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('gallery', 'gallery', true)
 on conflict (id) do update set public = true;
 
 alter table public.users enable row level security;
@@ -181,6 +197,7 @@ alter table public.invoices enable row level security;
 alter table public.admin_notes enable row level security;
 alter table public.notifications enable row level security;
 alter table public.ratings enable row level security;
+alter table public.gallery_images enable row level security;
 
 drop policy if exists "Users can read own profile" on public.users;
 create policy "Users can read own profile" on public.users
@@ -234,6 +251,10 @@ create policy "Customers can rate completed own applications" on public.ratings
     )
   );
 
+drop policy if exists "Public can read active gallery images" on public.gallery_images;
+create policy "Public can read active gallery images" on public.gallery_images
+  for select to public using (active = true);
+
 drop policy if exists "Authenticated users can upload documents" on storage.objects;
 create policy "Authenticated users can upload documents" on storage.objects
   for insert to authenticated
@@ -262,3 +283,8 @@ create policy "Public can upload lead files" on storage.objects
     bucket_id = 'documents'
     and (storage.foldername(name))[1] = 'public-leads'
   );
+
+drop policy if exists "Public can read gallery images" on storage.objects;
+create policy "Public can read gallery images" on storage.objects
+  for select to public
+  using (bucket_id = 'gallery');

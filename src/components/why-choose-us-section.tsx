@@ -3,11 +3,10 @@ import { CheckCircle2 } from "lucide-react";
 import { features } from "@/lib/constants";
 
 const trustItems = [
-  "1000+ Customers Served",
-  "Fast Response Time",
-  "Secure Document Handling",
-  "Online Service Platform",
-  "Powered by RNoS India Pvt Ltd",
+  "Fast digital service support",
+  "Secure document handling",
+  "PAN India assistance",
+  "Experienced service team",
 ];
 
 export function WhyChooseUsSection() {
@@ -18,12 +17,12 @@ export function WhyChooseUsSection() {
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-orange-300">Why Choose Us</p>
           <h2 className="mt-4 text-3xl font-bold leading-tight md:text-4xl">A professional digital service platform built for speed and trust</h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-white/75">
-            DigiConnect Dukan, powered by RNoS India Pvt Ltd, helps individuals and businesses apply for essential services online with secure guidance.
+            DigiConnect Dukan, powered by RNoS India Pvt Ltd, helps individuals and businesses across India get essential digital service support with secure guidance.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border bg-white/85 p-5 shadow-soft md:col-span-2">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {trustItems.map((item) => (
                 <div key={item} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
                   {item}

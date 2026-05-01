@@ -25,7 +25,7 @@ export const services = [
   { title: "Ration Card", slug: "ration-card", icon: WalletCards },
   { title: "Labour Card / e-Shram Card", slug: "labour-card-e-shram-card", icon: ClipboardCheck },
   { title: "Ayushman Card", slug: "ayushman-card", icon: HeartPulse },
-  { title: "Passport Assistance", slug: "passport", icon: ShieldCheck },
+  { title: "Passport Assistance", slug: "passport-assistance", icon: ShieldCheck },
   { title: "Driving Licence", slug: "driving-licence", icon: CarFront },
   { title: "Birth & Death Certificate", slug: "birth-death-certificate", icon: FileHeart },
   { title: "Income, Caste, Domicile Certificate", slug: "income-caste-domicile-certificate", icon: FileText },

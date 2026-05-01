@@ -24,10 +24,10 @@ type PageProps = {
 };
 
 const genericBenefits = [
-  "Fast online processing",
-  "Document guidance before submission",
+  "PAN India digital service assistance",
+  "Clear document checklist before submission",
   "Support through call and WhatsApp",
-  "Application status follow-up by team",
+  "Application status follow-up by an experienced team",
 ];
 
 const processSteps = [
@@ -66,6 +66,11 @@ function getServiceContent(service: PortalService) {
         answer: "Payment can be completed after service details are confirmed. Some urgent services may require advance payment.",
       },
     ],
+    relatedInfo: [
+      `${service.title} requests should be submitted with clear documents, an active mobile number, and matching personal or business details.`,
+      "DigiConnect Dukan reviews basic details before processing so common mistakes can be corrected early.",
+      "Customers can use the dashboard and WhatsApp support for updates after submitting the request.",
+    ],
   };
 }
 
@@ -87,7 +92,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${service.title} | DigiConnect Dukan`,
-    description: `Fast online support, required documents, process steps, and request form for ${service.title}.`,
+    description: `${service.title} support by DigiConnect Dukan with overview, required documents, process steps, benefits, FAQ, reviews, login to apply, and WhatsApp assistance.`,
     alternates: {
       canonical: `/services/${service.slug}`,
     },
@@ -127,12 +132,12 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 {service.title}
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
-                Fast processing with document guidance, online form support, and reliable follow-up.
+                Get PAN India support with document guidance, process steps, secure handling, and reliable follow-up from DigiConnect Dukan.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link href={`/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
-                Apply Now
+                Login to Apply
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <a
@@ -252,6 +257,20 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                   </div>
                 ))}
               </div>
+            </div>
+          </Card>
+        </section>
+
+        <section className="mt-10">
+          <Card className="rounded-2xl p-6">
+            <h2 className="text-2xl font-bold text-slate-950">Related Information About {service.title}</h2>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {content.relatedInfo.map((item) => (
+                <article key={item} className="rounded-2xl bg-slate-50 p-5">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Service Guide</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{item}</p>
+                </article>
+              ))}
             </div>
           </Card>
         </section>

@@ -2,21 +2,20 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
 import { SectionHeading } from "@/components/section-heading";
-import { services } from "@/lib/constants";
+import { featuredServices } from "@/lib/portal-data";
 
 export function ServicesSection() {
   return (
     <section id="services" className="section-pad">
       <div className="container-shell space-y-8 md:space-y-10">
         <SectionHeading
-          eyebrow="Services"
-          title="Complete digital service portfolio across India"
-          description="Government applications, online forms, business registrations, and document support through one guided process."
+          eyebrow="Featured Services"
+          title="Main digital services for customers across India"
+          description="Focused support for the most requested identity, document, licence, and business registration services."
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {services.map(({ title, slug, icon: Icon }) => (
+          {featuredServices.map(({ title, slug, icon: Icon, description }) => (
             <Card key={slug} className="group relative rounded-2xl border-white/80 p-4 transition hover:-translate-y-1 hover:border-[var(--primary)]/25 md:p-5">
               <Link href={`/services/${slug}`} aria-label={`View ${title} details`} className="absolute inset-0 rounded-2xl" />
               <div className="flex items-start justify-between gap-4">
@@ -27,11 +26,9 @@ export function ServicesSection() {
               </div>
               <h3 className="mt-5 text-base font-bold text-slate-900 md:text-lg">{title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Document guidance, online form support, and expert follow-up.
+                {description}
               </p>
-              <Link href={`/apply/${slug}`} className={buttonVariants({ size: "default", className: "relative z-10 mt-5 w-full" })}>
-                Apply Now
-              </Link>
+              <p className="mt-5 text-sm font-bold text-[var(--primary)]">View service details</p>
             </Card>
           ))}
         </div>

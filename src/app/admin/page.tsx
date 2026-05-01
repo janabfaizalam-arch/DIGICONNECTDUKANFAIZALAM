@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, HandCoins, UserPlus, UsersRound } from "lucide-react";
+import { ClipboardList, HandCoins, Images, UserPlus, UsersRound } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Card } from "@/components/ui/card";
@@ -85,6 +85,7 @@ export default async function AdminPage() {
             ["/admin/customers", "Add Customer", UsersRound],
             ["/admin/commissions", "View Commissions", HandCoins],
             ["/admin/applications", "View Applications", ClipboardList],
+            ["/admin/gallery", "Manage Gallery", Images],
           ].map(([href, label, Icon]) => (
             <Link key={String(href)} href={String(href)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-slate-900 shadow-soft ring-1 ring-[var(--border)]">
               <Icon className="h-4 w-4 text-[var(--primary)]" />

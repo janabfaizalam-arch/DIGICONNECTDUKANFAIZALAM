@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, MapPin, PhoneCall, Shield } from "lucide-react";
+import { ArrowRight, BadgeCheck, LogIn, MapPin, MessageCircle, PhoneCall, Shield } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
@@ -14,26 +14,21 @@ export function HeroSection() {
             <span className="truncate">Available across India through online digital services</span>
           </div>
           <div className="space-y-3">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--secondary)] sm:text-sm">
-              Same Day Service Available
-            </p>
             <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl md:text-5xl">
-              All Digital &amp; Government Services Across India
+              Connecting People, Empowering Digital India
             </h1>
             <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base md:text-lg md:leading-relaxed">
-              Apply online for PAN, Aadhaar, GST, Passport and more through a professional service platform.
-            </p>
-            <p className="max-w-2xl text-sm font-medium text-gray-600 md:text-lg">
-              Connecting People, Empowering Digital India
+              DigiConnect Dukan helps customers across India access PAN Card, Aadhaar update assistance, voter ID, passport, driving licence, and business registration support through a secure digital service team.
             </p>
           </div>
           <div className="grid gap-3 min-[420px]:grid-cols-2 sm:flex sm:flex-row">
-            <Link href="/services" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
-              Apply Now
-              <ArrowRight className="h-4 w-4" />
+            <Link href="/login" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
+              <LogIn className="h-4 w-4" />
+              Login
             </Link>
             <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: "secondary", className: "w-full sm:w-auto" })}>
-              Contact Now
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
               <ArrowRight className="h-4 w-4" />
             </a>
           </div>

@@ -23,7 +23,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "DigiConnect Dukan – Digital & Government Services Across India",
+  title: "DigiConnect Dukan - Digital & Government Services Across India",
   description:
     "Apply online for PAN Card, Aadhaar Update, GST Registration, Passport, and other digital services across India. Fast and reliable service.",
   keywords: [
