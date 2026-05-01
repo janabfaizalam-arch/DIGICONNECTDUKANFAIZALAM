@@ -50,6 +50,12 @@ function isAllowedForPath(pathname: string, role: AppRole) {
   return true;
 }
 
+function isMissingActiveColumn(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+
+  return normalized.includes("active") && (normalized.includes("does not exist") || normalized.includes("could not find"));
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request,
@@ -127,26 +133,41 @@ export async function middleware(request: NextRequest) {
   let isAgentActive = true;
 
   if (user && role === "agent") {
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("role, active, is_active").eq("id", user.id).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("role, active").eq("id", user.id).maybeSingle();
+    let activeColumnMissing = false;
+    let resolvedProfile = profile as { role?: string | null; active?: boolean | null } | null;
 
     if (profileError) {
       console.error("[middleware:agent-auth] Profile lookup failed.", { userId: user.id, error: profileError.message });
+
+      if (isMissingActiveColumn(profileError.message)) {
+        activeColumnMissing = true;
+        const { data: roleOnlyProfile, error: roleOnlyError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+
+        if (roleOnlyError) {
+          console.error("[middleware:agent-auth] Role-only profile lookup failed.", { userId: user.id, error: roleOnlyError.message });
+        }
+
+        resolvedProfile = roleOnlyProfile;
+      }
     }
 
-    if (!profile) {
+    if (!resolvedProfile) {
       console.error("[middleware:agent-auth] Agent profile missing.", { userId: user.id });
       isAgentActive = false;
-    } else if (String(profile.role ?? "").toLowerCase() !== "agent") {
-      console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: profile.role });
+    } else if (String(resolvedProfile.role ?? "").toLowerCase() !== "agent") {
+      console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: resolvedProfile.role });
       isAgentActive = false;
+    } else if (activeColumnMissing) {
+      console.error("[middleware:agent-auth] profiles.active column is missing; allowing active agent by role.", { userId: user.id });
+      isAgentActive = true;
     } else {
-      isAgentActive = profile.active !== false && profile.is_active !== false;
+      isAgentActive = resolvedProfile.active === true;
 
       if (!isAgentActive) {
         console.error("[middleware:agent-auth] Agent profile inactive.", {
           userId: user.id,
-          active: profile.active,
-          isActive: profile.is_active,
+          active: resolvedProfile.active,
         });
       }
     }

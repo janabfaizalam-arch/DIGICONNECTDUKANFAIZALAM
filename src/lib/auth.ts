@@ -50,6 +50,12 @@ export type AgentAccessResult =
   | { ok: true; reason: "active_agent" }
   | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "missing_server_config"; role?: AppRole | string | null };
 
+function isMissingActiveColumn(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+
+  return normalized.includes("active") && (normalized.includes("does not exist") || normalized.includes("could not find"));
+}
+
 export async function getAgentAccessStatus(user: User | null): Promise<AgentAccessResult> {
   if (!user) {
     console.error("[agent-auth] Missing authenticated user.");
@@ -72,12 +78,40 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
 
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, role, active, is_active")
+    .select("id, role, active")
     .eq("id", user.id)
     .maybeSingle();
 
   if (error) {
     console.error("[agent-auth] Agent profile lookup failed.", { userId: user.id, error: error.message });
+
+    if (isMissingActiveColumn(error.message)) {
+      const { data: roleOnlyProfile, error: roleOnlyError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (roleOnlyError) {
+        console.error("[agent-auth] Agent role-only profile lookup failed.", { userId: user.id, error: roleOnlyError.message });
+        return { ok: false, reason: "missing_profile", role };
+      }
+
+      if (!roleOnlyProfile) {
+        console.error("[agent-auth] Agent profile is missing.", { userId: user.id });
+        return { ok: false, reason: "missing_profile", role };
+      }
+
+      const roleOnlyProfileRole = String(roleOnlyProfile.role ?? "").toLowerCase();
+
+      if (roleOnlyProfileRole !== "agent") {
+        console.error("[agent-auth] Agent profile has wrong role.", { userId: user.id, profileRole: roleOnlyProfileRole });
+        return { ok: false, reason: "wrong_role", role: roleOnlyProfileRole };
+      }
+
+      console.error("[agent-auth] profiles.active column is missing; allowing active agent by role.", { userId: user.id });
+      return { ok: true, reason: "active_agent" };
+    }
   }
 
   if (!profile) {
@@ -92,11 +126,10 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
     return { ok: false, reason: "wrong_role", role: profileRole };
   }
 
-  if (profile.active === false || profile.is_active === false) {
+  if (profile.active !== true) {
     console.error("[agent-auth] Agent profile is inactive.", {
       userId: user.id,
       active: profile.active,
-      isActive: profile.is_active,
     });
     return { ok: false, reason: "inactive_profile", role };
   }
