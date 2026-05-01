@@ -171,14 +171,14 @@ export function SiteHeader() {
   return (
     <header className="site-header sticky top-0 z-40 border-b border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.72)] shadow-[0_12px_36px_rgba(15,23,42,0.08)] backdrop-blur-[20px] print:hidden">
       <div className="container-shell flex min-h-16 items-center justify-between gap-3 py-2 md:min-h-[4.5rem] md:gap-4">
-        <Link href={logoHref} className="flex min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
+        <Link href={logoHref} className="flex h-8 min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
           <Image
             src="/logo-navbar.png"
             alt="DigiConnect Dukan Logo"
             width={1920}
             height={819}
             priority
-            className="max-h-9 w-auto object-contain md:max-h-10"
+            className="h-7 w-auto object-contain md:h-10"
           />
         </Link>
         {appShell ? (
