@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { LayoutDashboard, LogIn, PhoneCall } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -93,11 +94,22 @@ function getPanelConfig(role: AppRole | null) {
   return null;
 }
 
+function isCustomerShellPath(pathname: string) {
+  return (
+    pathname === "/customer/dashboard" ||
+    pathname.startsWith("/customer/dashboard/") ||
+    pathname.startsWith("/dashboard/applications/")
+  );
+}
+
 export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
+  const customerShell = isCustomerShellPath(pathname);
+  const logoHref = role === "customer" || customerShell ? "/customer/dashboard" : "/";
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -144,7 +156,7 @@ export function SiteHeader() {
   return (
     <header className="site-header sticky top-0 z-40 border-b border-white/50 bg-white/90 backdrop-blur-xl print:hidden">
       <div className="container-shell flex min-h-12 items-center justify-between gap-3 py-1 md:min-h-16 md:gap-4 md:py-2">
-        <Link href="/" className="flex min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
+        <Link href={logoHref} className="flex min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
           <Image
             src="/logo-navbar.png"
             alt="DigiConnect Dukan Logo"
@@ -154,15 +166,31 @@ export function SiteHeader() {
             className="max-h-10 w-auto object-contain sm:h-9 lg:h-11"
           />
         </Link>
-        <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 md:flex">
-          {navLinks.map((link) => (
-            <Link key={link.label} href={link.href} className="hover:text-[var(--primary)]">
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {customerShell ? (
+          <div className="hidden flex-1 items-center justify-center md:flex">
+            <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-[var(--primary)]">
+              Customer Dashboard
+            </span>
+          </div>
+        ) : (
+          <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 md:flex">
+            {navLinks.map((link) => (
+              <Link key={link.label} href={link.href} className="hover:text-[var(--primary)]">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        )}
         <div className="hidden items-center gap-3 md:flex">
-          {user && panelConfig ? (
+          {customerShell ? (
+            <>
+              <Link href="/customer/dashboard" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Link>
+              {user ? <LogoutButton className="h-11" /> : null}
+            </>
+          ) : user && panelConfig ? (
             <>
               <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
                 <LayoutDashboard className="h-4 w-4" />
@@ -185,7 +213,17 @@ export function SiteHeader() {
             </>
           )}
         </div>
-        <MobileMenu isLoggedIn={Boolean(user)} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
+        {customerShell ? (
+          <div className="flex items-center gap-2 md:hidden">
+            <Link href="/customer/dashboard" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Link>
+            {user ? <LogoutButton className="h-10 px-3 text-xs" /> : null}
+          </div>
+        ) : (
+          <MobileMenu isLoggedIn={Boolean(user)} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
+        )}
       </div>
     </header>
   );

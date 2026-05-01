@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
+import { getCurrentUser, getCurrentUserRole, isCustomerRole } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "DigiConnect Dukan | PAN India Digital Services by RNoS",
@@ -15,7 +17,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
+  if (user) {
+    const role = await getCurrentUserRole(user);
+
+    if (isCustomerRole(role)) {
+      redirect("/customer/dashboard");
+    }
+  }
+
   return (
     <>
       <main className="pb-8 md:pb-0">
