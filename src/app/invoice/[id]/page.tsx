@@ -60,7 +60,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     <main className="min-h-screen px-3 py-4 md:px-8 md:py-10 print:min-h-0 print:bg-white print:p-0">
       <div className="invoice-shell mx-auto max-w-4xl">
         <div className="mb-6 flex items-center justify-between gap-3 print:hidden">
-          <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+          <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>

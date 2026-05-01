@@ -5,10 +5,12 @@ import Image from "next/image";
 import { Bell, Download, FileText, Plus, RotateCcw } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
+import { CustomerDocumentUpload } from "@/components/portal/customer-document-upload";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import type { Application, NotificationItem } from "@/lib/portal-types";
 import { formatCurrency } from "@/lib/portal-data";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 type CustomerDashboardProps = {
   applications: Application[];
@@ -90,16 +92,21 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                 {applications.map((application) => {
                   const payment = application.payments?.[0];
                   const invoice = application.invoices?.[0];
+                  const latestNotification = notifications.find((notification) => notification.application_id === application.id);
+                  const adminMessage = application.internal_notes || latestNotification?.message || "No admin message yet.";
+                  const paymentStatus = payment?.status ?? application.payment_status ?? "pending";
 
                   return (
                     <div key={application.id} className="rounded-2xl border bg-white p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                           <p className="font-bold text-slate-950">{application.service_name}</p>
-                          <p className="mt-1 font-mono text-xs text-slate-500">
-                            ID: {application.id.slice(0, 8).toUpperCase()} | {formatDate(application.created_at)}
-                          </p>
+                          <p className="mt-1 font-mono text-xs text-slate-500">Application ID: {application.id}</p>
+                          <p className="mt-1 text-xs font-medium text-slate-500">Submitted Date: {formatDate(application.created_at)}</p>
                           <p className="mt-2 text-sm font-bold text-slate-700">{formatCurrency(application.amount)}</p>
+                          <p className="mt-2 text-sm text-slate-600">
+                            <span className="font-bold text-slate-800">Admin Message:</span> {adminMessage}
+                          </p>
                           <p className="mt-1 text-xs font-medium text-slate-500">
                             Uploaded documents: {application.documents?.length ?? 0}
                           </p>
@@ -121,9 +128,10 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <StatusBadge status={application.status} />
-                          {payment ? <PaymentBadge status={payment.status} /> : null}
+                          <PaymentBadge status={paymentStatus} />
                         </div>
                       </div>
+                      {application.status === "documents_pending" ? <CustomerDocumentUpload applicationId={application.id} /> : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link href={`/dashboard/applications/${application.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
                           <FileText className="h-4 w-4" />
@@ -132,7 +140,7 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                         {invoice ? (
                           <Link href={`/invoice/${invoice.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
                             <Download className="h-4 w-4" />
-                            Invoice
+                            Invoice / Receipt
                           </Link>
                         ) : null}
                         {application.final_document_url ? (
@@ -150,6 +158,14 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
                           <RotateCcw className="h-4 w-4" />
                           Apply Again
                         </Link>
+                        <a
+                          href={generateWhatsAppLink(application.service_name)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-10 items-center justify-center rounded-full bg-[#25D366] px-4 text-sm font-bold text-white"
+                        >
+                          WhatsApp Support
+                        </a>
                       </div>
                     </div>
                   );

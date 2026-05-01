@@ -41,7 +41,7 @@ export default async function ApplyPage({ params }: PageProps) {
   }
 
   if (!user) {
-    redirect("/login");
+    redirect("/login/customer");
   }
 
   return (

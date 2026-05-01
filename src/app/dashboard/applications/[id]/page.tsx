@@ -32,7 +32,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/login/customer");
   }
 
   const role = await getCurrentUserRole(user);
@@ -90,7 +90,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-6xl">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+        <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
           Back to dashboard
         </Link>

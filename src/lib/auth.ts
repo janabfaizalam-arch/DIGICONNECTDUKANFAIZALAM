@@ -94,7 +94,11 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
     return "/agent";
   }
 
-  return "/dashboard";
+  return getCustomerHome();
+}
+
+export function getCustomerHome() {
+  return "/customer/dashboard";
 }
 
 export async function syncUserProfile(user: User) {

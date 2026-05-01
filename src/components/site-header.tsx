@@ -87,7 +87,7 @@ function getPanelConfig(role: AppRole | null) {
   }
 
   if (role === "customer") {
-    return { href: "/dashboard", label: "Dashboard" };
+    return { href: "/customer/dashboard", label: "Dashboard" };
   }
 
   return null;

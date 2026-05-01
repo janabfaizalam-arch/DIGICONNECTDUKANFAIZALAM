@@ -21,7 +21,7 @@ const loginOptions = [
   {
     title: "Customer Login",
     description: "View applications, invoices, and updates.",
-    href: "/customer-login",
+    href: "/login/customer",
     icon: UserRound,
   },
 ];
