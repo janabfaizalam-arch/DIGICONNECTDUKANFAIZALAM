@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { SiteHeader } from "@/components/site-header";
@@ -82,6 +83,7 @@ export default function RootLayout({
             {JSON.stringify(organizationSchema)}
           </Script>
         </ToastProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
