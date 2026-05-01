@@ -1,81 +1,51 @@
-import { ArrowRight, BadgeCheck, LogIn, MapPin, MessageCircle, PhoneCall, Shield } from "lucide-react";
-
-import { buttonVariants } from "@/components/ui/button";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
 import Link from "next/link";
+import { BadgeCheck, LogIn, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
+
+import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 export function HeroSection() {
   return (
-    <section className="overflow-hidden pb-8 pt-4 md:pb-20 md:pt-14">
-      <div className="container-shell grid items-center gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-4 md:space-y-5">
-          <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-xs font-medium text-[var(--primary)] shadow-soft sm:px-4 sm:text-sm">
-            <MapPin className="h-4 w-4" />
+    <section className="relative isolate overflow-hidden px-0 pb-10 pt-6 md:pb-20 md:pt-16">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(37,99,235,0.16),transparent_30%),radial-gradient(circle_at_92%_18%,rgba(20,184,166,0.14),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.45),rgba(239,247,255,0.35))]" />
+      <div className="container-shell">
+        <div className="glass-panel shadow-liquid mx-auto min-w-0 max-w-5xl overflow-hidden rounded-[2rem] border border-white/70 px-5 py-7 sm:px-7 md:rounded-[2.25rem] md:px-10 md:py-12">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:text-sm">
+            <Sparkles className="h-4 w-4" />
             <span className="truncate">Available across India through online digital services</span>
           </div>
-          <div className="space-y-3">
-            <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl md:text-5xl">
+          <div className="mt-6 space-y-4">
+            <h1 className="max-w-full text-balance text-[2rem] font-bold leading-[1.08] text-slate-950 sm:max-w-3xl sm:text-5xl md:text-6xl">
               Connecting People, Empowering Digital India
             </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base md:text-lg md:leading-relaxed">
-              DigiConnect Dukan helps customers across India access PAN Card, Aadhaar update assistance, voter ID, passport, driving licence, and business registration support through a secure digital service team.
+            <p className="max-w-2xl text-base leading-7 text-slate-600 md:text-lg md:leading-8">
+              Access trusted digital, government, documentation, and business services across India through a secure online service platform.
             </p>
           </div>
-          <div className="grid gap-3 min-[420px]:grid-cols-2 sm:flex sm:flex-row">
-            <Link href="/login" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
+          <div className="mt-7 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
+            <Link href="/login" className="premium-button premium-button-blue">
               <LogIn className="h-4 w-4" />
               Login
             </Link>
-            <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: "secondary", className: "w-full sm:w-auto" })}>
+            <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
               <MessageCircle className="h-4 w-4" />
               WhatsApp
-              <ArrowRight className="h-4 w-4" />
             </a>
           </div>
-          <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-            <div className="rounded-2xl border bg-white/85 p-3 shadow-soft md:p-4">
-              <BadgeCheck className="mb-3 h-5 w-5 text-[var(--secondary)]" />
-              <p className="font-medium text-slate-900">Same Day Service Available</p>
-              <p className="mt-1 text-xs leading-5">Quick start for urgent services.</p>
+          <div className="mt-8 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
+            <div className="liquid-card rounded-[1.5rem] p-4">
+              <BadgeCheck className="mb-3 h-5 w-5 text-emerald-600" />
+              <p className="font-semibold text-slate-950">Trusted Support</p>
+              <p className="mt-1 text-xs leading-5">Guided digital service assistance.</p>
             </div>
-            <div className="rounded-2xl border bg-white/85 p-3 shadow-soft md:p-4">
-              <Shield className="mb-3 h-5 w-5 text-[var(--primary)]" />
-              <p className="font-medium text-slate-900">Secure Handling</p>
-              <p className="mt-1 text-xs leading-5">Documents handled carefully.</p>
+            <div className="liquid-card rounded-[1.5rem] p-4">
+              <ShieldCheck className="mb-3 h-5 w-5 text-blue-600" />
+              <p className="font-semibold text-slate-950">Secure Process</p>
+              <p className="mt-1 text-xs leading-5">Careful document handling.</p>
             </div>
-            <div className="rounded-2xl border bg-white/85 p-3 shadow-soft md:p-4">
-              <PhoneCall className="mb-3 h-5 w-5 text-[var(--secondary)]" />
-              <p className="font-medium text-slate-900">Online Support</p>
-              <p className="mt-1 text-xs leading-5">Help before and after applying.</p>
-            </div>
-          </div>
-        </div>
-        <div className="relative hidden lg:block">
-          <div className="absolute -left-10 top-12 h-44 w-44 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
-          <div className="absolute -right-8 bottom-8 h-52 w-52 rounded-full bg-[var(--primary)]/15 blur-3xl" />
-          <div className="glass-panel shadow-soft relative rounded-3xl border p-6 md:p-8">
-            <div className="rounded-[1.75rem] bg-slate-950 p-6 text-white">
-              <p className="text-sm font-medium text-white/70">DigiConnect Dukan</p>
-              <h2 className="mt-3 text-2xl font-bold">Trusted digital service platform for customers across India</h2>
-              <p className="mt-3 text-sm leading-relaxed text-white/75">
-                From Aadhaar to GST, get professional support for documents, forms, and registrations.
-              </p>
-            </div>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-3xl bg-[var(--accent)] p-5">
-                <p className="text-sm font-medium text-[var(--accent-foreground)]">Coverage</p>
-                <p className="mt-2 text-lg font-bold text-slate-950">Available across India</p>
-              </div>
-              <div className="rounded-3xl bg-[var(--muted)] p-5">
-                <p className="text-sm font-medium text-slate-600">Support</p>
-                <p className="mt-2 text-lg font-bold text-slate-950">Call or WhatsApp anytime</p>
-              </div>
-            </div>
-            <div className="mt-6 rounded-3xl border border-dashed border-[var(--secondary)]/40 bg-white p-5">
-              <p className="text-sm font-medium text-slate-900">Need document guidance?</p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Our team shares the correct document checklist so your application can move smoothly.
-              </p>
+            <div className="liquid-card rounded-[1.5rem] p-4">
+              <Sparkles className="mb-3 h-5 w-5 text-orange-500" />
+              <p className="font-semibold text-slate-950">Pan India Access</p>
+              <p className="mt-1 text-xs leading-5">Online support across India.</p>
             </div>
           </div>
         </div>

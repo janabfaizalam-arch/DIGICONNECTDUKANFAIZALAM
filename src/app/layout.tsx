@@ -4,7 +4,6 @@ import Script from "next/script";
 
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { SiteHeader } from "@/components/site-header";
-import { StickyMobileCta } from "@/components/sticky-mobile-cta";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -77,7 +76,6 @@ export default function RootLayout({
         <ToastProvider>
           <SiteHeader />
           {children}
-          <StickyMobileCta />
           <Script id="organization-schema" type="application/ld+json">
             {JSON.stringify(organizationSchema)}
           </Script>

@@ -2,22 +2,20 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, LogIn, PhoneCall } from "lucide-react";
+import { LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { contactDetails } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/browser";
-import { Button } from "@/components/ui/button";
 import { MobileMenu } from "@/components/mobile-menu";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/#about", label: "About" },
-  { href: "/#gallery", label: "Gallery" },
-  { href: "/#contact", label: "Contact" },
+  { href: "/#services", label: "Services" },
+  { href: "/#why-choose-us", label: "Why Choose Us" },
+  { href: "/#process", label: "Process" },
 ];
 
 type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
@@ -171,8 +169,8 @@ export function SiteHeader() {
   }, [supabase]);
 
   return (
-    <header className="site-header sticky top-0 z-40 border-b border-white/50 bg-white/90 backdrop-blur-xl print:hidden">
-      <div className="container-shell flex min-h-12 items-center justify-between gap-3 py-1 md:min-h-16 md:gap-4 md:py-2">
+    <header className="site-header sticky top-0 z-40 border-b border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.72)] shadow-[0_12px_36px_rgba(15,23,42,0.08)] backdrop-blur-[20px] print:hidden">
+      <div className="container-shell flex min-h-16 items-center justify-between gap-3 py-2 md:min-h-[4.5rem] md:gap-4">
         <Link href={logoHref} className="flex min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
           <Image
             src="/logo-navbar.png"
@@ -180,7 +178,7 @@ export function SiteHeader() {
             width={1920}
             height={819}
             priority
-            className="max-h-10 w-auto object-contain sm:h-9 lg:h-11"
+            className="max-h-9 w-auto object-contain md:max-h-10"
           />
         </Link>
         {appShell ? (
@@ -232,16 +230,14 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <a href={`tel:${contactDetails.primaryPhone}`}>
-                <Button size="default" variant="outline">
-                  <PhoneCall className="h-4 w-4" />
-                  Call Now
-                </Button>
-              </a>
-              <Link href="/login" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
+              <Link href="/login" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl">
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>
+              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/65 px-5 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/85">
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
             </>
           )}
         </div>

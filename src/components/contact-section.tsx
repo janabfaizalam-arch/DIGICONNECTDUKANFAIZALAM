@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Globe, Mail, Phone, ShieldCheck } from "lucide-react";
+import { Globe, LogIn, Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { contactDetails } from "@/lib/constants";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
@@ -17,11 +16,15 @@ export function ContactSection() {
               Get online digital service support for PAN, Aadhaar, GST, Passport, certificates, and more across India.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <a href={`tel:${contactDetails.phone}`}>
-                <Button>Call Now</Button>
-              </a>
+              <Link href="/login" className="premium-button premium-button-blue">
+                <LogIn className="h-4 w-4" />
+                Login
+              </Link>
               <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer">
-                <Button variant="secondary">Contact Now</Button>
+                <span className="premium-button premium-button-whatsapp">
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </span>
               </a>
             </div>
           </div>

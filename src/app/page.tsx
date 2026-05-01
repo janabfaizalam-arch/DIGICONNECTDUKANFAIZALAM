@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { HeroSection } from "@/components/hero-section";
+import { MarketingFooter } from "@/components/marketing-footer";
+import { ProcessSection } from "@/components/process-section";
 import { ServicesSection } from "@/components/services-section";
-import { TestimonialsSection } from "@/components/testimonials-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
 import { getCurrentUser, getCurrentUserRole, isCustomerRole } from "@/lib/auth";
 
@@ -34,9 +34,9 @@ export default async function Home() {
         <HeroSection />
         <ServicesSection />
         <WhyChooseUsSection />
-        <PhotoGallerySection />
-        <TestimonialsSection />
+        <ProcessSection />
       </main>
+      <MarketingFooter />
     </>
   );
 }
