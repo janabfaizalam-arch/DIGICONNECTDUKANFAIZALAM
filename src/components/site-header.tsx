@@ -186,10 +186,10 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`site-header sticky top-0 z-40 border-b border-white/45 bg-white/62 transition-all duration-300 print:hidden ${
+      className={`site-header sticky top-0 z-40 border-b border-white/10 bg-white/38 transition-all duration-300 print:hidden ${
         scrolled
-          ? "shadow-[0_16px_54px_rgba(15,23,42,0.14)] backdrop-blur-[28px]"
-          : "shadow-[0_12px_44px_rgba(15,23,42,0.08)] backdrop-blur-2xl"
+          ? "shadow-[0_16px_54px_rgba(15,23,42,0.14)] backdrop-blur-[16px]"
+          : "shadow-[0_12px_44px_rgba(15,23,42,0.08)] backdrop-blur-md"
       }`}
     >
       <div className={`container-shell flex items-center justify-between gap-3 transition-all duration-300 md:gap-4 ${scrolled ? "min-h-14 py-1 md:min-h-[3.75rem]" : "min-h-[3.75rem] py-1.5 md:min-h-16"}`}>
@@ -230,7 +230,7 @@ export function SiteHeader() {
             </div>
           )
         ) : (
-          <nav className="hidden items-center gap-1 rounded-full border border-white/70 bg-white/48 p-1 text-sm font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl md:flex">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/15 bg-white/28 p-1 text-sm font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-md md:flex">
             {navLinks.map((link) => (
               <Link key={link.label} href={link.href} className="rounded-full px-3 py-2 transition hover:bg-white/85 hover:text-blue-700">
                 {link.label}
@@ -261,7 +261,7 @@ export function SiteHeader() {
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/65 px-4 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/90">
+              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/30 px-4 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/45">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>
@@ -288,7 +288,7 @@ export function SiteHeader() {
           </div>
         ) : (
           <div className="flex items-center gap-2 md:hidden">
-            <Link href="/" className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/65 text-blue-700 shadow-sm min-[390px]:inline-flex">
+            <Link href="/" className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/30 text-blue-700 shadow-sm backdrop-blur-md min-[390px]:inline-flex">
               <Home className="h-4 w-4" />
               <span className="sr-only">Home</span>
             </Link>

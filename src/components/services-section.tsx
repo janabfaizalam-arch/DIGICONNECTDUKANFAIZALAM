@@ -38,14 +38,14 @@ export function ServicesSection() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Services</p>
           <h2 className="mt-3 text-3xl font-bold text-slate-950 md:text-4xl">Popular Digital & Government Services Online</h2>
           <p className="mt-3 text-base leading-7 text-slate-600">
-            Compact service support for PAN Card, Aadhaar, GST, certificates, licences, and local assistance around Orai, Jalaun.
+            Compact PAN-India service support for PAN Card, Aadhaar, GST, certificates, licences, and document assistance.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {services.map(({ title, href, icon: Icon, subtitle }) => (
             <Link key={title} href={href} className="liquid-card reveal-on-scroll group rounded-[1.2rem] p-3.5 transition duration-300 hover:-translate-y-1 hover:border-blue-300/50 hover:shadow-[0_18px_42px_rgba(37,99,235,0.14)] md:p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/70 text-blue-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/30 text-blue-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-md">
                   <Icon className="h-[18px] w-[18px]" />
                 </div>
                 <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-orange-500" />

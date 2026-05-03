@@ -101,12 +101,29 @@ textarea {
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18)),
+    rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.78),
-    0 24px 80px rgba(15, 23, 42, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(37, 99, 235, 0.08),
+    0 18px 54px rgba(15, 23, 42, 0.08),
+    0 0 42px rgba(37, 99, 235, 0.08);
+}
+
+.glass-panel::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.36), transparent 28%),
+    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.14), transparent 34%),
+    radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.12), transparent 30%);
+  opacity: 0.72;
 }
 
 .shadow-soft {
@@ -115,20 +132,24 @@ textarea {
 
 .shadow-liquid {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 18px 60px rgba(15, 23, 42, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 0 -1px 0 rgba(37, 99, 235, 0.08),
+    0 18px 52px rgba(15, 23, 42, 0.1);
 }
 
 .liquid-card {
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.52)),
-    rgba(255, 255, 255, 0.62);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.16)),
+    rgba(255, 255, 255, 0.2);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    0 16px 42px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    inset 0 -1px 0 rgba(37, 99, 235, 0.06),
+    0 14px 36px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px) saturate(1.22);
+  -webkit-backdrop-filter: blur(12px) saturate(1.22);
   transition:
     transform 220ms ease,
     box-shadow 220ms ease,
@@ -136,13 +157,32 @@ textarea {
     background-color 220ms ease;
 }
 
+.liquid-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.3), transparent 34%),
+    radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.12), transparent 34%),
+    radial-gradient(circle at 100% 92%, rgba(249, 115, 22, 0.1), transparent 30%);
+  opacity: 0.78;
+}
+
+.liquid-card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .liquid-card:hover {
   transform: scale(1.03);
-  border-color: rgba(37, 99, 235, 0.24);
+  border-color: rgba(255, 255, 255, 0.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 20px 54px rgba(37, 99, 235, 0.16),
-    0 6px 24px rgba(249, 115, 22, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.54),
+    inset 0 -1px 0 rgba(249, 115, 22, 0.08),
+    0 20px 54px rgba(37, 99, 235, 0.15),
+    0 8px 26px rgba(249, 115, 22, 0.1);
 }
 
 .premium-button {
@@ -225,6 +265,26 @@ textarea {
   }
 }
 
+@keyframes float-tilt-left {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-1.6deg);
+  }
+  50% {
+    transform: translate3d(0, -11px, 0) rotate(1deg);
+  }
+}
+
+@keyframes float-tilt-right {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(1.4deg);
+  }
+  50% {
+    transform: translate3d(0, -9px, 0) rotate(-1deg);
+  }
+}
+
 @keyframes whatsapp-pulse {
   0% {
     box-shadow:
@@ -260,10 +320,20 @@ textarea {
   animation-duration: 7s;
 }
 
+.floating-card-tilt-left {
+  animation: float-tilt-left 6.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.floating-card-tilt-right {
+  animation: float-tilt-right 7.2s ease-in-out infinite;
+  will-change: transform;
+}
+
 .whatsapp-floating-button {
   position: fixed;
   right: 1rem;
-  bottom: calc(5.8rem + env(safe-area-inset-bottom));
+  bottom: calc(1rem + env(safe-area-inset-bottom));
   z-index: 45;
   display: inline-flex;
   min-height: 3.25rem;
@@ -283,59 +353,6 @@ textarea {
 .whatsapp-floating-button:hover {
   transform: translateY(-2px) scale(1.04);
   filter: saturate(1.08);
-}
-
-.mobile-bottom-contact-bar {
-  position: fixed;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: calc(0.65rem + env(safe-area-inset-bottom));
-  z-index: 44;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-  padding: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 1.25rem;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(239, 246, 255, 0.68)),
-    rgba(255, 255, 255, 0.72);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    0 18px 48px rgba(15, 23, 42, 0.16);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-.mobile-bottom-contact-button {
-  min-height: 2.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 900;
-  line-height: 1;
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.mobile-bottom-contact-button:active {
-  transform: scale(0.98);
-}
-
-.mobile-bottom-contact-call {
-  color: #ffffff;
-  background: linear-gradient(135deg, #1d4ed8, #0284c7);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
-}
-
-.mobile-bottom-contact-whatsapp {
-  color: #ffffff;
-  background: linear-gradient(135deg, #047857, #10b981);
-  box-shadow: 0 12px 24px rgba(5, 150, 105, 0.2);
 }
 
 @media (min-width: 768px) {

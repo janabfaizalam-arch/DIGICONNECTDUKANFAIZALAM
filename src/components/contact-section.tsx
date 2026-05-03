@@ -8,7 +8,7 @@ export function ContactSection() {
   return (
     <section id="support" className="section-pad pt-0">
       <div className="container-shell">
-        <div className="glass-panel reveal-on-scroll rounded-[1.75rem] border border-white/70 p-5 shadow-liquid md:rounded-[2rem] md:p-8">
+        <div className="glass-panel reveal-on-scroll rounded-[1.75rem] border border-white/10 p-5 shadow-liquid md:rounded-[2rem] md:p-8">
           <div className="grid gap-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Support</p>
