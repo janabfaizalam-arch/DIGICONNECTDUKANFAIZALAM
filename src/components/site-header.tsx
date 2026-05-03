@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
+import { Home, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -13,9 +13,11 @@ import { MobileMenu } from "@/components/mobile-menu";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const navLinks = [
+  { href: "/", label: "Home" },
   { href: "/#services", label: "Services" },
-  { href: "/#why-choose-us", label: "Why Choose Us" },
-  { href: "/#process", label: "Process" },
+  { href: "/#about", label: "About" },
+  { href: "/#gallery", label: "Gallery" },
+  { href: "/#support", label: "Support" },
 ];
 
 type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
@@ -169,17 +171,22 @@ export function SiteHeader() {
   }, [supabase]);
 
   return (
-    <header className="site-header sticky top-0 z-40 border-b border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.72)] shadow-[0_12px_36px_rgba(15,23,42,0.08)] backdrop-blur-[20px] print:hidden">
-      <div className="container-shell flex min-h-16 items-center justify-between gap-3 py-2 md:min-h-[4.5rem] md:gap-4">
-        <Link href={logoHref} className="flex h-8 min-w-0 shrink-0 items-center" aria-label="DigiConnect Dukan home">
-          <Image
-            src="/logo-navbar.png"
-            alt="DigiConnect Dukan Logo"
-            width={120}
-            height={32}
-            priority
-            className="h-7 w-auto object-contain md:h-10"
-          />
+    <header className="site-header sticky top-0 z-40 border-b border-white/45 bg-white/62 shadow-[0_12px_44px_rgba(15,23,42,0.08)] backdrop-blur-2xl print:hidden">
+      <div className="container-shell flex min-h-[3.75rem] items-center justify-between gap-3 py-1.5 md:min-h-16 md:gap-4">
+        <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="DigiConnect Dukan home">
+          <span className="flex h-10 w-[8.75rem] items-center md:h-11 md:w-[9.75rem]">
+            <Image
+              src="/logo-navbar.png"
+              alt="DigiConnect Dukan Logo"
+              width={220}
+              height={60}
+              priority
+              className="h-full w-auto object-contain"
+            />
+          </span>
+          <span className="hidden max-w-[8.5rem] text-[0.62rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500 min-[390px]:block">
+            Powered By RNoS India Pvt Ltd
+          </span>
         </Link>
         {appShell ? (
           agentShell ? (
@@ -203,9 +210,9 @@ export function SiteHeader() {
             </div>
           )
         ) : (
-          <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 md:flex">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/70 bg-white/48 p-1 text-sm font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl md:flex">
             {navLinks.map((link) => (
-              <Link key={link.label} href={link.href} className="hover:text-[var(--primary)]">
+              <Link key={link.label} href={link.href} className="rounded-full px-3 py-2 transition hover:bg-white/85 hover:text-blue-700">
                 {link.label}
               </Link>
             ))}
@@ -230,11 +237,11 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl">
+              <Link href="/login" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/25">
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/65 px-5 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/85">
+              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/65 px-4 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/90">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>
@@ -260,7 +267,13 @@ export function SiteHeader() {
             {user ? <LogoutButton className="h-10 px-3 text-xs" /> : null}
           </div>
         ) : (
-          <MobileMenu isLoggedIn={Boolean(user)} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
+          <div className="flex items-center gap-2 md:hidden">
+            <Link href="/" className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/65 text-blue-700 shadow-sm min-[390px]:inline-flex">
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Home</span>
+            </Link>
+            <MobileMenu isLoggedIn={Boolean(user)} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
+          </div>
         )}
       </div>
     </header>

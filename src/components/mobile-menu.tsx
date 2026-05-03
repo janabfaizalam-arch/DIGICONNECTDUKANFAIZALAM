@@ -9,11 +9,11 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const menuLinks = [
+  { href: "/", label: "Home" },
   { href: "/#services", label: "Services" },
-  { href: "/#why-choose-us", label: "Why Choose Us" },
-  { href: "/#process", label: "Process" },
-  { href: "/privacy-policy", label: "Privacy Policy" },
-  { href: "/terms-and-conditions", label: "Terms & Conditions" },
+  { href: "/#about", label: "About" },
+  { href: "/#gallery", label: "Gallery" },
+  { href: "/#support", label: "Support" },
 ];
 
 type MobileMenuProps = {
@@ -68,20 +68,20 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls="mobile-navigation"
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/65 text-blue-700 shadow-[0_8px_28px_rgba(15,23,42,0.1)] backdrop-blur-xl"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/65 text-blue-700 shadow-[0_8px_28px_rgba(15,23,42,0.1)] backdrop-blur-xl"
       >
         <Menu className="h-5 w-5" />
         <span className="sr-only">Open navigation menu</span>
       </button>
       {open ? (
-        <div id="mobile-navigation" className="absolute right-0 top-14 w-[min(19rem,calc(100vw-1.5rem))] rounded-[1.5rem] border border-white/70 bg-white/78 p-3 shadow-liquid backdrop-blur-[20px]">
+        <div id="mobile-navigation" className="absolute right-0 top-12 w-[min(18rem,calc(100vw-1.5rem))] rounded-[1.35rem] border border-white/70 bg-white/82 p-3 shadow-liquid backdrop-blur-2xl">
           <nav className="grid gap-1 text-sm font-medium text-slate-700">
             {menuLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-2xl px-4 py-3 hover:bg-white/75 hover:text-blue-700"
+                className="rounded-2xl px-4 py-2.5 hover:bg-white/75 hover:text-blue-700"
               >
                 {link.label}
               </Link>
