@@ -127,6 +127,7 @@ export function SiteHeader() {
   const appShell = customerShell || staffShell || agentShell;
   const appShellLabel = agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Customer Dashboard";
   const appShellHref = agentShell ? "/agent/dashboard" : staffShell ? "/staff/dashboard" : "/customer/dashboard";
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -170,9 +171,28 @@ export function SiteHeader() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    function updateScrolled() {
+      setScrolled(window.scrollY > 12);
+    }
+
+    updateScrolled();
+    window.addEventListener("scroll", updateScrolled, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", updateScrolled);
+    };
+  }, []);
+
   return (
-    <header className="site-header sticky top-0 z-40 border-b border-white/45 bg-white/62 shadow-[0_12px_44px_rgba(15,23,42,0.08)] backdrop-blur-2xl print:hidden">
-      <div className="container-shell flex min-h-[3.75rem] items-center justify-between gap-3 py-1.5 md:min-h-16 md:gap-4">
+    <header
+      className={`site-header sticky top-0 z-40 border-b border-white/45 bg-white/62 transition-all duration-300 print:hidden ${
+        scrolled
+          ? "shadow-[0_16px_54px_rgba(15,23,42,0.14)] backdrop-blur-[28px]"
+          : "shadow-[0_12px_44px_rgba(15,23,42,0.08)] backdrop-blur-2xl"
+      }`}
+    >
+      <div className={`container-shell flex items-center justify-between gap-3 transition-all duration-300 md:gap-4 ${scrolled ? "min-h-14 py-1 md:min-h-[3.75rem]" : "min-h-[3.75rem] py-1.5 md:min-h-16"}`}>
         <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="DigiConnect Dukan home">
           <span className="flex h-10 w-[8.75rem] items-center md:h-11 md:w-[9.75rem]">
             <Image

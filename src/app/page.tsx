@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { HeroSection } from "@/components/hero-section";
 import { ContactSection } from "@/components/contact-section";
+import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { ProcessSection } from "@/components/process-section";
@@ -42,7 +43,7 @@ export default async function Home() {
 
   return (
     <>
-      <main className="pb-8 md:pb-0">
+      <main className="pb-24 md:pb-0">
         <HeroSection />
         <ServicesSection />
         <WhyChooseUsSection />
@@ -51,6 +52,7 @@ export default async function Home() {
         <ContactSection />
       </main>
       <MarketingFooter />
+      <HomepageContactActions />
     </>
   );
 }

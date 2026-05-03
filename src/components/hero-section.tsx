@@ -10,6 +10,8 @@ import {
   MessageCircle,
   ShieldCheck,
   Sparkles,
+  Timer,
+  UsersRound,
 } from "lucide-react";
 
 import { generateWhatsAppLink } from "@/lib/whatsapp";
@@ -23,17 +25,23 @@ const miniServices = [
 
 export function HeroSection() {
   return (
-    <section className="relative isolate overflow-hidden px-0 pb-10 pt-5 md:pb-16 md:pt-10">
+    <section className="relative isolate overflow-hidden px-0 pb-8 pt-4 md:pb-14 md:pt-8">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_10%,rgba(37,99,235,0.18),transparent_30%),radial-gradient(circle_at_92%_20%,rgba(249,115,22,0.12),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.55),rgba(239,247,255,0.35))]" />
       <div className="container-shell">
-        <div className="glass-panel shadow-liquid mx-auto min-w-0 overflow-hidden rounded-[1.75rem] border border-white/70 px-5 py-6 sm:px-7 md:rounded-[2rem] md:px-9 md:py-9">
-          <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
+        <div className="glass-panel shadow-liquid mx-auto min-w-0 overflow-hidden rounded-[1.75rem] border border-white/70 px-5 py-6 sm:px-7 md:rounded-[2rem] md:px-9 md:py-8">
+          <div className="grid gap-7 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <div className="reveal-on-scroll">
-              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:text-sm">
-                <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
-                <span className="truncate">Digital Services in India, Orai, Jalaun and nearby areas</span>
+              <div className="flex flex-wrap gap-2">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:text-sm">
+                  <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
+                  <span className="truncate">Digital Services in India, Orai, Jalaun and nearby areas</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/70 bg-orange-50/80 px-3 py-1.5 text-xs font-extrabold text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:text-sm">
+                  <Timer className="h-4 w-4 shrink-0" />
+                  Fast Service &ndash; Same Day Process Available
+                </div>
               </div>
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 space-y-3">
                 <h1 className="max-w-3xl text-balance text-[2.15rem] font-bold leading-[1.05] text-slate-950 sm:text-5xl md:text-[3.65rem]">
                   All Digital & Government Services at One Place
                 </h1>
@@ -44,7 +52,17 @@ export function HeroSection() {
                   Apply for PAN, Aadhaar, GST, certificates, licences and more with fast, trusted and professional support.
                 </p>
               </div>
-              <div className="mt-6 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
+              <div className="mt-5 flex flex-wrap gap-2">
+                <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-4 text-sm font-extrabold text-emerald-800 shadow-sm">
+                  <UsersRound className="h-4 w-4" />
+                  1000+ Customers Served
+                </div>
+                <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-blue-200/80 bg-white/72 px-4 text-sm font-bold text-blue-800 shadow-sm backdrop-blur-xl">
+                  <ShieldCheck className="h-4 w-4" />
+                  Secure Document Support
+                </div>
+              </div>
+              <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
                 <Link href="/login" className="premium-button premium-button-blue">
                   <LogIn className="h-4 w-4" />
                   Login to Apply
@@ -55,7 +73,7 @@ export function HeroSection() {
                   WhatsApp Support
                 </a>
               </div>
-              <div className="mt-6 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
+              <div className="mt-5 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
                 {[
                   { title: "Trusted Support", text: "Guided digital assistance.", icon: BadgeCheck, tone: "text-emerald-600" },
                   { title: "Secure Process", text: "Careful document handling.", icon: ShieldCheck, tone: "text-blue-600" },
