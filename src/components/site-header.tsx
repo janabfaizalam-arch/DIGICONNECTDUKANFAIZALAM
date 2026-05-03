@@ -257,7 +257,7 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/25">
+              <Link href="/login/customer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/25">
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>

@@ -103,7 +103,7 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href="/login/customer"
                   onClick={() => setOpen(false)}
                   className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20"
                 >

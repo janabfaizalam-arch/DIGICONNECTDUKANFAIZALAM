@@ -64,7 +64,7 @@ export function HeroSection() {
                 </div>
               </div>
               <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
-                <Link href="/login" className="premium-button premium-button-blue">
+                <Link href="/login/customer" className="premium-button premium-button-blue">
                   <LogIn className="h-4 w-4" />
                   Login to Apply
                   <ArrowRight className="h-4 w-4" />

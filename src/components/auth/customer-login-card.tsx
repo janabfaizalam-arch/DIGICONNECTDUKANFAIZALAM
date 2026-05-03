@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { LoaderCircle, MessageSquareText, ShieldCheck } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
@@ -129,25 +130,28 @@ export function CustomerLoginCard() {
   }
 
   return (
-    <div className="glass-panel shadow-soft w-full max-w-md rounded-[2rem] border p-6 text-center md:p-8">
+    <div className="glass-panel shadow-soft relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 p-5 text-center md:p-7">
       <Image
         src="/logo-navbar.png"
         alt="DigiConnect Dukan Logo"
         width={260}
         height={111}
         priority
-        className="mx-auto h-auto w-56 object-contain md:w-64"
+        className="mx-auto h-auto w-48 object-contain md:w-56"
       />
-      <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Login</p>
-      <h1 className="mt-3 text-3xl font-bold text-slate-950">Track Your Applications</h1>
-      <p className="mt-4 text-base leading-relaxed text-slate-600">
-        Login with mobile OTP to view applications, payment status, invoices, documents, and support updates.
+      <p className="mt-2 text-[0.68rem] font-bold uppercase leading-tight tracking-[0.14em] text-slate-500">
+        Powered By RNoS India Pvt Ltd
+      </p>
+      <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Login</p>
+      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login to DigiConnect Dukan</h1>
+      <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">
+        Access your applications, upload documents and track your service status.
       </p>
 
       {!otpSent ? (
         <form onSubmit={handleSendOtp} className="mt-6 grid gap-3 text-left">
           <label className="grid gap-2">
-            <span className="text-sm font-bold text-slate-700">Mobile number</span>
+            <span className="text-sm font-semibold text-slate-700">Mobile number</span>
             <Input
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
@@ -155,9 +159,10 @@ export function CustomerLoginCard() {
               required
               placeholder="+91 98765 43210"
               disabled={isOtpPending}
+              className="h-[3.25rem] rounded-2xl bg-white/70 px-4 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
             />
           </label>
-          <Button type="submit" disabled={isOtpPending} className="h-12 w-full rounded-2xl">
+          <Button type="submit" disabled={isOtpPending} className="h-[3.25rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]">
             {isOtpPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <MessageSquareText className="h-4 w-4" />}
             Send OTP
           </Button>
@@ -165,7 +170,7 @@ export function CustomerLoginCard() {
       ) : (
         <form onSubmit={handleVerifyOtp} className="mt-6 grid gap-3 text-left">
           <label className="grid gap-2">
-            <span className="text-sm font-bold text-slate-700">OTP sent to {phone}</span>
+            <span className="text-sm font-semibold text-slate-700">OTP sent to {phone}</span>
             <Input
               value={otp}
               onChange={(event) => setOtp(event.target.value)}
@@ -173,9 +178,10 @@ export function CustomerLoginCard() {
               required
               placeholder="Enter OTP"
               disabled={isOtpPending}
+              className="h-[3.25rem] rounded-2xl bg-white/70 px-4 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
             />
           </label>
-          <Button type="submit" disabled={isOtpPending} className="h-12 w-full rounded-2xl">
+          <Button type="submit" disabled={isOtpPending} className="h-[3.25rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]">
             {isOtpPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             Verify & Continue
           </Button>
@@ -198,7 +204,7 @@ export function CustomerLoginCard() {
         </p>
       ) : null}
 
-      <div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+      <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
         <span className="h-px flex-1 bg-slate-200" />
         Google fallback
         <span className="h-px flex-1 bg-slate-200" />
@@ -209,11 +215,23 @@ export function CustomerLoginCard() {
         size="lg"
         onClick={handleGoogleLogin}
         disabled={isGooglePending}
-        className="h-14 w-full rounded-2xl bg-white text-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.12)] hover:bg-slate-50"
+        className="h-[3.25rem] w-full rounded-2xl bg-white/82 text-slate-900 shadow-[0_18px_42px_rgba(15,23,42,0.1)] transition hover:bg-white active:scale-[0.98]"
       >
         {isGooglePending ? <LoaderCircle className="h-5 w-5 animate-spin text-[var(--primary)]" /> : <GoogleIcon />}
         Continue with Google
       </Button>
+
+      <div className="mt-6 rounded-2xl border border-white/15 bg-white/25 p-3 text-center backdrop-blur-md">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Team access</p>
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          <Link href="/login/agent" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
+            Agent Login
+          </Link>
+          <Link href="/login/staff" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
+            Staff Login
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
