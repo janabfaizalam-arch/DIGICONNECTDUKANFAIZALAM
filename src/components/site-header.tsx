@@ -175,8 +175,8 @@ export function SiteHeader() {
           <Image
             src="/logo-navbar.png"
             alt="DigiConnect Dukan Logo"
-            width={1920}
-            height={819}
+            width={120}
+            height={32}
             priority
             className="h-7 w-auto object-contain md:h-10"
           />
