@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { HeroSection } from "@/components/hero-section";
 import { MarketingFooter } from "@/components/marketing-footer";
+import { PartnerNetworkSection } from "@/components/partner-network-section";
 import { ProcessSection } from "@/components/process-section";
 import { ServicesSection } from "@/components/services-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
@@ -34,6 +35,7 @@ export default async function Home() {
         <HeroSection />
         <ServicesSection />
         <WhyChooseUsSection />
+        <PartnerNetworkSection />
         <ProcessSection />
       </main>
       <MarketingFooter />
