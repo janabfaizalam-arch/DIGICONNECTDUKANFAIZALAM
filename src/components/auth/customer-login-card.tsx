@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { LoaderCircle, MessageSquareText, ShieldCheck } from "lucide-react";
@@ -11,15 +11,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/browser";
 
-function normalizePhone(phone: string) {
-  const trimmed = phone.trim();
+const resendDelaySeconds = 60;
 
-  if (trimmed.startsWith("+")) {
-    return trimmed;
+function getIndianMobileDigits(value: string) {
+  const digits = value.replace(/\D/g, "");
+
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return digits.slice(2);
   }
 
-  const digits = trimmed.replace(/\D/g, "");
-  return digits.length === 10 ? `+91${digits}` : `+${digits}`;
+  return digits;
+}
+
+function formatIndianPhone(value: string) {
+  const digits = getIndianMobileDigits(value);
+  return digits.length === 10 ? `+91${digits}` : null;
+}
+
+function isSixDigitOtp(value: string) {
+  return /^\d{6}$/.test(value.trim());
 }
 
 export function CustomerLoginCard() {
@@ -29,11 +39,35 @@ export function CustomerLoginCard() {
   const [otpSent, setOtpSent] = useState(false);
   const [isOtpPending, setIsOtpPending] = useState(false);
   const [isGooglePending, setIsGooglePending] = useState(false);
-  const [phoneFallbackMessage, setPhoneFallbackMessage] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(0);
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  async function handleSendOtp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPhoneFallbackMessage("");
+  useEffect(() => {
+    if (!otpSent || resendSeconds <= 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setResendSeconds((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [otpSent, resendSeconds]);
+
+  async function sendOtp() {
+    setStatusMessage(null);
+
+    const normalizedPhone = formatIndianPhone(phone);
+
+    if (!normalizedPhone) {
+      const message = "Please enter a valid 10 digit mobile number.";
+      setStatusMessage({ type: "error", text: message });
+      toastError(message);
+      return;
+    }
+
     setIsOtpPending(true);
 
     try {
@@ -43,28 +77,54 @@ export function CustomerLoginCard() {
         throw new Error("Supabase environment variables are missing.");
       }
 
-      const normalizedPhone = normalizePhone(phone);
       const { error } = await supabase.auth.signInWithOtp({
         phone: normalizedPhone,
       });
 
       if (error) {
-        setPhoneFallbackMessage("Mobile OTP is not available right now. Please continue with Google login.");
         throw error;
       }
 
       setPhone(normalizedPhone);
+      setOtp("");
       setOtpSent(true);
+      setResendSeconds(resendDelaySeconds);
+      setStatusMessage({ type: "success", text: "OTP sent successfully. Please enter the 6 digit code." });
       success("OTP sent. Please enter the verification code.");
     } catch (error) {
-      toastError(error instanceof Error ? error.message : "OTP login failed. Please use Google login.");
+      const message = error instanceof Error ? error.message : "OTP login failed. Please use Google login.";
+      setStatusMessage({ type: "error", text: message });
+      toastError(message);
     } finally {
       setIsOtpPending(false);
     }
   }
 
+  async function handleSendOtp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await sendOtp();
+  }
+
   async function handleVerifyOtp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setStatusMessage(null);
+
+    const normalizedPhone = formatIndianPhone(phone);
+
+    if (!normalizedPhone) {
+      const message = "Please enter a valid 10 digit mobile number.";
+      setStatusMessage({ type: "error", text: message });
+      toastError(message);
+      return;
+    }
+
+    if (!isSixDigitOtp(otp)) {
+      const message = "Please enter a valid 6 digit OTP.";
+      setStatusMessage({ type: "error", text: message });
+      toastError(message);
+      return;
+    }
+
     setIsOtpPending(true);
 
     try {
@@ -75,7 +135,7 @@ export function CustomerLoginCard() {
       }
 
       const { error } = await supabase.auth.verifyOtp({
-        phone: normalizePhone(phone),
+        phone: normalizedPhone,
         token: otp.trim(),
         type: "sms",
       });
@@ -86,7 +146,9 @@ export function CustomerLoginCard() {
 
       window.location.assign("/customer/dashboard");
     } catch (error) {
-      toastError(error instanceof Error ? error.message : "OTP verification failed. Please try again.");
+      const message = error instanceof Error ? error.message : "OTP verification failed. Please try again.";
+      setStatusMessage({ type: "error", text: message });
+      toastError(message);
       setIsOtpPending(false);
     }
   }
@@ -143,9 +205,9 @@ export function CustomerLoginCard() {
         Powered By RNoS India Pvt Ltd
       </p>
       <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Login</p>
-      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login to DigiConnect Dukan</h1>
+      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login with Mobile OTP</h1>
       <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-        Access your applications, upload documents and track your service status.
+        Enter your mobile number to securely access your applications.
       </p>
 
       {!otpSent ? (
@@ -156,9 +218,11 @@ export function CustomerLoginCard() {
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               type="tel"
+              inputMode="numeric"
               required
-              placeholder="+91 98765 43210"
+              placeholder="Enter 10 digit mobile number"
               disabled={isOtpPending}
+              maxLength={18}
               className="h-[3.25rem] rounded-2xl bg-white/70 px-4 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
             />
           </label>
@@ -173,34 +237,55 @@ export function CustomerLoginCard() {
             <span className="text-sm font-semibold text-slate-700">OTP sent to {phone}</span>
             <Input
               value={otp}
-              onChange={(event) => setOtp(event.target.value)}
+              onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
               inputMode="numeric"
               required
-              placeholder="Enter OTP"
+              placeholder="Enter 6 digit OTP"
               disabled={isOtpPending}
+              maxLength={6}
               className="h-[3.25rem] rounded-2xl bg-white/70 px-4 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
             />
           </label>
           <Button type="submit" disabled={isOtpPending} className="h-[3.25rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]">
             {isOtpPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Verify & Continue
+            Verify & Login
           </Button>
-          <button
-            type="button"
-            onClick={() => {
-              setOtpSent(false);
-              setOtp("");
-            }}
-            className="text-center text-sm font-bold text-[var(--primary)]"
-          >
-            Change mobile number
-          </button>
+          <div className="grid gap-2 text-center text-sm">
+            {resendSeconds > 0 ? (
+              <p className="font-semibold text-slate-500">Resend OTP in {resendSeconds}s</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void sendOtp()}
+                disabled={isOtpPending}
+                className="font-bold text-[var(--primary)] disabled:opacity-50"
+              >
+                Resend OTP
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setOtpSent(false);
+                setOtp("");
+                setResendSeconds(0);
+                setStatusMessage(null);
+              }}
+              className="font-bold text-slate-500"
+            >
+              Change mobile number
+            </button>
+          </div>
         </form>
       )}
 
-      {phoneFallbackMessage ? (
-        <p className="mt-4 rounded-2xl bg-orange-50 px-4 py-3 text-left text-sm font-medium text-orange-700">
-          {phoneFallbackMessage}
+      {statusMessage ? (
+        <p
+          className={`mt-4 rounded-2xl px-4 py-3 text-left text-sm font-medium ${
+            statusMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
+          }`}
+        >
+          {statusMessage.text}
         </p>
       ) : null}
 
