@@ -1,9 +1,10 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileUp, IndianRupee, LoaderCircle, QrCode } from "lucide-react";
+import { FileText, FileUp, IndianRupee, LoaderCircle, Plus, QrCode, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 
+import { ServiceSelectionModal } from "@/components/service-selection-modal";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -55,15 +56,30 @@ function withTimeout<T>(promise: Promise<T>, message: string) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
-export function ServiceApplicationForm({ service }: { service: ApplicationFormService }) {
+export function ServiceApplicationForm({ service, services }: { service: ApplicationFormService; services?: ApplicationFormService[] }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<Record<string, { documentType: string; file: File }>>({});
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const selectedServices = useMemo(() => {
+    const nextServices = services?.length ? services : [service];
+    const seen = new Set<string>();
+
+    return nextServices.filter((item) => {
+      if (seen.has(item.slug)) {
+        return false;
+      }
+
+      seen.add(item.slug);
+      return true;
+    });
+  }, [service, services]);
+  const totalAmount = selectedServices.reduce((total, item) => total + item.amount, 0);
   const upiId = "7007595931@upi";
-  const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${service.amount}&cu=INR`;
+  const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${totalAmount}&cu=INR`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -77,25 +93,23 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
       return;
     }
 
-    for (const documentType of service.documents) {
-      const selectedDocument = selectedDocuments[documentType];
+    for (const selectedService of selectedServices) {
+      for (const documentType of selectedService.documents) {
+        const documentKey = `${selectedService.slug}:${documentType}`;
+        const selectedDocument = selectedDocuments[documentKey];
 
-      if (!selectedDocument?.file) {
-        toastError(`Please upload ${documentType}`);
-        return;
+        if (!selectedDocument?.file) {
+          toastError(`Please upload ${documentType} for ${selectedService.title}`);
+          return;
+        }
+
+        const validationError = validateFile(selectedDocument.file, documentType);
+
+        if (validationError) {
+          toastError(validationError);
+          return;
+        }
       }
-
-      const validationError = validateFile(selectedDocument.file, documentType);
-
-      if (validationError) {
-        toastError(validationError);
-        return;
-      }
-    }
-
-    if (Object.keys(selectedDocuments).length !== service.documents.length) {
-      toastError("Please upload all required documents");
-      return;
     }
 
     if (!paymentScreenshot) {
@@ -113,41 +127,6 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
     setIsSubmitting(true);
 
     try {
-      const leadFormData = new FormData();
-      leadFormData.set("name", String(formData.get("name") ?? "").trim());
-      leadFormData.set("mobile", String(formData.get("mobile") ?? "").trim());
-      leadFormData.set("service", service.title);
-      leadFormData.set("message", String(formData.get("message") ?? "").trim());
-
-      console.log("[ServiceApplicationForm] POST /api/lead started", {
-        service: service.title,
-        mobile: leadFormData.get("mobile"),
-      });
-      setProgressText("Saving lead...");
-
-      const leadResponse = await fetch("/api/lead", {
-        method: "POST",
-        body: leadFormData,
-      });
-      const leadText = await leadResponse.text();
-      let leadResult: { message?: string; error?: string; ok?: boolean };
-
-      try {
-        leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
-      } catch {
-        leadResult = { error: leadText || "The lead API did not return a valid response." };
-      }
-
-      console.log("[ServiceApplicationForm] POST /api/lead completed", {
-        ok: leadResponse.ok,
-        status: leadResponse.status,
-        result: leadResult,
-      });
-
-      if (!leadResponse.ok || !leadResult.ok) {
-        throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
-      }
-
       const {
         data: { user },
         error: userError,
@@ -157,111 +136,151 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         throw new Error("Please login to apply.");
       }
 
-      setProgressText("Uploading documents...");
+      const invoiceIds: string[] = [];
 
-      const uploadedDocuments = [];
+      for (const selectedService of selectedServices) {
+        const leadFormData = new FormData();
+        leadFormData.set("name", String(formData.get("name") ?? "").trim());
+        leadFormData.set("mobile", String(formData.get("mobile") ?? "").trim());
+        leadFormData.set("service", selectedService.title);
+        leadFormData.set("message", String(formData.get("message") ?? "").trim());
 
-      for (const documentType of service.documents) {
-        const selectedDocument = selectedDocuments[documentType];
+        setProgressText(`Saving ${selectedService.title} lead...`);
 
-        if (!selectedDocument?.file) {
-          throw new Error(`Please upload ${documentType}`);
+        const leadResponse = await fetch("/api/lead", {
+          method: "POST",
+          body: leadFormData,
+        });
+        const leadText = await leadResponse.text();
+        let leadResult: { message?: string; error?: string; ok?: boolean };
+
+        try {
+          leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
+        } catch {
+          leadResult = { error: leadText || "The lead API did not return a valid response." };
         }
 
-        const file = selectedDocument.file;
-        const path = `${user.id}/${service.slug}/documents/${Date.now()}-${cleanFileName(documentType)}-${cleanFileName(file.name)}`;
-        const { error: uploadError } = await withTimeout(
-          supabase.storage.from("documents").upload(path, file, {
-            contentType: file.type,
+        if (!leadResponse.ok || !leadResult.ok) {
+          throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
+        }
+
+        setProgressText(`Uploading ${selectedService.title} documents...`);
+
+        const uploadedDocuments = [];
+
+        for (const documentType of selectedService.documents) {
+          const documentKey = `${selectedService.slug}:${documentType}`;
+          const selectedDocument = selectedDocuments[documentKey];
+
+          if (!selectedDocument?.file) {
+            throw new Error(`Please upload ${documentType}`);
+          }
+
+          const file = selectedDocument.file;
+          const path = `${user.id}/${selectedService.slug}/documents/${Date.now()}-${cleanFileName(documentType)}-${cleanFileName(file.name)}`;
+          const { error: uploadError } = await withTimeout(
+            supabase.storage.from("documents").upload(path, file, {
+              contentType: file.type,
+              upsert: false,
+            }),
+            "Document upload is taking longer than 30 seconds. Please check the file size and try again.",
+          );
+
+          if (uploadError) {
+            throw new Error(uploadError.message);
+          }
+
+          const { data } = supabase.storage.from("documents").getPublicUrl(path);
+          uploadedDocuments.push({
+            document_type: documentType,
+            file_name: file.name,
+            file_url: data.publicUrl,
+            file_type: file.type,
+            storage_path: path,
+          });
+        }
+
+        setProgressText(`Uploading ${selectedService.title} payment proof...`);
+
+        const screenshotPath = `${user.id}/${selectedService.slug}/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
+        const { error: screenshotUploadError } = await withTimeout(
+          supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
+            contentType: paymentScreenshot.type,
             upsert: false,
           }),
-          "Document upload is taking longer than 30 seconds. Please check the file size and try again.",
+          "Payment screenshot upload is taking longer than 30 seconds.",
         );
 
-        if (uploadError) {
-          throw new Error(uploadError.message);
+        if (screenshotUploadError) {
+          throw new Error(screenshotUploadError.message);
         }
 
-        const { data } = supabase.storage.from("documents").getPublicUrl(path);
-        uploadedDocuments.push({
-          document_type: documentType,
-          file_name: file.name,
-          file_url: data.publicUrl,
-          file_type: file.type,
-          storage_path: path,
-        });
+        const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
+        const details: Record<string, string> = {
+          fatherOrHusbandName: String(formData.get("fatherOrHusbandName") ?? "").trim(),
+          dateOfBirth: String(formData.get("dateOfBirth") ?? "").trim(),
+          address: String(formData.get("address") ?? "").trim(),
+          state: String(formData.get("state") ?? "").trim(),
+          pincode: String(formData.get("pincode") ?? "").trim(),
+        };
+
+        for (const field of selectedService.fields) {
+          details[field.name] = String(formData.get(`${selectedService.slug}_${field.name}`) ?? "").trim();
+        }
+
+        setProgressText(`Saving ${selectedService.title} application...`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+        const response = await fetch("/api/applications", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            serviceSlug: selectedService.slug,
+            price: selectedService.amount,
+            customer: {
+              name: String(formData.get("name") ?? "").trim(),
+              mobile: String(formData.get("mobile") ?? "").trim(),
+              email: String(formData.get("email") ?? "").trim(),
+              city: String(formData.get("city") ?? "").trim(),
+              message: String(formData.get("message") ?? "").trim(),
+            },
+            details,
+            documents: uploadedDocuments,
+            paymentScreenshot: {
+              file_name: paymentScreenshot.name,
+              file_url: screenshotPublicUrl.publicUrl,
+              file_type: paymentScreenshot.type,
+              storage_path: screenshotPath,
+            },
+          }),
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
+
+        const text = await response.text();
+        let result: { message?: string; error?: string; applicationId?: string; invoiceId?: string };
+
+        try {
+          result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
+        } catch {
+          throw new Error(text || "The server did not return a valid response. Please try again.");
+        }
+
+        if (!response.ok || !result.applicationId || !result.invoiceId) {
+          throw new Error(result.message ?? result.error ?? "Application submission failed.");
+        }
+
+        invoiceIds.push(result.invoiceId);
       }
 
-      setProgressText("Uploading payment proof...");
-
-      const screenshotPath = `${user.id}/${service.slug}/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
-      const { error: screenshotUploadError } = await withTimeout(
-        supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
-          contentType: paymentScreenshot.type,
-          upsert: false,
-        }),
-        "Payment screenshot upload is taking longer than 30 seconds.",
+      success(
+        selectedServices.length > 1
+          ? "Applications submitted successfully. Track each service in your dashboard."
+          : "Application submitted successfully.",
       );
-
-      if (screenshotUploadError) {
-        throw new Error(screenshotUploadError.message);
-      }
-
-      const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
-      const details: Record<string, string> = {};
-
-      for (const field of service.fields) {
-        details[field.name] = String(formData.get(field.name) ?? "").trim();
-      }
-
-      setProgressText("Saving application...");
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
-      const response = await fetch("/api/applications", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          serviceSlug: service.slug,
-          price: service.amount,
-          customer: {
-            name: String(formData.get("name") ?? "").trim(),
-            mobile: String(formData.get("mobile") ?? "").trim(),
-            email: String(formData.get("email") ?? "").trim(),
-            city: String(formData.get("city") ?? "").trim(),
-            message: String(formData.get("message") ?? "").trim(),
-          },
-          details,
-          documents: uploadedDocuments,
-          paymentScreenshot: {
-            file_name: paymentScreenshot.name,
-            file_url: screenshotPublicUrl.publicUrl,
-            file_type: paymentScreenshot.type,
-            storage_path: screenshotPath,
-          },
-        }),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId));
-
-      setProgressText("Generating invoice...");
-
-      const text = await response.text();
-      let result: { message?: string; error?: string; applicationId?: string; invoiceId?: string };
-
-      try {
-        result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
-      } catch {
-        throw new Error(text || "The server did not return a valid response. Please try again.");
-      }
-
-      if (!response.ok || !result.applicationId || !result.invoiceId) {
-        throw new Error(result.message ?? result.error ?? "Application submission failed.");
-      }
-
-      success(result.message ?? "Application submitted successfully.");
-      router.push(`/invoice/${result.invoiceId}`);
+      router.push(selectedServices.length > 1 ? "/customer/dashboard" : `/invoice/${invoiceIds[0]}`);
       router.refresh();
     } catch (error) {
       const message =
@@ -278,22 +297,59 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
   };
 
   return (
+    <>
     <form onSubmit={onSubmit} className="grid gap-4 pb-4 lg:grid-cols-[1fr_340px]">
-      <Card className="rounded-2xl p-4 md:p-6">
+      <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 shadow-sm md:p-6">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">{service.title}</h2>
+          <h2 className="mt-2 text-2xl font-bold text-slate-950">
+            {selectedServices.length > 1 ? "Multiple Service Application" : service.title}
+          </h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Fill the form, upload documents, add UPI payment details, and track your application in the dashboard.
           </p>
         </div>
 
+        <div className="mt-5 grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-4">
+          {["Service Details", "Applicant Details", "Documents Upload", "Payment / Review", "Submit"].map((step, index) => (
+            <div key={step} className={index === 4 ? "md:col-span-4 lg:col-span-1" : ""}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-white">
+                  {index + 1}
+                </span>
+                <p className="text-sm font-bold text-slate-800">{step}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 rounded-2xl border bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold text-slate-950">Selected Services</p>
+              <p className="mt-1 text-sm text-slate-600">Each service will be submitted as a separate application record.</p>
+            </div>
+            <Button type="button" variant="outline" onClick={() => setServiceModalOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add another service
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {selectedServices.map((item) => (
+              <div key={item.slug} className="rounded-2xl bg-slate-50 p-4">
+                <p className="font-bold text-slate-950">{item.title}</p>
+                <p className="mt-1 text-sm text-slate-600">{formatCurrency(item.amount)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <Input name="name" placeholder="Name" aria-label="Name" required className="h-12 text-sm" />
+          <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" />
           <Input
             name="mobile"
-            placeholder="Mobile"
-            aria-label="Mobile"
+            placeholder="Mobile Number"
+            aria-label="Mobile Number"
             inputMode="numeric"
             pattern="[0-9]{10}"
             required
@@ -302,35 +358,42 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
           <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" />
           <Input
             name="service"
-            value={service.title}
+            value={selectedServices.map((item) => item.title).join(", ")}
             aria-label="Service"
             readOnly
             className="h-12 bg-slate-50 text-sm font-medium"
           />
+          <Input name="fatherOrHusbandName" placeholder="Father/Husband Name" aria-label="Father/Husband Name" required className="h-12 text-sm" />
+          <Input name="dateOfBirth" aria-label="Date of Birth" type="date" required className="h-12 text-sm" />
+          <Input name="address" placeholder="Address" aria-label="Address" required className="h-12 text-sm md:col-span-2" />
           <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" />
-          {service.fields.map((field) =>
-            field.type === "textarea" ? (
-              <Textarea
-                key={field.name}
-                name={field.name}
-                placeholder={field.label}
-                aria-label={field.label}
-                required={field.required ?? true}
-                className="min-h-24 text-sm md:col-span-2"
-              />
-            ) : (
-              <Input
-                key={field.name}
-                name={field.name}
-                placeholder={field.label}
-                aria-label={field.label}
-                type={field.type ?? "text"}
-                required={field.required ?? true}
-                className="h-12 text-sm"
-              />
+          <Input name="state" placeholder="State" aria-label="State" required className="h-12 text-sm" />
+          <Input name="pincode" placeholder="Pincode" aria-label="Pincode" inputMode="numeric" pattern="[0-9]{6}" required className="h-12 text-sm" />
+          {selectedServices.flatMap((selectedService) =>
+            selectedService.fields.map((field) =>
+              field.type === "textarea" ? (
+                <Textarea
+                  key={`${selectedService.slug}_${field.name}`}
+                  name={`${selectedService.slug}_${field.name}`}
+                  placeholder={`${selectedService.title}: ${field.label}`}
+                  aria-label={`${selectedService.title}: ${field.label}`}
+                  required={field.required ?? true}
+                  className="min-h-24 text-sm md:col-span-2"
+                />
+              ) : (
+                <Input
+                  key={`${selectedService.slug}_${field.name}`}
+                  name={`${selectedService.slug}_${field.name}`}
+                  placeholder={`${selectedService.title}: ${field.label}`}
+                  aria-label={`${selectedService.title}: ${field.label}`}
+                  type={field.type ?? "text"}
+                  required={field.required ?? true}
+                  className="h-12 text-sm"
+                />
+              ),
             ),
           )}
-          <Textarea name="message" placeholder="Message" aria-label="Message" required className="min-h-24 text-sm md:col-span-2" />
+          <Textarea name="message" placeholder="Notes / Message" aria-label="Notes / Message" required className="min-h-24 text-sm md:col-span-2" />
         </div>
 
         <div className="mt-5 rounded-2xl border border-dashed bg-blue-50/60 p-4 md:p-5">
@@ -339,58 +402,99 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <div>
               <p className="font-bold text-slate-950">Required Documents Upload</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                Upload each document step by step. PDF, JPG, and PNG files are supported.
+                Upload clear documents for faster processing. PDF, JPG, and PNG files are supported.
               </p>
               <div className="mt-4 grid gap-3">
-                {service.documents.map((document, index) => (
-                  <label key={document} className="rounded-2xl border bg-white p-4">
-                    <span className="block text-sm font-bold text-slate-950">
-                      {String(index + 1).padStart(2, "0")}. {document}
-                    </span>
-                    <Input
-                      name={`document_${document}`}
-                      type="file"
-                      required
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="mt-3"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
+                {selectedServices.map((selectedService) => (
+                  <div key={selectedService.slug} className="rounded-2xl border bg-white p-4">
+                    <p className="font-bold text-slate-950">{selectedService.title}</p>
+                    <div className="mt-3 grid gap-3">
+                      {selectedService.documents.map((document, index) => {
+                        const documentKey = `${selectedService.slug}:${document}`;
+                        const selectedFile = selectedDocuments[documentKey]?.file;
 
-                        setSelectedDocuments((current) => {
-                          if (!file) {
-                            const next = { ...current };
-                            delete next[document];
-                            return next;
-                          }
+                        return (
+                          <label key={documentKey} className="rounded-2xl border bg-slate-50 p-4">
+                            <span className="block text-sm font-bold text-slate-950">
+                              {String(index + 1).padStart(2, "0")}. {document}
+                            </span>
+                            <Input
+                              name={`document_${documentKey}`}
+                              type="file"
+                              required={!selectedFile}
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="mt-3"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
 
-                          const validationError = validateFile(file, document);
+                                setSelectedDocuments((current) => {
+                                  if (!file) {
+                                    const next = { ...current };
+                                    delete next[documentKey];
+                                    return next;
+                                  }
 
-                          if (validationError) {
-                            event.target.value = "";
-                            toastError(validationError);
-                            const next = { ...current };
-                            delete next[document];
-                            return next;
-                          }
+                                  const validationError = validateFile(file, document);
 
-                          return {
-                            ...current,
-                            [document]: {
-                              documentType: document,
-                              file,
-                            },
-                          };
-                        });
-                      }}
-                    />
-                    <span className="mt-2 block text-xs font-bold text-blue-700">
-                      {selectedDocuments[document]?.file.name ?? "No file selected"}
-                    </span>
-                  </label>
+                                  if (validationError) {
+                                    event.target.value = "";
+                                    toastError(validationError);
+                                    const next = { ...current };
+                                    delete next[documentKey];
+                                    return next;
+                                  }
+
+                                  return {
+                                    ...current,
+                                    [documentKey]: {
+                                      documentType: document,
+                                      file,
+                                    },
+                                  };
+                                });
+                              }}
+                            />
+                            <span className="mt-2 flex items-center justify-between gap-3 text-xs font-bold text-blue-700">
+                              <span className="truncate">{selectedFile?.name ?? "No file selected"}</span>
+                              {selectedFile ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedDocuments((current) => {
+                                      const next = { ...current };
+                                      delete next[documentKey];
+                                      return next;
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-red-600"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove
+                                </button>
+                              ) : null}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {[
+            { title: "Secure document handling", icon: ShieldCheck },
+            { title: "Expert verification", icon: UsersRound },
+            { title: "Application tracking", icon: FileText },
+          ].map(({ title, icon: Icon }) => (
+            <div key={title} className="rounded-2xl border bg-white p-4">
+              <Icon className="h-5 w-5 text-[var(--primary)]" />
+              <p className="mt-3 text-sm font-bold text-slate-800">{title}</p>
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -402,7 +506,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500">Fixed Amount</p>
-              <p className="text-2xl font-bold text-slate-950">{formatCurrency(service.amount)}</p>
+              <p className="text-2xl font-bold text-slate-950">{formatCurrency(totalAmount)}</p>
             </div>
           </div>
         </Card>
@@ -417,7 +521,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
             <img src={qrUrl} alt="UPI QR" className="mx-auto h-40 w-40 rounded-xl object-contain md:h-44 md:w-44" />
             <p className="mt-4 text-sm font-medium text-slate-500">UPI ID</p>
             <p className="mt-1 break-all font-mono text-sm font-bold text-slate-950">{upiId}</p>
-            <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(service.amount)}</p>
+            <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(totalAmount)}</p>
           </div>
           <label className="mt-4 block">
             <span className="text-sm font-medium text-slate-700">Upload Payment Screenshot</span>
@@ -457,5 +561,7 @@ export function ServiceApplicationForm({ service }: { service: ApplicationFormSe
         </Button>
       </div>
     </form>
+    <ServiceSelectionModal open={serviceModalOpen} onOpenChange={setServiceModalOpen} initialSelectedSlugs={selectedServices.map((item) => item.slug)} />
+    </>
   );
 }

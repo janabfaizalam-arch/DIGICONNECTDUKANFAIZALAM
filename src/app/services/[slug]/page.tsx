@@ -14,6 +14,7 @@ import {
   Star,
 } from "lucide-react";
 
+import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
@@ -92,7 +93,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${service.title} | DigiConnect Dukan`,
-    description: `${service.title} support by DigiConnect Dukan with overview, required documents, process steps, benefits, FAQ, reviews, login to apply, and WhatsApp assistance.`,
+    description: `${service.title} support by DigiConnect Dukan with overview, required documents, process steps, benefits, FAQ, reviews, Apply Now, and WhatsApp assistance.`,
     alternates: {
       canonical: `/services/${service.slug}`,
     },
@@ -136,10 +137,10 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href={`/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
-                Login to Apply
+              <ApplyServiceTrigger serviceSlug={service.slug} className={buttonVariants({ size: "lg" })}>
+                Apply Now
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </ApplyServiceTrigger>
               <a
                 href={generateWhatsAppLink(service.title)}
                 target="_blank"

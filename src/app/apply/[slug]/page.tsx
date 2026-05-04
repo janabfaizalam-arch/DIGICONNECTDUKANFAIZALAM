@@ -10,6 +10,7 @@ import { getServiceBySlug, portalServices } from "@/lib/portal-data";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ services?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -32,8 +33,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ApplyPage({ params }: PageProps) {
-  const [{ slug }, user] = await Promise.all([params, getCurrentUser()]);
+export default async function ApplyPage({ params, searchParams }: PageProps) {
+  const [{ slug }, query, user] = await Promise.all([params, searchParams, getCurrentUser()]);
   const service = getServiceBySlug(slug);
 
   if (!service) {
@@ -41,8 +42,13 @@ export default async function ApplyPage({ params }: PageProps) {
   }
 
   if (!user) {
-    redirect("/login/customer");
+    const servicesParam = query?.services ? `?services=${encodeURIComponent(query.services)}` : "";
+    redirect(`/login/customer?redirect=${encodeURIComponent(`/apply/${slug}${servicesParam}`)}`);
   }
+
+  const selectedServices = Array.from(new Set([slug, ...(query?.services?.split(",") ?? [])]))
+    .map((item) => getServiceBySlug(item.trim()))
+    .filter((item): item is NonNullable<typeof service> => Boolean(item));
 
   return (
     <main className="min-h-screen px-4 pb-10 pt-5 md:px-8 md:py-10">
@@ -83,6 +89,14 @@ export default async function ApplyPage({ params }: PageProps) {
               documents: service.documents,
               fields: service.fields,
             }}
+            services={selectedServices.map((item) => ({
+              title: item.title,
+              slug: item.slug,
+              amount: item.amount,
+              description: item.description,
+              documents: item.documents,
+              fields: item.fields,
+            }))}
           />
         </div>
       </div>

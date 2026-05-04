@@ -16,6 +16,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 type HeroViewer =
@@ -100,11 +101,11 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
               <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
                 {isCustomer ? (
                   <>
-                    <Link href="/services" className="premium-button premium-button-blue">
+                    <ApplyServiceTrigger className="premium-button premium-button-blue">
                       <FileCheck2 className="h-4 w-4" />
                       Apply Now
                       <ArrowRight className="h-4 w-4" />
-                    </Link>
+                    </ApplyServiceTrigger>
                     <Link href="/customer/dashboard" className="premium-button border border-white/15 bg-white/65 text-blue-800 shadow-sm md:hover:-translate-y-0.5 md:hover:bg-white/80">
                       <LayoutDashboard className="h-4 w-4" />
                       My Dashboard
@@ -118,11 +119,11 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                   </Link>
                 ) : (
                   <>
-                    <Link href="/login/customer" className="premium-button premium-button-blue">
+                    <ApplyServiceTrigger className="premium-button premium-button-blue">
                       <LogIn className="h-4 w-4" />
-                      Login to Apply
+                      Apply Now
                       <ArrowRight className="h-4 w-4" />
-                    </Link>
+                    </ApplyServiceTrigger>
                     <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
                       <MessageCircle className="h-4 w-4" />
                       WhatsApp Support

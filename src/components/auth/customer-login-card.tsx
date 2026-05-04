@@ -42,7 +42,9 @@ function getCurrentCustomerRedirect() {
     return "/";
   }
 
-  return getSafeCustomerRedirect(new URLSearchParams(window.location.search).get("next"));
+  const params = new URLSearchParams(window.location.search);
+
+  return getSafeCustomerRedirect(params.get("redirect") ?? params.get("next"));
 }
 
 export function CustomerLoginCard() {

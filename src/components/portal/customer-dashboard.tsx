@@ -1,40 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight,
-  BadgeCheck,
   Bell,
-  BriefcaseBusiness,
-  Building2,
-  CarFront,
   CheckCircle2,
   ClipboardCheck,
   Download,
   FileCheck2,
   FileText,
-  Fingerprint,
-  HeartPulse,
-  IdCard,
-  Landmark,
   MessageCircle,
   Phone,
   Plus,
   ReceiptText,
   RotateCcw,
-  Search,
-  ShieldCheck,
-  Store,
   UploadCloud,
   UserRound,
-  Utensils,
-  WalletCards,
-  X,
 } from "lucide-react";
 
 import { CustomerDocumentUpload } from "@/components/portal/customer-document-upload";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
+import { ServiceSelectionModal } from "@/components/service-selection-modal";
 import { Card } from "@/components/ui/card";
 import type { Application, NotificationItem } from "@/lib/portal-types";
 import { formatCurrency } from "@/lib/portal-data";
@@ -54,34 +40,6 @@ type CustomerDashboardProps = {
     percent: number;
   };
 };
-
-type ServiceCategory = "All" | "Government" | "Certificates" | "Business" | "Licenses";
-
-const serviceItems = [
-  { title: "PAN Card", slug: "pan-card", benefit: "Apply, correct or reprint PAN details.", category: "Government", icon: FileCheck2 },
-  { title: "Aadhaar Update", slug: "aadhaar-update", benefit: "Update Aadhaar demographic details.", category: "Government", icon: Fingerprint },
-  { title: "Voter ID", slug: "voter-id", benefit: "New voter ID and correction support.", category: "Government", icon: IdCard },
-  { title: "Ration Card", slug: "ration-card", benefit: "Family ration card assistance.", category: "Government", icon: WalletCards },
-  { title: "Income Certificate", slug: "income-caste-domicile-certificate", benefit: "Certificate form and document guidance.", category: "Certificates", icon: FileText },
-  { title: "Caste Certificate", slug: "income-caste-domicile-certificate", benefit: "Document support for caste certificate.", category: "Certificates", icon: BadgeCheck },
-  { title: "Domicile Certificate", slug: "income-caste-domicile-certificate", benefit: "Residence certificate application help.", category: "Certificates", icon: Landmark },
-  { title: "GST Registration", slug: "gst-registration", benefit: "Start GST registration for your business.", category: "Business", icon: Building2 },
-  { title: "MSME Certificate", slug: "msme", benefit: "Udyam/MSME registration support.", category: "Business", icon: BriefcaseBusiness },
-  { title: "Passport Assistance", slug: "passport-assistance", benefit: "Passport form and appointment help.", category: "Government", icon: ShieldCheck },
-  { title: "Driving Licence", slug: "driving-licence", benefit: "Learner, permanent and renewal support.", category: "Licenses", icon: CarFront },
-  { title: "Ayushman Card", slug: "ayushman-card", benefit: "Eligibility and card print support.", category: "Government", icon: HeartPulse },
-  { title: "Labour Card", slug: "labour-card-e-shram-card", benefit: "Labour and e-Shram card assistance.", category: "Government", icon: ClipboardCheck },
-  { title: "Food License", slug: "food-license", benefit: "FSSAI food license support.", category: "Licenses", icon: Utensils },
-  { title: "Trade License", slug: "trade-license", benefit: "Trade license and shop act support.", category: "Licenses", icon: Store },
-] satisfies Array<{
-  title: string;
-  slug: string;
-  benefit: string;
-  category: Exclude<ServiceCategory, "All">;
-  icon: typeof FileCheck2;
-}>;
-
-const categories: ServiceCategory[] = ["All", "Government", "Certificates", "Business", "Licenses"];
 
 const featureCards = [
   { title: "Apply services online", description: "Choose services and start applications from your account.", icon: Plus },
@@ -118,22 +76,10 @@ function getTrackerStep(status: string) {
 
 export function CustomerDashboard({ applications, notifications, profileCompletion }: CustomerDashboardProps) {
   const [servicesOpen, setServicesOpen] = useState(false);
-  const [serviceSearch, setServiceSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>("All");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const completed = applications.filter((application) => application.status === "completed").length;
   const pending = applications.length - completed;
   const firstInvoice = applications.flatMap((application) => application.invoices ?? [])[0];
-  const filteredServices = useMemo(() => {
-    const query = serviceSearch.trim().toLowerCase();
-
-    return serviceItems.filter((service) => {
-      const matchesCategory = selectedCategory === "All" || service.category === selectedCategory;
-      const matchesSearch = !query || `${service.title} ${service.benefit}`.toLowerCase().includes(query);
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [selectedCategory, serviceSearch]);
   function openServices() {
     setActionMessage(null);
     setServicesOpen(true);
@@ -423,71 +369,7 @@ export function CustomerDashboard({ applications, notifications, profileCompleti
         </section>
       </div>
 
-      {servicesOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-slate-950/45 p-0 backdrop-blur-sm md:items-center md:justify-center md:p-6">
-          <div className="max-h-[88vh] w-full overflow-hidden rounded-t-[1.75rem] border border-white/20 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.22)] md:max-w-5xl md:rounded-[1.75rem]">
-            <div className="flex items-start justify-between gap-4 border-b p-5">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-950">Choose a Service</h2>
-                <p className="mt-1 text-sm text-slate-600">Select the service you want to apply for.</p>
-              </div>
-              <button type="button" onClick={() => setServicesOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700">
-                <X className="h-5 w-5" />
-                <span className="sr-only">Close services popup</span>
-              </button>
-            </div>
-            <div className="grid gap-3 border-b p-5 md:grid-cols-[1fr_auto] md:items-center">
-              <label className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={serviceSearch}
-                  onChange={(event) => setServiceSearch(event.target.value)}
-                  placeholder="Search service..."
-                  className="h-12 w-full rounded-2xl border bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--primary)]"
-                />
-              </label>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setSelectedCategory(category)}
-                    className={`h-10 shrink-0 rounded-full px-4 text-sm font-bold ${
-                      selectedCategory === category ? "bg-[var(--primary)] text-white" : "border bg-white text-slate-700"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="max-h-[52vh] overflow-y-auto p-5">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredServices.map(({ title, slug, benefit, icon: Icon }) => (
-                  <Link key={`${title}-${slug}`} href={slug ? `/services/${slug}` : "/services"} className="rounded-2xl border bg-white p-4 shadow-sm transition-transform md:hover:-translate-y-0.5">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <h3 className="font-bold text-slate-950">{title}</h3>
-                        <p className="mt-1 text-sm leading-5 text-slate-600">{benefit}</p>
-                      </div>
-                    </div>
-                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
-                      Apply now
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </Link>
-                ))}
-              </div>
-              {!filteredServices.length ? (
-                <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-600">No services found.</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ServiceSelectionModal open={servicesOpen} onOpenChange={setServicesOpen} />
     </main>
   );
 }

@@ -56,6 +56,30 @@ function isMissingActiveColumn(errorMessage: string) {
   return normalized.includes("active") && (normalized.includes("does not exist") || normalized.includes("could not find"));
 }
 
+function getLoginPathForProtectedRoute(pathname: string) {
+  if (matchesRoute(pathname, "/agent")) {
+    return "/login/agent";
+  }
+
+  if (matchesRoute(pathname, "/staff")) {
+    return "/login/staff";
+  }
+
+  if (matchesRoute(pathname, "/customer") || matchesRoute(pathname, "/apply")) {
+    return "/login/customer";
+  }
+
+  return "/login";
+}
+
+function applyCustomerRedirect(url: URL, pathname: string) {
+  if (!matchesRoute(pathname, "/apply")) {
+    return;
+  }
+
+  url.searchParams.set("redirect", `${pathname}${url.search}`);
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request,
@@ -71,7 +95,8 @@ export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
     if (isProtectedRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = matchesRoute(pathname, "/agent") ? "/login/agent" : matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
+      url.pathname = getLoginPathForProtectedRoute(pathname);
+      applyCustomerRedirect(url, pathname);
       return NextResponse.redirect(url);
     }
 
@@ -99,7 +124,8 @@ export async function middleware(request: NextRequest) {
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = matchesRoute(pathname, "/agent") ? "/login/agent" : matchesRoute(pathname, "/staff") ? "/login/staff" : matchesRoute(pathname, "/customer") ? "/login/customer" : "/login";
+    url.pathname = getLoginPathForProtectedRoute(pathname);
+    applyCustomerRedirect(url, pathname);
     return NextResponse.redirect(url);
   }
 
@@ -182,6 +208,20 @@ export async function middleware(request: NextRequest) {
   if (user && matchesRoute(pathname, "/login/staff")) {
     const url = request.nextUrl.clone();
     url.pathname = role === "staff" ? "/staff/dashboard" : "/unauthorized";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && matchesRoute(pathname, "/login/customer")) {
+    const url = request.nextUrl.clone();
+    const redirectTo = request.nextUrl.searchParams.get("redirect");
+    if (role === "customer" && redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
+      const target = new URL(redirectTo, request.url);
+      url.pathname = target.pathname;
+      url.search = target.search;
+    } else {
+      url.pathname = getRoleHome(role);
+      url.search = "";
+    }
     return NextResponse.redirect(url);
   }
 

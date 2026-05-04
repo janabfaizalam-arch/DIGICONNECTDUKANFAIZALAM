@@ -11,12 +11,33 @@ export const metadata: Metadata = {
     "Login to track your digital service applications, upload documents and manage your DigiConnect Dukan account.",
 };
 
-export default async function CustomerLoginPage() {
+function getSafeRedirect(value: string | undefined) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/customer/dashboard";
+  }
+
+  if (
+    value.startsWith("/admin") ||
+    value.startsWith("/agent") ||
+    value.startsWith("/staff") ||
+    value.startsWith("/login") ||
+    value.startsWith("/admin-login") ||
+    value.startsWith("/super-admin-login")
+  ) {
+    return "/customer/dashboard";
+  }
+
+  return value;
+}
+
+export default async function CustomerLoginPage({ searchParams }: { searchParams?: Promise<{ redirect?: string; next?: string }> }) {
+  const query = await searchParams;
+  const redirectTo = getSafeRedirect(query?.redirect ?? query?.next);
   const user = await getCurrentUser();
 
   if (user) {
     const role = await getCurrentUserRole(user);
-    redirect(isCustomerRole(role) ? "/customer/dashboard" : getRoleHome(role));
+    redirect(isCustomerRole(role) ? redirectTo : getRoleHome(role));
   }
 
   return (

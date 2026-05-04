@@ -6,6 +6,7 @@ import { FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-
 import { useEffect, useRef, useState } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
+import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const menuLinks = [
@@ -92,14 +93,10 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
             {isLoggedIn && panelHref && panelLabel ? (
               <>
                 {isCustomer ? (
-                  <Link
-                    href="/services"
-                    onClick={() => setOpen(false)}
-                    className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15"
-                  >
+                  <ApplyServiceTrigger className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15">
                     <FileCheck2 className="h-4 w-4" />
                     Apply Now
-                  </Link>
+                  </ApplyServiceTrigger>
                 ) : null}
                 <Link
                   href={panelHref}
