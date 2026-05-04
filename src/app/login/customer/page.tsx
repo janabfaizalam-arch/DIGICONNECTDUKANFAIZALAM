@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { BadgeCheck, FileCheck2, ShieldCheck, Smartphone, UploadCloud } from "lucide-react";
 
 import { CustomerLoginCard } from "@/components/auth/customer-login-card";
-import { getCurrentUser, getCurrentUserRole, getRoleHome } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
+import { getCustomerHomeForUser } from "@/lib/customer-profile";
 
 export const metadata: Metadata = {
   title: "Login - DigiConnect Dukan",
@@ -16,7 +17,7 @@ export default async function CustomerLoginPage() {
 
   if (user) {
     const role = await getCurrentUserRole(user);
-    redirect(getRoleHome(role));
+    redirect(isCustomerRole(role) ? await getCustomerHomeForUser(user.id) : getRoleHome(role));
   }
 
   return (

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { CustomerDashboard } from "@/components/portal/customer-dashboard";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
+import { getCustomerProfileStatus } from "@/lib/customer-profile";
 import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
 
 export const dynamic = "force-dynamic";
@@ -26,10 +27,27 @@ export default async function CustomerDashboardPage() {
     redirect(getRoleHome(role));
   }
 
-  const { applications, notifications } = await getCustomerDashboardData(user.id);
-  const name = user.user_metadata.full_name ?? user.user_metadata.name ?? user.phone ?? "Customer";
-  const email = user.email ?? user.phone ?? "";
-  const avatarUrl = user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "";
+  const customerProfileStatus = await getCustomerProfileStatus(user.id);
 
-  return <CustomerDashboard applications={applications} notifications={notifications} profile={{ name, email, avatarUrl }} />;
+  if (!customerProfileStatus.complete) {
+    redirect("/customer/profile");
+  }
+
+  const { applications, notifications } = await getCustomerDashboardData(user.id);
+  const customerProfile = customerProfileStatus.profile;
+  const name = customerProfile?.full_name ?? user.user_metadata.full_name ?? user.user_metadata.name ?? "Customer";
+  const email = customerProfile?.email ?? user.email ?? "";
+  const avatarUrl = customerProfile?.photo_url ?? user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "";
+
+  return (
+    <CustomerDashboard
+      applications={applications}
+      notifications={notifications}
+      profile={{ name, email, avatarUrl }}
+      profileCompletion={{
+        complete: customerProfileStatus.complete,
+        percent: customerProfileStatus.completion.percent,
+      }}
+    />
+  );
 }

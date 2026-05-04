@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
+import { getCustomerHomeForUser } from "@/lib/customer-profile";
 
 export default async function CustomerLoginPage() {
   const user = await getCurrentUser();
 
   if (user) {
-    redirect("/customer/dashboard");
+    const role = await getCurrentUserRole(user);
+    redirect(isCustomerRole(role) ? await getCustomerHomeForUser(user.id) : getRoleHome(role));
   }
 
   redirect("/login/customer");

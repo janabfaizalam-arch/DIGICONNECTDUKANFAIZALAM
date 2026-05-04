@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, Download, FileText, Plus, RotateCcw } from "lucide-react";
+import { Bell, Download, FileText, Plus, RotateCcw, UserRound } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { CustomerDocumentUpload } from "@/components/portal/customer-document-upload";
@@ -20,13 +20,17 @@ type CustomerDashboardProps = {
     email: string;
     avatarUrl: string;
   };
+  profileCompletion: {
+    complete: boolean;
+    percent: number;
+  };
 };
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(date));
 }
 
-export function CustomerDashboard({ applications, notifications, profile }: CustomerDashboardProps) {
+export function CustomerDashboard({ applications, notifications, profile, profileCompletion }: CustomerDashboardProps) {
   const completed = applications.filter((application) => application.status === "completed").length;
   const pending = applications.length - completed;
 
@@ -48,14 +52,20 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
               <p className="mt-1 text-sm text-slate-600">{profile.email}</p>
             </div>
           </div>
-          <Link href="/services" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
-            <Plus className="h-4 w-4" />
-            New Application
-          </Link>
-          <LogoutButton className="h-12" />
+          <div className="flex flex-wrap gap-2">
+            <Link href="/customer/profile" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border bg-white px-5 text-sm font-bold text-slate-900">
+              <UserRound className="h-4 w-4" />
+              My Profile
+            </Link>
+            <Link href="/services" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
+              <Plus className="h-4 w-4" />
+              New Application
+            </Link>
+            <LogoutButton className="h-12" />
+          </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="rounded-2xl p-5">
             <p className="text-sm font-medium text-slate-500">Total Applications</p>
             <p className="mt-2 text-3xl font-bold text-slate-950">{applications.length}</p>
@@ -68,6 +78,13 @@ export function CustomerDashboard({ applications, notifications, profile }: Cust
             <p className="text-sm font-medium text-slate-500">Completed</p>
             <p className="mt-2 text-3xl font-bold text-emerald-600">{completed}</p>
           </Card>
+          <Link href="/customer/profile" className="rounded-2xl border bg-white p-5 shadow-soft">
+            <p className="text-sm font-medium text-slate-500">Profile Status</p>
+            <p className={`mt-2 text-2xl font-bold ${profileCompletion.complete ? "text-emerald-600" : "text-orange-600"}`}>
+              {profileCompletion.complete ? "Complete" : `${profileCompletion.percent}%`}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-[var(--primary)]">Open My Profile</p>
+          </Link>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">

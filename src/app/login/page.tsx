@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { getCurrentUser, getCurrentUserRole, getRoleHome } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
+import { getCustomerHomeForUser } from "@/lib/customer-profile";
 
 export const metadata: Metadata = {
   title: "Login - DigiConnect Dukan",
@@ -14,7 +15,7 @@ export default async function LoginPage() {
 
   if (user) {
     const role = await getCurrentUserRole(user);
-    redirect(getRoleHome(role));
+    redirect(isCustomerRole(role) ? await getCustomerHomeForUser(user.id) : getRoleHome(role));
   }
 
   redirect("/login/customer");

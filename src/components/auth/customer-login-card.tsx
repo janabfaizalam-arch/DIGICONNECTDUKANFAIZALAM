@@ -9,6 +9,7 @@ import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isCustomerProfileComplete, type CustomerProfile } from "@/lib/customer-profile-shared";
 import { createClient } from "@/lib/supabase/browser";
 
 type EmailMode = "login" | "signup";
@@ -16,6 +17,24 @@ type FormMessage = { type: "success" | "error"; text: string };
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+async function getEmailCustomerDestination(supabase: NonNullable<ReturnType<typeof createClient>>, userId: string) {
+  const { data, error } = await supabase
+    .from("customer_profiles")
+    .select("full_name, mobile, email, address, city, state, pincode, profile_completed")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    return "/customer/profile";
+  }
+
+  const profile = data as Partial<CustomerProfile> | null;
+
+  return profile?.profile_completed === true || isCustomerProfileComplete(profile)
+    ? "/customer/dashboard"
+    : "/customer/profile";
 }
 
 export function CustomerLoginCard() {
@@ -98,13 +117,17 @@ export function CustomerLoginCard() {
       }
 
       if (emailMode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
           throw error;
         }
 
-        window.location.assign("/customer/dashboard");
+        if (!data.user) {
+          throw new Error("Login succeeded but user details could not be loaded.");
+        }
+
+        window.location.assign(await getEmailCustomerDestination(supabase, data.user.id));
         return;
       }
 
@@ -121,7 +144,7 @@ export function CustomerLoginCard() {
       }
 
       if (data.session) {
-        window.location.assign("/customer/dashboard");
+        window.location.assign("/customer/profile");
         return;
       }
 
@@ -157,7 +180,7 @@ export function CustomerLoginCard() {
       <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Login</p>
       <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login to DigiConnect Dukan</h1>
       <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-        Continue securely to track applications, upload documents and manage your services.
+        Access your applications, upload documents and track your service status.
       </p>
 
       <Button
