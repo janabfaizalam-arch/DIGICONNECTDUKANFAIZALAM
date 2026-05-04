@@ -22,6 +22,7 @@ type UploadedPaymentScreenshot = {
 
 type ApplicationPayload = {
   serviceSlug?: string;
+  serviceSlugs?: string[];
   price?: number;
   customer?: {
     name?: string;
@@ -68,11 +69,14 @@ export async function POST(request: Request) {
       return jsonError("Invalid JSON payload.", 400);
     }
 
-    const service = getServiceBySlug(String(body.serviceSlug ?? ""));
+    const serviceSlugs = Array.from(new Set((Array.isArray(body.serviceSlugs) && body.serviceSlugs.length ? body.serviceSlugs : [body.serviceSlug]).map((slug) => String(slug ?? "").trim()).filter(Boolean)));
+    const services = serviceSlugs.map((slug) => getServiceBySlug(slug));
 
-    if (!service) {
+    if (!services.length || services.some((service) => !service)) {
       return jsonError("Service not found.", 404);
     }
+
+    const resolvedServices = services.filter((service): service is NonNullable<typeof service> => Boolean(service));
 
     const customer = body.customer ?? {};
     const requiredCustomerFields = [
@@ -102,8 +106,10 @@ export async function POST(request: Request) {
       return jsonError("Please upload payment screenshot.", 400);
     }
 
+    const paymentScreenshot = body.paymentScreenshot;
+
     const formData = {
-      service: service.title,
+      service: resolvedServices.map((service) => service.title).join(", "),
       name: customer.name!.trim(),
       mobile: customer.mobile!.trim(),
       email: customer.email?.trim() ?? "",
@@ -113,9 +119,7 @@ export async function POST(request: Request) {
       documents: body.documents,
     };
 
-    const { data: application, error: applicationError } = await supabase
-      .from("applications")
-      .insert({
+    const applicationsToInsert = resolvedServices.map((service) => ({
         user_id: user.id,
         service_slug: service.slug,
         service_name: service.title,
@@ -125,26 +129,31 @@ export async function POST(request: Request) {
         created_by: user.id,
         source: "online",
         payment_status: "pending",
-        payment_screenshot_url: body.paymentScreenshot.file_url,
-        payment_screenshot_path: body.paymentScreenshot.storage_path ?? null,
+        payment_screenshot_url: paymentScreenshot.file_url,
+        payment_screenshot_path: paymentScreenshot.storage_path ?? null,
         submitted_by_role: role,
-      })
-      .select("id")
-      .single();
+      }));
 
-    if (applicationError || !application) {
+    const { data: applications, error: applicationError } = await supabase
+      .from("applications")
+      .insert(applicationsToInsert)
+      .select("id, service_name, amount");
+
+    if (applicationError || !applications?.length) {
       return jsonError("Application submission failed.", 500);
     }
 
-    const documentsToInsert = body.documents.map((document) => ({
-      application_id: application.id,
-      user_id: user.id,
-      document_type: document.document_type,
-      file_name: document.file_name,
-      file_url: document.file_url,
-      file_type: document.file_type ?? null,
-      storage_path: document.storage_path ?? null,
-    }));
+    const documentsToInsert = applications.flatMap((application) =>
+      body.documents!.map((document) => ({
+        application_id: application.id,
+        user_id: user.id,
+        document_type: document.document_type,
+        file_name: document.file_name,
+        file_url: document.file_url,
+        file_type: document.file_type ?? null,
+        storage_path: document.storage_path ?? null,
+      })),
+    );
 
     const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
 
@@ -152,27 +161,31 @@ export async function POST(request: Request) {
       return jsonError("Documents could not be saved.", 500);
     }
 
-    const { error: paymentError } = await supabase.from("payments").insert({
-      application_id: application.id,
-      user_id: user.id,
-      amount: service.amount,
-      status: "pending",
-      screenshot_url: body.paymentScreenshot.file_url,
-      storage_path: body.paymentScreenshot.storage_path ?? null,
-    });
+    const { error: paymentError } = await supabase.from("payments").insert(
+      applications.map((application) => ({
+        application_id: application.id,
+        user_id: user.id,
+        amount: application.amount,
+        status: "pending",
+        screenshot_url: paymentScreenshot.file_url,
+        storage_path: paymentScreenshot.storage_path ?? null,
+      })),
+    );
 
     if (paymentError) {
       return jsonError("Payment details could not be saved.", 500);
     }
 
+    const totalAmount = applications.reduce((total, application) => total + Number(application.amount ?? 0), 0);
+    const serviceName = applications.map((application) => application.service_name).join(", ");
     const invoice = await createInvoiceForApplication({
-      applicationId: application.id,
+      applicationId: applications[0].id,
       userId: user.id,
       customerName: customer.name!.trim(),
       customerEmail: customer.email?.trim() ?? "",
       customerMobile: customer.mobile!.trim(),
-      serviceName: service.title,
-      amount: service.amount,
+      serviceName,
+      amount: totalAmount,
       paymentStatus: "pending",
     });
 
@@ -180,16 +193,22 @@ export async function POST(request: Request) {
       return jsonError("Invoice could not be generated.", 500);
     }
 
-    await supabase.from("notifications").insert({
-      user_id: user.id,
-      application_id: application.id,
-      title: "Application received",
-      message: `${service.title} request has been received. Our team will verify it shortly.`,
-    });
+    await supabase.from("notifications").insert(
+      applications.map((application) => ({
+        user_id: user.id,
+        application_id: application.id,
+        title: "Application received",
+        message: `${application.service_name} request has been received. Our team will verify it shortly.`,
+      })),
+    );
 
     return NextResponse.json({
-      message: "Application submitted successfully. Track the status in your dashboard.",
-      applicationId: application.id,
+      message:
+        applications.length > 1
+          ? "Applications submitted successfully. One combined invoice has been generated."
+          : "Application submitted successfully. Track the status in your dashboard.",
+      applicationId: applications[0].id,
+      applicationIds: applications.map((application) => application.id),
       invoiceId: invoice.id,
     });
   } catch (error) {

@@ -2,9 +2,8 @@
 
 import { type FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileUp, IndianRupee, LoaderCircle, Plus, QrCode, Trash2 } from "lucide-react";
+import { FileUp, IndianRupee, LoaderCircle, QrCode, Trash2 } from "lucide-react";
 
-import { ServiceSelectionModal } from "@/components/service-selection-modal";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -63,7 +62,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
-  const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
     const seen = new Set<string>();
@@ -182,86 +180,72 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         file_type: paymentScreenshot.type,
         storage_path: screenshotPath,
       };
-      const invoiceIds: string[] = [];
+      setProgressText("Saving application...");
 
-      for (const selectedService of selectedServices) {
-        const leadFormData = new FormData();
-        leadFormData.set("name", String(formData.get("name") ?? "").trim());
-        leadFormData.set("mobile", String(formData.get("mobile") ?? "").trim());
-        leadFormData.set("service", selectedService.title);
-        leadFormData.set("message", String(formData.get("message") ?? "").trim());
+      const leadFormData = new FormData();
+      leadFormData.set("name", String(formData.get("name") ?? "").trim());
+      leadFormData.set("mobile", String(formData.get("mobile") ?? "").trim());
+      leadFormData.set("service", selectedServices.map((item) => item.title).join(", "));
+      leadFormData.set("message", String(formData.get("message") ?? "").trim());
 
-        setProgressText(`Saving ${selectedService.title} lead...`);
+      const leadResponse = await fetch("/api/lead", {
+        method: "POST",
+        body: leadFormData,
+      });
+      const leadText = await leadResponse.text();
+      let leadResult: { message?: string; error?: string; ok?: boolean };
 
-        const leadResponse = await fetch("/api/lead", {
-          method: "POST",
-          body: leadFormData,
-        });
-        const leadText = await leadResponse.text();
-        let leadResult: { message?: string; error?: string; ok?: boolean };
-
-        try {
-          leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
-        } catch {
-          leadResult = { error: leadText || "The lead API did not return a valid response." };
-        }
-
-        if (!leadResponse.ok || !leadResult.ok) {
-          throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
-        }
-
-        const details: Record<string, string> = {
-          address: String(formData.get("address") ?? "").trim(),
-        };
-
-        setProgressText(`Saving ${selectedService.title} application...`);
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
-        const response = await fetch("/api/applications", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            serviceSlug: selectedService.slug,
-            price: selectedService.amount,
-            customer: {
-              name: String(formData.get("name") ?? "").trim(),
-              mobile: String(formData.get("mobile") ?? "").trim(),
-              email: String(formData.get("email") ?? "").trim(),
-              city: "",
-              message: String(formData.get("message") ?? "").trim(),
-            },
-            details,
-            documents: uploadedDocuments,
-            paymentScreenshot: paymentScreenshotMetadata,
-          }),
-          signal: controller.signal,
-        }).finally(() => clearTimeout(timeoutId));
-
-        const text = await response.text();
-        let result: { message?: string; error?: string; applicationId?: string; invoiceId?: string };
-
-        try {
-          result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; invoiceId?: string };
-        } catch {
-          throw new Error(text || "The server did not return a valid response. Please try again.");
-        }
-
-        if (!response.ok || !result.applicationId || !result.invoiceId) {
-          throw new Error(result.message ?? result.error ?? "Application submission failed.");
-        }
-
-        invoiceIds.push(result.invoiceId);
+      try {
+        leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
+      } catch {
+        leadResult = { error: leadText || "The lead API did not return a valid response." };
       }
 
-      success(
-        selectedServices.length > 1
-          ? "Applications submitted successfully. Track each service in your dashboard."
-          : "Application submitted successfully.",
-      );
-      router.push(selectedServices.length > 1 ? "/customer/dashboard" : `/invoice/${invoiceIds[0]}`);
+      if (!leadResponse.ok || !leadResult.ok) {
+        throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceSlug: selectedServices[0]?.slug,
+          serviceSlugs: selectedServices.map((item) => item.slug),
+          customer: {
+            name: String(formData.get("name") ?? "").trim(),
+            mobile: String(formData.get("mobile") ?? "").trim(),
+            email: String(formData.get("email") ?? "").trim(),
+            city: "",
+            message: String(formData.get("message") ?? "").trim(),
+          },
+          details: {
+            address: String(formData.get("address") ?? "").trim(),
+          },
+          documents: uploadedDocuments,
+          paymentScreenshot: paymentScreenshotMetadata,
+        }),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
+
+      const text = await response.text();
+      let result: { message?: string; error?: string; applicationId?: string; applicationIds?: string[]; invoiceId?: string };
+
+      try {
+        result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; applicationIds?: string[]; invoiceId?: string };
+      } catch {
+        throw new Error(text || "The server did not return a valid response. Please try again.");
+      }
+
+      if (!response.ok || !result.invoiceId) {
+        throw new Error(result.message ?? result.error ?? "Application submission failed.");
+      }
+
+      success(result.message ?? "Application submitted successfully.");
+      router.push(`/invoice/${result.invoiceId}`);
       router.refresh();
     } catch (error) {
       const message =
@@ -297,10 +281,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               <p className="font-bold text-slate-950">Selected Services</p>
               <p className="mt-1 text-sm text-slate-600">Each service will be submitted as a separate application record.</p>
             </div>
-            <Button type="button" variant="outline" onClick={() => setServiceModalOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add another service
-            </Button>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {selectedServices.map((item) => (
@@ -455,7 +435,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         </Button>
       </div>
     </form>
-    <ServiceSelectionModal open={serviceModalOpen} onOpenChange={setServiceModalOpen} initialSelectedSlugs={selectedServices.map((item) => item.slug)} />
     </>
   );
 }

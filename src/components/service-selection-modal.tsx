@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
@@ -31,7 +31,6 @@ type ServiceCategory = "All" | "Government" | "Certificates" | "Business" | "Lic
 type ServiceSelectionModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  allowMultiSelect?: boolean;
   initialSelectedSlugs?: string[];
 };
 
@@ -64,16 +63,8 @@ const serviceItems = [
   icon: typeof FileCheck2;
 }>;
 
-async function getApplyHref(slugs: string[]) {
-  const selected = Array.from(new Set(slugs)).filter(Boolean);
-  const primarySlug = selected[0];
-
-  if (!primarySlug) {
-    return null;
-  }
-
-  const servicesParam = `?services=${encodeURIComponent(selected.join(","))}`;
-  const applyPath = `/apply/${primarySlug}${servicesParam}`;
+async function getApplyHref(slug: string) {
+  const applyPath = `/apply/${slug}`;
   const supabase = createClient();
 
   if (!supabase) {
@@ -84,29 +75,20 @@ async function getApplyHref(slugs: string[]) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (session?.user) {
-    return applyPath;
-  }
-
-  return `/login/customer?redirect=${encodeURIComponent(applyPath)}`;
+  return session?.user ? applyPath : `/login/customer?redirect=${encodeURIComponent(applyPath)}`;
 }
 
-export function ServiceSelectionModal({
-  open,
-  onOpenChange,
-  allowMultiSelect = true,
-  initialSelectedSlugs = [],
-}: ServiceSelectionModalProps) {
+export function ServiceSelectionModal({ open, onOpenChange, initialSelectedSlugs = [] }: ServiceSelectionModalProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>("All");
-  const [selectedSlugs, setSelectedSlugs] = useState<string[]>(initialSelectedSlugs);
+  const [selectedSlug, setSelectedSlug] = useState(initialSelectedSlugs[0] ?? "");
   const [loading, setLoading] = useState(false);
-  const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (open) {
-      setSelectedSlugs(initialSelectedSlugs);
+      setSelectedSlug(initialSelectedSlugs[0] ?? "");
+      setLoading(false);
     }
   }, [initialSelectedSlugs, open]);
 
@@ -149,28 +131,15 @@ export function ServiceSelectionModal({
     });
   }, [query, selectedCategory]);
 
-  async function continueWith(slugs: string[]) {
+  async function continueWithSelected() {
+    if (!selectedSlug) {
+      return;
+    }
+
     setLoading(true);
-    const href = await getApplyHref(slugs);
-
-    if (!href) {
-      setLoading(false);
-      return;
-    }
-
+    const href = await getApplyHref(selectedSlug);
     onOpenChange(false);
-    startTransition(() => {
-      router.push(href);
-    });
-  }
-
-  function toggleService(slug: string) {
-    if (!allowMultiSelect) {
-      void continueWith([slug]);
-      return;
-    }
-
-    setSelectedSlugs((current) => (current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]));
+    router.push(href);
   }
 
   if (!open) {
@@ -178,37 +147,46 @@ export function ServiceSelectionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-slate-950/45 p-0 md:items-center md:justify-center md:p-6">
-      <button type="button" aria-label="Close service selection" className="absolute inset-0 cursor-default" onClick={() => onOpenChange(false)} />
-      <div className="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[1.5rem] border border-white/20 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.22)] md:max-w-5xl md:rounded-[1.5rem]">
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b p-5">
+    <div className="fixed inset-0 z-[100] flex items-end md:items-center md:justify-center md:p-6">
+      <button type="button" aria-label="Close service selection" className="absolute inset-0 bg-slate-950/45" onClick={() => onOpenChange(false)} />
+
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="service-selection-title"
+        onClick={(event) => event.stopPropagation()}
+        className="relative z-[101] flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:max-h-[85vh] md:max-w-3xl md:rounded-2xl"
+      >
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b p-4 md:p-5">
           <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-slate-950">Choose a Service</h2>
-            <p className="mt-1 text-sm text-slate-600">Select the service you want to apply for.</p>
+            <h2 id="service-selection-title" className="text-xl font-bold text-slate-950 md:text-2xl">
+              Choose a Service
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">Select a service to start your application.</p>
           </div>
           <button type="button" onClick={() => onOpenChange(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700">
             <X className="h-5 w-5" />
             <span className="sr-only">Close</span>
           </button>
-        </div>
+        </header>
 
-        <div className="grid shrink-0 gap-3 border-b p-5 md:grid-cols-[1fr_auto] md:items-center">
-          <label className="relative">
+        <div className="shrink-0 space-y-3 border-b p-4 md:p-5">
+          <label className="relative block">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search service..."
-              className="h-12 w-full rounded-2xl border bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--primary)]"
+              className="h-11 w-full rounded-xl border bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--primary)]"
             />
           </label>
-          <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map((category) => (
               <button
                 key={category}
                 type="button"
                 onClick={() => setSelectedCategory(category)}
-                className={`h-10 shrink-0 rounded-full px-4 text-sm font-bold ${
+                className={`h-9 shrink-0 rounded-full px-3 text-xs font-bold ${
                   selectedCategory === category ? "bg-[var(--primary)] text-white" : "border bg-white text-slate-700"
                 }`}
               >
@@ -218,56 +196,50 @@ export function ServiceSelectionModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 overscroll-contain">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 overscroll-contain md:p-5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {filteredServices.map(({ title, slug, benefit, icon: Icon }) => {
-              const selected = selectedSlugs.includes(slug);
+              const selected = selectedSlug === slug;
 
               return (
                 <button
                   key={`${title}-${slug}`}
                   type="button"
-                  onClick={() => toggleService(slug)}
-                  className={`min-w-0 rounded-2xl border p-4 text-left shadow-sm transition-transform duration-150 md:hover:-translate-y-0.5 ${
-                    selected ? "border-blue-500 bg-blue-50/70" : "bg-white"
+                  onClick={() => setSelectedSlug(slug)}
+                  className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left ${
+                    selected ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600" : "bg-white"
                   }`}
                 >
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
-                      <Icon className="h-5 w-5" />
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[var(--primary)]">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-slate-950">{title}</span>
+                    <span className="block truncate text-xs text-slate-600">{benefit}</span>
+                  </span>
+                  {selected ? (
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                      <Check className="h-4 w-4" />
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="min-w-0 truncate font-bold text-slate-950">{title}</h3>
-                        {selected ? (
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                            <Check className="h-4 w-4" />
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">{benefit}</p>
-                    </div>
-                  </div>
+                  ) : null}
                 </button>
               );
             })}
           </div>
           {!filteredServices.length ? (
-            <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-600">No services found.</p>
+            <p className="rounded-xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-600">No services found.</p>
           ) : null}
         </div>
 
-        {allowMultiSelect ? (
-          <div className="flex shrink-0 flex-col gap-3 border-t bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0 text-sm font-bold text-slate-700">
-              {selectedSlugs.length ? `${selectedSlugs.length} service${selectedSlugs.length === 1 ? "" : "s"} selected` : "Select one or more services"}
-            </p>
-            <Button type="button" disabled={!selectedSlugs.length || loading} onClick={() => void continueWith(selectedSlugs)} className="h-12">
-              {loading ? "Opening..." : selectedSlugs.length > 1 ? "Apply Selected Services" : "Apply Now"}
-            </Button>
-          </div>
-        ) : null}
-      </div>
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t bg-slate-50 p-4">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={!selectedSlug || loading} onClick={() => void continueWithSelected()}>
+            {loading ? "Opening..." : "Continue"}
+          </Button>
+        </footer>
+      </section>
     </div>
   );
 }
@@ -276,7 +248,6 @@ export function ApplyServiceTrigger({
   children,
   serviceSlug,
   className,
-  allowMultiSelect = true,
 }: {
   children: ReactNode;
   serviceSlug?: string;
@@ -294,11 +265,8 @@ export function ApplyServiceTrigger({
     }
 
     setLoading(true);
-    const href = await getApplyHref([serviceSlug]);
-
-    if (href) {
-      router.push(href);
-    }
+    const href = await getApplyHref(serviceSlug);
+    router.push(href);
   }
 
   return (
@@ -306,7 +274,7 @@ export function ApplyServiceTrigger({
       <button type="button" onClick={() => void handleClick()} disabled={loading} className={className}>
         {loading ? "Opening..." : children}
       </button>
-      <ServiceSelectionModal open={open} onOpenChange={setOpen} allowMultiSelect={allowMultiSelect} />
+      <ServiceSelectionModal open={open} onOpenChange={setOpen} />
     </>
   );
 }

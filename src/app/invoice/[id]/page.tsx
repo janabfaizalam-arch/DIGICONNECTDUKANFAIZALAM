@@ -16,6 +16,13 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
 }
 
+function getInvoiceServices(serviceName: string) {
+  return serviceName
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
 
@@ -38,6 +45,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   }
 
   const invoice = data as Invoice;
+  const invoiceServices = getInvoiceServices(invoice.service_name);
 
   if (!isAdminRole(role) && invoice.user_id !== user.id) {
     if (!isAgentRole(role)) {
@@ -123,14 +131,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <p className="text-center">Qty</p>
               <p>Amount</p>
             </div>
-            <div className="grid grid-cols-[1fr_72px_110px] gap-4 border-x border-b px-4 py-4">
-              <div>
-                <p className="font-bold text-slate-950">{invoice.service_name}</p>
-                <p className="mt-1 text-sm text-slate-600">Digital service application support</p>
+            {invoiceServices.map((serviceName, index) => (
+              <div key={`${serviceName}-${index}`} className="grid grid-cols-[1fr_72px_110px] gap-4 border-x border-b px-4 py-4">
+                <div>
+                  <p className="font-bold text-slate-950">{serviceName}</p>
+                  <p className="mt-1 text-sm text-slate-600">Digital service application support</p>
+                </div>
+                <p className="text-center font-bold text-slate-950">1</p>
+                <p className="font-bold text-slate-950">{invoiceServices.length === 1 ? formatCurrency(invoice.amount) : "Included"}</p>
               </div>
-              <p className="text-center font-bold text-slate-950">1</p>
-              <p className="font-bold text-slate-950">{formatCurrency(invoice.amount)}</p>
-            </div>
+            ))}
           </div>
 
           <div className="grid gap-6 pt-5 md:grid-cols-[1fr_320px]">
