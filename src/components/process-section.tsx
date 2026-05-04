@@ -26,8 +26,8 @@ export function ProcessSection() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {steps.map((step, index) => (
-            <div key={step.title} className="liquid-card reveal-on-scroll group rounded-[1.35rem] p-5 transition duration-300 hover:-translate-y-1 md:p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-sky-500 text-lg font-bold text-white shadow-lg shadow-blue-600/20 transition group-hover:shadow-blue-600/30">
+            <div key={step.title} className="liquid-card reveal-on-scroll group rounded-[1.35rem] p-5 transition-transform duration-200 md:p-6 md:hover:-translate-y-1">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-sky-500 text-lg font-bold text-white shadow-sm">
                 0{index + 1}
               </div>
               <p className="mt-4 text-lg font-semibold text-slate-950">{step.title}</p>

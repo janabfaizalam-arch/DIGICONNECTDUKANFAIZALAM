@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Home, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -128,6 +128,7 @@ export function SiteHeader() {
   const appShellLabel = agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Customer Dashboard";
   const appShellHref = agentShell ? "/agent/dashboard" : staffShell ? "/staff/dashboard" : "/customer/dashboard";
   const [scrolled, setScrolled] = useState(false);
+  const scrolledRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -172,8 +173,22 @@ export function SiteHeader() {
   }, [supabase]);
 
   useEffect(() => {
+    let frameId = 0;
+
     function updateScrolled() {
-      setScrolled(window.scrollY > 12);
+      if (frameId) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        const nextScrolled = window.scrollY > 12;
+
+        if (nextScrolled !== scrolledRef.current) {
+          scrolledRef.current = nextScrolled;
+          setScrolled(nextScrolled);
+        }
+      });
     }
 
     updateScrolled();
@@ -181,18 +196,21 @@ export function SiteHeader() {
 
     return () => {
       window.removeEventListener("scroll", updateScrolled);
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
     };
   }, []);
 
   return (
     <header
-      className={`site-header sticky top-0 z-40 border-b border-white/10 bg-white/38 transition-all duration-300 print:hidden ${
+      className={`site-header sticky top-0 z-40 border-b border-white/10 bg-white/60 transition-[background-color,box-shadow,backdrop-filter] duration-200 print:hidden ${
         scrolled
-          ? "shadow-[0_16px_54px_rgba(15,23,42,0.14)] backdrop-blur-[16px]"
-          : "shadow-[0_12px_44px_rgba(15,23,42,0.08)] backdrop-blur-md"
+          ? "shadow-[0_8px_24px_rgba(15,23,42,0.1)] backdrop-blur-sm"
+          : "shadow-[0_6px_18px_rgba(15,23,42,0.06)] md:backdrop-blur-sm"
       }`}
     >
-      <div className={`container-shell flex items-center justify-between gap-3 transition-all duration-300 md:gap-4 ${scrolled ? "min-h-14 py-1 md:min-h-[3.75rem]" : "min-h-[3.75rem] py-1.5 md:min-h-16"}`}>
+      <div className={`container-shell flex items-center justify-between gap-3 transition-[min-height,padding] duration-200 md:gap-4 ${scrolled ? "min-h-14 py-1 md:min-h-[3.75rem]" : "min-h-[3.75rem] py-1.5 md:min-h-16"}`}>
         <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="DigiConnect Dukan home">
           <span className="flex h-10 w-[8.75rem] items-center md:h-11 md:w-[9.75rem]">
             <Image
@@ -230,7 +248,7 @@ export function SiteHeader() {
             </div>
           )
         ) : (
-          <nav className="hidden items-center gap-1 rounded-full border border-white/15 bg-white/28 p-1 text-sm font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-md md:flex">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/15 bg-white/45 p-1 text-sm font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] md:flex">
             {navLinks.map((link) => (
               <Link key={link.label} href={link.href} className="rounded-full px-3 py-2 transition hover:bg-white/85 hover:text-blue-700">
                 {link.label}
@@ -241,7 +259,7 @@ export function SiteHeader() {
         <div className="hidden items-center gap-3 md:flex">
           {appShell ? (
             <>
-              <Link href={appShellHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
+              <Link href={appShellHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-transform md:hover:-translate-y-0.5">
                 <LayoutDashboard className="h-4 w-4" />
                 {agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Dashboard"}
               </Link>
@@ -249,7 +267,7 @@ export function SiteHeader() {
             </>
           ) : user && panelConfig ? (
             <>
-              <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg">
+              <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-transform md:hover:-translate-y-0.5">
                 <LayoutDashboard className="h-4 w-4" />
                 {panelConfig.label}
               </Link>
@@ -257,11 +275,11 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login/customer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/25">
+              <Link href="/login/customer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 px-4 text-sm font-bold text-white shadow-md shadow-blue-600/15 transition-transform md:hover:-translate-y-0.5">
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/30 px-4 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/45">
+              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-[background-color,transform] md:hover:-translate-y-0.5 md:hover:bg-white/60">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>
@@ -288,7 +306,7 @@ export function SiteHeader() {
           </div>
         ) : (
           <div className="flex items-center gap-2 md:hidden">
-            <Link href="/" className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/30 text-blue-700 shadow-sm backdrop-blur-md min-[390px]:inline-flex">
+            <Link href="/" className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/45 text-blue-700 shadow-sm min-[390px]:inline-flex">
               <Home className="h-4 w-4" />
               <span className="sr-only">Home</span>
             </Link>

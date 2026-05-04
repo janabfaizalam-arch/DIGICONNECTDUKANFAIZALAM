@@ -33,7 +33,7 @@ export function HeroSection() {
           <div className="grid gap-7 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <div className="reveal-on-scroll">
               <div className="flex flex-wrap gap-2">
-                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/30 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-md sm:px-4 sm:text-sm">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/45 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] sm:px-4 sm:text-sm">
                   <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
                   <span className="truncate">Digital Services Across India</span>
                 </div>
@@ -58,7 +58,7 @@ export function HeroSection() {
                   <UsersRound className="h-4 w-4" />
                   50000+ Customers Served
                 </div>
-                <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-blue-200/50 bg-white/30 px-4 text-sm font-semibold text-blue-800 shadow-sm backdrop-blur-md">
+                <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-blue-200/50 bg-white/45 px-4 text-sm font-semibold text-blue-800 shadow-sm">
                   <ShieldCheck className="h-4 w-4" />
                   Secure Document Support
                 </div>
@@ -88,7 +88,7 @@ export function HeroSection() {
                 </div>
                 <div className="mt-4 space-y-2.5">
                   {["Identity proof checked", "Application details reviewed", "Service status updated"].map((item) => (
-                    <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/35 p-2.5 backdrop-blur-md">
+                    <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/45 p-2.5">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
                         <CheckCircle2 className="h-4 w-4" />
                       </span>
@@ -105,7 +105,7 @@ export function HeroSection() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {miniServices.map(({ label, icon: Icon, tone }) => (
-                    <div key={label} className="rounded-[1.1rem] border border-white/20 bg-white/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-md">
+                    <div key={label} className="rounded-[1.1rem] border border-white/20 bg-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
                       <Icon className={`h-5 w-5 ${tone}`} />
                       <p className="mt-3 text-sm font-semibold text-slate-950">{label}</p>
                     </div>
@@ -113,10 +113,10 @@ export function HeroSection() {
                 </div>
               </div>
 
-              <div className="floating-card floating-card-slow absolute right-6 top-0 rounded-full border border-white/20 bg-white/35 px-4 py-2 text-xs font-bold text-orange-600 shadow-liquid backdrop-blur-md">
+              <div className="absolute right-6 top-0 rounded-full border border-white/20 bg-white/55 px-4 py-2 text-xs font-bold text-orange-600 shadow-sm">
                 Government Services Online
               </div>
-              <div className="floating-card floating-card-delay absolute bottom-0 left-7 rounded-full border border-white/15 bg-slate-950/86 px-4 py-2 text-xs font-bold text-white shadow-liquid backdrop-blur-md">
+              <div className="absolute bottom-0 left-7 rounded-full border border-white/15 bg-slate-950/86 px-4 py-2 text-xs font-bold text-white shadow-sm">
                 PAN Card, Aadhaar, GST, Certificates
               </div>
             </div>

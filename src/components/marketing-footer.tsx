@@ -25,7 +25,7 @@ export function MarketingFooter() {
   return (
     <footer className="px-0 pb-6 pt-2">
       <div className="container-shell">
-        <div className="rounded-[1.75rem] border border-white/15 bg-[linear-gradient(135deg,#061226,#0d2a52_58%,#0b4a7a)] p-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] md:rounded-[2rem] md:p-8">
+        <div className="rounded-[1.75rem] border border-white/15 bg-[linear-gradient(135deg,#061226,#0d2a52_58%,#0b4a7a)] p-5 text-white shadow-[0_14px_42px_rgba(15,23,42,0.16)] md:rounded-[2rem] md:p-8">
           <div className="grid gap-7 lg:grid-cols-[1.05fr_0.85fr_0.85fr_0.8fr]">
             <div className="max-w-sm">
               <p className="text-2xl font-bold">DigiConnect Dukan</p>
@@ -68,7 +68,7 @@ export function MarketingFooter() {
                   <Phone className="h-4 w-4 text-orange-300" />
                   +91 {contactDetails.primaryPhone}
                 </a>
-                <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/15">
+                <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white transition-colors hover:bg-white/15">
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
                 </a>

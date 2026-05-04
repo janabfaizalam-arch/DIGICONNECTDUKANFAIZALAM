@@ -43,12 +43,12 @@ export function ServicesSection() {
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {services.map(({ title, href, icon: Icon, subtitle }) => (
-            <Link key={title} href={href} className="liquid-card reveal-on-scroll group rounded-[1.2rem] p-3.5 transition duration-300 hover:-translate-y-1 hover:border-blue-300/50 hover:shadow-[0_18px_42px_rgba(37,99,235,0.14)] md:p-4">
+            <Link key={title} href={href} className="liquid-card reveal-on-scroll group rounded-[1.2rem] p-3.5 transition-transform duration-200 md:p-4 md:hover:-translate-y-1 md:hover:border-blue-300/50">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/30 text-blue-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-md">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/45 text-blue-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]">
                   <Icon className="h-[18px] w-[18px]" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-orange-500" />
+                <ArrowRight className="h-4 w-4 text-slate-300 transition-transform md:group-hover:translate-x-0.5 md:group-hover:text-orange-500" />
               </div>
               <h3 className="mt-3 text-sm font-bold leading-snug text-slate-950 md:text-base">{title}</h3>
               <p className="mt-1 text-xs leading-5 text-slate-600">{subtitle}</p>

@@ -24,8 +24,8 @@ export function WhyChooseUsSection() {
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           {trustCards.map(({ title, description, icon: Icon }) => (
-            <div key={title} className="liquid-card reveal-on-scroll rounded-[1.2rem] p-4 transition duration-300 hover:-translate-y-1 md:p-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-950/15">
+            <div key={title} className="liquid-card reveal-on-scroll rounded-[1.2rem] p-4 transition-transform duration-200 md:p-5 md:hover:-translate-y-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
                 <Icon className="h-5 w-5" />
               </div>
               <p className="mt-3 text-sm font-semibold leading-tight text-slate-950 md:text-base">{title}</p>

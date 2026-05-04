@@ -68,13 +68,13 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls="mobile-navigation"
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/30 text-blue-700 shadow-[0_8px_28px_rgba(15,23,42,0.1)] backdrop-blur-md"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/50 text-blue-700 shadow-sm"
       >
         <Menu className="h-5 w-5" />
         <span className="sr-only">Open navigation menu</span>
       </button>
       {open ? (
-        <div id="mobile-navigation" className="absolute right-0 top-12 w-[min(18rem,calc(100vw-1.5rem))] rounded-[1.35rem] border border-white/15 bg-white/55 p-3 shadow-liquid backdrop-blur-md">
+        <div id="mobile-navigation" className="absolute right-0 top-12 w-[min(18rem,calc(100vw-1.5rem))] rounded-[1.35rem] border border-white/15 bg-white/90 p-3 shadow-liquid">
           <nav className="grid gap-1 text-sm font-medium text-slate-700">
             {menuLinks.map((link) => (
               <Link
@@ -105,7 +105,7 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
                 <Link
                   href="/login/customer"
                   onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20"
+                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-4 text-sm font-bold text-white shadow-md shadow-blue-600/15"
                 >
                   <LogIn className="h-4 w-4" />
                   Login
@@ -115,7 +115,7 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-md"
+                  className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
                 >
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp

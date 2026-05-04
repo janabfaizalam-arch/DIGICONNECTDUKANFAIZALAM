@@ -32,7 +32,7 @@ export async function PhotoGallerySection() {
         {galleryItems.length ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {galleryItems.map((item) => (
-              <figure key={item.id} className="liquid-card reveal-on-scroll overflow-hidden rounded-[1.35rem] p-2 transition duration-300 hover:-translate-y-1">
+              <figure key={item.id} className="liquid-card reveal-on-scroll overflow-hidden rounded-[1.35rem] p-2 transition-transform duration-200 md:hover:-translate-y-1">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-slate-100">
                   <Image
                     src={item.image_url}

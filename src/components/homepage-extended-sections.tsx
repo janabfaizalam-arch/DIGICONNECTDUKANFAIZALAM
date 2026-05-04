@@ -78,7 +78,7 @@ export function HomepageExtendedSections() {
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 {proofItems.map(({ value, label, icon: Icon }) => (
-                  <div key={label} className="rounded-2xl border border-white/15 bg-white/30 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-md">
+                  <div key={label} className="rounded-2xl border border-white/15 bg-white/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]">
                     <Icon className="h-5 w-5 text-orange-500" />
                     <p className="mt-4 text-2xl font-semibold text-slate-950">{value}</p>
                     <p className="mt-1 text-sm leading-6 text-slate-600">{label}</p>
@@ -102,14 +102,14 @@ export function HomepageExtendedSections() {
           <div className="grid gap-4 md:grid-cols-3">
             {categories.map(({ title, description, href, icon: Icon }) => (
               <Link key={title} href={href} className="liquid-card reveal-on-scroll group rounded-2xl p-5">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-950/15">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-5 text-xl font-semibold text-slate-950">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
                 <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-blue-700">
                   Explore
-                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  <ArrowRight className="h-4 w-4 transition-transform md:group-hover:translate-x-0.5" />
                 </span>
               </Link>
             ))}
