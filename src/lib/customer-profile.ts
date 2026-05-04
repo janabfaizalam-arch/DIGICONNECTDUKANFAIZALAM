@@ -65,9 +65,3 @@ export async function getCustomerProfileStatus(userId: string) {
     completion: getCustomerProfileCompletion(profile),
   };
 }
-
-export async function getCustomerHomeForUser(userId: string) {
-  const { complete } = await getCustomerProfileStatus(userId);
-
-  return complete ? "/customer/dashboard" : "/customer/profile";
-}

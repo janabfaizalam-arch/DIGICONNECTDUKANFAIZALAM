@@ -9,7 +9,6 @@ import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isCustomerProfileComplete, type CustomerProfile } from "@/lib/customer-profile-shared";
 import { createClient } from "@/lib/supabase/browser";
 
 type EmailMode = "login" | "signup";
@@ -17,24 +16,6 @@ type FormMessage = { type: "success" | "error"; text: string };
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-async function getEmailCustomerDestination(supabase: NonNullable<ReturnType<typeof createClient>>, userId: string) {
-  const { data, error } = await supabase
-    .from("customer_profiles")
-    .select("full_name, mobile, email, address, city, state, pincode, profile_completed")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    return "/customer/profile";
-  }
-
-  const profile = data as Partial<CustomerProfile> | null;
-
-  return profile?.profile_completed === true || isCustomerProfileComplete(profile)
-    ? "/customer/dashboard"
-    : "/customer/profile";
 }
 
 export function CustomerLoginCard() {
@@ -127,7 +108,7 @@ export function CustomerLoginCard() {
           throw new Error("Login succeeded but user details could not be loaded.");
         }
 
-        window.location.assign(await getEmailCustomerDestination(supabase, data.user.id));
+        window.location.assign("/customer/dashboard");
         return;
       }
 
@@ -144,7 +125,7 @@ export function CustomerLoginCard() {
       }
 
       if (data.session) {
-        window.location.assign("/customer/profile");
+        window.location.assign("/customer/dashboard");
         return;
       }
 
@@ -178,9 +159,9 @@ export function CustomerLoginCard() {
         Powered By RNoS India Pvt Ltd
       </p>
       <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Login</p>
-      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login to DigiConnect Dukan</h1>
+      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login to Your DigiConnect Dashboard</h1>
       <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-        Access your applications, upload documents and track your service status.
+        Apply services, track applications and manage your documents securely.
       </p>
 
       <Button
