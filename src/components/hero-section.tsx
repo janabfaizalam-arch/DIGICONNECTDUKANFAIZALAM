@@ -7,6 +7,7 @@ import {
   FileCheck2,
   Fingerprint,
   IdCard,
+  LayoutDashboard,
   LogIn,
   MessageCircle,
   ShieldCheck,
@@ -17,6 +18,15 @@ import {
 
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
+type HeroViewer =
+  | { role: "customer"; name: string }
+  | { role: "agent" | "staff" | "admin" | "super_admin" }
+  | null;
+
+type HeroSectionProps = {
+  viewer?: HeroViewer;
+};
+
 const miniServices = [
   { label: "PAN", icon: FileCheck2, tone: "text-orange-500" },
   { label: "Aadhaar", icon: Fingerprint, tone: "text-blue-600" },
@@ -24,7 +34,26 @@ const miniServices = [
   { label: "Voter ID", icon: IdCard, tone: "text-emerald-600" },
 ];
 
-export function HeroSection() {
+function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
+  if (viewer.role === "agent") {
+    return { href: "/agent/dashboard", label: "Agent Dashboard" };
+  }
+
+  if (viewer.role === "staff") {
+    return { href: "/staff/dashboard", label: "Staff Dashboard" };
+  }
+
+  if (viewer.role === "admin" || viewer.role === "super_admin") {
+    return { href: "/admin", label: "Admin Dashboard" };
+  }
+
+  return { href: "/customer/dashboard", label: "My Dashboard" };
+}
+
+export function HeroSection({ viewer = null }: HeroSectionProps) {
+  const isCustomer = viewer?.role === "customer";
+  const dashboardConfig = viewer ? getDashboardConfig(viewer) : null;
+
   return (
     <section className="relative isolate overflow-hidden px-0 pb-8 pt-4 md:pb-14 md:pt-8">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_10%,rgba(37,99,235,0.18),transparent_30%),radial-gradient(circle_at_92%_20%,rgba(249,115,22,0.12),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.55),rgba(239,247,255,0.35))]" />
@@ -52,6 +81,11 @@ export function HeroSection() {
                 <p className="max-w-2xl text-sm leading-7 text-slate-600 md:text-base md:leading-8">
                   Apply for PAN, Aadhaar, GST, certificates, licences and more with fast, trusted and professional support.
                 </p>
+                {isCustomer ? (
+                  <p className="text-sm font-bold text-slate-700 md:text-base">
+                    Welcome, {viewer.name}
+                  </p>
+                ) : null}
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
                 <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-4 text-sm font-extrabold text-emerald-800 shadow-sm">
@@ -64,15 +98,37 @@ export function HeroSection() {
                 </div>
               </div>
               <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
-                <Link href="/login/customer" className="premium-button premium-button-blue">
-                  <LogIn className="h-4 w-4" />
-                  Login to Apply
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp Support
-                </a>
+                {isCustomer ? (
+                  <>
+                    <Link href="/services" className="premium-button premium-button-blue">
+                      <FileCheck2 className="h-4 w-4" />
+                      Apply Now
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link href="/customer/dashboard" className="premium-button border border-white/15 bg-white/65 text-blue-800 shadow-sm md:hover:-translate-y-0.5 md:hover:bg-white/80">
+                      <LayoutDashboard className="h-4 w-4" />
+                      My Dashboard
+                    </Link>
+                  </>
+                ) : dashboardConfig ? (
+                  <Link href={dashboardConfig.href} className="premium-button premium-button-blue">
+                    <LayoutDashboard className="h-4 w-4" />
+                    {dashboardConfig.label}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login/customer" className="premium-button premium-button-blue">
+                      <LogIn className="h-4 w-4" />
+                      Login to Apply
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp Support
+                    </a>
+                  </>
+                )}
               </div>
             </div>
 

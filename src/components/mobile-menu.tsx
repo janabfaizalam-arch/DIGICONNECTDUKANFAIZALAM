@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
+import { FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -18,11 +18,12 @@ const menuLinks = [
 
 type MobileMenuProps = {
   isLoggedIn: boolean;
+  isCustomer?: boolean;
   panelHref: string | null;
   panelLabel: string | null;
 };
 
-export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProps) {
+export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLabel }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -90,6 +91,16 @@ export function MobileMenu({ isLoggedIn, panelHref, panelLabel }: MobileMenuProp
           <div className="mt-3 grid gap-2 border-t pt-3">
             {isLoggedIn && panelHref && panelLabel ? (
               <>
+                {isCustomer ? (
+                  <Link
+                    href="/services"
+                    onClick={() => setOpen(false)}
+                    className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15"
+                  >
+                    <FileCheck2 className="h-4 w-4" />
+                    Apply Now
+                  </Link>
+                ) : null}
                 <Link
                   href={panelHref}
                   onClick={() => setOpen(false)}

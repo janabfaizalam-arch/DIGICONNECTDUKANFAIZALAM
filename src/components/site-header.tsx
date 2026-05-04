@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Home, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
+import { FileCheck2, Home, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -80,11 +80,11 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
 
 function getPanelConfig(role: AppRole | null) {
   if (role === "super_admin" || role === "admin") {
-    return { href: "/admin", label: "Admin Panel" };
+    return { href: "/admin", label: "Admin Dashboard" };
   }
 
   if (role === "agent") {
-    return { href: "/agent", label: "Agent Panel" };
+    return { href: "/agent/dashboard", label: "Agent Dashboard" };
   }
 
   if (role === "staff") {
@@ -258,6 +258,12 @@ export function SiteHeader() {
             </>
           ) : user && panelConfig ? (
             <>
+              {role === "customer" ? (
+                <Link href="/services" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-5 text-sm font-bold text-white shadow-md shadow-orange-500/15 transition-transform md:hover:-translate-y-0.5">
+                  <FileCheck2 className="h-4 w-4" />
+                  Apply Now
+                </Link>
+              ) : null}
               <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-transform md:hover:-translate-y-0.5">
                 <LayoutDashboard className="h-4 w-4" />
                 {panelConfig.label}
@@ -301,7 +307,7 @@ export function SiteHeader() {
               <Home className="h-4 w-4" />
               <span className="sr-only">Home</span>
             </Link>
-            <MobileMenu isLoggedIn={Boolean(user)} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
+            <MobileMenu isLoggedIn={Boolean(user)} isCustomer={role === "customer"} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
           </div>
         )}
       </div>
