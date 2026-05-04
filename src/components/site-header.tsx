@@ -14,7 +14,7 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/#services", label: "Services" },
+  { href: "/services", label: "Services" },
   { href: "/#about", label: "About" },
   { href: "/#gallery", label: "Gallery" },
   { href: "/#support", label: "Support" },
@@ -98,14 +98,6 @@ function getPanelConfig(role: AppRole | null) {
   return null;
 }
 
-function isCustomerShellPath(pathname: string) {
-  return (
-    pathname === "/customer/dashboard" ||
-    pathname.startsWith("/customer/dashboard/") ||
-    pathname.startsWith("/dashboard/applications/")
-  );
-}
-
 function isStaffShellPath(pathname: string) {
   return pathname === "/staff/dashboard" || pathname.startsWith("/staff/");
 }
@@ -120,13 +112,12 @@ export function SiteHeader() {
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
-  const customerShell = isCustomerShellPath(pathname);
   const staffShell = isStaffShellPath(pathname);
   const agentShell = isAgentShellPath(pathname);
-  const logoHref = role === "agent" || agentShell ? "/agent/dashboard" : role === "staff" || staffShell ? "/staff/dashboard" : role === "customer" || customerShell ? "/customer/dashboard" : "/";
-  const appShell = customerShell || staffShell || agentShell;
-  const appShellLabel = agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Customer Dashboard";
-  const appShellHref = agentShell ? "/agent/dashboard" : staffShell ? "/staff/dashboard" : "/customer/dashboard";
+  const logoHref = role === "agent" || agentShell ? "/agent/dashboard" : role === "staff" || staffShell ? "/staff/dashboard" : "/";
+  const appShell = staffShell || agentShell;
+  const appShellLabel = agentShell ? "Agent Dashboard" : "Staff Dashboard";
+  const appShellHref = agentShell ? "/agent/dashboard" : "/staff/dashboard";
   const [scrolled, setScrolled] = useState(false);
   const scrolledRef = useRef(false);
 

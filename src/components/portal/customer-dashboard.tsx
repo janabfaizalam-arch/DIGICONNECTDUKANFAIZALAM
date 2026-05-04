@@ -116,7 +116,7 @@ function getTrackerStep(status: string) {
   return 0;
 }
 
-export function CustomerDashboard({ applications, notifications, profile, profileCompletion }: CustomerDashboardProps) {
+export function CustomerDashboard({ applications, notifications, profileCompletion }: CustomerDashboardProps) {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>("All");
@@ -134,8 +134,6 @@ export function CustomerDashboard({ applications, notifications, profile, profil
       return matchesCategory && matchesSearch;
     });
   }, [selectedCategory, serviceSearch]);
-  const displayName = profile.name || "Customer";
-
   function openServices() {
     setActionMessage(null);
     setServicesOpen(true);
@@ -168,7 +166,7 @@ export function CustomerDashboard({ applications, notifications, profile, profil
         <section className="glass-panel overflow-hidden rounded-[1.75rem] border border-white/15 p-5 md:rounded-[2rem] md:p-8">
           <div className="grid gap-7 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Assalamualaikum, {displayName}</p>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Dashboard</p>
               <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">Welcome to DigiConnect Dukan</h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
                 Apply, track and manage your digital services from one secure dashboard.

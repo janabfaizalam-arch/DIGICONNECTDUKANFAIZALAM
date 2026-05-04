@@ -10,7 +10,7 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 const menuLinks = [
   { href: "/", label: "Home" },
-  { href: "/#services", label: "Services" },
+  { href: "/services", label: "Services" },
   { href: "/#about", label: "About" },
   { href: "/#gallery", label: "Gallery" },
   { href: "/#support", label: "Support" },

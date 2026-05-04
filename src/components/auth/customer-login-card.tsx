@@ -18,6 +18,33 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function getSafeCustomerRedirect(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/";
+  }
+
+  if (
+    value.startsWith("/admin") ||
+    value.startsWith("/agent") ||
+    value.startsWith("/staff") ||
+    value.startsWith("/login") ||
+    value.startsWith("/admin-login") ||
+    value.startsWith("/super-admin-login")
+  ) {
+    return "/";
+  }
+
+  return value;
+}
+
+function getCurrentCustomerRedirect() {
+  if (typeof window === "undefined") {
+    return "/";
+  }
+
+  return getSafeCustomerRedirect(new URLSearchParams(window.location.search).get("next"));
+}
+
 export function CustomerLoginCard() {
   const { error: toastError } = useToast();
   const [isGooglePending, setIsGooglePending] = useState(false);
@@ -37,10 +64,11 @@ export function CustomerLoginCard() {
       }
 
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const nextPath = getCurrentCustomerRedirect();
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${siteUrl}/auth/callback`,
+          redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`,
           queryParams: {
             access_type: "offline",
             prompt: "select_account",
@@ -108,7 +136,7 @@ export function CustomerLoginCard() {
           throw new Error("Login succeeded but user details could not be loaded.");
         }
 
-        window.location.assign("/customer/dashboard");
+        window.location.assign(getCurrentCustomerRedirect());
         return;
       }
 
@@ -125,7 +153,7 @@ export function CustomerLoginCard() {
       }
 
       if (data.session) {
-        window.location.assign("/customer/dashboard");
+        window.location.assign(getCurrentCustomerRedirect());
         return;
       }
 
