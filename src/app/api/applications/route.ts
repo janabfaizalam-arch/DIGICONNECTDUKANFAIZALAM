@@ -78,9 +78,6 @@ export async function POST(request: Request) {
     const requiredCustomerFields = [
       ["name", "Name"],
       ["mobile", "Mobile"],
-      ["email", "Email"],
-      ["city", "City"],
-      ["message", "Message"],
     ] as const;
 
     for (const [fieldName, label] of requiredCustomerFields) {
@@ -91,21 +88,13 @@ export async function POST(request: Request) {
 
     const details = body.details ?? {};
 
-    for (const field of service.fields) {
-      if ((field.required ?? true) && !required(details[field.name])) {
-        return jsonError(`${field.label} is required.`, 400);
-      }
+    if (!Array.isArray(body.documents) || body.documents.length < 1) {
+      return jsonError("Please upload Aadhaar / Documents.", 400);
     }
 
-    if (!Array.isArray(body.documents) || body.documents.length !== service.documents.length) {
-      return jsonError("Please upload all required documents.", 400);
-    }
-
-    for (const documentType of service.documents) {
-      const uploaded = body.documents.find((document) => document.document_type === documentType);
-
-      if (!uploaded?.file_name || !uploaded.file_url) {
-        return jsonError(`${documentType} upload is required.`, 400);
+    for (const document of body.documents) {
+      if (!document.file_name || !document.file_url) {
+        return jsonError("Uploaded document metadata is invalid.", 400);
       }
     }
 
@@ -117,9 +106,9 @@ export async function POST(request: Request) {
       service: service.title,
       name: customer.name!.trim(),
       mobile: customer.mobile!.trim(),
-      email: customer.email!.trim(),
-      city: customer.city!.trim(),
-      message: customer.message!.trim(),
+      email: customer.email?.trim() ?? "",
+      city: customer.city?.trim() ?? "",
+      message: customer.message?.trim() ?? "",
       ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
       documents: body.documents,
     };
@@ -180,7 +169,7 @@ export async function POST(request: Request) {
       applicationId: application.id,
       userId: user.id,
       customerName: customer.name!.trim(),
-      customerEmail: customer.email!.trim(),
+      customerEmail: customer.email?.trim() ?? "",
       customerMobile: customer.mobile!.trim(),
       serviceName: service.title,
       amount: service.amount,

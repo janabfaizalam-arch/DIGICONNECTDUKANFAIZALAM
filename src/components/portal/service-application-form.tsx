@@ -2,7 +2,7 @@
 
 import { type FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, FileUp, IndianRupee, LoaderCircle, Plus, QrCode, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { FileUp, IndianRupee, LoaderCircle, Plus, QrCode, Trash2 } from "lucide-react";
 
 import { ServiceSelectionModal } from "@/components/service-selection-modal";
 import { useToast } from "@/components/providers/toast-provider";
@@ -61,7 +61,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const { success, error: toastError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
-  const [selectedDocuments, setSelectedDocuments] = useState<Record<string, { documentType: string; file: File }>>({});
+  const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const selectedServices = useMemo(() => {
@@ -93,22 +93,17 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       return;
     }
 
-    for (const selectedService of selectedServices) {
-      for (const documentType of selectedService.documents) {
-        const documentKey = `${selectedService.slug}:${documentType}`;
-        const selectedDocument = selectedDocuments[documentKey];
+    if (!selectedDocuments.length) {
+      toastError("Please upload Aadhaar / Documents.");
+      return;
+    }
 
-        if (!selectedDocument?.file) {
-          toastError(`Please upload ${documentType} for ${selectedService.title}`);
-          return;
-        }
+    for (const file of selectedDocuments) {
+      const validationError = validateFile(file, file.name);
 
-        const validationError = validateFile(selectedDocument.file, documentType);
-
-        if (validationError) {
-          toastError(validationError);
-          return;
-        }
+      if (validationError) {
+        toastError(validationError);
+        return;
       }
     }
 
@@ -136,6 +131,57 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         throw new Error("Please login to apply.");
       }
 
+      setProgressText("Uploading Aadhaar / Documents...");
+
+      const uploadedDocuments = [];
+
+      for (const [index, file] of selectedDocuments.entries()) {
+        const documentType = index === 0 ? "Aadhaar / Document Proof" : "Additional Document";
+        const path = `${user.id}/shared/documents/${Date.now()}-${index}-${cleanFileName(file.name)}`;
+        const { error: uploadError } = await withTimeout(
+          supabase.storage.from("documents").upload(path, file, {
+            contentType: file.type,
+            upsert: false,
+          }),
+          "Document upload is taking longer than 30 seconds. Please check the file size and try again.",
+        );
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { data } = supabase.storage.from("documents").getPublicUrl(path);
+        uploadedDocuments.push({
+          document_type: documentType,
+          file_name: file.name,
+          file_url: data.publicUrl,
+          file_type: file.type,
+          storage_path: path,
+        });
+      }
+
+      setProgressText("Uploading payment proof...");
+
+      const screenshotPath = `${user.id}/shared/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
+      const { error: screenshotUploadError } = await withTimeout(
+        supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
+          contentType: paymentScreenshot.type,
+          upsert: false,
+        }),
+        "Payment screenshot upload is taking longer than 30 seconds.",
+      );
+
+      if (screenshotUploadError) {
+        throw new Error(screenshotUploadError.message);
+      }
+
+      const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
+      const paymentScreenshotMetadata = {
+        file_name: paymentScreenshot.name,
+        file_url: screenshotPublicUrl.publicUrl,
+        file_type: paymentScreenshot.type,
+        storage_path: screenshotPath,
+      };
       const invoiceIds: string[] = [];
 
       for (const selectedService of selectedServices) {
@@ -164,69 +210,9 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
         }
 
-        setProgressText(`Uploading ${selectedService.title} documents...`);
-
-        const uploadedDocuments = [];
-
-        for (const documentType of selectedService.documents) {
-          const documentKey = `${selectedService.slug}:${documentType}`;
-          const selectedDocument = selectedDocuments[documentKey];
-
-          if (!selectedDocument?.file) {
-            throw new Error(`Please upload ${documentType}`);
-          }
-
-          const file = selectedDocument.file;
-          const path = `${user.id}/${selectedService.slug}/documents/${Date.now()}-${cleanFileName(documentType)}-${cleanFileName(file.name)}`;
-          const { error: uploadError } = await withTimeout(
-            supabase.storage.from("documents").upload(path, file, {
-              contentType: file.type,
-              upsert: false,
-            }),
-            "Document upload is taking longer than 30 seconds. Please check the file size and try again.",
-          );
-
-          if (uploadError) {
-            throw new Error(uploadError.message);
-          }
-
-          const { data } = supabase.storage.from("documents").getPublicUrl(path);
-          uploadedDocuments.push({
-            document_type: documentType,
-            file_name: file.name,
-            file_url: data.publicUrl,
-            file_type: file.type,
-            storage_path: path,
-          });
-        }
-
-        setProgressText(`Uploading ${selectedService.title} payment proof...`);
-
-        const screenshotPath = `${user.id}/${selectedService.slug}/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
-        const { error: screenshotUploadError } = await withTimeout(
-          supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
-            contentType: paymentScreenshot.type,
-            upsert: false,
-          }),
-          "Payment screenshot upload is taking longer than 30 seconds.",
-        );
-
-        if (screenshotUploadError) {
-          throw new Error(screenshotUploadError.message);
-        }
-
-        const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
         const details: Record<string, string> = {
-          fatherOrHusbandName: String(formData.get("fatherOrHusbandName") ?? "").trim(),
-          dateOfBirth: String(formData.get("dateOfBirth") ?? "").trim(),
           address: String(formData.get("address") ?? "").trim(),
-          state: String(formData.get("state") ?? "").trim(),
-          pincode: String(formData.get("pincode") ?? "").trim(),
         };
-
-        for (const field of selectedService.fields) {
-          details[field.name] = String(formData.get(`${selectedService.slug}_${field.name}`) ?? "").trim();
-        }
 
         setProgressText(`Saving ${selectedService.title} application...`);
 
@@ -244,17 +230,12 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               name: String(formData.get("name") ?? "").trim(),
               mobile: String(formData.get("mobile") ?? "").trim(),
               email: String(formData.get("email") ?? "").trim(),
-              city: String(formData.get("city") ?? "").trim(),
+              city: "",
               message: String(formData.get("message") ?? "").trim(),
             },
             details,
             documents: uploadedDocuments,
-            paymentScreenshot: {
-              file_name: paymentScreenshot.name,
-              file_url: screenshotPublicUrl.publicUrl,
-              file_type: paymentScreenshot.type,
-              storage_path: screenshotPath,
-            },
+            paymentScreenshot: paymentScreenshotMetadata,
           }),
           signal: controller.signal,
         }).finally(() => clearTimeout(timeoutId));
@@ -310,19 +291,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-4">
-          {["Service Details", "Applicant Details", "Documents Upload", "Payment / Review", "Submit"].map((step, index) => (
-            <div key={step} className={index === 4 ? "md:col-span-4 lg:col-span-1" : ""}>
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-bold text-white">
-                  {index + 1}
-                </span>
-                <p className="text-sm font-bold text-slate-800">{step}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div className="mt-5 rounded-2xl border bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -334,17 +302,19 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               Add another service
             </Button>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {selectedServices.map((item) => (
-              <div key={item.slug} className="rounded-2xl bg-slate-50 p-4">
-                <p className="font-bold text-slate-950">{item.title}</p>
+              <div key={item.slug} className="min-w-0 rounded-2xl bg-slate-50 p-3">
+                <p className="truncate font-bold text-slate-950">{item.title}</p>
                 <p className="mt-1 text-sm text-slate-600">{formatCurrency(item.amount)}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="mt-5">
+          <p className="font-bold text-slate-950">Applicant Details</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" />
           <Input
             name="mobile"
@@ -355,146 +325,70 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             required
             className="h-12 text-sm"
           />
-          <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" />
-          <Input
-            name="service"
-            value={selectedServices.map((item) => item.title).join(", ")}
-            aria-label="Service"
-            readOnly
-            className="h-12 bg-slate-50 text-sm font-medium"
-          />
-          <Input name="fatherOrHusbandName" placeholder="Father/Husband Name" aria-label="Father/Husband Name" required className="h-12 text-sm" />
-          <Input name="dateOfBirth" aria-label="Date of Birth" type="date" required className="h-12 text-sm" />
-          <Input name="address" placeholder="Address" aria-label="Address" required className="h-12 text-sm md:col-span-2" />
-          <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" />
-          <Input name="state" placeholder="State" aria-label="State" required className="h-12 text-sm" />
-          <Input name="pincode" placeholder="Pincode" aria-label="Pincode" inputMode="numeric" pattern="[0-9]{6}" required className="h-12 text-sm" />
-          {selectedServices.flatMap((selectedService) =>
-            selectedService.fields.map((field) =>
-              field.type === "textarea" ? (
-                <Textarea
-                  key={`${selectedService.slug}_${field.name}`}
-                  name={`${selectedService.slug}_${field.name}`}
-                  placeholder={`${selectedService.title}: ${field.label}`}
-                  aria-label={`${selectedService.title}: ${field.label}`}
-                  required={field.required ?? true}
-                  className="min-h-24 text-sm md:col-span-2"
-                />
-              ) : (
-                <Input
-                  key={`${selectedService.slug}_${field.name}`}
-                  name={`${selectedService.slug}_${field.name}`}
-                  placeholder={`${selectedService.title}: ${field.label}`}
-                  aria-label={`${selectedService.title}: ${field.label}`}
-                  type={field.type ?? "text"}
-                  required={field.required ?? true}
-                  className="h-12 text-sm"
-                />
-              ),
-            ),
-          )}
-          <Textarea name="message" placeholder="Notes / Message" aria-label="Notes / Message" required className="min-h-24 text-sm md:col-span-2" />
+          <Input name="email" placeholder="Email (optional)" aria-label="Email (optional)" type="email" className="h-12 text-sm" />
+          <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" />
+          <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" />
+          </div>
         </div>
 
         <div className="mt-5 rounded-2xl border border-dashed bg-blue-50/60 p-4 md:p-5">
           <div className="flex items-start gap-3">
             <FileUp className="mt-1 h-5 w-5 text-[var(--primary)]" />
-            <div>
-              <p className="font-bold text-slate-950">Required Documents Upload</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-slate-950">Upload Aadhaar / Documents</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                Upload clear documents for faster processing. PDF, JPG, and PNG files are supported.
+                Aadhaar is required. Add more documents only if needed.
               </p>
-              <div className="mt-4 grid gap-3">
-                {selectedServices.map((selectedService) => (
-                  <div key={selectedService.slug} className="rounded-2xl border bg-white p-4">
-                    <p className="font-bold text-slate-950">{selectedService.title}</p>
-                    <div className="mt-3 grid gap-3">
-                      {selectedService.documents.map((document, index) => {
-                        const documentKey = `${selectedService.slug}:${document}`;
-                        const selectedFile = selectedDocuments[documentKey]?.file;
+              <Input
+                name="documents"
+                type="file"
+                multiple
+                required={!selectedDocuments.length}
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="mt-4"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
 
-                        return (
-                          <label key={documentKey} className="rounded-2xl border bg-slate-50 p-4">
-                            <span className="block text-sm font-bold text-slate-950">
-                              {String(index + 1).padStart(2, "0")}. {document}
-                            </span>
-                            <Input
-                              name={`document_${documentKey}`}
-                              type="file"
-                              required={!selectedFile}
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              className="mt-3"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
+                  if (!files.length) {
+                    return;
+                  }
 
-                                setSelectedDocuments((current) => {
-                                  if (!file) {
-                                    const next = { ...current };
-                                    delete next[documentKey];
-                                    return next;
-                                  }
+                  const validFiles: File[] = [];
 
-                                  const validationError = validateFile(file, document);
+                  for (const file of files) {
+                    const validationError = validateFile(file, file.name);
 
-                                  if (validationError) {
-                                    event.target.value = "";
-                                    toastError(validationError);
-                                    const next = { ...current };
-                                    delete next[documentKey];
-                                    return next;
-                                  }
+                    if (validationError) {
+                      toastError(validationError);
+                      continue;
+                    }
 
-                                  return {
-                                    ...current,
-                                    [documentKey]: {
-                                      documentType: document,
-                                      file,
-                                    },
-                                  };
-                                });
-                              }}
-                            />
-                            <span className="mt-2 flex items-center justify-between gap-3 text-xs font-bold text-blue-700">
-                              <span className="truncate">{selectedFile?.name ?? "No file selected"}</span>
-                              {selectedFile ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedDocuments((current) => {
-                                      const next = { ...current };
-                                      delete next[documentKey];
-                                      return next;
-                                    })
-                                  }
-                                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-red-600"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Remove
-                                </button>
-                              ) : null}
-                            </span>
-                          </label>
-                        );
-                      })}
+                    validFiles.push(file);
+                  }
+
+                  setSelectedDocuments((current) => [...current, ...validFiles]);
+                  event.target.value = "";
+                }}
+              />
+              {selectedDocuments.length ? (
+                <div className="mt-3 grid gap-2">
+                  {selectedDocuments.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm">
+                      <span className="min-w-0 truncate font-semibold text-slate-700">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {[
-            { title: "Secure document handling", icon: ShieldCheck },
-            { title: "Expert verification", icon: UsersRound },
-            { title: "Application tracking", icon: FileText },
-          ].map(({ title, icon: Icon }) => (
-            <div key={title} className="rounded-2xl border bg-white p-4">
-              <Icon className="h-5 w-5 text-[var(--primary)]" />
-              <p className="mt-3 text-sm font-bold text-slate-800">{title}</p>
-            </div>
-          ))}
         </div>
       </Card>
 

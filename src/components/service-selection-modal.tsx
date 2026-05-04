@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
@@ -72,7 +72,7 @@ async function getApplyHref(slugs: string[]) {
     return null;
   }
 
-  const servicesParam = selected.length > 1 ? `?services=${encodeURIComponent(selected.join(","))}` : "";
+  const servicesParam = `?services=${encodeURIComponent(selected.join(","))}`;
   const applyPath = `/apply/${primarySlug}${servicesParam}`;
   const supabase = createClient();
 
@@ -102,12 +102,26 @@ export function ServiceSelectionModal({
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>("All");
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(initialSelectedSlugs);
   const [loading, setLoading] = useState(false);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (open) {
       setSelectedSlugs(initialSelectedSlugs);
     }
   }, [initialSelectedSlugs, open]);
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -136,15 +150,18 @@ export function ServiceSelectionModal({
   }, [query, selectedCategory]);
 
   async function continueWith(slugs: string[]) {
+    setLoading(true);
     const href = await getApplyHref(slugs);
 
     if (!href) {
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    router.push(href);
     onOpenChange(false);
+    startTransition(() => {
+      router.push(href);
+    });
   }
 
   function toggleService(slug: string) {
@@ -163,9 +180,9 @@ export function ServiceSelectionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-slate-950/45 p-0 md:items-center md:justify-center md:p-6">
       <button type="button" aria-label="Close service selection" className="absolute inset-0 cursor-default" onClick={() => onOpenChange(false)} />
-      <div className="relative max-h-[90vh] w-full overflow-hidden rounded-t-[1.5rem] border border-white/20 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.22)] md:max-w-5xl md:rounded-[1.5rem]">
-        <div className="flex items-start justify-between gap-4 border-b p-5">
-          <div>
+      <div className="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[1.5rem] border border-white/20 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.22)] md:max-w-5xl md:rounded-[1.5rem]">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b p-5">
+          <div className="min-w-0">
             <h2 className="text-2xl font-bold text-slate-950">Choose a Service</h2>
             <p className="mt-1 text-sm text-slate-600">Select the service you want to apply for.</p>
           </div>
@@ -175,7 +192,7 @@ export function ServiceSelectionModal({
           </button>
         </div>
 
-        <div className="grid gap-3 border-b p-5 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="grid shrink-0 gap-3 border-b p-5 md:grid-cols-[1fr_auto] md:items-center">
           <label className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -185,7 +202,7 @@ export function ServiceSelectionModal({
               className="h-12 w-full rounded-2xl border bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--primary)]"
             />
           </label>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
             {categories.map((category) => (
               <button
                 key={category}
@@ -201,8 +218,8 @@ export function ServiceSelectionModal({
           </div>
         </div>
 
-        <div className="max-h-[50vh] overflow-y-auto p-5">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 overscroll-contain">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filteredServices.map(({ title, slug, benefit, icon: Icon }) => {
               const selected = selectedSlugs.includes(slug);
 
@@ -211,24 +228,24 @@ export function ServiceSelectionModal({
                   key={`${title}-${slug}`}
                   type="button"
                   onClick={() => toggleService(slug)}
-                  className={`rounded-2xl border p-4 text-left shadow-sm transition-transform md:hover:-translate-y-0.5 ${
+                  className={`min-w-0 rounded-2xl border p-4 text-left shadow-sm transition-transform duration-150 md:hover:-translate-y-0.5 ${
                     selected ? "border-blue-500 bg-blue-50/70" : "bg-white"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
                       <Icon className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-slate-950">{title}</h3>
+                        <h3 className="min-w-0 truncate font-bold text-slate-950">{title}</h3>
                         {selected ? (
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
                             <Check className="h-4 w-4" />
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-sm leading-5 text-slate-600">{benefit}</p>
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">{benefit}</p>
                     </div>
                   </div>
                 </button>
@@ -241,8 +258,8 @@ export function ServiceSelectionModal({
         </div>
 
         {allowMultiSelect ? (
-          <div className="flex flex-col gap-3 border-t bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-bold text-slate-700">
+          <div className="flex shrink-0 flex-col gap-3 border-t bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="min-w-0 text-sm font-bold text-slate-700">
               {selectedSlugs.length ? `${selectedSlugs.length} service${selectedSlugs.length === 1 ? "" : "s"} selected` : "Select one or more services"}
             </p>
             <Button type="button" disabled={!selectedSlugs.length || loading} onClick={() => void continueWith(selectedSlugs)} className="h-12">
