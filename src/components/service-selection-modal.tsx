@@ -7,7 +7,6 @@ import {
   BriefcaseBusiness,
   Building2,
   CarFront,
-  Check,
   ClipboardCheck,
   FileBadge2,
   FileCheck2,
@@ -23,7 +22,6 @@ import {
   X,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/browser";
 
 type ServiceCategory = "All" | "Government" | "Certificates" | "Business" | "Licenses" | "Finance";
@@ -31,7 +29,6 @@ type ServiceCategory = "All" | "Government" | "Certificates" | "Business" | "Lic
 type ServiceSelectionModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialSelectedSlugs?: string[];
 };
 
 const categories: ServiceCategory[] = ["All", "Government", "Certificates", "Business", "Licenses", "Finance"];
@@ -78,19 +75,10 @@ async function getApplyHref(slug: string) {
   return session?.user ? applyPath : `/login/customer?redirect=${encodeURIComponent(applyPath)}`;
 }
 
-export function ServiceSelectionModal({ open, onOpenChange, initialSelectedSlugs = [] }: ServiceSelectionModalProps) {
+export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionModalProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>("All");
-  const [selectedSlug, setSelectedSlug] = useState(initialSelectedSlugs[0] ?? "");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setSelectedSlug(initialSelectedSlugs[0] ?? "");
-      setLoading(false);
-    }
-  }, [initialSelectedSlugs, open]);
 
   useEffect(() => {
     if (!open || typeof document === "undefined") {
@@ -131,15 +119,10 @@ export function ServiceSelectionModal({ open, onOpenChange, initialSelectedSlugs
     });
   }, [query, selectedCategory]);
 
-  async function continueWithSelected() {
-    if (!selectedSlug) {
-      return;
-    }
-
-    setLoading(true);
-    const href = await getApplyHref(selectedSlug);
+  function handleServiceClick(slug: string) {
+    console.log("SERVICE_CLICK", slug);
+    router.push(`/apply/${slug}`);
     onOpenChange(false);
-    router.push(href);
   }
 
   if (!open) {
@@ -150,7 +133,7 @@ export function ServiceSelectionModal({ open, onOpenChange, initialSelectedSlugs
     <div className="fixed inset-0 z-[100] flex items-end md:items-center md:justify-center md:p-6">
       <button type="button" aria-label="Close service selection" className="absolute inset-0 bg-slate-950/45" onClick={() => onOpenChange(false)} />
 
-      <section
+      <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="service-selection-title"
@@ -198,48 +181,28 @@ export function ServiceSelectionModal({ open, onOpenChange, initialSelectedSlugs
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 overscroll-contain md:p-5">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {filteredServices.map(({ title, slug, benefit, icon: Icon }) => {
-              const selected = selectedSlug === slug;
-
-              return (
-                <button
-                  key={`${title}-${slug}`}
-                  type="button"
-                  onClick={() => setSelectedSlug(slug)}
-                  className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left ${
-                    selected ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600" : "bg-white"
-                  }`}
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[var(--primary)]">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-slate-950">{title}</span>
-                    <span className="block truncate text-xs text-slate-600">{benefit}</span>
-                  </span>
-                  {selected ? (
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                      <Check className="h-4 w-4" />
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
+            {filteredServices.map(({ title, slug, benefit, icon: Icon }) => (
+              <button
+                key={`${title}-${slug}`}
+                type="button"
+                onClick={() => handleServiceClick(slug)}
+                className="flex min-w-0 items-center gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[var(--primary)]">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-slate-950">{title}</span>
+                  <span className="block truncate text-xs text-slate-600">{benefit}</span>
+                </span>
+              </button>
+            ))}
           </div>
           {!filteredServices.length ? (
             <p className="rounded-xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-600">No services found.</p>
           ) : null}
         </div>
-
-        <footer className="flex shrink-0 items-center justify-end gap-2 border-t bg-slate-50 p-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" disabled={!selectedSlug || loading} onClick={() => void continueWithSelected()}>
-            {loading ? "Opening..." : "Continue"}
-          </Button>
-        </footer>
-      </section>
+      </div>
     </div>
   );
 }
@@ -252,7 +215,6 @@ export function ApplyServiceTrigger({
   children: ReactNode;
   serviceSlug?: string;
   className?: string;
-  allowMultiSelect?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
