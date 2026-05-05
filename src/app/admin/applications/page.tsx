@@ -18,7 +18,7 @@ export default async function AdminApplicationsPage() {
     redirect("/dashboard");
   }
 
-  const { rows } = await getAdminApplicationRows();
+  const { rows, staff } = await getAdminApplicationRows();
 
-  return <AdminApplications rows={rows} />;
+  return <AdminApplications rows={rows} staff={staff} />;
 }

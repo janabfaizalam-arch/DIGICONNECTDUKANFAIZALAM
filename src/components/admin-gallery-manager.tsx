@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { FormEvent, useRef, useState } from "react";
-import { ImageIcon, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
+import { ImageIcon, ImagePlus, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
   const [images, setImages] = useState(initialImages);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
@@ -119,13 +120,47 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
     }
   }
 
+  async function handleUpdate(event: FormEvent<HTMLFormElement>, image: GalleryImage) {
+    event.preventDefault();
+    setSuccessMessage("");
+    setErrorMessage("");
+    setEditingId(image.id);
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      formData.set("id", image.id);
+      const response = await fetch("/api/admin/gallery", {
+        method: "PATCH",
+        body: formData,
+      });
+      const data = (await response.json()) as ApiResponse;
+
+      if (!response.ok || !data.image) {
+        setErrorMessage(getResponseMessage(data, "Gallery photo could not be updated."));
+        return;
+      }
+
+      setImages((currentImages) => currentImages.map((item) => (item.id === image.id ? data.image! : item)));
+      setSuccessMessage(data.message || "Gallery photo updated successfully.");
+    } catch (error) {
+      console.error("[admin/gallery] Update failed", error);
+      setErrorMessage("Gallery photo could not be updated. Please try again.");
+    } finally {
+      setEditingId(null);
+    }
+  }
+
   return (
     <>
       <Card className="border-blue-100 p-4 shadow-sm md:p-6">
-        <form ref={formRef} onSubmit={handleUpload} className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <form ref={formRef} onSubmit={handleUpload} className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
           <label className="grid gap-2">
             <span className="text-sm font-bold text-slate-700">Optional title</span>
             <Input name="title" placeholder="Example: Customer service desk" disabled={isUploading} />
+          </label>
+          <label className="grid gap-2">
+            <span className="text-sm font-bold text-slate-700">Category</span>
+            <Input name="category" placeholder="Office, service, customer" disabled={isUploading} />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-bold text-slate-700">Gallery image</span>
@@ -160,12 +195,17 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
                 />
               </div>
               <div className="space-y-4 p-4">
-                <div>
-                  <p className="font-bold text-slate-950">{image.title || "Untitled gallery photo"}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Uploaded {new Date(image.created_at).toLocaleDateString("en-IN")}
-                  </p>
-                </div>
+                <form onSubmit={(event) => void handleUpdate(event, image)} className="grid gap-3">
+                  <Input name="title" defaultValue={image.title ?? ""} placeholder="Title" />
+                  <Input name="description" defaultValue={image.description ?? ""} placeholder="Description / caption" />
+                  <Input name="category" defaultValue={image.category ?? ""} placeholder="Category / tag" />
+                  <Input name="image" type="file" accept="image/jpeg,image/png,image/webp" />
+                  <p className="text-xs text-slate-500">Uploaded {new Date(image.created_at).toLocaleDateString("en-IN")}</p>
+                  <Button type="submit" variant="outline" className="w-full" disabled={editingId === image.id}>
+                    {editingId === image.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                    Save Changes
+                  </Button>
+                </form>
                 <Button
                   type="button"
                   variant="outline"

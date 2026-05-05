@@ -66,6 +66,15 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     .select("id, application_id, note, assigned_to, created_at")
     .eq("application_id", id)
     .order("created_at", { ascending: false });
+  const { data: staffData } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+    .eq("role", "staff");
+  const { data: statusLogs } = await supabase
+    .from("status_logs")
+    .select("id, old_status, new_status, note, created_at")
+    .eq("application_id", id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -151,6 +160,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                   customerMobile={customerMobile}
                   serviceName={application.service_name}
                   hideAgentFields
+                  staff={staffData ?? []}
+                  assignedStaffId={application.assigned_staff_id ?? ""}
                 />
               </div>
             </Card>
@@ -199,6 +210,25 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                   ))
                 ) : (
                   <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No notes yet.</p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <h2 className="text-lg font-bold text-slate-950">Activity Timeline</h2>
+              <div className="mt-4 space-y-3">
+                {statusLogs?.length ? (
+                  statusLogs.map((log) => (
+                    <div key={log.id} className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-sm font-bold text-slate-950">
+                        {String(log.old_status ?? "new").replace(/_/g, " ")} to {String(log.new_status).replace(/_/g, " ")}
+                      </p>
+                      {log.note ? <p className="mt-1 text-sm text-slate-600">{log.note}</p> : null}
+                      <p className="mt-2 text-xs font-bold text-slate-500">{formatDate(log.created_at)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No activity history yet.</p>
                 )}
               </div>
             </Card>

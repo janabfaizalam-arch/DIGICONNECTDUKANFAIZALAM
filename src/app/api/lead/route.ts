@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       service,
       message,
       status: "new",
+      source: "website",
       ...fileMetadata,
     });
 

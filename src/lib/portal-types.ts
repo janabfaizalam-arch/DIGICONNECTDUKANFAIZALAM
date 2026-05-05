@@ -1,6 +1,6 @@
 import type { ApplicationStatus, PaymentStatus } from "@/lib/portal-data";
 
-export type LeadStatus = "new" | "in_progress" | "completed";
+export type LeadStatus = "new" | "contacted" | "converted" | "closed" | "in_progress" | "completed";
 
 export type Lead = {
   id: string;
@@ -12,6 +12,8 @@ export type Lead = {
   message: string | null;
   notes?: string | null;
   status: LeadStatus;
+  source?: string | null;
+  converted_application_id?: string | null;
   agent_id?: string | null;
   file_name: string | null;
   file_url: string | null;
@@ -41,6 +43,8 @@ export type AdminApplicationRow = {
   application_status: string;
   agent_id?: string | null;
   agent_name?: string | null;
+  assigned_staff_id?: string | null;
+  assigned_staff_name?: string | null;
   payment_proof_url?: string | null;
   commission_amount?: number | null;
   commission_status?: string | null;

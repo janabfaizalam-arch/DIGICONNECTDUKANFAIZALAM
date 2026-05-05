@@ -5,6 +5,7 @@ import { ExternalLink, MessageCircle, Phone, Search } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminLeadActions } from "@/components/admin/admin-lead-actions";
 import { Input } from "@/components/ui/input";
 import type { Lead } from "@/lib/portal-types";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
@@ -46,6 +47,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
               <th className="px-4 py-3">Mobile</th>
               <th className="px-4 py-3">Service</th>
               <th className="px-4 py-3">Message</th>
+              <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">File</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created</th>
@@ -59,6 +61,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                 <td className="px-4 py-3 font-mono text-slate-700">{lead.mobile}</td>
                 <td className="px-4 py-3 text-slate-700">{lead.service}</td>
                 <td className="max-w-xs px-4 py-3 text-slate-600">{lead.message || "-"}</td>
+                <td className="px-4 py-3 text-slate-600">{lead.source || "website"}</td>
                 <td className="px-4 py-3">
                   {lead.file_url ? (
                     <a href={lead.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-700">
@@ -69,7 +72,12 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                     <span className="text-slate-400">-</span>
                   )}
                 </td>
-                <td className="px-4 py-3"><AdminStatusBadge status={lead.status} /></td>
+                <td className="px-4 py-3">
+                  <div className="grid gap-2">
+                    <AdminStatusBadge status={lead.status} />
+                    <AdminLeadActions leadId={lead.id} status={lead.status} />
+                  </div>
+                </td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatDate(lead.created_at)}</td>
                 <td className="px-4 py-3">
                   <a href={generateWhatsAppLink(lead.mobile, `Assalamu Alaikum, DigiConnect Dukan se ${lead.service} enquiry ke liye contact kar rahe hain.`)} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
@@ -97,6 +105,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
             {lead.message ? <p className="mt-2 text-sm leading-6 text-slate-600">{lead.message}</p> : null}
             <p className="mt-3 font-mono text-xs text-slate-500">{formatDate(lead.created_at)}</p>
             <div className="mt-4 flex flex-wrap gap-2">
+              <AdminLeadActions leadId={lead.id} status={lead.status} />
               <a href={`tel:${lead.mobile}`} className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white">
                 <Phone className="h-3.5 w-3.5" />
                 Call

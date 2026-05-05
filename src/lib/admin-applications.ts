@@ -19,12 +19,13 @@ function leadToAdminRow(lead: Lead): AdminApplicationRow {
   };
 }
 
-function applicationToAdminRow(application: Application, agentsById: Record<string, PortalUser>): AdminApplicationRow {
+function applicationToAdminRow(application: Application, agentsById: Record<string, PortalUser>, staffById: Record<string, PortalUser>): AdminApplicationRow {
   const payment = application.payments?.[0];
   const invoice = application.invoices?.[0];
   const commission = application.commissions?.[0];
   const agentId = application.assigned_agent_id ?? application.created_by ?? null;
   const agent = agentId ? agentsById[agentId] : null;
+  const staff = application.assigned_staff_id ? staffById[application.assigned_staff_id] : null;
 
   return {
     id: `application-${application.id}`,
@@ -40,6 +41,8 @@ function applicationToAdminRow(application: Application, agentsById: Record<stri
     application_status: application.status,
     agent_id: agentId,
     agent_name: agent?.full_name || agent?.email || null,
+    assigned_staff_id: application.assigned_staff_id ?? null,
+    assigned_staff_name: staff?.full_name || staff?.email || null,
     payment_proof_url: application.payment_screenshot_url ?? payment?.screenshot_url ?? null,
     commission_amount: commission?.amount ?? application.commission_amount ?? null,
     commission_status: commission?.status ?? null,
@@ -51,12 +54,13 @@ export async function getAdminApplicationRows() {
   const supabase = getSupabaseAdmin();
   let rows: AdminApplicationRow[] = [];
   let agents: PortalUser[] = [];
+  let staff: PortalUser[] = [];
 
   if (!supabase) {
     return { rows, agents };
   }
 
-  const [{ data: applicationData }, { data: leadData }, { data: agentData }] = await Promise.all([
+  const [{ data: applicationData }, { data: leadData }, { data: agentData }, { data: staffData }] = await Promise.all([
     supabase.from("applications").select("*").order("created_at", { ascending: false }),
     supabase
       .from("leads")
@@ -66,19 +70,28 @@ export async function getAdminApplicationRows() {
       .from("profiles")
       .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
       .in("role", ["agent", "admin", "super_admin"]),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+      .eq("role", "staff"),
   ]);
 
   agents = (agentData ?? []) as PortalUser[];
+  staff = (staffData ?? []) as PortalUser[];
   const agentsById = agents.reduce<Record<string, PortalUser>>((grouped, agent) => {
     grouped[agent.id] = agent;
+    return grouped;
+  }, {});
+  const staffById = staff.reduce<Record<string, PortalUser>>((grouped, item) => {
+    grouped[item.id] = item;
     return grouped;
   }, {});
   const applications = (await hydrateApplications((applicationData ?? []) as Application[])) as Application[];
 
   rows = [
-    ...applications.map((application) => applicationToAdminRow(application, agentsById)),
+    ...applications.map((application) => applicationToAdminRow(application, agentsById, staffById)),
     ...((leadData ?? []) as Lead[]).map(leadToAdminRow),
   ].sort((first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime());
 
-  return { rows, agents };
+  return { rows, agents, staff };
 }

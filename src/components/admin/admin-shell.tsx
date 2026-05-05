@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, FileText, GalleryHorizontalEnd, LayoutDashboard, LogOut, Settings, UsersRound } from "lucide-react";
+import { BarChart3, FileText, GalleryHorizontalEnd, LayoutDashboard, LogOut, Newspaper, Settings, UserCog, UsersRound } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -8,7 +8,9 @@ const adminLinks = [
   { href: "/admin/leads", label: "Leads", icon: BarChart3 },
   { href: "/admin/applications", label: "Applications", icon: FileText },
   { href: "/admin/customers", label: "Customers", icon: UsersRound },
+  { href: "/admin/staff", label: "Staff", icon: UserCog },
   { href: "/admin/gallery", label: "Gallery", icon: GalleryHorizontalEnd },
+  { href: "/admin/articles", label: "Articles", icon: Newspaper },
   { href: "/#support", label: "Support", icon: Settings },
 ];
 
@@ -44,7 +46,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <LogoutButton className="h-10 px-3 text-xs" />
             </div>
             <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {adminLinks.slice(0, 5).map(({ href, label, icon: Icon }) => (
+              {adminLinks.filter((link) => link.href !== "/#support").map(({ href, label, icon: Icon }) => (
                 <Link key={href} href={href} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-white px-3 text-xs font-bold text-slate-700">
                   <Icon className="h-3.5 w-3.5 text-blue-600" />
                   {label}

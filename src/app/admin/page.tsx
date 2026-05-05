@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, FileClock, GalleryHorizontalEnd, Inbox, ListChecks, UsersRound } from "lucide-react";
+import { ClipboardList, FileClock, GalleryHorizontalEnd, Inbox, IndianRupee, ListChecks, ReceiptText, UsersRound } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminQuickActionCard, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
@@ -38,6 +38,12 @@ export default async function AdminPage() {
   let applicationCount = 0;
   let pendingApplicationCount = 0;
   let completedApplicationCount = 0;
+  let todayLeadCount = 0;
+  let todayApplicationCount = 0;
+  let paymentPendingCount = 0;
+  let revenueEstimate = 0;
+  let staffWorkload: { name: string; count: number }[] = [];
+  let topServices: { service: string; count: number }[] = [];
 
   if (supabase) {
     const [
@@ -48,6 +54,8 @@ export default async function AdminPage() {
       { count: totalNewLeads },
       { count: totalApplications },
       { count: totalCompletedApplications },
+      { data: analyticsApplications },
+      { data: staffData },
     ] = await Promise.all([
       supabase.from("leads").select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at").order("created_at", { ascending: false }).limit(8),
       supabase.from("applications").select("id, service_name, status, payment_status, created_at, form_data").order("created_at", { ascending: false }).limit(8),
@@ -56,6 +64,8 @@ export default async function AdminPage() {
       supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "new"),
       supabase.from("applications").select("id", { count: "exact", head: true }),
       supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
+      supabase.from("applications").select("service_name, status, payment_status, amount, assigned_staff_id, created_at").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("profiles").select("id, full_name, email").eq("role", "staff"),
     ]);
 
     leads = (leadData ?? []) as Lead[];
@@ -66,6 +76,35 @@ export default async function AdminPage() {
     applicationCount = totalApplications ?? 0;
     completedApplicationCount = totalCompletedApplications ?? 0;
     pendingApplicationCount = Math.max(applicationCount - completedApplicationCount, 0);
+    const today = new Date().toISOString().slice(0, 10);
+    todayLeadCount = leads.filter((lead) => lead.created_at.slice(0, 10) === today).length;
+    todayApplicationCount = (analyticsApplications ?? []).filter((application) => String(application.created_at).slice(0, 10) === today).length;
+    paymentPendingCount = (analyticsApplications ?? []).filter((application) => application.payment_status === "pending").length;
+    revenueEstimate = (analyticsApplications ?? [])
+      .filter((application) => application.status === "completed" || application.payment_status === "verified")
+      .reduce((total, application) => total + Number(application.amount ?? 0), 0);
+    const staffNames = new Map((staffData ?? []).map((staff) => [staff.id, staff.full_name || staff.email]));
+    staffWorkload = Array.from(
+      (analyticsApplications ?? []).reduce((grouped, application) => {
+        const staffId = String(application.assigned_staff_id ?? "");
+        if (!staffId) return grouped;
+        grouped.set(staffId, (grouped.get(staffId) ?? 0) + 1);
+        return grouped;
+      }, new Map<string, number>()),
+    )
+      .map(([staffId, count]) => ({ name: staffNames.get(staffId) ?? "Staff", count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    topServices = Array.from(
+      (analyticsApplications ?? []).reduce((grouped, application) => {
+        const service = String(application.service_name ?? "Service");
+        grouped.set(service, (grouped.get(service) ?? 0) + 1);
+        return grouped;
+      }, new Map<string, number>()),
+    )
+      .map(([service, count]) => ({ service, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
   }
 
   return (
@@ -83,6 +122,13 @@ export default async function AdminPage() {
         <AdminStatCard title="Pending Applications" value={pendingApplicationCount} icon={FileClock} tone="orange" />
         <AdminStatCard title="Completed Applications" value={completedApplicationCount} icon={ListChecks} tone="green" />
         <AdminStatCard title="Total Customers" value={customerCount} icon={UsersRound} tone="slate" />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard title="Today Leads" value={todayLeadCount} icon={Inbox} tone="orange" />
+        <AdminStatCard title="Today Applications" value={todayApplicationCount} icon={ClipboardList} tone="blue" />
+        <AdminStatCard title="Revenue Estimate" value={`₹${revenueEstimate.toLocaleString("en-IN")}`} icon={IndianRupee} tone="green" />
+        <AdminStatCard title="Payment Pending" value={paymentPendingCount} icon={ReceiptText} tone="orange" />
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
@@ -139,6 +185,41 @@ export default async function AdminPage() {
             ) : (
               <AdminEmptyState title="No applications yet" description="Customer applications will appear here after submission." />
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
+          <h2 className="text-lg font-bold text-slate-950">Staff Workload</h2>
+          <div className="mt-4 grid gap-3">
+            {staffWorkload.length ? staffWorkload.map((item) => (
+              <div key={item.name} className="rounded-xl bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-bold text-slate-950">{item.name}</p>
+                  <p className="text-sm font-bold text-blue-700">{item.count}</p>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-blue-100">
+                  <div className="h-2 rounded-full bg-blue-600" style={{ width: `${Math.min(item.count * 12, 100)}%` }} />
+                </div>
+              </div>
+            )) : <AdminEmptyState title="No assigned workload" description="Assigned staff applications will appear here." />}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
+          <h2 className="text-lg font-bold text-slate-950">Top Services</h2>
+          <div className="mt-4 grid gap-3">
+            {topServices.length ? topServices.map((item) => (
+              <div key={item.service} className="rounded-xl bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-bold text-slate-950">{item.service}</p>
+                  <p className="text-sm font-bold text-orange-700">{item.count}</p>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-orange-100">
+                  <div className="h-2 rounded-full bg-orange-500" style={{ width: `${Math.min(item.count * 12, 100)}%` }} />
+                </div>
+              </div>
+            )) : <AdminEmptyState title="No service data" description="Applications will build this list automatically." />}
           </div>
         </div>
       </section>

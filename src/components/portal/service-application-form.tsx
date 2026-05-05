@@ -182,29 +182,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       };
       setProgressText("Saving application...");
 
-      const leadFormData = new FormData();
-      leadFormData.set("name", String(formData.get("name") ?? "").trim());
-      leadFormData.set("mobile", String(formData.get("mobile") ?? "").trim());
-      leadFormData.set("service", selectedServices.map((item) => item.title).join(", "));
-      leadFormData.set("message", String(formData.get("message") ?? "").trim());
-
-      const leadResponse = await fetch("/api/lead", {
-        method: "POST",
-        body: leadFormData,
-      });
-      const leadText = await leadResponse.text();
-      let leadResult: { message?: string; error?: string; ok?: boolean };
-
-      try {
-        leadResult = JSON.parse(leadText) as { message?: string; error?: string; ok?: boolean };
-      } catch {
-        leadResult = { error: leadText || "The lead API did not return a valid response." };
-      }
-
-      if (!leadResponse.ok || !leadResult.ok) {
-        throw new Error(leadResult.error ?? leadResult.message ?? "Lead could not be saved.");
-      }
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
       const response = await fetch("/api/applications", {

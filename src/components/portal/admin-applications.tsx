@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ExternalLink, FileText, ReceiptText, RotateCcw, Search } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { AdminApplicationInlineUpdate } from "@/components/admin/admin-application-inline-update";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,12 +15,16 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
-export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agents?: PortalUser[] }) {
+export function AdminApplications({ rows, staff = [] }: { rows: AdminApplicationRow[]; agents?: PortalUser[]; staff?: PortalUser[] }) {
   const applicationRows = rows.filter((row) => row.source === "application");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [staffFilter, setStaffFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const staffOptions = staff.map((item) => ({ id: item.id, label: item.full_name || item.email }));
   const services = useMemo(() => Array.from(new Set(applicationRows.map((row) => row.service))).sort(), [applicationRows]);
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -36,17 +41,24 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agent
         (statusFilter === "in_progress" && ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status));
       const matchesPayment = paymentFilter === "all" || row.payment_status === paymentFilter;
       const matchesService = serviceFilter === "all" || row.service === serviceFilter;
+      const matchesStaff = staffFilter === "all" || (staffFilter === "none" ? !row.assigned_staff_id : row.assigned_staff_id === staffFilter);
+      const rowDate = row.created_at.slice(0, 10);
+      const matchesDateFrom = !dateFrom || rowDate >= dateFrom;
+      const matchesDateTo = !dateTo || rowDate <= dateTo;
 
-      return matchesSearch && matchesStatus && matchesPayment && matchesService;
+      return matchesSearch && matchesStatus && matchesPayment && matchesService && matchesStaff && matchesDateFrom && matchesDateTo;
     });
-  }, [applicationRows, paymentFilter, search, serviceFilter, statusFilter]);
-  const hasFilters = search || statusFilter !== "all" || paymentFilter !== "all" || serviceFilter !== "all";
+  }, [applicationRows, dateFrom, dateTo, paymentFilter, search, serviceFilter, staffFilter, statusFilter]);
+  const hasFilters = search || statusFilter !== "all" || paymentFilter !== "all" || serviceFilter !== "all" || staffFilter !== "all" || dateFrom || dateTo;
 
   function clearFilters() {
     setSearch("");
     setStatusFilter("all");
     setPaymentFilter("all");
     setServiceFilter("all");
+    setStaffFilter("all");
+    setDateFrom("");
+    setDateTo("");
   }
 
   return (
@@ -64,7 +76,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agent
       </section>
 
       <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_170px_170px_220px_auto]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_150px_150px_190px_170px_150px_150px_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, mobile, service..." className="h-11 pl-11" />
@@ -103,6 +115,20 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agent
               ))}
             </SelectContent>
           </Select>
+          <Select value={staffFilter} onValueChange={setStaffFilter}>
+            <SelectTrigger aria-label="Staff filter">
+              <SelectValue placeholder="Staff" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All staff</SelectItem>
+              <SelectItem value="none">Unassigned</SelectItem>
+              {staffOptions.map((staffMember) => (
+                <SelectItem key={staffMember.id} value={staffMember.id}>{staffMember.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Date from" />
+          <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} aria-label="Date to" />
           <button type="button" onClick={clearFilters} disabled={!hasFilters} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-700 disabled:opacity-50">
             <RotateCcw className="h-4 w-4" />
             Clear
@@ -122,8 +148,7 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agent
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Service</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Payment</th>
+                <th className="px-4 py-3">Update</th>
                 <th className="px-4 py-3">Proof</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3">Details</th>
@@ -135,8 +160,17 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agent
                   <td className="px-4 py-3 font-bold text-slate-950">{row.customer_name}</td>
                   <td className="px-4 py-3 font-mono text-slate-700">{row.mobile || "-"}</td>
                   <td className="px-4 py-3 text-slate-700">{row.service}</td>
-                  <td className="px-4 py-3"><AdminStatusBadge status={row.application_status} /></td>
-                  <td className="px-4 py-3"><AdminStatusBadge status={row.payment_status} /></td>
+                  <td className="px-4 py-3">
+                    {row.application_id ? (
+                      <AdminApplicationInlineUpdate
+                        applicationId={row.application_id}
+                        status={row.application_status}
+                        paymentStatus={row.payment_status}
+                        assignedStaffId={row.assigned_staff_id}
+                        staffOptions={staffOptions}
+                      />
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3">
                     {row.payment_proof_url ? (
                       <a href={row.payment_proof_url} target="_blank" rel="noreferrer" className="font-bold text-blue-700">Open</a>
@@ -172,11 +206,25 @@ export function AdminApplications({ rows }: { rows: AdminApplicationRow[]; agent
               <p className="mt-3 text-sm font-bold text-slate-800">{row.service}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <AdminStatusBadge status={row.payment_status} />
+                <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                  {row.assigned_staff_name || "Unassigned"}
+                </span>
                 {row.payment_proof_url ? (
                   <a href={row.payment_proof_url} target="_blank" rel="noreferrer" className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Payment Proof</a>
                 ) : null}
               </div>
               <p className="mt-3 font-mono text-xs text-slate-500">{formatDate(row.created_at)}</p>
+              {row.application_id ? (
+                <div className="mt-4">
+                  <AdminApplicationInlineUpdate
+                    applicationId={row.application_id}
+                    status={row.application_status}
+                    paymentStatus={row.payment_status}
+                    assignedStaffId={row.assigned_staff_id}
+                    staffOptions={staffOptions}
+                  />
+                </div>
+              ) : null}
               {row.application_id ? (
                 <Link href={`/admin/applications/${row.application_id}`} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
                   <ExternalLink className="h-4 w-4" />

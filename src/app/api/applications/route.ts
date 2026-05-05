@@ -118,9 +118,15 @@ export async function POST(request: Request) {
       ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
       documents: body.documents,
     };
+    const { data: linkedCustomer } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const applicationsToInsert = resolvedServices.map((service) => ({
         user_id: user.id,
+        customer_id: linkedCustomer?.id ?? null,
         service_slug: service.slug,
         service_name: service.title,
         amount: service.amount,

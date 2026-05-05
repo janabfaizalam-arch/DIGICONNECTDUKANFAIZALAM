@@ -251,4 +251,36 @@ export async function syncUserProfile(user: User) {
       onConflict: "id",
     },
   );
+
+  if (role === "customer") {
+    const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim() || "Customer";
+    const mobile = String(user.phone ?? user.user_metadata.mobile ?? "").trim();
+    const emailValue = user.email ?? "";
+    const { data: existingCustomer } = await supabaseAdmin
+      .from("customers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingCustomer?.id) {
+      await supabaseAdmin
+        .from("customers")
+        .update({
+          full_name: fullName,
+          email: emailValue,
+          mobile: mobile || emailValue || "not-provided",
+          source: "online",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingCustomer.id);
+    } else {
+      await supabaseAdmin.from("customers").insert({
+        user_id: user.id,
+        full_name: fullName,
+        email: emailValue,
+        mobile: mobile || emailValue || "not-provided",
+        source: "online",
+      });
+    }
+  }
 }

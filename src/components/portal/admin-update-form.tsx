@@ -29,6 +29,8 @@ export function AdminUpdateForm({
   agents = [],
   assignedAgentId = "",
   hideAgentFields = false,
+  staff = [],
+  assignedStaffId = "",
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus;
@@ -38,6 +40,8 @@ export function AdminUpdateForm({
   agents?: PortalUser[];
   assignedAgentId?: string;
   hideAgentFields?: boolean;
+  staff?: PortalUser[];
+  assignedStaffId?: string;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(currentPaymentStatus);
@@ -119,6 +123,20 @@ export function AdminUpdateForm({
           </SelectContent>
         </Select>
       )}
+
+      <Select name="assignedStaffId" defaultValue={assignedStaffId || "none"}>
+        <SelectTrigger aria-label="Assigned staff">
+          <SelectValue placeholder="Assign staff" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">No staff</SelectItem>
+          {staff.map((staffMember) => (
+            <SelectItem key={staffMember.id} value={staffMember.id}>
+              {staffMember.full_name || staffMember.email}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <Input name="assignedTo" placeholder="Assign to team member" />
       <Textarea name="internalNotes" placeholder="Internal notes" className="min-h-24" />

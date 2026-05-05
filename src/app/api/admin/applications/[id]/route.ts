@@ -23,6 +23,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const paymentStatus = String(formData.get("paymentStatus") ?? "");
     const assignedTo = String(formData.get("assignedTo") ?? "").trim();
     const assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
+    const assignedStaffId = String(formData.get("assignedStaffId") ?? "").trim();
     const internalNotes = String(formData.get("internalNotes") ?? "").trim();
     const note = String(formData.get("note") ?? "").trim();
     const finalDocument = formData.get("finalDocument");
@@ -34,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_name, amount, status, commission_amount")
+      .select("id, user_id, customer_id, service_id, service_name, amount, status, assigned_staff_id, commission_amount")
       .eq("id", id)
       .single();
 
@@ -52,6 +53,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (assignedTo) {
       updates.assigned_to = assignedTo;
+    }
+
+    if (assignedStaffId) {
+      updates.assigned_staff_id = assignedStaffId === "none" ? null : assignedStaffId;
     }
 
     if (assignedAgentId && assignedAgentId !== "none") {

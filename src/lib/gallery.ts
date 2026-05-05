@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export type GalleryImage = {
   id: string;
   title: string | null;
+  description?: string | null;
+  category?: string | null;
   image_url: string;
   storage_path: string;
   active: boolean;
@@ -20,7 +22,7 @@ export async function getActiveGalleryImages(limit = 9): Promise<GalleryImage[]>
 
   const { data, error } = await supabase
     .from("gallery_images")
-    .select("id, title, image_url, storage_path, active, created_at")
+    .select("id, title, description, category, image_url, storage_path, active, created_at")
     .eq("active", true)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -42,7 +44,7 @@ export async function getAllGalleryImages(limit = 60): Promise<GalleryImage[]> {
 
   const { data, error } = await supabase
     .from("gallery_images")
-    .select("id, title, image_url, storage_path, active, created_at")
+    .select("id, title, description, category, image_url, storage_path, active, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
 

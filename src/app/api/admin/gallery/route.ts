@@ -61,6 +61,8 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const category = String(formData.get("category") ?? "").trim();
     const file = formData.get("image");
 
     if (!(file instanceof File) || file.size === 0) {
@@ -90,11 +92,13 @@ export async function POST(request: Request) {
       .from("gallery_images")
       .insert({
         title: title || null,
+        description: description || null,
+        category: category || null,
         image_url: publicUrlData.publicUrl,
         storage_path: storagePath,
         active: true,
       })
-      .select("id, title, image_url, storage_path, active, created_at")
+      .select("id, title, description, category, image_url, storage_path, active, created_at")
       .single();
 
     if (insertError) {
@@ -112,6 +116,84 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[api/admin/gallery] Upload failed", error);
     return jsonError("Gallery upload failed. Please try again.", 500);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const auth = await requireAdminJson();
+
+    if (auth.error) {
+      return auth.error;
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    if (!supabase) {
+      return jsonError("Gallery update is not configured on the server.", 500);
+    }
+
+    const formData = await request.formData();
+    const id = String(formData.get("id") ?? "").trim();
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const category = String(formData.get("category") ?? "").trim();
+    const file = formData.get("image");
+
+    if (!id) {
+      return jsonError("Gallery image id is missing.", 400);
+    }
+
+    const updates: Record<string, string | null> = {
+      title: title || null,
+      description: description || null,
+      category: category || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (file instanceof File && file.size > 0) {
+      if (!file.type.startsWith("image/") || !allowedImageTypes.includes(file.type)) {
+        return jsonError("Gallery image must be JPG, PNG, or WebP.", 400);
+      }
+
+      const { data: existing } = await supabase.from("gallery_images").select("storage_path").eq("id", id).maybeSingle();
+      const storagePath = `homepage/${Date.now()}-${cleanFileName(file.name)}`;
+      const { error: uploadError } = await supabase.storage.from(galleryBucketName).upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+      if (uploadError) {
+        return jsonError(friendlySupabaseError(uploadError.message), 500);
+      }
+
+      if (existing?.storage_path) {
+        await supabase.storage.from(galleryBucketName).remove([existing.storage_path]);
+      }
+
+      const { data: publicUrlData } = supabase.storage.from(galleryBucketName).getPublicUrl(storagePath);
+      updates.storage_path = storagePath;
+      updates.image_url = publicUrlData.publicUrl;
+    }
+
+    const { data: image, error } = await supabase
+      .from("gallery_images")
+      .update(updates)
+      .eq("id", id)
+      .select("id, title, description, category, image_url, storage_path, active, created_at")
+      .single();
+
+    if (error) {
+      return jsonError(friendlySupabaseError(error.message), 500);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/gallery");
+
+    return NextResponse.json({ image, message: "Gallery photo updated successfully." });
+  } catch (error) {
+    console.error("[api/admin/gallery] Update failed", error);
+    return jsonError("Gallery photo could not be updated. Please try again.", 500);
   }
 }
 

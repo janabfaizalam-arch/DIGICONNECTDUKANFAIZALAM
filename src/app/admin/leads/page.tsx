@@ -22,7 +22,7 @@ export default async function AdminLeadsPage() {
   if (supabase) {
     const { data } = await supabase
       .from("leads")
-      .select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at")
+      .select("id, name, mobile, service, message, status, source, converted_application_id, file_name, file_url, file_type, storage_path, created_at")
       .order("created_at", { ascending: false });
     leads = (data ?? []) as Lead[];
   }
@@ -33,7 +33,7 @@ export default async function AdminLeadsPage() {
       <section className="grid gap-3 sm:grid-cols-3">
         <AdminStatCard title="Total Leads" value={leads.length} icon={Inbox} tone="blue" />
         <AdminStatCard title="New Leads" value={leads.filter((lead) => lead.status === "new").length} icon={FileClock} tone="orange" />
-        <AdminStatCard title="Completed Leads" value={leads.filter((lead) => lead.status === "completed").length} icon={ListChecks} tone="green" />
+        <AdminStatCard title="Converted Leads" value={leads.filter((lead) => lead.status === "converted").length} icon={ListChecks} tone="green" />
       </section>
       <AdminLeadsList leads={leads} />
     </div>

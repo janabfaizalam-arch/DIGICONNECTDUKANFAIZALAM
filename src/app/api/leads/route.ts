@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-const leadStatuses = ["new", "in_progress", "completed"] as const;
+const leadStatuses = ["new", "contacted", "converted", "closed", "in_progress", "completed"] as const;
 
 type LeadStatus = (typeof leadStatuses)[number];
 
