@@ -28,6 +28,7 @@ export function AdminUpdateForm({
   serviceName,
   agents = [],
   assignedAgentId = "",
+  hideAgentFields = false,
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus;
@@ -36,6 +37,7 @@ export function AdminUpdateForm({
   serviceName: string;
   agents?: PortalUser[];
   assignedAgentId?: string;
+  hideAgentFields?: boolean;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(currentPaymentStatus);
@@ -102,19 +104,21 @@ export function AdminUpdateForm({
         </SelectContent>
       </Select>
 
-      <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>
-        <SelectTrigger aria-label="Assigned agent">
-          <SelectValue placeholder="Assign agent" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">No agent</SelectItem>
-          {agents.map((agent) => (
-            <SelectItem key={agent.id} value={agent.id}>
-              {agent.full_name || agent.email}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {hideAgentFields ? null : (
+        <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>
+          <SelectTrigger aria-label="Assigned agent">
+            <SelectValue placeholder="Assign agent" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No agent</SelectItem>
+            {agents.map((agent) => (
+              <SelectItem key={agent.id} value={agent.id}>
+                {agent.full_name || agent.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <Input name="assignedTo" placeholder="Assign to team member" />
       <Textarea name="internalNotes" placeholder="Internal notes" className="min-h-24" />

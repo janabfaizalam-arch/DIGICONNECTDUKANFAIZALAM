@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { FormEvent, useRef, useState } from "react";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImageIcon, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 
+import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,10 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
   }
 
   async function handleDelete(image: GalleryImage) {
+    if (!window.confirm("Delete this gallery photo?")) {
+      return;
+    }
+
     setSuccessMessage("");
     setErrorMessage("");
     setDeletingId(image.id);
@@ -116,7 +121,7 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
 
   return (
     <>
-      <Card className="p-4 md:p-6">
+      <Card className="border-blue-100 p-4 shadow-sm md:p-6">
         <form ref={formRef} onSubmit={handleUpload} className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
           <label className="grid gap-2">
             <span className="text-sm font-bold text-slate-700">Optional title</span>
@@ -127,7 +132,7 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
             <Input name="image" type="file" accept="image/jpeg,image/png,image/webp" required disabled={isUploading} />
           </label>
           <Button type="submit" className="h-12" disabled={isUploading}>
-            <ImagePlus className="h-4 w-4" />
+            {isUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
             {isUploading ? "Uploading..." : "Upload Photo"}
           </Button>
         </form>
@@ -140,10 +145,10 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
         ) : null}
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {images.length ? (
           images.map((image) => (
-            <Card key={image.id} className="overflow-hidden rounded-2xl p-0">
+            <Card key={image.id} className="overflow-hidden rounded-2xl border-blue-100 p-0 shadow-sm">
               <div className="relative aspect-[4/3] bg-slate-100">
                 <Image
                   src={image.image_url}
@@ -177,9 +182,14 @@ export function AdminGalleryManager({ initialImages }: AdminGalleryManagerProps)
             </Card>
           ))
         ) : (
-          <Card className="p-6 sm:col-span-2 lg:col-span-3">
-            <p className="text-sm text-slate-600">No gallery photos uploaded yet.</p>
-          </Card>
+          <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
+            <div className="mb-4 flex justify-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                <ImageIcon className="h-5 w-5" />
+              </span>
+            </div>
+            <AdminEmptyState title="No gallery photos uploaded yet" description="Upload your first homepage gallery image from the form above." />
+          </div>
         )}
       </div>
     </>

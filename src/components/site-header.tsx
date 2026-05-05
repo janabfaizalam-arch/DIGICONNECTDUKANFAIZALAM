@@ -85,7 +85,7 @@ function getPanelConfig(role: AppRole | null) {
   }
 
   if (role === "agent") {
-    return { href: "/agent/dashboard", label: "Agent Dashboard" };
+    return null;
   }
 
   if (role === "staff") {
@@ -193,6 +193,10 @@ export function SiteHeader() {
       }
     };
   }, []);
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return null;
+  }
 
   return (
     <header

@@ -6,7 +6,7 @@ import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { getAgents, getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
+import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -56,10 +56,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
   }
 
   const [application] = (await hydrateApplications([data as Application])) as Application[];
-  const agents = await getAgents();
   const payment = application.payments?.[0];
   const invoice = application.invoices?.[0];
-  const commission = application.commissions?.[0];
   const formData = asRecord(application.form_data);
   const customerMobile = getCustomerMobile(application);
 
@@ -70,8 +68,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     .order("created_at", { ascending: false });
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-7xl">
         <Link href="/admin" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
           Back to admin
@@ -153,26 +150,22 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                   currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
                   customerMobile={customerMobile}
                   serviceName={application.service_name}
-                  agents={agents}
-                  assignedAgentId={application.assigned_agent_id ?? ""}
+                  hideAgentFields
                 />
               </div>
             </Card>
 
             <Card className="p-5">
-              <h2 className="text-lg font-bold text-slate-950">Invoice and Commission</h2>
+              <h2 className="text-lg font-bold text-slate-950">Invoice</h2>
               <div className="mt-4 space-y-3">
                 {invoice ? (
                   <Link href={`/invoice/${invoice.id}`} className="flex min-h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
                     <ReceiptText className="h-4 w-4" />
                     Open Invoice
                   </Link>
-                ) : null}
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase text-slate-500">Commission</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-950">{formatCurrency(commission?.amount ?? application.commission_amount ?? 0)}</p>
-                  <p className="text-sm font-bold capitalize text-[var(--primary)]">{commission?.status ?? "pending"}</p>
-                </div>
+                ) : (
+                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No invoice found yet.</p>
+                )}
               </div>
             </Card>
 
@@ -211,7 +204,6 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             </Card>
           </div>
         </div>
-      </div>
-    </main>
+    </div>
   );
 }
