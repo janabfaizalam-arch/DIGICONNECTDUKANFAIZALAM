@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/hero-section";
 import { ContactSection } from "@/components/contact-section";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
+import { HomepageOfferSlider } from "@/components/homepage-offer-slider";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { ProcessSection } from "@/components/process-section";
@@ -51,6 +52,7 @@ export default async function Home() {
     <>
       <main className="pb-8 md:pb-0">
         <HeroSection viewer={heroViewer} />
+        <HomepageOfferSlider />
         <ServicesSection />
         <WhyChooseUsSection />
         <ProcessSection />
