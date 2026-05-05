@@ -21,22 +21,28 @@ const proofItems = [
 
 const categories = [
   {
-    title: "Government Services",
-    description: "PAN, Aadhaar, voter ID, certificates, Ayushman Card, and public document support.",
-    href: "/services",
+    title: "Tax & Business",
+    description: "GST, ITR, MSME, FSSAI, trade license, and project report document support.",
+    href: "/services/tax-business",
     icon: Landmark,
   },
   {
-    title: "Financial Services",
-    description: "PAN-linked support, GST assistance, MSME documentation, and business-ready records.",
-    href: "/services/gst-registration",
+    title: "Insurance",
+    description: "All vehicle insurance support for bike, car, commercial, renewal, and claim cases.",
+    href: "/services/insurance",
     icon: CreditCard,
   },
   {
-    title: "Registration & Licenses",
-    description: "Passport assistance, driving licence, trade licence, food licence, and registrations.",
-    href: "/services/trade-license",
+    title: "Finance & Banking",
+    description: "Government subsidy loans, banking support, CIBIL guidance, and loan file preparation.",
+    href: "/services/finance-banking",
     icon: Building2,
+  },
+  {
+    title: "Gov ID & Form Submission",
+    description: "PAN, passport, driving licence, voter ID, labour card, and e-Shram support.",
+    href: "/services/gov-id-form-submission",
+    icon: FileCheck2,
   },
 ];
 
@@ -47,7 +53,7 @@ const faqs = [
   },
   {
     question: "Which services can I apply for?",
-    answer: "You can get support for PAN Card, Aadhaar Update, GST Registration, certificates, licences, voter ID, passport assistance, and more.",
+    answer: "You can get support for Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID & Form Submission services.",
   },
   {
     question: "How do I submit documents?",
@@ -96,10 +102,10 @@ export function HomepageExtendedSections() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Service Categories</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-950 md:text-4xl">Everything organized by need</h2>
             <p className="mt-3 text-base leading-7 text-slate-600">
-              Choose from government services, financial documentation, and registration or licence support in one clean flow.
+              Choose from Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID form submission in one clean flow.
             </p>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {categories.map(({ title, description, href, icon: Icon }) => (
               <Link key={title} href={href} className="liquid-card reveal-on-scroll group rounded-2xl p-5">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">

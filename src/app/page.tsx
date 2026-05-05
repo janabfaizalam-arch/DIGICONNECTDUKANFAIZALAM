@@ -13,17 +13,16 @@ import { getCurrentUser, getCurrentUserRole, isAdminRole, isCustomerRole } from 
 import { getCustomerProfile } from "@/lib/customer-profile";
 
 export const metadata: Metadata = {
-  title: "DigiConnect Dukan | Digital & Government Services Online",
+  title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
   description:
-    "DigiConnect Dukan by RNoS India Pvt Ltd provides Digital Services Across India and Government Services Online for PAN Card, Aadhaar, GST, certificates, licences, and document assistance.",
+    "DigiConnect Dukan by RNOS India Pvt Ltd provides Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID form submission services across India.",
   keywords: [
     "Digital Services in India",
     "Government Services Online",
-    "PAN Card",
-    "Aadhaar",
     "GST Registration",
-    "Certificates online",
-    "PAN India services",
+    "Vehicle Insurance",
+    "Government Subsidy Loans",
+    "Gov ID Form Submission",
   ],
   alternates: {
     canonical: "/",

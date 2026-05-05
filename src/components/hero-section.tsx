@@ -4,9 +4,8 @@ import {
   Building2,
   CheckCircle2,
   ClipboardCheck,
+  CreditCard,
   FileCheck2,
-  Fingerprint,
-  IdCard,
   LayoutDashboard,
   LogIn,
   MessageCircle,
@@ -29,10 +28,10 @@ type HeroSectionProps = {
 };
 
 const miniServices = [
-  { label: "PAN", icon: FileCheck2, tone: "text-orange-500" },
-  { label: "Aadhaar", icon: Fingerprint, tone: "text-blue-600" },
-  { label: "GST", icon: Building2, tone: "text-sky-600" },
-  { label: "Voter ID", icon: IdCard, tone: "text-emerald-600" },
+  { label: "Tax", icon: Building2, tone: "text-orange-500" },
+  { label: "Insurance", icon: ShieldCheck, tone: "text-blue-600" },
+  { label: "Finance", icon: CreditCard, tone: "text-sky-600" },
+  { label: "Gov ID", icon: FileCheck2, tone: "text-emerald-600" },
 ];
 
 function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
@@ -80,7 +79,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                   Connecting People, Empowering Digital India
                 </p>
                 <p className="max-w-2xl text-sm leading-7 text-slate-600 md:text-base md:leading-8">
-                  Apply for PAN, Aadhaar, GST, certificates, licences and more with fast, trusted and professional support.
+                  Apply for Tax & Business, Insurance, Finance & Banking, and Gov ID form services with fast, trusted support.
                 </p>
                 {isCustomer ? (
                   <p className="text-sm font-bold text-slate-700 md:text-base">
@@ -174,7 +173,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                 Government Services Online
               </div>
               <div className="absolute bottom-0 left-7 rounded-full border border-white/15 bg-slate-950/86 px-4 py-2 text-xs font-bold text-white shadow-sm">
-                PAN Card, Aadhaar, GST, Certificates
+                Tax, Insurance, Finance, Gov ID
               </div>
             </div>
           </div>

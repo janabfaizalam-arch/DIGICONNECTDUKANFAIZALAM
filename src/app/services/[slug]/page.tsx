@@ -1,82 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  ArrowRight,
-  BadgeCheck,
-  CheckCircle2,
-  Clock,
-  FileCheck2,
-  HelpCircle,
-  MessageCircle,
-  ShieldCheck,
-  Star,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star } from "lucide-react";
 
-import { ApplyServiceTrigger } from "@/components/service-selection-modal";
+import { ServicePrice } from "@/components/service-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
-import { formatCurrency, getServiceBySlug, portalServices, type PortalService } from "@/lib/portal-data";
+import {
+  createServiceWhatsAppMessage,
+  getCategoryBySlug,
+  getServiceBySlug,
+  servicesData,
+  type ServiceItem,
+} from "@/lib/services-data";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-const genericBenefits = [
-  "PAN India digital service assistance",
-  "Clear document checklist before submission",
-  "Support through call and WhatsApp",
-  "Application status follow-up by an experienced team",
-];
-
-const processSteps = [
-  "Submit your service request",
-  "Team verifies required documents",
-  "Application is processed online",
-  "Receive completion update and documents",
-];
-
-function getServiceContent(service: PortalService) {
-  const lowerTitle = service.title.toLowerCase();
-
-  return {
-    what:
-      `${service.title} is handled through DigiConnect Dukan with guided details, document submission, and online process support. ${service.description}`,
-    benefits: genericBenefits,
-    whoNeeds:
-      lowerTitle.includes("gst") || lowerTitle.includes("msme") || lowerTitle.includes("license")
-        ? ["Shop owners", "Small business owners", "Online sellers", "New entrepreneurs"]
-        : ["Students", "Families", "Job applicants", "Indian citizens"],
-    faqs: [
-      {
-        question: `How long does ${service.title} take?`,
-        answer: "Most requests are started quickly. Final completion depends on department processing and document verification.",
-      },
-      {
-        question: "Do I need original documents or copies?",
-        answer: "Usually a clear photo or PDF copy is enough. If original verification is required, our team will guide you.",
-      },
-      {
-        question: "Can I share documents on WhatsApp?",
-        answer: "Yes, after submitting the form, you can share documents through WhatsApp when requested by the team.",
-      },
-      {
-        question: "When do I need to pay?",
-        answer: "Payment can be completed after service details are confirmed. Some urgent services may require advance payment.",
-      },
-    ],
-    relatedInfo: [
-      `${service.title} requests should be submitted with clear documents, an active mobile number, and matching personal or business details.`,
-      "DigiConnect Dukan reviews basic details before processing so common mistakes can be corrected early.",
-      "Customers can use the dashboard and WhatsApp support for updates after submitting the request.",
-    ],
-  };
-}
-
 export function generateStaticParams() {
-  return portalServices.map((service) => ({
+  return servicesData.map((service) => ({
     slug: service.slug,
   }));
 }
@@ -92,12 +36,66 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: `${service.title} | DigiConnect Dukan`,
-    description: `${service.title} support by DigiConnect Dukan with overview, required documents, process steps, benefits, FAQ, reviews, Apply Now, and WhatsApp assistance.`,
+    title: service.seoTitle,
+    description: service.seoDescription,
+    keywords: service.seoKeywords,
     alternates: {
       canonical: `/services/${service.slug}`,
     },
+    openGraph: {
+      title: service.seoTitle,
+      description: service.seoDescription,
+      type: "article",
+      url: `/services/${service.slug}`,
+    },
   };
+}
+
+function buildSchemas(service: ServiceItem) {
+  const category = getCategoryBySlug(service.categorySlug);
+
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      name: "DigiConnect Dukan",
+      legalName: "RNOS India Pvt Ltd",
+      telephone: "+91 7007595931",
+      areaServed: "IN",
+      priceRange: service.priceLabel,
+      url: "https://www.rnos.in",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: service.title,
+      description: service.seoDescription,
+      provider: {
+        "@type": "LocalBusiness",
+        name: "DigiConnect Dukan",
+      },
+      serviceType: category?.title ?? service.category,
+      areaServed: "India",
+      offers: {
+        "@type": "Offer",
+        price: service.amount || undefined,
+        priceCurrency: service.amount ? "INR" : undefined,
+        availability: "https://schema.org/InStock",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: service.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    },
+  ];
 }
 
 export default async function ServiceDetailPage({ params }: PageProps) {
@@ -108,62 +106,56 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const content = getServiceContent(service);
-  const ServiceIcon = service.icon;
+  const Icon = service.icon;
+  const category = getCategoryBySlug(service.categorySlug);
+  const whatsappHref = generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(service.title));
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl">
-        <Link href="/services" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+        <Link href={`/services/${service.categorySlug}`} className="inline-flex items-center gap-2 text-sm font-extrabold text-blue-700">
           <ArrowLeft className="h-4 w-4" />
-          Back to services
+          Back to {category?.title ?? "services"}
         </Link>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--primary)] shadow-soft">
-              <Clock className="h-4 w-4" />
-              Fast online service
-            </div>
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">
-                DigiConnect Dukan
+        <section className="mt-6 grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <div className="glass-panel overflow-hidden rounded-[1.75rem] p-6 md:p-9">
+            <div className="relative z-10">
+              <p className="inline-flex rounded-full bg-white/70 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">
+                {service.category}
               </p>
-              <h1 className="mt-3 max-w-3xl text-3xl font-bold leading-tight text-slate-950 md:text-5xl">
-                {service.title}
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
-                Get PAN India support with document guidance, process steps, secure handling, and reliable follow-up from DigiConnect Dukan.
+              <h1 className="mt-5 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">{service.title}</h1>
+              <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">{service.shortDescription}</p>
+              <div className="mt-5">
+                <ServicePrice service={service} />
+              </div>
+              <p className="mt-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-700">
+                Fast Service - Same Day Process Available
               </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <ApplyServiceTrigger serviceSlug={service.slug} className={buttonVariants({ size: "lg" })}>
-                Apply Now
-                <ArrowRight className="h-4 w-4" />
-              </ApplyServiceTrigger>
-              <a
-                href={generateWhatsAppLink(service.title)}
-                target="_blank"
-                rel="noreferrer"
-                className={buttonVariants({ variant: "secondary", size: "lg" })}
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp
-              </a>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Link href={`/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
+                  Apply Now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a href={whatsappHref} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              </div>
             </div>
           </div>
 
-          <Card className="overflow-hidden rounded-[2rem] p-0">
-            <div className="bg-[linear-gradient(135deg,#0f5db8_0%,#0a2f5e_100%)] p-6 text-white md:p-8">
-              <ServiceIcon className="h-10 w-10 text-orange-200" />
-              <p className="mt-6 text-sm font-medium text-white/70">Starting From</p>
-              <p className="mt-1 text-4xl font-bold">{formatCurrency(service.amount)}</p>
-              <p className="mt-4 max-w-md text-sm leading-relaxed text-white/75">{service.description}</p>
+          <Card className="overflow-hidden rounded-[1.75rem] p-0">
+            <div className="bg-[linear-gradient(135deg,#2563eb_0%,#0b1f3a_58%,#f97316_140%)] p-7 text-white md:p-9">
+              <Icon className="h-12 w-12 text-orange-200" />
+              <p className="mt-8 text-sm font-semibold text-white/65">Price</p>
+              <p className="mt-2 text-4xl font-bold">{service.priceLabel}</p>
+              <p className="mt-4 text-sm leading-7 text-white/75">Apply Now, Enquiry Now, Call / WhatsApp Now, and get guided document assistance from DigiConnect Dukan.</p>
             </div>
             <div className="grid gap-3 bg-white p-5 sm:grid-cols-3">
-              {["Verified Process", "Online Support", "Easy Tracking"].map((item) => (
-                <div key={item} className="rounded-2xl bg-slate-50 p-4">
-                  <BadgeCheck className="h-5 w-5 text-[var(--secondary)]" />
+              {["Online Apply", "Document Help", "WhatsApp Support"].map((item) => (
+                <div key={item} className="rounded-2xl bg-blue-50/70 p-4">
+                  <ShieldCheck className="h-5 w-5 text-blue-700" />
                   <p className="mt-3 text-sm font-bold text-slate-950">{item}</p>
                 </div>
               ))}
@@ -171,43 +163,48 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           </Card>
         </section>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-3">
-          <Card className="rounded-2xl p-6 lg:col-span-2">
-            <h2 className="text-2xl font-bold text-slate-950">What is {service.title}?</h2>
-            <p className="mt-4 text-base leading-relaxed text-slate-600">{content.what}</p>
+        <section className="mt-8 grid gap-6 lg:grid-cols-3">
+          <Card className="rounded-[1.35rem] p-6 lg:col-span-2">
+            <h2 className="text-2xl font-bold text-slate-950">Overview</h2>
+            <p className="mt-4 text-base leading-8 text-slate-600">{service.overview}</p>
+            <h3 className="mt-7 text-xl font-bold text-slate-950">Who needs it?</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              This service is useful for customers who want reliable online apply support, clear document assistance, and professional follow-up for {service.title} in India.
+            </p>
+          </Card>
 
-            <div className="mt-8 grid gap-5 md:grid-cols-2">
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">Benefits</h2>
-                <div className="mt-4 space-y-3">
-                  {content.benefits.map((benefit) => (
-                    <div key={benefit} className="flex items-start gap-3 rounded-2xl bg-blue-50/70 p-4">
-                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--primary)]" />
-                      <p className="text-sm font-medium text-slate-700">{benefit}</p>
-                    </div>
-                  ))}
+          <Card className="rounded-[1.35rem] p-6">
+            <h2 className="text-xl font-bold text-slate-950">Pricing</h2>
+            <div className="mt-5 rounded-2xl bg-orange-50 p-5">
+              {service.oldPrice ? <p className="text-sm font-bold text-slate-400 line-through">Old Price: {service.oldPrice}</p> : null}
+              <p className="mt-1 text-2xl font-extrabold text-orange-600">{service.offerPrice ? `Offer Price: ${service.offerPrice}` : "Enquiry Now"}</p>
+            </div>
+            <a href={whatsappHref} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp mt-5">
+              Call / WhatsApp Now
+              <MessageCircle className="h-4 w-4" />
+            </a>
+          </Card>
+        </section>
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-2">
+          <Card className="rounded-[1.35rem] p-6">
+            <h2 className="text-2xl font-bold text-slate-950">Benefits</h2>
+            <div className="mt-5 grid gap-3">
+              {service.benefits.map((benefit) => (
+                <div key={benefit} className="flex items-start gap-3 rounded-2xl bg-blue-50/70 p-4">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+                  <p className="text-sm font-semibold leading-6 text-slate-700">{benefit}</p>
                 </div>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">Who Needs It?</h2>
-                <div className="mt-4 space-y-3">
-                  {content.whoNeeds.map((item) => (
-                    <div key={item} className="flex items-start gap-3 rounded-2xl bg-orange-50/80 p-4">
-                      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
-                      <p className="text-sm font-medium text-slate-700">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           </Card>
 
-          <Card className="rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-slate-950">Required Documents</h2>
-            <div className="mt-4 space-y-3">
+          <Card className="rounded-[1.35rem] p-6">
+            <h2 className="text-2xl font-bold text-slate-950">Documents Required</h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {service.documents.map((document) => (
                 <div key={document} className="flex items-center gap-3 rounded-2xl border bg-white p-4">
-                  <FileCheck2 className="h-5 w-5 text-[var(--primary)]" />
+                  <FileCheck2 className="h-5 w-5 shrink-0 text-orange-600" />
                   <p className="text-sm font-bold text-slate-800">{document}</p>
                 </div>
               ))}
@@ -215,78 +212,52 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           </Card>
         </section>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <Card className="rounded-2xl p-6">
-            <h2 className="text-2xl font-bold text-slate-950">Process Steps</h2>
-            <div className="mt-6 space-y-4">
-              {processSteps.map((step, index) => (
-                <div key={step} className="grid grid-cols-[44px_1fr] gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--primary)] text-sm font-bold text-white">
-                    {index + 1}
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="font-bold text-slate-950">{step}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                      Our team shares every important update through call, WhatsApp, or dashboard.
-                    </p>
-                  </div>
+        <section className="mt-8">
+          <Card className="rounded-[1.35rem] p-6">
+            <h2 className="text-2xl font-bold text-slate-950">Step-by-step Process</h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-4">
+              {service.process.map((step, index) => (
+                <div key={step} className="rounded-2xl bg-slate-50 p-5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">{index + 1}</div>
+                  <h3 className="mt-4 font-bold text-slate-950">{step}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">Our team guides you and shares updates through call, dashboard, or WhatsApp.</p>
                 </div>
               ))}
             </div>
           </Card>
+        </section>
 
-          <Card className="rounded-2xl p-6">
-            <h2 className="text-2xl font-bold text-slate-950">Image / Proof Section</h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              DigiConnect Dukan keeps application proof, payment confirmation, and completed document updates organized.
-            </p>
-            <div className="mt-6 rounded-[1.75rem] bg-slate-950 p-5 text-white">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <p className="text-sm text-white/60">Application Preview</p>
-                  <p className="mt-1 font-bold">{service.title}</p>
-                </div>
-                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
-                  Verified
-                </span>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {["Documents", "Payment", "Status"].map((item) => (
-                  <div key={item} className="rounded-2xl bg-white/10 p-4">
-                    <p className="text-xs text-white/50">{item}</p>
-                    <p className="mt-2 text-sm font-bold">Ready</p>
-                  </div>
+        <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <Card className="rounded-[1.35rem] p-6">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-bold text-slate-950">Reviews</h2>
+              <div className="flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1.5 text-orange-600">
+                {[1, 2, 3, 4, 5].map((item) => (
+                  <Star key={item} className="h-4 w-4 fill-orange-400 text-orange-400" />
                 ))}
               </div>
             </div>
-          </Card>
-        </section>
-
-        <section className="mt-10">
-          <Card className="rounded-2xl p-6">
-            <h2 className="text-2xl font-bold text-slate-950">Related Information About {service.title}</h2>
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {content.relatedInfo.map((item) => (
-                <article key={item} className="rounded-2xl bg-slate-50 p-5">
-                  <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Service Guide</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{item}</p>
+            <div className="mt-5 grid gap-3">
+              {service.reviews.map((review) => (
+                <article key={`${review.name}-${review.location}`} className="rounded-2xl bg-slate-50 p-5">
+                  <p className="text-sm leading-6 text-slate-700">{review.text}</p>
+                  <p className="mt-3 text-sm font-bold text-slate-950">{review.name}</p>
+                  <p className="text-xs font-semibold text-slate-500">{review.location}</p>
                 </article>
               ))}
             </div>
           </Card>
-        </section>
 
-        <section className="mt-10">
-          <Card className="rounded-2xl p-6">
+          <Card className="rounded-[1.35rem] p-6">
             <h2 className="text-2xl font-bold text-slate-950">FAQ</h2>
-            <div className="mt-6 space-y-4">
-              {content.faqs.map((faq) => (
+            <div className="mt-5 space-y-3">
+              {service.faqs.map((faq) => (
                 <div key={faq.question} className="rounded-2xl border bg-white p-5">
-                  <div className="flex items-start gap-3">
-                    <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--secondary)]" />
+                  <div className="flex gap-3">
+                    <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
                     <div>
                       <h3 className="font-bold text-slate-950">{faq.question}</h3>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-600">{faq.answer}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{faq.answer}</p>
                     </div>
                   </div>
                 </div>
@@ -295,37 +266,35 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           </Card>
         </section>
 
-        <section className="mt-10">
-          <Card className="rounded-2xl p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-950">Rating & Reviews</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  Customers choose DigiConnect Dukan for fast processing, document guidance, and reliable follow-up support.
-                </p>
-              </div>
-              <div className="flex items-center gap-1 rounded-full bg-orange-50 px-4 py-2 text-orange-600">
-                {[1, 2, 3, 4, 5].map((item) => (
-                  <Star key={item} className="h-4 w-4 fill-orange-400 text-orange-400" />
-                ))}
-                <span className="ml-2 text-sm font-bold">4.9/5</span>
-              </div>
-            </div>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {[
-                ["Fast response", "The process started quickly and the required documents were explained clearly."],
-                ["Helpful team", "I received timely WhatsApp updates and the process was easy."],
-                ["Trusted service", "Online support and clear follow-up made the application simple."],
-              ].map(([title, review]) => (
-                <div key={title} className="rounded-2xl bg-slate-50 p-5">
-                  <p className="font-bold text-slate-950">{title}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{review}</p>
-                </div>
-              ))}
-            </div>
+        <section className="mt-8">
+          <Card className="rounded-[1.35rem] p-6 md:p-8">
+            <h2 className="text-2xl font-bold text-slate-950">Complete Guide for {service.title}</h2>
+            <div className="mt-5 whitespace-pre-line text-base leading-8 text-slate-600">{service.blogContent}</div>
           </Card>
         </section>
+
+        <section className="mt-8 overflow-hidden rounded-[1.5rem] bg-[linear-gradient(135deg,#0b1f3a,#2563eb_62%,#f97316_135%)] p-6 text-white md:p-9">
+          <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <h2 className="text-3xl font-bold">Aaj hi apply karein</h2>
+              <p className="mt-3 text-sm leading-7 text-white/75">Call karein ya WhatsApp par message bhejein. DigiConnect Dukan team aapko documents, process, aur next step bata degi.</p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href={`/apply/${service.slug}`} className="premium-button premium-button-white">
+                Apply Now
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <a href={whatsappHref} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+                WhatsApp
+                <MessageCircle className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </section>
       </div>
+      {buildSchemas(service).map((schema, index) => (
+        <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
     </main>
   );
 }

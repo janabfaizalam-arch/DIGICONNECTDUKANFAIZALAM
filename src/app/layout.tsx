@@ -22,20 +22,21 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "DigiConnect Dukan - Digital & Government Services Across India",
+  title: "DigiConnect Dukan - Tax, Insurance, Finance & Gov ID Services",
   description:
-    "Apply online for PAN Card, Aadhaar Update, GST Registration, Passport, and other digital services across India. Fast and reliable service.",
+    "Apply online for Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID form submission services across India.",
   keywords: [
     "Digital services India",
-    "PAN card apply online",
-    "Aadhaar update",
+    "Tax and Business services",
     "GST registration",
-    "passport assistance India",
+    "vehicle insurance India",
+    "government subsidy loans",
+    "Gov ID form submission",
   ],
   openGraph: {
-    title: "DigiConnect Dukan | Digital & Government Services Across India",
+    title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
     description:
-      "Apply online for PAN Card, Aadhaar Update, GST Registration, Passport, and other digital services across India.",
+      "Apply online for Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID form submission services across India.",
     type: "website",
     url: siteUrl,
   },
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "DigiConnect Dukan | Digital Services Across India",
     description:
-      "Fast and reliable digital service platform for customers across India.",
+      "Fast digital service support for tax, insurance, finance, banking, and Gov ID forms across India.",
   },
   alternates: {
     canonical: "/",

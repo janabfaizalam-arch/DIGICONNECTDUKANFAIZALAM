@@ -1,40 +1,11 @@
-import {
-  BadgeCheck,
-  Building2,
-  CarFront,
-  ClipboardCheck,
-  FileCheck2,
-  FileHeart,
-  FileText,
-  HeartPulse,
-  IdCard,
-  Landmark,
-  Store,
-  ShieldCheck,
-  Tractor,
-  Utensils,
-  WalletCards,
-} from "lucide-react";
-
 import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { servicesData } from "@/lib/services-data";
 
-export const services = [
-  { title: "Aadhaar Card Update & Print", slug: "aadhaar-update", icon: IdCard },
-  { title: "PAN Card Apply/Correction", slug: "pan-card", icon: FileCheck2 },
-  { title: "Voter ID", slug: "voter-id", icon: BadgeCheck },
-  { title: "Ration Card", slug: "ration-card", icon: WalletCards },
-  { title: "Labour Card / e-Shram Card", slug: "labour-card-e-shram-card", icon: ClipboardCheck },
-  { title: "Ayushman Card", slug: "ayushman-card", icon: HeartPulse },
-  { title: "Passport Assistance", slug: "passport-assistance", icon: ShieldCheck },
-  { title: "Driving Licence", slug: "driving-licence", icon: CarFront },
-  { title: "Birth & Death Certificate", slug: "birth-death-certificate", icon: FileHeart },
-  { title: "Income, Caste, Domicile Certificate", slug: "income-caste-domicile-certificate", icon: FileText },
-  { title: "GST Registration & Filing", slug: "gst-registration", icon: Building2 },
-  { title: "MSME Certificate", slug: "msme", icon: Landmark },
-  { title: "PM Kisan / Pension Schemes", slug: "pm-kisan-pension-schemes", icon: Tractor },
-  { title: "Food License", slug: "food-license", icon: Utensils },
-  { title: "Trade License / Shop Act", slug: "trade-license", icon: Store },
-];
+export const services = servicesData.map((service) => ({
+  title: service.title,
+  slug: service.slug,
+  icon: service.icon,
+}));
 
 export const features = [
   {
@@ -58,7 +29,7 @@ export const features = [
     description: "Get help before and after your application through call or WhatsApp.",
   },
   {
-    title: "Powered by RNoS India Pvt Ltd",
+    title: "Powered by RNOS India Pvt Ltd",
     description: "Professional process, organized records, and reliable service support.",
   },
 ];

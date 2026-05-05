@@ -11,7 +11,7 @@ const testimonials = [
   {
     name: "Neha Gupta",
     location: "India",
-    quote: "Clear guidance for Aadhaar update and document submission.",
+    quote: "Clear guidance for document submission and WhatsApp updates.",
   },
   {
     name: "Amit Sahu",

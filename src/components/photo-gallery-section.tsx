@@ -6,7 +6,7 @@ import { getActiveGalleryImages } from "@/lib/gallery";
 
 const placeholders = [
   { title: "Document Assistance", description: "Clean document checks and application support.", icon: BadgeCheck },
-  { title: "Digital Service Desk", description: "PAN, Aadhaar, GST, certificates, and licences.", icon: FileImage },
+  { title: "Digital Service Desk", description: "Tax, insurance, finance, and Gov ID services.", icon: FileImage },
   { title: "Customer Updates", description: "Call and WhatsApp follow-up for service progress.", icon: Sparkles },
 ];
 

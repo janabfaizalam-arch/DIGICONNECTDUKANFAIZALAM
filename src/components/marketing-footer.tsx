@@ -16,9 +16,9 @@ const footerLinks = [
 
 const popularServices = [
   { label: "PAN Card", href: "/services/pan-card" },
-  { label: "Aadhaar Update", href: "/services/aadhaar-update" },
   { label: "GST Registration", href: "/services/gst-registration" },
-  { label: "Certificates", href: "/services/income-caste-domicile-certificate" },
+  { label: "Bike Insurance", href: "/services/bike-insurance" },
+  { label: "PMEGP Loan", href: "/services/pmegp-loan" },
 ];
 
 export function MarketingFooter() {

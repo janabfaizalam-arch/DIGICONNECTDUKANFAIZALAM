@@ -19,7 +19,7 @@ export function WhyChooseUsSection() {
             <h2 className="mt-3 text-3xl font-bold text-slate-950 md:text-4xl">Professional digital service assistance powered by RNoS</h2>
           </div>
           <p className="reveal-on-scroll text-base leading-7 text-slate-600">
-            DigiConnect Dukan is a professional digital service and document assistance platform powered by RNoS India Pvt Ltd. We help customers access Government Services Online with secure PAN-India support for PAN Card, Aadhaar, GST, certificates, licences, and more.
+            DigiConnect Dukan is a professional digital service and document assistance platform powered by RNOS India Pvt Ltd. We help customers access Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID & Form Submission support across India.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">

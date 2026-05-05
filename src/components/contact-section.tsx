@@ -14,7 +14,7 @@ export function ContactSection() {
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">Support</p>
             <h2 className="mt-3 text-3xl font-bold text-slate-950 md:text-4xl">Need help? Our team is ready to support you.</h2>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
-              Get online digital service support for PAN, Aadhaar, GST, Passport, certificates, licences, and more across India.
+              Get online support for Tax & Business, Insurance, Finance & Banking, and Gov ID form submission services across India.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a href={`tel:+91${contactDetails.primaryPhone}`} className="premium-button premium-button-blue">

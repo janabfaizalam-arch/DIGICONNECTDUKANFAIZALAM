@@ -2,63 +2,23 @@
 
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  BadgeCheck,
-  BriefcaseBusiness,
-  Building2,
-  CarFront,
-  ClipboardCheck,
-  FileBadge2,
-  FileCheck2,
-  FileSearch,
-  Fingerprint,
-  HeartPulse,
-  IdCard,
-  Landmark,
-  Search,
-  ShieldCheck,
-  Tractor,
-  WalletCards,
-  X,
-} from "lucide-react";
+import { Search, X } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/browser";
+import { serviceCategories, servicesData, type ServiceCategorySlug } from "@/lib/services-data";
 
-type ServiceCategory = "All" | "Government" | "Certificates" | "Business" | "Licenses" | "Finance";
+type ServiceCategory = "All" | ServiceCategorySlug;
 
 type ServiceSelectionModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-const categories: ServiceCategory[] = ["All", "Government", "Certificates", "Business", "Licenses", "Finance"];
-
-const serviceItems = [
-  { title: "PAN Card", slug: "pan-card", benefit: "Apply, correction, reprint", category: "Government", icon: FileCheck2 },
-  { title: "Aadhaar Update", slug: "aadhaar-update", benefit: "Demographic update support", category: "Government", icon: Fingerprint },
-  { title: "Voter ID", slug: "voter-id", benefit: "New ID and corrections", category: "Government", icon: IdCard },
-  { title: "Ration Card", slug: "ration-card", benefit: "Family card assistance", category: "Government", icon: WalletCards },
-  { title: "Income Certificate", slug: "income-caste-domicile-certificate", benefit: "Certificate application help", category: "Certificates", icon: FileSearch },
-  { title: "Caste Certificate", slug: "income-caste-domicile-certificate", benefit: "Document guidance", category: "Certificates", icon: BadgeCheck },
-  { title: "Domicile Certificate", slug: "income-caste-domicile-certificate", benefit: "Residence proof support", category: "Certificates", icon: Landmark },
-  { title: "GST Registration", slug: "gst-registration", benefit: "Business GST onboarding", category: "Business", icon: Building2 },
-  { title: "MSME Certificate", slug: "msme", benefit: "Udyam/MSME support", category: "Business", icon: BriefcaseBusiness },
-  { title: "Passport Assistance", slug: "passport-assistance", benefit: "Form and appointment help", category: "Government", icon: ShieldCheck },
-  { title: "Driving Licence", slug: "driving-licence", benefit: "Learner, permanent, renewal", category: "Licenses", icon: CarFront },
-  { title: "Ayushman Card", slug: "ayushman-card", benefit: "Eligibility and print support", category: "Government", icon: HeartPulse },
-  { title: "Labour Card", slug: "labour-card-e-shram-card", benefit: "Labour and e-Shram card assistance", category: "Government", icon: ClipboardCheck },
-  { title: "Food License", slug: "food-license", benefit: "FSSAI food license support", category: "Licenses", icon: FileBadge2 },
-  { title: "Trade License", slug: "trade-license", benefit: "Trade license and shop act support", category: "Licenses", icon: BriefcaseBusiness },
-  { title: "e-Shram Card", slug: "labour-card-e-shram-card", benefit: "Worker registration support", category: "Government", icon: ClipboardCheck },
-  { title: "PM Kisan", slug: "pm-kisan-pension-schemes", benefit: "Scheme application assistance", category: "Finance", icon: Tractor },
-  { title: "Pension Schemes", slug: "pm-kisan-pension-schemes", benefit: "Pension and welfare scheme help", category: "Finance", icon: Landmark },
-] satisfies Array<{
-  title: string;
-  slug: string;
-  benefit: string;
-  category: Exclude<ServiceCategory, "All">;
-  icon: typeof FileCheck2;
-}>;
+const categories: ServiceCategory[] = ["All", ...serviceCategories.map((category) => category.slug)];
+const categoryLabels = new Map<ServiceCategory, string>([
+  ["All", "All"],
+  ...serviceCategories.map((category) => [category.slug, category.title] as const),
+]);
 
 async function getApplyHref(slug: string) {
   const applyPath = `/apply/${slug}`;
@@ -111,9 +71,9 @@ export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionMo
   const filteredServices = useMemo(() => {
     const search = query.trim().toLowerCase();
 
-    return serviceItems.filter((service) => {
-      const categoryMatches = selectedCategory === "All" || service.category === selectedCategory;
-      const searchMatches = !search || `${service.title} ${service.benefit}`.toLowerCase().includes(search);
+    return servicesData.filter((service) => {
+      const categoryMatches = selectedCategory === "All" || service.categorySlug === selectedCategory;
+      const searchMatches = !search || `${service.title} ${service.shortDescription}`.toLowerCase().includes(search);
 
       return categoryMatches && searchMatches;
     });
@@ -173,7 +133,7 @@ export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionMo
                   selectedCategory === category ? "bg-[var(--primary)] text-white" : "border bg-white text-slate-700"
                 }`}
               >
-                {category}
+                {categoryLabels.get(category)}
               </button>
             ))}
           </div>
@@ -181,7 +141,7 @@ export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionMo
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 overscroll-contain md:p-5">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {filteredServices.map(({ title, slug, benefit, icon: Icon }) => (
+            {filteredServices.map(({ title, slug, shortDescription, icon: Icon }) => (
               <button
                 key={`${title}-${slug}`}
                 type="button"
@@ -193,7 +153,7 @@ export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionMo
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold text-slate-950">{title}</span>
-                  <span className="block truncate text-xs text-slate-600">{benefit}</span>
+                  <span className="block truncate text-xs text-slate-600">{shortDescription}</span>
                 </span>
               </button>
             ))}
