@@ -9,13 +9,18 @@ import {
   Download,
   FileCheck2,
   FileText,
+  Gift,
   MessageCircle,
   Phone,
   Plus,
   ReceiptText,
   RotateCcw,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
   UploadCloud,
   UserRound,
+  WalletCards,
 } from "lucide-react";
 
 import { CustomerDocumentUpload } from "@/components/portal/customer-document-upload";
@@ -26,10 +31,12 @@ import type { Application, NotificationItem } from "@/lib/portal-types";
 import { formatCurrency } from "@/lib/portal-data";
 import { contactDetails } from "@/lib/constants";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
+import type { WalletSnapshot } from "@/lib/wallet";
 
 type CustomerDashboardProps = {
   applications: Application[];
   notifications: NotificationItem[];
+  walletSnapshot: WalletSnapshot;
   profile: {
     name: string;
     email: string;
@@ -74,12 +81,17 @@ function getTrackerStep(status: string) {
   return 0;
 }
 
-export function CustomerDashboard({ applications, notifications, profileCompletion }: CustomerDashboardProps) {
+export function CustomerDashboard({ applications, notifications, walletSnapshot, profileCompletion }: CustomerDashboardProps) {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const completed = applications.filter((application) => application.status === "completed").length;
   const pending = applications.length - completed;
   const firstInvoice = applications.flatMap((application) => application.invoices ?? [])[0];
+  const walletBalance = Number(walletSnapshot.wallet?.balance ?? 0);
+  const cashbackEarned = Number(walletSnapshot.cashbackEarned ?? 0);
+  const cashbackUsed = Number(walletSnapshot.cashbackUsed ?? 0);
+  const expiringSoonAmount = Number(walletSnapshot.expiringSoonAmount ?? 0);
+  const usagePercent = cashbackEarned > 0 ? Math.min(100, Math.round((cashbackUsed / cashbackEarned) * 100)) : 0;
   function openServices() {
     setActionMessage(null);
     setServicesOpen(true);
@@ -177,6 +189,81 @@ export function CustomerDashboard({ applications, notifications, profileCompleti
         {actionMessage ? (
           <p className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700">{actionMessage}</p>
         ) : null}
+
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="glass-panel overflow-hidden rounded-[1.75rem] border border-white/15 p-5 md:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">
+                  <WalletCards className="h-4 w-4 text-orange-500" />
+                  DigiWallet Cashback
+                </div>
+                <h2 className="mt-4 text-3xl font-bold text-slate-950 md:text-4xl">{formatCurrency(walletBalance)}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Wallet credits can pay up to 50% of your next eligible service. Remaining amount is paid normally.
+                </p>
+              </div>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-3 md:w-[25rem]">
+                <div className="rounded-2xl bg-white/60 p-4">
+                  <Gift className="h-5 w-5 text-orange-500" />
+                  <p className="mt-3 text-xs font-bold text-slate-500">Earned</p>
+                  <p className="text-lg font-bold text-slate-950">{formatCurrency(cashbackEarned)}</p>
+                </div>
+                <div className="rounded-2xl bg-white/60 p-4">
+                  <TrendingUp className="h-5 w-5 text-blue-700" />
+                  <p className="mt-3 text-xs font-bold text-slate-500">Used</p>
+                  <p className="text-lg font-bold text-slate-950">{formatCurrency(cashbackUsed)}</p>
+                </div>
+                <div className="rounded-2xl bg-white/60 p-4">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                  <p className="mt-3 text-xs font-bold text-slate-500">Validity</p>
+                  <p className="text-sm font-bold text-slate-950">{walletSnapshot.wallet?.nearest_expiry_at ? formatDate(walletSnapshot.wallet.nearest_expiry_at) : "No expiry"}</p>
+                </div>
+              </div>
+            </div>
+            {expiringSoonAmount > 0 ? (
+              <p className="mt-5 rounded-2xl border border-orange-200 bg-orange-50/85 px-4 py-3 text-sm font-bold text-orange-700">
+                {formatCurrency(expiringSoonAmount)} is expiring soon. Use it on your next eligible service.
+              </p>
+            ) : null}
+            <div className="mt-5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                <span>Wallet usage progress</span>
+                <span>{usagePercent}% redeemed</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/70">
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-700 to-orange-500" style={{ width: `${usagePercent}%` }} />
+              </div>
+            </div>
+          </div>
+
+          <Card className="rounded-[1.5rem] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Transactions</p>
+                <h2 className="mt-2 text-xl font-bold text-slate-950">Wallet history</h2>
+              </div>
+              <Sparkles className="h-5 w-5 text-blue-700" />
+            </div>
+            <div className="mt-4 space-y-3">
+              {walletSnapshot.transactions.length ? (
+                walletSnapshot.transactions.slice(0, 5).map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-950">{transaction.service_name || transaction.transaction_type.replace(/_/g, " ")}</p>
+                      <p className="text-xs text-slate-500">{formatDate(transaction.created_at)} • {transaction.status}</p>
+                    </div>
+                    <p className={`shrink-0 text-sm font-extrabold ${transaction.direction === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
+                      {transaction.direction === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Cashback credits will appear here after a service is completed.</p>
+              )}
+            </div>
+          </Card>
+        </section>
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           {[

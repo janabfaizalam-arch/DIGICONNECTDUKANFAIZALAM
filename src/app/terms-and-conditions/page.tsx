@@ -19,6 +19,15 @@ export default function TermsAndConditionsPage() {
           <p>
             By using the platform, users agree to cooperate with verification, document requirements, and service-specific instructions shared through the portal.
           </p>
+          <p>
+            Cashback will be credited to DigiWallet after successful service completion. DigiWallet is an internal wallet credit system and is not a direct bank refund.
+          </p>
+          <p>
+            Wallet credits can be redeemed up to 50% on future eligible services. The remaining order value must be paid through the available real payment method.
+          </p>
+          <p>
+            Wallet credits are non-transferable and valid for a limited time only. Expired credits cannot be redeemed, transferred, or withdrawn.
+          </p>
         </div>
       </div>
     </main>

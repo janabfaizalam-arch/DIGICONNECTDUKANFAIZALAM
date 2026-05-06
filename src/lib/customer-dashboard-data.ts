@@ -1,5 +1,6 @@
 import type { Application, ApplicationDocument, Invoice, NotificationItem, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getWalletSnapshot } from "@/lib/wallet";
 
 function groupByApplicationId<T extends { application_id: string }>(items: T[] = []) {
   return items.reduce<Record<string, T[]>>((grouped, item) => {
@@ -12,9 +13,10 @@ export async function getCustomerDashboardData(userId: string) {
   const supabase = await getSupabaseServerClient();
   let applications: Application[] = [];
   let notifications: NotificationItem[] = [];
+  const walletSnapshot = await getWalletSnapshot(userId, 12);
 
   if (!supabase) {
-    return { applications, notifications };
+    return { applications, notifications, walletSnapshot };
   }
 
   const [{ data: applicationData }, { data: notificationData }] = await Promise.all([
@@ -36,7 +38,7 @@ export async function getCustomerDashboardData(userId: string) {
   notifications = (notificationData ?? []) as NotificationItem[];
 
   if (applicationIds.length === 0) {
-    return { applications: baseApplications, notifications };
+    return { applications: baseApplications, notifications, walletSnapshot };
   }
 
   const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.all([
@@ -46,11 +48,11 @@ export async function getCustomerDashboardData(userId: string) {
       .in("application_id", applicationIds),
     supabase
       .from("payments")
-      .select("id, application_id, amount, status, screenshot_url, storage_path, created_at")
+      .select("id, application_id, amount, wallet_used_amount, real_payment_amount, status, screenshot_url, storage_path, created_at")
       .in("application_id", applicationIds),
     supabase
       .from("invoices")
-      .select("id, application_id, invoice_number, customer_name, customer_email, service_name, amount, payment_status, created_at")
+      .select("id, application_id, invoice_number, customer_name, customer_email, service_name, amount, wallet_used_amount, real_payment_amount, payment_status, created_at")
       .in("application_id", applicationIds),
     supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").in("application_id", applicationIds),
   ]);
@@ -68,5 +70,5 @@ export async function getCustomerDashboardData(userId: string) {
     ratings: ratingsByApplicationId[application.id] ?? [],
   }));
 
-  return { applications, notifications };
+  return { applications, notifications, walletSnapshot };
 }

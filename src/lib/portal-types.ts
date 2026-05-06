@@ -109,6 +109,8 @@ export type Payment = {
   id: string;
   application_id: string;
   amount: number;
+  wallet_used_amount?: number;
+  real_payment_amount?: number | null;
   status: PaymentStatus;
   screenshot_url: string | null;
   storage_path?: string | null;
@@ -126,6 +128,8 @@ export type Invoice = {
   customer_mobile?: string | null;
   service_name: string;
   amount: number;
+  wallet_used_amount?: number;
+  real_payment_amount?: number | null;
   payment_status: PaymentStatus;
   created_at: string;
 };
@@ -169,6 +173,12 @@ export type Application = {
   service_slug: string;
   service_name: string;
   amount: number;
+  wallet_used_amount?: number;
+  real_payment_amount?: number | null;
+  cashback_enabled?: boolean;
+  cashback_amount?: number | null;
+  cashback_expiry_days?: number | null;
+  cashback_credited_at?: string | null;
   form_data: Record<string, unknown> | null;
   status: ApplicationStatus;
   final_document_url: string | null;

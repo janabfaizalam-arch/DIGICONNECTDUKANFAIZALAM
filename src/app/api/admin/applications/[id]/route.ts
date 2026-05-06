@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { applicationStatuses, paymentStatuses } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { creditCashbackForApplication } from "@/lib/wallet";
 
 function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
@@ -27,6 +28,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const internalNotes = String(formData.get("internalNotes") ?? "").trim();
     const note = String(formData.get("note") ?? "").trim();
     const finalDocument = formData.get("finalDocument");
+    const cashbackEnabled = formData.get("cashbackEnabled") === "on";
+    const cashbackAmountValue = Number(formData.get("cashbackAmount") ?? 0);
+    const cashbackExpiryDaysValue = Number(formData.get("cashbackExpiryDays") ?? 90);
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
@@ -35,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_name, amount, status, assigned_staff_id, commission_amount")
+      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, assigned_staff_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at")
       .eq("id", id)
       .single();
 
@@ -43,8 +47,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application not found." }, { status: 404 });
     }
 
-    const updates: Record<string, string | null> = {
+    const updates: Record<string, string | number | boolean | null> = {
       updated_at: new Date().toISOString(),
+      cashback_enabled: cashbackEnabled,
+      cashback_amount: Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : null,
+      cashback_expiry_days: Number.isFinite(cashbackExpiryDaysValue) && cashbackExpiryDaysValue > 0 ? Math.round(cashbackExpiryDaysValue) : 90,
     };
 
     if (applicationStatuses.includes(status as never)) {
@@ -132,8 +139,41 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         user_id: application.user_id,
         application_id: id,
         title: "Application status updated",
-        message: `${application.service_name} status is now ${updates.status.replace(/_/g, " ")}.`,
+        message: `${application.service_name} status is now ${String(updates.status).replace(/_/g, " ")}.`,
       });
+
+      if (
+        updates.status === "completed" &&
+        application.status !== "completed" &&
+        application.user_id &&
+        cashbackEnabled &&
+        !application.cashback_credited_at
+      ) {
+        const creditedTransactionId = await creditCashbackForApplication({
+          userId: application.user_id,
+          applicationId: id,
+          serviceSlug: application.service_slug,
+          serviceName: application.service_name,
+          orderAmount: Number(application.amount ?? 0),
+          cashbackAmount: Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : Number(application.amount ?? 0),
+          expiryDays: Number.isFinite(cashbackExpiryDaysValue) && cashbackExpiryDaysValue > 0 ? Math.round(cashbackExpiryDaysValue) : 90,
+          createdBy: user?.id ?? null,
+        });
+
+        if (creditedTransactionId) {
+          await supabase
+            .from("applications")
+            .update({ cashback_credited_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", id);
+
+          await supabase.from("notifications").insert({
+            user_id: application.user_id,
+            application_id: id,
+            title: "DigiWallet cashback credited",
+          message: `₹${(Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : Number(application.amount ?? 0)).toLocaleString("en-IN")} cashback has been credited to your DigiWallet. Valid for future eligible services.`,
+          });
+        }
+      }
     }
 
     return NextResponse.json({ message: "Application updated successfully." });

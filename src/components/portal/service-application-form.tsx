@@ -2,15 +2,17 @@
 
 import { type FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileUp, IndianRupee, LoaderCircle, QrCode, Trash2 } from "lucide-react";
+import { BadgePercent, FileUp, IndianRupee, LoaderCircle, QrCode, Trash2, WalletCards } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useWallet } from "@/hooks/use-wallet";
 import { formatCurrency } from "@/lib/portal-data";
 import { createClient } from "@/lib/supabase/browser";
+import { getRealPayableAmount } from "@/lib/wallet";
 
 type ApplicationFormService = {
   title: string;
@@ -62,6 +64,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
+  const [walletUseAmount, setWalletUseAmount] = useState(0);
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
     const seen = new Set<string>();
@@ -76,8 +79,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     });
   }, [service, services]);
   const totalAmount = selectedServices.reduce((total, item) => total + item.amount, 0);
+  const wallet = useWallet(totalAmount);
+  const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
+  const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
   const upiId = "7007595931@upi";
-  const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${totalAmount}&cu=INR`;
+  const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${realPayableAmount}&cu=INR`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -107,6 +113,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
     if (!paymentScreenshot) {
       toastError("Please upload payment screenshot.");
+      return;
+    }
+
+    if (walletUseAmount > wallet.maxUsable) {
+      toastError(`You can use up to ${formatCurrency(wallet.maxUsable)} from DigiWallet on this order.`);
       return;
     }
 
@@ -204,6 +215,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           },
           documents: uploadedDocuments,
           paymentScreenshot: paymentScreenshotMetadata,
+          walletUseAmount: clampedWalletUseAmount,
         }),
         signal: controller.signal,
       }).finally(() => clearTimeout(timeoutId));
@@ -356,8 +368,48 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               <IndianRupee className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Fixed Amount</p>
+              <p className="text-sm font-medium text-slate-500">Order Total</p>
               <p className="text-2xl font-bold text-slate-950">{formatCurrency(totalAmount)}</p>
+              {clampedWalletUseAmount > 0 ? <p className="mt-1 text-xs font-bold text-blue-700">Pay now: {formatCurrency(realPayableAmount)}</p> : null}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 md:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+              <WalletCards className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-slate-950">Use DigiWallet</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
+              </p>
+              <div className="mt-3 grid gap-2">
+                <button
+                  type="button"
+                  disabled={wallet.maxUsable <= 0}
+                  onClick={() => setWalletUseAmount(wallet.maxUsable)}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  <BadgePercent className="h-4 w-4" />
+                  Apply max wallet
+                </button>
+                <Input
+                  type="number"
+                  min={0}
+                  max={wallet.maxUsable}
+                  value={walletUseAmount}
+                  onChange={(event) => setWalletUseAmount(Math.max(0, Number(event.target.value || 0)))}
+                  aria-label="DigiWallet amount to use"
+                  placeholder="Wallet amount"
+                />
+              </div>
+              {clampedWalletUseAmount > 0 ? (
+                <p className="mt-2 text-xs font-bold text-emerald-700">
+                  {formatCurrency(clampedWalletUseAmount)} wallet credit applied. Remaining {formatCurrency(realPayableAmount)} must be paid.
+                </p>
+              ) : null}
             </div>
           </div>
         </Card>
@@ -372,7 +424,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             <img src={qrUrl} alt="UPI QR" className="mx-auto h-40 w-40 rounded-xl object-contain md:h-44 md:w-44" />
             <p className="mt-4 text-sm font-medium text-slate-500">UPI ID</p>
             <p className="mt-1 break-all font-mono text-sm font-bold text-slate-950">{upiId}</p>
-            <p className="mt-2 text-xs font-bold text-orange-700">Amount fixed: {formatCurrency(totalAmount)}</p>
+            <p className="mt-2 text-xs font-bold text-orange-700">Pay now: {formatCurrency(realPayableAmount)}</p>
+            {clampedWalletUseAmount > 0 ? <p className="mt-1 text-xs font-bold text-blue-700">DigiWallet: {formatCurrency(clampedWalletUseAmount)}</p> : null}
           </div>
           <label className="mt-4 block">
             <span className="text-sm font-medium text-slate-700">Upload Payment Screenshot</span>

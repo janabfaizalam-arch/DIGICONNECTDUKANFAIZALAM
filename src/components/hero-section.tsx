@@ -64,22 +64,22 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
               <div className="flex flex-wrap gap-2">
                 <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/45 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] sm:px-4 sm:text-sm">
                   <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
-                  <span className="truncate">Digital Services Across India</span>
+                  <span className="truncate">India&apos;s First Digital Service Cashback Platform</span>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/70 bg-orange-50/80 px-3 py-1.5 text-xs font-extrabold text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:text-sm">
                   <Timer className="h-4 w-4 shrink-0" />
-                  Fast Service &ndash; Same Day Process Available
+                  DigiWallet Cashback on Completed Services
                 </div>
               </div>
               <div className="mt-4 space-y-3">
                 <h1 className="max-w-3xl text-balance text-[2.15rem] font-bold leading-[1.05] text-slate-950 sm:text-5xl md:text-[3.65rem]">
-                  All Digital & Government Services at One Place
+                  India&apos;s First Digital Service Cashback Platform
                 </h1>
                 <p className="text-base font-bold text-blue-700 md:text-lg">
-                  Connecting People, Empowering Digital India
+                  Get 100% Cashback Credits on Digital Services
                 </p>
                 <p className="max-w-2xl text-sm leading-7 text-slate-600 md:text-base md:leading-8">
-                  Apply for Tax & Business, Insurance, Finance & Banking, and Gov ID form services with fast, trusted support.
+                  Apply for ITR Filing, MSME Registration, Tax, Insurance, Finance, and Gov ID services with secure processing and DigiWallet rewards for your next order.
                 </p>
                 {isCustomer ? (
                   <p className="text-sm font-bold text-slate-700 md:text-base">
@@ -94,7 +94,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                 </div>
                 <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-blue-200/50 bg-white/45 px-4 text-sm font-semibold text-blue-800 shadow-sm">
                   <ShieldCheck className="h-4 w-4" />
-                  Secure Document Support
+                  DigiWallet Cashback
                 </div>
               </div>
               <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
@@ -102,7 +102,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                   <>
                     <ApplyServiceTrigger className="premium-button premium-button-blue">
                       <FileCheck2 className="h-4 w-4" />
-                      Apply Now
+                      Claim Offer
                       <ArrowRight className="h-4 w-4" />
                     </ApplyServiceTrigger>
                     <Link href="/customer/dashboard" className="premium-button border border-white/15 bg-white/65 text-blue-800 shadow-sm md:hover:-translate-y-0.5 md:hover:bg-white/80">
@@ -120,12 +120,12 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                   <>
                     <ApplyServiceTrigger className="premium-button premium-button-blue">
                       <LogIn className="h-4 w-4" />
-                      Apply Now
+                      Claim Offer
                       <ArrowRight className="h-4 w-4" />
                     </ApplyServiceTrigger>
                     <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
                       <MessageCircle className="h-4 w-4" />
-                      WhatsApp Support
+                      WhatsApp Now
                     </a>
                   </>
                 )}

@@ -29,7 +29,7 @@ export default async function CustomerDashboardPage() {
 
   const customerProfileStatus = await getCustomerProfileStatus(user.id);
 
-  const { applications, notifications } = await getCustomerDashboardData(user.id);
+  const { applications, notifications, walletSnapshot } = await getCustomerDashboardData(user.id);
   const customerProfile = customerProfileStatus.profile;
   const name = customerProfile?.full_name ?? user.user_metadata.full_name ?? user.user_metadata.name ?? "Customer";
   const email = customerProfile?.email ?? user.email ?? "";
@@ -39,6 +39,7 @@ export default async function CustomerDashboardPage() {
     <CustomerDashboard
       applications={applications}
       notifications={notifications}
+      walletSnapshot={walletSnapshot}
       profile={{ name, email, avatarUrl }}
       profileCompletion={{
         complete: customerProfileStatus.complete,

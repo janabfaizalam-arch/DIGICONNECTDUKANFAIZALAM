@@ -4,6 +4,7 @@ import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth"
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getServiceBySlug } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getRealPayableAmount, getWalletMaxUsable, getWalletSnapshot, redeemWalletForApplication } from "@/lib/wallet";
 
 type UploadedDocument = {
   document_type: string;
@@ -34,6 +35,7 @@ type ApplicationPayload = {
   details?: Record<string, string>;
   documents?: UploadedDocument[];
   paymentScreenshot?: UploadedPaymentScreenshot;
+  walletUseAmount?: number;
 };
 
 function jsonError(message: string, status: number) {
@@ -77,6 +79,17 @@ export async function POST(request: Request) {
     }
 
     const resolvedServices = services.filter((service): service is NonNullable<typeof service> => Boolean(service));
+    const orderAmount = resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
+    const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
+
+    if (requestedWalletAmount > 0) {
+      const snapshot = await getWalletSnapshot(user.id, 1);
+      const maxWalletAllowed = getWalletMaxUsable(orderAmount, Number(snapshot.wallet?.balance ?? 0));
+
+      if (requestedWalletAmount > maxWalletAllowed) {
+        return jsonError(`DigiWallet can be used up to ₹${maxWalletAllowed.toLocaleString("en-IN")} for this order.`, 400);
+      }
+    }
 
     const customer = body.customer ?? {};
     const requiredCustomerFields = [
@@ -124,12 +137,15 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
+    const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
     const applicationsToInsert = resolvedServices.map((service) => ({
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
         service_slug: service.slug,
         service_name: service.title,
         amount: service.amount,
+        wallet_used_amount: 0,
+        real_payment_amount: service.amount,
         form_data: formData,
         status: "new",
         created_by: user.id,
@@ -167,22 +183,58 @@ export async function POST(request: Request) {
       return jsonError("Documents could not be saved.", 500);
     }
 
-    const { error: paymentError } = await supabase.from("payments").insert(
-      applications.map((application) => ({
+    let walletUsedAmount = 0;
+
+    if (requestedWalletAmount > 0) {
+      walletUsedAmount = await redeemWalletForApplication({
+        userId: user.id,
+        applicationId: applications[0].id,
+        serviceName: applications.map((application) => application.service_name).join(", "),
+        orderAmount,
+        requestedAmount: requestedWalletAmount,
+      });
+    }
+
+    let remainingWalletToApply = walletUsedAmount;
+    const paymentRows = applications.map((application) => {
+      const applicationAmount = Number(application.amount ?? 0);
+      const applicationWalletAmount = Math.min(applicationAmount, remainingWalletToApply);
+      remainingWalletToApply -= applicationWalletAmount;
+
+      return {
         application_id: application.id,
         user_id: user.id,
-        amount: application.amount,
+        amount: Math.max(0, applicationAmount - applicationWalletAmount),
+        wallet_used_amount: applicationWalletAmount,
+        real_payment_amount: Math.max(0, applicationAmount - applicationWalletAmount),
         status: "pending",
         screenshot_url: paymentScreenshot.file_url,
         storage_path: paymentScreenshot.storage_path ?? null,
-      })),
-    );
+      };
+    });
+
+    const { error: paymentError } = await supabase.from("payments").insert(paymentRows);
 
     if (paymentError) {
       return jsonError("Payment details could not be saved.", 500);
     }
 
-    const totalAmount = applications.reduce((total, application) => total + Number(application.amount ?? 0), 0);
+    if (walletUsedAmount > 0) {
+      await Promise.all(
+        paymentRows.map((payment) =>
+          supabase
+            .from("applications")
+            .update({
+              wallet_used_amount: payment.wallet_used_amount,
+              real_payment_amount: payment.real_payment_amount,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", payment.application_id),
+        ),
+      );
+    }
+
+    const totalAmount = orderAmount;
     const serviceName = applications.map((application) => application.service_name).join(", ");
     const invoice = await createInvoiceForApplication({
       applicationId: applications[0].id,
@@ -199,6 +251,16 @@ export async function POST(request: Request) {
       return jsonError("Invoice could not be generated.", 500);
     }
 
+    if (walletUsedAmount > 0) {
+      await supabase
+        .from("invoices")
+        .update({
+          wallet_used_amount: walletUsedAmount,
+          real_payment_amount: realPaymentAmount,
+        })
+        .eq("id", invoice.id);
+    }
+
     await supabase.from("notifications").insert(
       applications.map((application) => ({
         user_id: user.id,
@@ -207,6 +269,15 @@ export async function POST(request: Request) {
         message: `${application.service_name} request has been received. Our team will verify it shortly.`,
       })),
     );
+
+    if (walletUsedAmount > 0) {
+      await supabase.from("notifications").insert({
+        user_id: user.id,
+        application_id: applications[0].id,
+        title: "DigiWallet used successfully",
+        message: `₹${walletUsedAmount.toLocaleString("en-IN")} DigiWallet credit was applied. Please pay ₹${realPaymentAmount.toLocaleString("en-IN")} by UPI.`,
+      });
+    }
 
     return NextResponse.json({
       message:

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { HeroSection } from "@/components/hero-section";
 import { ContactSection } from "@/components/contact-section";
+import { DigiWalletOfferBanner } from "@/components/digiwallet-offer-banner";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { HomepageOfferSlider } from "@/components/homepage-offer-slider";
@@ -21,6 +22,10 @@ export const metadata: Metadata = {
     "Digital Services in India",
     "Government Services Online",
     "GST Registration",
+    "Cashback on ITR Filing",
+    "MSME Registration Cashback",
+    "Best Online Digital Services",
+    "Digital Wallet Rewards India",
     "Vehicle Insurance",
     "Government Subsidy Loans",
     "Gov ID Form Submission",
@@ -53,6 +58,7 @@ export default async function Home() {
       <main className="pb-8 md:pb-0">
         <HeroSection viewer={heroViewer} />
         <HomepageOfferSlider />
+        <DigiWalletOfferBanner />
         <ServicesSection />
         <WhyChooseUsSection />
         <ProcessSection />

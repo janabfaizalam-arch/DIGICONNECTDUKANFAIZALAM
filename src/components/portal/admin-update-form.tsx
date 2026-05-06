@@ -24,6 +24,9 @@ export function AdminUpdateForm({
   applicationId,
   currentStatus,
   currentPaymentStatus,
+  cashbackEnabled = true,
+  cashbackAmount = "",
+  cashbackExpiryDays = 90,
   customerMobile,
   serviceName,
   agents = [],
@@ -35,6 +38,9 @@ export function AdminUpdateForm({
   applicationId: string;
   currentStatus: ApplicationStatus;
   currentPaymentStatus: PaymentStatus;
+  cashbackEnabled?: boolean;
+  cashbackAmount?: number | string | null;
+  cashbackExpiryDays?: number | null;
   customerMobile: string;
   serviceName: string;
   agents?: PortalUser[];
@@ -139,6 +145,16 @@ export function AdminUpdateForm({
       </Select>
 
       <Input name="assignedTo" placeholder="Assign to team member" />
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+        <label className="flex items-center gap-3 text-sm font-bold text-slate-800">
+          <input name="cashbackEnabled" type="checkbox" defaultChecked={cashbackEnabled} className="h-4 w-4 accent-blue-700" />
+          Enable Cashback
+        </label>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Input name="cashbackAmount" type="number" min="0" step="1" defaultValue={cashbackAmount ?? ""} placeholder="Cashback Amount" />
+          <Input name="cashbackExpiryDays" type="number" min="1" defaultValue={cashbackExpiryDays ?? 90} placeholder="Cashback Expiry Days" />
+        </div>
+      </div>
       <Textarea name="internalNotes" placeholder="Internal notes" className="min-h-24" />
       <Textarea name="note" placeholder="Add note to history" className="min-h-24" />
       <Input name="finalDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" />

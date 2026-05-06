@@ -157,6 +157,9 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                   applicationId={application.id}
                   currentStatus={application.status}
                   currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
+                  cashbackEnabled={application.cashback_enabled ?? true}
+                  cashbackAmount={application.cashback_amount ?? application.amount}
+                  cashbackExpiryDays={application.cashback_expiry_days ?? 90}
                   customerMobile={customerMobile}
                   serviceName={application.service_name}
                   hideAgentFields
