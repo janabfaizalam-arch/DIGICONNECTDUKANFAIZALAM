@@ -5,6 +5,7 @@ import { ContactSection } from "@/components/contact-section";
 import { DigiWalletOfferBanner } from "@/components/digiwallet-offer-banner";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
+import { HomepageOfferCarousel } from "@/components/homepage-offer-carousel";
 import { HomepageOfferSlider } from "@/components/homepage-offer-slider";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
@@ -56,6 +57,7 @@ export default async function Home() {
   return (
     <>
       <main className="pb-8 md:pb-0">
+        <HomepageOfferCarousel />
         <HeroSection viewer={heroViewer} />
         <HomepageOfferSlider />
         <DigiWalletOfferBanner />
