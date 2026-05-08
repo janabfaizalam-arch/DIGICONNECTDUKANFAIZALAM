@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/browser";
 type EmailMode = "login" | "signup";
 type FormMessage = { type: "success" | "error"; text: string };
 type PinLookup = { ok: boolean; city?: string; state?: string; message?: string };
+type AuthApiResponse = { message?: string; error?: string; hasSession?: boolean };
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -67,9 +68,11 @@ function CustomerLoginCardInner({
   const { error: toastError } = useToast();
   const [isGooglePending] = useState(false);
   const [isEmailPending, setIsEmailPending] = useState(false);
+  const [isResendPending, setIsResendPending] = useState(false);
   const [emailMode, setEmailMode] = useState<EmailMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [formMessage, setFormMessage] = useState<FormMessage | null>(null);
+  const [lastSignupEmail, setLastSignupEmail] = useState("");
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -175,13 +178,13 @@ function CustomerLoginCardInner({
     setIsEmailPending(true);
 
     try {
-      const supabase = createClient();
-
-      if (!supabase) {
-        throw new Error("Supabase environment variables are missing.");
-      }
-
       if (emailMode === "login") {
+        const supabase = createClient();
+
+        if (!supabase) {
+          throw new Error("Supabase environment variables are missing.");
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
@@ -196,37 +199,70 @@ function CustomerLoginCardInner({
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`,
-          data: {
-            full_name: name,
-            pincode: formPincode,
-            city: formCity,
-            state: formState,
-            referral_code: referralCode || undefined,
-          },
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          pincode: formPincode,
+          city: formCity,
+          state: formState,
+          referralCode,
+        }),
       });
+      const result = (await response.json()) as AuthApiResponse;
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Signup failed. Please try again.");
       }
 
-      if (data.session) {
-        window.location.assign(getCurrentCustomerRedirect());
-        return;
-      }
-
-      setFormMessage({ type: "success", text: "Please check your email to verify your account. Your signup reward is credited after verification." });
+      setLastSignupEmail(email);
+      setFormMessage({ type: "success", text: result.message || "Verification email sent. Please check Inbox, Spam, and Promotions folder." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Email access failed. Please try again.";
       setFormMessage({ type: "error", text: message });
       toastError(message);
     } finally {
       setIsEmailPending(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    const email = lastSignupEmail.trim().toLowerCase();
+
+    if (!email) {
+      setFormMessage({ type: "error", text: "Enter your email and create the account first, then resend verification." });
+      return;
+    }
+
+    setFormMessage(null);
+    setIsResendPending(true);
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+      const result = (await response.json()) as AuthApiResponse;
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Verification email could not be resent.");
+      }
+
+      setFormMessage({ type: "success", text: result.message || "Verification email sent. Please check Inbox, Spam, and Promotions folder." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Verification email could not be resent. Please try again.";
+      setFormMessage({ type: "error", text: message });
+      toastError(message);
+    } finally {
+      setIsResendPending(false);
     }
   }
 
@@ -355,6 +391,11 @@ function CustomerLoginCardInner({
               required
               placeholder="you@example.com"
               disabled={isEmailPending}
+              onChange={(event) => {
+                if (emailMode === "signup") {
+                  setLastSignupEmail(event.target.value.trim().toLowerCase());
+                }
+              }}
               className="h-[3.15rem] bg-white/74 pl-11 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
             />
           </div>
@@ -402,8 +443,23 @@ function CustomerLoginCardInner({
           className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]"
         >
           {isEmailPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Mail className="h-4 w-4" />}
-          {emailMode === "signup" ? "Create Account" : "Login with Email"}
+          {isEmailPending ? (emailMode === "signup" ? "Sending verification..." : "Logging in...") : emailMode === "signup" ? "Create Account" : "Login with Email"}
         </Button>
+
+        {emailMode === "signup" ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isEmailPending || isResendPending || !lastSignupEmail}
+            onClick={() => {
+              void handleResendVerification();
+            }}
+            className="h-[3.15rem] w-full rounded-2xl"
+          >
+            {isResendPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Mail className="h-4 w-4" />}
+            {isResendPending ? "Resending..." : "Resend verification email"}
+          </Button>
+        ) : null}
       </form>
 
       {!signupOnly ? <button

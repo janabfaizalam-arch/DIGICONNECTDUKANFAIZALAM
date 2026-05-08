@@ -264,6 +264,8 @@ export async function syncUserProfile(user: User) {
     const customerName = fullName || "Customer";
     const mobile = String(user.phone ?? user.user_metadata.mobile ?? "").trim();
     const emailValue = user.email ?? "";
+    const isEmailVerified = Boolean(user.email_confirmed_at);
+
     await supabaseAdmin.from("customer_profiles").upsert(
       {
         id: user.id,
@@ -277,18 +279,18 @@ export async function syncUserProfile(user: User) {
       { onConflict: "id" },
     );
 
-    await supabaseAdmin.rpc("ensure_customer_reward_profile", {
-      p_user_id: user.id,
-      p_full_name: customerName,
-      p_email: emailValue,
-      p_pincode: pincode,
-      p_city: city,
-      p_state: state,
-      p_referral_code: referralCode || null,
-      p_ip_address: null,
-    });
+    if (isEmailVerified) {
+      await supabaseAdmin.rpc("ensure_customer_reward_profile", {
+        p_user_id: user.id,
+        p_full_name: customerName,
+        p_email: emailValue,
+        p_pincode: pincode,
+        p_city: city,
+        p_state: state,
+        p_referral_code: referralCode || null,
+        p_ip_address: null,
+      });
 
-    if (user.email_confirmed_at) {
       await supabaseAdmin.rpc("issue_signup_bonus", { p_user_id: user.id });
     }
 
