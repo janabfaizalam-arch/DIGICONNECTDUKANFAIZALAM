@@ -134,12 +134,6 @@ export const paymentStatusLabels: Record<PaymentStatus, string> = {
   failed: "Failed",
 };
 
-export const upiDetails = {
-  upiId: process.env.NEXT_PUBLIC_UPI_ID ?? "7007595931@upi",
-  payeeName: "DigiConnect Dukan",
-  qrImageUrl: process.env.NEXT_PUBLIC_UPI_QR_URL ?? "",
-};
-
 export function createInvoiceNumber(date = new Date()) {
   const stamp = date.toISOString().slice(0, 10).replace(/-/g, "");
   const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();

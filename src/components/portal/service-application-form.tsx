@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, LoaderCircle, QrCode, Trash2, WalletCards } from "lucide-react";
+import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, LoaderCircle, Trash2, WalletCards } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import { useToast } from "@/components/providers/toast-provider";
@@ -69,7 +69,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
-  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
   const [razorpayPayment, setRazorpayPayment] = useState<VerifiedApplicationPayment | null>(null);
   const [walletUseAmount, setWalletUseAmount] = useState(0);
   const [applicantName, setApplicantName] = useState("");
@@ -94,9 +93,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
-  const upiId = "7007595931@upi";
-  const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${realPayableAmount}&cu=INR`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
   const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
 
   useEffect(() => {
@@ -128,8 +124,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       }
     }
 
-    if (realPayableAmount > 0 && !paymentScreenshot && !razorpayPayment) {
-      toastError("Please complete Razorpay checkout or upload payment screenshot.");
+    if (realPayableAmount > 0 && !razorpayPayment) {
+      toastError("Please complete Razorpay checkout before submitting.");
       return;
     }
 
@@ -141,15 +137,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     if (razorpayPayment && razorpayPayment.amount_paise !== payableAmountPaise) {
       toastError("Payment amount changed. Please complete Razorpay checkout again.");
       return;
-    }
-
-    if (paymentScreenshot) {
-      const paymentValidationError = validateFile(paymentScreenshot, "Payment screenshot");
-
-      if (paymentValidationError) {
-        toastError(paymentValidationError);
-        return;
-      }
     }
 
     setIsSubmitting(true);
@@ -193,33 +180,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         });
       }
 
-      let paymentScreenshotMetadata = null;
-
-      if (paymentScreenshot) {
-        setProgressText("Uploading payment proof...");
-
-        const screenshotPath = `${user.id}/shared/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
-        const { error: screenshotUploadError } = await withTimeout(
-          supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
-            contentType: paymentScreenshot.type,
-            upsert: false,
-          }),
-          "Payment screenshot upload is taking longer than 30 seconds.",
-        );
-
-        if (screenshotUploadError) {
-          throw new Error(screenshotUploadError.message);
-        }
-
-        const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
-        paymentScreenshotMetadata = {
-          file_name: paymentScreenshot.name,
-          file_url: screenshotPublicUrl.publicUrl,
-          file_type: paymentScreenshot.type,
-          storage_path: screenshotPath,
-        };
-      }
-
       setProgressText("Saving application...");
 
       const controller = new AbortController();
@@ -243,7 +203,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             address: String(formData.get("address") ?? "").trim(),
           },
           documents: uploadedDocuments,
-          paymentScreenshot: paymentScreenshotMetadata,
           razorpayPayment,
           walletUseAmount: clampedWalletUseAmount,
         }),
@@ -290,7 +249,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             {selectedServices.length > 1 ? "Multiple Service Application" : service.title}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            Fill the form, upload documents, add UPI payment details, and track your application in the dashboard.
+            Fill the form, upload documents, pay securely with Razorpay, and track your application in the dashboard.
           </p>
         </div>
 
@@ -416,7 +375,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-slate-950">Razorpay Checkout</p>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Pay securely by card, UPI, net banking, or wallet. Verified payments do not need a screenshot.
+                  Pay securely by card, UPI, net banking, or wallet. Payment status is verified directly by Razorpay.
                 </p>
                 <div className="mt-4">
                   <RazorpayCheckoutButton
@@ -430,7 +389,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                     description={selectedServices.map((item) => item.title).join(", ")}
                     disabled={isSubmitting}
                     onVerified={(payment) => {
-                      setPaymentScreenshot(null);
                       setRazorpayPayment({
                         ...payment,
                         amount_paise: payableAmountPaise,
@@ -486,54 +444,6 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               ) : null}
             </div>
           </div>
-        </Card>
-
-        <Card className="rounded-2xl p-4 md:p-5">
-          <div className="flex items-center gap-3">
-            <QrCode className="h-5 w-5 text-[var(--primary)]" />
-            <p className="font-bold text-slate-950">UPI Payment</p>
-          </div>
-          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrUrl} alt="UPI QR" className="mx-auto h-40 w-40 rounded-xl object-contain md:h-44 md:w-44" />
-            <p className="mt-4 text-sm font-medium text-slate-500">UPI ID</p>
-            <p className="mt-1 break-all font-mono text-sm font-bold text-slate-950">{upiId}</p>
-            <p className="mt-2 text-xs font-bold text-orange-700">Pay now: {formatCurrency(realPayableAmount)}</p>
-            {clampedWalletUseAmount > 0 ? <p className="mt-1 text-xs font-bold text-blue-700">DigiWallet: {formatCurrency(clampedWalletUseAmount)}</p> : null}
-          </div>
-          <label className="mt-4 block">
-            <span className="text-sm font-medium text-slate-700">Upload Payment Screenshot</span>
-            <Input
-              name="paymentScreenshot"
-              type="file"
-              required={realPayableAmount > 0 && !razorpayPayment}
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="mt-3"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-
-                if (!file) {
-                  setPaymentScreenshot(null);
-                  return;
-                }
-
-                const validationError = validateFile(file, "Payment screenshot");
-
-                if (validationError) {
-                  event.target.value = "";
-                  setPaymentScreenshot(null);
-                  toastError(validationError);
-                  return;
-                }
-
-                setPaymentScreenshot(file);
-              }}
-            />
-          </label>
-          {paymentScreenshot ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentScreenshot.name}</p> : null}
-          {razorpayPayment ? (
-            <p className="mt-2 text-xs font-bold text-emerald-700">Razorpay payment verified. Screenshot upload is optional.</p>
-          ) : null}
         </Card>
 
         <Button type="submit" size="lg" disabled={isSubmitting} className="sticky bottom-3 mb-4 h-14 w-full rounded-2xl shadow-lg md:static md:mb-0">

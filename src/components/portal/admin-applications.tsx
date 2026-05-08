@@ -15,6 +15,10 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
+function formatCurrency(amount?: number | null) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(amount ?? 0));
+}
+
 export function AdminApplications({ rows, staff = [] }: { rows: AdminApplicationRow[]; agents?: PortalUser[]; staff?: PortalUser[] }) {
   const applicationRows = rows.filter((row) => row.source === "application");
   const [search, setSearch] = useState("");
@@ -66,7 +70,7 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
       <AdminPageHeader
         eyebrow="Applications"
         title="Applications"
-        description="Track customer applications, payment proof, uploaded documents, and final status."
+        description="Track customer applications, Razorpay payments, uploaded documents, and final status."
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -149,7 +153,7 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
                 <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Service</th>
                 <th className="px-4 py-3">Update</th>
-                <th className="px-4 py-3">Proof</th>
+                <th className="px-4 py-3">Razorpay</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3">Details</th>
               </tr>
@@ -165,15 +169,20 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
                       <AdminApplicationInlineUpdate
                         applicationId={row.application_id}
                         status={row.application_status}
-                        paymentStatus={row.payment_status}
                         assignedStaffId={row.assigned_staff_id}
                         staffOptions={staffOptions}
                       />
                     ) : null}
                   </td>
                   <td className="px-4 py-3">
-                    {row.payment_proof_url ? (
-                      <a href={row.payment_proof_url} target="_blank" rel="noreferrer" className="font-bold text-blue-700">Open</a>
+                    {row.razorpay_payment_id || row.razorpay_order_id ? (
+                      <div className="max-w-48 space-y-1">
+                        <p className="truncate font-mono text-xs font-bold text-slate-800">{row.razorpay_payment_id ?? row.razorpay_order_id}</p>
+                        <p className="text-xs font-bold capitalize text-slate-500">
+                          {formatCurrency(row.payment_amount)}
+                          {row.payment_method ? ` - ${row.payment_method}` : ""}
+                        </p>
+                      </div>
                     ) : (
                       <span className="text-slate-400">-</span>
                     )}
@@ -209,8 +218,10 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
                 <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
                   {row.assigned_staff_name || "Unassigned"}
                 </span>
-                {row.payment_proof_url ? (
-                  <a href={row.payment_proof_url} target="_blank" rel="noreferrer" className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Payment Proof</a>
+                {row.razorpay_payment_id ? (
+                  <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                    Razorpay {row.razorpay_payment_id}
+                  </span>
                 ) : null}
               </div>
               <p className="mt-3 font-mono text-xs text-slate-500">{formatDate(row.created_at)}</p>
@@ -219,7 +230,6 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
                   <AdminApplicationInlineUpdate
                     applicationId={row.application_id}
                     status={row.application_status}
-                    paymentStatus={row.payment_status}
                     assignedStaffId={row.assigned_staff_id}
                     staffOptions={staffOptions}
                   />

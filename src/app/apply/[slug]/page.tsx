@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: service ? `Apply for ${service.title} | DigiConnect Dukan` : "Apply | DigiConnect Dukan",
     description: service
-      ? `Complete online application form, document upload, UPI payment, and invoice generation for ${service.title}.`
+      ? `Complete online application form, document upload, secure Razorpay payment, and invoice generation for ${service.title}.`
       : "DigiConnect Dukan application form.",
   };
 }
@@ -70,12 +70,12 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
               Apply for {service.title}
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              Fill in your details, upload documents, and submit UPI payment proof. Our team will share updates through your dashboard, call, or WhatsApp.
+              Fill in your details, upload documents, and pay securely with Razorpay. Our team will share updates through your dashboard, call, or WhatsApp.
             </p>
             <div className="mt-6 space-y-3 text-sm font-medium text-slate-700">
               <p>1. Fill in your details</p>
               <p>2. Upload required documents</p>
-              <p>3. Submit UPI payment proof</p>
+              <p>3. Pay securely with Razorpay</p>
               <p>4. Receive invoice and updates</p>
             </div>
           </Card>

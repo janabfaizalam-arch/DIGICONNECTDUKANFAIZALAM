@@ -118,11 +118,19 @@ create table if not exists public.payments (
   utr_number text,
   screenshot_url text,
   storage_path text,
+  razorpay_order_id text,
+  razorpay_payment_id text,
+  razorpay_signature text,
+  razorpay_status text,
+  payment_method text,
+  paid_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists payments_application_idx on public.payments (application_id);
+create index if not exists payments_razorpay_order_id_idx on public.payments (razorpay_order_id) where razorpay_order_id is not null;
+create unique index if not exists payments_razorpay_payment_id_idx on public.payments (razorpay_payment_id) where razorpay_payment_id is not null;
 
 create table if not exists public.invoices (
   id uuid primary key default gen_random_uuid(),

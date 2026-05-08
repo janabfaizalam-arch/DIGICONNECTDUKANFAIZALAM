@@ -6,7 +6,7 @@ import { LoaderCircle } from "lucide-react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/providers/toast-provider";
-import { applicationStatuses, paymentStatuses, statusLabels, paymentStatusLabels, type ApplicationStatus, type PaymentStatus } from "@/lib/portal-data";
+import { applicationStatuses, statusLabels, type ApplicationStatus } from "@/lib/portal-data";
 
 type StaffOption = {
   id: string;
@@ -16,13 +16,11 @@ type StaffOption = {
 export function AdminApplicationInlineUpdate({
   applicationId,
   status,
-  paymentStatus,
   assignedStaffId,
   staffOptions,
 }: {
   applicationId: string;
   status: string;
-  paymentStatus?: string | null;
   assignedStaffId?: string | null;
   staffOptions: StaffOption[];
 }) {
@@ -30,7 +28,7 @@ export function AdminApplicationInlineUpdate({
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
-  function update(field: "status" | "paymentStatus" | "assignedStaffId", value: string) {
+  function update(field: "status" | "assignedStaffId", value: string) {
     const formData = new FormData();
     formData.set(field, value);
 
@@ -69,16 +67,6 @@ export function AdminApplicationInlineUpdate({
         </Select>
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin text-blue-600" /> : null}
       </div>
-      <Select value={paymentStatus ?? "pending"} onValueChange={(value) => update("paymentStatus", value)}>
-        <SelectTrigger aria-label="Payment status" className="h-9 min-w-36">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {paymentStatuses.map((item) => (
-            <SelectItem key={item} value={item}>{paymentStatusLabels[item as PaymentStatus]}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
       <Select value={assignedStaffId || "none"} onValueChange={(value) => update("assignedStaffId", value)}>
         <SelectTrigger aria-label="Assigned staff" className="h-9 min-w-36">
           <SelectValue placeholder="Staff" />

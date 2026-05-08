@@ -10,8 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  paymentStatuses,
-  paymentStatusLabels,
   statusLabels,
   type ApplicationStatus,
   type PaymentStatus,
@@ -50,7 +48,6 @@ export function AdminUpdateForm({
   assignedStaffId?: string;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(currentPaymentStatus);
   const [isPending, startTransition] = useTransition();
   const { success, error: toastError } = useToast();
   const router = useRouter();
@@ -64,7 +61,6 @@ export function AdminUpdateForm({
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     formData.set("status", status);
-    formData.set("paymentStatus", paymentStatus);
 
     startTransition(async () => {
       try {
@@ -101,18 +97,9 @@ export function AdminUpdateForm({
         </SelectContent>
       </Select>
 
-      <Select value={paymentStatus} onValueChange={(value) => setPaymentStatus(value as PaymentStatus)}>
-        <SelectTrigger aria-label="Payment status">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {paymentStatuses.map((item) => (
-            <SelectItem key={item} value={item}>
-              {paymentStatusLabels[item]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="rounded-2xl bg-blue-50/70 px-4 py-3 text-sm font-bold text-blue-800">
+        Payment status is updated automatically from Razorpay: {currentPaymentStatus.replace(/_/g, " ")}
+      </div>
 
       {hideAgentFields ? null : (
         <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>

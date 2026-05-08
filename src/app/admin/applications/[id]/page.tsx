@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Download, FileText, MessageCircle, ReceiptText } from "lucide-react";
+import { ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
 import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
@@ -138,14 +138,20 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             </div>
 
             <h2 className="mt-6 text-lg font-bold text-slate-950">Payment</h2>
-            <div className="mt-3 rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-600">Payment status: {application.payment_status ?? payment?.status ?? "pending"}</p>
-              {(application.payment_screenshot_url || payment?.screenshot_url) ? (
-                <a href={application.payment_screenshot_url ?? payment?.screenshot_url ?? ""} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
-                  <Download className="h-4 w-4" />
-                  View Payment Proof
-                </a>
-              ) : null}
+            <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
+              {[
+                ["Payment Status", application.payment_status ?? payment?.status ?? "pending"],
+                ["Razorpay Order ID", payment?.razorpay_order_id ?? "-"],
+                ["Razorpay Payment ID", payment?.razorpay_payment_id ?? "-"],
+                ["Amount", formatCurrency(payment?.amount ?? application.real_payment_amount ?? application.amount)],
+                ["Payment Method", payment?.payment_method ?? "-"],
+                ["Paid At", payment?.paid_at ? formatDate(payment.paid_at) : "-"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl bg-white p-3">
+                  <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
+                  <p className="mt-1 break-words font-mono text-sm font-bold text-slate-950">{value}</p>
+                </div>
+              ))}
             </div>
           </Card>
 

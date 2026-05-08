@@ -178,7 +178,7 @@ export default async function AdminPage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <AdminQuickActionCard href="/admin/leads" title="View Leads" description="Search calls, enquiries, and uploaded lead files." icon={Inbox} />
-        <AdminQuickActionCard href="/admin/applications" title="View Applications" description="Track documents, payment proof, status, and final files." icon={ClipboardList} />
+        <AdminQuickActionCard href="/admin/applications" title="View Applications" description="Track documents, Razorpay payment status, and final files." icon={ClipboardList} />
         <AdminQuickActionCard href="/admin/gallery" title="Open Gallery" description="Upload and manage homepage gallery images." icon={GalleryHorizontalEnd} />
       </section>
 

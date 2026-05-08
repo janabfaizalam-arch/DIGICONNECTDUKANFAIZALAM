@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 import { getCurrentUser, getCurrentUserRole, isActiveAgent } from "@/lib/auth";
 import { calculateCommission, cleanFileName, createInvoiceForApplication } from "@/lib/crm";
 import { createInvoiceNumber } from "@/lib/portal-data";
 import type { PortalUser, ServiceCatalogItem } from "@/lib/portal-types";
+import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -53,6 +55,50 @@ async function uploadFile(applicationId: string, ownerId: string, file: File, fo
   };
 }
 
+function isVerifiedRazorpayPayment({
+  orderId,
+  paymentId,
+  signature,
+  amountPaise,
+  expectedAmountPaise,
+}: {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  amountPaise: number;
+  expectedAmountPaise: number;
+}) {
+  const keySecret = getRazorpayKeySecret();
+
+  if (!keySecret || !orderId || !paymentId || !signature) {
+    return false;
+  }
+
+  const expectedSignature = crypto.createHmac("sha256", keySecret).update(`${orderId}|${paymentId}`).digest("hex");
+
+  return expectedSignature === signature && amountPaise === expectedAmountPaise;
+}
+
+async function fetchRazorpayPaymentDetails(paymentId: string) {
+  const razorpay = getRazorpayClient();
+
+  if (!razorpay) {
+    return null;
+  }
+
+  try {
+    return (await razorpay.payments.fetch(paymentId)) as {
+      id?: string;
+      order_id?: string;
+      status?: string;
+      method?: string;
+      created_at?: number;
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
@@ -76,7 +122,10 @@ export async function POST(request: Request) {
     const email = String(formData.get("email") ?? "").trim();
     const city = String(formData.get("city") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
-    const paymentScreenshot = formData.get("paymentScreenshot");
+    const razorpayPaymentId = String(formData.get("razorpay_payment_id") ?? "").trim();
+    const razorpayOrderId = String(formData.get("razorpay_order_id") ?? "").trim();
+    const razorpaySignature = String(formData.get("razorpay_signature") ?? "").trim();
+    const razorpayAmountPaise = Math.round(Number(formData.get("razorpay_amount_paise") ?? 0));
     const documentFiles = formData.getAll("documents").filter((value): value is File => value instanceof File && value.size > 0);
 
     if (!serviceId) {
@@ -85,16 +134,6 @@ export async function POST(request: Request) {
 
     if (!customerId && (!customerName || !mobile)) {
       return jsonError("Customer name and mobile are required.", 400);
-    }
-
-    if (!(paymentScreenshot instanceof File) || paymentScreenshot.size === 0) {
-      return jsonError("Payment screenshot is required.", 400);
-    }
-
-    const paymentValidation = validateFile(paymentScreenshot, "Payment screenshot");
-
-    if (paymentValidation) {
-      return jsonError(paymentValidation, 400);
     }
 
     for (const file of documentFiles) {
@@ -114,6 +153,24 @@ export async function POST(request: Request) {
     if (!service) {
       return jsonError("Service not found.", 404);
     }
+
+    const expectedAmountPaise = Math.round(Number(service.amount ?? 0) * 100);
+
+    if (
+      expectedAmountPaise > 0 &&
+      !isVerifiedRazorpayPayment({
+        orderId: razorpayOrderId,
+        paymentId: razorpayPaymentId,
+        signature: razorpaySignature,
+        amountPaise: razorpayAmountPaise,
+        expectedAmountPaise,
+      })
+    ) {
+      return jsonError("Please complete Razorpay checkout before submitting.", 400);
+    }
+
+    const razorpayDetails = razorpayPaymentId ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
+    const paidAt = razorpayDetails?.created_at ? new Date(razorpayDetails.created_at * 1000).toISOString() : new Date().toISOString();
 
     let resolvedCustomerId = customerId;
     let customer = null as { id: string; full_name: string; mobile: string; email: string | null; city: string | null } | null;
@@ -179,8 +236,8 @@ export async function POST(request: Request) {
           message,
           invoiceNumber,
         },
-        status: "new",
-        payment_status: "pending",
+        status: "in_process",
+        payment_status: "verified",
         source: "agent_pos",
         commission_amount: commissionAmount,
         submitted_by_role: role,
@@ -191,15 +248,6 @@ export async function POST(request: Request) {
     if (applicationError || !application) {
       return jsonError("Application could not be created.", 500);
     }
-
-    const uploadedPayment = await uploadFile(application.id, user.id, paymentScreenshot, "payments");
-    await supabase
-      .from("applications")
-      .update({
-        payment_screenshot_url: uploadedPayment.file_url,
-        payment_screenshot_path: uploadedPayment.storage_path,
-      })
-      .eq("id", application.id);
 
     if (documentFiles.length > 0) {
       const uploadedDocuments = await Promise.all(
@@ -218,9 +266,13 @@ export async function POST(request: Request) {
       application_id: application.id,
       user_id: user.id,
       amount: service.amount,
-      status: "pending",
-      screenshot_url: uploadedPayment.file_url,
-      storage_path: uploadedPayment.storage_path,
+      status: "verified",
+      razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
+      razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,
+      razorpay_signature: razorpaySignature || null,
+      razorpay_status: razorpayDetails?.status ?? "verified",
+      payment_method: razorpayDetails?.method ?? null,
+      paid_at: paidAt,
     });
 
     const invoice = await createInvoiceForApplication({
@@ -231,7 +283,7 @@ export async function POST(request: Request) {
       customerMobile: customer.mobile,
       serviceName: service.name,
       amount: service.amount,
-      paymentStatus: "pending",
+      paymentStatus: "verified",
     });
 
     await supabase.from("commissions").insert({
@@ -245,8 +297,8 @@ export async function POST(request: Request) {
     await supabase.from("status_logs").insert({
       application_id: application.id,
       changed_by: user.id,
-      new_status: "new",
-      note: "Application created by agent.",
+      new_status: "in_process",
+      note: "Application created by agent after Razorpay payment.",
     });
 
     return NextResponse.json({

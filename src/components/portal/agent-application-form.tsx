@@ -1,9 +1,10 @@
 "use client";
 
-import { type FormEvent, useMemo, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileUp, LoaderCircle, ReceiptText, Send } from "lucide-react";
+import { CheckCircle2, CreditCard, FileUp, LoaderCircle, Send } from "lucide-react";
 
+import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,17 +28,39 @@ export function AgentApplicationForm({
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? "");
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [razorpayPayment, setRazorpayPayment] = useState<(VerifiedRazorpayPayment & { amount_paise: number }) | null>(null);
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer.id === customerId),
     [customerId, customers],
   );
   const selectedService = services.find((service) => service.id === serviceId);
+  const payableAmountPaise = Math.round(Number(selectedService?.amount ?? 0) * 100);
+  const paymentReceipt = useMemo(() => `agent-${selectedService?.slug ?? "service"}-${Date.now()}`, [selectedService?.slug]);
+
+  useEffect(() => {
+    setRazorpayPayment(null);
+  }, [payableAmountPaise]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (payableAmountPaise > 0 && !razorpayPayment) {
+      toastError("Please complete Razorpay checkout before submitting.");
+      return;
+    }
+
+    if (razorpayPayment && razorpayPayment.amount_paise !== payableAmountPaise) {
+      toastError("Payment amount changed. Please complete Razorpay checkout again.");
+      return;
+    }
+
     const formData = new FormData(event.currentTarget);
     formData.set("customerId", customerId);
     formData.set("serviceId", serviceId);
+    formData.set("razorpay_payment_id", razorpayPayment?.razorpay_payment_id ?? "");
+    formData.set("razorpay_order_id", razorpayPayment?.razorpay_order_id ?? "");
+    formData.set("razorpay_signature", razorpayPayment?.razorpay_signature ?? "");
+    formData.set("razorpay_amount_paise", String(razorpayPayment?.amount_paise ?? 0));
 
     startTransition(async () => {
       try {
@@ -121,11 +144,34 @@ export function AgentApplicationForm({
 
           <div className="rounded-2xl border border-dashed bg-orange-50/70 p-4">
             <div className="flex items-center gap-2 font-bold text-slate-950">
-              <ReceiptText className="h-4 w-4 text-[var(--secondary)]" />
-              Payment Proof
+              <CreditCard className="h-4 w-4 text-[var(--secondary)]" />
+              Razorpay Payment
             </div>
-            <Input name="paymentScreenshot" type="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" className="mt-3" />
-            <p className="mt-2 text-xs font-bold text-orange-700">Screenshot upload is required. No UTR field is used.</p>
+            <div className="mt-3">
+              <RazorpayCheckoutButton
+                amountPaise={payableAmountPaise}
+                receipt={paymentReceipt}
+                customer={{
+                  name: selectedCustomer?.full_name,
+                  email: selectedCustomer?.email ?? undefined,
+                  mobile: selectedCustomer?.mobile,
+                }}
+                description={selectedService?.name ?? "Agent POS application"}
+                disabled={isPending || !selectedService}
+                onVerified={(payment) =>
+                  setRazorpayPayment({
+                    ...payment,
+                    amount_paise: payableAmountPaise,
+                  })
+                }
+              />
+            </div>
+            {razorpayPayment ? (
+              <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                Payment verified: {razorpayPayment.razorpay_payment_id}
+              </div>
+            ) : null}
           </div>
         </div>
       </Card>

@@ -46,6 +46,11 @@ export type AdminApplicationRow = {
   assigned_staff_id?: string | null;
   assigned_staff_name?: string | null;
   payment_proof_url?: string | null;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  payment_amount?: number | null;
+  payment_method?: string | null;
+  paid_at?: string | null;
   commission_amount?: number | null;
   commission_status?: string | null;
   created_at: string;
@@ -114,6 +119,12 @@ export type Payment = {
   status: PaymentStatus;
   screenshot_url: string | null;
   storage_path?: string | null;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  razorpay_signature?: string | null;
+  razorpay_status?: string | null;
+  payment_method?: string | null;
+  paid_at?: string | null;
   created_at: string;
 };
 

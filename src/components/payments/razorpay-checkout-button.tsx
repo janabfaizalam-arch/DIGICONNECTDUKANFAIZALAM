@@ -226,7 +226,7 @@ export function RazorpayCheckoutButton({
         className="h-12 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-sm font-extrabold text-white shadow-lg shadow-orange-500/15"
       >
         {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-        {isPending ? "Processing payment..." : "Pay with Razorpay"}
+        {isPending ? "Processing payment..." : "Pay Securely with Razorpay"}
       </Button>
     </>
   );

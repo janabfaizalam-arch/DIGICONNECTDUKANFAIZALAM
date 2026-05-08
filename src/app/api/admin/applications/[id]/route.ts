@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { applicationStatuses, paymentStatuses } from "@/lib/portal-data";
+import { applicationStatuses } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { completeReferralRewardForFirstPaidOrder, creditCashbackForApplication } from "@/lib/wallet";
+import { creditCashbackForApplication } from "@/lib/wallet";
 
 function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
@@ -21,7 +21,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const formData = await request.formData();
     const status = String(formData.get("status") ?? "");
-    const paymentStatus = String(formData.get("paymentStatus") ?? "");
     const assignedTo = String(formData.get("assignedTo") ?? "").trim();
     const assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
     const assignedStaffId = String(formData.get("assignedStaffId") ?? "").trim();
@@ -97,64 +96,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application could not be updated." }, { status: 500 });
     }
 
-    if (paymentStatuses.includes(paymentStatus as never)) {
-      await supabase.from("payments").update({ status: paymentStatus, updated_at: new Date().toISOString() }).eq("application_id", id);
-      await supabase.from("invoices").update({ payment_status: paymentStatus }).eq("application_id", id);
-      await supabase.from("applications").update({ payment_status: paymentStatus, updated_at: new Date().toISOString() }).eq("id", id);
-
-      if (
-        paymentStatus === "verified" &&
-        application.payment_status !== "verified" &&
-        application.user_id &&
-        Number(application.amount ?? 0) > 0 &&
-        cashbackEnabled &&
-        !application.cashback_credited_at
-      ) {
-        const serviceSlugs = Array.isArray((application.form_data as { service_slugs?: unknown })?.service_slugs)
-          ? ((application.form_data as { service_slugs?: string[] }).service_slugs ?? [])
-          : [application.service_slug];
-        const creditedTransactionId = await creditCashbackForApplication({
-          userId: application.user_id,
-          applicationId: id,
-          serviceSlug: application.service_slug,
-          serviceSlugs,
-          serviceName: application.service_name,
-          orderAmount: Number(application.amount ?? 0),
-          cashbackAmount: Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : null,
-          createdBy: user?.id ?? null,
-        });
-
-        if (creditedTransactionId) {
-          await supabase
-            .from("applications")
-            .update({ cashback_credited_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-            .eq("id", id);
-
-          await supabase.from("notifications").insert({
-            user_id: application.user_id,
-            application_id: id,
-            title: "Reward cashback credited",
-            message: "Cashback reward points have been credited to your wallet. They can be used on future orders.",
-          });
-        }
-
-        const referralTransactionId = await completeReferralRewardForFirstPaidOrder({
-          userId: application.user_id,
-          applicationId: id,
-          createdBy: user?.id ?? null,
-        });
-
-        if (referralTransactionId) {
-          await supabase.from("notifications").insert({
-            user_id: application.user_id,
-            application_id: id,
-            title: "Referral milestone completed",
-            message: "Your first paid order is verified. Referral rewards have been processed.",
-          });
-        }
-      }
-    }
-
     if (assignedAgentId && assignedAgentId !== "none") {
       await supabase.from("commissions").upsert(
         {
@@ -199,7 +140,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         application.status !== "completed" &&
         application.user_id &&
         Number(application.amount ?? 0) > 0 &&
-        (paymentStatus === "verified" || application.payment_status === "verified") &&
+        application.payment_status === "verified" &&
         cashbackEnabled &&
         !application.cashback_credited_at
       ) {

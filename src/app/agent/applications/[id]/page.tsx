@@ -111,13 +111,6 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
               <p className="mt-1 text-sm font-bold capitalize text-[var(--primary)]">{commission?.status ?? "pending"}</p>
             </Card>
 
-            {application.payment_screenshot_url ? (
-              <a href={application.payment_screenshot_url} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
-                <ReceiptText className="h-4 w-4" />
-                View Payment Proof
-              </a>
-            ) : null}
-
             {application.invoices?.[0] ? (
               <Link href={`/invoice/${application.invoices[0].id}`} className="flex min-h-12 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
                 <ReceiptText className="h-4 w-4" />

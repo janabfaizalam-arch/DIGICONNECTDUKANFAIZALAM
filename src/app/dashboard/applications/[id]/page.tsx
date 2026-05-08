@@ -66,7 +66,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
       .eq("application_id", id),
     supabase
       .from("payments")
-      .select("id, application_id, amount, status, screenshot_url, storage_path, created_at")
+      .select("id, application_id, amount, status, screenshot_url, storage_path, razorpay_order_id, razorpay_payment_id, razorpay_status, payment_method, paid_at, created_at")
       .eq("application_id", id),
     supabase
       .from("invoices")
