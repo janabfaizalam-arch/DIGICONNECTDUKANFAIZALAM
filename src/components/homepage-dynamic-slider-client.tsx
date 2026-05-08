@@ -16,11 +16,11 @@ type HomepageDynamicSliderClientProps = {
 };
 
 const ctaPositionClasses: Record<HomepageSlide["cta_position"], string> = {
-  "bottom-left": "bottom-4 left-4 items-start md:bottom-8 md:left-8",
-  "bottom-right": "bottom-4 right-4 items-end md:bottom-8 md:right-8",
-  "bottom-center": "bottom-4 left-1/2 -translate-x-1/2 items-center md:bottom-8",
-  "center-left": "left-4 top-1/2 -translate-y-1/2 items-start md:left-8",
-  "center-right": "right-4 top-1/2 -translate-y-1/2 items-end md:right-8",
+  "bottom-left": "justify-start",
+  "bottom-right": "justify-end",
+  "bottom-center": "justify-center",
+  "center-left": "justify-start",
+  "center-right": "justify-end",
   hidden: "hidden",
 };
 
@@ -53,7 +53,7 @@ function SlideCta({ slide }: { slide: HomepageSlide }) {
   return (
     <div
       className={cn(
-        "absolute z-20 flex max-w-[calc(100%-2rem)] flex-col gap-2 sm:max-w-[24rem] sm:flex-row",
+        "flex flex-col gap-2 px-4 py-3 sm:flex-row md:px-6",
         ctaPositionClasses[slide.cta_position],
       )}
     >
@@ -180,15 +180,16 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
 
                 return (
                   <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
-                    <div className="relative aspect-[4/5] overflow-hidden bg-slate-100 sm:aspect-[16/7] lg:aspect-[24/9]">
+                    <div className="relative bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_46%,#fff7ed_100%)]">
+                      <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_18%_12%,rgba(37,99,235,0.1),transparent_30%),radial-gradient(circle_at_86%_78%,rgba(249,115,22,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,255,0.96))] sm:aspect-[8/3] md:rounded-3xl">
                       <Image
                         src={slide.mobile_image_url || slide.image_url}
                         alt={slide.title || "DigiConnect Dukan promotional poster"}
                         fill
                         priority={index === 0}
                         loading={index === 0 ? undefined : "lazy"}
-                        sizes="(max-width: 640px) 100vw, (max-width: 1440px) 96vw, 1440px"
-                        className={cn("object-cover sm:hidden", slide.mobile_image_url ? "" : "object-center")}
+                        sizes="100vw"
+                        className="object-contain object-center p-1 sm:hidden"
                       />
                       <Image
                         src={slide.image_url}
@@ -197,7 +198,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                         priority={index === 0}
                         loading={index === 0 ? undefined : "lazy"}
                         sizes="(max-width: 1440px) 96vw, 1440px"
-                        className="hidden object-cover sm:block"
+                        className="hidden object-contain object-center p-2 sm:block"
                       />
 
                       {hasCopy ? (
@@ -206,7 +207,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                           {slide.subtitle ? <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/88 md:text-lg">{slide.subtitle}</p> : null}
                         </div>
                       ) : null}
-
+                      </div>
                       <SlideCta slide={slide} />
                     </div>
                   </article>

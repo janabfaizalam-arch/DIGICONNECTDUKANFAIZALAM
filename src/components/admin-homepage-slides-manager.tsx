@@ -91,7 +91,7 @@ function SlideFields({
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Desktop poster image</span>
           <Input name="image" type="file" accept="image/jpeg,image/png,image/webp" required={mode === "create"} disabled={disabled} />
-          <span className="text-xs text-slate-500">Recommended: 1600x700 or 1920x800. JPG, PNG, or WebP.</span>
+          <span className="text-xs text-slate-500">Recommended: 1920x720. JPG, PNG, or WebP.</span>
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Mobile poster image</span>
