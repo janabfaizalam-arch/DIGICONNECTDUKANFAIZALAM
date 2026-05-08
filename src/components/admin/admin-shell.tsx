@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgePercent, BarChart3, FileText, GalleryHorizontalEnd, Gift, LayoutDashboard, LogOut, Newspaper, Settings, UserCog, UsersRound, WalletCards } from "lucide-react";
+import { BadgePercent, BarChart3, FileText, GalleryHorizontalEnd, Gift, Images, LayoutDashboard, LogOut, Newspaper, Settings, UserCog, UsersRound, WalletCards } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -13,6 +13,7 @@ const adminLinks = [
   { href: "/admin/cashback", label: "Cashback", icon: WalletCards },
   { href: "/admin/customers", label: "Customers", icon: UsersRound },
   { href: "/admin/staff", label: "Staff", icon: UserCog },
+  { href: "/admin/homepage-slides", label: "Homepage Slides", icon: Images },
   { href: "/admin/gallery", label: "Gallery", icon: GalleryHorizontalEnd },
   { href: "/admin/articles", label: "Articles", icon: Newspaper },
   { href: "/#support", label: "Support", icon: Settings },
