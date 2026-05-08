@@ -14,12 +14,35 @@ type SignupBody = {
   referralCode?: string;
 };
 
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message, message }, { status });
+function jsonSignupError(
+  message: string,
+  status: number,
+  debug?: Record<string, boolean | string | null>,
+) {
+  return NextResponse.json(
+    {
+      error: message,
+      message,
+      ...(process.env.NODE_ENV === "development" && debug ? { debug } : {}),
+    },
+    { status },
+  );
 }
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function getPasswordValidationMessage(password: string) {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
+    return "Password must include uppercase, lowercase, number, and special character.";
+  }
+
+  return "";
 }
 
 function getSiteUrl(request: Request) {
@@ -36,9 +59,29 @@ function getEmailDomain(email: string) {
   return email.split("@")[1] || "unknown";
 }
 
+function getSignupEnvDebug(request: Request) {
+  const siteUrl = getSiteUrl(request);
+
+  return {
+    hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    hasSupabaseAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    siteUrl,
+    siteUrlIsRnos: siteUrl === "https://rnos.in",
+    emailRedirectTo: `${siteUrl}/auth/callback`,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     console.info("[auth/signup] Request received");
+    const envDebug = getSignupEnvDebug(request);
+
+    console.info("[auth/signup] Environment check", {
+      hasSupabaseUrl: envDebug.hasSupabaseUrl,
+      hasSupabaseAnonKey: envDebug.hasSupabaseAnonKey,
+      siteUrl: envDebug.siteUrl,
+      emailRedirectTo: envDebug.emailRedirectTo,
+    });
 
     const body = (await request.json().catch(() => null)) as SignupBody | null;
     const fullName = String(body?.fullName ?? body?.name ?? "").trim();
@@ -58,7 +101,7 @@ export async function POST(request: Request) {
 
     if (!fullName) {
       console.warn("[auth/signup] Validation failed", { field: "fullName" });
-      return jsonError("Full name is required.", 400);
+      return jsonSignupError("Full name is required.", 400, envDebug);
     }
 
     if (!isValidEmail(email)) {
@@ -66,17 +109,19 @@ export async function POST(request: Request) {
         field: "email",
         emailDomain: email ? getEmailDomain(email) : "missing",
       });
-      return jsonError("Please enter a valid email address.", 400);
+      return jsonSignupError("Please enter a valid email address.", 400, envDebug);
     }
 
-    if (password.length < 6) {
-      console.warn("[auth/signup] Validation failed", { field: "password" });
-      return jsonError("Password must be at least 6 characters.", 400);
+    const passwordValidationMessage = getPasswordValidationMessage(password);
+
+    if (passwordValidationMessage) {
+      console.warn("[auth/signup] Validation failed", { field: "password", reason: passwordValidationMessage });
+      return jsonSignupError(passwordValidationMessage, 400, envDebug);
     }
 
     if (!/^\d{6}$/.test(pincode)) {
       console.warn("[auth/signup] Validation failed", { field: "pincode", hasPincode: Boolean(pincode) });
-      return jsonError("A valid 6 digit PIN code is required.", 400);
+      return jsonSignupError("A valid 6 digit PIN code is required.", 400, envDebug);
     }
 
     if (!city || !state) {
@@ -85,13 +130,17 @@ export async function POST(request: Request) {
         hasCity: Boolean(city),
         hasState: Boolean(state),
       });
-      return jsonError("City and state are required. Enter them manually if PIN lookup failed.", 400);
+      return jsonSignupError("City and state are required. Enter them manually if PIN lookup failed.", 400, envDebug);
     }
 
     const supabase = await getSupabaseRouteHandlerClient();
 
     if (!supabase) {
-      return jsonError("Signup is not configured on the server.", 500);
+      console.error("[auth/signup] Supabase route client missing", {
+        hasSupabaseUrl: envDebug.hasSupabaseUrl,
+        hasSupabaseAnonKey: envDebug.hasSupabaseAnonKey,
+      });
+      return jsonSignupError("Signup is not configured on the server.", 500, envDebug);
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -120,7 +169,10 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return jsonError(error.message, 400);
+      return jsonSignupError(error.message, 400, {
+        ...envDebug,
+        supabaseErrorCode: error.code ?? null,
+      });
     }
 
     if (data.session) {
@@ -131,9 +183,10 @@ export async function POST(request: Request) {
       message: "Verification email sent. Please check Inbox, Spam, and Promotions folder.",
       userId: data.user?.id ?? null,
       hasSession: Boolean(data.session),
+      ...(process.env.NODE_ENV === "development" ? { debug: envDebug } : {}),
     });
   } catch (error) {
     console.error("[auth/signup] Signup failed", error);
-    return jsonError("Signup failed. Please try again.", 500);
+    return jsonSignupError("Signup failed. Please try again.", 500);
   }
 }

@@ -34,6 +34,18 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function getSignupPasswordValidationMessage(password: string) {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
+    return "Password must include uppercase, lowercase, number, and special character.";
+  }
+
+  return "";
+}
+
 function getSafeCustomerRedirect(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/";
@@ -185,7 +197,14 @@ function CustomerLoginCardInner({
       return;
     }
 
-    if (password.length < 6) {
+    const signupPasswordValidationMessage = emailMode === "signup" ? getSignupPasswordValidationMessage(password) : "";
+
+    if (signupPasswordValidationMessage) {
+      setFormMessage({ type: "error", text: signupPasswordValidationMessage });
+      return;
+    }
+
+    if (emailMode === "login" && password.length < 6) {
       setFormMessage({ type: "error", text: "Password must be at least 6 characters." });
       return;
     }
@@ -425,8 +444,8 @@ function CustomerLoginCardInner({
               type={showPassword ? "text" : "password"}
               autoComplete={emailMode === "signup" ? "new-password" : "current-password"}
               required
-              minLength={6}
-              placeholder="Minimum 6 characters"
+              minLength={emailMode === "signup" ? 8 : 6}
+              placeholder={emailMode === "signup" ? "Uppercase, lowercase, number, symbol" : "Minimum 6 characters"}
               disabled={isEmailPending}
               className="h-[3.15rem] bg-white/74 px-11 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
             />
