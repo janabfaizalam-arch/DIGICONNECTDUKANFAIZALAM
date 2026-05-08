@@ -461,6 +461,17 @@ function CustomerLoginCardInner({
           </div>
         </label>
 
+        {emailMode === "login" ? (
+          <div className="-mt-1 flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-sm font-bold text-[var(--primary)] transition hover:text-blue-800"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+        ) : null}
+
         {formMessage ? (
           <p
             className={`rounded-2xl px-4 py-3 text-sm font-medium ${

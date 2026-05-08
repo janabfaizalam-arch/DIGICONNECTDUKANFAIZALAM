@@ -38,7 +38,8 @@ The lead form posts to `/api/leads`. If Supabase env vars are missing, the UI st
 3. Set `NEXT_PUBLIC_SUPABASE_URL` in your app environment to your Supabase project URL.
 4. Add the Supabase provider callback URL in Google Cloud and Supabase provider settings.
 5. Add `${NEXT_PUBLIC_SITE_URL}/auth/callback` in Supabase Auth URL configuration.
-6. Visit `/login` for Google sign-in and `/dashboard` for the protected account page.
+6. Add `${NEXT_PUBLIC_SITE_URL}/reset-password` to Supabase Auth redirect URLs for password reset emails.
+7. Visit `/login` for Google sign-in and `/dashboard` for the protected account page.
 ## Deployment
 
 Deploy to Vercel with the same environment variables added in project settings.
