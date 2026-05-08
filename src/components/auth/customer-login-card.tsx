@@ -15,6 +15,21 @@ type FormMessage = { type: "success" | "error"; text: string };
 type PinLookup = { ok: boolean; city?: string; state?: string; message?: string };
 type AuthApiResponse = { message?: string; error?: string; hasSession?: boolean };
 
+async function readAuthApiResponse(response: Response): Promise<AuthApiResponse> {
+  const fallback = response.ok ? "Request completed." : `Signup request failed with status ${response.status}.`;
+
+  try {
+    const result = (await response.json()) as AuthApiResponse;
+    return {
+      ...result,
+      error: result.error || result.message || (response.ok ? undefined : fallback),
+      message: result.message || result.error || fallback,
+    };
+  } catch {
+    return response.ok ? { message: fallback } : { error: fallback, message: fallback };
+  }
+}
+
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
@@ -205,19 +220,19 @@ function CustomerLoginCardInner({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
+          fullName: name,
           email,
           password,
           pincode: formPincode,
           city: formCity,
           state: formState,
-          referralCode,
+          referred_by: referralCode || undefined,
         }),
       });
-      const result = (await response.json()) as AuthApiResponse;
+      const result = await readAuthApiResponse(response);
 
       if (!response.ok) {
-        throw new Error(result.error || result.message || "Signup failed. Please try again.");
+        throw new Error(result.error || `Signup request failed with status ${response.status}.`);
       }
 
       setLastSignupEmail(email);
@@ -250,10 +265,10 @@ function CustomerLoginCardInner({
         },
         body: JSON.stringify({ email }),
       });
-      const result = (await response.json()) as AuthApiResponse;
+      const result = await readAuthApiResponse(response);
 
       if (!response.ok) {
-        throw new Error(result.error || result.message || "Verification email could not be resent.");
+        throw new Error(result.error || `Verification resend failed with status ${response.status}.`);
       }
 
       setFormMessage({ type: "success", text: result.message || "Verification email sent. Please check Inbox, Spam, and Promotions folder." });

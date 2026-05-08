@@ -227,7 +227,7 @@ export async function syncUserProfile(user: User) {
   const pincode = String(user.user_metadata.pincode ?? "").trim();
   const city = String(user.user_metadata.city ?? "").trim();
   const state = String(user.user_metadata.state ?? "").trim();
-  const referralCode = String(user.user_metadata.referral_code ?? user.user_metadata.ref ?? "").trim().toUpperCase();
+  const referralCode = String(user.user_metadata.referred_by ?? user.user_metadata.referral_code ?? user.user_metadata.ref ?? "").trim().toUpperCase();
 
   await supabaseAdmin.from("profiles").upsert(
     {

@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
 type SignupBody = {
+  fullName?: string;
   name?: string;
   email?: string;
   password?: string;
   pincode?: string;
   city?: string;
   state?: string;
+  referred_by?: string;
   referralCode?: string;
 };
 
@@ -30,57 +32,59 @@ function getSiteUrl(request: Request) {
   return new URL(request.url).origin;
 }
 
-function getEmailRedirectTo(request: Request) {
-  const siteUrl = getSiteUrl(request);
-  return `${siteUrl}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`;
-}
-
-function logSignupResult(result: {
-  email: string;
-  userId?: string | null;
-  hasSession?: boolean;
-  emailConfirmedAt?: string | null;
-  error?: string | null;
-}) {
-  const [, domain = "unknown"] = result.email.split("@");
-
-  console.info("[auth/signup] Supabase signup response", {
-    emailDomain: domain,
-    userId: result.userId ?? null,
-    hasSession: Boolean(result.hasSession),
-    emailConfirmed: Boolean(result.emailConfirmedAt),
-    error: result.error ?? null,
-  });
+function getEmailDomain(email: string) {
+  return email.split("@")[1] || "unknown";
 }
 
 export async function POST(request: Request) {
   try {
+    console.info("[auth/signup] Request received");
+
     const body = (await request.json().catch(() => null)) as SignupBody | null;
-    const name = String(body?.name ?? "").trim();
+    const fullName = String(body?.fullName ?? body?.name ?? "").trim();
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
     const pincode = String(body?.pincode ?? "").trim();
     const city = String(body?.city ?? "").trim();
     const state = String(body?.state ?? "").trim();
-    const referralCode = String(body?.referralCode ?? "").trim().toUpperCase();
+    const referredBy = String(body?.referred_by ?? body?.referralCode ?? "").trim().toUpperCase();
 
-    if (!name) {
+    console.info("[auth/signup] Request details", {
+      emailDomain: email ? getEmailDomain(email) : "missing",
+      hasPincode: Boolean(pincode),
+      hasCity: Boolean(city),
+      hasState: Boolean(state),
+    });
+
+    if (!fullName) {
+      console.warn("[auth/signup] Validation failed", { field: "fullName" });
       return jsonError("Full name is required.", 400);
     }
 
     if (!isValidEmail(email)) {
+      console.warn("[auth/signup] Validation failed", {
+        field: "email",
+        emailDomain: email ? getEmailDomain(email) : "missing",
+      });
       return jsonError("Please enter a valid email address.", 400);
     }
 
     if (password.length < 6) {
+      console.warn("[auth/signup] Validation failed", { field: "password" });
       return jsonError("Password must be at least 6 characters.", 400);
     }
 
     if (!/^\d{6}$/.test(pincode)) {
+      console.warn("[auth/signup] Validation failed", { field: "pincode", hasPincode: Boolean(pincode) });
       return jsonError("A valid 6 digit PIN code is required.", 400);
     }
 
     if (!city || !state) {
+      console.warn("[auth/signup] Validation failed", {
+        field: "city/state",
+        hasCity: Boolean(city),
+        hasState: Boolean(state),
+      });
       return jsonError("City and state are required. Enter them manually if PIN lookup failed.", 400);
     }
 
@@ -94,23 +98,25 @@ export async function POST(request: Request) {
       email,
       password,
       options: {
-        emailRedirectTo: getEmailRedirectTo(request),
+        emailRedirectTo: `${getSiteUrl(request)}/auth/callback`,
         data: {
-          full_name: name,
+          full_name: fullName,
           pincode,
           city,
           state,
-          referral_code: referralCode || undefined,
+          referred_by: referredBy || undefined,
         },
       },
     });
 
-    logSignupResult({
-      email,
-      userId: data.user?.id,
+    console.info("[auth/signup] Supabase signup response", {
+      emailDomain: getEmailDomain(email),
+      errorCode: error?.code ?? null,
+      errorMessage: error?.message ?? null,
+      hasUser: Boolean(data.user),
+      userId: data.user?.id ?? null,
       hasSession: Boolean(data.session),
-      emailConfirmedAt: data.user?.email_confirmed_at ?? null,
-      error: error?.message ?? null,
+      emailConfirmed: Boolean(data.user?.email_confirmed_at),
     });
 
     if (error) {

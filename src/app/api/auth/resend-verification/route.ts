@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       return jsonError("Verification email resend is not configured on the server.", 500);
     }
 
-    const emailRedirectTo = `${getSiteUrl(request)}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`;
+    const emailRedirectTo = `${getSiteUrl(request)}/auth/callback`;
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
