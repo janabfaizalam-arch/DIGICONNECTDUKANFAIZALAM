@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getServiceBySlug } from "@/lib/portal-data";
+import { getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRealPayableAmount, getRewardRuleForOrder, getWalletMaxUsable, getWalletSnapshot, redeemWalletForApplication } from "@/lib/wallet";
 
@@ -21,6 +23,13 @@ type UploadedPaymentScreenshot = {
   storage_path?: string;
 };
 
+type VerifiedRazorpayPayment = {
+  razorpay_payment_id?: string;
+  razorpay_order_id?: string;
+  razorpay_signature?: string;
+  amount_paise?: number;
+};
+
 type ApplicationPayload = {
   serviceSlug?: string;
   serviceSlugs?: string[];
@@ -34,7 +43,8 @@ type ApplicationPayload = {
   };
   details?: Record<string, string>;
   documents?: UploadedDocument[];
-  paymentScreenshot?: UploadedPaymentScreenshot;
+  paymentScreenshot?: UploadedPaymentScreenshot | null;
+  razorpayPayment?: VerifiedRazorpayPayment | null;
   walletUseAmount?: number;
 };
 
@@ -48,6 +58,24 @@ function required(value: unknown) {
 
 function isItrMsmeCombo(serviceSlugs: string[]) {
   return serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
+}
+
+function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undefined, expectedAmountPaise: number) {
+  const keySecret = getRazorpayKeySecret();
+
+  if (!keySecret || !value?.razorpay_order_id || !value.razorpay_payment_id || !value.razorpay_signature) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", keySecret)
+    .update(`${value.razorpay_order_id}|${value.razorpay_payment_id}`)
+    .digest("hex");
+
+  return Boolean(
+    expectedSignature === value.razorpay_signature &&
+      Number(value.amount_paise ?? 0) === expectedAmountPaise,
+  );
 }
 
 export async function POST(request: Request) {
@@ -122,11 +150,15 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!body.paymentScreenshot?.file_name || !body.paymentScreenshot.file_url) {
-      return jsonError("Please upload payment screenshot.", 400);
+    const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
+    const expectedRazorpayAmountPaise = Math.round(realPaymentAmount * 100);
+    const hasVerifiedRazorpayPayment = realPaymentAmount <= 0 || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
+
+    if (!hasVerifiedRazorpayPayment && (!body.paymentScreenshot?.file_name || !body.paymentScreenshot.file_url)) {
+      return jsonError("Please complete Razorpay checkout or upload payment screenshot.", 400);
     }
 
-    const paymentScreenshot = body.paymentScreenshot;
+    const paymentScreenshot = body.paymentScreenshot ?? null;
 
     const formData = {
       service: resolvedServices.map((service) => service.title).join(", "),
@@ -145,7 +177,6 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
     const applicationsToInsert = resolvedServices.map((service, index) => ({
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
@@ -158,9 +189,9 @@ export async function POST(request: Request) {
         status: "new",
         created_by: user.id,
         source: "online",
-        payment_status: "pending",
-        payment_screenshot_url: paymentScreenshot.file_url,
-        payment_screenshot_path: paymentScreenshot.storage_path ?? null,
+        payment_status: hasVerifiedRazorpayPayment ? "verified" : "pending",
+        payment_screenshot_url: paymentScreenshot?.file_url ?? null,
+        payment_screenshot_path: paymentScreenshot?.storage_path ?? null,
         submitted_by_role: role,
       }));
 
@@ -216,9 +247,10 @@ export async function POST(request: Request) {
         amount: Math.max(0, applicationAmount - applicationWalletAmount),
         wallet_used_amount: applicationWalletAmount,
         real_payment_amount: Math.max(0, applicationAmount - applicationWalletAmount),
-        status: "pending",
-        screenshot_url: paymentScreenshot.file_url,
-        storage_path: paymentScreenshot.storage_path ?? null,
+        status: hasVerifiedRazorpayPayment ? "verified" : "pending",
+        utr_number: body.razorpayPayment?.razorpay_payment_id ?? null,
+        screenshot_url: paymentScreenshot?.file_url ?? null,
+        storage_path: paymentScreenshot?.storage_path ?? null,
       };
     });
 
@@ -253,7 +285,7 @@ export async function POST(request: Request) {
       customerMobile: customer.mobile!.trim(),
       serviceName,
       amount: totalAmount,
-      paymentStatus: "pending",
+      paymentStatus: hasVerifiedRazorpayPayment ? "verified" : "pending",
     });
 
     if (!invoice) {
@@ -285,6 +317,15 @@ export async function POST(request: Request) {
         application_id: applications[0].id,
         title: "DigiWallet used successfully",
         message: `₹${walletUsedAmount.toLocaleString("en-IN")} DigiWallet credit was applied. Please pay ₹${realPaymentAmount.toLocaleString("en-IN")} by UPI.`,
+      });
+    }
+
+    if (hasVerifiedRazorpayPayment && body.razorpayPayment?.razorpay_payment_id) {
+      await supabase.from("notifications").insert({
+        user_id: user.id,
+        application_id: applications[0].id,
+        title: "Payment verified",
+        message: `Razorpay payment ${body.razorpayPayment.razorpay_payment_id} has been verified successfully.`,
       });
     }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgePercent, FileUp, IndianRupee, LoaderCircle, QrCode, Trash2, WalletCards } from "lucide-react";
+import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, LoaderCircle, QrCode, Trash2, WalletCards } from "lucide-react";
 
+import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,6 +33,10 @@ const maxFileSize = 5 * 1024 * 1024;
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
 const requestTimeoutMs = 30_000;
 const comboServiceSlugs = new Set(["itr-filing", "msme-certificate"]);
+
+type VerifiedApplicationPayment = VerifiedRazorpayPayment & {
+  amount_paise: number;
+};
 
 function validateFile(file: File, label: string) {
   if (!allowedFileTypes.includes(file.type)) {
@@ -65,7 +70,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
+  const [razorpayPayment, setRazorpayPayment] = useState<VerifiedApplicationPayment | null>(null);
   const [walletUseAmount, setWalletUseAmount] = useState(0);
+  const [applicantName, setApplicantName] = useState("");
+  const [applicantMobile, setApplicantMobile] = useState("");
+  const [applicantEmail, setApplicantEmail] = useState("");
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
     const seen = new Set<string>();
@@ -84,9 +93,15 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const wallet = useWallet(totalAmount);
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
+  const payableAmountPaise = Math.round(realPayableAmount * 100);
   const upiId = "7007595931@upi";
   const qrData = `upi://pay?pa=${upiId}&pn=DigiConnect%20Dukan&am=${realPayableAmount}&cu=INR`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+  const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
+
+  useEffect(() => {
+    setRazorpayPayment(null);
+  }, [payableAmountPaise]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -113,8 +128,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       }
     }
 
-    if (!paymentScreenshot) {
-      toastError("Please upload payment screenshot.");
+    if (realPayableAmount > 0 && !paymentScreenshot && !razorpayPayment) {
+      toastError("Please complete Razorpay checkout or upload payment screenshot.");
       return;
     }
 
@@ -123,11 +138,18 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       return;
     }
 
-    const paymentValidationError = validateFile(paymentScreenshot, "Payment screenshot");
-
-    if (paymentValidationError) {
-      toastError(paymentValidationError);
+    if (razorpayPayment && razorpayPayment.amount_paise !== payableAmountPaise) {
+      toastError("Payment amount changed. Please complete Razorpay checkout again.");
       return;
+    }
+
+    if (paymentScreenshot) {
+      const paymentValidationError = validateFile(paymentScreenshot, "Payment screenshot");
+
+      if (paymentValidationError) {
+        toastError(paymentValidationError);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -171,28 +193,33 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         });
       }
 
-      setProgressText("Uploading payment proof...");
+      let paymentScreenshotMetadata = null;
 
-      const screenshotPath = `${user.id}/shared/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
-      const { error: screenshotUploadError } = await withTimeout(
-        supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
-          contentType: paymentScreenshot.type,
-          upsert: false,
-        }),
-        "Payment screenshot upload is taking longer than 30 seconds.",
-      );
+      if (paymentScreenshot) {
+        setProgressText("Uploading payment proof...");
 
-      if (screenshotUploadError) {
-        throw new Error(screenshotUploadError.message);
+        const screenshotPath = `${user.id}/shared/payments/${Date.now()}-${cleanFileName(paymentScreenshot.name)}`;
+        const { error: screenshotUploadError } = await withTimeout(
+          supabase.storage.from("documents").upload(screenshotPath, paymentScreenshot, {
+            contentType: paymentScreenshot.type,
+            upsert: false,
+          }),
+          "Payment screenshot upload is taking longer than 30 seconds.",
+        );
+
+        if (screenshotUploadError) {
+          throw new Error(screenshotUploadError.message);
+        }
+
+        const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
+        paymentScreenshotMetadata = {
+          file_name: paymentScreenshot.name,
+          file_url: screenshotPublicUrl.publicUrl,
+          file_type: paymentScreenshot.type,
+          storage_path: screenshotPath,
+        };
       }
 
-      const { data: screenshotPublicUrl } = supabase.storage.from("documents").getPublicUrl(screenshotPath);
-      const paymentScreenshotMetadata = {
-        file_name: paymentScreenshot.name,
-        file_url: screenshotPublicUrl.publicUrl,
-        file_type: paymentScreenshot.type,
-        storage_path: screenshotPath,
-      };
       setProgressText("Saving application...");
 
       const controller = new AbortController();
@@ -217,6 +244,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           },
           documents: uploadedDocuments,
           paymentScreenshot: paymentScreenshotMetadata,
+          razorpayPayment,
           walletUseAmount: clampedWalletUseAmount,
         }),
         signal: controller.signal,
@@ -286,7 +314,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         <div className="mt-5">
           <p className="font-bold text-slate-950">Applicant Details</p>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" />
+          <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
           <Input
             name="mobile"
             placeholder="Mobile Number"
@@ -295,8 +323,10 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             pattern="[0-9]{10}"
             required
             className="h-12 text-sm"
+            value={applicantMobile}
+            onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
           />
-          <Input name="email" placeholder="Email (optional)" aria-label="Email (optional)" type="email" className="h-12 text-sm" />
+          <Input name="email" placeholder="Email (optional)" aria-label="Email (optional)" type="email" className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
           <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" />
           <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" />
           </div>
@@ -377,6 +407,48 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           </div>
         </Card>
 
+        {realPayableAmount > 0 ? (
+          <Card className="rounded-2xl border-orange-100 bg-white/95 p-4 md:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-slate-950">Razorpay Checkout</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  Pay securely by card, UPI, net banking, or wallet. Verified payments do not need a screenshot.
+                </p>
+                <div className="mt-4">
+                  <RazorpayCheckoutButton
+                    amountPaise={payableAmountPaise}
+                    receipt={paymentReceipt}
+                    customer={{
+                      name: applicantName,
+                      email: applicantEmail,
+                      mobile: applicantMobile,
+                    }}
+                    description={selectedServices.map((item) => item.title).join(", ")}
+                    disabled={isSubmitting}
+                    onVerified={(payment) => {
+                      setPaymentScreenshot(null);
+                      setRazorpayPayment({
+                        ...payment,
+                        amount_paise: payableAmountPaise,
+                      });
+                    }}
+                  />
+                </div>
+                {razorpayPayment ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Payment verified: {razorpayPayment.razorpay_payment_id}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
         <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 md:p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
@@ -434,7 +506,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             <Input
               name="paymentScreenshot"
               type="file"
-              required
+              required={realPayableAmount > 0 && !razorpayPayment}
               accept=".pdf,.jpg,.jpeg,.png"
               className="mt-3"
               onChange={(event) => {
@@ -459,6 +531,9 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             />
           </label>
           {paymentScreenshot ? <p className="mt-2 text-xs font-bold text-orange-700">{paymentScreenshot.name}</p> : null}
+          {razorpayPayment ? (
+            <p className="mt-2 text-xs font-bold text-emerald-700">Razorpay payment verified. Screenshot upload is optional.</p>
+          ) : null}
         </Card>
 
         <Button type="submit" size="lg" disabled={isSubmitting} className="sticky bottom-3 mb-4 h-14 w-full rounded-2xl shadow-lg md:static md:mb-0">
