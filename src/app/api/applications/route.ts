@@ -4,7 +4,7 @@ import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth"
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getServiceBySlug } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getRealPayableAmount, getWalletMaxUsable, getWalletSnapshot, redeemWalletForApplication } from "@/lib/wallet";
+import { getRealPayableAmount, getRewardRuleForOrder, getWalletMaxUsable, getWalletSnapshot, redeemWalletForApplication } from "@/lib/wallet";
 
 type UploadedDocument = {
   document_type: string;
@@ -46,6 +46,10 @@ function required(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isItrMsmeCombo(serviceSlugs: string[]) {
+  return serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
@@ -79,12 +83,15 @@ export async function POST(request: Request) {
     }
 
     const resolvedServices = services.filter((service): service is NonNullable<typeof service> => Boolean(service));
-    const orderAmount = resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
+    const comboOrder = isItrMsmeCombo(resolvedServices.map((service) => service.slug));
+    const orderAmount = comboOrder ? 699 : resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
     const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
+    const rewardRule = await getRewardRuleForOrder(resolvedServices.map((service) => service.slug));
+    const maxRedemptionPercent = Number(rewardRule?.max_redemption_percent ?? 50);
 
     if (requestedWalletAmount > 0) {
       const snapshot = await getWalletSnapshot(user.id, 1);
-      const maxWalletAllowed = getWalletMaxUsable(orderAmount, Number(snapshot.wallet?.balance ?? 0));
+      const maxWalletAllowed = getWalletMaxUsable(orderAmount, Number(snapshot.wallet?.balance_points ?? snapshot.wallet?.balance ?? 0), maxRedemptionPercent);
 
       if (requestedWalletAmount > maxWalletAllowed) {
         return jsonError(`DigiWallet can be used up to ₹${maxWalletAllowed.toLocaleString("en-IN")} for this order.`, 400);
@@ -128,6 +135,7 @@ export async function POST(request: Request) {
       email: customer.email?.trim() ?? "",
       city: customer.city?.trim() ?? "",
       message: customer.message?.trim() ?? "",
+      service_slugs: resolvedServices.map((service) => service.slug),
       ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
       documents: body.documents,
     };
@@ -138,14 +146,14 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
-    const applicationsToInsert = resolvedServices.map((service) => ({
+    const applicationsToInsert = resolvedServices.map((service, index) => ({
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
         service_slug: service.slug,
         service_name: service.title,
-        amount: service.amount,
+        amount: comboOrder ? (index === 0 ? orderAmount : 0) : service.amount,
         wallet_used_amount: 0,
-        real_payment_amount: service.amount,
+        real_payment_amount: comboOrder ? (index === 0 ? orderAmount : 0) : service.amount,
         form_data: formData,
         status: "new",
         created_by: user.id,
@@ -192,6 +200,7 @@ export async function POST(request: Request) {
         serviceName: applications.map((application) => application.service_name).join(", "),
         orderAmount,
         requestedAmount: requestedWalletAmount,
+        maxRedemptionPercent,
       });
     }
 

@@ -14,6 +14,7 @@ import {
   Phone,
   Plus,
   ReceiptText,
+  Share2,
   RotateCcw,
   ShieldCheck,
   Sparkles,
@@ -32,6 +33,7 @@ import { formatCurrency } from "@/lib/portal-data";
 import { contactDetails } from "@/lib/constants";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import type { WalletSnapshot } from "@/lib/wallet";
+import { getRewardDirection } from "@/lib/wallet";
 
 type CustomerDashboardProps = {
   applications: Application[];
@@ -87,11 +89,12 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
   const completed = applications.filter((application) => application.status === "completed").length;
   const pending = applications.length - completed;
   const firstInvoice = applications.flatMap((application) => application.invoices ?? [])[0];
-  const walletBalance = Number(walletSnapshot.wallet?.balance ?? 0);
+  const walletBalance = Number(walletSnapshot.wallet?.balance_points ?? walletSnapshot.wallet?.balance ?? 0);
   const cashbackEarned = Number(walletSnapshot.cashbackEarned ?? 0);
   const cashbackUsed = Number(walletSnapshot.cashbackUsed ?? 0);
   const expiringSoonAmount = Number(walletSnapshot.expiringSoonAmount ?? 0);
   const usagePercent = cashbackEarned > 0 ? Math.min(100, Math.round((cashbackUsed / cashbackEarned) * 100)) : 0;
+  const referral = walletSnapshot.referralSummary;
   function openServices() {
     setActionMessage(null);
     setServicesOpen(true);
@@ -115,6 +118,15 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
 
     setActionMessage("Invoice will appear once your application is processed.");
     scrollToApplications();
+  }
+
+  async function copyReferralLink() {
+    if (!referral?.link) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(referral.link);
+    setActionMessage("Referral link copied.");
   }
 
   return (
@@ -250,20 +262,85 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                 walletSnapshot.transactions.slice(0, 5).map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-slate-950">{transaction.service_name || transaction.transaction_type.replace(/_/g, " ")}</p>
+                      <p className="truncate text-sm font-bold text-slate-950">{transaction.description || transaction.type.replace(/_/g, " ")}</p>
                       <p className="text-xs text-slate-500">{formatDate(transaction.created_at)} • {transaction.status}</p>
                     </div>
-                    <p className={`shrink-0 text-sm font-extrabold ${transaction.direction === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
-                      {transaction.direction === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
+                    <p className={`shrink-0 text-sm font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
+                      {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Cashback credits will appear here after a service is completed.</p>
+                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Reward credits will appear here after email verification or verified payments.</p>
               )}
             </div>
           </Card>
         </section>
+
+        {referral ? (
+          <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <Card className="rounded-[1.5rem] p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Referral Rewards</p>
+                  <h2 className="mt-2 text-2xl font-bold text-slate-950">{referral.code || "Code generating"}</h2>
+                </div>
+                <Gift className="h-6 w-6 text-orange-500" />
+              </div>
+              <p className="mt-3 break-all rounded-2xl bg-slate-50 p-3 font-mono text-xs font-bold text-slate-700">
+                {referral.link || "Your referral link will appear after profile sync."}
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button type="button" onClick={copyReferralLink} disabled={!referral.link} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white disabled:opacity-50">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Copy Link
+                </button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Join DigiConnect Dukan using my referral link: ${referral.link}`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white"
+                >
+                  <Share2 className="h-4 w-4" />
+                  WhatsApp Share
+                </a>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Total</p>
+                  <p className="text-xl font-bold text-slate-950">{referral.total}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Pending</p>
+                  <p className="text-xl font-bold text-orange-600">{referral.pending}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Earned</p>
+                  <p className="text-xl font-bold text-emerald-600">{formatCurrency(referral.rewardEarned)}</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="rounded-[1.5rem] p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Referral History</p>
+              <div className="mt-4 space-y-3">
+                {referral.referrals.length ? (
+                  referral.referrals.slice(0, 6).map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
+                      <div>
+                        <p className="font-mono text-xs font-bold text-slate-500">{item.referred_user_id.slice(0, 8)}</p>
+                        <p className="text-sm font-bold text-slate-950">{item.status.replace(/_/g, " ")}</p>
+                      </div>
+                      <p className="text-sm font-extrabold text-emerald-700">{formatCurrency(Number(item.reward_amount))}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Referral rewards appear after your friend completes their first verified paid order.</p>
+                )}
+              </div>
+            </Card>
+          </section>
+        ) : null}
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           {[

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, FileClock, GalleryHorizontalEnd, Inbox, IndianRupee, ListChecks, ReceiptText, UsersRound } from "lucide-react";
+import { BadgePercent, ClipboardList, FileClock, GalleryHorizontalEnd, Gift, Inbox, IndianRupee, ListChecks, ReceiptText, UsersRound, WalletCards } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminQuickActionCard, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
@@ -42,6 +42,14 @@ export default async function AdminPage() {
   let todayApplicationCount = 0;
   let paymentPendingCount = 0;
   let revenueEstimate = 0;
+  let totalReferrals = 0;
+  let pendingReferrals = 0;
+  let completedReferrals = 0;
+  let rewardIssued = 0;
+  let cashbackIssued = 0;
+  let expiredRewards = 0;
+  let walletLiability = 0;
+  let fraudFlags = 0;
   let staffWorkload: { name: string; count: number }[] = [];
   let topServices: { service: string; count: number }[] = [];
 
@@ -56,6 +64,11 @@ export default async function AdminPage() {
       { count: totalCompletedApplications },
       { data: analyticsApplications },
       { data: staffData },
+      { data: rewardData },
+      { data: walletData },
+      { count: referralCount },
+      { count: pendingReferralCount },
+      { count: completedReferralCount },
     ] = await Promise.all([
       supabase.from("leads").select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at").order("created_at", { ascending: false }).limit(8),
       supabase.from("applications").select("id, service_name, status, payment_status, created_at, form_data").order("created_at", { ascending: false }).limit(8),
@@ -66,6 +79,11 @@ export default async function AdminPage() {
       supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
       supabase.from("applications").select("service_name, status, payment_status, amount, assigned_staff_id, created_at").order("created_at", { ascending: false }).limit(1000),
       supabase.from("profiles").select("id, full_name, email").eq("role", "staff"),
+      supabase.from("reward_transactions").select("type, amount, remaining_amount, status").limit(5000),
+      supabase.from("wallets").select("balance_points, suspicious").limit(5000),
+      supabase.from("referrals").select("id", { count: "exact", head: true }),
+      supabase.from("referrals").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("referrals").select("id", { count: "exact", head: true }).eq("status", "completed"),
     ]);
 
     leads = (leadData ?? []) as Lead[];
@@ -83,6 +101,20 @@ export default async function AdminPage() {
     revenueEstimate = (analyticsApplications ?? [])
       .filter((application) => application.status === "completed" || application.payment_status === "verified")
       .reduce((total, application) => total + Number(application.amount ?? 0), 0);
+    totalReferrals = referralCount ?? 0;
+    pendingReferrals = pendingReferralCount ?? 0;
+    completedReferrals = completedReferralCount ?? 0;
+    rewardIssued = (rewardData ?? [])
+      .filter((transaction) => ["signup_bonus", "referral_bonus", "cashback", "admin_adjustment"].includes(String(transaction.type)))
+      .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
+    cashbackIssued = (rewardData ?? [])
+      .filter((transaction) => transaction.type === "cashback")
+      .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
+    expiredRewards = (rewardData ?? [])
+      .filter((transaction) => transaction.type === "expiry")
+      .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
+    walletLiability = (walletData ?? []).reduce((total, wallet) => total + Number(wallet.balance_points ?? 0), 0);
+    fraudFlags = (walletData ?? []).filter((wallet) => wallet.suspicious).length;
     const staffNames = new Map((staffData ?? []).map((staff) => [staff.id, staff.full_name || staff.email]));
     staffWorkload = Array.from(
       (analyticsApplications ?? []).reduce((grouped, application) => {
@@ -129,6 +161,19 @@ export default async function AdminPage() {
         <AdminStatCard title="Today Applications" value={todayApplicationCount} icon={ClipboardList} tone="blue" />
         <AdminStatCard title="Revenue Estimate" value={`₹${revenueEstimate.toLocaleString("en-IN")}`} icon={IndianRupee} tone="green" />
         <AdminStatCard title="Payment Pending" value={paymentPendingCount} icon={ReceiptText} tone="orange" />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard title="Total Referrals" value={totalReferrals} icon={Gift} tone="blue" />
+        <AdminStatCard title="Pending / Completed" value={`${pendingReferrals} / ${completedReferrals}`} icon={UsersRound} tone="orange" />
+        <AdminStatCard title="Reward Issued" value={`Rs ${rewardIssued.toLocaleString("en-IN")}`} icon={BadgePercent} tone="green" />
+        <AdminStatCard title="Wallet Liability" value={`Rs ${walletLiability.toLocaleString("en-IN")}`} icon={WalletCards} tone="slate" />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <AdminStatCard title="Cashback Issued" value={`Rs ${cashbackIssued.toLocaleString("en-IN")}`} icon={BadgePercent} tone="orange" />
+        <AdminStatCard title="Expired Rewards" value={`Rs ${expiredRewards.toLocaleString("en-IN")}`} icon={FileClock} tone="slate" />
+        <AdminStatCard title="Fraud Flags" value={fraudFlags} icon={UsersRound} tone="orange" />
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">

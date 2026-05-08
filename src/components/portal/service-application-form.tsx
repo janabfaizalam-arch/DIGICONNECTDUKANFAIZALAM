@@ -31,6 +31,7 @@ type ApplicationFormService = {
 const maxFileSize = 5 * 1024 * 1024;
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
 const requestTimeoutMs = 30_000;
+const comboServiceSlugs = new Set(["itr-filing", "msme-certificate"]);
 
 function validateFile(file: File, label: string) {
   if (!allowedFileTypes.includes(file.type)) {
@@ -78,7 +79,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       return true;
     });
   }, [service, services]);
-  const totalAmount = selectedServices.reduce((total, item) => total + item.amount, 0);
+  const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
+  const totalAmount = isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);

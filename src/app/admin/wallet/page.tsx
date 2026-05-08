@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 import { BadgePercent, Gift, Repeat2, WalletCards } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
-import { AdminWalletAdjustmentForm } from "@/components/admin/admin-wallet-adjustment-form";
+import { AdminWalletAdjustmentForm, AdminWalletStatusForm } from "@/components/admin/admin-wallet-adjustment-form";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import type { WalletTransaction } from "@/lib/wallet";
+import type { RewardTransaction } from "@/lib/wallet";
+import { getRewardDirection } from "@/lib/wallet";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function AdminWalletPage() {
   if (!isAdminRole(role)) redirect("/dashboard");
 
   const supabase = getSupabaseAdmin();
-  let transactions: WalletTransaction[] = [];
+  let transactions: RewardTransaction[] = [];
   let customers: { id: string; full_name: string | null; email: string | null }[] = [];
   let totalIssued = 0;
   let totalRedeemed = 0;
@@ -33,7 +34,7 @@ export default async function AdminWalletPage() {
   if (supabase) {
     const [{ data: transactionData }, { data: customerData }, { data: applicationData }] = await Promise.all([
       supabase
-        .from("wallet_transactions")
+        .from("reward_transactions")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100),
@@ -41,13 +42,13 @@ export default async function AdminWalletPage() {
       supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(2000),
     ]);
 
-    transactions = (transactionData ?? []) as WalletTransaction[];
+    transactions = (transactionData ?? []) as RewardTransaction[];
     customers = (customerData ?? []) as typeof customers;
     totalIssued = transactions
-      .filter((transaction) => transaction.direction === "credit" && transaction.transaction_type !== "refund_adjustment")
+      .filter((transaction) => getRewardDirection(transaction.type) === "credit" && transaction.type !== "expiry")
       .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
     totalRedeemed = transactions
-      .filter((transaction) => transaction.direction === "debit")
+      .filter((transaction) => transaction.type === "redemption")
       .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
 
     const userOrderCounts = new Map<string, number>();
@@ -89,6 +90,13 @@ export default async function AdminWalletPage() {
           <div className="mt-4">
             <AdminWalletAdjustmentForm customers={customers} />
           </div>
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <h3 className="font-bold text-slate-950">Fraud Controls</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">Freeze wallet usage or mark an account suspicious.</p>
+            <div className="mt-4">
+              <AdminWalletStatusForm customers={customers} />
+            </div>
+          </div>
         </Card>
 
         <Card className="rounded-2xl p-5">
@@ -113,10 +121,10 @@ export default async function AdminWalletPage() {
                 {transactions.map((transaction) => (
                   <tr key={transaction.id}>
                     <td className="py-3 font-medium text-slate-700">{formatDate(transaction.created_at)}</td>
-                    <td className="py-3 text-slate-700">{transaction.service_name || "DigiWallet"}</td>
-                    <td className="py-3 text-slate-600">{transaction.transaction_type.replace(/_/g, " ")}</td>
-                    <td className={`py-3 font-extrabold ${transaction.direction === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
-                      {transaction.direction === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
+                    <td className="py-3 text-slate-700">{transaction.description || "Reward Wallet"}</td>
+                    <td className="py-3 text-slate-600">{transaction.type.replace(/_/g, " ")}</td>
+                    <td className={`py-3 font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
+                      {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
                     </td>
                     <td className="py-3 font-bold text-slate-600">{transaction.status}</td>
                   </tr>

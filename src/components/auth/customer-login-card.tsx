@@ -1,11 +1,10 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MapPin, UserRound } from "lucide-react";
 
-import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { createClient } from "@/lib/supabase/browser";
 
 type EmailMode = "login" | "signup";
 type FormMessage = { type: "success" | "error"; text: string };
+type PinLookup = { ok: boolean; city?: string; state?: string; message?: string };
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -48,51 +48,92 @@ function getCurrentCustomerRedirect() {
 }
 
 export function CustomerLoginCard() {
+  return <CustomerLoginCardInner />;
+}
+
+export function CustomerSignupCard({ referralCode = "" }: { referralCode?: string }) {
+  return <CustomerLoginCardInner initialMode="signup" initialReferralCode={referralCode} signupOnly />;
+}
+
+function CustomerLoginCardInner({
+  initialMode = "login",
+  initialReferralCode = "",
+  signupOnly = false,
+}: {
+  initialMode?: EmailMode;
+  initialReferralCode?: string;
+  signupOnly?: boolean;
+}) {
   const { error: toastError } = useToast();
-  const [isGooglePending, setIsGooglePending] = useState(false);
+  const [isGooglePending] = useState(false);
   const [isEmailPending, setIsEmailPending] = useState(false);
-  const [emailMode, setEmailMode] = useState<EmailMode>("login");
+  const [emailMode, setEmailMode] = useState<EmailMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [formMessage, setFormMessage] = useState<FormMessage | null>(null);
+  const [pincode, setPincode] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pinMessage, setPinMessage] = useState("");
+  const [pinLookupPending, setPinLookupPending] = useState(false);
+  const [manualLocation, setManualLocation] = useState(false);
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
 
-  async function handleGoogleLogin() {
-    setIsGooglePending(true);
-
-    try {
-      const supabase = createClient();
-
-      if (!supabase) {
-        throw new Error("Supabase environment variables are missing.");
-      }
-
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-      const nextPath = getCurrentCustomerRedirect();
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "select_account",
-          },
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.url) {
-        window.location.assign(data.url);
-        return;
-      }
-
-      throw new Error("Google login URL could not be generated. Please try again.");
-    } catch (error) {
-      toastError(error instanceof Error ? error.message : "Google login failed. Please try again.");
-      setIsGooglePending(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || initialReferralCode) {
+      return;
     }
-  }
+
+    const params = new URLSearchParams(window.location.search);
+    setReferralCode(String(params.get("ref") ?? "").trim().toUpperCase());
+  }, [initialReferralCode]);
+
+  useEffect(() => {
+    if (emailMode !== "signup" || pincode.length !== 6) {
+      return;
+    }
+
+    let active = true;
+
+    async function lookupPin() {
+      setPinLookupPending(true);
+      setPinMessage("");
+
+      try {
+        const response = await fetch(`/api/pincode?pincode=${encodeURIComponent(pincode)}`, { cache: "no-store" });
+        const result = (await response.json()) as PinLookup;
+
+        if (!active) {
+          return;
+        }
+
+        if (!response.ok || !result.ok || !result.city || !result.state) {
+          setManualLocation(true);
+          setPinMessage(result.message ?? "Could not auto fetch city/state. Please enter them manually.");
+          return;
+        }
+
+        setCity(result.city);
+        setState(result.state);
+        setManualLocation(false);
+        setPinMessage("City and state fetched from PIN code.");
+      } catch {
+        if (active) {
+          setManualLocation(true);
+          setPinMessage("Could not auto fetch city/state. Please enter them manually.");
+        }
+      } finally {
+        if (active) {
+          setPinLookupPending(false);
+        }
+      }
+    }
+
+    lookupPin();
+
+    return () => {
+      active = false;
+    };
+  }, [emailMode, pincode]);
 
   async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,9 +143,22 @@ export function CustomerLoginCard() {
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
+    const formPincode = String(formData.get("pincode") ?? "").trim();
+    const formCity = String(formData.get("city") ?? city).trim();
+    const formState = String(formData.get("state") ?? state).trim();
 
     if (emailMode === "signup" && !name) {
       setFormMessage({ type: "error", text: "Full name is required." });
+      return;
+    }
+
+    if (emailMode === "signup" && !/^\d{6}$/.test(formPincode)) {
+      setFormMessage({ type: "error", text: "A valid 6 digit PIN code is required." });
+      return;
+    }
+
+    if (emailMode === "signup" && (!formCity || !formState)) {
+      setFormMessage({ type: "error", text: "City and state are required. Enter them manually if PIN lookup failed." });
       return;
     }
 
@@ -146,7 +200,14 @@ export function CustomerLoginCard() {
         email,
         password,
         options: {
-          data: { full_name: name },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`,
+          data: {
+            full_name: name,
+            pincode: formPincode,
+            city: formCity,
+            state: formState,
+            referral_code: referralCode || undefined,
+          },
         },
       });
 
@@ -159,7 +220,7 @@ export function CustomerLoginCard() {
         return;
       }
 
-      setFormMessage({ type: "success", text: "Please check your email to confirm your account." });
+      setFormMessage({ type: "success", text: "Please check your email to verify your account. Your signup reward is credited after verification." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Email access failed. Please try again.";
       setFormMessage({ type: "error", text: message });
@@ -170,6 +231,10 @@ export function CustomerLoginCard() {
   }
 
   function toggleEmailMode() {
+    if (signupOnly) {
+      return;
+    }
+
     setEmailMode((current) => (current === "login" ? "signup" : "login"));
     setFormMessage(null);
     setShowPassword(false);
@@ -194,24 +259,7 @@ export function CustomerLoginCard() {
         Apply services, track applications and manage your documents securely.
       </p>
 
-      <Button
-        type="button"
-        size="lg"
-        onClick={handleGoogleLogin}
-        disabled={isGooglePending}
-        className="mt-7 h-[3.25rem] w-full rounded-2xl bg-white/88 text-base font-bold text-slate-900 shadow-[0_18px_42px_rgba(15,23,42,0.12)] ring-1 ring-white/45 transition hover:bg-white active:scale-[0.98]"
-      >
-        {isGooglePending ? <LoaderCircle className="h-5 w-5 animate-spin text-[var(--primary)]" /> : <GoogleIcon />}
-        Continue with Google
-      </Button>
-
-      <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
-        or continue with email
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-
-      <form onSubmit={handleEmailSubmit} className="grid gap-3 text-left">
+      <form onSubmit={handleEmailSubmit} className="mt-7 grid gap-3 text-left">
         {emailMode === "signup" ? (
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Full Name</span>
@@ -228,6 +276,72 @@ export function CustomerLoginCard() {
               />
             </div>
           </label>
+        ) : null}
+
+        {emailMode === "signup" ? (
+          <>
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-700">Pin Code</span>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  name="pincode"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                  placeholder="Enter 6 digit PIN code"
+                  value={pincode}
+                  onChange={(event) => {
+                    setPincode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                    setCity("");
+                    setState("");
+                  }}
+                  disabled={isEmailPending}
+                  className="h-[3.15rem] bg-white/74 pl-11 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+                />
+              </div>
+              {pinMessage ? (
+                <span className={`text-xs font-bold ${manualLocation ? "text-orange-700" : "text-emerald-700"}`}>
+                  {pinLookupPending ? "Checking PIN code..." : pinMessage}
+                </span>
+              ) : null}
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">City</span>
+                <Input
+                  name="city"
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
+                  readOnly={!manualLocation && Boolean(city)}
+                  required
+                  placeholder="City"
+                  disabled={isEmailPending}
+                  className="h-[3.15rem] bg-white/74 text-base"
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">State</span>
+                <Input
+                  name="state"
+                  value={state}
+                  onChange={(event) => setState(event.target.value)}
+                  readOnly={!manualLocation && Boolean(state)}
+                  required
+                  placeholder="State"
+                  disabled={isEmailPending}
+                  className="h-[3.15rem] bg-white/74 text-base"
+                />
+              </label>
+            </div>
+
+            {referralCode ? (
+              <input type="hidden" name="referralCode" value={referralCode} />
+            ) : null}
+          </>
         ) : null}
 
         <label className="grid gap-2">
@@ -292,13 +406,13 @@ export function CustomerLoginCard() {
         </Button>
       </form>
 
-      <button
+      {!signupOnly ? <button
         type="button"
         onClick={toggleEmailMode}
         className="mt-4 text-sm font-bold text-[var(--primary)] transition hover:text-blue-800"
       >
         {emailMode === "signup" ? "Already have an account? Login" : "New customer? Create account"}
-      </button>
+      </button> : null}
 
       <div className="mt-6 rounded-2xl border border-white/15 bg-white/25 p-3 text-center backdrop-blur-md">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Team access</p>

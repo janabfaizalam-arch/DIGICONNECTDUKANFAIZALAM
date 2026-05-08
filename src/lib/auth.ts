@@ -223,14 +223,22 @@ export async function syncUserProfile(user: User) {
   const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
   const role = adminRole ?? existingProfile?.role ?? existingUser?.role ?? "customer";
+  const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim();
+  const pincode = String(user.user_metadata.pincode ?? "").trim();
+  const city = String(user.user_metadata.city ?? "").trim();
+  const state = String(user.user_metadata.state ?? "").trim();
+  const referralCode = String(user.user_metadata.referral_code ?? user.user_metadata.ref ?? "").trim().toUpperCase();
 
   await supabaseAdmin.from("profiles").upsert(
     {
       id: user.id,
-      full_name: user.user_metadata.full_name ?? user.user_metadata.name ?? "",
+      full_name: fullName,
       email: user.email ?? "",
       avatar_url: user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "",
       role,
+      pincode,
+      city,
+      state,
       updated_at: new Date().toISOString(),
     },
     {
@@ -241,7 +249,7 @@ export async function syncUserProfile(user: User) {
   await supabaseAdmin.from("users").upsert(
     {
       id: user.id,
-      full_name: user.user_metadata.full_name ?? user.user_metadata.name ?? "",
+      full_name: fullName,
       email: user.email ?? "",
       avatar_url: user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "",
       role,
@@ -253,9 +261,37 @@ export async function syncUserProfile(user: User) {
   );
 
   if (role === "customer") {
-    const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim() || "Customer";
+    const customerName = fullName || "Customer";
     const mobile = String(user.phone ?? user.user_metadata.mobile ?? "").trim();
     const emailValue = user.email ?? "";
+    await supabaseAdmin.from("customer_profiles").upsert(
+      {
+        id: user.id,
+        full_name: customerName,
+        email: emailValue,
+        pincode,
+        city,
+        state,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
+
+    await supabaseAdmin.rpc("ensure_customer_reward_profile", {
+      p_user_id: user.id,
+      p_full_name: customerName,
+      p_email: emailValue,
+      p_pincode: pincode,
+      p_city: city,
+      p_state: state,
+      p_referral_code: referralCode || null,
+      p_ip_address: null,
+    });
+
+    if (user.email_confirmed_at) {
+      await supabaseAdmin.rpc("issue_signup_bonus", { p_user_id: user.id });
+    }
+
     const { data: existingCustomer } = await supabaseAdmin
       .from("customers")
       .select("id")
@@ -266,7 +302,7 @@ export async function syncUserProfile(user: User) {
       await supabaseAdmin
         .from("customers")
         .update({
-          full_name: fullName,
+          full_name: customerName,
           email: emailValue,
           mobile: mobile || emailValue || "not-provided",
           source: "online",
@@ -276,7 +312,7 @@ export async function syncUserProfile(user: User) {
     } else {
       await supabaseAdmin.from("customers").insert({
         user_id: user.id,
-        full_name: fullName,
+        full_name: customerName,
         email: emailValue,
         mobile: mobile || emailValue || "not-provided",
         source: "online",

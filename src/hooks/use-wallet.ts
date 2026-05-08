@@ -6,18 +6,18 @@ import { getWalletMaxUsable } from "@/lib/wallet";
 
 type WalletApiResponse = {
   wallet: {
-    balance: number;
+    balance?: number;
+    balance_points?: number;
     total_cashback_earned: number;
     total_cashback_used: number;
     nearest_expiry_at: string | null;
   } | null;
   transactions: {
     id: string;
-    transaction_type: string;
-    direction: "credit" | "debit";
+    type?: string;
     amount: number;
     remaining_amount: number;
-    service_name: string | null;
+    description?: string | null;
     status: string;
     expires_at: string | null;
     created_at: string;
@@ -65,7 +65,7 @@ export function useWallet(orderAmount = 0) {
     };
   }, []);
 
-  const balance = Number(data?.wallet?.balance ?? 0);
+  const balance = Number(data?.wallet?.balance_points ?? data?.wallet?.balance ?? 0);
   const maxUsable = useMemo(() => getWalletMaxUsable(orderAmount, balance), [balance, orderAmount]);
 
   return {

@@ -84,3 +84,67 @@ export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOp
     </form>
   );
 }
+
+export function AdminWalletStatusForm({ customers }: { customers: CustomerOption[] }) {
+  const [isPending, startTransition] = useTransition();
+  const { success, error } = useToast();
+  const router = useRouter();
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: String(formData.get("userId") ?? ""),
+            frozen: formData.get("frozen") === "on",
+            suspicious: formData.get("suspicious") === "on",
+          }),
+        });
+        const result = (await response.json()) as { message: string };
+
+        if (!response.ok) {
+          throw new Error(result.message);
+        }
+
+        success(result.message);
+        router.refresh();
+      } catch (caught) {
+        error(caught instanceof Error ? caught.message : "Wallet status update failed.");
+      }
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-3">
+      <Select name="userId" required>
+        <SelectTrigger aria-label="Customer">
+          <SelectValue placeholder="Select customer" />
+        </SelectTrigger>
+        <SelectContent>
+          {customers.map((customer) => (
+            <SelectItem key={customer.id} value={customer.id}>
+              {customer.full_name || customer.email || customer.id}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+        <input name="frozen" type="checkbox" className="h-4 w-4 accent-blue-700" />
+        Freeze wallet
+      </label>
+      <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+        <input name="suspicious" type="checkbox" className="h-4 w-4 accent-orange-600" />
+        Mark suspicious
+      </label>
+      <Button type="submit" disabled={isPending}>
+        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+        Update Status
+      </Button>
+    </form>
+  );
+}
