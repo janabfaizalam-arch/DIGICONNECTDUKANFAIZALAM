@@ -169,10 +169,10 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
-      className="relative px-3 pb-5 pt-3 outline-none sm:px-5 md:pb-8 lg:px-8"
+      className="relative px-3 pb-4 pt-3 outline-none sm:px-5 md:pb-8 lg:px-8"
     >
       <div className="mx-auto w-full max-w-[1440px]">
-        <div className="relative overflow-hidden rounded-xl bg-white shadow-[0_20px_60px_rgba(15,23,42,0.14)] ring-1 ring-blue-100 md:rounded-3xl">
+        <div className="relative overflow-hidden rounded-xl bg-white/88 p-2 shadow-[0_16px_44px_rgba(15,23,42,0.1)] ring-1 ring-blue-100 md:rounded-3xl md:p-3">
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex touch-pan-y">
               {slides.map((slide, index) => {
@@ -181,7 +181,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                 return (
                   <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
                     <div className="relative bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_46%,#fff7ed_100%)]">
-                      <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-[radial-gradient(circle_at_18%_12%,rgba(37,99,235,0.1),transparent_30%),radial-gradient(circle_at_86%_78%,rgba(249,115,22,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,255,0.96))] sm:aspect-[8/3] md:rounded-3xl">
+                      <div className="relative aspect-[1/1] max-h-[58vh] overflow-hidden rounded-lg bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,255,0.96))] sm:aspect-[8/3] sm:max-h-none md:rounded-[1.35rem]">
                       <Image
                         src={slide.mobile_image_url || slide.image_url}
                         alt={slide.title || "DigiConnect Dukan promotional poster"}
@@ -189,7 +189,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                         priority={index === 0}
                         loading={index === 0 ? undefined : "lazy"}
                         sizes="100vw"
-                        className="object-contain object-center p-1 sm:hidden"
+                        className="object-contain object-center sm:hidden"
                       />
                       <Image
                         src={slide.image_url}
@@ -198,7 +198,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                         priority={index === 0}
                         loading={index === 0 ? undefined : "lazy"}
                         sizes="(max-width: 1440px) 96vw, 1440px"
-                        className="hidden object-contain object-center p-2 sm:block"
+                        className="hidden object-contain object-center sm:block"
                       />
 
                       {hasCopy ? (
@@ -237,7 +237,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                 </button>
               </div>
 
-              <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/50 bg-slate-950/22 px-3 py-2 backdrop-blur md:bottom-5">
+              <div className="flex items-center justify-center gap-2 px-3 py-3">
                 {scrollSnaps.map((index) => (
                   <button
                     key={index}
@@ -245,8 +245,8 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     aria-label={`Go to homepage promotion ${index + 1}`}
                     onClick={() => scrollTo(index)}
                     className={cn(
-                      "relative h-2.5 overflow-hidden rounded-full bg-white/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
-                      selectedIndex === index ? "w-12" : "w-2.5 hover:bg-white/80",
+                      "relative h-2 overflow-hidden rounded-full bg-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
+                      selectedIndex === index ? "w-7" : "w-2 hover:bg-blue-300",
                     )}
                   >
                     {selectedIndex === index ? (

@@ -109,7 +109,6 @@ export const featuredServiceSlugs = [
   "gst-registration",
   "bike-insurance",
   "pmegp-loan",
-  "pan-card",
   "passport-assistance",
   "mudra-loan",
 ] as const;

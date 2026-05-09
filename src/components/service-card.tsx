@@ -37,6 +37,11 @@ export function ServiceCard({ service }: { service: ServiceItem }) {
       <h3 className="mt-4 text-base font-bold leading-snug text-slate-950 md:text-lg">{service.title}</h3>
       <p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{service.shortDescription}</p>
       <ServicePrice service={service} className="mt-4" />
+      {service.ctaType === "apply" ? (
+        <p className="mt-3 rounded-2xl bg-blue-50/70 px-3 py-2 text-xs font-extrabold leading-5 text-blue-700">
+          Get 20% DigiWallet cashback after completed service
+        </p>
+      ) : null}
 
       <div className="mt-auto pt-5">
         <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb,#0f5db8)] px-4 text-sm font-extrabold text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition group-hover:bg-[linear-gradient(135deg,#f97316,#2563eb)]">

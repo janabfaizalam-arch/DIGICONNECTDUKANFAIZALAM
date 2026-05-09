@@ -54,9 +54,16 @@ export default function ResetPasswordPage() {
       try {
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
+        const tokenHash = url.searchParams.get("token_hash");
+        const type = url.searchParams.get("type");
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const accessToken = hashParams.get("access_token");
         const refreshToken = hashParams.get("refresh_token");
+        const hashError = hashParams.get("error_description") || hashParams.get("error");
+
+        if (hashError) {
+          throw new Error(hashError);
+        }
 
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -66,6 +73,19 @@ export default function ResetPasswordPage() {
           }
 
           url.searchParams.delete("code");
+          window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+        } else if (tokenHash && type === "recovery") {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          url.searchParams.delete("token_hash");
+          url.searchParams.delete("type");
           window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
         } else if (accessToken && refreshToken) {
           const { error } = await supabase.auth.setSession({

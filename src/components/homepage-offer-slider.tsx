@@ -25,7 +25,7 @@ export type HomepageOfferSlide = Omit<OfferSlide, "icon"> & {
   iconName: string;
 };
 
-const fixedOfferSlugs = ["pan-card", "gst-registration", "itr-filing", "msme-certificate", "passport-assistance"];
+const fixedOfferSlugs = ["gst-registration", "itr-filing", "msme-certificate", "passport-assistance"];
 
 function getFixedOffer(slug: string): OfferSlide | null {
   const service = getServiceBySlug(slug);
@@ -192,6 +192,11 @@ export function HomepageOfferSlider({ initialSlides }: { initialSlides?: Homepag
                               {slide.oldPrice ? <span className="text-sm font-bold text-slate-400 line-through">{slide.oldPrice}</span> : null}
                               <span className="text-2xl font-extrabold text-orange-600">{slide.offerPrice ?? slide.priceLabel}</span>
                             </div>
+                            {slide.cta === "Apply Now" ? (
+                              <p className="mt-3 inline-flex rounded-full bg-blue-50/80 px-3 py-2 text-xs font-extrabold text-blue-700">
+                                Get 20% DigiWallet cashback after completed service
+                              </p>
+                            ) : null}
                           </div>
 
                           <div className="flex flex-col gap-3 sm:w-44">

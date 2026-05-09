@@ -86,6 +86,18 @@ function iconByName(name?: string | null): LucideIcon {
   return (name && serviceIconMap[name]) || FileText;
 }
 
+function priceOverride(slug: string) {
+  if (slug === "passport-assistance") {
+    return { oldPrice: 6499, offerPrice: 2499 };
+  }
+
+  if (slug === "driving-licence") {
+    return { oldPrice: 1999, offerPrice: 1099 };
+  }
+
+  return null;
+}
+
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
   const fallback = getFallbackCategoryBySlug(category.slug);
 
@@ -106,9 +118,10 @@ function categoryFromDb(category: DbServiceCategory, services: DbService[] = [])
 export function serviceFromDb(service: DbService): ServiceItem {
   const category = service.service_categories ?? undefined;
   const fallback = getFallbackServiceBySlug(service.slug);
-  const offerPrice = formatPrice(service.offer_price);
-  const oldPrice = formatPrice(service.old_price);
-  const priceLabel = service.price_label || offerPrice || fallback?.priceLabel || "Enquiry Now";
+  const override = priceOverride(service.slug);
+  const offerPrice = formatPrice(override?.offerPrice ?? service.offer_price);
+  const oldPrice = formatPrice(override?.oldPrice ?? service.old_price);
+  const priceLabel = override ? offerPrice || "Enquiry Now" : service.price_label || offerPrice || fallback?.priceLabel || "Enquiry Now";
 
   return {
     title: service.title,
@@ -123,7 +136,7 @@ export function serviceFromDb(service: DbService): ServiceItem {
     oldPrice,
     offerPrice,
     priceLabel,
-    amount: Number(service.offer_price ?? 0),
+    amount: Number(override?.offerPrice ?? service.offer_price ?? 0),
     ctaType: service.cta_type === "enquiry" ? "enquiry" : "apply",
     icon: iconByName(service.icon),
     badge: service.badge || fallback?.badge || (service.cta_type === "apply" ? "Limited Offer" : "Enquiry"),
@@ -243,13 +256,13 @@ export async function getPublicFeaturedServices(categorySlug?: string) {
         .filter((service): service is ServiceItem => Boolean(service));
     }
 
-    return ["gst-registration", "bike-insurance", "pmegp-loan", "pan-card", "passport-assistance", "mudra-loan"]
+    return ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"]
       .map((slug) => getFallbackServiceBySlug(slug))
       .filter((service): service is ServiceItem => Boolean(service));
   }
 
   return rows
-    .filter((service) => service.featured && (!categorySlug || service.service_categories?.slug === categorySlug))
+    .filter((service) => service.slug !== "pan-card" && service.featured && (!categorySlug || service.service_categories?.slug === categorySlug))
     .map(serviceFromDb);
 }
 
@@ -302,7 +315,7 @@ export function getServiceSeedRows() {
     badge: service.badge,
     icon: "FileText",
     status: "published" as const,
-    featured: ["gst-registration", "bike-insurance", "pmegp-loan", "pan-card", "passport-assistance", "mudra-loan"].includes(service.slug),
+    featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
     sort_order: index + 1,
     seo_title: service.seoTitle,
     seo_description: service.seoDescription,

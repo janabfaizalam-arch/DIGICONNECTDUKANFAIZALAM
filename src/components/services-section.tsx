@@ -22,7 +22,7 @@ export async function ServicesSection() {
         </div>
 
         {await Promise.all(serviceCategories.map(async (category) => {
-          const services = await getPublicFeaturedServices(category.slug);
+          const services = (await getPublicFeaturedServices(category.slug)).filter((service) => service.slug !== "pan-card");
 
           return (
             <div key={category.slug} className="space-y-5">

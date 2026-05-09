@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 
 import { HeroSection } from "@/components/hero-section";
 import { ContactSection } from "@/components/contact-section";
-import { DigiWalletOfferBanner } from "@/components/digiwallet-offer-banner";
 import { HomepageDynamicSlider } from "@/components/homepage-dynamic-slider";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { HomepageOfferSlider, type HomepageOfferSlide } from "@/components/homepage-offer-slider";
+import { HomepageServiceIconRow } from "@/components/homepage-service-icon-row";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { ProcessSection } from "@/components/process-section";
@@ -24,8 +24,9 @@ export const metadata: Metadata = {
     "Digital Services in India",
     "Government Services Online",
     "GST Registration",
-    "Cashback on ITR Filing",
-    "MSME Registration Cashback",
+    "20% DigiWallet Cashback",
+    "ITR Filing",
+    "MSME Registration",
     "Best Online Digital Services",
     "Digital Wallet Rewards India",
     "Vehicle Insurance",
@@ -55,7 +56,7 @@ export default async function Home() {
         : null
     : null;
   const featuredServices = await getPublicFeaturedServices();
-  const offerSlides: HomepageOfferSlide[] = featuredServices.slice(0, 8).map((service) => ({
+  const offerSlides: HomepageOfferSlide[] = featuredServices.filter((service) => service.slug !== "pan-card").slice(0, 8).map((service) => ({
     title: service.title,
     slug: service.slug,
     shortDescription: service.shortDescription,
@@ -71,9 +72,9 @@ export default async function Home() {
     <>
       <main className="pb-8 md:pb-0">
         <HomepageDynamicSlider />
+        <HomepageServiceIconRow />
         <HeroSection viewer={heroViewer} />
         <HomepageOfferSlider initialSlides={offerSlides} />
-        <DigiWalletOfferBanner />
         <ServicesSection />
         <WhyChooseUsSection />
         <ProcessSection />

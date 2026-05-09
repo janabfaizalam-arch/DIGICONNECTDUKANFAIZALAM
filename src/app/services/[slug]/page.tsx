@@ -145,6 +145,11 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <div className="mt-5">
                 <ServicePrice service={service} />
               </div>
+              {service.ctaType === "apply" ? (
+                <p className="mt-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-700">
+                  Get 20% DigiWallet cashback after completed service
+                </p>
+              ) : null}
               <p className="mt-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-700">
                 Fast Service - Same Day Process Available
               </p>
@@ -201,6 +206,11 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             <div className="mt-5 rounded-2xl bg-orange-50 p-5">
               {service.oldPrice ? <p className="text-sm font-bold text-slate-400 line-through">Old Price: {service.oldPrice}</p> : null}
               <p className="mt-1 text-2xl font-extrabold text-orange-600">{service.offerPrice ? `Offer Price: ${service.offerPrice}` : "Enquiry Now"}</p>
+              {service.ctaType === "apply" ? (
+                <p className="mt-3 text-xs font-extrabold leading-5 text-blue-700">
+                  Get 20% DigiWallet cashback after completed service
+                </p>
+              ) : null}
             </div>
             <a href={whatsappHref} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp mt-5">
               Call / WhatsApp Now
