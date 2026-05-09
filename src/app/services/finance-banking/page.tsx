@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
-import { getCategoryBySlug } from "@/lib/services-data";
-
-const category = getCategoryBySlug("finance-banking")!;
+import { getPublicCategoryBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Finance, Banking & Government Subsidy Loans | DigiConnect Dukan",
@@ -11,6 +10,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/services/finance-banking" },
 };
 
-export default function FinanceBankingPage() {
-  return <CategoryServicesPage category={category} />;
+export const dynamic = "force-dynamic";
+
+export default async function FinanceBankingPage() {
+  const [category, services] = await Promise.all([getPublicCategoryBySlug("finance-banking"), getPublicServicesByCategory("finance-banking")]);
+  if (!category) notFound();
+  return <CategoryServicesPage category={category} services={services} />;
 }

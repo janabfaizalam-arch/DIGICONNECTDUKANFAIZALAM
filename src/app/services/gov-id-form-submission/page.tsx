@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
-import { getCategoryBySlug } from "@/lib/services-data";
-
-const category = getCategoryBySlug("gov-id-form-submission")!;
+import { getPublicCategoryBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Gov ID & Form Submission | DigiConnect Dukan",
@@ -11,6 +10,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/services/gov-id-form-submission" },
 };
 
-export default function GovIdFormSubmissionPage() {
-  return <CategoryServicesPage category={category} />;
+export const dynamic = "force-dynamic";
+
+export default async function GovIdFormSubmissionPage() {
+  const [category, services] = await Promise.all([getPublicCategoryBySlug("gov-id-form-submission"), getPublicServicesByCategory("gov-id-form-submission")]);
+  if (!category) notFound();
+  return <CategoryServicesPage category={category} services={services} />;
 }

@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, BadgePercent, MessageCircle, Sparkles } from "lu
 
 import { cn } from "@/lib/utils";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
-import { createServiceWhatsAppMessage, getCategoryBySlug, getServiceBySlug, type ServiceItem } from "@/lib/services-data";
+import { createServiceWhatsAppMessage, getCategoryBySlug, getServiceBySlug, serviceIconMap, type ServiceItem } from "@/lib/services-data";
 
 type OfferSlide = {
   title: string;
@@ -18,6 +18,11 @@ type OfferSlide = {
   cta: "Apply Now" | "Enquiry Now";
   href?: string;
   icon: ServiceItem["icon"];
+  iconName?: string;
+};
+
+export type HomepageOfferSlide = Omit<OfferSlide, "icon"> & {
+  iconName: string;
 };
 
 const fixedOfferSlugs = ["pan-card", "gst-registration", "itr-filing", "msme-certificate", "passport-assistance"];
@@ -46,8 +51,12 @@ function makeEnquiryHref(title: string) {
   return generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(title));
 }
 
-export function HomepageOfferSlider() {
+export function HomepageOfferSlider({ initialSlides }: { initialSlides?: HomepageOfferSlide[] }) {
   const slides = useMemo<OfferSlide[]>(() => {
+    if (initialSlides?.length) {
+      return initialSlides.map((slide) => ({ ...slide, icon: serviceIconMap[slide.iconName] ?? BadgePercent }));
+    }
+
     const insuranceCategory = getCategoryBySlug("insurance");
     const financeCategory = getCategoryBySlug("finance-banking");
     const offers = fixedOfferSlugs.map(getFixedOffer).filter((item): item is OfferSlide => Boolean(item));
@@ -71,7 +80,7 @@ export function HomepageOfferSlider() {
         icon: financeCategory?.icon ?? BadgePercent,
       },
     ];
-  }, []);
+  }, [initialSlides]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [dragStart, setDragStart] = useState<number | null>(null);
@@ -192,7 +201,7 @@ export function HomepageOfferSlider() {
                                 <ArrowRight className="h-4 w-4" />
                               </Link>
                             ) : (
-                              <a href={slide.href} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+                              <a href={slide.href ?? makeEnquiryHref(slide.title)} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
                                 Enquiry Now
                                 <MessageCircle className="h-4 w-4" />
                               </a>

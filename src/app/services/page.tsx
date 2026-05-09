@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Sparkles } from "lucide-react";
 
 import { CategoryCard } from "@/components/service-card";
-import { getServicesByCategory, serviceCategories } from "@/lib/services-data";
+import { getPublicCategoriesWithCounts } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Services | DigiConnect Dukan",
@@ -20,7 +20,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ServicesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ServicesPage() {
+  const categories = await getPublicCategoriesWithCounts();
+
   return (
     <main className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="mx-auto max-w-7xl">
@@ -38,14 +42,14 @@ export default function ServicesPage() {
         </section>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {serviceCategories.map((category) => (
+          {categories.map((category) => (
             <CategoryCard
               key={category.slug}
               title={category.title}
               description={category.description}
               href={`/services/${category.slug}`}
               icon={category.icon}
-              count={getServicesByCategory(category.slug).length}
+              count={category.serviceCount}
             />
           ))}
         </section>

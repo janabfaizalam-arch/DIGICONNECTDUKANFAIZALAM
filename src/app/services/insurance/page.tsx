@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
-import { getCategoryBySlug } from "@/lib/services-data";
-
-const category = getCategoryBySlug("insurance")!;
+import { getPublicCategoryBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "All Vehicle Insurance | DigiConnect Dukan",
@@ -11,6 +10,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/services/insurance" },
 };
 
-export default function InsurancePage() {
-  return <CategoryServicesPage category={category} />;
+export const dynamic = "force-dynamic";
+
+export default async function InsurancePage() {
+  const [category, services] = await Promise.all([getPublicCategoryBySlug("insurance"), getPublicServicesByCategory("insurance")]);
+  if (!category) notFound();
+  return <CategoryServicesPage category={category} services={services} />;
 }

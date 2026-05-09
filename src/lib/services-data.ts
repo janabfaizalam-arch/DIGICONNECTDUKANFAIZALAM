@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type ServiceCategorySlug = "tax-business" | "insurance" | "finance-banking" | "gov-id-form-submission";
+export type ServiceCategorySlug = string;
 export type ServiceCtaType = "apply" | "enquiry";
 
 export type ServiceFaq = {
@@ -206,6 +206,31 @@ const iconMap = {
   savings: PiggyBank,
   account: Banknote,
 } satisfies Record<string, LucideIcon>;
+
+export const serviceIconMap: Record<string, LucideIcon> = {
+  ...iconMap,
+  BadgeIndianRupee,
+  Banknote,
+  Bike,
+  BriefcaseBusiness,
+  Building2,
+  Bus,
+  CarFront,
+  ClipboardCheck,
+  CreditCard,
+  FileBadge2,
+  FileCheck2,
+  FileText,
+  HandCoins,
+  IdCard,
+  Landmark,
+  PiggyBank,
+  ReceiptText,
+  ShieldCheck,
+  Store,
+  Tractor,
+  Truck,
+};
 
 function parseAmount(price?: string) {
   if (!price) {

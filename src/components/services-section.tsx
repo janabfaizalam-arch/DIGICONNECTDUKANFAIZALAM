@@ -2,9 +2,11 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 import { ServiceCard } from "@/components/service-card";
-import { getFeaturedServices, serviceCategories } from "@/lib/services-data";
+import { getPublicCategoriesWithCounts, getPublicFeaturedServices } from "@/lib/services";
 
-export function ServicesSection() {
+export async function ServicesSection() {
+  const serviceCategories = await getPublicCategoriesWithCounts();
+
   return (
     <section id="services" className="section-pad">
       <div className="container-shell space-y-10">
@@ -19,8 +21,8 @@ export function ServicesSection() {
           </p>
         </div>
 
-        {serviceCategories.map((category) => {
-          const services = getFeaturedServices(category.slug);
+        {await Promise.all(serviceCategories.map(async (category) => {
+          const services = await getPublicFeaturedServices(category.slug);
 
           return (
             <div key={category.slug} className="space-y-5">
@@ -41,7 +43,7 @@ export function ServicesSection() {
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
     </section>
   );

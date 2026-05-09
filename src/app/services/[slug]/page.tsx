@@ -3,21 +3,23 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star } from "lucide-react";
 
+import { CategoryServicesPage } from "@/components/category-services-page";
 import { ServicePrice } from "@/components/service-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import {
   createServiceWhatsAppMessage,
-  getCategoryBySlug,
-  getServiceBySlug,
   servicesData,
   type ServiceItem,
 } from "@/lib/services-data";
+import { getPublicCategoryBySlug, getPublicServiceBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return servicesData.map((service) => ({
@@ -27,7 +29,17 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const service = getServiceBySlug(slug);
+  const category = await getPublicCategoryBySlug(slug);
+
+  if (category) {
+    return {
+      title: `${category.title} | DigiConnect Dukan`,
+      description: category.description,
+      alternates: { canonical: `/services/${category.slug}` },
+    };
+  }
+
+  const service = await getPublicServiceBySlug(slug);
 
   if (!service) {
     return {
@@ -52,8 +64,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 function buildSchemas(service: ServiceItem) {
-  const category = getCategoryBySlug(service.categorySlug);
-
   return [
     {
       "@context": "https://schema.org",
@@ -74,7 +84,7 @@ function buildSchemas(service: ServiceItem) {
         "@type": "LocalBusiness",
         name: "DigiConnect Dukan",
       },
-      serviceType: category?.title ?? service.category,
+      serviceType: service.category,
       areaServed: "India",
       offers: {
         "@type": "Offer",
@@ -100,14 +110,20 @@ function buildSchemas(service: ServiceItem) {
 
 export default async function ServiceDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const service = getServiceBySlug(slug);
+  const categoryPage = await getPublicCategoryBySlug(slug);
+
+  if (categoryPage) {
+    const services = await getPublicServicesByCategory(categoryPage.slug);
+    return <CategoryServicesPage category={categoryPage} services={services} />;
+  }
+
+  const service = await getPublicServiceBySlug(slug);
 
   if (!service) {
     notFound();
   }
 
   const Icon = service.icon;
-  const category = getCategoryBySlug(service.categorySlug);
   const whatsappHref = generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(service.title));
 
   return (
@@ -115,7 +131,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
       <div className="mx-auto max-w-7xl">
         <Link href={`/services/${service.categorySlug}`} className="inline-flex items-center gap-2 text-sm font-extrabold text-blue-700">
           <ArrowLeft className="h-4 w-4" />
-          Back to {category?.title ?? "services"}
+          Back to {service.category}
         </Link>
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
@@ -133,10 +149,17 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 Fast Service - Same Day Process Available
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Link href={`/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
-                  Apply Now
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                {service.ctaType === "apply" ? (
+                  <Link href={`/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
+                    Apply Now
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <a href={whatsappHref} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg" })}>
+                    Enquiry Now
+                    <MessageCircle className="h-4 w-4" />
+                  </a>
+                )}
                 <a href={whatsappHref} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
@@ -280,10 +303,12 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <p className="mt-3 text-sm leading-7 text-white/75">Call karein ya WhatsApp par message bhejein. DigiConnect Dukan team aapko documents, process, aur next step bata degi.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href={`/apply/${service.slug}`} className="premium-button premium-button-white">
-                Apply Now
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              {service.ctaType === "apply" ? (
+                <Link href={`/apply/${service.slug}`} className="premium-button premium-button-white">
+                  Apply Now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              ) : null}
               <a href={whatsappHref} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
                 WhatsApp
                 <MessageCircle className="h-4 w-4" />

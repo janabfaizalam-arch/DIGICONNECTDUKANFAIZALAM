@@ -6,7 +6,7 @@ import { DigiWalletOfferBanner } from "@/components/digiwallet-offer-banner";
 import { HomepageDynamicSlider } from "@/components/homepage-dynamic-slider";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
-import { HomepageOfferSlider } from "@/components/homepage-offer-slider";
+import { HomepageOfferSlider, type HomepageOfferSlide } from "@/components/homepage-offer-slider";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { ProcessSection } from "@/components/process-section";
@@ -14,6 +14,7 @@ import { ServicesSection } from "@/components/services-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
 import { getCurrentUser, getCurrentUserRole, isAdminRole, isCustomerRole } from "@/lib/auth";
 import { getCustomerProfile } from "@/lib/customer-profile";
+import { getPublicFeaturedServices } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
@@ -53,13 +54,25 @@ export default async function Home() {
         ? { role }
         : null
     : null;
+  const featuredServices = await getPublicFeaturedServices();
+  const offerSlides: HomepageOfferSlide[] = featuredServices.slice(0, 8).map((service) => ({
+    title: service.title,
+    slug: service.slug,
+    shortDescription: service.shortDescription,
+    oldPrice: service.oldPrice,
+    offerPrice: service.offerPrice,
+    priceLabel: service.offerPrice ?? service.priceLabel,
+    cta: service.ctaType === "apply" ? "Apply Now" : "Enquiry Now",
+    href: service.ctaType === "apply" ? `/services/${service.slug}` : undefined,
+    iconName: "FileText",
+  }));
 
   return (
     <>
       <main className="pb-8 md:pb-0">
         <HomepageDynamicSlider />
         <HeroSection viewer={heroViewer} />
-        <HomepageOfferSlider />
+        <HomepageOfferSlider initialSlides={offerSlides} />
         <DigiWalletOfferBanner />
         <ServicesSection />
         <WhyChooseUsSection />

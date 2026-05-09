@@ -6,7 +6,8 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { ServiceApplicationForm } from "@/components/portal/service-application-form";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import { getServiceBySlug, portalServices } from "@/lib/portal-data";
+import { portalServices, type ServiceField } from "@/lib/portal-data";
+import { getPublicServiceBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -23,7 +24,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const service = getServiceBySlug(slug);
+  const service = await getPublicServiceBySlug(slug);
 
   return {
     title: service ? `Apply for ${service.title} | DigiConnect Dukan` : "Apply | DigiConnect Dukan",
@@ -35,9 +36,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ApplyPage({ params, searchParams }: PageProps) {
   const [{ slug }, query, user] = await Promise.all([params, searchParams, getCurrentUser()]);
-  const service = getServiceBySlug(slug);
+  const service = await getPublicServiceBySlug(slug);
 
-  if (!service) {
+  if (!service || service.ctaType !== "apply") {
     notFound();
   }
 
@@ -47,8 +48,20 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
   }
 
   const selectedServices = Array.from(new Set([slug, ...(query?.services?.split(",") ?? [])]))
-    .map((item) => getServiceBySlug(item.trim()))
-    .filter((item): item is NonNullable<typeof service> => Boolean(item));
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const relatedServices = await getPublicServicesByCategory(service.categorySlug);
+  const selectedPublicServices = selectedServices
+    .map((item) => [service, ...relatedServices].find((candidate) => candidate.slug === item))
+    .filter((item): item is typeof service => Boolean(item));
+
+  function fieldsFor(categorySlug: string, serviceSlug: string): ServiceField[] {
+    if (serviceSlug === "pan-card") return [{ name: "fullName", label: "Full Name", required: true }, { name: "fatherName", label: "Father's Name", required: false }];
+    if (categorySlug === "tax-business") return [{ name: "businessName", label: "Business Name", required: false }, { name: "panNumber", label: "PAN", required: false }];
+    if (categorySlug === "insurance") return [{ name: "vehicleNumber", label: "Vehicle Number", required: false }, { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false }];
+    if (categorySlug === "finance-banking") return [{ name: "loanPurpose", label: "Loan / Banking Requirement", type: "textarea", required: false }, { name: "monthlyIncome", label: "Monthly Income / Turnover", required: false }];
+    return [];
+  }
 
   return (
     <main className="min-h-screen px-4 pb-10 pt-5 md:px-8 md:py-10">
@@ -85,17 +98,17 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
               title: service.title,
               slug: service.slug,
               amount: service.amount,
-              description: service.description,
+              description: service.shortDescription,
               documents: service.documents,
-              fields: service.fields,
+              fields: fieldsFor(service.categorySlug, service.slug),
             }}
-            services={selectedServices.map((item) => ({
+            services={selectedPublicServices.map((item) => ({
               title: item.title,
               slug: item.slug,
               amount: item.amount,
-              description: item.description,
+              description: item.shortDescription,
               documents: item.documents,
-              fields: item.fields,
+              fields: fieldsFor(item.categorySlug, item.slug),
             }))}
           />
         </div>

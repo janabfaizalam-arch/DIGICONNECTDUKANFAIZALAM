@@ -2,10 +2,10 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { ServiceCard } from "@/components/service-card";
-import { getServicesByCategory, type ServiceCategory } from "@/lib/services-data";
+import type { ServiceCategoryWithCount } from "@/lib/services";
+import type { ServiceItem } from "@/lib/services-data";
 
-export function CategoryServicesPage({ category }: { category: ServiceCategory }) {
-  const services = getServicesByCategory(category.slug);
+export function CategoryServicesPage({ category, services }: { category: ServiceCategoryWithCount; services: ServiceItem[] }) {
   const Icon = category.icon;
 
   return (

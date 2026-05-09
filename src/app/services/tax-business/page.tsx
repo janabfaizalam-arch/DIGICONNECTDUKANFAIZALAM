@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
-import { getCategoryBySlug } from "@/lib/services-data";
-
-const category = getCategoryBySlug("tax-business")!;
+import { getPublicCategoryBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Tax & Business Services | DigiConnect Dukan",
@@ -11,6 +10,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/services/tax-business" },
 };
 
-export default function TaxBusinessPage() {
-  return <CategoryServicesPage category={category} />;
+export const dynamic = "force-dynamic";
+
+export default async function TaxBusinessPage() {
+  const [category, services] = await Promise.all([getPublicCategoryBySlug("tax-business"), getPublicServicesByCategory("tax-business")]);
+  if (!category) notFound();
+  return <CategoryServicesPage category={category} services={services} />;
 }
