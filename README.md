@@ -40,6 +40,33 @@ The lead form posts to `/api/leads`. If Supabase env vars are missing, the UI st
 5. Add `${NEXT_PUBLIC_SITE_URL}/auth/callback` in Supabase Auth URL configuration.
 6. Add `${NEXT_PUBLIC_SITE_URL}/reset-password` to Supabase Auth redirect URLs for password reset emails.
 7. Visit `/login` for Google sign-in and `/dashboard` for the protected account page.
+
+## Supabase password reset URL settings
+
+In Supabase Dashboard, open Authentication -> URL Configuration.
+
+Set Site URL to:
+
+```text
+https://rnos.in
+```
+
+Redirect URLs must include:
+
+```text
+https://rnos.in/auth/callback
+https://rnos.in/reset-password
+https://digiconnectdukanfaizalam.vercel.app/auth/callback
+https://digiconnectdukanfaizalam.vercel.app/reset-password
+http://localhost:3000/auth/callback
+http://localhost:3000/reset-password
+```
+
+Password reset emails should redirect to:
+
+```text
+${NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password
+```
 ## Deployment
 
 Deploy to Vercel with the same environment variables added in project settings.

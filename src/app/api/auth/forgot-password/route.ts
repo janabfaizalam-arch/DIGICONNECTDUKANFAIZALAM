@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       return jsonError("Password reset is not configured on the server.", 500);
     }
 
-    const redirectTo = `${getSiteUrl(request)}/reset-password`;
+    const redirectTo = `${getSiteUrl(request)}/auth/callback?next=/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });

@@ -30,9 +30,10 @@ function getSafeRedirect(value: string | undefined) {
   return value;
 }
 
-export default async function CustomerLoginPage({ searchParams }: { searchParams?: Promise<{ redirect?: string; next?: string }> }) {
+export default async function CustomerLoginPage({ searchParams }: { searchParams?: Promise<{ redirect?: string; next?: string; reset?: string }> }) {
   const query = await searchParams;
   const redirectTo = getSafeRedirect(query?.redirect ?? query?.next);
+  const initialMessage = query?.reset === "success" ? "Password updated successfully. Please login with your new password." : undefined;
   const user = await getCurrentUser();
 
   if (user) {
@@ -44,7 +45,7 @@ export default async function CustomerLoginPage({ searchParams }: { searchParams
     <main className="relative isolate min-h-screen overflow-hidden px-4 py-6 md:px-8 md:py-10">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_10%,rgba(37,99,235,0.18),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(249,115,22,0.12),transparent_26%),linear-gradient(180deg,#fbfdff_0%,#eef6ff_52%,#f8fbff_100%)]" />
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-        <CustomerLoginCard />
+        <CustomerLoginCard initialMessage={initialMessage} />
 
         <section className="glass-panel relative hidden min-h-[34rem] overflow-hidden rounded-[2rem] border border-white/10 p-6 shadow-liquid lg:block">
           <div className="absolute inset-6 rounded-[2rem] bg-[radial-gradient(circle_at_25%_20%,rgba(37,99,235,0.22),transparent_32%),radial-gradient(circle_at_88%_74%,rgba(249,115,22,0.16),transparent_30%)]" />

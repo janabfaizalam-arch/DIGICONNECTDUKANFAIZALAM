@@ -75,8 +75,8 @@ function getCurrentCustomerRedirect() {
   return getSafeCustomerRedirect(params.get("redirect") ?? params.get("next"));
 }
 
-export function CustomerLoginCard() {
-  return <CustomerLoginCardInner />;
+export function CustomerLoginCard({ initialMessage }: { initialMessage?: string }) {
+  return <CustomerLoginCardInner initialMessage={initialMessage} />;
 }
 
 export function CustomerSignupCard({ referralCode = "" }: { referralCode?: string }) {
@@ -87,10 +87,12 @@ function CustomerLoginCardInner({
   initialMode = "login",
   initialReferralCode = "",
   signupOnly = false,
+  initialMessage,
 }: {
   initialMode?: EmailMode;
   initialReferralCode?: string;
   signupOnly?: boolean;
+  initialMessage?: string;
 }) {
   const { error: toastError } = useToast();
   const [isGooglePending] = useState(false);
@@ -107,6 +109,12 @@ function CustomerLoginCardInner({
   const [pinLookupPending, setPinLookupPending] = useState(false);
   const [manualLocation, setManualLocation] = useState(false);
   const [referralCode, setReferralCode] = useState(initialReferralCode);
+
+  useEffect(() => {
+    if (initialMessage) {
+      setFormMessage({ type: "success", text: initialMessage });
+    }
+  }, [initialMessage]);
 
   useEffect(() => {
     if (typeof window === "undefined" || initialReferralCode) {

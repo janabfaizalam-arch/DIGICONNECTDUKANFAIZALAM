@@ -9,11 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/browser";
 
-type AuthApiResponse = {
-  message?: string;
-  error?: string;
-};
-
 type PasswordRule = {
   label: string;
   valid: boolean;
@@ -27,19 +22,6 @@ function getPasswordRules(password: string): PasswordRule[] {
     { label: "Number", valid: /[0-9]/.test(password) },
     { label: "Special character", valid: /[^a-zA-Z0-9]/.test(password) },
   ];
-}
-
-async function readAuthApiResponse(response: Response): Promise<AuthApiResponse> {
-  try {
-    const result = (await response.json()) as AuthApiResponse;
-    return {
-      ...result,
-      message: result.message || result.error,
-      error: result.error || (response.ok ? undefined : result.message),
-    };
-  } catch {
-    return response.ok ? { message: "Request completed." } : { error: "Request failed. Please try again." };
-  }
 }
 
 export default function ResetPasswordPage() {
@@ -154,28 +136,35 @@ export default function ResetPasswordPage() {
     setIsPending(true);
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password, confirmPassword }),
-      });
-      const result = await readAuthApiResponse(response);
+      const supabase = createClient();
 
-      if (!response.ok) {
-        throw new Error(result.error || "Password could not be updated. Please try again.");
+      if (!supabase) {
+        throw new Error("Password reset is not configured on this device.");
       }
 
-      setMessage({ type: "success", text: result.message || "Password updated successfully" });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setIsSessionReady(false);
+        throw new Error("Reset link is invalid or expired. Please request a new password reset link.");
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) {
+        throw new Error(error.message || "Password could not be updated. Please try again.");
+      }
+
+      setMessage({ type: "success", text: "Password updated successfully" });
       setPassword("");
       setConfirmPassword("");
 
-      const supabase = createClient();
-      await supabase?.auth.signOut();
+      await supabase.auth.signOut();
 
       window.setTimeout(() => {
-        window.location.assign("/login/customer");
+        window.location.assign("/login/customer?reset=success");
       }, 2000);
     } catch (error) {
       setMessage({
