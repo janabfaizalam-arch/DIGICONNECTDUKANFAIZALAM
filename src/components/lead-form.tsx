@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { services } from "@/lib/constants";
+import { trackLead } from "@/lib/meta-pixel";
 import { useToast } from "@/components/providers/toast-provider";
 
 const initialState = {
@@ -50,6 +51,7 @@ export function LeadForm() {
       setFeedback(message);
 
       if (response.ok) {
+        trackLead();
         setForm(initialState);
         event.currentTarget.reset();
         success(message);
