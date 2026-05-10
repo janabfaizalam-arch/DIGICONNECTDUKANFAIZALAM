@@ -54,6 +54,9 @@ export const metadata: Metadata = {
     shortcut: "/icon.png",
     apple: "/icon.png",
   },
+  other: {
+    "facebook-domain-verification": "c696v13fvc1hf31hgcidfcfney4tu8",
+  },
 };
 
 const organizationSchema = {
