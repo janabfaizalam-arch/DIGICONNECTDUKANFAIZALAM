@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { services } from "@/lib/constants";
+import { trackLeadSubmit } from "@/lib/google-analytics";
 import { trackLead } from "@/lib/meta-pixel";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -52,6 +53,7 @@ export function LeadForm() {
 
       if (response.ok) {
         trackLead();
+        trackLeadSubmit();
         setForm(initialState);
         event.currentTarget.reset();
         success(message);

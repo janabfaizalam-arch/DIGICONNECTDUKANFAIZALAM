@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { trackApplicationSubmit } from "@/lib/google-analytics";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Customer, ServiceCatalogItem } from "@/lib/portal-types";
 
@@ -75,6 +76,7 @@ export function AgentApplicationForm({
         }
 
         success(result.message ?? "Application created.");
+        trackApplicationSubmit();
         router.push(`/agent/applications/${result.applicationId}`);
         router.refresh();
       } catch (error) {

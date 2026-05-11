@@ -7,6 +7,7 @@ import { CheckCircle2, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck } fro
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trackPasswordReset } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
 type PasswordRule = {
@@ -178,6 +179,7 @@ export default function ResetPasswordPage() {
       }
 
       setMessage({ type: "success", text: "Password updated successfully" });
+      trackPasswordReset();
       setPassword("");
       setConfirmPassword("");
 

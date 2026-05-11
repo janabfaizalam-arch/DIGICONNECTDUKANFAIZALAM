@@ -7,6 +7,7 @@ import { LoaderCircle, LockKeyhole } from "lucide-react";
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
+import { trackLogin } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
 type LoginCardProps = {
@@ -93,6 +94,7 @@ export function LoginCard({
         return;
       }
 
+      trackLogin();
       window.location.assign("/login");
     } catch (error) {
       setIsPasswordPending(false);

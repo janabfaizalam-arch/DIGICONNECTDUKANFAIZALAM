@@ -7,6 +7,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { trackLeadSubmit } from "@/lib/google-analytics";
 import { trackLead } from "@/lib/meta-pixel";
 
 type ServiceLeadFormProps = {
@@ -47,6 +48,7 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
 
         setForm(initialState);
         trackLead();
+        trackLeadSubmit();
         success(result.message);
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Request submission failed.");

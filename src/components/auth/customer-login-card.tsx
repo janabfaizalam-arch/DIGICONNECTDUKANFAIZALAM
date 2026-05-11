@@ -8,6 +8,7 @@ import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MapPin, UserRound } from 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trackLogin, trackSignup } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
 type EmailMode = "login" | "signup";
@@ -237,6 +238,7 @@ function CustomerLoginCardInner({
           throw new Error("Login succeeded but user details could not be loaded.");
         }
 
+        trackLogin();
         window.location.assign(getCurrentCustomerRedirect());
         return;
       }
@@ -263,6 +265,7 @@ function CustomerLoginCardInner({
       }
 
       setLastSignupEmail(email);
+      trackSignup();
       setFormMessage({ type: "success", text: result.message || "Verification email sent. Please check Inbox, Spam, and Promotions folder." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Email access failed. Please try again.";

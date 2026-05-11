@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/hooks/use-wallet";
+import { trackApplicationSubmit } from "@/lib/google-analytics";
 import { trackSubmitApplication } from "@/lib/meta-pixel";
 import { formatCurrency } from "@/lib/portal-data";
 import { createClient } from "@/lib/supabase/browser";
@@ -225,6 +226,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
       success(result.message ?? "Application submitted successfully.");
       trackSubmitApplication();
+      trackApplicationSubmit();
       router.push(`/invoice/${result.invoiceId}`);
       router.refresh();
     } catch (error) {

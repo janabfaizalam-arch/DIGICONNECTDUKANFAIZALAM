@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
 
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { MetaPixelEvents } from "@/components/meta-pixel-events";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { SiteHeader } from "@/components/site-header";
@@ -9,6 +10,7 @@ import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
 const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim();
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -79,6 +81,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
+        {process.env.NODE_ENV === "production" && gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
         {metaPixelId ? (
           <>
             <Script

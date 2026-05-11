@@ -7,6 +7,7 @@ import { LoaderCircle, LockKeyhole } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trackLogin } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
 export function AgentLoginCard() {
@@ -56,6 +57,7 @@ export function AgentLoginCard() {
         return;
       }
 
+      trackLogin();
       window.location.assign("/agent/dashboard");
     } catch (error) {
       setIsPending(false);

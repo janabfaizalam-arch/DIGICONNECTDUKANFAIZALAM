@@ -6,6 +6,7 @@ import { CreditCard, LoaderCircle } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
+import { trackPurchase as trackGooglePurchase } from "@/lib/google-analytics";
 import { trackPurchase } from "@/lib/meta-pixel";
 
 type RazorpaySuccessResponse = {
@@ -189,6 +190,7 @@ export function RazorpayCheckoutButton({
 
             onVerified(payment);
             trackPurchase(amountPaise / 100);
+            trackGooglePurchase(amountPaise / 100);
             success("Payment verified successfully.");
           } catch (error) {
             toastError(error instanceof Error ? error.message : "Payment verification failed.");
