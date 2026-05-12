@@ -87,12 +87,12 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
       onBlur={() => setIsPaused(false)}
       className="relative bg-white outline-none"
     >
-      <div className="relative overflow-hidden bg-slate-100">
+      <div className="relative overflow-hidden bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_46%,#fff7ed_100%)]">
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex touch-pan-y">
             {slides.map((slide, index) => (
               <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
-                <div className="relative aspect-[2/1] max-h-[34rem] w-full overflow-hidden bg-slate-100 md:aspect-[8/3]">
+                <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100 md:flex md:h-[clamp(520px,46vw,650px)] md:aspect-auto md:items-center md:justify-center md:bg-[radial-gradient(circle_at_14%_12%,rgba(37,99,235,0.16),transparent_30%),radial-gradient(circle_at_88%_16%,rgba(249,115,22,0.14),transparent_28%),linear-gradient(135deg,#eff6ff_0%,#ffffff_48%,#fff7ed_100%)] md:p-4">
                   <Image
                     src={slide.mobile_image_url || slide.image_url}
                     alt={slide.title || "DigiConnect Dukan offer banner"}
@@ -109,7 +109,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     priority={index === 0}
                     loading={index === 0 ? undefined : "lazy"}
                     sizes="100vw"
-                    className="hidden object-cover object-center sm:block"
+                    className="hidden object-contain object-center sm:block"
                   />
                 </div>
               </article>
