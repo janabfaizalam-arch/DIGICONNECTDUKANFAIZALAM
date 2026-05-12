@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
+import { FinanceCreditCardOffersSection } from "@/components/finance-credit-card-offers-section";
 import { getPublicCategoryBySlug, getPublicServicesByCategory } from "@/lib/services";
 
 export const metadata: Metadata = {
@@ -15,5 +16,5 @@ export const dynamic = "force-dynamic";
 export default async function FinanceBankingPage() {
   const [category, services] = await Promise.all([getPublicCategoryBySlug("finance-banking"), getPublicServicesByCategory("finance-banking")]);
   if (!category) notFound();
-  return <CategoryServicesPage category={category} services={services} />;
+  return <CategoryServicesPage category={category} services={services} afterServices={<FinanceCreditCardOffersSection />} />;
 }
