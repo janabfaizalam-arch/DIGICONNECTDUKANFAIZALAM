@@ -8,8 +8,7 @@ import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { homepageSlideCtaPositions, type HomepageSlide, type HomepageSlideCtaPosition } from "@/lib/homepage-slides";
+import { type HomepageSlide } from "@/lib/homepage-slides";
 import { cn } from "@/lib/utils";
 
 const maxImageSize = 8 * 1024 * 1024;
@@ -44,20 +43,6 @@ function validateImage(file: FormDataEntryValue | null, required: boolean) {
   return "";
 }
 
-function formatDateForInput(value: string | null) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString().slice(0, 16);
-}
-
 function SlideFields({
   slide,
   mode,
@@ -67,81 +52,29 @@ function SlideFields({
   mode: "create" | "edit";
   disabled?: boolean;
 }) {
-  const defaultPosition: HomepageSlideCtaPosition = slide?.cta_position ?? "bottom-right";
-
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Title</span>
-          <Input name="title" defaultValue={slide?.title ?? ""} maxLength={120} placeholder="Optional poster heading" disabled={disabled} />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Sort order</span>
-          <Input name="sort_order" type="number" defaultValue={slide?.sort_order ?? 0} disabled={disabled} />
-        </label>
-      </div>
-
-      <label className="grid gap-2">
-        <span className="text-sm font-bold text-slate-700">Subtitle</span>
-        <Textarea name="subtitle" defaultValue={slide?.subtitle ?? ""} placeholder="Optional supporting copy" disabled={disabled} />
-      </label>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Desktop poster image</span>
           <Input name="image" type="file" accept="image/jpeg,image/png,image/webp" required={mode === "create"} disabled={disabled} />
-          <span className="text-xs text-slate-500">Recommended: 1920x720. JPG, PNG, or WebP.</span>
+          <span className="text-xs text-slate-500">Recommended: 1920x720 px.</span>
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Mobile poster image</span>
           <Input name="mobile_image" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled} />
-          <span className="text-xs text-slate-500">Optional. Recommended: 900x1200 or 1080x1350.</span>
+          <span className="text-xs text-slate-500">Recommended: 1080x540 px.</span>
         </label>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[1fr_8rem]">
         <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Primary CTA label</span>
-          <Input name="cta_primary_label" defaultValue={slide?.cta_primary_label ?? ""} placeholder="Apply now" disabled={disabled} />
+          <span className="text-sm font-bold text-slate-700">Click link URL</span>
+          <Input name="click_link" defaultValue={slide?.cta_primary_url ?? ""} placeholder="/services or https://..." disabled={disabled} />
         </label>
         <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Primary CTA URL</span>
-          <Input name="cta_primary_url" defaultValue={slide?.cta_primary_url ?? ""} placeholder="/services or https://..." disabled={disabled} />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Secondary CTA label</span>
-          <Input name="cta_secondary_label" defaultValue={slide?.cta_secondary_label ?? ""} placeholder="Learn more" disabled={disabled} />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Secondary CTA URL</span>
-          <Input name="cta_secondary_url" defaultValue={slide?.cta_secondary_url ?? ""} placeholder="/contact or https://..." disabled={disabled} />
-        </label>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">CTA position</span>
-          <select
-            name="cta_position"
-            defaultValue={defaultPosition}
-            disabled={disabled}
-            className="h-12 rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none focus:border-[var(--primary)]"
-          >
-            {homepageSlideCtaPositions.map((position) => (
-              <option key={position} value={position}>
-                {position}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">Start date</span>
-          <Input name="starts_at" type="datetime-local" defaultValue={formatDateForInput(slide?.starts_at ?? null)} disabled={disabled} />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-bold text-slate-700">End date</span>
-          <Input name="ends_at" type="datetime-local" defaultValue={formatDateForInput(slide?.ends_at ?? null)} disabled={disabled} />
+          <span className="text-sm font-bold text-slate-700">Sort order</span>
+          <Input name="sort_order" type="number" defaultValue={slide?.sort_order ?? 0} disabled={disabled} />
         </label>
       </div>
 
@@ -161,8 +94,12 @@ function SlideFields({
   );
 }
 
+function sortSlides(slides: HomepageSlide[]) {
+  return [...slides].sort((a, b) => a.sort_order - b.sort_order || Date.parse(b.created_at) - Date.parse(a.created_at));
+}
+
 export function AdminHomepageSlidesManager({ initialSlides }: AdminHomepageSlidesManagerProps) {
-  const [slides, setSlides] = useState(initialSlides);
+  const [slides, setSlides] = useState(sortSlides(initialSlides));
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -197,9 +134,7 @@ export function AdminHomepageSlidesManager({ initialSlides }: AdminHomepageSlide
         return;
       }
 
-      setSlides((currentSlides) =>
-        [data.slide as HomepageSlide, ...currentSlides].sort((a, b) => a.sort_order - b.sort_order || Date.parse(b.created_at) - Date.parse(a.created_at)),
-      );
+      setSlides((currentSlides) => sortSlides([data.slide as HomepageSlide, ...currentSlides]));
       setSuccessMessage(data.message || "Homepage slide created successfully.");
       formRef.current?.reset();
     } catch (error) {
@@ -237,11 +172,7 @@ export function AdminHomepageSlidesManager({ initialSlides }: AdminHomepageSlide
         return;
       }
 
-      setSlides((currentSlides) =>
-        currentSlides
-          .map((item) => (item.id === slide.id ? data.slide! : item))
-          .sort((a, b) => a.sort_order - b.sort_order || Date.parse(b.created_at) - Date.parse(a.created_at)),
-      );
+      setSlides((currentSlides) => sortSlides(currentSlides.map((item) => (item.id === slide.id ? data.slide! : item))));
       setSuccessMessage(data.message || "Homepage slide updated successfully.");
     } catch (error) {
       console.error("[admin/homepage-slides] Update failed", error);
@@ -290,7 +221,7 @@ export function AdminHomepageSlidesManager({ initialSlides }: AdminHomepageSlide
           </span>
           <div>
             <h2 className="text-lg font-bold text-slate-950">Create slide</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">Upload a desktop poster, optionally add a mobile poster, and control CTA buttons without code changes.</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">Upload desktop and mobile posters, add an optional click link, then set order and active status.</p>
           </div>
         </div>
 
@@ -310,14 +241,14 @@ export function AdminHomepageSlidesManager({ initialSlides }: AdminHomepageSlide
         {slides.length ? (
           slides.map((slide) => (
             <Card key={slide.id} className="overflow-hidden border-blue-100 p-0 shadow-sm">
-              <div className="grid gap-0 lg:grid-cols-[22rem_1fr]">
-                <div className="relative aspect-[16/9] bg-slate-100 lg:aspect-auto lg:min-h-full">
+              <div className="grid gap-0 lg:grid-cols-[19rem_1fr]">
+                <div className="relative aspect-[2/1] bg-slate-100 lg:aspect-auto lg:min-h-full">
                   <Image
-                    src={slide.image_url}
-                    alt={slide.title || "Homepage slide poster"}
+                    src={slide.mobile_image_url || slide.image_url}
+                    alt="Homepage slide poster preview"
                     fill
-                    sizes="(min-width: 1024px) 22rem, 100vw"
-                    className="object-cover"
+                    sizes="(min-width: 1024px) 19rem, 100vw"
+                    className="object-contain"
                   />
                 </div>
 
@@ -334,11 +265,9 @@ export function AdminHomepageSlidesManager({ initialSlides }: AdminHomepageSlide
                           {slide.is_active ? "Active" : "Inactive"}
                         </span>
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">Order {slide.sort_order}</span>
-                        {slide.cta_primary_label ? <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-extrabold text-orange-700">{slide.cta_primary_label}</span> : null}
-                        {slide.cta_secondary_label ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700">{slide.cta_secondary_label}</span> : null}
                       </div>
-                      <h3 className="mt-3 truncate text-xl font-bold text-slate-950">{slide.title || "Untitled poster"}</h3>
-                      <p className="mt-1 text-sm text-slate-500">Created {new Date(slide.created_at).toLocaleDateString("en-IN")}</p>
+                      <p className="mt-3 break-all text-sm font-semibold text-slate-700">Click link: {slide.cta_primary_url || "Not set"}</p>
+                      <p className="mt-1 text-xs text-slate-500">Created {new Date(slide.created_at).toLocaleDateString("en-IN")}</p>
                     </div>
 
                     <Button

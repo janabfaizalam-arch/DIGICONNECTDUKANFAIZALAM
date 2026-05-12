@@ -9,18 +9,31 @@ import { useToast } from "@/components/providers/toast-provider";
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Customer } from "@/lib/portal-types";
 
-type CustomerRow = Customer & {
+export type AdminCustomerRow = {
+  id: string;
+  customerId: string | null;
+  userId: string | null;
+  full_name: string;
+  mobile: string;
+  email: string | null;
+  role: string;
+  source: string;
+  created_at: string;
   applicationsCount: number;
   lastStatus: string;
+  canOpenDetails: boolean;
 };
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
 }
 
-export function AdminCustomerManager({ customers }: { customers: CustomerRow[] }) {
+function displayValue(value: string | null | undefined) {
+  return value?.trim() || "Not provided";
+}
+
+export function AdminCustomerManager({ customers }: { customers: AdminCustomerRow[] }) {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -31,7 +44,7 @@ export function AdminCustomerManager({ customers }: { customers: CustomerRow[] }
 
     return customers.filter((customer) => {
       if (!query) return true;
-      return `${customer.full_name} ${customer.mobile} ${customer.email ?? ""}`.toLowerCase().includes(query);
+      return `${customer.full_name} ${customer.mobile} ${customer.email ?? ""} ${customer.role}`.toLowerCase().includes(query);
     });
   }, [customers, search]);
 
@@ -96,21 +109,28 @@ export function AdminCustomerManager({ customers }: { customers: CustomerRow[] }
             <article key={customer.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-950">{customer.full_name}</p>
-                  <p className="mt-1 font-mono text-sm text-slate-600">{customer.mobile || "-"}</p>
+                  <p className="truncate font-bold text-slate-950">{displayValue(customer.full_name)}</p>
+                  <p className="mt-1 font-mono text-sm text-slate-600">{displayValue(customer.mobile)}</p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold capitalize text-blue-700">{customer.source.replace(/_/g, " ")}</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold capitalize text-blue-700">{displayValue(customer.role).replace(/_/g, " ")}</span>
               </div>
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                <p>Email: <span className="font-semibold text-slate-800">{customer.email || "-"}</span></p>
+                <p>Email: <span className="font-semibold text-slate-800">{displayValue(customer.email)}</span></p>
+                <p>Source: <span className="font-semibold capitalize text-slate-800">{displayValue(customer.source).replace(/_/g, " ")}</span></p>
                 <p>Applications: <span className="font-semibold text-slate-800">{customer.applicationsCount}</span></p>
-                <p>Last Status: <span className="font-semibold capitalize text-slate-800">{customer.lastStatus.replace(/_/g, " ") || "-"}</span></p>
+                <p>Last Status: <span className="font-semibold capitalize text-slate-800">{customer.lastStatus.replace(/_/g, " ") || "Not provided"}</span></p>
                 <p>Created: <span className="font-semibold text-slate-800">{formatDate(customer.created_at)}</span></p>
               </div>
-              <Link href={`/admin/customers/${customer.id}`} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
-                <ExternalLink className="h-4 w-4" />
-                View Details
-              </Link>
+              {customer.canOpenDetails && customer.customerId ? (
+                <Link href={`/admin/customers/${customer.customerId}`} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
+                  <ExternalLink className="h-4 w-4" />
+                  View Details
+                </Link>
+              ) : (
+                <span className="mt-4 inline-flex h-10 items-center rounded-full bg-slate-100 px-4 text-sm font-bold text-slate-600">
+                  Signed-up user
+                </span>
+              )}
             </article>
           ))}
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
@@ -12,6 +13,10 @@ const AUTOPLAY_MS = 4000;
 type HomepageDynamicSliderClientProps = {
   slides: HomepageSlide[];
 };
+
+function isExternalLink(url: string) {
+  return url.startsWith("http://") || url.startsWith("https://");
+}
 
 export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderClientProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: slides.length > 1, duration: 30 });
@@ -90,8 +95,9 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
       <div className="relative overflow-hidden bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_46%,#fff7ed_100%)]">
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex touch-pan-y">
-            {slides.map((slide, index) => (
-              <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
+            {slides.map((slide, index) => {
+              const clickLink = slide.cta_primary_url?.trim();
+              const banner = (
                 <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100 md:flex md:h-[clamp(520px,46vw,650px)] md:aspect-auto md:items-center md:justify-center md:bg-[radial-gradient(circle_at_14%_12%,rgba(37,99,235,0.16),transparent_30%),radial-gradient(circle_at_88%_16%,rgba(249,115,22,0.14),transparent_28%),linear-gradient(135deg,#eff6ff_0%,#ffffff_48%,#fff7ed_100%)] md:p-4">
                   <Image
                     src={slide.mobile_image_url || slide.image_url}
@@ -112,8 +118,26 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     className="hidden object-contain object-center sm:block"
                   />
                 </div>
-              </article>
-            ))}
+              );
+
+              return (
+                <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
+                  {clickLink ? (
+                    isExternalLink(clickLink) ? (
+                      <a href={clickLink} target="_blank" rel="noopener noreferrer" aria-label="Open homepage offer">
+                        {banner}
+                      </a>
+                    ) : (
+                      <Link href={clickLink} aria-label="Open homepage offer">
+                        {banner}
+                      </Link>
+                    )
+                  ) : (
+                    banner
+                  )}
+                </article>
+              );
+            })}
           </div>
         </div>
 

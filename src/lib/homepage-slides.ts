@@ -48,13 +48,10 @@ export async function getActiveHomepageSlides(limit = 12): Promise<HomepageSlide
     return [];
   }
 
-  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("homepage_slides")
     .select(slideSelect)
     .eq("is_active", true)
-    .or(`starts_at.is.null,starts_at.lte.${now}`)
-    .or(`ends_at.is.null,ends_at.gte.${now}`)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(limit);

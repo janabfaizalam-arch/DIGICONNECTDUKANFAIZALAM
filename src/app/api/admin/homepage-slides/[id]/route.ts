@@ -2,16 +2,11 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import {
-  homepageSlideCtaPositions,
-  homepageSlidesBucketName,
-  isHomepageSlideCtaPosition,
-} from "@/lib/homepage-slides";
+import { homepageSlidesBucketName } from "@/lib/homepage-slides";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const allowedImageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const maxImageSize = 8 * 1024 * 1024;
-const maxTitleLength = 120;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message, message }, { status });
@@ -76,22 +71,6 @@ function parseSortOrder(formData: FormData) {
   return sortOrder;
 }
 
-function parseOptionalDate(formData: FormData, key: string) {
-  const value = String(formData.get(key) ?? "").trim();
-
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "invalid";
-  }
-
-  return date.toISOString();
-}
-
 function isValidCtaUrl(value: string | null) {
   if (!value) {
     return true;
@@ -103,7 +82,7 @@ function isValidCtaUrl(value: string | null) {
 
   try {
     const url = new URL(value);
-    return url.protocol === "https:";
+    return url.protocol === "https:" || url.protocol === "http:";
   } catch {
     return false;
   }
@@ -126,48 +105,31 @@ function validateImageFile(file: FormDataEntryValue | null, label: string) {
 }
 
 function buildSlidePayload(formData: FormData) {
-  const title = nullableText(formData, "title");
-  const ctaPositionValue = String(formData.get("cta_position") ?? "bottom-right");
   const sortOrder = parseSortOrder(formData);
-  const startsAt = parseOptionalDate(formData, "starts_at");
-  const endsAt = parseOptionalDate(formData, "ends_at");
-  const ctaPrimaryUrl = nullableText(formData, "cta_primary_url");
-  const ctaSecondaryUrl = nullableText(formData, "cta_secondary_url");
-
-  if (title && title.length > maxTitleLength) {
-    return { error: `Title must be ${maxTitleLength} characters or fewer.`, payload: null };
-  }
-
-  if (!isHomepageSlideCtaPosition(ctaPositionValue)) {
-    return { error: `CTA position must be one of: ${homepageSlideCtaPositions.join(", ")}.`, payload: null };
-  }
+  const clickLink = nullableText(formData, "click_link") || nullableText(formData, "cta_primary_url");
 
   if (sortOrder === null) {
     return { error: "Sort order must be a number.", payload: null };
   }
 
-  if (startsAt === "invalid" || endsAt === "invalid") {
-    return { error: "Start and end dates must be valid dates.", payload: null };
-  }
-
-  if (!isValidCtaUrl(ctaPrimaryUrl) || !isValidCtaUrl(ctaSecondaryUrl)) {
-    return { error: "CTA URLs must be internal paths or valid HTTPS URLs.", payload: null };
+  if (!isValidCtaUrl(clickLink)) {
+    return { error: "Click link must be an internal path or a valid HTTP/HTTPS URL.", payload: null };
   }
 
   return {
     error: null,
     payload: {
-      title,
-      subtitle: nullableText(formData, "subtitle"),
-      cta_primary_label: nullableText(formData, "cta_primary_label"),
-      cta_primary_url: ctaPrimaryUrl,
-      cta_secondary_label: nullableText(formData, "cta_secondary_label"),
-      cta_secondary_url: ctaSecondaryUrl,
-      cta_position: ctaPositionValue,
+      title: null,
+      subtitle: null,
+      cta_primary_label: null,
+      cta_primary_url: clickLink,
+      cta_secondary_label: null,
+      cta_secondary_url: null,
+      cta_position: "hidden",
       sort_order: sortOrder,
       is_active: parseBoolean(formData, "is_active", true),
-      starts_at: startsAt,
-      ends_at: endsAt,
+      starts_at: null,
+      ends_at: null,
       updated_at: new Date().toISOString(),
     },
   };

@@ -2,12 +2,46 @@ import { redirect } from "next/navigation";
 import { CalendarDays, Phone, UserRound } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
-import { AdminCustomerManager } from "@/components/admin/admin-customer-manager";
+import { AdminCustomerManager, type AdminCustomerRow } from "@/components/admin/admin-customer-manager";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import type { Application, Customer } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  mobile: string | null;
+  role: string | null;
+  created_at: string | null;
+};
+
+type CustomerProfileRow = {
+  id: string;
+  full_name: string | null;
+  mobile: string | null;
+  email: string | null;
+  created_at: string | null;
+};
+
+type AuthUserRow = {
+  id: string;
+  email?: string;
+  created_at?: string;
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    mobile?: string;
+    phone?: string;
+    role?: string;
+  };
+};
+
+function firstText(...values: Array<string | null | undefined>) {
+  return values.map((value) => value?.trim()).find(Boolean) || "";
+}
 
 export default async function AdminCustomersPage() {
   const user = await getCurrentUser();
@@ -19,33 +53,149 @@ export default async function AdminCustomersPage() {
   const supabase = getSupabaseAdmin();
   let customers: Customer[] = [];
   let applications: Pick<Application, "customer_id" | "status" | "created_at">[] = [];
+  let userApplications: Pick<Application, "user_id" | "status" | "created_at">[] = [];
+  let profiles: ProfileRow[] = [];
+  let customerProfiles: CustomerProfileRow[] = [];
+  let authUsers: AuthUserRow[] = [];
 
   if (supabase) {
-    const [{ data: customerData }, { data: applicationData }] = await Promise.all([
+    const [{ data: customerData }, { data: applicationData }, { data: userApplicationData }, { data: profileData }, { data: customerProfileData }, authUsersResult] = await Promise.all([
       supabase.from("customers").select("*").order("created_at", { ascending: false }),
       supabase.from("applications").select("customer_id, status, created_at").order("created_at", { ascending: false }),
+      supabase.from("applications").select("user_id, status, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }),
+      supabase.from("customer_profiles").select("id, full_name, mobile, email, created_at").order("created_at", { ascending: false }),
+      supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
 
     customers = (customerData ?? []) as Customer[];
     applications = (applicationData ?? []) as Pick<Application, "customer_id" | "status" | "created_at">[];
+    userApplications = (userApplicationData ?? []) as Pick<Application, "user_id" | "status" | "created_at">[];
+    profiles = (profileData ?? []) as ProfileRow[];
+    customerProfiles = (customerProfileData ?? []) as CustomerProfileRow[];
+    authUsers = (authUsersResult.data?.users ?? []) as AuthUserRow[];
   }
 
-  const rows = customers.map((customer) => {
-    const customerApplications = applications.filter((application) => application.customer_id === customer.id);
+  const rowsByKey = new Map<string, AdminCustomerRow>();
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const customerProfileById = new Map(customerProfiles.map((profile) => [profile.id, profile]));
+  const authUserById = new Map(authUsers.map((authUser) => [authUser.id, authUser]));
+
+  function applicationSummary(customerId: string | null, userId: string | null) {
+    const matchedApplications = [
+      ...applications.filter((application) => customerId && application.customer_id === customerId),
+      ...userApplications.filter((application) => userId && application.user_id === userId),
+    ];
+    const seen = new Set<string>();
+    const dedupedApplications = matchedApplications.filter((application) => {
+      const key = `${application.created_at}-${application.status}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     return {
-      ...customer,
-      applicationsCount: customerApplications.length,
-      lastStatus: customerApplications[0]?.status ?? "",
+      count: dedupedApplications.length,
+      lastStatus: dedupedApplications[0]?.status ?? "",
     };
+  }
+
+  function upsertRow(row: AdminCustomerRow) {
+    const key = row.userId ?? row.customerId ?? row.id;
+    const existing = rowsByKey.get(key);
+
+    if (!existing) {
+      rowsByKey.set(key, row);
+      return;
+    }
+
+    rowsByKey.set(key, {
+      ...existing,
+      ...row,
+      customerId: existing.customerId ?? row.customerId,
+      canOpenDetails: existing.canOpenDetails || row.canOpenDetails,
+      full_name: firstText(existing.full_name, row.full_name),
+      mobile: firstText(existing.mobile, row.mobile),
+      email: firstText(existing.email, row.email),
+      role: firstText(row.role, existing.role, "customer"),
+      applicationsCount: Math.max(existing.applicationsCount, row.applicationsCount),
+      lastStatus: firstText(row.lastStatus, existing.lastStatus),
+    });
+  }
+
+  customers.forEach((customer) => {
+    const profile = customer.user_id ? profileById.get(customer.user_id) : null;
+    const customerProfile = customer.user_id ? customerProfileById.get(customer.user_id) : null;
+    const authUser = customer.user_id ? authUserById.get(customer.user_id) : null;
+    const summary = applicationSummary(customer.id, customer.user_id);
+
+    upsertRow({
+      id: customer.user_id ?? customer.id,
+      customerId: customer.id,
+      userId: customer.user_id,
+      full_name: firstText(customer.full_name, customerProfile?.full_name, profile?.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name),
+      mobile: firstText(customer.mobile, customerProfile?.mobile, profile?.mobile, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone),
+      email: firstText(customer.email, customerProfile?.email, profile?.email, authUser?.email),
+      role: firstText(profile?.role, authUser?.user_metadata?.role, "customer"),
+      source: customer.source,
+      created_at: customer.created_at,
+      applicationsCount: summary.count,
+      lastStatus: summary.lastStatus,
+      canOpenDetails: true,
+    });
   });
+
+  profiles.forEach((profile) => {
+    const customerProfile = customerProfileById.get(profile.id);
+    const authUser = authUserById.get(profile.id);
+    const summary = applicationSummary(null, profile.id);
+
+    upsertRow({
+      id: profile.id,
+      customerId: null,
+      userId: profile.id,
+      full_name: firstText(customerProfile?.full_name, profile.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name),
+      mobile: firstText(customerProfile?.mobile, profile.mobile, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone),
+      email: firstText(customerProfile?.email, profile.email, authUser?.email),
+      role: firstText(profile.role, authUser?.user_metadata?.role, "customer"),
+      source: "profile",
+      created_at: profile.created_at ?? authUser?.created_at ?? new Date(0).toISOString(),
+      applicationsCount: summary.count,
+      lastStatus: summary.lastStatus,
+      canOpenDetails: false,
+    });
+  });
+
+  authUsers.forEach((authUser) => {
+    const profile = profileById.get(authUser.id);
+    const customerProfile = customerProfileById.get(authUser.id);
+    const summary = applicationSummary(null, authUser.id);
+
+    upsertRow({
+      id: authUser.id,
+      customerId: null,
+      userId: authUser.id,
+      full_name: firstText(customerProfile?.full_name, profile?.full_name, authUser.user_metadata?.full_name, authUser.user_metadata?.name),
+      mobile: firstText(customerProfile?.mobile, profile?.mobile, authUser.user_metadata?.mobile, authUser.user_metadata?.phone),
+      email: firstText(customerProfile?.email, profile?.email, authUser.email),
+      role: firstText(profile?.role, authUser.user_metadata?.role, "customer"),
+      source: "auth",
+      created_at: authUser.created_at ?? profile?.created_at ?? customerProfile?.created_at ?? new Date(0).toISOString(),
+      applicationsCount: summary.count,
+      lastStatus: summary.lastStatus,
+      canOpenDetails: false,
+    });
+  });
+
+  const rows = Array.from(rowsByKey.values()).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Customers" title="Customers" description="Registered users and manually added customers in one CRM list." />
       <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Customers" value={customers.length} icon={UserRound} tone="blue" />
+        <AdminStatCard title="Total Users" value={rows.length} icon={UserRound} tone="blue" />
         <AdminStatCard title="With Applications" value={rows.filter((customer) => customer.applicationsCount > 0).length} icon={CalendarDays} tone="green" />
-        <AdminStatCard title="Online Customers" value={customers.filter((customer) => customer.source === "online").length} icon={Phone} tone="orange" />
+        <AdminStatCard title="Signed Up Users" value={rows.filter((customer) => customer.userId).length} icon={Phone} tone="orange" />
       </section>
       <AdminCustomerManager customers={rows} />
     </div>
