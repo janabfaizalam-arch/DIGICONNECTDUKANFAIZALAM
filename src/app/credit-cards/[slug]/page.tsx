@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, FileCheck2, ShieldCheck, Sparkles } from "lucide-react";
 
+import { CreditCardVisual } from "@/components/credit-card-visual";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { creditCards, getCreditCardBySlug } from "@/lib/credit-cards";
@@ -64,7 +65,7 @@ export default async function CreditCardDetailPage({ params }: PageProps) {
         <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.72fr] lg:items-stretch">
           <div className="rounded-3xl border border-blue-100 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_52%,#fff7ed_100%)] p-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-8">
             <p className="inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">
-              {card.bank}
+              {card.bankName} • {card.cardNetwork}
             </p>
             <h1 className="mt-4 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">{card.name}</h1>
             <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-slate-600 md:text-lg md:leading-8">{card.overview}</p>
@@ -77,11 +78,14 @@ export default async function CreditCardDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <Card className="rounded-3xl border-blue-100 p-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-7">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
+          <Card className="rounded-3xl border-blue-100 p-4 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-6">
+            <div className="transition md:[transform:perspective(1000px)_rotateX(3deg)_rotateY(-4deg)]">
+              <CreditCardVisual card={card} size="large" />
+            </div>
+            <div className="mt-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
               <Sparkles className="h-5 w-5" />
             </div>
-            <h2 className="mt-5 text-xl font-bold text-slate-950">Ready to apply?</h2>
+            <h2 className="mt-4 text-xl font-bold text-slate-950">Ready to apply?</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Review eligibility, documents, fees note, and disclaimer before opening the bank application link.
             </p>
