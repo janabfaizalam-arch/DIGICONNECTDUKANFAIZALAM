@@ -1,16 +1,12 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  Building2,
   CheckCircle2,
-  ClipboardCheck,
-  CreditCard,
   FileCheck2,
   LayoutDashboard,
   LogIn,
   MessageCircle,
   ShieldCheck,
-  Sparkles,
   Timer,
   UsersRound,
 } from "lucide-react";
@@ -27,11 +23,10 @@ type HeroSectionProps = {
   viewer?: HeroViewer;
 };
 
-const miniServices = [
-  { label: "Tax", icon: Building2, tone: "text-orange-500" },
-  { label: "Insurance", icon: ShieldCheck, tone: "text-blue-600" },
-  { label: "Finance", icon: CreditCard, tone: "text-sky-600" },
-  { label: "Gov ID", icon: FileCheck2, tone: "text-emerald-600" },
+const trustBadges = [
+  { label: "Fast Service", icon: Timer },
+  { label: "Secure Process", icon: ShieldCheck },
+  { label: "Expert Support", icon: UsersRound },
 ];
 
 function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
@@ -55,125 +50,81 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
   const dashboardConfig = viewer ? getDashboardConfig(viewer) : null;
 
   return (
-    <section className="relative isolate overflow-hidden px-0 pb-8 pt-4 md:pb-14 md:pt-8">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_10%,rgba(37,99,235,0.18),transparent_30%),radial-gradient(circle_at_92%_20%,rgba(249,115,22,0.12),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.55),rgba(239,247,255,0.35))]" />
+    <section className="relative isolate overflow-hidden px-0 pb-4 pt-3 md:pb-10 md:pt-8">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_4%,rgba(37,99,235,0.14),transparent_28%),radial-gradient(circle_at_92%_16%,rgba(249,115,22,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.72),rgba(239,247,255,0.3))]" />
       <div className="container-shell">
-        <div className="glass-panel shadow-liquid mx-auto min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 px-5 py-6 sm:px-7 md:rounded-[2rem] md:px-9 md:py-8">
-          <div className="grid gap-7 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
+        <div className="relative mx-auto min-w-0 overflow-hidden rounded-3xl border border-white/24 bg-[linear-gradient(135deg,#0f5db8_0%,#2563eb_48%,#f97316_100%)] px-4 py-5 shadow-[0_14px_34px_rgba(37,99,235,0.18)] sm:px-7 md:px-9 md:py-9">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.22),transparent_35%),radial-gradient(circle_at_82%_10%,rgba(255,255,255,0.22),transparent_24%)]" />
+          <div className="relative grid gap-6 lg:grid-cols-[1fr_0.72fr] lg:items-center">
             <div className="reveal-on-scroll">
-              <div className="flex flex-wrap gap-2">
-                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/45 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] sm:px-4 sm:text-sm">
-                  <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
-                  <span className="truncate">Digital Services with DigiWallet Benefits</span>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/70 bg-orange-50/80 px-3 py-1.5 text-xs font-extrabold text-orange-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:text-sm">
-                  <Timer className="h-4 w-4 shrink-0" />
-                  20% Cashback on Eligible Completed Services
-                </div>
-              </div>
+              <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/26 bg-white/16 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]">
+                Pan India service assistance
+              </p>
               <div className="mt-4 space-y-3">
-                <h1 className="max-w-3xl text-balance text-[2.15rem] font-bold leading-[1.05] text-slate-950 sm:text-5xl md:text-[3.65rem]">
-                  Digital services made simple for India
+                <h1 className="max-w-3xl text-balance text-[2rem] font-bold leading-[1.05] text-white sm:text-5xl md:text-[3.45rem]">
+                  All Digital & Government Services
                 </h1>
-                <p className="text-base font-bold text-blue-700 md:text-lg">
-                  Get 20% DigiWallet cashback after completed eligible services
+                <p className="max-w-2xl text-sm font-semibold leading-6 text-white/86 md:text-lg md:leading-8">
+                  Fast processing, trusted support, and secure online service assistance across India.
                 </p>
-                <p className="max-w-2xl text-sm leading-7 text-slate-600 md:text-base md:leading-8">
-                  Apply for ITR Filing, MSME Registration, Tax, Insurance, Finance, and Gov ID services with secure processing and DigiWallet rewards for your next order.
-                </p>
-                {isCustomer ? (
-                  <p className="text-sm font-bold text-slate-700 md:text-base">
-                    Welcome, {viewer.name}
-                  </p>
-                ) : null}
+                {isCustomer ? <p className="text-sm font-bold text-white/88 md:text-base">Welcome, {viewer.name}</p> : null}
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-4 text-sm font-extrabold text-emerald-800 shadow-sm">
-                  <UsersRound className="h-4 w-4" />
-                  50000+ Customers Served
-                </div>
-                <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-blue-200/50 bg-white/45 px-4 text-sm font-semibold text-blue-800 shadow-sm">
-                  <ShieldCheck className="h-4 w-4" />
-                  20% DigiWallet Cashback
-                </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {trustBadges.map(({ label, icon: Icon }) => (
+                  <div key={label} className="min-w-0 rounded-2xl border border-white/18 bg-white/14 px-2.5 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                    <Icon className="mx-auto h-4 w-4 text-orange-100" />
+                    <span className="mt-1 block text-[11px] font-extrabold leading-tight text-white">{label}</span>
+                  </div>
+                ))}
               </div>
-              <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:flex sm:flex-row">
+              <div className="mt-5 grid min-w-0 grid-cols-2 gap-3 sm:flex sm:flex-row">
                 {isCustomer ? (
                   <>
-                    <ApplyServiceTrigger className="premium-button premium-button-blue">
+                    <ApplyServiceTrigger className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
                       <FileCheck2 className="h-4 w-4" />
                       Apply Now
                       <ArrowRight className="h-4 w-4" />
                     </ApplyServiceTrigger>
-                    <Link href="/customer/dashboard" className="premium-button border border-white/15 bg-white/65 text-blue-800 shadow-sm md:hover:-translate-y-0.5 md:hover:bg-white/80">
-                      <LayoutDashboard className="h-4 w-4" />
-                      My Dashboard
-                    </Link>
+                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] md:hover:bg-white/22">
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </a>
                   </>
                 ) : dashboardConfig ? (
-                  <Link href={dashboardConfig.href} className="premium-button premium-button-blue">
+                  <Link href={dashboardConfig.href} className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
                     <LayoutDashboard className="h-4 w-4" />
                     {dashboardConfig.label}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 ) : (
                   <>
-                    <ApplyServiceTrigger className="premium-button premium-button-blue">
+                    <ApplyServiceTrigger className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
                       <LogIn className="h-4 w-4" />
                       Apply Now
                       <ArrowRight className="h-4 w-4" />
                     </ApplyServiceTrigger>
-                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] md:hover:bg-white/22">
                       <MessageCircle className="h-4 w-4" />
-                      WhatsApp Now
+                      WhatsApp
                     </a>
                   </>
                 )}
               </div>
             </div>
 
-            <div className="relative min-h-[24rem] reveal-on-scroll lg:min-h-[28rem]">
-              <div className="absolute inset-5 rounded-[2rem] bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.2),transparent_30%),radial-gradient(circle_at_86%_70%,rgba(249,115,22,0.16),transparent_28%)]" />
-              <div className="floating-card-tilt-left liquid-card absolute left-0 top-4 w-[82%] rounded-[1.6rem] p-4 sm:w-[72%]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">Digital Verification</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-950">Document Processing</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-bold text-emerald-700">Secure</span>
-                </div>
-                <div className="mt-4 space-y-2.5">
-                  {["Identity proof checked", "Application details reviewed", "Service status updated"].map((item) => (
-                    <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/45 p-2.5">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
+            <div className="hidden reveal-on-scroll lg:block">
+              <div className="rounded-3xl border border-white/22 bg-white/14 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-white/72">Simple process</p>
+                <div className="mt-4 space-y-3">
+                  {["Choose service", "Share documents", "Track support"].map((item) => (
+                    <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/16 p-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-blue-700">
                         <CheckCircle2 className="h-4 w-4" />
                       </span>
-                      <span className="text-xs font-bold text-slate-700">{item}</span>
+                      <span className="text-sm font-extrabold text-white">{item}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              <div className="floating-card-tilt-right liquid-card absolute bottom-6 right-0 w-[88%] rounded-[1.75rem] p-4 sm:w-[76%]">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Popular Services</p>
-                  <ClipboardCheck className="h-4 w-4 text-orange-500" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {miniServices.map(({ label, icon: Icon, tone }) => (
-                    <div key={label} className="rounded-[1.1rem] border border-white/20 bg-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
-                      <Icon className={`h-5 w-5 ${tone}`} />
-                      <p className="mt-3 text-sm font-semibold text-slate-950">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="absolute right-6 top-0 rounded-full border border-white/20 bg-white/55 px-4 py-2 text-xs font-bold text-orange-600 shadow-sm">
-                Government Services Online
-              </div>
-              <div className="absolute bottom-0 left-7 rounded-full border border-white/15 bg-slate-950/86 px-4 py-2 text-xs font-bold text-white shadow-sm">
-                Tax, Insurance, Finance, Gov ID
               </div>
             </div>
           </div>

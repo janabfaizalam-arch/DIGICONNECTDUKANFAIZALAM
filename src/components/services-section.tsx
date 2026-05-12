@@ -2,24 +2,68 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 import { ServiceCard } from "@/components/service-card";
-import { getPublicCategoriesWithCounts, getPublicFeaturedServices } from "@/lib/services";
+import { getPublicCategoriesWithCounts, getPublicFeaturedServices, getPublicServices } from "@/lib/services";
+import type { ServiceItem } from "@/lib/services-data";
+
+const priorityFeaturedServices = [
+  "gst-registration",
+  "itr-filing",
+  "msme-certificate",
+  "food-license-fssai",
+  "pan-card",
+  "dsc",
+  "digital-signature-certificate",
+];
 
 export async function ServicesSection() {
   const serviceCategories = await getPublicCategoriesWithCounts();
+  const publicServices = await getPublicServices();
+  const featuredServices: ServiceItem[] = [];
+
+  for (const slug of priorityFeaturedServices) {
+    const service = publicServices.find((item) => item.slug === slug || item.title.toLowerCase() === slug.replace(/-/g, " "));
+
+    if (service && !featuredServices.some((item) => item.slug === service.slug)) {
+      featuredServices.push(service);
+    }
+
+    if (featuredServices.length === 6) {
+      break;
+    }
+  }
 
   return (
-    <section id="services" className="section-pad">
-      <div className="container-shell space-y-10">
+    <section id="services" className="section-pad scroll-mt-20">
+      <div className="container-shell space-y-8 md:space-y-10">
         <div className="reveal-on-scroll mx-auto max-w-3xl text-center">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-blue-700 shadow-soft">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-blue-700 shadow-soft md:px-4 md:py-2 md:text-xs">
             <Sparkles className="h-3.5 w-3.5 text-orange-500" />
             Premium Services
           </p>
-          <h2 className="mt-4 text-3xl font-bold text-slate-950 md:text-4xl">Apply online with fast document assistance</h2>
-          <p className="mt-3 text-base leading-7 text-slate-600">
+          <h2 className="mt-3 text-2xl font-bold text-slate-950 md:mt-4 md:text-4xl">Apply online with fast document assistance</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600 md:mt-3 md:text-base md:leading-7">
             DigiConnect Dukan brings Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID form submission into one clean service experience.
           </p>
         </div>
+
+        {featuredServices.length ? (
+          <div className="space-y-4">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Featured</p>
+                <h3 className="mt-1 text-xl font-bold text-slate-950 md:text-2xl">Most requested services</h3>
+              </div>
+              <Link href="/services" className="hidden text-sm font-extrabold text-blue-700 sm:inline-flex">
+                View All
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+              {featuredServices.map((service) => (
+                <ServiceCard key={service.slug} service={service} compact />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {await Promise.all(serviceCategories.map(async (category) => {
           const services = (await getPublicFeaturedServices(category.slug)).filter((service) => service.slug !== "pan-card");
@@ -36,7 +80,7 @@ export async function ServicesSection() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
                 {services.map((service) => (
                   <ServiceCard key={service.slug} service={service} />
                 ))}

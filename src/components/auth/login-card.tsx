@@ -59,6 +59,7 @@ export function LoginCard({
           return;
         }
 
+        trackLogin("google");
         window.location.assign(data.url);
         return;
       }
@@ -94,7 +95,7 @@ export function LoginCard({
         return;
       }
 
-      trackLogin();
+      trackLogin("email");
       window.location.assign("/login");
     } catch (error) {
       setIsPasswordPending(false);

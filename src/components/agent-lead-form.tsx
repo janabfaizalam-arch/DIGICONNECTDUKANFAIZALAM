@@ -8,6 +8,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { trackLeadSubmit } from "@/lib/google-analytics";
 
 type AgentLeadFormProps = {
   services: string[];
@@ -37,6 +38,7 @@ export function AgentLeadForm({ services }: AgentLeadFormProps) {
         }
 
         success(result.message || "Lead saved successfully.");
+        trackLeadSubmit();
         event.currentTarget.reset();
         router.refresh();
       } catch (error) {

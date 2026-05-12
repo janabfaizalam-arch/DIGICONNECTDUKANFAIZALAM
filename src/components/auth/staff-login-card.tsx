@@ -54,7 +54,7 @@ export function StaffLoginCard() {
         return;
       }
 
-      trackLogin();
+      trackLogin("staff_email");
       window.location.assign("/staff/dashboard");
     } catch (error) {
       setIsPending(false);

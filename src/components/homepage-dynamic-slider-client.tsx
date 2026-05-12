@@ -51,15 +51,10 @@ function SlideCta({ slide }: { slide: HomepageSlide }) {
   }
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 px-4 py-3 sm:flex-row md:px-6",
-        ctaPositionClasses[slide.cta_position],
-      )}
-    >
+    <div className={cn("flex flex-col gap-2 px-2 pt-2 sm:flex-row md:px-4", ctaPositionClasses[slide.cta_position])}>
       {buttons.map((button) => {
         const className = cn(
-          "inline-flex min-h-11 items-center justify-center rounded-full px-5 text-center text-sm font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 md:min-h-12 md:px-6",
+          "inline-flex min-h-9 items-center justify-center rounded-full px-4 text-center text-xs font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 md:min-h-11 md:px-6 md:text-sm",
           button.className,
         );
 
@@ -169,10 +164,10 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
-      className="relative px-3 pb-4 pt-3 outline-none sm:px-5 md:pb-8 lg:px-8"
+      className="relative px-0 pb-4 pt-2 outline-none md:pb-7 md:pt-0"
     >
-      <div className="mx-auto w-full max-w-[1440px]">
-        <div className="relative overflow-hidden rounded-xl bg-white/88 p-2 shadow-[0_16px_44px_rgba(15,23,42,0.1)] ring-1 ring-blue-100 md:rounded-3xl md:p-3">
+      <div className="container-shell">
+        <div className="relative overflow-hidden rounded-3xl border border-white/28 bg-white/54 p-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 ring-blue-100/70 md:p-2.5">
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex touch-pan-y">
               {slides.map((slide, index) => {
@@ -180,8 +175,8 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
 
                 return (
                   <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
-                    <div className="relative bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_46%,#fff7ed_100%)]">
-                      <div className="relative aspect-[1/1] max-h-[58vh] overflow-hidden rounded-lg bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,255,0.96))] sm:aspect-[8/3] sm:max-h-none md:rounded-[1.35rem]">
+                    <div className="relative rounded-[1.35rem] bg-[linear-gradient(135deg,#f8fbff_0%,#fff7ed_100%)] p-1">
+                      <div className="relative aspect-[16/9] max-h-[12.5rem] overflow-hidden rounded-2xl bg-white/35 sm:aspect-[8/3] sm:max-h-none md:rounded-[1.35rem]">
                       <Image
                         src={slide.mobile_image_url || slide.image_url}
                         alt={slide.title || "DigiConnect Dukan promotional poster"}
@@ -203,8 +198,8 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
 
                       {hasCopy ? (
                         <div className="absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-slate-950/48 via-slate-950/10 to-transparent p-4 text-white md:p-8">
-                          {slide.title ? <h2 className="max-w-3xl text-2xl font-black leading-tight md:text-5xl">{slide.title}</h2> : null}
-                          {slide.subtitle ? <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/88 md:text-lg">{slide.subtitle}</p> : null}
+                          {slide.title ? <h2 className="max-w-3xl text-lg font-black leading-tight md:text-5xl">{slide.title}</h2> : null}
+                          {slide.subtitle ? <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-white/88 md:text-lg">{slide.subtitle}</p> : null}
                         </div>
                       ) : null}
                       </div>
@@ -237,7 +232,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-2 px-3 py-3">
+              <div className="flex items-center justify-center gap-1.5 px-3 py-2">
                 {scrollSnaps.map((index) => (
                   <button
                     key={index}
@@ -245,8 +240,8 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     aria-label={`Go to homepage promotion ${index + 1}`}
                     onClick={() => scrollTo(index)}
                     className={cn(
-                      "relative h-2 overflow-hidden rounded-full bg-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
-                      selectedIndex === index ? "w-7" : "w-2 hover:bg-blue-300",
+                      "relative h-1.5 overflow-hidden rounded-full bg-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
+                      selectedIndex === index ? "w-5" : "w-1.5 hover:bg-blue-300",
                     )}
                   >
                     {selectedIndex === index ? (

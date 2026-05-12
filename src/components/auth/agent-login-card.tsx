@@ -57,7 +57,7 @@ export function AgentLoginCard() {
         return;
       }
 
-      trackLogin();
+      trackLogin("agent_email");
       window.location.assign("/agent/dashboard");
     } catch (error) {
       setIsPending(false);

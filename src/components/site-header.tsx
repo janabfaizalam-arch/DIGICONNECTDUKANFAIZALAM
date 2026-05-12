@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { FileCheck2, Home, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
+import { FileCheck2, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -115,7 +115,7 @@ export function SiteHeader() {
   const panelConfig = getPanelConfig(role);
   const staffShell = isStaffShellPath(pathname);
   const agentShell = isAgentShellPath(pathname);
-  const logoHref = role === "agent" || agentShell ? "/agent/dashboard" : role === "staff" || staffShell ? "/staff/dashboard" : "/";
+  const logoHref = "/";
   const appShell = staffShell || agentShell;
   const appShellLabel = agentShell ? "Agent Dashboard" : "Staff Dashboard";
   const appShellHref = agentShell ? "/agent/dashboard" : "/staff/dashboard";
@@ -200,15 +200,15 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`site-header sticky top-0 z-40 border-b border-white/10 bg-white/60 transition-[background-color,box-shadow,backdrop-filter] duration-200 print:hidden ${
+      className={`site-header sticky top-0 z-40 border-b border-white/20 bg-white/72 transition-[background-color,box-shadow,backdrop-filter] duration-200 print:hidden ${
         scrolled
-          ? "shadow-[0_8px_24px_rgba(15,23,42,0.1)] backdrop-blur-sm"
-          : "shadow-[0_6px_18px_rgba(15,23,42,0.06)] md:backdrop-blur-sm"
+          ? "shadow-[0_6px_18px_rgba(15,23,42,0.07)] backdrop-blur-[6px]"
+          : "shadow-[0_4px_14px_rgba(15,23,42,0.04)] backdrop-blur-[4px]"
       }`}
     >
-      <div className={`container-shell flex items-center justify-between gap-3 transition-[min-height,padding] duration-200 md:gap-4 ${scrolled ? "min-h-14 py-1 md:min-h-[3.75rem]" : "min-h-[3.75rem] py-1.5 md:min-h-16"}`}>
+      <div className={`container-shell flex items-center justify-between gap-3 transition-[min-height,padding] duration-200 md:gap-4 ${scrolled ? "min-h-12 py-1 md:min-h-[3.75rem]" : "min-h-[3.25rem] py-1 md:min-h-16"}`}>
         <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="DigiConnect Dukan home">
-          <span className="flex h-10 w-[8.75rem] items-center md:h-11 md:w-[9.75rem]">
+          <span className="flex h-8 w-[8.35rem] items-center md:h-11 md:w-[9.75rem]">
             <Image
               src="/logo-navbar.png"
               alt="DigiConnect Dukan Logo"
@@ -308,10 +308,6 @@ export function SiteHeader() {
           </div>
         ) : (
           <div className="flex items-center gap-2 md:hidden">
-            <Link href="/" className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/45 text-blue-700 shadow-sm min-[390px]:inline-flex">
-              <Home className="h-4 w-4" />
-              <span className="sr-only">Home</span>
-            </Link>
             <MobileMenu isLoggedIn={Boolean(user)} isCustomer={role === "customer"} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
           </div>
         )}

@@ -70,9 +70,9 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls="mobile-navigation"
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/50 text-blue-700 shadow-sm"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/62 text-blue-700 shadow-[0_4px_12px_rgba(15,23,42,0.06)]"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4.5 w-4.5" />
         <span className="sr-only">Open navigation menu</span>
       </button>
       {open ? (

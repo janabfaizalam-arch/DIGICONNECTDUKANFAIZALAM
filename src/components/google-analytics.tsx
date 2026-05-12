@@ -39,6 +39,8 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   }, [pathname]);
 
   useEffect(() => {
+    console.debug("[ga4] contact click listener attached");
+
     function onClick(event: MouseEvent) {
       const link = (event.target as Element | null)?.closest("a[href]");
       const href = link?.getAttribute("href");
@@ -50,10 +52,12 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
       const contactType = getContactType(href);
 
       if (contactType === "call") {
+        console.debug("[ga4] call CTA click detected", { href });
         trackCallClick();
       }
 
       if (contactType === "whatsapp") {
+        console.debug("[ga4] WhatsApp CTA click detected", { href });
         trackWhatsAppClick();
       }
     }
@@ -72,10 +76,11 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
         dangerouslySetInnerHTML={{
           __html: `
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('consent', 'default', { analytics_storage: 'granted' });
-            gtag('js', new Date());
-            gtag('config', ${JSON.stringify(measurementId)});
+            window.gtag = window.gtag || function gtag(){window.dataLayer.push(arguments);}
+            window.gtag('consent', 'default', { analytics_storage: 'granted' });
+            window.gtag('js', new Date());
+            window.gtag('config', ${JSON.stringify(measurementId)});
+            console.debug('[ga4] gtag initialized', { measurementId: ${JSON.stringify(measurementId)} });
           `,
         }}
       />

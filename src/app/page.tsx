@@ -71,9 +71,9 @@ export default async function Home() {
   return (
     <>
       <main className="pb-8 md:pb-0">
+        <HeroSection viewer={heroViewer} />
         <HomepageDynamicSlider />
         <HomepageServiceIconRow />
-        <HeroSection viewer={heroViewer} />
         <HomepageOfferSlider initialSlides={offerSlides} />
         <ServicesSection />
         <WhyChooseUsSection />

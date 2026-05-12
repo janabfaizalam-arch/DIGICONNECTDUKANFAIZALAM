@@ -238,7 +238,7 @@ function CustomerLoginCardInner({
           throw new Error("Login succeeded but user details could not be loaded.");
         }
 
-        trackLogin();
+        trackLogin("email");
         window.location.assign(getCurrentCustomerRedirect());
         return;
       }

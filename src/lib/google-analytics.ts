@@ -15,21 +15,52 @@ export function isGoogleAnalyticsEnabled() {
   return process.env.NODE_ENV === "production" && Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim());
 }
 
-function trackEvent(eventName: string, parameters?: GoogleAnalyticsEventParameters) {
-  if (typeof window === "undefined" || !isGoogleAnalyticsEnabled() || typeof window.gtag !== "function") {
+function debugAnalytics(message: string, details?: GoogleAnalyticsEventParameters) {
+  if (typeof window === "undefined") {
     return;
   }
 
+  console.debug(`[ga4] ${message}`, details ?? {});
+}
+
+function trackEvent(eventName: string, parameters?: GoogleAnalyticsEventParameters) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (!isGoogleAnalyticsEnabled()) {
+    debugAnalytics("event skipped: GA disabled", { event_name: eventName });
+    return false;
+  }
+
+  if (typeof window.gtag !== "function") {
+    debugAnalytics("event skipped: window.gtag missing", { event_name: eventName });
+    return false;
+  }
+
+  debugAnalytics("event fired", { event_name: eventName, ...(parameters ?? {}) });
   window.gtag("event", eventName, parameters);
+  return true;
 }
 
 export function trackPageView(path: string) {
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 
-  if (typeof window === "undefined" || !isGoogleAnalyticsEnabled() || !measurementId || typeof window.gtag !== "function") {
+  if (typeof window === "undefined") {
     return;
   }
 
+  if (!isGoogleAnalyticsEnabled() || !measurementId) {
+    debugAnalytics("page_view skipped: GA disabled", { page_path: path });
+    return;
+  }
+
+  if (typeof window.gtag !== "function") {
+    debugAnalytics("page_view skipped: window.gtag missing", { page_path: path });
+    return;
+  }
+
+  debugAnalytics("page_view config fired", { page_path: path });
   window.gtag("config", measurementId, {
     page_path: path,
   });
@@ -37,9 +68,11 @@ export function trackPageView(path: string) {
 
 export function updateAnalyticsConsent(granted: boolean) {
   if (typeof window === "undefined" || typeof window.gtag !== "function") {
+    debugAnalytics("consent skipped: window.gtag missing", { granted });
     return;
   }
 
+  debugAnalytics("consent update fired", { granted });
   window.gtag("consent", "update", {
     analytics_storage: granted ? "granted" : "denied",
   });
@@ -54,11 +87,11 @@ export function trackCallClick() {
 }
 
 export function trackLeadSubmit() {
-  trackEvent("generate_lead");
+  trackEvent("lead_submit");
 }
 
 export function trackApplicationSubmit() {
-  trackEvent("service_application_submit");
+  trackEvent("application_submit");
 }
 
 export function trackPurchase(value: number) {
@@ -68,18 +101,18 @@ export function trackPurchase(value: number) {
   });
 }
 
-export function trackLogin() {
+export function trackLogin(method = "email") {
   trackEvent("login", {
-    method: "email",
+    method,
   });
 }
 
-export function trackSignup() {
-  trackEvent("sign_up", {
-    method: "email",
+export function trackSignup(method = "email") {
+  trackEvent("signup", {
+    method,
   });
 }
 
 export function trackPasswordReset() {
-  trackEvent("password_reset_success");
+  trackEvent("password_reset");
 }
