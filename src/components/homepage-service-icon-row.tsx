@@ -1,13 +1,11 @@
 import Link from "next/link";
 import {
+  BadgeCheck,
   BadgeIndianRupee,
   CarFront,
-  FileBadge2,
-  FileText,
-  HandCoins,
-  IdCard,
+  CreditCard,
+  Fingerprint,
   ReceiptText,
-  ShieldCheck,
   Store,
   Utensils,
 } from "lucide-react";
@@ -17,34 +15,29 @@ const services = [
   { label: "ITR", href: "/services/itr-filing", icon: ReceiptText },
   { label: "MSME", href: "/services/msme-certificate", icon: BadgeIndianRupee },
   { label: "Food License", href: "/services/food-license-fssai", icon: Utensils },
-  { label: "DPR Project Report", href: "/services/dpr-project-report", icon: FileText },
-  { label: "Vehicle Insurance", href: "/services/insurance", icon: ShieldCheck },
-  { label: "Loan", href: "/services/finance-banking", icon: HandCoins },
-  { label: "Passport", href: "/services/passport-assistance", icon: FileBadge2 },
+  { label: "PAN Card", href: "/services/pan-card", icon: CreditCard },
+  { label: "DSC", href: "/services/tax-business", icon: BadgeCheck },
+  { label: "Aadhaar", href: "/services/gov-id-form-submission", icon: Fingerprint },
   { label: "Driving Licence", href: "/services/driving-licence", icon: CarFront },
-  { label: "Voter Card", href: "/services/voter-id", icon: IdCard },
-  { label: "Labour Card", href: "/services/labour-card-e-shram-card", icon: FileText },
 ];
 
 export function HomepageServiceIconRow() {
   return (
-    <section aria-label="Popular services" className="px-0 pb-4 md:pb-8">
+    <section aria-label="Popular services" className="bg-white px-0 py-4 md:py-6">
       <div className="container-shell">
-        <div className="glass-panel overflow-hidden rounded-2xl border border-white/10 px-2.5 py-2.5 shadow-liquid md:rounded-[1.75rem] md:px-4 md:py-3">
-          <div className="relative z-10 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-6 lg:grid-cols-11">
-            {services.map(({ label, href, icon: Icon }) => (
-              <Link
-                key={label}
-                href={href}
-                className="group flex min-w-[5rem] flex-col items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/58 px-2.5 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] transition md:min-w-0 md:px-3 md:py-3 md:hover:-translate-y-0.5 md:hover:bg-white/76"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-700 transition group-hover:bg-orange-50 group-hover:text-orange-600">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="text-[11px] font-extrabold leading-tight text-slate-700">{label}</span>
-              </Link>
-            ))}
-          </div>
+        <div className="grid grid-cols-4 gap-2 md:grid-cols-8 md:gap-3">
+          {services.map(({ label, href, icon: Icon }) => (
+            <Link
+              key={label}
+              href={href}
+              className="group flex min-h-[4.7rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-white px-1.5 py-2 text-center shadow-[0_6px_16px_rgba(15,23,42,0.04)] transition md:min-h-[5.5rem] md:px-3 md:py-3 md:hover:-translate-y-0.5 md:hover:border-orange-100 md:hover:bg-orange-50/35"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 transition group-hover:bg-orange-50 group-hover:text-orange-600 md:h-10 md:w-10">
+                <Icon className="h-4.5 w-4.5 md:h-5 md:w-5" />
+              </span>
+              <span className="max-w-full break-words text-[10px] font-extrabold leading-tight text-slate-700 md:text-xs">{label}</span>
+            </Link>
+          ))}
         </div>
       </div>
     </section>

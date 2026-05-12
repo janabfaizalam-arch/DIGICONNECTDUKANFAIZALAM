@@ -1,10 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import type { HomepageSlide } from "@/lib/homepage-slides";
 import { cn } from "@/lib/utils";
@@ -14,67 +12,6 @@ const AUTOPLAY_MS = 4000;
 type HomepageDynamicSliderClientProps = {
   slides: HomepageSlide[];
 };
-
-const ctaPositionClasses: Record<HomepageSlide["cta_position"], string> = {
-  "bottom-left": "justify-start",
-  "bottom-right": "justify-end",
-  "bottom-center": "justify-center",
-  "center-left": "justify-start",
-  "center-right": "justify-end",
-  hidden: "hidden",
-};
-
-function isExternalUrl(url: string) {
-  return url.startsWith("https://");
-}
-
-function SlideCta({ slide }: { slide: HomepageSlide }) {
-  const buttons = [
-    {
-      label: slide.cta_primary_label,
-      url: slide.cta_primary_url,
-      className:
-        "bg-gradient-to-r from-blue-700 to-orange-500 text-white shadow-[0_18px_42px_rgba(15,23,42,0.24)] hover:from-blue-800 hover:to-orange-600",
-    },
-    {
-      label: slide.cta_secondary_label,
-      url: slide.cta_secondary_url,
-      className:
-        "border border-white/60 bg-white/82 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,0.18)] backdrop-blur-md hover:bg-white",
-    },
-  ].filter((button): button is { label: string; url: string; className: string } =>
-    Boolean(button.label?.trim() && button.url?.trim()),
-  );
-
-  if (!buttons.length || slide.cta_position === "hidden") {
-    return null;
-  }
-
-  return (
-    <div className={cn("flex flex-col gap-2 px-2 pt-2 sm:flex-row md:px-4", ctaPositionClasses[slide.cta_position])}>
-      {buttons.map((button) => {
-        const className = cn(
-          "inline-flex min-h-9 items-center justify-center rounded-full px-4 text-center text-xs font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 md:min-h-11 md:px-6 md:text-sm",
-          button.className,
-        );
-
-        if (isExternalUrl(button.url)) {
-          return (
-            <a key={`${button.label}-${button.url}`} href={button.url} target="_blank" rel="noreferrer" className={className}>
-              {button.label}
-            </a>
-          );
-        }
-
-        return (
-          <Link key={`${button.label}-${button.url}`} href={button.url} className={className}>
-            {button.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
 
 export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderClientProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: slides.length > 1, duration: 30 });
@@ -91,9 +28,6 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
     },
     [emblaApi],
   );
-
-  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
   useEffect(() => {
     if (!emblaApi) {
@@ -143,120 +77,70 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
     return () => window.clearInterval(tick);
   }, [emblaApi, isPaused, slides.length]);
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      scrollPrev();
-    }
-
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      scrollNext();
-    }
-  }
-
   return (
     <section
-      aria-label="Homepage promotions"
+      aria-label="Homepage offer banners"
       tabIndex={0}
-      onKeyDown={handleKeyDown}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
-      className="relative px-0 pb-4 pt-2 outline-none md:pb-7 md:pt-0"
+      className="relative bg-white outline-none"
     >
-      <div className="container-shell">
-        <div className="relative overflow-hidden rounded-3xl border border-white/28 bg-white/54 p-1.5 shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 ring-blue-100/70 md:p-2.5">
-          <div className="overflow-hidden" ref={emblaRef}>
-            <div className="flex touch-pan-y">
-              {slides.map((slide, index) => {
-                const hasCopy = Boolean(slide.title?.trim() || slide.subtitle?.trim());
-
-                return (
-                  <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
-                    <div className="relative rounded-[1.35rem] bg-[linear-gradient(135deg,#f8fbff_0%,#fff7ed_100%)] p-1">
-                      <div className="relative aspect-[16/9] max-h-[12.5rem] overflow-hidden rounded-2xl bg-white/35 sm:aspect-[8/3] sm:max-h-none md:rounded-[1.35rem]">
-                      <Image
-                        src={slide.mobile_image_url || slide.image_url}
-                        alt={slide.title || "DigiConnect Dukan promotional poster"}
-                        fill
-                        priority={index === 0}
-                        loading={index === 0 ? undefined : "lazy"}
-                        sizes="100vw"
-                        className="object-contain object-center sm:hidden"
-                      />
-                      <Image
-                        src={slide.image_url}
-                        alt=""
-                        fill
-                        priority={index === 0}
-                        loading={index === 0 ? undefined : "lazy"}
-                        sizes="(max-width: 1440px) 96vw, 1440px"
-                        className="hidden object-contain object-center sm:block"
-                      />
-
-                      {hasCopy ? (
-                        <div className="absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-slate-950/48 via-slate-950/10 to-transparent p-4 text-white md:p-8">
-                          {slide.title ? <h2 className="max-w-3xl text-lg font-black leading-tight md:text-5xl">{slide.title}</h2> : null}
-                          {slide.subtitle ? <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-white/88 md:text-lg">{slide.subtitle}</p> : null}
-                        </div>
-                      ) : null}
-                      </div>
-                      <SlideCta slide={slide} />
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+      <div className="relative overflow-hidden bg-slate-100">
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex touch-pan-y">
+            {slides.map((slide, index) => (
+              <article key={slide.id} className="relative min-w-0 flex-[0_0_100%]">
+                <div className="relative aspect-[2/1] max-h-[34rem] w-full overflow-hidden bg-slate-100 md:aspect-[8/3]">
+                  <Image
+                    src={slide.mobile_image_url || slide.image_url}
+                    alt={slide.title || "DigiConnect Dukan offer banner"}
+                    fill
+                    priority={index === 0}
+                    loading={index === 0 ? undefined : "lazy"}
+                    sizes="100vw"
+                    className="object-cover object-center sm:hidden"
+                  />
+                  <Image
+                    src={slide.image_url}
+                    alt={slide.title || "DigiConnect Dukan offer banner"}
+                    fill
+                    priority={index === 0}
+                    loading={index === 0 ? undefined : "lazy"}
+                    sizes="100vw"
+                    className="hidden object-cover object-center sm:block"
+                  />
+                </div>
+              </article>
+            ))}
           </div>
-
-          {slides.length > 1 ? (
-            <>
-              <div className="pointer-events-none absolute inset-y-0 left-0 right-0 hidden items-center justify-between px-4 md:flex">
-                <button
-                  type="button"
-                  aria-label="Previous homepage promotion"
-                  onClick={scrollPrev}
-                  className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/82 text-blue-700 shadow-lg backdrop-blur transition hover:bg-white hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Next homepage promotion"
-                  onClick={scrollNext}
-                  className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/82 text-blue-700 shadow-lg backdrop-blur transition hover:bg-white hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                >
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-1.5 px-3 py-2">
-                {scrollSnaps.map((index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    aria-label={`Go to homepage promotion ${index + 1}`}
-                    onClick={() => scrollTo(index)}
-                    className={cn(
-                      "relative h-1.5 overflow-hidden rounded-full bg-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
-                      selectedIndex === index ? "w-5" : "w-1.5 hover:bg-blue-300",
-                    )}
-                  >
-                    {selectedIndex === index ? (
-                      <span className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 to-orange-400" style={{ width: `${progress}%` }} />
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-
-          <p className="sr-only" aria-live="polite">
-            Showing homepage promotion {selectedIndex + 1} of {slides.length}: {slides[selectedIndex]?.title ?? "Promotional poster"}
-          </p>
         </div>
+
+        {slides.length > 1 ? (
+          <div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5 px-3">
+            {scrollSnaps.map((index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`Go to homepage offer ${index + 1}`}
+                onClick={() => scrollTo(index)}
+                className={cn(
+                  "relative h-1.5 overflow-hidden rounded-full bg-white/65 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
+                  selectedIndex === index ? "w-5" : "w-1.5 hover:bg-white",
+                )}
+              >
+                {selectedIndex === index ? (
+                  <span className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-600 to-orange-400" style={{ width: `${progress}%` }} />
+                ) : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <p className="sr-only" aria-live="polite">
+          Showing homepage offer {selectedIndex + 1} of {slides.length}: {slides[selectedIndex]?.title ?? "Offer banner"}
+        </p>
       </div>
     </section>
   );
