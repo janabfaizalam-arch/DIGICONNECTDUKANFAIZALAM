@@ -83,6 +83,18 @@ function getTrackerStep(status: string) {
   return 0;
 }
 
+function getRewardStatusLabel(status: string) {
+  if (status === "active") {
+    return "credited";
+  }
+
+  if (status === "used") {
+    return "used";
+  }
+
+  return status.replace(/_/g, " ");
+}
+
 export function CustomerDashboard({ applications, notifications, walletSnapshot, profileCompletion }: CustomerDashboardProps) {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -263,7 +275,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                   <div key={transaction.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-slate-950">{transaction.description || transaction.type.replace(/_/g, " ")}</p>
-                      <p className="text-xs text-slate-500">{formatDate(transaction.created_at)} • {transaction.status}</p>
+                      <p className="text-xs text-slate-500">{formatDate(transaction.created_at)} - {getRewardStatusLabel(transaction.status)}</p>
                     </div>
                     <p className={`shrink-0 text-sm font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
                       {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
@@ -282,11 +294,12 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
             <Card className="rounded-[1.5rem] p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Referral Rewards</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Refer & Earn ₹50</p>
                   <h2 className="mt-2 text-2xl font-bold text-slate-950">{referral.code || "Code generating"}</h2>
                 </div>
                 <Gift className="h-6 w-6 text-orange-500" />
               </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">Invite a friend and get ₹50 wallet credit after successful signup.</p>
               <p className="mt-3 break-all rounded-2xl bg-slate-50 p-3 font-mono text-xs font-bold text-slate-700">
                 {referral.link || "Your referral link will appear after profile sync."}
               </p>
@@ -335,7 +348,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                     </div>
                   ))
                 ) : (
-                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Referral rewards appear after your friend completes their first verified paid order.</p>
+                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Invite a friend and get ₹50 wallet credit after successful signup.</p>
                 )}
               </div>
             </Card>

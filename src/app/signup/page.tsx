@@ -38,7 +38,7 @@ export default async function SignupPage({ searchParams }: { searchParams?: Prom
             <div className="grid gap-3">
               {[
                 { label: "Email verification only", icon: ShieldCheck },
-                { label: "Referral rewards after paid order", icon: BadgeCheck },
+                { label: "Referral rewards after signup", icon: BadgeCheck },
                 { label: "Wallet usable on services", icon: WalletCards },
               ].map(({ label, icon: Icon }) => (
                 <div key={label} className="flex items-center gap-3 rounded-2xl bg-white/35 p-3 backdrop-blur-md">

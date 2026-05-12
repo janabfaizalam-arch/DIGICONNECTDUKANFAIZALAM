@@ -194,7 +194,7 @@ export function HomepageOfferSlider({ initialSlides }: { initialSlides?: Homepag
                             </div>
                             {slide.cta === "Apply Now" ? (
                               <p className="mt-3 inline-flex rounded-full bg-blue-50/80 px-3 py-2 text-xs font-extrabold text-blue-700">
-                                Get 20% DigiWallet cashback after completed service
+                                Get 20% Cashback in Wallet
                               </p>
                             ) : null}
                           </div>

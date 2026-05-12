@@ -262,38 +262,20 @@ export async function getRewardRuleForOrder(serviceSlugs: string[]) {
   return getActiveServiceRewardRule(serviceSlugs[0] ?? "default");
 }
 
-export function calculateCashbackAmount(orderAmount: number, rule: ServiceRewardRule | null, fallbackAmount?: number | null) {
-  if (typeof fallbackAmount === "number" && fallbackAmount > 0) {
-    return Math.max(0, fallbackAmount);
-  }
-
-  if (!rule) {
-    return Math.round(orderAmount * 0.2);
-  }
-
-  if (rule.cashback_type === "fixed") {
-    return Math.round(toNumber(rule.cashback_value));
-  }
-
-  return Math.round(orderAmount * (toNumber(rule.cashback_value) / 100));
+export function calculateCashbackAmount(orderAmount: number) {
+  return Math.round(Math.max(0, orderAmount) * 0.2);
 }
 
 export async function creditCashbackForApplication({
-  userId,
   applicationId,
-  serviceSlug,
-  serviceSlugs,
-  serviceName,
-  orderAmount,
-  cashbackAmount,
   createdBy,
 }: {
-  userId: string;
+  userId?: string;
   applicationId: string;
-  serviceSlug: string;
+  serviceSlug?: string;
   serviceSlugs?: string[];
-  serviceName: string;
-  orderAmount: number;
+  serviceName?: string;
+  orderAmount?: number;
   cashbackAmount?: number | null;
   expiryDays?: number | null;
   createdBy?: string | null;
@@ -304,28 +286,41 @@ export async function creditCashbackForApplication({
     throw new Error("Supabase service role key is missing.");
   }
 
-  const rule = await getRewardRuleForOrder(serviceSlugs?.length ? serviceSlugs : [serviceSlug]);
-  const amount = calculateCashbackAmount(orderAmount, rule, cashbackAmount);
+  const { data, error } = await supabase.rpc("credit_service_cashback", {
+    p_application_id: applicationId,
+    p_created_by: createdBy ?? null,
+  });
 
-  if (amount <= 0) {
+  if (error) {
+    throw error;
+  }
+
+  return data as string | null;
+}
+
+export async function creditReferralRewardForSignup({
+  referralCode,
+  referredUserId,
+  createdBy,
+}: {
+  referralCode: string;
+  referredUserId: string;
+  createdBy?: string | null;
+}) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    throw new Error("Supabase service role key is missing.");
+  }
+
+  if (!referralCode.trim() || !referredUserId) {
     return null;
   }
 
-  const { data, error } = await supabase.rpc("credit_reward_points", {
-    p_user_id: userId,
-    p_type: "cashback",
-    p_amount: amount,
-    p_description: `${serviceName} cashback credited for future orders.`,
-    p_reference_type: "application",
-    p_reference_id: applicationId,
+  const { data, error } = await supabase.rpc("credit_referral_reward_by_code", {
+    p_referral_code: referralCode.trim().toUpperCase(),
+    p_referred_user_id: referredUserId,
     p_created_by: createdBy ?? null,
-    p_expires_at: getRewardExpiryDate(),
-    p_metadata: {
-      service_slug: serviceSlug,
-      service_slugs: serviceSlugs ?? [serviceSlug],
-      order_amount: orderAmount,
-      rule_id: rule?.id ?? null,
-    },
   });
 
   if (error) {

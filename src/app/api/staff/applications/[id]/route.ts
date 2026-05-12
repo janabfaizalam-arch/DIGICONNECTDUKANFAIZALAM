@@ -4,12 +4,17 @@ import { getCurrentUser, getCurrentUserRole, isStaffRole } from "@/lib/auth";
 import { cleanFileName } from "@/lib/crm";
 import { applicationStatuses } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { creditCashbackForApplication } from "@/lib/wallet";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 8 * 1024 * 1024;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message, message }, { status });
+}
+
+function isCashbackCompletionStatus(status: unknown) {
+  return ["completed", "delivered", "approved", "done"].includes(String(status ?? "").toLowerCase());
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -121,6 +126,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         title: "Application update",
         message: customerMessage || `${application.service_name} status is now ${status.replace(/_/g, " ")}.`,
       });
+    }
+
+    if (application.user_id && isCashbackCompletionStatus(status) && !isCashbackCompletionStatus(application.status)) {
+      const creditedTransactionId = await creditCashbackForApplication({
+        applicationId: id,
+        createdBy: user.id,
+      });
+
+      if (creditedTransactionId) {
+        await supabase.from("notifications").insert({
+          user_id: application.user_id,
+          application_id: id,
+          title: "DigiWallet cashback credited",
+          message: "20% service cashback has been credited to your DigiWallet after successful service completion.",
+        });
+      }
     }
 
     return NextResponse.json({

@@ -9,6 +9,10 @@ function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
 }
 
+function isCashbackCompletionStatus(status: unknown) {
+  return ["completed", "delivered", "approved", "done"].includes(String(status ?? "").toLowerCase());
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
@@ -27,9 +31,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const internalNotes = String(formData.get("internalNotes") ?? "").trim();
     const note = String(formData.get("note") ?? "").trim();
     const finalDocument = formData.get("finalDocument");
-    const cashbackEnabled = formData.get("cashbackEnabled") === "on";
-    const cashbackAmountValue = Number(formData.get("cashbackAmount") ?? 0);
-    const cashbackExpiryDaysValue = Number(formData.get("cashbackExpiryDays") ?? 90);
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
@@ -48,9 +49,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const updates: Record<string, string | number | boolean | null> = {
       updated_at: new Date().toISOString(),
-      cashback_enabled: cashbackEnabled,
-      cashback_amount: Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : null,
-      cashback_expiry_days: Number.isFinite(cashbackExpiryDaysValue) && cashbackExpiryDaysValue > 0 ? Math.round(cashbackExpiryDaysValue) : 90,
+      cashback_enabled: true,
+      cashback_amount: null,
     };
 
     if (applicationStatuses.includes(status as never)) {
@@ -136,25 +136,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
 
       if (
-        updates.status === "completed" &&
-        application.status !== "completed" &&
+        isCashbackCompletionStatus(updates.status) &&
+        !isCashbackCompletionStatus(application.status) &&
         application.user_id &&
         Number(application.amount ?? 0) > 0 &&
         application.payment_status === "verified" &&
-        cashbackEnabled &&
         !application.cashback_credited_at
       ) {
         const creditedTransactionId = await creditCashbackForApplication({
-          userId: application.user_id,
           applicationId: id,
-          serviceSlug: application.service_slug,
-          serviceSlugs: Array.isArray((application.form_data as { service_slugs?: unknown })?.service_slugs)
-            ? ((application.form_data as { service_slugs?: string[] }).service_slugs ?? [])
-            : [application.service_slug],
-          serviceName: application.service_name,
-          orderAmount: Number(application.amount ?? 0),
-          cashbackAmount: Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : null,
-          expiryDays: Number.isFinite(cashbackExpiryDaysValue) && cashbackExpiryDaysValue > 0 ? Math.round(cashbackExpiryDaysValue) : 90,
           createdBy: user?.id ?? null,
         });
 
@@ -168,7 +158,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             user_id: application.user_id,
             application_id: id,
             title: "DigiWallet cashback credited",
-          message: `₹${(Number.isFinite(cashbackAmountValue) && cashbackAmountValue > 0 ? cashbackAmountValue : Number(application.amount ?? 0)).toLocaleString("en-IN")} cashback has been credited to your DigiWallet. Valid for future eligible services.`,
+            message: `Rs ${Math.round(Number(application.amount ?? 0) * 0.2).toLocaleString("en-IN")} cashback has been credited to your DigiWallet after successful service completion.`,
           });
         }
       }

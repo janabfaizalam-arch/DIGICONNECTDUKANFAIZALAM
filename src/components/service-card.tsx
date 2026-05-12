@@ -41,7 +41,7 @@ export function ServiceCard({ service, compact = false }: { service: ServiceItem
       <ServicePrice service={service} compact={compact} className="mt-2 md:mt-4" />
       {!compact && service.ctaType === "apply" ? (
         <p className="mt-3 rounded-2xl bg-blue-50/70 px-3 py-2 text-xs font-extrabold leading-5 text-blue-700">
-          Get 20% DigiWallet cashback after completed service
+          Get 20% Cashback in Wallet
         </p>
       ) : null}
 

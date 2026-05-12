@@ -1,6 +1,7 @@
 import { User } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { creditReferralRewardForSignup } from "@/lib/wallet";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function getCurrentUser() {
@@ -292,6 +293,17 @@ export async function syncUserProfile(user: User) {
       });
 
       await supabaseAdmin.rpc("issue_signup_bonus", { p_user_id: user.id });
+
+      if (referralCode) {
+        await creditReferralRewardForSignup({
+          referralCode,
+          referredUserId: user.id,
+          createdBy: user.id,
+        }).catch((error) => {
+          console.error("[auth] Referral reward credit failed", error);
+          return null;
+        });
+      }
     }
 
     const { data: existingCustomer } = await supabaseAdmin

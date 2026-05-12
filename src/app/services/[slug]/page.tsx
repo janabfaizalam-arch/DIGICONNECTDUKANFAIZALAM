@@ -153,7 +153,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               </div>
               {service.ctaType === "apply" ? (
                 <p className="mt-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-700">
-                  Get 20% DigiWallet cashback after completed service
+                  Get 20% Cashback in Wallet
                 </p>
               ) : null}
               <p className="mt-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-700">
@@ -214,7 +214,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <p className="mt-1 text-2xl font-extrabold text-orange-600">{service.offerPrice ? `Offer Price: ${service.offerPrice}` : "Enquiry Now"}</p>
               {service.ctaType === "apply" ? (
                 <p className="mt-3 text-xs font-extrabold leading-5 text-blue-700">
-                  Get 20% DigiWallet cashback after completed service
+                  Cashback is credited after successful service completion.
                 </p>
               ) : null}
             </div>

@@ -22,9 +22,6 @@ export function AdminUpdateForm({
   applicationId,
   currentStatus,
   currentPaymentStatus,
-  cashbackEnabled = true,
-  cashbackAmount = "",
-  cashbackExpiryDays = 90,
   customerMobile,
   serviceName,
   agents = [],
@@ -133,14 +130,10 @@ export function AdminUpdateForm({
 
       <Input name="assignedTo" placeholder="Assign to team member" />
       <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-        <label className="flex items-center gap-3 text-sm font-bold text-slate-800">
-          <input name="cashbackEnabled" type="checkbox" defaultChecked={cashbackEnabled} className="h-4 w-4 accent-blue-700" />
-          Enable Cashback
-        </label>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Input name="cashbackAmount" type="number" min="0" step="1" defaultValue={cashbackAmount ?? ""} placeholder="Cashback Amount" />
-          <Input name="cashbackExpiryDays" type="number" min="1" defaultValue={cashbackExpiryDays ?? 90} placeholder="Cashback Expiry Days" />
-        </div>
+        <p className="text-sm font-bold text-slate-900">Get 20% Cashback in Wallet</p>
+        <p className="mt-1 text-xs font-medium leading-5 text-slate-600">
+          Cashback is credited after successful service completion and verified payment. It is automatic and credited only once per application.
+        </p>
       </div>
       <Textarea name="internalNotes" placeholder="Internal notes" className="min-h-24" />
       <Textarea name="note" placeholder="Add note to history" className="min-h-24" />

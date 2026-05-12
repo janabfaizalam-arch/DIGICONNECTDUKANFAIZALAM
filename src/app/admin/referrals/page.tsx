@@ -43,7 +43,7 @@ export default async function AdminReferralsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <AdminPageHeader eyebrow="Rewards" title="Referral Management" description="Track referral signups, pending first orders, and completed referral rewards." />
+      <AdminPageHeader eyebrow="Rewards" title="Referral Management" description="Track referral signups, credited wallet rewards, and pending referral records." />
 
       <section className="grid gap-3 sm:grid-cols-3">
         <AdminStatCard title="Total Referrals" value={referrals.length} icon={UsersRound} tone="blue" />

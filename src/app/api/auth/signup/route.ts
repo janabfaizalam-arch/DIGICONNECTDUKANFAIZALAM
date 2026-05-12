@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
+import { creditReferralRewardForSignup } from "@/lib/wallet";
 
 type SignupBody = {
   fullName?: string;
@@ -177,6 +178,18 @@ export async function POST(request: Request) {
 
     if (data.session) {
       await supabase.auth.signOut();
+    }
+
+    if (data.user?.id && referredBy) {
+      try {
+        await creditReferralRewardForSignup({
+          referralCode: referredBy,
+          referredUserId: data.user.id,
+          createdBy: data.user.id,
+        });
+      } catch (rewardError) {
+        console.error("[auth/signup] Referral reward credit failed", rewardError);
+      }
     }
 
     return NextResponse.json({
