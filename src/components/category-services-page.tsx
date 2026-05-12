@@ -1,12 +1,11 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { ServiceCard } from "@/components/service-card";
 import type { ServiceCategoryWithCount } from "@/lib/services";
 import type { ServiceItem } from "@/lib/services-data";
 
-export function CategoryServicesPage({ category, services, afterServices }: { category: ServiceCategoryWithCount; services: ServiceItem[]; afterServices?: ReactNode }) {
+export function CategoryServicesPage({ category, services }: { category: ServiceCategoryWithCount; services: ServiceItem[] }) {
   const Icon = category.icon;
 
   return (
@@ -38,8 +37,6 @@ export function CategoryServicesPage({ category, services, afterServices }: { ca
             <ServiceCard key={service.slug} service={service} />
           ))}
         </section>
-
-        {afterServices}
 
         <section className="mt-10 rounded-[1.5rem] bg-slate-950 p-6 text-white md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

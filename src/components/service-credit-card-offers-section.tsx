@@ -4,20 +4,20 @@ import { CreditCardVisual } from "@/components/credit-card-visual";
 import { creditCards } from "@/lib/credit-cards";
 
 const disclaimer =
-  "Credit card approval is subject to bank eligibility, verification, credit score, and bank terms. DigiConnect Dukan only provides assistance/link access and does not guarantee approval.";
+  "Credit card approval is subject to bank eligibility, verification, credit score and bank terms. DigiConnect Dukan only provides assistance/link access and does not guarantee approval.";
 
 const faqs = [
   {
     question: "Does DigiConnect Dukan guarantee credit card approval?",
-    answer: "No. Approval depends on bank eligibility, credit score, documents, and verification.",
+    answer: "No. Approval depends on bank eligibility, credit score, documents and bank verification.",
   },
   {
     question: "What documents are usually required?",
-    answer: "PAN, Aadhaar, income proof, bank statement, and address proof may be required depending on bank policy.",
+    answer: "PAN, Aadhaar, income proof, bank statement and address proof may be required.",
   },
   {
     question: "Is applying online safe?",
-    answer: "Apply only through the official partner link shown on this page.",
+    answer: "Apply only through the partner link shown on this page.",
   },
 ];
 
@@ -25,17 +25,14 @@ function summarize(items: string[]) {
   return items.slice(0, 3).join(", ");
 }
 
-export function FinanceCreditCardOffersSection() {
+export function ServiceCreditCardOffersSection() {
   return (
-    <section id="credit-card-offers" className="mt-10 overflow-hidden rounded-3xl border border-blue-100 bg-[radial-gradient(circle_at_12%_0%,rgba(37,99,235,0.14),transparent_34%),radial-gradient(circle_at_92%_8%,rgba(249,115,22,0.14),transparent_30%),linear-gradient(180deg,#ffffff,#f8fbff)] p-4 shadow-[0_18px_46px_rgba(15,23,42,0.08)] md:p-7">
+    <section id="credit-card-offers" className="mt-8 overflow-hidden rounded-3xl border border-blue-100 bg-[radial-gradient(circle_at_12%_0%,rgba(37,99,235,0.14),transparent_34%),radial-gradient(circle_at_92%_8%,rgba(249,115,22,0.14),transparent_30%),linear-gradient(180deg,#ffffff,#f8fbff)] p-4 shadow-[0_18px_46px_rgba(15,23,42,0.08)] md:p-7">
       <div className="max-w-3xl">
-        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Find the Right Credit Card for Your Lifestyle</p>
-        <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-4xl">Credit Card Offers</h2>
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Find the right credit card for rewards, cashback, shopping, travel and dining.</p>
+        <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-4xl">Credit Cards - All Banks</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 md:text-base">
-          Compare popular credit cards and apply through trusted bank partner links.
-        </p>
-        <p className="mt-3 inline-flex rounded-full border border-blue-100 bg-white/80 px-3 py-1.5 text-xs font-extrabold text-blue-700">
-          Rewards • Cashback • Shopping • Travel • Dining
+          Compare popular credit cards and apply through trusted partner links.
         </p>
       </div>
 

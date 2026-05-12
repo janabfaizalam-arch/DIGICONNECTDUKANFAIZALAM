@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star } from "lucide-react";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
+import { ServiceCreditCardOffersSection } from "@/components/service-credit-card-offers-section";
 import { ServicePrice } from "@/components/service-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -108,6 +109,10 @@ function buildSchemas(service: ServiceItem) {
   ];
 }
 
+function isCreditCardsAllBanksService(service: ServiceItem) {
+  return service.title.toLowerCase() === "credit cards - all banks" || service.slug === "credit-cards---all-banks" || service.slug === "credit-cards-all-banks";
+}
+
 export default async function ServiceDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const categoryPage = await getPublicCategoryBySlug(slug);
@@ -125,6 +130,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   const Icon = service.icon;
   const whatsappHref = generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(service.title));
+  const showCreditCardOffers = isCreditCardsAllBanksService(service);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -218,6 +224,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             </a>
           </Card>
         </section>
+
+        {showCreditCardOffers ? <ServiceCreditCardOffersSection /> : null}
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
           <Card className="rounded-[1.35rem] p-6">
