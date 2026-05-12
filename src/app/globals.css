@@ -79,6 +79,76 @@ textarea {
   background: rgba(37, 99, 235, 0.2);
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.homepage-notice-marquee {
+  animation: homepage-notice-marquee 28s linear infinite;
+}
+
+.homepage-notice-marquee-wrap:hover .homepage-notice-marquee {
+  animation-play-state: paused;
+}
+
+.homepage-notice-rotator {
+  opacity: 0;
+  transform: translateY(0.65rem);
+  animation: homepage-notice-rotator 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .homepage-notice-marquee,
+  .homepage-notice-rotator {
+    animation: none;
+    transform: none;
+  }
+
+  .homepage-notice-marquee {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .homepage-notice-rotator {
+    position: static;
+    opacity: 1;
+  }
+}
+
+@keyframes homepage-notice-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes homepage-notice-rotator {
+  0%,
+  8% {
+    opacity: 0;
+    transform: translateY(0.65rem);
+  }
+
+  14%,
+  30% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  38%,
+  100% {
+    opacity: 0;
+    transform: translateY(-0.65rem);
+  }
+}
+
 .container-shell {
   margin: 0 auto;
   width: min(1120px, calc(100% - 1.5rem));
