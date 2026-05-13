@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
+import { createAdminNotifications, type CreateAdminNotificationInput } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getServiceBySlug } from "@/lib/portal-data";
@@ -337,6 +338,40 @@ export async function POST(request: Request) {
         title: "Application received",
         message: `${application.service_name} request has been received. Our team will verify it shortly.`,
       })),
+    );
+
+    await createAdminNotifications(
+      supabase,
+      applications.flatMap((application) => {
+        const baseNotifications: CreateAdminNotificationInput[] = [
+          {
+            type: "new_application" as const,
+            title: "New application received",
+            message: `${customer.name!.trim()} submitted ${application.service_name}.`,
+            relatedType: "application" as const,
+            relatedId: application.id,
+          },
+          {
+            type: "document_uploaded" as const,
+            title: "Documents uploaded",
+            message: `${customer.name!.trim()} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
+            relatedType: "document" as const,
+            relatedId: application.id,
+          },
+        ];
+
+        if (!hasVerifiedRazorpayPayment) {
+          baseNotifications.push({
+            type: "payment_pending",
+            title: "Payment pending",
+            message: `${customer.name!.trim()} has a pending payment for ${application.service_name}.`,
+            relatedType: "payment",
+            relatedId: application.id,
+          });
+        }
+
+        return baseNotifications;
+      }),
     );
 
     if (walletUsedAmount > 0) {

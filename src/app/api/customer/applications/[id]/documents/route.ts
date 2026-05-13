@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -31,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, service_slug")
+      .select("id, user_id, service_slug, service_name, form_data")
       .eq("id", id)
       .eq("user_id", user.id)
       .single();
@@ -85,6 +86,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       await supabase.storage.from("documents").remove([storagePath]);
       return jsonError("Document could not be saved.", 500);
     }
+
+    const applicationFormData = application.form_data as Record<string, unknown> | null;
+    await createAdminNotification(supabase, {
+      type: "document_uploaded",
+      title: "Document uploaded",
+      message: `${String(applicationFormData?.name ?? "Customer")} uploaded ${documentType || "Additional Document"} for ${application.service_name}.`,
+      relatedType: "document",
+      relatedId: id,
+    });
 
     return NextResponse.json({
       document,

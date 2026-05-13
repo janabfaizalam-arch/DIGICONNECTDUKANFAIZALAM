@@ -6,6 +6,7 @@ import {
   createPublicToken,
   generateInsuranceQuoteNumber,
 } from "@/lib/insurance-quotations";
+import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -81,6 +82,14 @@ export async function POST(request: Request) {
       .single();
 
     if (error) return jsonError(friendlySupabaseError(error.message), 500);
+
+    await createAdminNotification(supabase, {
+      type: "insurance_quotation",
+      title: "Insurance quotation created",
+      message: `${quotation.customer_name} received quote ${quotation.quote_number} for ${quotation.insurance_type}.`,
+      relatedType: "insurance_quotation",
+      relatedId: quotation.id,
+    });
 
     revalidatePath("/admin/insurance-quotations");
     revalidatePath(`/insurance-quotation/${quotation.public_token}`);

@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { createAdminNotification } from "@/lib/admin-notifications";
 import { buildInsuranceQuotationPayload } from "@/lib/insurance-quotations";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -74,6 +75,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       .single();
 
     if (error) return jsonError(friendlySupabaseError(error.message), 500);
+
+    if (quotation.status === "accepted") {
+      await createAdminNotification(supabase, {
+        type: "insurance_quotation",
+        title: "Insurance quotation accepted",
+        message: `${quotation.customer_name} accepted quote ${quotation.quote_number}.`,
+        relatedType: "insurance_quotation",
+        relatedId: quotation.id,
+      });
+    }
 
     revalidatePath("/admin/insurance-quotations");
     revalidatePath(`/insurance-quotation/${quotation.public_token}`);

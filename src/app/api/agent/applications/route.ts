@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
+import { createAdminNotifications } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, isActiveAgent } from "@/lib/auth";
 import { calculateCommission, cleanFileName, createInvoiceForApplication } from "@/lib/crm";
 import { createInvoiceNumber } from "@/lib/portal-data";
@@ -300,6 +301,27 @@ export async function POST(request: Request) {
       new_status: "in_process",
       note: "Application created by agent after Razorpay payment.",
     });
+
+    await createAdminNotifications(supabase, [
+      {
+        type: "new_application",
+        title: "New agent application",
+        message: `${customer.full_name} submitted ${service.name} through agent POS.`,
+        relatedType: "application",
+        relatedId: application.id,
+      },
+      ...(documentFiles.length
+        ? [
+            {
+              type: "document_uploaded" as const,
+              title: "Documents uploaded",
+              message: `${documentFiles.length} document(s) uploaded for ${customer.full_name}.`,
+              relatedType: "document" as const,
+              relatedId: application.id,
+            },
+          ]
+        : []),
+    ]);
 
     return NextResponse.json({
       message: "Application created successfully.",

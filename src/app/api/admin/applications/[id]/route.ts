@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { applicationStatuses } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -39,7 +40,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, assigned_staff_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, form_data")
+      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, assigned_staff_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data")
       .eq("id", id)
       .single();
 
@@ -134,6 +135,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         title: "Application status updated",
         message: `${application.service_name} status is now ${String(updates.status).replace(/_/g, " ")}.`,
       });
+
+      if (isCashbackCompletionStatus(updates.status) && !application.final_document_url && !updates.final_document_url) {
+        await createAdminNotification(supabase, {
+          type: "final_document_pending",
+          title: "Final document pending",
+          message: `${application.service_name} is marked complete but final document is not uploaded yet.`,
+          relatedType: "application",
+          relatedId: id,
+        });
+      }
 
       if (
         isCashbackCompletionStatus(updates.status) &&

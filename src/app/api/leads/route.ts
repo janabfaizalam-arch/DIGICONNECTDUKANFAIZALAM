@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -33,17 +34,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error } = await supabase.from("leads").insert({
-      name: body.name,
-      mobile: body.mobile,
-      service: body.service,
-      message: body.message ?? "",
-      status: "new",
-      created_at: new Date().toISOString(),
-    });
+    const { data: lead, error } = await supabase
+      .from("leads")
+      .insert({
+        name: body.name,
+        mobile: body.mobile,
+        service: body.service,
+        message: body.message ?? "",
+        status: "new",
+        created_at: new Date().toISOString(),
+      })
+      .select("id, name, mobile, service")
+      .single();
 
     if (error) {
       return NextResponse.json({ message: "Lead could not be saved. Please call or WhatsApp us." }, { status: 500 });
+    }
+
+    if (lead) {
+      await createAdminNotification(supabase, {
+        type: "new_lead",
+        title: "New lead received",
+        message: `${lead.name} requested ${lead.service}. Mobile: ${lead.mobile}.`,
+        relatedType: "lead",
+        relatedId: lead.id,
+      });
     }
 
     return NextResponse.json({ message: "Thank you. Our team will contact you shortly." });
