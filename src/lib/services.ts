@@ -1,5 +1,6 @@
 import { FileText, type LucideIcon } from "lucide-react";
 
+import { safeCurrency } from "@/lib/admin-format";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   getCategoryBySlug as getFallbackCategoryBySlug,
@@ -75,11 +76,7 @@ function formatPrice(value: number | null | undefined) {
     return undefined;
   }
 
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+  return safeCurrency(value);
 }
 
 function iconByName(name?: string | null): LucideIcon {
@@ -153,28 +150,37 @@ async function fetchPublishedServiceRows() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [] as DbService[];
 
-  const { data, error } = await supabase
-    .from("services")
-    .select("*, service_categories(*)")
-    .eq("status", "published")
-    .order("sort_order", { ascending: true })
-    .order("title", { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from("services")
+      .select("*, service_categories(*)")
+      .eq("status", "published")
+      .order("sort_order", { ascending: true })
+      .order("title", { ascending: true });
 
-  if (error) {
-    console.error("[services] published service lookup failed", error.message);
+    if (error) {
+      console.error("[services] published service lookup failed", error.message);
+      return [];
+    }
+
+    return (data ?? []) as DbService[];
+  } catch (error) {
+    console.error("[services] published service lookup failed", error);
     return [];
   }
-
-  return (data ?? []) as DbService[];
 }
 
 export async function hasDatabaseServices() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return false;
 
-  const { count, error } = await supabase.from("services").select("id", { count: "exact", head: true });
-  if (error) return false;
-  return Boolean(count);
+  try {
+    const { count, error } = await supabase.from("services").select("id", { count: "exact", head: true });
+    if (error) return false;
+    return Boolean(count);
+  } catch {
+    return false;
+  }
 }
 
 export async function getPublicServices() {
@@ -193,14 +199,18 @@ export async function getPublicServiceBySlug(slug: string) {
   const supabase = getSupabaseAdmin();
 
   if (supabase) {
-    const { data } = await supabase
-      .from("services")
-      .select("*, service_categories(*)")
-      .eq("slug", normalizedSlug)
-      .eq("status", "published")
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from("services")
+        .select("*, service_categories(*)")
+        .eq("slug", normalizedSlug)
+        .eq("status", "published")
+        .maybeSingle();
 
-    if (data) return serviceFromDb(data as DbService);
+      if (!error && data) return serviceFromDb(data as DbService);
+    } catch (error) {
+      console.error("[services] service lookup failed", error);
+    }
   }
 
   const shouldFallback = !(await hasDatabaseServices());
@@ -270,32 +280,49 @@ export async function getAdminServiceCategories() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [] as DbServiceCategory[];
 
-  const { data } = await supabase.from("service_categories").select("*").order("sort_order", { ascending: true }).order("name");
-  return (data ?? []) as DbServiceCategory[];
+  try {
+    const { data, error } = await supabase.from("service_categories").select("*").order("sort_order", { ascending: true }).order("name");
+    if (error) return [] as DbServiceCategory[];
+    return (data ?? []) as DbServiceCategory[];
+  } catch (error) {
+    console.error("[services] admin categories lookup failed", error);
+    return [] as DbServiceCategory[];
+  }
 }
 
 export async function getAdminServices() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [] as AdminService[];
 
-  const { data } = await supabase.from("services").select("*, service_categories(*)").order("sort_order").order("title");
-  return (data ?? []).map((service) => ({
-    ...(service as DbService),
-    category: (service as DbService).service_categories,
-  }));
+  try {
+    const { data, error } = await supabase.from("services").select("*, service_categories(*)").order("sort_order").order("title");
+    if (error) return [] as AdminService[];
+    return (data ?? []).map((service) => ({
+      ...(service as DbService),
+      category: (service as DbService).service_categories,
+    }));
+  } catch (error) {
+    console.error("[services] admin services lookup failed", error);
+    return [] as AdminService[];
+  }
 }
 
 export async function getAdminServiceById(id: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
-  const { data } = await supabase.from("services").select("*, service_categories(*)").eq("id", id).maybeSingle();
-  if (!data) return null;
+  try {
+    const { data, error } = await supabase.from("services").select("*, service_categories(*)").eq("id", id).maybeSingle();
+    if (error || !data) return null;
 
-  return {
-    ...(data as DbService),
-    category: (data as DbService).service_categories,
-  } as AdminService;
+    return {
+      ...(data as DbService),
+      category: (data as DbService).service_categories,
+    } as AdminService;
+  } catch (error) {
+    console.error("[services] admin service lookup failed", error);
+    return null;
+  }
 }
 
 export function getServiceSeedRows() {

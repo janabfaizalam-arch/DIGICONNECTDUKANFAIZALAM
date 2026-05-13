@@ -18,12 +18,16 @@ export default async function AdminStaffPage() {
   let applications: { assigned_staff_id: string | null; status: string }[] = [];
 
   if (supabase) {
-    const [{ data: staffData }, { data: applicationData }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, mobile").eq("role", "staff"),
-      supabase.from("applications").select("assigned_staff_id, status"),
-    ]);
-    staff = staffData ?? [];
-    applications = applicationData ?? [];
+    try {
+      const [staffResult, applicationResult] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email, mobile").eq("role", "staff"),
+        supabase.from("applications").select("assigned_staff_id, status"),
+      ]);
+      staff = staffResult.error ? [] : staffResult.data ?? [];
+      applications = applicationResult.error ? [] : applicationResult.data ?? [];
+    } catch (error) {
+      console.error("[admin-staff] Failed to load staff", error);
+    }
   }
 
   return (

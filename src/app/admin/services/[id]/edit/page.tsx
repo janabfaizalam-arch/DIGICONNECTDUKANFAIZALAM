@@ -14,7 +14,14 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
   if (!isAdminRole(role)) redirect("/dashboard");
 
   const { id } = await params;
-  const [service, categories] = await Promise.all([getAdminServiceById(id), getAdminServiceCategories()]);
+  let service: Awaited<ReturnType<typeof getAdminServiceById>> = null;
+  let categories: Awaited<ReturnType<typeof getAdminServiceCategories>> = [];
+
+  try {
+    [service, categories] = await Promise.all([getAdminServiceById(id), getAdminServiceCategories()]);
+  } catch (error) {
+    console.error("[admin-service-edit] Failed to load service", error);
+  }
   if (!service) notFound();
 
   return (

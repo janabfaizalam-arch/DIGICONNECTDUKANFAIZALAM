@@ -5,8 +5,8 @@ import { ArrowLeft, Eye, Pencil, UserPlus } from "lucide-react";
 import { AgentStatusButton } from "@/components/portal/agent-status-button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { safeCurrency } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 import type { PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -30,15 +30,20 @@ export default async function AdminAgentsPage() {
   let agents = [] as AgentRow[];
 
   if (supabase) {
-    const [{ data: agentData }, { data: applicationData }, { data: commissionData }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-        .eq("role", "agent")
-        .order("created_at", { ascending: false }),
-      supabase.from("applications").select("id, assigned_agent_id, created_by, status"),
-      supabase.from("commissions").select("agent_id, amount, status"),
-    ]);
+    try {
+      const [agentResult, applicationResult, commissionResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+          .eq("role", "agent")
+          .order("created_at", { ascending: false }),
+        supabase.from("applications").select("id, assigned_agent_id, created_by, status"),
+        supabase.from("commissions").select("agent_id, amount, status"),
+      ]);
+
+      const agentData = agentResult.error ? [] : agentResult.data ?? [];
+      const applicationData = applicationResult.error ? [] : applicationResult.data ?? [];
+      const commissionData = commissionResult.error ? [] : commissionResult.data ?? [];
 
     agents = ((agentData ?? []) as PortalUser[]).map((agent) => {
       const applications = (applicationData ?? []).filter(
@@ -54,6 +59,9 @@ export default async function AdminAgentsPage() {
         pendingCommission: commissions.reduce((total, commission) => total + Number(commission.amount ?? 0), 0),
       };
     });
+    } catch (error) {
+      console.error("[admin-agents] Failed to load agents", error);
+    }
   }
 
   return (
@@ -110,7 +118,7 @@ export default async function AdminAgentsPage() {
                       </TableCell>
                       <TableCell>{agent.total}</TableCell>
                       <TableCell>{agent.completed}</TableCell>
-                      <TableCell>{formatCurrency(agent.pendingCommission)}</TableCell>
+                      <TableCell>{safeCurrency(agent.pendingCommission)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
                           <Link href={`/admin/agents/${agent.id}`} className="inline-flex h-9 items-center justify-center gap-2 rounded-full border bg-white px-3 text-xs font-bold text-slate-900">
@@ -159,7 +167,7 @@ export default async function AdminAgentsPage() {
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-3">
                       <p className="text-xs text-slate-500">Pending</p>
-                      <p className="font-bold">{formatCurrency(agent.pendingCommission)}</p>
+                      <p className="font-bold">{safeCurrency(agent.pendingCommission)}</p>
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">

@@ -48,20 +48,25 @@ export async function getActiveHomepageSlides(limit = 12): Promise<HomepageSlide
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("homepage_slides")
-    .select(slideSelect)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("homepage_slides")
+      .select(slideSelect)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
+    if (error) {
+      console.error("[homepage-slides] Failed to fetch active slides", error);
+      return [];
+    }
+
+    return (data ?? []) as HomepageSlide[];
+  } catch (error) {
     console.error("[homepage-slides] Failed to fetch active slides", error);
     return [];
   }
-
-  return (data ?? []) as HomepageSlide[];
 }
 
 export async function getAllHomepageSlides(limit = 80): Promise<HomepageSlide[]> {
@@ -71,17 +76,22 @@ export async function getAllHomepageSlides(limit = 80): Promise<HomepageSlide[]>
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("homepage_slides")
-    .select(slideSelect)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("homepage_slides")
+      .select(slideSelect)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
+    if (error) {
+      console.error("[homepage-slides] Failed to fetch admin slides", error);
+      return [];
+    }
+
+    return (data ?? []) as HomepageSlide[];
+  } catch (error) {
     console.error("[homepage-slides] Failed to fetch admin slides", error);
     return [];
   }
-
-  return (data ?? []) as HomepageSlide[];
 }

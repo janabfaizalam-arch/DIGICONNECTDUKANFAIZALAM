@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
 import { BadgePercent, Gift, Repeat2, WalletCards } from "lucide-react";
 
-import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { AdminWalletAdjustmentForm, AdminWalletStatusForm } from "@/components/admin/admin-wallet-adjustment-form";
 import { Card } from "@/components/ui/card";
-import { safeDate } from "@/lib/admin-format";
+import { safeCurrency, safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { RewardTransaction } from "@/lib/wallet";
 import { getRewardDirection } from "@/lib/wallet";
@@ -31,20 +30,23 @@ export default async function AdminWalletPage() {
   let totalRedeemed = 0;
   let repeatCustomerPercent = 0;
   let walletConversionPercent = 0;
+  let dataUnavailable = false;
 
   if (supabase) {
-    const [{ data: transactionData }, { data: customerData }, { data: applicationData }] = await Promise.all([
-      supabase
-        .from("reward_transactions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100),
-      supabase.from("profiles").select("id, full_name, email").eq("role", "customer").order("full_name", { ascending: true }),
-      supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(2000),
-    ]);
+    try {
+      const [transactionResult, customerResult, applicationResult] = await Promise.all([
+        supabase.from("reward_transactions").select("*").order("created_at", { ascending: false }).limit(100),
+        supabase.from("profiles").select("id, full_name, email").eq("role", "customer").order("full_name", { ascending: true }),
+        supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(2000),
+      ]);
 
-    transactions = (transactionData ?? []) as RewardTransaction[];
-    customers = (customerData ?? []) as typeof customers;
+      if (transactionResult.error || customerResult.error || applicationResult.error) {
+        dataUnavailable = true;
+      }
+
+      transactions = (transactionResult.data ?? []) as RewardTransaction[];
+      customers = (customerResult.data ?? []) as typeof customers;
+      const applicationData = applicationResult.data ?? [];
     totalIssued = transactions
       .filter((transaction) => getRewardDirection(transaction.type) === "credit" && transaction.type !== "expiry")
       .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
@@ -67,6 +69,12 @@ export default async function AdminWalletPage() {
     const repeatCustomers = Array.from(userOrderCounts.values()).filter((count) => count > 1).length;
     repeatCustomerPercent = totalCustomers ? Math.round((repeatCustomers / totalCustomers) * 100) : 0;
     walletConversionPercent = applicationData?.length ? Math.round((walletOrders / applicationData.length) * 100) : 0;
+    } catch (error) {
+      console.error("[admin-wallet] Failed to load wallet data", error);
+      dataUnavailable = true;
+    }
+  } else {
+    dataUnavailable = true;
   }
 
   return (
@@ -77,14 +85,18 @@ export default async function AdminWalletPage() {
         description="Monitor wallet issuance, redemptions, customer repeat behavior, and manual adjustments."
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard title="Total Cashback Issued" value={formatCurrency(totalIssued)} icon={Gift} tone="orange" />
-        <AdminStatCard title="Total Redeemed" value={formatCurrency(totalRedeemed)} icon={WalletCards} tone="blue" />
+      {dataUnavailable ? (
+        <AdminUnderSetup title="DigiWallet is under setup" description="Wallet, cashback, or reward transaction tables are not available yet. The route is working and will populate once the database is ready." />
+      ) : null}
+
+      {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard title="Total Cashback Issued" value={safeCurrency(totalIssued)} icon={Gift} tone="orange" />
+        <AdminStatCard title="Total Redeemed" value={safeCurrency(totalRedeemed)} icon={WalletCards} tone="blue" />
         <AdminStatCard title="Repeat Customer %" value={`${repeatCustomerPercent}%`} icon={Repeat2} tone="green" />
         <AdminStatCard title="Wallet Conversion %" value={`${walletConversionPercent}%`} icon={BadgePercent} tone="slate" />
-      </section>
+      </section> : null}
 
-      <section className="grid gap-5 lg:grid-cols-[360px_1fr]">
+      {!dataUnavailable ? <section className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <Card className="rounded-2xl p-5">
           <h2 className="text-lg font-bold text-slate-950">Manual Wallet Adjustment</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">Add bonuses or remove balance with a refund adjustment. Negative balances are blocked server-side.</p>
@@ -125,7 +137,7 @@ export default async function AdminWalletPage() {
                     <td className="py-3 text-slate-700">{transaction.description || "Reward Wallet"}</td>
                     <td className="py-3 text-slate-600">{transaction.type.replace(/_/g, " ")}</td>
                     <td className={`py-3 font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
-                      {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
+                      {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{safeCurrency(transaction.amount)}
                     </td>
                     <td className="py-3 font-bold text-slate-600">{transaction.status}</td>
                   </tr>
@@ -135,7 +147,7 @@ export default async function AdminWalletPage() {
             {transactions.length === 0 ? <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">No wallet transactions yet.</p> : null}
           </div>
         </Card>
-      </section>
+      </section> : null}
     </div>
   );
 }

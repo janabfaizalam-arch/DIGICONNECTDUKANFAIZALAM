@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 import { Gift, UserCheck, UsersRound } from "lucide-react";
 
-import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
-import { safeDate } from "@/lib/admin-format";
+import { safeCurrency, safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +31,19 @@ export default async function AdminReferralsPage() {
     created_at: string;
     completed_at: string | null;
   }[] = [];
+  let dataUnavailable = false;
 
   if (supabase) {
-    const { data } = await supabase.from("referrals").select("*").order("created_at", { ascending: false }).limit(200);
-    referrals = data ?? [];
+    try {
+      const { data, error } = await supabase.from("referrals").select("*").order("created_at", { ascending: false }).limit(200);
+      if (error) dataUnavailable = true;
+      referrals = data ?? [];
+    } catch (error) {
+      console.error("[admin-referrals] Failed to load referrals", error);
+      dataUnavailable = true;
+    }
+  } else {
+    dataUnavailable = true;
   }
 
   const completed = referrals.filter((referral) => referral.status === "completed");
@@ -46,17 +54,21 @@ export default async function AdminReferralsPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Rewards" title="Referral Management" description="Track referral signups, credited wallet rewards, and pending referral records." />
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      {dataUnavailable ? (
+        <AdminUnderSetup title="Referrals are under setup" description="Referral tables are not available yet. This page will start showing records once the database is ready." />
+      ) : null}
+
+      {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-3">
         <AdminStatCard title="Total Referrals" value={referrals.length} icon={UsersRound} tone="blue" />
         <AdminStatCard title="Pending Referrals" value={pending.length} icon={Gift} tone="orange" />
         <AdminStatCard title="Completed Referrals" value={completed.length} icon={UserCheck} tone="green" />
-      </section>
+      </section> : null}
 
-      <Card className="rounded-2xl p-5">
+      {!dataUnavailable ? <Card className="rounded-2xl p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Issued</p>
-            <h2 className="mt-1 text-xl font-bold text-slate-950">{formatCurrency(rewardIssued)} referral rewards</h2>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">{safeCurrency(rewardIssued)} referral rewards</h2>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -79,14 +91,14 @@ export default async function AdminReferralsPage() {
                   <td className="py-3 font-mono text-xs text-slate-500">{referral.referrer_id}</td>
                   <td className="py-3 font-mono text-xs text-slate-500">{referral.referred_user_id}</td>
                   <td className="py-3 font-bold text-slate-700">{referral.status}</td>
-                  <td className="py-3 font-extrabold text-emerald-700">{formatCurrency(Number(referral.reward_amount))}</td>
+                  <td className="py-3 font-extrabold text-emerald-700">{safeCurrency(referral.reward_amount)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           {referrals.length === 0 ? <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">No referrals yet.</p> : null}
         </div>
-      </Card>
+      </Card> : null}
     </div>
   );
 }

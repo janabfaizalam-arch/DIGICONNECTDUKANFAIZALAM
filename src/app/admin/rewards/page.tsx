@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 import { BadgePercent, Gift, WalletCards } from "lucide-react";
 
-import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
-import { safeDate } from "@/lib/admin-format";
+import { safeCurrency, safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 import { getRewardDirection, type RewardTransaction } from "@/lib/wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -24,10 +23,19 @@ export default async function AdminRewardsPage() {
 
   const supabase = getSupabaseAdmin();
   let transactions: RewardTransaction[] = [];
+  let dataUnavailable = false;
 
   if (supabase) {
-    const { data } = await supabase.from("reward_transactions").select("*").order("created_at", { ascending: false }).limit(300);
-    transactions = (data ?? []) as RewardTransaction[];
+    try {
+      const { data, error } = await supabase.from("reward_transactions").select("*").order("created_at", { ascending: false }).limit(300);
+      if (error) dataUnavailable = true;
+      transactions = (data ?? []) as RewardTransaction[];
+    } catch (error) {
+      console.error("[admin-rewards] Failed to load reward transactions", error);
+      dataUnavailable = true;
+    }
+  } else {
+    dataUnavailable = true;
   }
 
   const issued = transactions.filter((item) => getRewardDirection(item.type) === "credit").reduce((total, item) => total + Number(item.amount ?? 0), 0);
@@ -38,13 +46,17 @@ export default async function AdminRewardsPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Ledger" title="Reward Transactions" description="Complete reward wallet audit trail across signup bonuses, referrals, cashback, redemption, expiry, and admin adjustments." />
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Reward Issued" value={formatCurrency(issued)} icon={Gift} tone="orange" />
-        <AdminStatCard title="Total Redeemed" value={formatCurrency(redeemed)} icon={WalletCards} tone="blue" />
-        <AdminStatCard title="Expired Rewards" value={formatCurrency(expired)} icon={BadgePercent} tone="slate" />
-      </section>
+      {dataUnavailable ? (
+        <AdminUnderSetup title="Rewards are under setup" description="Reward transaction tables are not available yet. This page will render the ledger once setup is complete." />
+      ) : null}
 
-      <Card className="rounded-2xl p-5">
+      {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-3">
+        <AdminStatCard title="Total Reward Issued" value={safeCurrency(issued)} icon={Gift} tone="orange" />
+        <AdminStatCard title="Total Redeemed" value={safeCurrency(redeemed)} icon={WalletCards} tone="blue" />
+        <AdminStatCard title="Expired Rewards" value={safeCurrency(expired)} icon={BadgePercent} tone="slate" />
+      </section> : null}
+
+      {!dataUnavailable ? <Card className="rounded-2xl p-5">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.12em] text-slate-500">
@@ -66,7 +78,7 @@ export default async function AdminRewardsPage() {
                   <td className="py-3 text-slate-700">{transaction.type.replace(/_/g, " ")}</td>
                   <td className="py-3 text-slate-600">{transaction.description}</td>
                   <td className={`py-3 font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
-                    {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
+                    {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{safeCurrency(transaction.amount)}
                   </td>
                   <td className="py-3 text-slate-600">{transaction.expires_at ? formatDate(transaction.expires_at) : "-"}</td>
                   <td className="py-3 font-bold text-slate-700">{transaction.status}</td>
@@ -76,7 +88,7 @@ export default async function AdminRewardsPage() {
           </table>
           {transactions.length === 0 ? <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">No reward transactions yet.</p> : null}
         </div>
-      </Card>
+      </Card> : null}
     </div>
   );
 }

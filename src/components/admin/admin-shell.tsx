@@ -258,6 +258,18 @@ export function AdminEmptyState({ title, description }: { title: string; descrip
   );
 }
 
+export function AdminUnderSetup({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Under Setup</p>
+      <h2 className="mt-3 text-2xl font-bold text-slate-950">{title}</h2>
+      <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+        {description ?? "This admin section is ready, but its database tables or columns are not available yet."}
+      </p>
+    </div>
+  );
+}
+
 export function AdminStatCard({
   title,
   value,

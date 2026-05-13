@@ -27,16 +27,28 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
 
   if (!supabase) notFound();
 
-  const [{ data: customer }, { data: applications }, { data: notes }] = await Promise.all([
-    supabase.from("customers").select("*").eq("id", id).maybeSingle(),
-    supabase.from("applications").select("id, service_name, status, payment_status, amount, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
-    supabase.from("customer_notes").select("id, note, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
-  ]);
+  let customer: Customer | null = null;
+  let applications: Pick<Application, "id" | "service_name" | "status" | "payment_status" | "amount" | "created_at">[] = [];
+  let notes: { id: string; note: string; created_at: string }[] = [];
+
+  try {
+    const [customerResult, applicationsResult, notesResult] = await Promise.all([
+      supabase.from("customers").select("*").eq("id", id).maybeSingle(),
+      supabase.from("applications").select("id, service_name, status, payment_status, amount, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
+      supabase.from("customer_notes").select("id, note, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
+    ]);
+
+    customer = customerResult.error ? null : (customerResult.data as Customer | null);
+    applications = applicationsResult.error ? [] : (applicationsResult.data ?? []) as typeof applications;
+    notes = notesResult.error ? [] : (notesResult.data ?? []) as typeof notes;
+  } catch (error) {
+    console.error("[admin-customer-detail] Failed to load customer", error);
+  }
 
   if (!customer) notFound();
 
-  const customerRecord = customer as Customer;
-  const customerApplications = (applications ?? []) as Pick<Application, "id" | "service_name" | "status" | "payment_status" | "amount" | "created_at">[];
+  const customerRecord = customer;
+  const customerApplications = applications;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

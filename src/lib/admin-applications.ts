@@ -48,20 +48,28 @@ export async function getAdminApplicationRows() {
     return { rows, agents, staff };
   }
 
-  const [{ data: applicationData }, { data: agentData }, { data: staffData }] = await Promise.all([
-    supabase.from("applications").select("*").order("created_at", { ascending: false }),
-    supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-      .in("role", ["agent", "admin", "super_admin"]),
-    supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-      .eq("role", "staff"),
-  ]);
+  let applicationData: Application[] = [];
 
-  agents = (agentData ?? []) as PortalUser[];
-  staff = (staffData ?? []) as PortalUser[];
+  try {
+    const [applicationResult, agentResult, staffResult] = await Promise.all([
+      supabase.from("applications").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+        .in("role", ["agent", "admin", "super_admin"]),
+      supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+        .eq("role", "staff"),
+    ]);
+
+    applicationData = applicationResult.error ? [] : (applicationResult.data ?? []) as Application[];
+    agents = agentResult.error ? [] : (agentResult.data ?? []) as PortalUser[];
+    staff = staffResult.error ? [] : (staffResult.data ?? []) as PortalUser[];
+  } catch (error) {
+    console.error("[admin-applications] Failed to load application rows", error);
+  }
+
   const agentsById = agents.reduce<Record<string, PortalUser>>((grouped, agent) => {
     grouped[agent.id] = agent;
     return grouped;
@@ -70,7 +78,12 @@ export async function getAdminApplicationRows() {
     grouped[item.id] = item;
     return grouped;
   }, {});
-  const applications = (await hydrateApplications((applicationData ?? []) as Application[])) as Application[];
+  let applications = applicationData;
+  try {
+    applications = (await hydrateApplications(applicationData)) as Application[];
+  } catch (error) {
+    console.error("[admin-applications] Failed to hydrate applications", error);
+  }
 
   rows = applications
     .map((application) => applicationToAdminRow(application, agentsById, staffById))

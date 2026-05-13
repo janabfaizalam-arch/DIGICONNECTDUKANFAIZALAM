@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { safeCurrency } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 import type { PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -22,19 +22,31 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
 
   if (!supabase) notFound();
 
-  const [{ data: agent }, { data: applications }, { data: commissions }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-      .eq("id", id)
-      .maybeSingle(),
-    supabase.from("applications").select("id, service_name, status, created_at").or(`created_by.eq.${id},assigned_agent_id.eq.${id}`).order("created_at", { ascending: false }),
-    supabase.from("commissions").select("amount, status").eq("agent_id", id),
-  ]);
+  let agent: PortalUser | null = null;
+  let applications: { id: string; service_name: string; status: string; created_at: string }[] = [];
+  let commissions: { amount: number | null; status: string }[] = [];
+
+  try {
+    const [agentResult, applicationResult, commissionResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+        .eq("id", id)
+        .maybeSingle(),
+      supabase.from("applications").select("id, service_name, status, created_at").or(`created_by.eq.${id},assigned_agent_id.eq.${id}`).order("created_at", { ascending: false }),
+      supabase.from("commissions").select("amount, status").eq("agent_id", id),
+    ]);
+
+    agent = agentResult.error ? null : (agentResult.data as PortalUser | null);
+    applications = applicationResult.error ? [] : (applicationResult.data ?? []) as typeof applications;
+    commissions = commissionResult.error ? [] : (commissionResult.data ?? []) as typeof commissions;
+  } catch (error) {
+    console.error("[admin-agent-detail] Failed to load agent", error);
+  }
 
   if (!agent) notFound();
 
-  const profile = agent as PortalUser;
+  const profile = agent;
   const pendingCommission = (commissions ?? [])
     .filter((commission) => commission.status === "pending")
     .reduce((total, commission) => total + Number(commission.amount ?? 0), 0);
@@ -60,7 +72,7 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-bold uppercase text-slate-500">Pending Commission</p>
-              <p className="mt-1 font-bold">{formatCurrency(pendingCommission)}</p>
+              <p className="mt-1 font-bold">{safeCurrency(pendingCommission)}</p>
             </div>
           </div>
           <div className="mt-5 rounded-2xl border p-4">

@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 import { BadgePercent, IndianRupee, WalletCards } from "lucide-react";
 
-import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
-import { safeDate } from "@/lib/admin-format";
+import { safeCurrency, safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 import type { RewardTransaction, ServiceRewardRule } from "@/lib/wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -25,15 +24,24 @@ export default async function AdminCashbackPage() {
   const supabase = getSupabaseAdmin();
   let cashback: RewardTransaction[] = [];
   let rules: ServiceRewardRule[] = [];
+  let dataUnavailable = false;
 
   if (supabase) {
-    const [{ data: cashbackData }, { data: ruleData }] = await Promise.all([
-      supabase.from("reward_transactions").select("*").eq("type", "cashback").order("created_at", { ascending: false }).limit(200),
-      supabase.from("service_reward_rules").select("*").order("service_slug", { ascending: true }),
-    ]);
+    try {
+      const [cashbackResult, ruleResult] = await Promise.all([
+        supabase.from("reward_transactions").select("*").eq("type", "cashback").order("created_at", { ascending: false }).limit(200),
+        supabase.from("service_reward_rules").select("*").order("service_slug", { ascending: true }),
+      ]);
 
-    cashback = (cashbackData ?? []) as RewardTransaction[];
-    rules = (ruleData ?? []) as ServiceRewardRule[];
+      if (cashbackResult.error || ruleResult.error) dataUnavailable = true;
+      cashback = (cashbackResult.data ?? []) as RewardTransaction[];
+      rules = (ruleResult.data ?? []) as ServiceRewardRule[];
+    } catch (error) {
+      console.error("[admin-cashback] Failed to load cashback data", error);
+      dataUnavailable = true;
+    }
+  } else {
+    dataUnavailable = true;
   }
 
   const issued = cashback.reduce((total, item) => total + Number(item.amount ?? 0), 0);
@@ -43,13 +51,17 @@ export default async function AdminCashbackPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Cashback" title="Cashback Reports" description="Monitor cashback-generating services, reward liability, and active cashback rules." />
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Cashback Issued" value={formatCurrency(issued)} icon={BadgePercent} tone="orange" />
-        <AdminStatCard title="Active Liability" value={formatCurrency(active)} icon={WalletCards} tone="blue" />
-        <AdminStatCard title="Active Rules" value={rules.filter((rule) => rule.active).length} icon={IndianRupee} tone="green" />
-      </section>
+      {dataUnavailable ? (
+        <AdminUnderSetup title="Cashback is under setup" description="Cashback and service reward tables are not available yet. The admin route is stable and ready for data." />
+      ) : null}
 
-      <section className="grid gap-5 xl:grid-cols-[360px_1fr]">
+      {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-3">
+        <AdminStatCard title="Cashback Issued" value={safeCurrency(issued)} icon={BadgePercent} tone="orange" />
+        <AdminStatCard title="Active Liability" value={safeCurrency(active)} icon={WalletCards} tone="blue" />
+        <AdminStatCard title="Active Rules" value={rules.filter((rule) => rule.active).length} icon={IndianRupee} tone="green" />
+      </section> : null}
+
+      {!dataUnavailable ? <section className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <Card className="rounded-2xl p-5">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Rules</p>
           <div className="mt-4 space-y-3">
@@ -83,8 +95,8 @@ export default async function AdminCashbackPage() {
                     <td className="py-3 text-slate-700">{formatDate(transaction.created_at)}</td>
                     <td className="py-3 font-mono text-xs text-slate-500">{transaction.user_id}</td>
                     <td className="py-3 text-slate-600">{transaction.description}</td>
-                    <td className="py-3 font-extrabold text-emerald-700">{formatCurrency(Number(transaction.amount))}</td>
-                    <td className="py-3 text-slate-700">{formatCurrency(Number(transaction.remaining_amount))}</td>
+                    <td className="py-3 font-extrabold text-emerald-700">{safeCurrency(transaction.amount)}</td>
+                    <td className="py-3 text-slate-700">{safeCurrency(transaction.remaining_amount)}</td>
                     <td className="py-3 text-slate-600">{transaction.expires_at ? formatDate(transaction.expires_at) : "-"}</td>
                   </tr>
                 ))}
@@ -93,7 +105,7 @@ export default async function AdminCashbackPage() {
             {cashback.length === 0 ? <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">No cashback issued yet.</p> : null}
           </div>
         </Card>
-      </section>
+      </section> : null}
     </div>
   );
 }

@@ -23,8 +23,12 @@ export default async function NewAgentPage() {
   let agentCount = 0;
 
   if (supabase) {
-    const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "agent");
-    agentCount = count ?? 0;
+    try {
+      const { count, error } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "agent");
+      agentCount = error ? 0 : count ?? 0;
+    } catch (error) {
+      console.error("[admin-agent-new] Failed to count agents", error);
+    }
   }
 
   return (

@@ -6,9 +6,8 @@ import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { safeDateTime } from "@/lib/admin-format";
+import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
-import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
@@ -50,32 +49,60 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     notFound();
   }
 
-  const { data } = await supabase.from("applications").select("*").eq("id", id).maybeSingle();
+  let data: Application | null = null;
+
+  try {
+    const result = await supabase.from("applications").select("*").eq("id", id).maybeSingle();
+    data = result.error ? null : (result.data as Application | null);
+  } catch (error) {
+    console.error("[admin-application-detail] Failed to load application", error);
+  }
 
   if (!data) {
     notFound();
   }
 
-  const [application] = (await hydrateApplications([data as Application])) as Application[];
+  let application = data;
+  try {
+    [application] = (await hydrateApplications([data])) as Application[];
+  } catch (error) {
+    console.error("[admin-application-detail] Failed to hydrate application", error);
+  }
   const payment = application.payments?.[0];
   const invoice = application.invoices?.[0];
   const formData = asRecord(application.form_data);
   const customerMobile = getCustomerMobile(application);
 
-  const { data: notes } = await supabase
-    .from("admin_notes")
-    .select("id, application_id, note, assigned_to, created_at")
-    .eq("application_id", id)
-    .order("created_at", { ascending: false });
-  const { data: staffData } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-    .eq("role", "staff");
-  const { data: statusLogs } = await supabase
-    .from("status_logs")
-    .select("id, old_status, new_status, note, created_at")
-    .eq("application_id", id)
-    .order("created_at", { ascending: false });
+  let notes: { id: string; application_id: string; note: string; assigned_to: string | null; created_at: string }[] = [];
+  let staffData: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+    role?: string | null;
+    mobile?: string | null;
+    agent_code?: string | null;
+    commission_type?: "fixed" | "percentage" | null;
+    commission_value?: number | null;
+    commission_rate?: number | null;
+    active?: boolean | null;
+    is_active?: boolean | null;
+  }[] = [];
+  let statusLogs: { id: string; old_status: string | null; new_status: string; note: string | null; created_at: string }[] = [];
+
+  try {
+    const [notesResult, staffResult, statusLogsResult] = await Promise.all([
+      supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
+      supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
+    ]);
+
+    notes = notesResult.error ? [] : (notesResult.data ?? []) as typeof notes;
+    staffData = staffResult.error ? [] : (staffResult.data ?? []) as typeof staffData;
+    statusLogs = statusLogsResult.error ? [] : (statusLogsResult.data ?? []) as typeof statusLogs;
+  } catch (error) {
+    console.error("[admin-application-detail] Failed to load related data", error);
+  }
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -110,7 +137,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Amount</p>
-                <p className="mt-1 font-bold text-slate-950">{formatCurrency(application.amount)}</p>
+                <p className="mt-1 font-bold text-slate-950">{safeCurrency(application.amount)}</p>
               </div>
             </div>
 
@@ -144,7 +171,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 ["Payment Status", application.payment_status ?? payment?.status ?? "pending"],
                 ["Razorpay Order ID", payment?.razorpay_order_id ?? "-"],
                 ["Razorpay Payment ID", payment?.razorpay_payment_id ?? "-"],
-                ["Amount", formatCurrency(payment?.amount ?? application.real_payment_amount ?? application.amount)],
+                ["Amount", safeCurrency(payment?.amount ?? application.real_payment_amount ?? application.amount)],
                 ["Payment Method", payment?.payment_method ?? "-"],
                 ["Paid At", payment?.paid_at ? formatDate(payment.paid_at) : "-"],
               ].map(([label, value]) => (

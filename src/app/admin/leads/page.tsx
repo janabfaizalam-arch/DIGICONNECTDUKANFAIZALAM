@@ -20,11 +20,15 @@ export default async function AdminLeadsPage() {
   let leads: Lead[] = [];
 
   if (supabase) {
-    const { data } = await supabase
-      .from("leads")
-      .select("id, name, mobile, service, message, status, source, converted_application_id, file_name, file_url, file_type, storage_path, created_at")
-      .order("created_at", { ascending: false });
-    leads = (data ?? []) as Lead[];
+    try {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, name, mobile, service, message, status, source, converted_application_id, file_name, file_url, file_type, storage_path, created_at")
+        .order("created_at", { ascending: false });
+      leads = error ? [] : (data ?? []) as Lead[];
+    } catch (error) {
+      console.error("[admin-leads] Failed to load leads", error);
+    }
   }
 
   return (

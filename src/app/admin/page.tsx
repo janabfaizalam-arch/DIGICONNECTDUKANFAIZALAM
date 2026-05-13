@@ -163,31 +163,36 @@ export default async function AdminPage() {
   let quotationCount = 0;
 
   if (supabase) {
-    const [applicationResult, customerResult, profileResult, staffResult, quotationResult, totalApplicationsResult, completedApplicationsResult, quotationCountResult, walletResult, referralResult] = await Promise.all([
-      supabase.from("applications").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("customers").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile").eq("role", "staff"),
-      supabase.from("insurance_quotations").select("id, customer_name, vehicle_number, total_amount, status, valid_till, created_at").order("created_at", { ascending: false }).limit(8),
-      supabase.from("applications").select("id", { count: "exact", head: true }),
-      supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
-      supabase.from("insurance_quotations").select("id", { count: "exact", head: true }),
-      supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
-      supabase.from("referrals").select("referrer_id, referred_user_id").limit(1000),
-    ]);
+    try {
+      const [applicationResult, customerResult, profileResult, staffResult, quotationResult, totalApplicationsResult, completedApplicationsResult, quotationCountResult, walletResult, referralResult] = await Promise.all([
+        supabase.from("applications").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("customers").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }).limit(1000),
+        supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile").eq("role", "staff"),
+        supabase.from("insurance_quotations").select("id, customer_name, vehicle_number, total_amount, status, valid_till, created_at").order("created_at", { ascending: false }).limit(8),
+        supabase.from("applications").select("id", { count: "exact", head: true }),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        supabase.from("insurance_quotations").select("id", { count: "exact", head: true }),
+        supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
+        supabase.from("referrals").select("referrer_id, referred_user_id").limit(1000),
+      ]);
 
-    if (applicationResult.error) dashboardError = "Some dashboard data could not be loaded. Applications are showing with safe fallbacks.";
+      if (applicationResult.error) dashboardError = "Some dashboard data could not be loaded. Applications are showing with safe fallbacks.";
 
-    applications = (await hydrateApplications((applicationResult.data ?? []) as Application[])) as Application[];
-    customers = (customerResult.data ?? []) as Customer[];
-    profiles = (profileResult.data ?? []) as ProfileRow[];
-    staff = (staffResult.data ?? []) as PortalUser[];
-    insuranceQuotations = (quotationResult.data ?? []) as InsuranceQuotationRow[];
-    wallets = walletResult.error ? [] : (walletResult.data ?? []) as WalletRow[];
-    referrals = referralResult.error ? [] : (referralResult.data ?? []) as ReferralRow[];
-    totalApplications = totalApplicationsResult.count ?? applications.length;
-    completedApplications = completedApplicationsResult.count ?? applications.filter((application) => isCompleted(application.status)).length;
-    quotationCount = quotationCountResult.count ?? insuranceQuotations.length;
+      applications = applicationResult.error ? [] : ((await hydrateApplications((applicationResult.data ?? []) as Application[])) as Application[]);
+      customers = customerResult.error ? [] : (customerResult.data ?? []) as Customer[];
+      profiles = profileResult.error ? [] : (profileResult.data ?? []) as ProfileRow[];
+      staff = staffResult.error ? [] : (staffResult.data ?? []) as PortalUser[];
+      insuranceQuotations = quotationResult.error ? [] : (quotationResult.data ?? []) as InsuranceQuotationRow[];
+      wallets = walletResult.error ? [] : (walletResult.data ?? []) as WalletRow[];
+      referrals = referralResult.error ? [] : (referralResult.data ?? []) as ReferralRow[];
+      totalApplications = totalApplicationsResult.count ?? applications.length;
+      completedApplications = completedApplicationsResult.count ?? applications.filter((application) => isCompleted(application.status)).length;
+      quotationCount = quotationCountResult.count ?? insuranceQuotations.length;
+    } catch (error) {
+      console.error("[admin-dashboard] Failed to load dashboard data", error);
+      dashboardError = "Dashboard data could not be loaded. Showing safe fallback UI.";
+    }
   } else {
     dashboardError = "Supabase admin keys are missing, so live dashboard data is unavailable.";
   }
@@ -274,4 +279,3 @@ export default async function AdminPage() {
     />
   );
 }
-

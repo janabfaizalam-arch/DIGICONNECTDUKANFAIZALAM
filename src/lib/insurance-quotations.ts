@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { safeCurrency, safeDate } from "@/lib/admin-format";
 
 export const insuranceQuotationStatuses = ["draft", "sent", "accepted", "rejected", "expired"] as const;
 export const vehicleTypes = ["Two Wheeler", "Four Wheeler", "Commercial", "Auto", "Other"] as const;
@@ -50,19 +51,11 @@ const quotationSelect = `
 `;
 
 export function formatInsuranceCurrency(value: number | string | null | undefined) {
-  const amount = Number(value ?? 0);
-
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-  }).format(Number.isFinite(amount) ? amount : 0);
+  return safeCurrency(value);
 }
 
 export function formatInsuranceDate(value: string | null | undefined) {
-  if (!value) return "Not specified";
-
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value));
+  return safeDate(value, "Not specified");
 }
 
 export function getInsuranceQuotationPublicUrl(publicToken: string) {
@@ -183,10 +176,17 @@ export async function generateInsuranceQuoteNumber() {
     return `${prefix}-0001`;
   }
 
-  const { count } = await supabase
-    .from("insurance_quotations")
-    .select("id", { count: "exact", head: true })
-    .like("quote_number", `${prefix}-%`);
+  let count = 0;
+
+  try {
+    const result = await supabase
+      .from("insurance_quotations")
+      .select("id", { count: "exact", head: true })
+      .like("quote_number", `${prefix}-%`);
+    count = result.error ? 0 : result.count ?? 0;
+  } catch (error) {
+    console.error("[insurance-quotations] Failed to count quote numbers", error);
+  }
   const nextNumber = String((count ?? 0) + 1).padStart(4, "0");
 
   return `${prefix}-${nextNumber}`;
@@ -196,17 +196,22 @@ export async function getAdminInsuranceQuotations() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from("insurance_quotations")
-    .select(quotationSelect)
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("insurance_quotations")
+      .select(quotationSelect)
+      .order("created_at", { ascending: false });
 
-  if (error) {
+    if (error) {
+      console.error("[insurance-quotations] Failed to fetch admin quotations", error);
+      return [];
+    }
+
+    return (data ?? []) as InsuranceQuotation[];
+  } catch (error) {
     console.error("[insurance-quotations] Failed to fetch admin quotations", error);
     return [];
   }
-
-  return (data ?? []) as InsuranceQuotation[];
 }
 
 export async function getPublicInsuranceQuotation(quoteId: string) {
@@ -214,16 +219,21 @@ export async function getPublicInsuranceQuotation(quoteId: string) {
   if (!supabase) return null;
 
   const safeQuoteId = quoteId.replace(/[^a-zA-Z0-9-]/g, "");
-  const { data, error } = await supabase
-    .from("insurance_quotations")
-    .select(quotationSelect)
-    .or(`public_token.eq.${safeQuoteId},id.eq.${safeQuoteId}`)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("insurance_quotations")
+      .select(quotationSelect)
+      .or(`public_token.eq.${safeQuoteId},id.eq.${safeQuoteId}`)
+      .maybeSingle();
 
-  if (error) {
+    if (error) {
+      console.error("[insurance-quotations] Failed to fetch public quotation", error);
+      return null;
+    }
+
+    return data as InsuranceQuotation | null;
+  } catch (error) {
     console.error("[insurance-quotations] Failed to fetch public quotation", error);
     return null;
   }
-
-  return data as InsuranceQuotation | null;
 }

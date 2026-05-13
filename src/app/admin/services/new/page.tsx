@@ -13,7 +13,13 @@ export default async function NewServicePage() {
   if (!user) redirect("/login");
   if (!isAdminRole(role)) redirect("/dashboard");
 
-  const categories = await getAdminServiceCategories();
+  let categories: Awaited<ReturnType<typeof getAdminServiceCategories>> = [];
+
+  try {
+    categories = await getAdminServiceCategories();
+  } catch (error) {
+    console.error("[admin-service-new] Failed to load categories", error);
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

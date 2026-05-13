@@ -22,30 +22,54 @@ export async function getAdminArticles() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [] as Article[];
 
-  const { data } = await supabase.from("articles").select("*").order("updated_at", { ascending: false });
-  return (data ?? []) as Article[];
+  try {
+    const { data, error } = await supabase.from("articles").select("*").order("updated_at", { ascending: false });
+    if (error) return [] as Article[];
+    return (data ?? []) as Article[];
+  } catch (error) {
+    console.error("[articles] Failed to fetch admin articles", error);
+    return [] as Article[];
+  }
 }
 
 export async function getPublishedArticles() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [] as Article[];
 
-  const { data } = await supabase.from("articles").select("*").eq("status", "published").order("created_at", { ascending: false });
-  return (data ?? []) as Article[];
+  try {
+    const { data, error } = await supabase.from("articles").select("*").eq("status", "published").order("created_at", { ascending: false });
+    if (error) return [] as Article[];
+    return (data ?? []) as Article[];
+  } catch (error) {
+    console.error("[articles] Failed to fetch published articles", error);
+    return [] as Article[];
+  }
 }
 
 export async function getArticleBySlug(slug: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
-  const { data } = await supabase.from("articles").select("*").eq("slug", slug).eq("status", "published").maybeSingle();
-  return (data ?? null) as Article | null;
+  try {
+    const { data, error } = await supabase.from("articles").select("*").eq("slug", slug).eq("status", "published").maybeSingle();
+    if (error) return null;
+    return (data ?? null) as Article | null;
+  } catch (error) {
+    console.error("[articles] Failed to fetch article by slug", error);
+    return null;
+  }
 }
 
 export async function getAdminArticleById(id: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
-  const { data } = await supabase.from("articles").select("*").eq("id", id).maybeSingle();
-  return (data ?? null) as Article | null;
+  try {
+    const { data, error } = await supabase.from("articles").select("*").eq("id", id).maybeSingle();
+    if (error) return null;
+    return (data ?? null) as Article | null;
+  } catch (error) {
+    console.error("[articles] Failed to fetch admin article by id", error);
+    return null;
+  }
 }

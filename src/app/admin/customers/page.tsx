@@ -71,34 +71,29 @@ export default async function AdminCustomersPage() {
   let referrals: ReferralRow[] = [];
 
   if (supabase) {
-    const [
-      { data: customerData },
-      { data: applicationData },
-      { data: userApplicationData },
-      { data: profileData },
-      { data: customerProfileData },
-      authUsersResult,
-      walletResult,
-      referralResult,
-    ] = await Promise.all([
-      supabase.from("customers").select("*").order("created_at", { ascending: false }),
-      supabase.from("applications").select("customer_id, status, created_at").order("created_at", { ascending: false }),
-      supabase.from("applications").select("user_id, status, created_at").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }),
-      supabase.from("customer_profiles").select("id, full_name, mobile, email, created_at").order("created_at", { ascending: false }),
-      supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-      supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
-      supabase.from("referrals").select("referrer_id").limit(1000),
-    ]);
+    try {
+      const [customerResult, applicationResult, userApplicationResult, profileResult, customerProfileResult, authUsersResult, walletResult, referralResult] = await Promise.all([
+        supabase.from("customers").select("*").order("created_at", { ascending: false }),
+        supabase.from("applications").select("customer_id, status, created_at").order("created_at", { ascending: false }),
+        supabase.from("applications").select("user_id, status, created_at").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }),
+        supabase.from("customer_profiles").select("id, full_name, mobile, email, created_at").order("created_at", { ascending: false }),
+        supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+        supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
+        supabase.from("referrals").select("referrer_id").limit(1000),
+      ]);
 
-    customers = (customerData ?? []) as Customer[];
-    applications = (applicationData ?? []) as Pick<Application, "customer_id" | "status" | "created_at">[];
-    userApplications = (userApplicationData ?? []) as Pick<Application, "user_id" | "status" | "created_at">[];
-    profiles = (profileData ?? []) as ProfileRow[];
-    customerProfiles = (customerProfileData ?? []) as CustomerProfileRow[];
-    authUsers = (authUsersResult.data?.users ?? []) as AuthUserRow[];
-    wallets = walletResult.error ? [] : (walletResult.data ?? []) as WalletRow[];
-    referrals = referralResult.error ? [] : (referralResult.data ?? []) as ReferralRow[];
+      customers = customerResult.error ? [] : (customerResult.data ?? []) as Customer[];
+      applications = applicationResult.error ? [] : (applicationResult.data ?? []) as Pick<Application, "customer_id" | "status" | "created_at">[];
+      userApplications = userApplicationResult.error ? [] : (userApplicationResult.data ?? []) as Pick<Application, "user_id" | "status" | "created_at">[];
+      profiles = profileResult.error ? [] : (profileResult.data ?? []) as ProfileRow[];
+      customerProfiles = customerProfileResult.error ? [] : (customerProfileResult.data ?? []) as CustomerProfileRow[];
+      authUsers = authUsersResult.error ? [] : (authUsersResult.data?.users ?? []) as AuthUserRow[];
+      wallets = walletResult.error ? [] : (walletResult.data ?? []) as WalletRow[];
+      referrals = referralResult.error ? [] : (referralResult.data ?? []) as ReferralRow[];
+    } catch (error) {
+      console.error("[admin-customers] Failed to load customers", error);
+    }
   }
 
   const rowsByKey = new Map<string, AdminCustomerRow>();
@@ -232,7 +227,7 @@ export default async function AdminCustomersPage() {
     });
   });
 
-  const rows = Array.from(rowsByKey.values()).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const rows = Array.from(rowsByKey.values()).sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

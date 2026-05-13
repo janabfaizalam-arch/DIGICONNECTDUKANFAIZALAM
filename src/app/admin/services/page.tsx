@@ -16,7 +16,14 @@ export default async function AdminServicesPage() {
   if (!user) redirect("/login");
   if (!isAdminRole(role)) redirect("/dashboard");
 
-  const [services, categories] = await Promise.all([getAdminServices(), getAdminServiceCategories()]);
+  let services: Awaited<ReturnType<typeof getAdminServices>> = [];
+  let categories: Awaited<ReturnType<typeof getAdminServiceCategories>> = [];
+
+  try {
+    [services, categories] = await Promise.all([getAdminServices(), getAdminServiceCategories()]);
+  } catch (error) {
+    console.error("[admin-services] Failed to load services", error);
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">

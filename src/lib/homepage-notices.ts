@@ -70,20 +70,25 @@ export async function getActiveHomepageNotices(limit = 8): Promise<HomepageNotic
     return getDefaultHomepageNotices();
   }
 
-  const { data, error } = await supabase
-    .from("homepage_notices")
-    .select(noticeSelect)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("homepage_notices")
+      .select(noticeSelect)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
+    if (error) {
+      console.error("[homepage-notices] Failed to fetch active notices", error);
+      return getDefaultHomepageNotices();
+    }
+
+    return data?.length ? (data as HomepageNotice[]) : getDefaultHomepageNotices();
+  } catch (error) {
     console.error("[homepage-notices] Failed to fetch active notices", error);
     return getDefaultHomepageNotices();
   }
-
-  return data?.length ? (data as HomepageNotice[]) : getDefaultHomepageNotices();
 }
 
 export async function getAllHomepageNotices(limit = 100): Promise<HomepageNotice[]> {
@@ -93,17 +98,22 @@ export async function getAllHomepageNotices(limit = 100): Promise<HomepageNotice
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("homepage_notices")
-    .select(noticeSelect)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("homepage_notices")
+      .select(noticeSelect)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
+    if (error) {
+      console.error("[homepage-notices] Failed to fetch admin notices", error);
+      return [];
+    }
+
+    return (data ?? []) as HomepageNotice[];
+  } catch (error) {
     console.error("[homepage-notices] Failed to fetch admin notices", error);
     return [];
   }
-
-  return (data ?? []) as HomepageNotice[];
 }
