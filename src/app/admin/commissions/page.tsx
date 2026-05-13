@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { CommissionActions } from "@/components/portal/commission-actions";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Commission } from "@/lib/portal-types";
@@ -13,7 +14,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
+  return safeDate(date);
 }
 
 export default async function AdminCommissionsPage() {

@@ -3,6 +3,7 @@ import { BadgePercent, IndianRupee, WalletCards } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
+import { safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import type { RewardTransaction, ServiceRewardRule } from "@/lib/wallet";
@@ -11,7 +12,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
+  return safeDate(date);
 }
 
 export default async function AdminCashbackPage() {

@@ -1,23 +1,6 @@
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
-import type { AdminApplicationRow, Application, Lead, PortalUser } from "@/lib/portal-types";
+import type { AdminApplicationRow, Application, PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-
-function leadToAdminRow(lead: Lead): AdminApplicationRow {
-  return {
-    id: `lead-${lead.id}`,
-    source: "lead",
-    application_id: null,
-    customer_name: lead.name,
-    mobile: lead.mobile,
-    service: lead.service,
-    message: lead.message,
-    uploaded_files: [],
-    payment_status: null,
-    invoice_status: null,
-    application_status: lead.status,
-    created_at: lead.created_at,
-  };
-}
 
 function applicationToAdminRow(application: Application, agentsById: Record<string, PortalUser>, staffById: Record<string, PortalUser>): AdminApplicationRow {
   const payment = application.payments?.[0];
@@ -62,15 +45,11 @@ export async function getAdminApplicationRows() {
   let staff: PortalUser[] = [];
 
   if (!supabase) {
-    return { rows, agents };
+    return { rows, agents, staff };
   }
 
-  const [{ data: applicationData }, { data: leadData }, { data: agentData }, { data: staffData }] = await Promise.all([
+  const [{ data: applicationData }, { data: agentData }, { data: staffData }] = await Promise.all([
     supabase.from("applications").select("*").order("created_at", { ascending: false }),
-    supabase
-      .from("leads")
-      .select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at")
-      .order("created_at", { ascending: false }),
     supabase
       .from("profiles")
       .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
@@ -93,10 +72,9 @@ export async function getAdminApplicationRows() {
   }, {});
   const applications = (await hydrateApplications((applicationData ?? []) as Application[])) as Application[];
 
-  rows = [
-    ...applications.map((application) => applicationToAdminRow(application, agentsById, staffById)),
-    ...((leadData ?? []) as Lead[]).map(leadToAdminRow),
-  ].sort((first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime());
+  rows = applications
+    .map((application) => applicationToAdminRow(application, agentsById, staffById))
+    .sort((first, second) => Date.parse(second.created_at || "") - Date.parse(first.created_at || ""));
 
   return { rows, agents, staff };
 }

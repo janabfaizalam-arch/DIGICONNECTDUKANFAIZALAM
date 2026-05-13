@@ -9,6 +9,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { safeCurrency, safeDate } from "@/lib/admin-format";
 
 export type AdminCustomerRow = {
   id: string;
@@ -22,11 +23,14 @@ export type AdminCustomerRow = {
   created_at: string;
   applicationsCount: number;
   lastStatus: string;
+  walletBalance: number;
+  cashbackBalance: number;
+  referralCount: number;
   canOpenDetails: boolean;
 };
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
+  return safeDate(date);
 }
 
 function displayValue(value: string | null | undefined) {
@@ -117,6 +121,9 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
                 <p>Email: <span className="font-semibold text-slate-800">{displayValue(customer.email)}</span></p>
                 <p>Source: <span className="font-semibold capitalize text-slate-800">{displayValue(customer.source).replace(/_/g, " ")}</span></p>
+                <p>Wallet: <span className="font-semibold text-slate-800">{safeCurrency(customer.walletBalance)}</span></p>
+                <p>Cashback: <span className="font-semibold text-slate-800">{safeCurrency(customer.cashbackBalance)}</span></p>
+                <p>Referrals: <span className="font-semibold text-slate-800">{customer.referralCount}</span></p>
                 <p>Applications: <span className="font-semibold text-slate-800">{customer.applicationsCount}</span></p>
                 <p>Last Status: <span className="font-semibold capitalize text-slate-800">{customer.lastStatus.replace(/_/g, " ") || "Not provided"}</span></p>
                 <p>Created: <span className="font-semibold text-slate-800">{formatDate(customer.created_at)}</span></p>

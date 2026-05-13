@@ -5,13 +5,14 @@ import { ArrowLeft } from "lucide-react";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { safeDateTime } from "@/lib/admin-format";
 import type { Application, Customer } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
+  return safeDateTime(date);
 }
 
 export default async function AdminCustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,7 +28,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
   if (!supabase) notFound();
 
   const [{ data: customer }, { data: applications }, { data: notes }] = await Promise.all([
-    supabase.from("customers").select("*").eq("id", id).single(),
+    supabase.from("customers").select("*").eq("id", id).maybeSingle(),
     supabase.from("applications").select("id, service_name, status, payment_status, amount, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
     supabase.from("customer_notes").select("id, note, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
   ]);

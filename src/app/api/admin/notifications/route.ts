@@ -28,10 +28,11 @@ export async function GET() {
     const { data, error } = await supabase
       .from("admin_notifications")
       .select("id, type, title, message, related_type, related_id, is_read, created_at")
+      .neq("related_type", "lead")
       .order("created_at", { ascending: false })
       .limit(10);
 
-    if (error) return jsonError("Admin notifications could not be loaded.", 500);
+    if (error) return NextResponse.json({ notifications: [] });
 
     return NextResponse.json({ notifications: data ?? [] });
   } catch {
@@ -45,14 +46,14 @@ export async function PATCH(request: Request) {
     if (auth.error) return auth.error;
 
     const supabase = getSupabaseAdmin();
-    if (!supabase) return jsonError("Supabase service role key is missing.", 500);
+    if (!supabase) return NextResponse.json({ message: "Notifications unavailable." });
 
     const body = (await request.json().catch(() => null)) as { id?: string; markAll?: boolean } | null;
 
     if (body?.markAll) {
       const { error } = await supabase.from("admin_notifications").update({ is_read: true }).eq("is_read", false);
 
-      if (error) return jsonError("Notifications could not be marked as read.", 500);
+      if (error) return NextResponse.json({ message: "Notifications unavailable." });
       return NextResponse.json({ message: "All notifications marked as read." });
     }
 
@@ -62,7 +63,7 @@ export async function PATCH(request: Request) {
 
     const { error } = await supabase.from("admin_notifications").update({ is_read: true }).eq("id", body.id);
 
-    if (error) return jsonError("Notification could not be marked as read.", 500);
+    if (error) return NextResponse.json({ message: "Notifications unavailable." });
 
     return NextResponse.json({ message: "Notification marked as read." });
   } catch {

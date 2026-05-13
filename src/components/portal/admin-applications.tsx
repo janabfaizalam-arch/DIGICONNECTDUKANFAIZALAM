@@ -10,18 +10,19 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
+import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
+  return safeDateTime(date);
 }
 
 function formatCurrency(amount?: number | null) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(amount ?? 0));
+  return safeCurrency(amount);
 }
 
-export function AdminApplications({ rows, staff = [] }: { rows: AdminApplicationRow[]; agents?: PortalUser[]; staff?: PortalUser[] }) {
+export function AdminApplications({ rows, staff = [], initialSearch = "" }: { rows: AdminApplicationRow[]; agents?: PortalUser[]; staff?: PortalUser[]; initialSearch?: string }) {
   const applicationRows = rows.filter((row) => row.source === "application");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -38,10 +39,12 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
         !query ||
         row.customer_name.toLowerCase().includes(query) ||
         row.mobile.toLowerCase().includes(query) ||
-        row.service.toLowerCase().includes(query);
+        row.service.toLowerCase().includes(query) ||
+        String(row.application_id ?? row.id).toLowerCase().includes(query);
       const matchesStatus =
         statusFilter === "all" ||
         row.application_status === statusFilter ||
+        (statusFilter === "pending" && ["documents_pending", "payment_pending", "submitted", "pending"].includes(row.application_status)) ||
         (statusFilter === "in_progress" && ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status));
       const matchesPayment = paymentFilter === "all" || row.payment_status === paymentFilter;
       const matchesService = serviceFilter === "all" || row.service === serviceFilter;
@@ -92,6 +95,7 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
               <SelectItem value="new">New</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
@@ -152,6 +156,7 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Service</th>
+                <th className="px-4 py-3">Docs / Payment</th>
                 <th className="px-4 py-3">Update</th>
                 <th className="px-4 py-3">Razorpay</th>
                 <th className="px-4 py-3">Created</th>
@@ -164,6 +169,12 @@ export function AdminApplications({ rows, staff = [] }: { rows: AdminApplication
                   <td className="px-4 py-3 font-bold text-slate-950">{row.customer_name}</td>
                   <td className="px-4 py-3 font-mono text-slate-700">{row.mobile || "-"}</td>
                   <td className="px-4 py-3 text-slate-700">{row.service}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <AdminStatusBadge status={row.uploaded_files.length ? "documents_uploaded" : "documents_pending"} />
+                      <AdminStatusBadge status={row.payment_status ?? "pending"} />
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     {row.application_id ? (
                       <AdminApplicationInlineUpdate

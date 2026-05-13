@@ -20,7 +20,6 @@ type AdminNotification = {
 function relatedHref(notification: AdminNotification) {
   if (!notification.related_type || !notification.related_id) return "/admin";
 
-  if (notification.related_type === "lead") return "/admin/leads";
   if (notification.related_type === "application") return `/admin/applications/${notification.related_id}`;
   if (notification.related_type === "insurance_quotation") return "/admin/insurance-quotations";
   if (notification.related_type === "payment") return "/admin/applications";
@@ -60,8 +59,8 @@ export function AdminNotificationsBell() {
 
       if (!response.ok) throw new Error(data.message || "Notifications could not be loaded.");
       setNotifications(data.notifications ?? []);
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : "Notifications could not be loaded.");
+    } catch {
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -142,9 +141,7 @@ export function AdminNotificationsBell() {
                 <LoaderCircle className="h-4 w-4 animate-spin" />
                 Loading notifications
               </div>
-            ) : error ? (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
-            ) : notifications.length ? (
+            ) : error ? null : notifications.length ? (
               notifications.slice(0, 10).map((notification) => (
                 <Link
                   key={notification.id}

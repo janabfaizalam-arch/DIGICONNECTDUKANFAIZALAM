@@ -6,7 +6,7 @@ import { getAdminApplicationRows } from "@/lib/admin-applications";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminApplicationsPage() {
+export default async function AdminApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
@@ -19,6 +19,7 @@ export default async function AdminApplicationsPage() {
   }
 
   const { rows, staff } = await getAdminApplicationRows();
+  const { q } = await searchParams;
 
-  return <AdminApplications rows={rows} staff={staff} />;
+  return <AdminApplications rows={rows} staff={staff} initialSearch={q ?? ""} />;
 }

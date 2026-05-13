@@ -7,11 +7,12 @@ import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminLeadActions } from "@/components/admin/admin-lead-actions";
 import { Input } from "@/components/ui/input";
+import { safeDateTime } from "@/lib/admin-format";
 import type { Lead } from "@/lib/portal-types";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
+  return safeDateTime(date);
 }
 
 export function AdminLeadsList({ leads }: { leads: Lead[] }) {

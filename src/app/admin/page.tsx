@@ -1,83 +1,57 @@
 import { redirect } from "next/navigation";
 
-import { AdminDashboard, type DashboardChartData, type DashboardKpi, type DashboardTableRow } from "@/components/admin/admin-dashboard";
+import {
+  AdminDashboard,
+  type DashboardApplicationRow,
+  type DashboardChartData,
+  type DashboardCustomerRow,
+  type DashboardKpi,
+  type DashboardQuotationRow,
+} from "@/components/admin/admin-dashboard";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import type { Application, Lead } from "@/lib/portal-types";
+import { safeCurrency, safeDate, safeDateValue, safeNumber } from "@/lib/admin-format";
+import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
+import type { Application, Customer, PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 type InsuranceQuotationRow = {
   id: string;
-  customer_name: string;
-  mobile: string;
-  insurance_type: string;
-  status: string;
-  created_at: string;
+  customer_name: string | null;
+  vehicle_number: string | null;
+  total_amount: number | null;
+  status: string | null;
+  valid_till: string | null;
+  created_at: string | null;
 };
 
-type PaymentRow = {
+type ProfileRow = {
   id: string;
-  application_id: string;
-  amount: number;
-  status: string;
-  created_at: string;
-  applications?: {
-    id: string;
-    service_name: string;
-    status: string;
-    form_data: Record<string, unknown> | null;
-  } | null;
+  email: string | null;
+  full_name: string | null;
+  mobile: string | null;
+  role: string | null;
+  created_at: string | null;
 };
 
-function parseSafeDate(value: string | null | undefined) {
-  if (!value) return null;
+type WalletRow = {
+  user_id: string | null;
+  balance?: number | null;
+  total_cashback_earned?: number | null;
+};
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDate(date: string | null | undefined) {
-  const safeDate = parseSafeDate(date);
-  if (!safeDate) return "—";
-
-  return new Intl.DateTimeFormat("en-IN", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(safeDate);
-}
+type ReferralRow = {
+  referrer_id: string | null;
+  referred_user_id?: string | null;
+};
 
 function formatWeekday(date: Date) {
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return new Intl.DateTimeFormat("en-IN", {
-    weekday: "short",
-  }).format(date);
+  return new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(date);
 }
 
 function formatTodayLabel(date: Date) {
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return new Intl.DateTimeFormat("en-IN", {
-    weekday: "long",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function formatNumber(value: number) {
-  const safeValue = Number.isFinite(value) ? value : 0;
-  return safeValue.toLocaleString("en-IN");
-}
-
-function customerFromForm(formData: Record<string, unknown> | null) {
-  return String(formData?.name ?? formData?.fullName ?? formData?.customerName ?? "Customer");
-}
-
-function mobileFromForm(formData: Record<string, unknown> | null) {
-  return String(formData?.mobile ?? formData?.phone ?? "");
+  return new Intl.DateTimeFormat("en-IN", { weekday: "long", year: "numeric", month: "short", day: "numeric" }).format(date);
 }
 
 function startOfToday() {
@@ -95,9 +69,9 @@ function lastSevenDays() {
   });
 }
 
-function sameDay(value: string, date: Date) {
-  const candidate = new Date(value);
-  return candidate.getFullYear() === date.getFullYear() && candidate.getMonth() === date.getMonth() && candidate.getDate() === date.getDate();
+function sameDay(value: string | null | undefined, date: Date) {
+  const candidate = safeDateValue(value);
+  return !!candidate && candidate.getFullYear() === date.getFullYear() && candidate.getMonth() === date.getMonth() && candidate.getDate() === date.getDate();
 }
 
 function isCompleted(status: string | null | undefined) {
@@ -105,7 +79,66 @@ function isCompleted(status: string | null | undefined) {
 }
 
 function isPendingWork(status: string | null | undefined) {
-  return ["new", "documents_pending", "payment_pending", "in_process", "submitted"].includes(String(status ?? "").toLowerCase());
+  return ["new", "documents_pending", "payment_pending", "in_process", "in_progress", "submitted", "pending"].includes(String(status ?? "").toLowerCase());
+}
+
+function firstText(...values: Array<string | null | undefined>) {
+  return values.map((value) => value?.trim()).find(Boolean) || "";
+}
+
+function buildCustomers(customers: Customer[], profiles: ProfileRow[], applications: Application[], wallets: WalletRow[], referrals: ReferralRow[]) {
+  const rowsByKey = new Map<string, DashboardCustomerRow>();
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const walletByUserId = new Map(wallets.filter((wallet) => wallet.user_id).map((wallet) => [String(wallet.user_id), wallet]));
+
+  const applicationCounts = applications.reduce<Record<string, number>>((grouped, application) => {
+    if (application.user_id) grouped[application.user_id] = (grouped[application.user_id] ?? 0) + 1;
+    if (application.customer_id) grouped[application.customer_id] = (grouped[application.customer_id] ?? 0) + 1;
+    return grouped;
+  }, {});
+
+  const referralCounts = referrals.reduce<Record<string, number>>((grouped, referral) => {
+    if (referral.referrer_id) grouped[referral.referrer_id] = (grouped[referral.referrer_id] ?? 0) + 1;
+    return grouped;
+  }, {});
+
+  for (const customer of customers) {
+    const profile = customer.user_id ? profileById.get(customer.user_id) : null;
+    const wallet = customer.user_id ? walletByUserId.get(customer.user_id) : null;
+    const key = customer.user_id ?? customer.id;
+
+    rowsByKey.set(key, {
+      id: key,
+      name: firstText(customer.full_name, profile?.full_name, "Customer"),
+      mobile: firstText(customer.mobile, profile?.mobile),
+      email: firstText(customer.email, profile?.email),
+      walletBalance: safeCurrency(wallet?.balance),
+      cashbackBalance: safeCurrency(wallet?.total_cashback_earned),
+      referralCount: customer.user_id ? referralCounts[customer.user_id] ?? 0 : 0,
+      applicationsCount: (customer.user_id ? applicationCounts[customer.user_id] ?? 0 : 0) + (applicationCounts[customer.id] ?? 0),
+      joinedDate: safeDate(customer.created_at),
+      href: `/admin/customers/${customer.id}`,
+    });
+  }
+
+  for (const profile of profiles.filter((item) => item.role === "customer")) {
+    if (rowsByKey.has(profile.id)) continue;
+    const wallet = walletByUserId.get(profile.id);
+    rowsByKey.set(profile.id, {
+      id: profile.id,
+      name: firstText(profile.full_name, "Customer"),
+      mobile: firstText(profile.mobile),
+      email: firstText(profile.email),
+      walletBalance: safeCurrency(wallet?.balance),
+      cashbackBalance: safeCurrency(wallet?.total_cashback_earned),
+      referralCount: referralCounts[profile.id] ?? 0,
+      applicationsCount: applicationCounts[profile.id] ?? 0,
+      joinedDate: safeDate(profile.created_at),
+      href: "/admin/customers",
+    });
+  }
+
+  return Array.from(rowsByKey.values());
 }
 
 export default async function AdminPage() {
@@ -117,78 +150,61 @@ export default async function AdminPage() {
 
   const supabase = getSupabaseAdmin();
   let dashboardError = "";
-  let leads: Lead[] = [];
   let applications: Application[] = [];
-  let payments: PaymentRow[] = [];
+  let customers: Customer[] = [];
+  let profiles: ProfileRow[] = [];
+  let staff: PortalUser[] = [];
+  let wallets: WalletRow[] = [];
+  let referrals: ReferralRow[] = [];
   let insuranceQuotations: InsuranceQuotationRow[] = [];
   let totalApplications = 0;
   let completedApplications = 0;
-  let pendingPaymentCount = 0;
+  let totalCustomers = 0;
+  let quotationCount = 0;
 
   if (supabase) {
-    const [
-      leadResult,
-      applicationResult,
-      paymentResult,
-      quotationResult,
-      totalApplicationsResult,
-      completedApplicationsResult,
-      pendingPaymentsResult,
-    ] = await Promise.all([
-      supabase
-        .from("leads")
-        .select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("applications")
-        .select("id, user_id, service_slug, service_name, amount, form_data, status, final_document_url, final_document_name, assigned_to, internal_notes, payment_status, created_at, updated_at")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("payments")
-        .select("id, application_id, amount, status, created_at, applications(id, service_name, status, form_data)")
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(8),
-      supabase
-        .from("insurance_quotations")
-        .select("id, customer_name, mobile, insurance_type, status, created_at")
-        .order("created_at", { ascending: false })
-        .limit(8),
+    const [applicationResult, customerResult, profileResult, staffResult, quotationResult, totalApplicationsResult, completedApplicationsResult, quotationCountResult, walletResult, referralResult] = await Promise.all([
+      supabase.from("applications").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("customers").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile").eq("role", "staff"),
+      supabase.from("insurance_quotations").select("id, customer_name, vehicle_number, total_amount, status, valid_till, created_at").order("created_at", { ascending: false }).limit(8),
       supabase.from("applications").select("id", { count: "exact", head: true }),
       supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
-      supabase.from("payments").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("insurance_quotations").select("id", { count: "exact", head: true }),
+      supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
+      supabase.from("referrals").select("referrer_id, referred_user_id").limit(1000),
     ]);
 
-    if (leadResult.error || applicationResult.error) {
-      dashboardError = "Some dashboard data could not be loaded. Please check Supabase configuration.";
-    }
+    if (applicationResult.error) dashboardError = "Some dashboard data could not be loaded. Applications are showing with safe fallbacks.";
 
-    leads = (leadResult.data ?? []) as Lead[];
-    applications = (applicationResult.data ?? []) as Application[];
-    payments = (paymentResult.data ?? []) as unknown as PaymentRow[];
+    applications = (await hydrateApplications((applicationResult.data ?? []) as Application[])) as Application[];
+    customers = (customerResult.data ?? []) as Customer[];
+    profiles = (profileResult.data ?? []) as ProfileRow[];
+    staff = (staffResult.data ?? []) as PortalUser[];
     insuranceQuotations = (quotationResult.data ?? []) as InsuranceQuotationRow[];
+    wallets = walletResult.error ? [] : (walletResult.data ?? []) as WalletRow[];
+    referrals = referralResult.error ? [] : (referralResult.data ?? []) as ReferralRow[];
     totalApplications = totalApplicationsResult.count ?? applications.length;
     completedApplications = completedApplicationsResult.count ?? applications.filter((application) => isCompleted(application.status)).length;
-    pendingPaymentCount = pendingPaymentsResult.count ?? payments.length;
+    quotationCount = quotationCountResult.count ?? insuranceQuotations.length;
   } else {
     dashboardError = "Supabase admin keys are missing, so live dashboard data is unavailable.";
   }
 
   const days = lastSevenDays();
   const today = startOfToday();
-  const todayLeads = leads.filter((lead) => sameDay(lead.created_at, today)).length;
   const todayApplications = applications.filter((application) => sameDay(application.created_at, today)).length;
   const pendingWork = applications.filter((application) => isPendingWork(application.status)).length;
   const revenueEstimate = applications
     .filter((application) => application.payment_status === "verified" || isCompleted(application.status))
     .reduce((total, application) => total + Number(application.amount ?? 0), 0);
+  const customerRows = buildCustomers(customers, profiles, applications, wallets, referrals);
+  totalCustomers = customerRows.length;
 
   const charts: DashboardChartData = {
     workflow: days.map((date) => ({
       label: formatWeekday(date),
-      leads: leads.filter((lead) => sameDay(lead.created_at, date)).length,
       applications: applications.filter((application) => sameDay(application.created_at, date)).length,
     })),
     revenue: days.map((date) => ({
@@ -211,82 +227,38 @@ export default async function AdminPage() {
         grouped.set(service, (grouped.get(service) ?? 0) + 1);
         return grouped;
       }, new Map<string, number>()),
-    )
-      .map(([service, count]) => ({ service, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6),
+    ).map(([service, count]) => ({ service, count })).sort((a, b) => b.count - a.count).slice(0, 6),
   };
 
   const kpis: DashboardKpi[] = [
-    { title: "Today Leads", value: todayLeads, trend: `+${todayLeads} today`, href: "/admin/leads", icon: "lead" },
-    {
-      title: "New Applications",
-      value: todayApplications,
-      trend: `+${todayApplications} today`,
-      href: "/admin/applications",
-      icon: "application",
-    },
-    { title: "Pending Work", value: pendingWork, trend: "Needs office action", href: "/admin/applications", icon: "pending" },
-    {
-      title: "Completed Work",
-      value: completedApplications,
-      trend: `${totalApplications} total applications`,
-      href: "/admin/applications",
-      icon: "completed",
-    },
-    {
-      title: "Revenue Estimate",
-      value: `Rs ${formatNumber(revenueEstimate)}`,
-      trend: "Verified and completed",
-      href: "/admin/applications",
-      icon: "revenue",
-    },
-    {
-      title: "Payment Pending",
-      value: pendingPaymentCount,
-      trend: "Follow up required",
-      href: "/admin/applications",
-      icon: "payment",
-    },
+    { title: "New Applications", value: todayApplications, trend: `+${todayApplications} today`, href: "/admin/applications", icon: "application" },
+    { title: "Pending Applications", value: pendingWork, trend: "Needs office action", href: "/admin/applications", icon: "pending" },
+    { title: "Completed Applications", value: completedApplications, trend: `${totalApplications} total applications`, href: "/admin/applications", icon: "completed" },
+    { title: "Total Customers", value: totalCustomers, trend: "Signed-up and CRM customers", href: "/admin/customers", icon: "customers" },
+    { title: "Revenue Estimate", value: safeCurrency(revenueEstimate), trend: "Verified and completed", href: "/admin/applications", icon: "revenue" },
+    { title: "Insurance Quotations", value: safeNumber(quotationCount), trend: "Quotes created", href: "/admin/insurance-quotations", icon: "quotation" },
   ];
 
-  const recentLeads: DashboardTableRow[] = leads.slice(0, 8).map((lead) => ({
-    id: lead.id,
-    customerName: lead.name,
-    mobile: lead.mobile,
-    service: lead.service,
-    status: lead.status,
-    date: formatDate(lead.created_at),
-    href: "/admin/leads",
-  }));
-
-  const recentApplications: DashboardTableRow[] = applications.slice(0, 8).map((application) => ({
+  const staffById = new Map(staff.map((member) => [member.id, member.full_name || member.email || "Staff"]));
+  const newApplications: DashboardApplicationRow[] = applications.slice(0, 8).map((application) => ({
     id: application.id,
-    customerName: customerFromForm(application.form_data),
-    mobile: mobileFromForm(application.form_data),
+    customerName: getCustomerName(application),
+    mobile: getCustomerMobile(application),
     service: application.service_name,
     status: application.status,
-    date: formatDate(application.created_at),
+    paymentStatus: application.payment_status ?? application.payments?.[0]?.status ?? "pending",
+    assignedStaff: application.assigned_staff_id ? staffById.get(application.assigned_staff_id) ?? "Assigned" : "-",
+    date: safeDate(application.created_at),
     href: `/admin/applications/${application.id}`,
   }));
 
-  const pendingPayments: DashboardTableRow[] = payments.map((payment) => ({
-    id: payment.id,
-    customerName: customerFromForm(payment.applications?.form_data ?? null),
-    mobile: mobileFromForm(payment.applications?.form_data ?? null),
-    service: payment.applications?.service_name ?? `Payment ${formatNumber(Number(payment.amount ?? 0))}`,
-    status: payment.status,
-    date: formatDate(payment.created_at),
-    href: payment.application_id ? `/admin/applications/${payment.application_id}` : "/admin/applications",
-  }));
-
-  const recentInsuranceQuotations: DashboardTableRow[] = insuranceQuotations.map((quotation) => ({
+  const recentInsuranceQuotations: DashboardQuotationRow[] = insuranceQuotations.map((quotation) => ({
     id: quotation.id,
-    customerName: quotation.customer_name,
-    mobile: quotation.mobile,
-    service: quotation.insurance_type,
-    status: quotation.status,
-    date: formatDate(quotation.created_at),
+    customerName: quotation.customer_name ?? "Customer",
+    vehicleNumber: quotation.vehicle_number ?? "-",
+    totalAmount: safeCurrency(quotation.total_amount),
+    status: quotation.status ?? "draft",
+    validTill: safeDate(quotation.valid_till),
     href: "/admin/insurance-quotations",
   }));
 
@@ -295,11 +267,11 @@ export default async function AdminPage() {
       todayLabel={formatTodayLabel(new Date())}
       kpis={kpis}
       charts={charts}
-      recentLeads={recentLeads}
-      recentApplications={recentApplications}
-      pendingPayments={pendingPayments}
+      newApplications={newApplications}
+      latestCustomers={customerRows.slice(0, 8)}
       recentInsuranceQuotations={recentInsuranceQuotations}
       error={dashboardError}
     />
   );
 }
+

@@ -39,6 +39,16 @@ type AuthUserRow = {
   };
 };
 
+type WalletRow = {
+  user_id: string | null;
+  balance?: number | null;
+  total_cashback_earned?: number | null;
+};
+
+type ReferralRow = {
+  referrer_id: string | null;
+};
+
 function firstText(...values: Array<string | null | undefined>) {
   return values.map((value) => value?.trim()).find(Boolean) || "";
 }
@@ -57,15 +67,28 @@ export default async function AdminCustomersPage() {
   let profiles: ProfileRow[] = [];
   let customerProfiles: CustomerProfileRow[] = [];
   let authUsers: AuthUserRow[] = [];
+  let wallets: WalletRow[] = [];
+  let referrals: ReferralRow[] = [];
 
   if (supabase) {
-    const [{ data: customerData }, { data: applicationData }, { data: userApplicationData }, { data: profileData }, { data: customerProfileData }, authUsersResult] = await Promise.all([
+    const [
+      { data: customerData },
+      { data: applicationData },
+      { data: userApplicationData },
+      { data: profileData },
+      { data: customerProfileData },
+      authUsersResult,
+      walletResult,
+      referralResult,
+    ] = await Promise.all([
       supabase.from("customers").select("*").order("created_at", { ascending: false }),
       supabase.from("applications").select("customer_id, status, created_at").order("created_at", { ascending: false }),
       supabase.from("applications").select("user_id, status, created_at").order("created_at", { ascending: false }),
       supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }),
       supabase.from("customer_profiles").select("id, full_name, mobile, email, created_at").order("created_at", { ascending: false }),
       supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
+      supabase.from("referrals").select("referrer_id").limit(1000),
     ]);
 
     customers = (customerData ?? []) as Customer[];
@@ -74,12 +97,19 @@ export default async function AdminCustomersPage() {
     profiles = (profileData ?? []) as ProfileRow[];
     customerProfiles = (customerProfileData ?? []) as CustomerProfileRow[];
     authUsers = (authUsersResult.data?.users ?? []) as AuthUserRow[];
+    wallets = walletResult.error ? [] : (walletResult.data ?? []) as WalletRow[];
+    referrals = referralResult.error ? [] : (referralResult.data ?? []) as ReferralRow[];
   }
 
   const rowsByKey = new Map<string, AdminCustomerRow>();
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   const customerProfileById = new Map(customerProfiles.map((profile) => [profile.id, profile]));
   const authUserById = new Map(authUsers.map((authUser) => [authUser.id, authUser]));
+  const walletByUserId = new Map(wallets.filter((wallet) => wallet.user_id).map((wallet) => [String(wallet.user_id), wallet]));
+  const referralCounts = referrals.reduce<Record<string, number>>((grouped, referral) => {
+    if (referral.referrer_id) grouped[referral.referrer_id] = (grouped[referral.referrer_id] ?? 0) + 1;
+    return grouped;
+  }, {});
 
   function applicationSummary(customerId: string | null, userId: string | null) {
     const matchedApplications = [
@@ -120,6 +150,9 @@ export default async function AdminCustomersPage() {
       role: firstText(row.role, existing.role, "customer"),
       applicationsCount: Math.max(existing.applicationsCount, row.applicationsCount),
       lastStatus: firstText(row.lastStatus, existing.lastStatus),
+      walletBalance: Math.max(existing.walletBalance, row.walletBalance),
+      cashbackBalance: Math.max(existing.cashbackBalance, row.cashbackBalance),
+      referralCount: Math.max(existing.referralCount, row.referralCount),
     });
   }
 
@@ -128,6 +161,7 @@ export default async function AdminCustomersPage() {
     const customerProfile = customer.user_id ? customerProfileById.get(customer.user_id) : null;
     const authUser = customer.user_id ? authUserById.get(customer.user_id) : null;
     const summary = applicationSummary(customer.id, customer.user_id);
+    const wallet = customer.user_id ? walletByUserId.get(customer.user_id) : null;
 
     upsertRow({
       id: customer.user_id ?? customer.id,
@@ -141,6 +175,9 @@ export default async function AdminCustomersPage() {
       created_at: customer.created_at,
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
+      walletBalance: Number(wallet?.balance ?? 0),
+      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      referralCount: customer.user_id ? referralCounts[customer.user_id] ?? 0 : 0,
       canOpenDetails: true,
     });
   });
@@ -149,6 +186,7 @@ export default async function AdminCustomersPage() {
     const customerProfile = customerProfileById.get(profile.id);
     const authUser = authUserById.get(profile.id);
     const summary = applicationSummary(null, profile.id);
+    const wallet = walletByUserId.get(profile.id);
 
     upsertRow({
       id: profile.id,
@@ -162,6 +200,9 @@ export default async function AdminCustomersPage() {
       created_at: profile.created_at ?? authUser?.created_at ?? new Date(0).toISOString(),
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
+      walletBalance: Number(wallet?.balance ?? 0),
+      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      referralCount: referralCounts[profile.id] ?? 0,
       canOpenDetails: false,
     });
   });
@@ -170,6 +211,7 @@ export default async function AdminCustomersPage() {
     const profile = profileById.get(authUser.id);
     const customerProfile = customerProfileById.get(authUser.id);
     const summary = applicationSummary(null, authUser.id);
+    const wallet = walletByUserId.get(authUser.id);
 
     upsertRow({
       id: authUser.id,
@@ -183,6 +225,9 @@ export default async function AdminCustomersPage() {
       created_at: authUser.created_at ?? profile?.created_at ?? customerProfile?.created_at ?? new Date(0).toISOString(),
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
+      walletBalance: Number(wallet?.balance ?? 0),
+      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      referralCount: referralCounts[authUser.id] ?? 0,
       canOpenDetails: false,
     });
   });

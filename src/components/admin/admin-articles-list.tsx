@@ -8,10 +8,11 @@ import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { safeDate } from "@/lib/admin-format";
 import type { Article } from "@/lib/articles";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
+  return safeDate(date);
 }
 
 export function AdminArticlesList({ articles }: { articles: Article[] }) {

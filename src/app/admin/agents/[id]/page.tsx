@@ -27,7 +27,7 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
       .from("profiles")
       .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
       .eq("id", id)
-      .single(),
+      .maybeSingle(),
     supabase.from("applications").select("id, service_name, status, created_at").or(`created_by.eq.${id},assigned_agent_id.eq.${id}`).order("created_at", { ascending: false }),
     supabase.from("commissions").select("amount, status").eq("agent_id", id),
   ]);
@@ -64,7 +64,7 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
             </div>
           </div>
           <div className="mt-5 rounded-2xl border p-4">
-            <p className="font-bold text-slate-950">Recent Leads</p>
+          <p className="font-bold text-slate-950">Recent Applications</p>
             <div className="mt-3 grid gap-2">
               {(applications ?? []).slice(0, 10).map((application) => (
                 <div key={application.id} className="grid gap-1 rounded-2xl bg-slate-50 p-3 md:grid-cols-[1fr_140px]">

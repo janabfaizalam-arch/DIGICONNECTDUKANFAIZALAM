@@ -6,6 +6,7 @@ import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { safeDateTime } from "@/lib/admin-format";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
@@ -15,7 +16,7 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 export const dynamic = "force-dynamic";
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
+  return safeDateTime(date);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -49,7 +50,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     notFound();
   }
 
-  const { data } = await supabase.from("applications").select("*").eq("id", id).single();
+  const { data } = await supabase.from("applications").select("*").eq("id", id).maybeSingle();
 
   if (!data) {
     notFound();

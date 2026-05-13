@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BadgePercent,
-  BarChart3,
   BellRing,
   BriefcaseBusiness,
   ChevronDown,
@@ -50,7 +49,6 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
   {
     title: "Work Management",
     items: [
-      { href: "/admin/leads", label: "Leads", description: "New enquiries", icon: BarChart3 },
       { href: "/admin/applications", label: "Applications", description: "Service workflow", icon: FileText },
       {
         href: "/admin/insurance-quotations",
@@ -215,7 +213,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className="hidden min-w-0 flex-1 lg:block">
                 <p className="text-sm font-bold text-slate-950">Premium CRM Dashboard</p>
-                <p className="text-xs text-slate-500">Manage leads, applications, payments, and growth from one place.</p>
+                <p className="text-xs text-slate-500">Manage applications, customers, quotations, and growth from one place.</p>
               </div>
               <AdminNotificationsBell />
             </div>
