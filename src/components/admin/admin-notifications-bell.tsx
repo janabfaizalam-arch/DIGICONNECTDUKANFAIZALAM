@@ -30,7 +30,10 @@ function relatedHref(notification: AdminNotification) {
 }
 
 function timeAgo(value: string) {
-  const diff = Date.now() - new Date(value).getTime();
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return "—";
+
+  const diff = Date.now() - date.getTime();
   const minutes = Math.max(1, Math.floor(diff / 60000));
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);

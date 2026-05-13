@@ -82,7 +82,8 @@ const iconMap = {
 const statusColors = ["#2563eb", "#f97316", "#0f766e", "#64748b", "#38bdf8", "#fb923c"];
 
 function money(value: number) {
-  return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
+  const safeValue = Number.isFinite(value) ? value : 0;
+  return `Rs ${Math.round(safeValue).toLocaleString("en-IN")}`;
 }
 
 function DashboardCard({ children, className }: { children: React.ReactNode; className?: string }) {

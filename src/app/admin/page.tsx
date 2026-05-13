@@ -30,8 +30,46 @@ type PaymentRow = {
   } | null;
 };
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(date));
+function parseSafeDate(value: string | null | undefined) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDate(date: string | null | undefined) {
+  const safeDate = parseSafeDate(date);
+  if (!safeDate) return "—";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(safeDate);
+}
+
+function formatWeekday(date: Date) {
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    weekday: "short",
+  }).format(date);
+}
+
+function formatTodayLabel(date: Date) {
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function formatNumber(value: number) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+  return safeValue.toLocaleString("en-IN");
 }
 
 function customerFromForm(formData: Record<string, unknown> | null) {
@@ -149,12 +187,12 @@ export default async function AdminPage() {
 
   const charts: DashboardChartData = {
     workflow: days.map((date) => ({
-      label: new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(date),
+      label: formatWeekday(date),
       leads: leads.filter((lead) => sameDay(lead.created_at, date)).length,
       applications: applications.filter((application) => sameDay(application.created_at, date)).length,
     })),
     revenue: days.map((date) => ({
-      label: new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(date),
+      label: formatWeekday(date),
       revenue: applications
         .filter((application) => sameDay(application.created_at, date))
         .filter((application) => application.payment_status === "verified" || isCompleted(application.status))
@@ -198,7 +236,7 @@ export default async function AdminPage() {
     },
     {
       title: "Revenue Estimate",
-      value: `Rs ${revenueEstimate.toLocaleString("en-IN")}`,
+      value: `Rs ${formatNumber(revenueEstimate)}`,
       trend: "Verified and completed",
       href: "/admin/applications",
       icon: "revenue",
@@ -236,7 +274,7 @@ export default async function AdminPage() {
     id: payment.id,
     customerName: customerFromForm(payment.applications?.form_data ?? null),
     mobile: mobileFromForm(payment.applications?.form_data ?? null),
-    service: payment.applications?.service_name ?? `Payment ${Number(payment.amount ?? 0).toLocaleString("en-IN")}`,
+    service: payment.applications?.service_name ?? `Payment ${formatNumber(Number(payment.amount ?? 0))}`,
     status: payment.status,
     date: formatDate(payment.created_at),
     href: payment.application_id ? `/admin/applications/${payment.application_id}` : "/admin/applications",
@@ -254,7 +292,7 @@ export default async function AdminPage() {
 
   return (
     <AdminDashboard
-      todayLabel={new Intl.DateTimeFormat("en-IN", { weekday: "long", dateStyle: "long" }).format(new Date())}
+      todayLabel={formatTodayLabel(new Date())}
       kpis={kpis}
       charts={charts}
       recentLeads={recentLeads}
