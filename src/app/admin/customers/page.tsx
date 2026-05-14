@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { CalendarDays, Phone, UserRound } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminCustomerManager, type AdminCustomerRow } from "@/components/admin/admin-customer-manager";
@@ -338,9 +337,9 @@ export default async function AdminCustomersPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Customers" title="Customers" description="Registered users and manually added customers in one CRM list." />
       <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Customers" value={rows.length} icon={UserRound} tone="blue" />
-        <AdminStatCard title="With Applications" value={rows.filter((customer) => customer.applicationsCount > 0).length} icon={CalendarDays} tone="green" />
-        <AdminStatCard title="Signed Up Users" value={rows.filter((customer) => customer.userId).length} icon={Phone} tone="orange" />
+        <AdminStatCard title="Total Customers" value={rows.length} icon="users" tone="blue" />
+        <AdminStatCard title="With Applications" value={rows.filter((customer) => customer.applicationsCount > 0).length} icon="calendarDays" tone="green" />
+        <AdminStatCard title="Signed Up Users" value={rows.filter((customer) => customer.userId).length} icon="phone" tone="orange" />
       </section>
       <AdminCustomerManager customers={rows} />
     </div>

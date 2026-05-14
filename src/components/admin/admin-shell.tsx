@@ -6,15 +6,25 @@ import {
   BadgePercent,
   BellRing,
   BriefcaseBusiness,
+  CalendarDays,
+  ClipboardList,
   ChevronDown,
+  FileClock,
   FileText,
   GalleryHorizontalEnd,
   Gift,
   Images,
+  Inbox,
+  IndianRupee,
   LayoutDashboard,
+  ListChecks,
   Menu,
   Newspaper,
+  Phone,
+  ReceiptText,
+  Repeat2,
   ShieldCheck,
+  UserCheck,
   UserCog,
   UsersRound,
   WalletCards,
@@ -279,17 +289,55 @@ export function AdminUnderSetup({ title, description }: { title: string; descrip
   );
 }
 
+type AdminStatIconKey =
+  | "badgePercent"
+  | "calendarDays"
+  | "clipboardList"
+  | "fileClock"
+  | "fileText"
+  | "gift"
+  | "inbox"
+  | "indianRupee"
+  | "listChecks"
+  | "phone"
+  | "receiptText"
+  | "repeat"
+  | "userCheck"
+  | "userCog"
+  | "users"
+  | "wallet";
+
+const statIconMap: Record<AdminStatIconKey, LucideIcon> = {
+  badgePercent: BadgePercent,
+  calendarDays: CalendarDays,
+  clipboardList: ClipboardList,
+  fileClock: FileClock,
+  fileText: FileText,
+  gift: Gift,
+  inbox: Inbox,
+  indianRupee: IndianRupee,
+  listChecks: ListChecks,
+  phone: Phone,
+  receiptText: ReceiptText,
+  repeat: Repeat2,
+  userCheck: UserCheck,
+  userCog: UserCog,
+  users: UsersRound,
+  wallet: WalletCards,
+};
+
 export function AdminStatCard({
   title,
   value,
-  icon: Icon,
+  icon,
   tone = "blue",
 }: {
   title: string;
   value: React.ReactNode;
-  icon: LucideIcon;
+  icon: AdminStatIconKey;
   tone?: "blue" | "orange" | "green" | "slate";
 }) {
+  const Icon = statIconMap[icon] ?? UsersRound;
   const toneClass = {
     blue: "bg-blue-50 text-blue-700",
     orange: "bg-orange-50 text-orange-700",

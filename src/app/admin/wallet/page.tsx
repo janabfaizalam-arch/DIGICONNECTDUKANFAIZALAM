@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { BadgePercent, Gift, Repeat2, WalletCards } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { AdminWalletAdjustmentForm, AdminWalletStatusForm } from "@/components/admin/admin-wallet-adjustment-form";
@@ -90,10 +89,10 @@ export default async function AdminWalletPage() {
       ) : null}
 
       {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminStatCard title="Total Cashback Issued" value={safeCurrency(totalIssued)} icon={Gift} tone="orange" />
-        <AdminStatCard title="Total Redeemed" value={safeCurrency(totalRedeemed)} icon={WalletCards} tone="blue" />
-        <AdminStatCard title="Repeat Customer %" value={`${repeatCustomerPercent}%`} icon={Repeat2} tone="green" />
-        <AdminStatCard title="Wallet Conversion %" value={`${walletConversionPercent}%`} icon={BadgePercent} tone="slate" />
+        <AdminStatCard title="Total Cashback Issued" value={safeCurrency(totalIssued)} icon="gift" tone="orange" />
+        <AdminStatCard title="Total Redeemed" value={safeCurrency(totalRedeemed)} icon="wallet" tone="blue" />
+        <AdminStatCard title="Repeat Customer %" value={`${repeatCustomerPercent}%`} icon="repeat" tone="green" />
+        <AdminStatCard title="Wallet Conversion %" value={`${walletConversionPercent}%`} icon="badgePercent" tone="slate" />
       </section> : null}
 
       {!dataUnavailable ? <section className="grid gap-5 lg:grid-cols-[360px_1fr]">

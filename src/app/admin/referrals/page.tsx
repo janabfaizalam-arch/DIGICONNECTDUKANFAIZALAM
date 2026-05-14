@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Gift, UserCheck, UsersRound } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
@@ -59,9 +58,9 @@ export default async function AdminReferralsPage() {
       ) : null}
 
       {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Referrals" value={referrals.length} icon={UsersRound} tone="blue" />
-        <AdminStatCard title="Pending Referrals" value={pending.length} icon={Gift} tone="orange" />
-        <AdminStatCard title="Completed Referrals" value={completed.length} icon={UserCheck} tone="green" />
+        <AdminStatCard title="Total Referrals" value={referrals.length} icon="users" tone="blue" />
+        <AdminStatCard title="Pending Referrals" value={pending.length} icon="gift" tone="orange" />
+        <AdminStatCard title="Completed Referrals" value={completed.length} icon="userCheck" tone="green" />
       </section> : null}
 
       {!dataUnavailable ? <Card className="rounded-2xl p-5">

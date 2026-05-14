@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { BadgePercent, Gift, WalletCards } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
@@ -51,9 +50,9 @@ export default async function AdminRewardsPage() {
       ) : null}
 
       {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Reward Issued" value={safeCurrency(issued)} icon={Gift} tone="orange" />
-        <AdminStatCard title="Total Redeemed" value={safeCurrency(redeemed)} icon={WalletCards} tone="blue" />
-        <AdminStatCard title="Expired Rewards" value={safeCurrency(expired)} icon={BadgePercent} tone="slate" />
+        <AdminStatCard title="Total Reward Issued" value={safeCurrency(issued)} icon="gift" tone="orange" />
+        <AdminStatCard title="Total Redeemed" value={safeCurrency(redeemed)} icon="wallet" tone="blue" />
+        <AdminStatCard title="Expired Rewards" value={safeCurrency(expired)} icon="badgePercent" tone="slate" />
       </section> : null}
 
       {!dataUnavailable ? <Card className="rounded-2xl p-5">

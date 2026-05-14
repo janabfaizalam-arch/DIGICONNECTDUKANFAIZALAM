@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { BadgePercent, IndianRupee, WalletCards } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
@@ -56,9 +55,9 @@ export default async function AdminCashbackPage() {
       ) : null}
 
       {!dataUnavailable ? <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Cashback Issued" value={safeCurrency(issued)} icon={BadgePercent} tone="orange" />
-        <AdminStatCard title="Active Liability" value={safeCurrency(active)} icon={WalletCards} tone="blue" />
-        <AdminStatCard title="Active Rules" value={rules.filter((rule) => rule.active).length} icon={IndianRupee} tone="green" />
+        <AdminStatCard title="Cashback Issued" value={safeCurrency(issued)} icon="badgePercent" tone="orange" />
+        <AdminStatCard title="Active Liability" value={safeCurrency(active)} icon="wallet" tone="blue" />
+        <AdminStatCard title="Active Rules" value={rules.filter((rule) => rule.active).length} icon="indianRupee" tone="green" />
       </section> : null}
 
       {!dataUnavailable ? <section className="grid gap-5 xl:grid-cols-[360px_1fr]">

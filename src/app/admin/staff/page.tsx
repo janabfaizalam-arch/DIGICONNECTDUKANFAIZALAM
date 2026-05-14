@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { ClipboardList, UserCog } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -34,8 +33,8 @@ export default async function AdminStaffPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Staff" title="Staff Workload" description="Current staff users and their assigned application workload." />
       <section className="grid gap-3 sm:grid-cols-2">
-        <AdminStatCard title="Staff Users" value={staff.length} icon={UserCog} tone="blue" />
-        <AdminStatCard title="Assigned Applications" value={applications.filter((item) => item.assigned_staff_id).length} icon={ClipboardList} tone="orange" />
+        <AdminStatCard title="Staff Users" value={staff.length} icon="userCog" tone="blue" />
+        <AdminStatCard title="Assigned Applications" value={applications.filter((item) => item.assigned_staff_id).length} icon="clipboardList" tone="orange" />
       </section>
       <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
         {!staff.length ? <AdminEmptyState title="No staff users yet" description="Create staff users through your existing role/user management flow." /> : null}

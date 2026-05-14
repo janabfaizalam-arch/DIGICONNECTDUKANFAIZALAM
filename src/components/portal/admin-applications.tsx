@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ExternalLink, FileText, LoaderCircle, ReceiptText, RotateCcw, Search } from "lucide-react";
+import { ExternalLink, LoaderCircle, RotateCcw, Search } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminApplicationInlineUpdate } from "@/components/admin/admin-application-inline-update";
@@ -78,9 +78,9 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Applications" value={applicationRows.length} icon={FileText} tone="blue" />
-        <AdminStatCard title="Pending" value={applicationRows.filter((row) => row.application_status !== "completed" && row.application_status !== "rejected").length} icon={ReceiptText} tone="orange" />
-        <AdminStatCard title="Completed" value={applicationRows.filter((row) => row.application_status === "completed").length} icon={FileText} tone="green" />
+        <AdminStatCard title="Total Applications" value={applicationRows.length} icon="fileText" tone="blue" />
+        <AdminStatCard title="Pending" value={applicationRows.filter((row) => row.application_status !== "completed" && row.application_status !== "rejected").length} icon="receiptText" tone="orange" />
+        <AdminStatCard title="Completed" value={applicationRows.filter((row) => row.application_status === "completed").length} icon="fileText" tone="green" />
       </section>
 
       <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
