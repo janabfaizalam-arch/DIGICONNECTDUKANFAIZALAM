@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { safeDateTime } from "@/lib/admin-format";
+import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import type { Application, Customer } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -25,27 +25,42 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
   const { id } = await params;
   const supabase = getSupabaseAdmin();
 
-  if (!supabase) notFound();
-
   let customer: Customer | null = null;
   let applications: Pick<Application, "id" | "service_name" | "status" | "payment_status" | "amount" | "created_at">[] = [];
   let notes: { id: string; note: string; created_at: string }[] = [];
 
-  try {
-    const [customerResult, applicationsResult, notesResult] = await Promise.all([
+  if (supabase) {
+    try {
+      const results = await Promise.allSettled([
       supabase.from("customers").select("*").eq("id", id).maybeSingle(),
       supabase.from("applications").select("id, service_name, status, payment_status, amount, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
       supabase.from("customer_notes").select("id, note, created_at").eq("customer_id", id).order("created_at", { ascending: false }),
-    ]);
+      ]);
 
-    customer = customerResult.error ? null : (customerResult.data as Customer | null);
-    applications = applicationsResult.error ? [] : (applicationsResult.data ?? []) as typeof applications;
-    notes = notesResult.error ? [] : (notesResult.data ?? []) as typeof notes;
-  } catch (error) {
-    console.error("[admin-customer-detail] Failed to load customer", error);
+      const [customerResult, applicationsResult, notesResult] = results.map((result) =>
+        result.status === "fulfilled" ? result.value : { data: null, error: { message: "Query failed" } },
+      );
+
+      customer = customerResult.error ? null : (customerResult.data as Customer | null);
+      applications = applicationsResult.error ? [] : (applicationsResult.data ?? []) as typeof applications;
+      notes = notesResult.error ? [] : (notesResult.data ?? []) as typeof notes;
+    } catch (error) {
+      console.error("[admin-customer-detail] Failed to load customer", error);
+    }
   }
 
-  if (!customer) notFound();
+  if (!customer) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Link href="/admin/customers" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700">
+          <ArrowLeft className="h-4 w-4" />
+          Back to customers
+        </Link>
+        <AdminPageHeader eyebrow="Customer" title="Customer unavailable" description="This customer record could not be loaded. Other admin sections remain available." />
+        <AdminEmptyState title="No customer data" description="The customer may have been removed, or an optional database table may be unavailable." />
+      </div>
+    );
+  }
 
   const customerRecord = customer;
   const customerApplications = applications;
@@ -56,7 +71,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
         <ArrowLeft className="h-4 w-4" />
         Back to customers
       </Link>
-      <AdminPageHeader eyebrow="Customer" title={customerRecord.full_name} description="Customer profile, applications, notes, and timeline." />
+      <AdminPageHeader eyebrow="Customer" title={customerRecord.full_name || "Customer"} description="Customer profile, applications, notes, and timeline." />
 
       <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
@@ -80,6 +95,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
                     <div>
                       <p className="font-bold text-slate-950">{application.service_name}</p>
                       <p className="mt-1 text-xs font-mono text-slate-500">{formatDate(application.created_at)}</p>
+                      <p className="mt-1 text-xs font-bold text-slate-500">{safeCurrency(application.amount)}</p>
                     </div>
                     <AdminStatusBadge status={application.status} />
                   </div>

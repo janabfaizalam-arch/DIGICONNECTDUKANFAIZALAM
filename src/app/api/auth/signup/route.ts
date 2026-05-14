@@ -7,6 +7,8 @@ type SignupBody = {
   fullName?: string;
   name?: string;
   email?: string;
+  mobile?: string;
+  phone?: string;
   password?: string;
   pincode?: string;
   city?: string;
@@ -86,6 +88,7 @@ export async function POST(request: Request) {
 
     const body = (await request.json().catch(() => null)) as SignupBody | null;
     const fullName = String(body?.fullName ?? body?.name ?? "").trim();
+    const mobile = String(body?.mobile ?? body?.phone ?? "").replace(/\D/g, "").trim();
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
     const pincode = String(body?.pincode ?? "").trim();
@@ -103,6 +106,16 @@ export async function POST(request: Request) {
     if (!fullName) {
       console.warn("[auth/signup] Validation failed", { field: "fullName" });
       return jsonSignupError("Full name is required.", 400, envDebug);
+    }
+
+    if (!mobile) {
+      console.warn("[auth/signup] Validation failed", { field: "mobile" });
+      return jsonSignupError("Mobile number is required", 400, envDebug);
+    }
+
+    if (!/^\d{10}$/.test(mobile)) {
+      console.warn("[auth/signup] Validation failed", { field: "mobile", length: mobile.length });
+      return jsonSignupError("Enter a valid 10 digit mobile number.", 400, envDebug);
     }
 
     if (!isValidEmail(email)) {
@@ -151,6 +164,8 @@ export async function POST(request: Request) {
         emailRedirectTo: `${getSiteUrl(request)}/auth/callback`,
         data: {
           full_name: fullName,
+          mobile,
+          phone: mobile,
           pincode,
           city,
           state,

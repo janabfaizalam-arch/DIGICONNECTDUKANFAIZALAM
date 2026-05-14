@@ -55,7 +55,7 @@ export function AdminApplicationInlineUpdate({
   return (
     <div className="grid gap-2">
       <div className="flex items-center gap-2">
-        <Select value={status} onValueChange={(value) => update("status", value)}>
+        <Select value={status} onValueChange={(value) => update("status", value)} disabled={isPending}>
           <SelectTrigger aria-label="Application status" className="h-9 min-w-36">
             <SelectValue />
           </SelectTrigger>
@@ -67,7 +67,7 @@ export function AdminApplicationInlineUpdate({
         </Select>
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin text-blue-600" /> : null}
       </div>
-      <Select value={assignedStaffId || "none"} onValueChange={(value) => update("assignedStaffId", value)}>
+      <Select value={assignedStaffId || "none"} onValueChange={(value) => update("assignedStaffId", value)} disabled={isPending}>
         <SelectTrigger aria-label="Assigned staff" className="h-9 min-w-36">
           <SelectValue placeholder="Staff" />
         </SelectTrigger>

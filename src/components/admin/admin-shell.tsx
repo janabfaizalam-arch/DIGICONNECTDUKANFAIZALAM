@@ -19,9 +19,10 @@ import {
   UsersRound,
   WalletCards,
   X,
+  LoaderCircle,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AdminNotificationsBell } from "@/components/admin/admin-notifications-bell";
@@ -96,6 +97,11 @@ function isActivePath(pathname: string, href: string) {
 
 function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [loadingHref, setLoadingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoadingHref(null);
+  }, [pathname]);
 
   return (
     <nav className="space-y-3">
@@ -113,7 +119,10 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                 <Link
                   key={href}
                   href={href}
-                  onClick={onNavigate}
+                  onClick={() => {
+                    if (!active) setLoadingHref(href);
+                    onNavigate?.();
+                  }}
                   className={cn(
                     "group/link flex min-h-12 items-center gap-3 rounded-2xl px-3 py-2 text-sm transition",
                     active
@@ -128,10 +137,10 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                       active ? "bg-white/18 text-white" : "bg-slate-100 text-slate-500 group-hover/link:text-blue-600",
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    {loadingHref === href ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate font-bold leading-5">{label}</span>
+                    <span className="block truncate font-bold leading-5">{loadingHref === href ? "Opening..." : label}</span>
                     <span className={cn("block truncate text-xs leading-4", active ? "text-white/78" : "text-slate-400")}>
                       {description}
                     </span>

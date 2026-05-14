@@ -35,7 +35,7 @@ export function isCustomerProfileComplete(profile: Partial<CustomerProfile> | nu
     return false;
   }
 
-  return requiredCustomerProfileFields.every((field) => String(profile[field] ?? "").trim().length > 0);
+  return requiredCustomerProfileFields.every((field) => String(profile[field] ?? "").trim().length > 0) && /^\d{10}$/.test(String(profile.mobile ?? "").trim());
 }
 
 export function getCustomerProfileCompletion(profile: Partial<CustomerProfile> | null | undefined) {

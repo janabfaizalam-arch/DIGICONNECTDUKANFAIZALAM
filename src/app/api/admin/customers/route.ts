@@ -22,6 +22,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Name and mobile are required." }, { status: 400 });
   }
 
+  if (!/^\d{10}$/.test(mobile)) {
+    return NextResponse.json({ message: "Enter a valid 10 digit mobile number." }, { status: 400 });
+  }
+
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
       created_by: user.id,
     })
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return NextResponse.json({ message: error?.message ?? "Customer could not be created." }, { status: 500 });

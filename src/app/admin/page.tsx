@@ -164,18 +164,31 @@ export default async function AdminPage() {
 
   if (supabase) {
     try {
-      const [applicationResult, customerResult, profileResult, staffResult, quotationResult, totalApplicationsResult, completedApplicationsResult, quotationCountResult, walletResult, referralResult] = await Promise.all([
+      const results = await Promise.allSettled([
         supabase.from("applications").select("*").order("created_at", { ascending: false }).limit(500),
         supabase.from("customers").select("*").order("created_at", { ascending: false }).limit(500),
         supabase.from("profiles").select("id, email, full_name, mobile, role, created_at").order("created_at", { ascending: false }).limit(1000),
         supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile").eq("role", "staff"),
-        supabase.from("insurance_quotations").select("id, customer_name, vehicle_number, total_amount, status, valid_till, created_at").order("created_at", { ascending: false }).limit(8),
+        supabase.from("insurance_quotations").select("id, customer_name, vehicle_number, total_amount, status, valid_till, created_at").order("created_at", { ascending: false }).limit(10),
         supabase.from("applications").select("id", { count: "exact", head: true }),
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
         supabase.from("insurance_quotations").select("id", { count: "exact", head: true }),
         supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
         supabase.from("referrals").select("referrer_id, referred_user_id").limit(1000),
       ]);
+
+      const [
+        applicationResult,
+        customerResult,
+        profileResult,
+        staffResult,
+        quotationResult,
+        totalApplicationsResult,
+        completedApplicationsResult,
+        quotationCountResult,
+        walletResult,
+        referralResult,
+      ] = results.map((result) => result.status === "fulfilled" ? result.value : { data: null, error: { message: "Query failed" }, count: null });
 
       if (applicationResult.error) dashboardError = "Some dashboard data could not be loaded. Applications are showing with safe fallbacks.";
 
@@ -245,7 +258,7 @@ export default async function AdminPage() {
   ];
 
   const staffById = new Map(staff.map((member) => [member.id, member.full_name || member.email || "Staff"]));
-  const newApplications: DashboardApplicationRow[] = applications.slice(0, 8).map((application) => ({
+  const newApplications: DashboardApplicationRow[] = applications.slice(0, 10).map((application) => ({
     id: application.id,
     customerName: getCustomerName(application),
     mobile: getCustomerMobile(application),
@@ -273,8 +286,8 @@ export default async function AdminPage() {
       kpis={kpis}
       charts={charts}
       newApplications={newApplications}
-      latestCustomers={customerRows.slice(0, 8)}
-      recentInsuranceQuotations={recentInsuranceQuotations}
+      latestCustomers={customerRows.slice(0, 10)}
+      recentInsuranceQuotations={recentInsuranceQuotations.slice(0, 10)}
       error={dashboardError}
     />
   );

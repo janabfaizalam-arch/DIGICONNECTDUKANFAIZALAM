@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ExternalLink, FileText, ReceiptText, RotateCcw, Search } from "lucide-react";
+import { ExternalLink, FileText, LoaderCircle, ReceiptText, RotateCcw, Search } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminApplicationInlineUpdate } from "@/components/admin/admin-application-inline-update";
@@ -29,6 +29,7 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
   const [staffFilter, setStaffFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const staffOptions = staff.map((item) => ({ id: item.id, label: item.full_name || item.email }));
   const services = useMemo(() => Array.from(new Set(applicationRows.map((row) => row.service))).sort(), [applicationRows]);
   const filteredRows = useMemo(() => {
@@ -201,9 +202,13 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatDate(row.created_at)}</td>
                   <td className="px-4 py-3">
                     {row.application_id ? (
-                      <Link href={`/admin/applications/${row.application_id}`} className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        View
+                      <Link
+                        href={`/admin/applications/${row.application_id}`}
+                        onClick={() => setOpeningId(row.id)}
+                        className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white"
+                      >
+                        {openingId === row.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                        {openingId === row.id ? "Opening..." : "View"}
                       </Link>
                     ) : null}
                   </td>
@@ -247,9 +252,13 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
                 </div>
               ) : null}
               {row.application_id ? (
-                <Link href={`/admin/applications/${row.application_id}`} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
-                  <ExternalLink className="h-4 w-4" />
-                  View Details
+                <Link
+                  href={`/admin/applications/${row.application_id}`}
+                  onClick={() => setOpeningId(row.id)}
+                  className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white"
+                >
+                  {openingId === row.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                  {openingId === row.id ? "Opening..." : "View Details"}
                 </Link>
               ) : null}
             </article>

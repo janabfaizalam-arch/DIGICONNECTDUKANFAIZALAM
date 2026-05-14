@@ -29,6 +29,10 @@ export default async function CustomerDashboardPage() {
 
   const customerProfileStatus = await getCustomerProfileStatus(user.id);
 
+  if (!customerProfileStatus.complete) {
+    redirect("/customer/profile");
+  }
+
   const { applications, notifications, walletSnapshot } = await getCustomerDashboardData(user.id);
   const customerProfile = customerProfileStatus.profile;
   const name = customerProfile?.full_name ?? user.user_metadata.full_name ?? user.user_metadata.name ?? "Customer";

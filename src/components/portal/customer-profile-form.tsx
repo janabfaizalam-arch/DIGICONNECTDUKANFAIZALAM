@@ -74,6 +74,14 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
     const profileCompleted = isCustomerProfileComplete(nextProfile);
 
     try {
+      if (!nextProfile.mobile) {
+        throw new Error("Mobile number is required");
+      }
+
+      if (!/^\d{10}$/.test(nextProfile.mobile)) {
+        throw new Error("Enter a valid 10 digit mobile number.");
+      }
+
       const supabase = createClient();
 
       if (!supabase) {
@@ -183,7 +191,17 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Mobile Number</span>
-            <Input name="mobile" type="tel" value={profile.mobile} onChange={(event) => updateField("mobile", event.target.value)} required className={fieldClassName} />
+            <Input
+              name="mobile"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              maxLength={10}
+              value={profile.mobile}
+              onChange={(event) => updateField("mobile", event.target.value.replace(/\D/g, "").slice(0, 10))}
+              required
+              className={fieldClassName}
+            />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Email</span>
@@ -238,7 +256,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
 
         <Button type="submit" disabled={isPending} className="mt-6 h-12 w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold md:w-auto">
           {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Profile
+          {isPending ? "Saving..." : "Save Profile"}
         </Button>
       </form>
     </div>

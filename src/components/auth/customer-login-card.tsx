@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MapPin, UserRound } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MapPin, Phone, UserRound } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
@@ -180,6 +180,7 @@ function CustomerLoginCardInner({
 
     const formData = new FormData(event.currentTarget);
     const name = String(formData.get("name") ?? "").trim();
+    const mobile = String(formData.get("mobile") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
     const formPincode = String(formData.get("pincode") ?? "").trim();
@@ -188,6 +189,16 @@ function CustomerLoginCardInner({
 
     if (emailMode === "signup" && !name) {
       setFormMessage({ type: "error", text: "Full name is required." });
+      return;
+    }
+
+    if (emailMode === "signup" && !mobile) {
+      setFormMessage({ type: "error", text: "Mobile number is required" });
+      return;
+    }
+
+    if (emailMode === "signup" && !/^\d{10}$/.test(mobile)) {
+      setFormMessage({ type: "error", text: "Enter a valid 10 digit mobile number." });
       return;
     }
 
@@ -250,6 +261,7 @@ function CustomerLoginCardInner({
         },
         body: JSON.stringify({
           fullName: name,
+          mobile,
           email,
           password,
           pincode: formPincode,
@@ -353,6 +365,29 @@ function CustomerLoginCardInner({
                 required
                 placeholder="Enter your full name"
                 disabled={isEmailPending}
+                className="h-[3.15rem] bg-white/74 pl-11 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+              />
+            </div>
+          </label>
+        ) : null}
+
+        {emailMode === "signup" ? (
+          <label className="grid gap-2">
+            <span className="text-sm font-semibold text-slate-700">Mobile Number</span>
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                name="mobile"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength={10}
+                required
+                placeholder="10 digit mobile number"
+                disabled={isEmailPending}
+                onChange={(event) => {
+                  event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 10);
+                }}
                 className="h-[3.15rem] bg-white/74 pl-11 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
               />
             </div>

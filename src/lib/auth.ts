@@ -225,6 +225,7 @@ export async function syncUserProfile(user: User) {
   const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
   const role = adminRole ?? existingProfile?.role ?? existingUser?.role ?? "customer";
   const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim();
+  const mobile = String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").replace(/\D/g, "").trim();
   const pincode = String(user.user_metadata.pincode ?? "").trim();
   const city = String(user.user_metadata.city ?? "").trim();
   const state = String(user.user_metadata.state ?? "").trim();
@@ -235,6 +236,7 @@ export async function syncUserProfile(user: User) {
       id: user.id,
       full_name: fullName,
       email: user.email ?? "",
+      mobile,
       avatar_url: user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "",
       role,
       pincode,
@@ -263,7 +265,6 @@ export async function syncUserProfile(user: User) {
 
   if (role === "customer") {
     const customerName = fullName || "Customer";
-    const mobile = String(user.phone ?? user.user_metadata.mobile ?? "").trim();
     const emailValue = user.email ?? "";
     const isEmailVerified = Boolean(user.email_confirmed_at);
 
@@ -272,6 +273,7 @@ export async function syncUserProfile(user: User) {
         id: user.id,
         full_name: customerName,
         email: emailValue,
+        mobile,
         pincode,
         city,
         state,
