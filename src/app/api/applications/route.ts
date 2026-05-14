@@ -172,7 +172,13 @@ export async function POST(request: Request) {
 
     const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
     const expectedRazorpayAmountPaise = Math.round(realPaymentAmount * 100);
-    const hasVerifiedRazorpayPayment = realPaymentAmount <= 0 || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
+    const minimumFreshPayment = Math.ceil(orderAmount * 0.5);
+
+    if (realPaymentAmount < minimumFreshPayment) {
+      return jsonError("At least 50% of the service amount must be paid through Razorpay.", 400);
+    }
+
+    const hasVerifiedRazorpayPayment = isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
 
     if (!hasVerifiedRazorpayPayment) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
@@ -182,6 +188,15 @@ export async function POST(request: Request) {
       hasVerifiedRazorpayPayment && body.razorpayPayment?.razorpay_payment_id
         ? await fetchRazorpayPaymentDetails(body.razorpayPayment.razorpay_payment_id)
         : null;
+
+    if (
+      hasVerifiedRazorpayPayment &&
+      razorpayDetails?.amount !== undefined &&
+      Number(razorpayDetails.amount) !== expectedRazorpayAmountPaise
+    ) {
+      return jsonError("Verified Razorpay amount does not match payable amount.", 400);
+    }
+
     const paidAt = razorpayDetails?.created_at
       ? new Date(razorpayDetails.created_at * 1000).toISOString()
       : hasVerifiedRazorpayPayment
@@ -211,8 +226,11 @@ export async function POST(request: Request) {
         service_slug: service.slug,
         service_name: service.title,
         amount: comboOrder ? (index === 0 ? orderAmount : 0) : service.amount,
-        wallet_used_amount: 0,
-        real_payment_amount: comboOrder ? (index === 0 ? orderAmount : 0) : service.amount,
+        wallet_used_amount: comboOrder ? (index === 0 ? requestedWalletAmount : 0) : 0,
+        wallet_redeemed_amount: comboOrder ? (index === 0 ? requestedWalletAmount : 0) : 0,
+        real_payment_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
+        fresh_payable_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
+        cashback_eligible_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
         form_data: formData,
         status: hasVerifiedRazorpayPayment ? "in_process" : "payment_pending",
         created_by: user.id,
@@ -248,20 +266,7 @@ export async function POST(request: Request) {
       return jsonError("Documents could not be saved.", 500);
     }
 
-    let walletUsedAmount = 0;
-
-    if (requestedWalletAmount > 0) {
-      walletUsedAmount = await redeemWalletForApplication({
-        userId: user.id,
-        applicationId: applications[0].id,
-        serviceName: applications.map((application) => application.service_name).join(", "),
-        orderAmount,
-        requestedAmount: requestedWalletAmount,
-        maxRedemptionPercent,
-      });
-    }
-
-    let remainingWalletToApply = walletUsedAmount;
+    let remainingWalletToApply = requestedWalletAmount;
     const paymentRows = applications.map((application) => {
       const applicationAmount = Number(application.amount ?? 0);
       const applicationWalletAmount = Math.min(applicationAmount, remainingWalletToApply);
@@ -283,24 +288,55 @@ export async function POST(request: Request) {
       };
     });
 
-    const { error: paymentError } = await supabase.from("payments").insert(paymentRows);
+    const { data: insertedPayments, error: paymentError } = await supabase.from("payments").insert(paymentRows).select("id, application_id, wallet_used_amount, real_payment_amount");
 
-    if (paymentError) {
+    if (paymentError || !insertedPayments?.length) {
       return jsonError("Payment details could not be saved.", 500);
     }
 
+    let walletUsedAmount = 0;
+
+    if (requestedWalletAmount > 0) {
+      walletUsedAmount = await redeemWalletForApplication({
+        userId: user.id,
+        applicationId: applications[0].id,
+        serviceName: applications.map((application) => application.service_name).join(", "),
+        orderAmount,
+        requestedAmount: requestedWalletAmount,
+        maxRedemptionPercent,
+      });
+    }
+
     if (walletUsedAmount > 0) {
+      remainingWalletToApply = walletUsedAmount;
       await Promise.all(
-        paymentRows.map((payment) =>
-          supabase
-            .from("applications")
-            .update({
-              wallet_used_amount: payment.wallet_used_amount,
-              real_payment_amount: payment.real_payment_amount,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", payment.application_id),
-        ),
+        applications.map((application) => {
+          const applicationAmount = Number(application.amount ?? 0);
+          const applicationWalletAmount = Math.min(applicationAmount, remainingWalletToApply);
+          remainingWalletToApply -= applicationWalletAmount;
+          const freshAmount = Math.max(0, applicationAmount - applicationWalletAmount);
+
+          return Promise.all([
+            supabase
+              .from("applications")
+              .update({
+                wallet_used_amount: applicationWalletAmount,
+                wallet_redeemed_amount: applicationWalletAmount,
+                real_payment_amount: freshAmount,
+                fresh_payable_amount: freshAmount,
+                cashback_eligible_amount: freshAmount,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", application.id),
+            supabase
+              .from("payments")
+              .update({
+                wallet_used_amount: applicationWalletAmount,
+                real_payment_amount: freshAmount,
+              })
+              .eq("application_id", application.id),
+          ]);
+        }),
       );
     }
 

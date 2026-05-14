@@ -168,8 +168,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           await supabase.from("notifications").insert({
             user_id: application.user_id,
             application_id: id,
-            title: "DigiWallet cashback credited",
-            message: `Rs ${Math.round(Number(application.amount ?? 0) * 0.2).toLocaleString("en-IN")} cashback has been credited to your DigiWallet after successful service completion.`,
+            title: "Reward Wallet cashback credited",
+            message: "Your eligible DigiConnect Rewards cashback has been credited after verified service completion.",
           });
         }
       }

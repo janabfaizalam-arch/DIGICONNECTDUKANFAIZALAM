@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
-import { creditReferralRewardForSignup } from "@/lib/wallet";
+import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
 import { syncUserProfile } from "@/lib/auth";
 
 type SignupBody = {
@@ -57,6 +57,14 @@ function getSiteUrl(request: Request) {
 
 function getEmailDomain(email: string) {
   return email.split("@")[1] || "unknown";
+}
+
+function getClientIp(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    null
+  );
 }
 
 function getSignupEnvDebug(request: Request) {
@@ -144,6 +152,14 @@ export async function POST(request: Request) {
       return jsonSignupError("City and state are required. Enter them manually if PIN lookup failed.", 400, envDebug);
     }
 
+    if (referredBy) {
+      const referralValidation = await validateReferralCode(referredBy);
+
+      if (!referralValidation.ok) {
+        return jsonSignupError(referralValidation.message || "Referral code is invalid. Clear it to continue without referral.", 400, envDebug);
+      }
+    }
+
     const supabase = await getSupabaseRouteHandlerClient();
 
     if (!supabase) {
@@ -194,13 +210,9 @@ export async function POST(request: Request) {
 
     if (data.user?.id && referredBy) {
       try {
-        await creditReferralRewardForSignup({
-          referralCode: referredBy,
-          referredUserId: data.user.id,
-          createdBy: data.user.id,
-        });
+        await attachReferralOnSignup(data.user.id, referredBy, getClientIp(request), request.headers.get("user-agent"));
       } catch (rewardError) {
-        console.error("[auth/signup] Referral reward credit failed", rewardError);
+        console.error("[auth/signup] Referral attachment failed", rewardError);
       }
     }
 

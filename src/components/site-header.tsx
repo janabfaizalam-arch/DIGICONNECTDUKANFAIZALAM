@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { FileCheck2, LayoutDashboard, LogIn, MessageCircle } from "lucide-react";
+import { FileCheck2, LayoutDashboard, LogIn, MessageCircle, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -120,6 +120,7 @@ export function SiteHeader() {
   const appShellLabel = agentShell ? "Agent Dashboard" : "Staff Dashboard";
   const appShellHref = agentShell ? "/agent/dashboard" : "/staff/dashboard";
   const [scrolled, setScrolled] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const scrolledRef = useRef(false);
 
   useEffect(() => {
@@ -163,6 +164,37 @@ export function SiteHeader() {
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadWalletBalance() {
+      if (!user || role !== "customer") {
+        setWalletBalance(null);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/wallet", { cache: "no-store" });
+        const data = (await response.json()) as { wallet?: { balance?: number; balance_points?: number } | null };
+        const balance = Number(data.wallet?.balance_points ?? data.wallet?.balance ?? 0);
+
+        if (active) {
+          setWalletBalance(Number.isFinite(balance) ? balance : 0);
+        }
+      } catch {
+        if (active) {
+          setWalletBalance(null);
+        }
+      }
+    }
+
+    void loadWalletBalance();
+
+    return () => {
+      active = false;
+    };
+  }, [role, user]);
 
   useEffect(() => {
     let frameId = 0;
@@ -268,6 +300,12 @@ export function SiteHeader() {
                   <FileCheck2 className="h-4 w-4" />
                   Apply Now
                 </ApplyServiceTrigger>
+              ) : null}
+              {role === "customer" && walletBalance !== null ? (
+                <Link href="/customer/dashboard" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white/70 px-4 text-sm font-bold text-blue-700">
+                  <WalletCards className="h-4 w-4" />
+                  Rs {walletBalance.toLocaleString("en-IN")}
+                </Link>
               ) : null}
               <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-transform md:hover:-translate-y-0.5">
                 <LayoutDashboard className="h-4 w-4" />

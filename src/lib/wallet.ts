@@ -1,6 +1,18 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
+import {
+  calculateMaxRedeem,
+  processRewardsOnApplicationCompleted,
+  redeemWalletForApplication as redeemRewardWalletForApplication,
+} from "@/lib/rewards-wallet";
 
 export type RewardTransactionType =
+  | "signup_referral_bonus"
+  | "referrer_bonus"
+  | "first_service_cashback"
+  | "repeat_cashback"
+  | "redeem"
+  | "reversal"
   | "signup_bonus"
   | "referral_bonus"
   | "cashback"
@@ -118,7 +130,7 @@ export function getRealPayableAmount(orderAmount: number, walletAmount: number) 
 }
 
 export function getRewardDirection(type: RewardTransactionType): WalletTransactionDirection {
-  return type === "redemption" || type === "expiry" ? "debit" : "credit";
+  return type === "redemption" || type === "redeem" || type === "expiry" ? "debit" : "credit";
 }
 
 export function rewardTransactionToWalletTransaction(transaction: RewardTransaction): WalletTransaction {
@@ -161,8 +173,15 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
     return null;
   }
 
-  const [{ data: profile }, { data: referralRows }] = await Promise.all([
+  const code = await ensureReferralCodeForUser(userId).catch(() => "");
+  const [{ data: profile }, { data: referralEventRows }, { data: legacyReferralRows }] = await Promise.all([
     supabase.from("profiles").select("referral_code").eq("id", userId).maybeSingle(),
+    supabase
+      .from("referral_events")
+      .select("id, referrer_user_id, referred_user_id, referral_code, signup_reward_status, referrer_reward_status, referred_first_completed_at, created_at")
+      .eq("referrer_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
     supabase
       .from("referrals")
       .select("id, referrer_id, referred_user_id, referral_code, status, reward_amount, created_at, completed_at")
@@ -171,13 +190,25 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
       .limit(50),
   ]);
 
-  const referrals = ((referralRows ?? []) as Referral[]).map((referral) => ({ ...referral, referred_profile: null }));
-  const code = String(profile?.referral_code ?? "");
+  const referrals: Referral[] = referralEventRows?.length
+    ? referralEventRows.map((event) => ({
+        id: String(event.id),
+        referrer_id: String(event.referrer_user_id),
+        referred_user_id: String(event.referred_user_id),
+        referral_code: String(event.referral_code),
+        status: event.referrer_reward_status === "credited" ? "completed" as const : "pending" as const,
+        reward_amount: 100,
+        created_at: String(event.created_at),
+        completed_at: event.referred_first_completed_at ? String(event.referred_first_completed_at) : null,
+        referred_profile: null,
+      }))
+    : ((legacyReferralRows ?? []) as Referral[]).map((referral) => ({ ...referral, referred_profile: null }));
+  const referralCode = code || String(profile?.referral_code ?? "");
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rnos.in";
 
   return {
-    code,
-    link: code ? `${baseUrl.replace(/\/$/, "")}/signup?ref=${encodeURIComponent(code)}` : "",
+    code: referralCode,
+    link: referralCode ? `${baseUrl.replace(/\/$/, "")}/signup?ref=${encodeURIComponent(referralCode)}` : "",
     referrals,
     total: referrals.length,
     pending: referrals.filter((referral) => referral.status === "pending").length,
@@ -193,6 +224,82 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
 
   if (!supabase) {
     return { wallet: null, transactions: [], cashbackEarned: 0, cashbackUsed: 0, expiringSoonAmount: 0, referralSummary: null };
+  }
+
+  const [newWalletResult, newTransactionResult] = await Promise.all([
+    (async () => {
+      try {
+        return await supabase.rpc("create_reward_wallet_if_missing", { p_user_id: userId });
+      } catch {
+        return { data: null };
+      }
+    })(),
+    (async () => {
+      try {
+        return await supabase
+          .from("wallet_transactions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+      } catch {
+        return { data: null };
+      }
+    })(),
+  ]);
+
+  if (newWalletResult.data) {
+    const newWallet = newWalletResult.data as {
+      id: string;
+      user_id: string;
+      balance: number;
+      lifetime_earned: number;
+      lifetime_redeemed: number;
+      created_at: string;
+      updated_at: string;
+      frozen?: boolean;
+      suspicious?: boolean;
+      admin_note?: string | null;
+    };
+    const newTransactions = ((newTransactionResult.data ?? []) as {
+      id: string;
+      user_id: string;
+      type: RewardTransactionType;
+      direction: WalletTransactionDirection;
+      amount: number;
+      status: string;
+      note?: string | null;
+      created_at: string;
+    }[]).map((transaction) => ({
+      id: transaction.id,
+      user_id: transaction.user_id,
+      type: transaction.type,
+      amount: Number(transaction.amount ?? 0),
+      remaining_amount: transaction.direction === "credit" && transaction.status === "posted" ? Number(transaction.amount ?? 0) : 0,
+      description: transaction.note || transaction.type.replace(/_/g, " "),
+      status: transaction.status === "posted" ? "active" : transaction.status === "reversed" ? "reversed" : "used",
+      expires_at: null,
+      reference_type: null,
+      reference_id: null,
+      created_at: transaction.created_at,
+    })) as RewardTransaction[];
+
+    return {
+      wallet: {
+        ...newWallet,
+        balance_points: Number(newWallet.balance ?? 0),
+        total_reward_earned: Number(newWallet.lifetime_earned ?? 0),
+        total_reward_redeemed: Number(newWallet.lifetime_redeemed ?? 0),
+        total_cashback_earned: Number(newWallet.lifetime_earned ?? 0),
+        total_cashback_used: Number(newWallet.lifetime_redeemed ?? 0),
+        nearest_expiry_at: null,
+      },
+      transactions: newTransactions,
+      cashbackEarned: Number(newWallet.lifetime_earned ?? 0),
+      cashbackUsed: Number(newWallet.lifetime_redeemed ?? 0),
+      expiringSoonAmount: 0,
+      referralSummary: await getReferralSummary(userId),
+    };
   }
 
   await supabase.rpc("refresh_reward_wallet_summary", { p_user_id: userId });
@@ -286,22 +393,13 @@ export async function creditCashbackForApplication({
     throw new Error("Supabase service role key is missing.");
   }
 
-  const { data, error } = await supabase.rpc("credit_service_cashback", {
-    p_application_id: applicationId,
-    p_created_by: createdBy ?? null,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data as string | null;
+  const result = await processRewardsOnApplicationCompleted(applicationId, createdBy ?? null);
+  return result.cashback_transaction_id ?? null;
 }
 
 export async function creditReferralRewardForSignup({
   referralCode,
   referredUserId,
-  createdBy,
 }: {
   referralCode: string;
   referredUserId: string;
@@ -317,17 +415,8 @@ export async function creditReferralRewardForSignup({
     return null;
   }
 
-  const { data, error } = await supabase.rpc("credit_referral_reward_by_code", {
-    p_referral_code: referralCode.trim().toUpperCase(),
-    p_referred_user_id: referredUserId,
-    p_created_by: createdBy ?? null,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data as string | null;
+  const event = await attachReferralOnSignup(referredUserId, referralCode, null, null);
+  return event ? String((event as { id?: string }).id ?? "") : null;
 }
 
 export async function redeemWalletForApplication({
@@ -351,20 +440,19 @@ export async function redeemWalletForApplication({
     throw new Error("Supabase service role key is missing.");
   }
 
-  const { data, error } = await supabase.rpc("redeem_reward_points", {
-    p_user_id: userId,
-    p_application_id: applicationId,
-    p_service_name: serviceName,
-    p_order_amount: orderAmount,
-    p_requested_amount: requestedAmount,
-    p_max_redemption_percent: maxRedemptionPercent,
+  void serviceName;
+  void maxRedemptionPercent;
+
+  const cappedRequest = Math.min(requestedAmount, calculateMaxRedeem(orderAmount));
+  const transaction = await redeemRewardWalletForApplication({
+    userId,
+    applicationId,
+    applicationAmount: orderAmount,
+    requestedAmount: cappedRequest,
+    createdBy: userId,
   });
 
-  if (error) {
-    throw error;
-  }
-
-  return Number(data ?? 0);
+  return Number(transaction?.amount ?? 0);
 }
 
 export async function completeReferralRewardForFirstPaidOrder({
@@ -382,15 +470,8 @@ export async function completeReferralRewardForFirstPaidOrder({
     throw new Error("Supabase service role key is missing.");
   }
 
-  const { data, error } = await supabase.rpc("complete_referral_reward", {
-    p_referred_user_id: userId,
-    p_application_id: applicationId,
-    p_created_by: createdBy ?? null,
-  });
+  void userId;
 
-  if (error) {
-    throw error;
-  }
-
-  return data as string | null;
+  const result = await processRewardsOnApplicationCompleted(applicationId, createdBy ?? null);
+  return result.referrer_transaction_id ?? null;
 }

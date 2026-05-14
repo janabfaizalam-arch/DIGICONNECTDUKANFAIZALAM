@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, Gift, LoaderCircle, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
@@ -106,9 +106,18 @@ function CustomerLoginCardInner({
   }, [initialMessage]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || initialReferralCode) return;
+    if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    setReferralCode(String(params.get("ref") ?? "").trim().toUpperCase());
+    const urlReferralCode = String(params.get("ref") ?? "").trim().toUpperCase();
+    const storedReferralCode = String(window.localStorage.getItem("digiconnect_referral_code") ?? "").trim().toUpperCase();
+    const nextReferralCode = initialReferralCode || urlReferralCode || storedReferralCode;
+
+    if (urlReferralCode) {
+      window.localStorage.setItem("digiconnect_referral_code", urlReferralCode);
+      window.sessionStorage.setItem("digiconnect_referral_code", urlReferralCode);
+    }
+
+    setReferralCode(nextReferralCode);
   }, [initialReferralCode]);
 
   useEffect(() => {
@@ -169,7 +178,7 @@ function CustomerLoginCardInner({
       if (!supabase) throw new Error("Supabase environment variables are missing.");
 
       const origin = window.location.origin;
-      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(getCurrentCustomerRedirect())}`;
+      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(getCurrentCustomerRedirect())}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -261,6 +270,10 @@ function CustomerLoginCardInner({
         if (!response.ok) throw new Error(result.error || `Signup failed with status ${response.status}.`);
 
         trackSignup();
+        if (referralCode && typeof window !== "undefined") {
+          window.localStorage.removeItem("digiconnect_referral_code");
+          window.sessionStorage.removeItem("digiconnect_referral_code");
+        }
         setFormMessage({ type: "success", text: result.message || "Account created successfully." });
 
         if (result.hasSession) {
@@ -443,6 +456,22 @@ function CustomerLoginCardInner({
                 <Input name="state" value={state} onChange={(event) => setState(event.target.value)} readOnly={!manualLocation && Boolean(state)} required placeholder="State" disabled={isPending} className="h-[3.15rem] bg-white/74 text-base" />
               </label>
             </div>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-700">Referral Code (optional)</span>
+              <div className="relative">
+                <Gift className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  name="referralCode"
+                  value={referralCode}
+                  onChange={(event) => setReferralCode(event.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 10))}
+                  placeholder="Invite code"
+                  disabled={isPending}
+                  className="h-[3.15rem] bg-white/74 pl-11 font-mono text-base uppercase"
+                />
+              </div>
+              <span className="text-xs font-semibold text-slate-500">You get Rs 100 rewards if the code is valid.</span>
+            </label>
           </>
         ) : null}
 

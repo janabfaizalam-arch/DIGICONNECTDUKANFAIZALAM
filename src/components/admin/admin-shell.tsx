@@ -89,6 +89,7 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
     title: "Finance & Growth",
     items: [
       { href: "/admin/wallet", label: "DigiWallet", description: "Wallet balances", icon: WalletCards },
+      { href: "/admin/rewards-referrals", label: "Rewards & Referrals", description: "Wallet ledger and referral risk", icon: Gift },
       { href: "/admin/referrals", label: "Referrals", description: "Referral tracking", icon: Gift },
       { href: "/admin/rewards", label: "Rewards", description: "Reward rules", icon: BadgePercent },
       { href: "/admin/cashback", label: "Cashback", description: "Cashback offers", icon: WalletCards },

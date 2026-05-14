@@ -181,6 +181,23 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 </div>
               ))}
             </div>
+
+            <h2 className="mt-6 text-lg font-bold text-slate-950">Rewards & Referral</h2>
+            <div className="mt-3 grid gap-3 rounded-2xl bg-blue-50/70 p-4 md:grid-cols-2">
+              {[
+                ["Wallet Redeemed", safeCurrency(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0)],
+                ["Fresh Razorpay Paid", safeCurrency(application.fresh_payable_amount ?? application.real_payment_amount ?? payment?.amount ?? 0)],
+                ["Cashback Eligible", safeCurrency(application.cashback_eligible_amount ?? application.real_payment_amount ?? 0)],
+                ["Cashback Status", application.cashback_awarded || application.cashback_credited_at ? "credited" : "pending completion"],
+                ["Referral Reward", application.referral_reward_processed ? "processed" : "pending / not applicable"],
+                ["Closed-loop Use", "DigiConnect services only; no cash withdrawal"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl bg-white p-3">
+                  <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
+                  <p className="mt-1 break-words text-sm font-bold text-slate-950">{value}</p>
+                </div>
+              ))}
+            </div>
           </Card>
 
           <div className="space-y-4">

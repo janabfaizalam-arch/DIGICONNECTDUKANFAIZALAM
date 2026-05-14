@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
+import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
 function getSafeCustomerRedirect(value: string | null) {
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
   const next = requestUrl.searchParams.get("next");
+  const referralCode = String(requestUrl.searchParams.get("ref") ?? "").trim().toUpperCase();
 
   if (error) {
     return NextResponse.redirect(new URL("/login?error=oauth", requestUrl.origin));
@@ -85,6 +87,22 @@ export async function GET(request: Request) {
   }
 
   await syncUserProfile(data.user);
+
+  if (referralCode) {
+    const validation = await validateReferralCode(referralCode, data.user.id).catch(() => ({ ok: false }));
+
+    if (validation.ok) {
+      await attachReferralOnSignup(
+        data.user.id,
+        referralCode,
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip"),
+        request.headers.get("user-agent"),
+      ).catch((referralError) => {
+        console.error("[auth/callback] Referral attachment failed", referralError);
+      });
+    }
+  }
+
   const role = await getCurrentUserRole(data.user);
   const destination = next ? getSafeNext(next) : isCustomerRole(role) ? getSafeCustomerRedirect(next) : getRoleHome(role);
 

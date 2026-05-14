@@ -76,10 +76,10 @@ export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOp
       </Select>
       <Input name="amount" type="number" step="1" placeholder="Amount (+ add, - remove)" required />
       <Input name="expiryDays" type="number" min="1" defaultValue="90" placeholder="Expiry days" />
-      <Input name="note" placeholder="Admin note" />
+      <Input name="note" placeholder="Mandatory adjustment reason" required />
       <Button type="submit" disabled={isPending}>
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-        Update DigiWallet
+        Update Reward Wallet
       </Button>
     </form>
   );

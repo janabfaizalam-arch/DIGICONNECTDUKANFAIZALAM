@@ -1,7 +1,7 @@
 import { User } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { creditReferralRewardForSignup } from "@/lib/wallet";
+import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function getCurrentUser() {
@@ -294,15 +294,14 @@ export async function syncUserProfile(user: User) {
         p_ip_address: null,
       });
 
-      await supabaseAdmin.rpc("issue_signup_bonus", { p_user_id: user.id });
+      await ensureReferralCodeForUser(user.id).catch((error) => {
+        console.error("[auth] Referral code generation failed", error);
+        return null;
+      });
 
       if (referralCode) {
-        await creditReferralRewardForSignup({
-          referralCode,
-          referredUserId: user.id,
-          createdBy: user.id,
-        }).catch((error) => {
-          console.error("[auth] Referral reward credit failed", error);
+        await attachReferralOnSignup(user.id, referralCode, null, null).catch((error) => {
+          console.error("[auth] Referral signup attachment failed", error);
           return null;
         });
       }

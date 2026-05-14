@@ -94,6 +94,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const wallet = useWallet(totalAmount);
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
+  const expectedCashback = clampedWalletUseAmount > 0 ? Math.round(realPayableAmount * 0.2) : realPayableAmount;
   const payableAmountPaise = Math.round(realPayableAmount * 100);
   const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
 
@@ -421,6 +422,9 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
               </p>
+              <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold leading-5 text-blue-800">
+                Rewards can be used only on DigiConnect Dukan services and cannot be withdrawn as cash.
+              </p>
               <div className="mt-3 grid gap-2">
                 <button
                   type="button"
@@ -446,6 +450,29 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   {formatCurrency(clampedWalletUseAmount)} wallet credit applied. Remaining {formatCurrency(realPayableAmount)} must be paid.
                 </p>
               ) : null}
+              <div className="mt-4 grid gap-2 rounded-2xl bg-slate-50 p-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-600">Total Amount</span>
+                  <span className="font-bold text-slate-950">{formatCurrency(totalAmount)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-600">Wallet Redeem</span>
+                  <span className="font-bold text-orange-700">-{formatCurrency(clampedWalletUseAmount)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-600">Fresh Payable via Razorpay</span>
+                  <span className="font-bold text-blue-700">{formatCurrency(realPayableAmount)}</span>
+                </div>
+                <div className="flex justify-between gap-3 border-t pt-2">
+                  <span className="text-slate-600">Expected Cashback</span>
+                  <span className="font-bold text-emerald-700">{formatCurrency(expectedCashback)}</span>
+                </div>
+                <p className="text-xs font-semibold leading-5 text-slate-500">
+                  {clampedWalletUseAmount > 0
+                    ? "Get 20% cashback on fresh paid amount after service completion."
+                    : "Eligible for 100% cashback after service completion if this is your first paid service."}
+                </p>
+              </div>
             </div>
           </div>
         </Card>

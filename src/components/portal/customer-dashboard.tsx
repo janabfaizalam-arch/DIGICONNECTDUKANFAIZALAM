@@ -220,11 +220,11 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">
                   <WalletCards className="h-4 w-4 text-orange-500" />
-                  DigiWallet Cashback
+                  Reward Wallet
                 </div>
                 <h2 className="mt-4 text-3xl font-bold text-slate-950 md:text-4xl">{formatCurrency(walletBalance)}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Wallet credits can pay up to 50% of your next eligible service. Remaining amount is paid normally.
+                  Rewards can be used only on DigiConnect Dukan services and cannot be withdrawn as cash.
                 </p>
               </div>
               <div className="grid min-w-0 gap-3 sm:grid-cols-3 md:w-[25rem]">
@@ -294,12 +294,12 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
             <Card className="rounded-[1.5rem] p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Refer & Earn ₹50</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Refer & Earn Rs 100</p>
                   <h2 className="mt-2 text-2xl font-bold text-slate-950">{referral.code || "Code generating"}</h2>
                 </div>
                 <Gift className="h-6 w-6 text-orange-500" />
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">Invite a friend and get ₹50 wallet credit after successful signup.</p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">Invite a friend. They get Rs 100 on signup, and you earn Rs 100 after their first completed paid service.</p>
               <p className="mt-3 break-all rounded-2xl bg-slate-50 p-3 font-mono text-xs font-bold text-slate-700">
                 {referral.link || "Your referral link will appear after profile sync."}
               </p>
@@ -348,7 +348,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                     </div>
                   ))
                 ) : (
-                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Invite a friend and get ₹50 wallet credit after successful signup.</p>
+                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Friend joined, first service status, and referrer reward status will appear here.</p>
                 )}
               </div>
             </Card>

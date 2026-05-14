@@ -185,11 +185,17 @@ export type Application = {
   service_name: string;
   amount: number;
   wallet_used_amount?: number;
+  wallet_redeemed_amount?: number;
   real_payment_amount?: number | null;
+  fresh_payable_amount?: number | null;
+  cashback_eligible_amount?: number | null;
   cashback_enabled?: boolean;
   cashback_amount?: number | null;
   cashback_expiry_days?: number | null;
   cashback_credited_at?: string | null;
+  cashback_awarded?: boolean;
+  cashback_awarded_at?: string | null;
+  referral_reward_processed?: boolean;
   form_data: Record<string, unknown> | null;
   status: ApplicationStatus;
   final_document_url: string | null;
