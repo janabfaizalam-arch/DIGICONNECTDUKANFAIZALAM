@@ -3,48 +3,68 @@
 import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { LoaderCircle, Phone, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
 
+import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trackLogin, trackSignup } from "@/lib/google-analytics";
+import { createClient } from "@/lib/supabase/browser";
 
-type EmailMode = "login" | "signup";
+type AuthMode = "login" | "signup";
 type FormMessage = { type: "success" | "error"; text: string };
-type Msg91Config = { configured: boolean; widgetId: string; tokenAuth: string };
-type Msg91VerifyResponse = { message?: string; destination?: string; isNew?: boolean };
+type PinLookup = { ok: boolean; city?: string; state?: string; message?: string };
+type AuthApiResponse = { message?: string; error?: string; hasSession?: boolean; destination?: string };
 
-declare global {
-  interface Window {
-    initSendOTP?: (configuration: Record<string, unknown>) => void;
-    sendOtp?: (identifier: string, success?: (data: unknown) => void, failure?: (error: unknown) => void) => void;
-    retryOtp?: (channel: string | null, success?: (data: unknown) => void, failure?: (error: unknown) => void) => void;
-    verifyOtp?: (otp: string, success?: (data: unknown) => void, failure?: (error: unknown) => void) => void;
-    __DCD_MSG91_CONFIG__?: Record<string, unknown>;
-  }
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function normalizeMobile(value: string) {
   return value.replace(/\D/g, "").slice(0, 10);
 }
 
-function extractMsg91AccessToken(value: unknown): string {
-  if (!value || typeof value !== "object") return "";
-  const data = value as Record<string, unknown>;
-  const nested = typeof data.data === "object" && data.data ? data.data as Record<string, unknown> : null;
-  const candidates = [
-    data.token,
-    data.accessToken,
-    data.access_token,
-    data["access-token"],
-    nested?.token,
-    nested?.accessToken,
-    nested?.access_token,
-    nested?.["access-token"],
-  ];
+function normalizePincode(value: string) {
+  return value.replace(/\D/g, "").slice(0, 6);
+}
 
-  return candidates.map((candidate) => String(candidate ?? "").trim()).find(Boolean) ?? "";
+function getSafeCustomerRedirect(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/customer/dashboard";
+
+  if (
+    value.startsWith("/admin") ||
+    value.startsWith("/agent") ||
+    value.startsWith("/staff") ||
+    value.startsWith("/login") ||
+    value.startsWith("/admin-login") ||
+    value.startsWith("/super-admin-login")
+  ) {
+    return "/customer/dashboard";
+  }
+
+  return value;
+}
+
+function getCurrentCustomerRedirect() {
+  if (typeof window === "undefined") return "/customer/dashboard";
+  const params = new URLSearchParams(window.location.search);
+  return getSafeCustomerRedirect(params.get("redirect") ?? params.get("next"));
+}
+
+async function readAuthApiResponse(response: Response): Promise<AuthApiResponse> {
+  const fallback = response.ok ? "Request completed." : `Request failed with status ${response.status}.`;
+
+  try {
+    const result = (await response.json()) as AuthApiResponse;
+    return {
+      ...result,
+      error: result.error || result.message || (response.ok ? undefined : fallback),
+      message: result.message || result.error || fallback,
+    };
+  } catch {
+    return response.ok ? { message: fallback } : { error: fallback, message: fallback };
+  }
 }
 
 export function CustomerLoginCard({ initialMessage }: { initialMessage?: string }) {
@@ -56,213 +76,226 @@ export function CustomerSignupCard({ referralCode = "" }: { referralCode?: strin
 }
 
 function CustomerLoginCardInner({
+  initialMode = "login",
+  initialReferralCode = "",
+  signupOnly = false,
   initialMessage,
 }: {
-  initialMode?: EmailMode;
+  initialMode?: AuthMode;
   initialReferralCode?: string;
   signupOnly?: boolean;
   initialMessage?: string;
 }) {
   const { error: toastError } = useToast();
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [formMessage, setFormMessage] = useState<FormMessage | null>(null);
-  const [otpMobile, setOtpMobile] = useState("");
-  const [otpValue, setOtpValue] = useState("");
-  const [otpModalOpen, setOtpModalOpen] = useState(false);
-  const [otpPhase, setOtpPhase] = useState<"idle" | "loading" | "sent" | "verifying" | "resending">("idle");
-  const [msg91Config, setMsg91Config] = useState<Msg91Config | null>(null);
-  const [msg91Ready, setMsg91Ready] = useState(false);
-  const [fullNameForOtp, setFullNameForOtp] = useState("");
-  const [emailForOtp, setEmailForOtp] = useState("");
+  const [isPending, setIsPending] = useState(false);
+  const [isGooglePending, setIsGooglePending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [pincode, setPincode] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pinMessage, setPinMessage] = useState("");
+  const [pinLookupPending, setPinLookupPending] = useState(false);
+  const [manualLocation, setManualLocation] = useState(false);
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
+  const [mobile, setMobile] = useState("");
 
   useEffect(() => {
-    if (initialMessage) {
-      setFormMessage({ type: "success", text: initialMessage });
-    }
+    if (initialMessage) setFormMessage({ type: "success", text: initialMessage });
   }, [initialMessage]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || initialReferralCode) return;
+    const params = new URLSearchParams(window.location.search);
+    setReferralCode(String(params.get("ref") ?? "").trim().toUpperCase());
+  }, [initialReferralCode]);
+
+  useEffect(() => {
+    if (mode !== "signup" || pincode.length !== 6) return;
+
     let active = true;
 
-    async function loadMsg91Config() {
+    async function lookupPin() {
+      setPinLookupPending(true);
+      setPinMessage("Fetching city/state...");
+
       try {
-        const response = await fetch("/api/auth/msg91/config", { cache: "no-store" });
-        const config = (await response.json()) as Msg91Config;
+        const response = await fetch(`/api/pincode?pincode=${encodeURIComponent(pincode)}`, { cache: "no-store" });
+        const result = (await response.json()) as PinLookup;
+
         if (!active) return;
-        setMsg91Config(config);
 
-        if (!config.configured) {
-          setFormMessage({ type: "error", text: "OTP login is not configured. Please contact support." });
+        if (!response.ok || !result.ok || !result.city || !result.state) {
+          setManualLocation(true);
+          setPinMessage(result.message ?? "Could not auto fetch city/state. Please enter them manually.");
           return;
         }
 
-        window.__DCD_MSG91_CONFIG__ = {
-          widgetId: config.widgetId,
-          tokenAuth: config.tokenAuth,
-          exposeMethods: true,
-          success: () => undefined,
-          failure: () => undefined,
-        } as Record<string, unknown>;
-
-        if (window.initSendOTP) {
-          window.initSendOTP(window.__DCD_MSG91_CONFIG__);
-          setMsg91Ready(true);
-          return;
-        }
-
-        const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://verify.msg91.com/otp-provider.js"]');
-        if (existingScript) {
-          existingScript.addEventListener("load", () => {
-            window.initSendOTP?.(window.__DCD_MSG91_CONFIG__ ?? {});
-            setMsg91Ready(true);
-          }, { once: true });
-          return;
-        }
-
-        const script = document.createElement("script");
-        script.src = "https://verify.msg91.com/otp-provider.js";
-        script.async = true;
-        script.onload = () => {
-          window.initSendOTP?.(window.__DCD_MSG91_CONFIG__ ?? {});
-          setMsg91Ready(true);
-        };
-        script.onerror = () => {
-          if (active) setFormMessage({ type: "error", text: "OTP service could not be loaded. Please refresh and try again." });
-        };
-        document.body.appendChild(script);
+        setCity(result.city);
+        setState(result.state);
+        setManualLocation(false);
+        setPinMessage("City and state fetched from PIN code.");
       } catch {
-        if (active) setFormMessage({ type: "error", text: "OTP login is temporarily unavailable. Please try again." });
+        if (active) {
+          setManualLocation(true);
+          setPinMessage("Could not auto fetch city/state. Please enter them manually.");
+        }
+      } finally {
+        if (active) setPinLookupPending(false);
       }
     }
 
-    void loadMsg91Config();
+    void lookupPin();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [mode, pincode]);
 
-  async function handleSendOtp(event: FormEvent<HTMLFormElement>) {
+  function switchMode(nextMode: AuthMode) {
+    if (isPending || isGooglePending) return;
+    setMode(nextMode);
+    setFormMessage(null);
+    setShowPassword(false);
+  }
+
+  async function handleGoogleLogin() {
+    setFormMessage(null);
+    setIsGooglePending(true);
+
+    try {
+      const supabase = createClient();
+      if (!supabase) throw new Error("Supabase environment variables are missing.");
+
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(getCurrentCustomerRedirect())}`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) throw error;
+      if (!data.url) throw new Error("Google login URL could not be generated. Please try again.");
+
+      trackLogin("google");
+      window.location.assign(data.url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Google login failed. Please try again.";
+      setFormMessage({ type: "error", text: message });
+      toastError(message);
+      setIsGooglePending(false);
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormMessage(null);
 
-    const mobile = normalizeMobile(otpMobile);
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const password = String(formData.get("password") ?? "");
 
-    if (!mobile) {
-      setFormMessage({ type: "error", text: "Mobile number is required" });
+    if (!isValidEmail(email)) {
+      setFormMessage({ type: "error", text: "Please enter a valid email address." });
       return;
     }
 
-    if (!/^\d{10}$/.test(mobile)) {
-      setFormMessage({ type: "error", text: "Enter a valid 10 digit mobile number." });
+    if (password.length < 6) {
+      setFormMessage({ type: "error", text: "Password must be at least 6 characters." });
       return;
     }
 
-    if (!msg91Config?.configured || !msg91Ready || !window.sendOtp) {
-      setFormMessage({ type: "error", text: "OTP service is still loading. Please try again in a moment." });
-      return;
-    }
+    if (mode === "signup") {
+      const fullName = String(formData.get("name") ?? "").trim();
+      const formMobile = normalizeMobile(String(formData.get("mobile") ?? ""));
+      const formPincode = normalizePincode(String(formData.get("pincode") ?? ""));
+      const formCity = String(formData.get("city") ?? city).trim();
+      const formState = String(formData.get("state") ?? state).trim();
 
-    setOtpPhase("loading");
-    setOtpMobile(mobile);
+      if (!fullName) {
+        setFormMessage({ type: "error", text: "Full name is required." });
+        return;
+      }
 
-    window.sendOtp(
-      `91${mobile}`,
-      () => {
-        setOtpPhase("sent");
-        setOtpModalOpen(true);
-        setFormMessage({ type: "success", text: "OTP sent to your mobile number." });
-      },
-      (error) => {
-        console.error("[msg91] send otp failed", error);
-        setOtpPhase("idle");
-        setFormMessage({ type: "error", text: "OTP could not be sent. Please try again." });
-      },
-    );
-  }
+      if (!/^\d{10}$/.test(formMobile)) {
+        setFormMessage({ type: "error", text: "Enter a valid 10 digit mobile number." });
+        return;
+      }
 
-  async function handleVerifyOtp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const mobile = normalizeMobile(otpMobile);
-    const otp = otpValue.replace(/\D/g, "");
+      if (!/^\d{6}$/.test(formPincode)) {
+        setFormMessage({ type: "error", text: "A valid 6 digit PIN code is required." });
+        return;
+      }
 
-    if (!/^\d{10}$/.test(mobile)) {
-      setFormMessage({ type: "error", text: "Enter a valid 10 digit mobile number." });
-      return;
-    }
+      if (!formCity || !formState) {
+        setFormMessage({ type: "error", text: "City and state are required. Enter them manually if PIN lookup failed." });
+        return;
+      }
 
-    if (otp.length < 4) {
-      setFormMessage({ type: "error", text: "Enter the OTP received on your mobile." });
-      return;
-    }
+      setIsPending(true);
 
-    if (!window.verifyOtp) {
-      setFormMessage({ type: "error", text: "OTP service is still loading. Please try again." });
-      return;
-    }
+      try {
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName,
+            mobile: formMobile,
+            email,
+            password,
+            pincode: formPincode,
+            city: formCity,
+            state: formState,
+            referred_by: referralCode || undefined,
+          }),
+        });
+        const result = await readAuthApiResponse(response);
 
-    setOtpPhase("verifying");
+        if (!response.ok) throw new Error(result.error || `Signup failed with status ${response.status}.`);
 
-    window.verifyOtp(
-      otp,
-      async (data) => {
-        const accessToken = extractMsg91AccessToken(data);
+        trackSignup();
+        setFormMessage({ type: "success", text: result.message || "Account created successfully." });
 
-        if (!accessToken) {
-          setOtpPhase("sent");
-          setFormMessage({ type: "error", text: "OTP verified, but MSG91 did not return a secure token." });
-          return;
-        }
-
-        try {
-          const response = await fetch("/api/auth/msg91/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              mobile,
-              accessToken,
-              fullName: fullNameForOtp.trim() || undefined,
-              email: emailForOtp.trim().toLowerCase() || undefined,
-            }),
-          });
-          const result = (await response.json()) as Msg91VerifyResponse;
-
-          if (!response.ok) {
-            throw new Error(result.message || "OTP login failed.");
-          }
-
-          trackLogin("msg91_otp");
-          if (result.isNew) trackSignup();
-          setFormMessage({ type: "success", text: result.message || "Mobile verified successfully." });
+        if (result.hasSession) {
           window.location.assign(result.destination || "/customer/dashboard");
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "OTP login failed. Please try again.";
-          setOtpPhase("sent");
-          setFormMessage({ type: "error", text: message });
-          toastError(message);
         }
-      },
-      (error) => {
-        console.error("[msg91] verify otp failed", error);
-        setOtpPhase("sent");
-        setFormMessage({ type: "error", text: "Incorrect or expired OTP. Please try again." });
-      },
-    );
-  }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Signup failed. Please try again.";
+        setFormMessage({ type: "error", text: message });
+        toastError(message);
+      } finally {
+        setIsPending(false);
+      }
 
-  function handleResendOtp() {
-    if (!window.retryOtp) return;
-    setOtpPhase("resending");
-    window.retryOtp(
-      null,
-      () => {
-        setOtpPhase("sent");
-        setFormMessage({ type: "success", text: "OTP resent successfully." });
-      },
-      () => {
-        setOtpPhase("sent");
-        setFormMessage({ type: "error", text: "OTP could not be resent. Please try again." });
-      },
-    );
+      return;
+    }
+
+    setIsPending(true);
+
+    try {
+      const supabase = createClient();
+      if (!supabase) throw new Error("Supabase environment variables are missing.");
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (!data.user) throw new Error("Login succeeded but user details could not be loaded.");
+
+      trackLogin("email");
+      window.location.assign(getCurrentCustomerRedirect());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed. Please try again.";
+      setFormMessage({ type: "error", text: message });
+      toastError(message);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -278,97 +311,165 @@ function CustomerLoginCardInner({
       <p className="mt-2 text-[0.68rem] font-bold uppercase leading-tight tracking-[0.14em] text-slate-500">
         Powered By RNoS India Pvt Ltd
       </p>
-      <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Mobile OTP Login</p>
-      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">Login to Your DigiConnect Dashboard</h1>
+      <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Access</p>
+      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">
+        {mode === "signup" ? "Create Your DigiConnect Account" : "Login to Your DigiConnect Dashboard"}
+      </h1>
       <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-        Verify your mobile number with OTP. Existing customers are logged in, and new customers are created automatically.
+        Apply services, track applications and manage your documents securely.
       </p>
 
-      <form onSubmit={handleSendOtp} className="mt-7 grid gap-3 text-left">
+      {!signupOnly ? (
+        <div className="mt-6 grid grid-cols-2 rounded-2xl bg-white/35 p-1">
+          {(["login", "signup"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => switchMode(item)}
+              className={`h-11 rounded-xl text-sm font-bold transition ${
+                mode === item ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              {item === "login" ? "Login" : "Sign Up"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-3 text-left">
+        {mode === "signup" ? (
+          <label className="grid gap-2">
+            <span className="text-sm font-semibold text-slate-700">Full Name</span>
+            <div className="relative">
+              <UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input name="name" type="text" autoComplete="name" required placeholder="Enter your full name" disabled={isPending} className="h-[3.15rem] bg-white/74 pl-11 text-base" />
+            </div>
+          </label>
+        ) : null}
+
         <label className="grid gap-2">
-          <span className="text-sm font-semibold text-slate-700">Mobile Number</span>
+          <span className="text-sm font-semibold text-slate-700">Email</span>
           <div className="relative">
-            <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              name="mobile"
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]{10}"
-              maxLength={10}
-              required
-              placeholder="10 digit mobile number"
-              value={otpMobile}
-              onChange={(event) => setOtpMobile(normalizeMobile(event.target.value))}
-              disabled={otpPhase === "loading" || otpPhase === "verifying"}
-              className="h-[3.15rem] bg-white/74 pl-11 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
-            />
+            <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input name="email" type="email" autoComplete="email" required placeholder="you@example.com" disabled={isPending} className="h-[3.15rem] bg-white/74 pl-11 text-base" />
           </div>
         </label>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-semibold text-slate-700">Full Name optional</span>
-            <Input value={fullNameForOtp} onChange={(event) => setFullNameForOtp(event.target.value)} placeholder="Your name" className="h-[3.15rem] bg-white/74 text-base" />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-semibold text-slate-700">Email optional</span>
-            <Input value={emailForOtp} onChange={(event) => setEmailForOtp(event.target.value)} placeholder="you@example.com" type="email" className="h-[3.15rem] bg-white/74 text-base" />
-          </label>
-        </div>
+        <label className="grid gap-2">
+          <span className="text-sm font-semibold text-slate-700">Password</span>
+          <div className="relative">
+            <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              required
+              minLength={6}
+              placeholder="Minimum 6 characters"
+              disabled={isPending}
+              className="h-[3.15rem] bg-white/74 px-11 text-base"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+              disabled={isPending}
+              className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition hover:bg-white/70 hover:text-slate-800 disabled:opacity-50"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </label>
+
+        {mode === "signup" ? (
+          <>
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-700">Mobile Number</span>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  name="mobile"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  required
+                  placeholder="10 digit mobile number"
+                  value={mobile}
+                  onChange={(event) => setMobile(normalizeMobile(event.target.value))}
+                  disabled={isPending}
+                  className="h-[3.15rem] bg-white/74 pl-11 text-base"
+                />
+              </div>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-700">Pin Code</span>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  name="pincode"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                  placeholder="Enter 6 digit PIN code"
+                  value={pincode}
+                  onChange={(event) => {
+                    setPincode(normalizePincode(event.target.value));
+                    setCity("");
+                    setState("");
+                    setPinMessage("");
+                  }}
+                  disabled={isPending}
+                  className="h-[3.15rem] bg-white/74 pl-11 text-base"
+                />
+              </div>
+              {pinMessage ? (
+                <span className={`text-xs font-bold ${manualLocation ? "text-orange-700" : "text-emerald-700"}`}>
+                  {pinLookupPending ? "Fetching city/state..." : pinMessage}
+                </span>
+              ) : null}
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">City</span>
+                <Input name="city" value={city} onChange={(event) => setCity(event.target.value)} readOnly={!manualLocation && Boolean(city)} required placeholder="City" disabled={isPending} className="h-[3.15rem] bg-white/74 text-base" />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">State</span>
+                <Input name="state" value={state} onChange={(event) => setState(event.target.value)} readOnly={!manualLocation && Boolean(state)} required placeholder="State" disabled={isPending} className="h-[3.15rem] bg-white/74 text-base" />
+              </label>
+            </div>
+          </>
+        ) : null}
+
+        {mode === "login" ? (
+          <div className="-mt-1 flex justify-end">
+            <Link href="/forgot-password" className="text-sm font-bold text-[var(--primary)] transition hover:text-blue-800">
+              Forgot Password?
+            </Link>
+          </div>
+        ) : null}
 
         {formMessage ? (
-          <p
-            className={`rounded-2xl px-4 py-3 text-sm font-medium ${
-              formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
-            }`}
-          >
+          <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"}`}>
             {formMessage.text}
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          disabled={otpPhase === "loading" || otpPhase === "verifying" || !msg91Config?.configured}
-          className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]"
-        >
-          {otpPhase === "loading" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Phone className="h-4 w-4" />}
-          {otpPhase === "loading" ? "Sending OTP..." : "Continue with Mobile OTP"}
+        <Button type="submit" disabled={isPending || isGooglePending} className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]">
+          {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Mail className="h-4 w-4" />}
+          {isPending ? (mode === "signup" ? "Creating account..." : "Logging in...") : mode === "signup" ? "Create Account" : "Login with Email"}
         </Button>
       </form>
 
-      {otpModalOpen ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-4 backdrop-blur-sm sm:items-center">
-          <form onSubmit={handleVerifyOtp} className="w-full max-w-md rounded-[1.75rem] border border-white/20 bg-white p-5 text-left shadow-2xl md:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Secure Verification</p>
-                <h2 className="mt-2 text-2xl font-bold text-slate-950">Enter OTP</h2>
-                <p className="mt-1 text-sm text-slate-600">Sent to +91 {otpMobile}</p>
-              </div>
-              <button type="button" onClick={() => setOtpModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-600">
-                Close
-              </button>
-            </div>
-
-            <Input
-              value={otpValue}
-              onChange={(event) => setOtpValue(event.target.value.replace(/\D/g, "").slice(0, 8))}
-              inputMode="numeric"
-              autoFocus
-              placeholder="Enter OTP"
-              className="mt-5 h-14 rounded-2xl text-center text-2xl font-bold tracking-[0.35em]"
-            />
-
-            <Button type="submit" disabled={otpPhase === "verifying"} className="mt-5 h-12 w-full rounded-2xl bg-slate-950 text-base font-bold text-white">
-              {otpPhase === "verifying" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              {otpPhase === "verifying" ? "Verifying..." : "Verify and Login"}
-            </Button>
-            <button type="button" onClick={handleResendOtp} disabled={otpPhase === "resending" || otpPhase === "verifying"} className="mt-3 h-11 w-full rounded-2xl text-sm font-bold text-blue-700 disabled:opacity-50">
-              {otpPhase === "resending" ? "Resending..." : "Resend OTP"}
-            </button>
-          </form>
-        </div>
-      ) : null}
+      <Button type="button" variant="outline" disabled={isPending || isGooglePending} onClick={() => void handleGoogleLogin()} className="mt-3 h-[3.15rem] w-full rounded-2xl bg-white/70">
+        {isGooglePending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <GoogleIcon />}
+        {isGooglePending ? "Opening Google..." : "Continue with Google"}
+      </Button>
 
       <div className="mt-6 rounded-2xl border border-white/15 bg-white/25 p-3 text-center backdrop-blur-md">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Team access</p>
@@ -380,6 +481,11 @@ function CustomerLoginCardInner({
             Staff Login
           </Link>
         </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
+        <ShieldCheck className="h-4 w-4 text-emerald-600" />
+        Secure Supabase authentication
       </div>
     </div>
   );

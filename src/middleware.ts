@@ -237,23 +237,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && role === "customer" && matchesRoute(pathname, "/customer/dashboard")) {
-    const { data: customerProfile } = await supabase
-      .from("customer_profiles")
-      .select("mobile, profile_completed")
-      .eq("id", user.id)
-      .maybeSingle();
-    const mobile = String(customerProfile?.mobile ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").replace(/\D/g, "");
-    const hasValidMobile = /^\d{10}$/.test(mobile) || (/^91\d{10}$/.test(mobile));
-
-    if (!hasValidMobile || customerProfile?.profile_completed !== true) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/customer/profile";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
-  }
-
   if (user && matchesRoute(pathname, "/agent") && !isAgentActive) {
     const url = request.nextUrl.clone();
     url.pathname = "/unauthorized";

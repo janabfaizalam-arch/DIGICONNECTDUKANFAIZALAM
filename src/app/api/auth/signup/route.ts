@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { creditReferralRewardForSignup } from "@/lib/wallet";
+import { syncUserProfile } from "@/lib/auth";
 
 type SignupBody = {
   fullName?: string;
@@ -37,12 +38,8 @@ function isValidEmail(value: string) {
 }
 
 function getPasswordValidationMessage(password: string) {
-  if (password.length < 8) {
-    return "Password must be at least 8 characters.";
-  }
-
-  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
-    return "Password must include uppercase, lowercase, number, and special character.";
+  if (password.length < 6) {
+    return "Password must be at least 6 characters.";
   }
 
   return "";
@@ -191,8 +188,8 @@ export async function POST(request: Request) {
       });
     }
 
-    if (data.session) {
-      await supabase.auth.signOut();
+    if (data.user) {
+      await syncUserProfile(data.user);
     }
 
     if (data.user?.id && referredBy) {
@@ -208,9 +205,12 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: "Verification email sent. Please check Inbox, Spam, and Promotions folder.",
+      message: data.session
+        ? "Account created successfully."
+        : "Please verify your email. Check Inbox, Spam, and Promotions folder.",
       userId: data.user?.id ?? null,
       hasSession: Boolean(data.session),
+      destination: "/customer/dashboard",
       ...(process.env.NODE_ENV === "development" ? { debug: envDebug } : {}),
     });
   } catch (error) {
