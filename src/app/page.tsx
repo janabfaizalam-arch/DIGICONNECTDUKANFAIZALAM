@@ -4,15 +4,16 @@ import { Gift, WalletCards } from "lucide-react";
 
 import { ContactSection } from "@/components/contact-section";
 import { CreditCardOffersSection } from "@/components/credit-card-offers-section";
-import { HomepageDynamicSlider } from "@/components/homepage-dynamic-slider";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { HomepageOfferNoticeBar } from "@/components/homepage-offer-notice-bar";
 import { HomepageServiceIconRow } from "@/components/homepage-service-icon-row";
+import { HeroSection } from "@/components/hero-section";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { ProcessSection } from "@/components/process-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
+import { getCurrentUser, getCurrentUserRole } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
@@ -38,12 +39,23 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+  const role = user ? await getCurrentUserRole(user) : null;
+  const viewer = user && role
+    ? role === "customer"
+      ? {
+          role,
+          name: String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Customer"),
+        }
+      : { role }
+    : null;
+
   return (
     <>
       <main className="bg-white pb-8 md:pb-0">
         <HomepageOfferNoticeBar />
-        <HomepageDynamicSlider />
+        <HeroSection viewer={viewer} />
         <HomepageServiceIconRow />
         <section className="mx-auto max-w-7xl px-4 py-8 md:px-8">
           <div className="glass-panel grid gap-5 rounded-[1.75rem] border border-white/15 p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7">

@@ -24,9 +24,9 @@ type HeroSectionProps = {
 };
 
 const trustBadges = [
-  { label: "Fast Service", icon: Timer },
-  { label: "Secure Process", icon: ShieldCheck },
-  { label: "Expert Support", icon: UsersRound },
+  { label: "Fast Process", icon: Timer },
+  { label: "Secure Data", icon: ShieldCheck },
+  { label: "WhatsApp Support", icon: UsersRound },
 ];
 
 function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
@@ -42,7 +42,7 @@ function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
     return { href: "/admin", label: "Admin Dashboard" };
   }
 
-  return { href: "/customer/dashboard", label: "My Dashboard" };
+  return { href: "/customer/dashboard", label: "Dashboard" };
 }
 
 export function HeroSection({ viewer = null }: HeroSectionProps) {
@@ -50,22 +50,22 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
   const dashboardConfig = viewer ? getDashboardConfig(viewer) : null;
 
   return (
-    <section className="relative isolate overflow-hidden px-0 pb-4 pt-3 md:pb-10 md:pt-8">
+    <section className="relative isolate overflow-hidden px-0 pb-4 pt-3 md:pb-8 md:pt-6">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_4%,rgba(37,99,235,0.14),transparent_28%),radial-gradient(circle_at_92%_16%,rgba(249,115,22,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.72),rgba(239,247,255,0.3))]" />
       <div className="container-shell">
-        <div className="relative mx-auto min-w-0 overflow-hidden rounded-3xl border border-white/24 bg-[linear-gradient(135deg,#0f5db8_0%,#2563eb_48%,#f97316_100%)] px-4 py-5 shadow-[0_14px_34px_rgba(37,99,235,0.18)] sm:px-7 md:px-9 md:py-9">
+        <div className="relative mx-auto min-w-0 overflow-hidden rounded-3xl border border-white/24 bg-[linear-gradient(135deg,#0f5db8_0%,#2563eb_50%,#f97316_100%)] px-4 py-5 shadow-[0_14px_34px_rgba(37,99,235,0.18)] sm:px-7 md:px-9 md:py-8">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.22),transparent_35%),radial-gradient(circle_at_82%_10%,rgba(255,255,255,0.22),transparent_24%)]" />
           <div className="relative grid gap-6 lg:grid-cols-[1fr_0.72fr] lg:items-center">
             <div className="reveal-on-scroll">
               <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/26 bg-white/16 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]">
-                Pan India service assistance
+                Fast Online Service • Secure Process • Quick Support
               </p>
               <div className="mt-4 space-y-3">
                 <h1 className="max-w-3xl text-balance text-[2rem] font-bold leading-[1.05] text-white sm:text-5xl md:text-[3.45rem]">
-                  All Digital & Government Services
+                  Digital Services Made Simple
                 </h1>
                 <p className="max-w-2xl text-sm font-semibold leading-6 text-white/86 md:text-lg md:leading-8">
-                  Fast processing, trusted support, and secure online service assistance across India.
+                  Apply for tax, finance, insurance, and government ID services online with quick WhatsApp support and secure document handling.
                 </p>
                 {isCustomer ? <p className="text-sm font-bold text-white/88 md:text-base">Welcome, {viewer.name}</p> : null}
               </div>
@@ -91,19 +91,25 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                     </a>
                   </>
                 ) : dashboardConfig ? (
-                  <Link href={dashboardConfig.href} className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
-                    <LayoutDashboard className="h-4 w-4" />
-                    {dashboardConfig.label}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  <>
+                    <Link href={dashboardConfig.href} className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
+                      <LayoutDashboard className="h-4 w-4" />
+                      {dashboardConfig.label}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] transition-all duration-200 md:hover:bg-white/22">
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </a>
+                  </>
                 ) : (
                   <>
-                    <ApplyServiceTrigger className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
+                    <Link href="/login/customer" className="premium-button bg-white text-blue-700 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
                       <LogIn className="h-4 w-4" />
-                      Apply Now
+                      Login
                       <ArrowRight className="h-4 w-4" />
-                    </ApplyServiceTrigger>
-                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] md:hover:bg-white/22">
+                    </Link>
+                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] transition-all duration-200 md:hover:bg-white/22">
                       <MessageCircle className="h-4 w-4" />
                       WhatsApp
                     </a>

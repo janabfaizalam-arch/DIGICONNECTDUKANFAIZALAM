@@ -106,6 +106,16 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
                   <LayoutDashboard className="h-4 w-4" />
                   {panelLabel}
                 </Link>
+                <a
+                  href={generateWhatsAppLink()}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setOpen(false)}
+                  className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
                 <LogoutButton className="h-11 w-full" onLoggedOut={() => setOpen(false)} />
               </>
             ) : (
