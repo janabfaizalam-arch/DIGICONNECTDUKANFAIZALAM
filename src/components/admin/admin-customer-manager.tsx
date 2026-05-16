@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState, useTransition } from "react";
-import { Download, ExternalLink, LoaderCircle, Plus, Search } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { Download, ExternalLink, LoaderCircle, Search } from "lucide-react";
 
-import { useToast } from "@/components/providers/toast-provider";
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
 import type { AdminCustomerRow } from "@/lib/admin-customers";
 
@@ -20,6 +17,10 @@ function formatDate(date: string) {
 
 function displayValue(value: string | null | undefined) {
   return value?.trim() || "Not provided";
+}
+
+function displayMobile(value: string | null | undefined) {
+  return value?.trim() || "Mobile not provided";
 }
 
 function csvCell(value: unknown) {
@@ -37,12 +38,8 @@ function todayForFilename() {
 
 export function AdminCustomerManager({ customers }: { customers: AdminCustomerRow[] }) {
   const [search, setSearch] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [openingId, setOpeningId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-  const { success, error: toastError } = useToast();
   const visibleCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -69,7 +66,6 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
       "Applications Count",
       "Last Application Status",
       "Created Date",
-      "Source",
     ];
     const lines = [
       headers.map(csvCell).join(","),
@@ -84,7 +80,6 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
           customer.applicationsCount,
           customer.lastStatus.replace(/_/g, " ") || "Not provided",
           formatDate(customer.created_at),
-          customer.source.replace(/_/g, " "),
         ].map(csvCell).join(","),
       ),
     ];
@@ -99,41 +94,10 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
     URL.revokeObjectURL(url);
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const mobile = String(formData.get("mobile") ?? "").trim();
-
-    if (!/^\d{10}$/.test(mobile)) {
-      toastError("Enter a valid 10 digit mobile number.");
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/admin/customers", {
-          method: "POST",
-          body: formData,
-        });
-        const result = (await response.json()) as { message?: string };
-
-        if (!response.ok) throw new Error(result.message ?? "Customer could not be added.");
-
-        success(result.message ?? "Customer added.");
-        form.reset();
-        setFormOpen(false);
-        router.refresh();
-      } catch (error) {
-        toastError(error instanceof Error ? error.message : "Customer could not be added.");
-      }
-    });
-  }
-
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input value={search} onChange={(event) => updateSearch(event.target.value)} placeholder="Search name, mobile, email..." className="h-11 pl-11" />
@@ -142,39 +106,21 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
             <Download className="h-4 w-4" />
             Download Excel
           </button>
-          <button type="button" onClick={() => setFormOpen((open) => !open)} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
-            <Plus className="h-4 w-4" />
-            Add Customer
-          </button>
         </div>
-
-        {formOpen ? (
-          <form onSubmit={submit} className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
-            <Input name="fullName" placeholder="Name" required />
-            <Input name="mobile" placeholder="10 digit mobile" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} required />
-            <Input name="email" placeholder="Email optional" type="email" />
-            <Input name="address" placeholder="Address optional" />
-            <Textarea name="notes" placeholder="Notes optional" className="md:col-span-2" />
-            <button type="submit" disabled={isPending} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-orange-500 px-4 text-sm font-bold text-white md:w-fit">
-              {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-              {isPending ? "Saving..." : "Save Customer"}
-            </button>
-          </form>
-        ) : null}
       </div>
 
       <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
-        {!visibleCustomers.length ? <AdminEmptyState title="No customers found" description="Try a different search or add a customer manually." /> : null}
+        {!visibleCustomers.length ? <AdminEmptyState title="No users found" description="Try a different search or filter." /> : null}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {pagedCustomers.map((customer) => (
             <article key={customer.id} className="flex min-h-[19rem] flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-blue-100 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-slate-950">{displayValue(customer.full_name)}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-600">{displayValue(customer.mobile)}</p>
                   <p className="mt-1 truncate text-xs text-slate-500">{displayValue(customer.email)}</p>
+                  <p className="mt-1 font-mono text-xs text-slate-600">{displayMobile(customer.mobile)}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold capitalize text-blue-700">{displayValue(customer.source).replace(/_/g, " ")}</span>
+                <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">User</span>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
                 <div className="rounded-xl bg-slate-50 p-2">
@@ -217,7 +163,7 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
                   </Link>
                 ) : (
                   <span className="inline-flex h-9 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
-                    Signed-up user
+                    Registered user
                   </span>
                 )}
               </div>

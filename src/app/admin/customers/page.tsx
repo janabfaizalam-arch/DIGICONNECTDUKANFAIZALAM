@@ -65,14 +65,14 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader
-        eyebrow="Customers"
-        title="Customers"
-        description="Deduped customers and signed-up users with application, wallet, and referral facts."
+        eyebrow="Users"
+        title="Registered Users"
+        description="Canonical customer users from profiles, enriched with application, wallet, and referral facts."
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
         <StatLinkCard
-          title="Total Customers"
+          title="Total Users"
           value={result.stats.totalCustomers}
           href="/admin/customers"
           icon={UsersRound}
