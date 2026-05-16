@@ -15,6 +15,11 @@ type ProfileRow = {
   mobile: string | null;
   phone?: string | null;
   mobile_number?: string | null;
+  referral_code?: string | null;
+  code?: string | null;
+  referred_by?: string | null;
+  referred_by_user_id?: string | null;
+  referral_code_used?: string | null;
   role: string | null;
   created_at: string | null;
 };
@@ -27,6 +32,9 @@ type CustomerRow = {
   phone?: string | null;
   mobile_number?: string | null;
   email: string | null;
+  referral_code?: string | null;
+  code?: string | null;
+  referred_by?: string | null;
 };
 
 type CustomerProfileRow = {
@@ -37,6 +45,11 @@ type CustomerProfileRow = {
   phone?: string | null;
   mobile_number?: string | null;
   email: string | null;
+  referral_code?: string | null;
+  code?: string | null;
+  referred_by?: string | null;
+  referred_by_user_id?: string | null;
+  referral_code_used?: string | null;
 };
 
 type AuthUserRow = {
@@ -58,9 +71,14 @@ type WalletRow = {
 };
 
 type ReferralRow = {
-  referrer_user_id: string | null;
+  referrer_user_id?: string | null;
   referred_user_id?: string | null;
   referrer_id?: string | null;
+  referred_id?: string | null;
+  user_id?: string | null;
+  customer_id?: string | null;
+  referral_code?: string | null;
+  referral_code_used?: string | null;
 };
 
 type ApplicationLinkRow = {
@@ -71,7 +89,14 @@ type ApplicationLinkRow = {
   created_at: string;
 };
 
-export type AdminCustomerFilter = "all" | "with-applications" | "signed-up";
+export type AdminCustomerFilter = "all" | "with-applications" | "with-wallet" | "with-referrals" | "referred-users" | "no-mobile" | "new-today" | "signed-up";
+
+export type AdminCustomerReferralPerson = {
+  name: string;
+  email: string | null;
+  mobile: string;
+  referralCode: string;
+};
 
 export type AdminCustomerRow = {
   id: string;
@@ -88,6 +113,11 @@ export type AdminCustomerRow = {
   walletBalance: number;
   cashbackBalance: number;
   referralCount: number;
+  referralCode: string;
+  referredBy: AdminCustomerReferralPerson | null;
+  referredUsersCount: number;
+  referredUsersPreview: AdminCustomerReferralPerson[];
+  walletSource: string;
   canOpenDetails: boolean;
   debug?: {
     profileId: string;
@@ -104,6 +134,11 @@ export type AdminCustomersResult = {
     totalCustomers: number;
     withApplications: number;
     signedUpUsers: number;
+    withWalletBalance: number;
+    withReferrals: number;
+    referredUsers: number;
+    noMobile: number;
+    newToday: number;
   };
   filter: AdminCustomerFilter;
 };
@@ -128,7 +163,33 @@ function normalizeMobile(value: string | null | undefined) {
 
 function normalizeFilter(value: string | string[] | null | undefined): AdminCustomerFilter {
   const filter = Array.isArray(value) ? value[0] : value;
-  return filter === "with-applications" || filter === "signed-up" ? filter : "all";
+  return filter === "with-applications" ||
+    filter === "with-wallet" ||
+    filter === "with-referrals" ||
+    filter === "referred-users" ||
+    filter === "no-mobile" ||
+    filter === "new-today" ||
+    filter === "signed-up"
+    ? filter
+    : "all";
+}
+
+function startOfTodayInIndia() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [year, month, day] = formatter.format(new Date()).split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, -5, -30)).getTime();
+}
+
+function isNewToday(value: string | null | undefined) {
+  const created = timestamp(value);
+  if (!created) return false;
+  const start = startOfTodayInIndia();
+  return created >= start && created < start + 24 * 60 * 60 * 1000;
 }
 
 async function safeRangeQuery<T>(
@@ -204,7 +265,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
   if (!supabase) {
     return {
       rows: [],
-      stats: { totalCustomers: 0, withApplications: 0, signedUpUsers: 0 },
+      stats: { totalCustomers: 0, withApplications: 0, signedUpUsers: 0, withWalletBalance: 0, withReferrals: 0, referredUsers: 0, noMobile: 0, newToday: 0 },
       filter,
     };
   }
@@ -223,7 +284,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       supabase.from("applications").select("id, customer_id, user_id, status, created_at").order("created_at", { ascending: false }).range(from, to),
     ),
     safeRangeQuery<WalletRow>("reward_wallets", (from, to) => supabase.from("reward_wallets").select("user_id, balance, lifetime_earned").range(from, to)),
-    safeRangeQuery<ReferralRow>("referral_events", (from, to) => supabase.from("referral_events").select("referrer_user_id").range(from, to)),
+    safeRangeQuery<ReferralRow>("referral_events", (from, to) => supabase.from("referral_events").select("*").range(from, to)),
     safeRangeQuery<ReferralRow>("referrals", (from, to) => supabase.from("referrals").select("*").range(from, to)),
     safeAuthUsers(supabase),
   ]);
@@ -242,9 +303,14 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     ),
   );
 
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
   const customersByUserId = new Map<string, CustomerRow[]>();
   const customersById = new Map(customers.map((customer) => [customer.id, customer]));
-  const customerProfilesByUserId = new Map(customerProfiles.map((profile) => [profile.id, profile]));
+  const customerProfilesByUserId = new Map<string, CustomerProfileRow>();
+  for (const profile of customerProfiles) {
+    customerProfilesByUserId.set(profile.id, profile);
+    if (profile.user_id) customerProfilesByUserId.set(profile.user_id, profile);
+  }
   const walletsByUserId = new Map(wallets.filter((wallet) => wallet.user_id).map((wallet) => [String(wallet.user_id), wallet]));
   for (const wallet of walletRpcRows) {
     if (wallet?.user_id) walletsByUserId.set(String(wallet.user_id), wallet);
@@ -330,10 +396,111 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     };
   }
 
+  function referralCodeFor(profile: ProfileRow, customer: CustomerRow | null, customerProfile: CustomerProfileRow | null) {
+    return firstText(profile.referral_code, profile.code, customerProfile?.referral_code, customerProfile?.code, customer?.referral_code, customer?.code);
+  }
+
+  function personFromProfile(profile: ProfileRow): AdminCustomerReferralPerson {
+    const customer = (customersByUserId.get(profile.id) ?? [])[0] ?? null;
+    const customerProfile = customerProfilesByUserId.get(profile.id) ?? null;
+    const authUser = authUsersById.get(profile.id);
+
+    return {
+      name: firstText(profile.full_name, profile.name, customerProfile?.full_name, customer?.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, profile.email),
+      email: profile.email ?? customerProfile?.email ?? customer?.email ?? authUser?.email ?? null,
+      mobile: normalizeMobile(firstText(authUser?.phone, profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone)),
+      referralCode: referralCodeFor(profile, customer, customerProfile),
+    };
+  }
+
+  function resolvePerson(value: string | null | undefined): AdminCustomerReferralPerson | null {
+    const text = firstText(value);
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    const mobile = normalizeMobile(text);
+
+    const profile = profiles.find((candidate) =>
+      candidate.id === text ||
+      candidate.user_id === text ||
+      candidate.email?.toLowerCase() === lower ||
+      candidate.referral_code?.toLowerCase() === lower ||
+      candidate.code?.toLowerCase() === lower ||
+      (mobile ? [candidate.mobile, candidate.phone, candidate.mobile_number].some((value) => normalizeMobile(value) === mobile) : false),
+    );
+    if (profile) return personFromProfile(profile);
+
+    const customer = customers.find((candidate) =>
+      candidate.id === text ||
+      candidate.user_id === text ||
+      candidate.email?.toLowerCase() === lower ||
+      candidate.referral_code?.toLowerCase() === lower ||
+      candidate.code?.toLowerCase() === lower ||
+      (mobile ? [candidate.mobile, candidate.phone, candidate.mobile_number].some((value) => normalizeMobile(value) === mobile) : false),
+    );
+    if (customer?.user_id && profilesById.has(customer.user_id)) return personFromProfile(profilesById.get(customer.user_id)!);
+    if (customer) {
+      return {
+        name: firstText(customer.full_name, customer.email),
+        email: customer.email,
+        mobile: normalizeMobile(firstText(customer.mobile, customer.phone, customer.mobile_number)),
+        referralCode: firstText(customer.referral_code, customer.code),
+      };
+    }
+
+    const customerProfile = customerProfiles.find((candidate) =>
+      candidate.id === text ||
+      candidate.user_id === text ||
+      candidate.email?.toLowerCase() === lower ||
+      candidate.referral_code?.toLowerCase() === lower ||
+      candidate.code?.toLowerCase() === lower ||
+      (mobile ? [candidate.mobile, candidate.phone, candidate.mobile_number].some((value) => normalizeMobile(value) === mobile) : false),
+    );
+    if (customerProfile?.user_id && profilesById.has(customerProfile.user_id)) return personFromProfile(profilesById.get(customerProfile.user_id)!);
+    if (customerProfile) {
+      return {
+        name: firstText(customerProfile.full_name, customerProfile.email),
+        email: customerProfile.email,
+        mobile: normalizeMobile(firstText(customerProfile.mobile, customerProfile.phone, customerProfile.mobile_number)),
+        referralCode: firstText(customerProfile.referral_code, customerProfile.code),
+      };
+    }
+
+    return null;
+  }
+
+  function referralRelationship(possibleIds: Set<string>, profile: ProfileRow, customer: CustomerRow | null, customerProfile: CustomerProfileRow | null) {
+    const sentIds = new Set<string>();
+    const receivedIds = new Set<string>();
+
+    for (const referral of [...referrals, ...legacyReferrals]) {
+      const referrerId = referral.referrer_user_id ?? referral.referrer_id;
+      const referredId = referral.referred_user_id ?? referral.referred_id ?? referral.user_id ?? referral.customer_id;
+      if (referrerId && possibleIds.has(referrerId) && referredId && !possibleIds.has(referredId)) sentIds.add(referredId);
+      if (referredId && possibleIds.has(referredId) && referrerId && !possibleIds.has(referrerId)) receivedIds.add(referrerId);
+    }
+
+    const referredUsersPreview = Array.from(sentIds).map(resolvePerson).filter(Boolean).slice(0, 3) as AdminCustomerReferralPerson[];
+    const referredBy =
+      Array.from(receivedIds).map(resolvePerson).find(Boolean) ??
+      resolvePerson(profile.referred_by_user_id) ??
+      resolvePerson(profile.referred_by) ??
+      resolvePerson(profile.referral_code_used) ??
+      resolvePerson(customerProfile?.referred_by_user_id) ??
+      resolvePerson(customerProfile?.referred_by) ??
+      resolvePerson(customerProfile?.referral_code_used) ??
+      resolvePerson(customer?.referred_by);
+
+    return {
+      referredBy,
+      referredUsersCount: sentIds.size,
+      referredUsersPreview,
+    };
+  }
+
   const rows = await Promise.all(profiles.map(async (profile) => {
     const { possibleIds, linkedCustomerIds } = getPossibleIds(profile.id);
     const customer = (customersByUserId.get(profile.id) ?? [])[0] ?? Array.from(linkedCustomerIds).map((id) => customersById.get(id)).find(Boolean) ?? null;
-    const customerProfile = customerProfilesByUserId.get(profile.id);
+    const customerProfile = customerProfilesByUserId.get(profile.id) ?? null;
     const authUser = authUsersById.get(profile.id);
     const wallet = pickFirstByPossibleId(walletsByUserId, possibleIds);
     const summary = applicationSummary(possibleIds, linkedCustomerIds);
@@ -343,6 +510,8 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     });
     const referralCount = walletFacts.referralsCount || sumByPossibleId(referralCounts, possibleIds);
     const mobile = normalizeMobile(firstText(authUser?.phone, profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone));
+    const referralCode = referralCodeFor(profile, customer, customerProfile);
+    const referralsSummary = referralRelationship(possibleIds, profile, customer, customerProfile);
 
     if (process.env.NODE_ENV === "development") {
       console.info("[admin-customers] user fact mapping", {
@@ -370,6 +539,11 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       walletBalance: walletFacts.walletBalance,
       cashbackBalance: walletFacts.cashbackEarned,
       referralCount,
+      referralCode,
+      referredBy: referralsSummary.referredBy,
+      referredUsersCount: Math.max(referralCount, referralsSummary.referredUsersCount),
+      referredUsersPreview: referralsSummary.referredUsersPreview,
+      walletSource: walletFacts.sourceUsed,
       canOpenDetails: Boolean(customer?.id),
       debug: {
         profileId: profile.id,
@@ -385,14 +559,14 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     totalCustomers: rows.length,
     withApplications: rows.filter((customer) => customer.applicationsCount > 0).length,
     signedUpUsers: rows.length,
+    withWalletBalance: rows.filter((customer) => customer.walletBalance > 0).length,
+    withReferrals: rows.filter((customer) => customer.referredUsersCount > 0 || customer.referralCount > 0).length,
+    referredUsers: rows.filter((customer) => Boolean(customer.referredBy)).length,
+    noMobile: rows.filter((customer) => !customer.mobile).length,
+    newToday: rows.filter((customer) => isNewToday(customer.created_at)).length,
   };
-  const filteredRows = rows.filter((customer) => {
-    if (filter === "with-applications") return customer.applicationsCount > 0;
-    return true;
-  });
-
   return {
-    rows: filteredRows,
+    rows,
     stats,
     filter,
   };

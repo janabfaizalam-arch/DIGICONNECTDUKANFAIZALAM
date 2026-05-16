@@ -6,8 +6,9 @@ import { Download, ExternalLink, LoaderCircle, Search } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
-import type { AdminCustomerRow } from "@/lib/admin-customers";
+import type { AdminCustomerFilter, AdminCustomerReferralPerson, AdminCustomerRow } from "@/lib/admin-customers";
 
 const PAGE_SIZE = 30;
 
@@ -23,6 +24,11 @@ function displayMobile(value: string | null | undefined) {
   return value?.trim() || "Mobile not provided";
 }
 
+function personLabel(person: AdminCustomerReferralPerson | null) {
+  if (!person) return "Not referred";
+  return [person.name, person.email, person.mobile, person.referralCode].filter(Boolean).join(" / ");
+}
+
 function csvCell(value: unknown) {
   const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
   return `"${text.replace(/"/g, '""')}"`;
@@ -36,22 +42,80 @@ function todayForFilename() {
   return `${year}-${month}-${day}`;
 }
 
-export function AdminCustomerManager({ customers }: { customers: AdminCustomerRow[] }) {
+type SortOption = "newest" | "oldest" | "name-az" | "wallet-high" | "referrals-high" | "applications-high";
+
+const filterOptions: Array<{ value: AdminCustomerFilter; label: string }> = [
+  { value: "all", label: "All Users" },
+  { value: "with-applications", label: "With Applications" },
+  { value: "with-wallet", label: "With Wallet Balance" },
+  { value: "with-referrals", label: "With Referrals" },
+  { value: "referred-users", label: "Referred Users" },
+  { value: "no-mobile", label: "No Mobile" },
+  { value: "new-today", label: "New Today" },
+];
+
+const sortOptions: Array<{ value: SortOption; label: string }> = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "name-az", label: "Name A-Z" },
+  { value: "wallet-high", label: "Wallet High-Low" },
+  { value: "referrals-high", label: "Referrals High-Low" },
+  { value: "applications-high", label: "Applications High-Low" },
+];
+
+function isNewToday(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  return date.toDateString() === now.toDateString();
+}
+
+export function AdminCustomerManager({ customers, initialFilter = "all" }: { customers: AdminCustomerRow[]; initialFilter?: AdminCustomerFilter }) {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<AdminCustomerFilter>(initialFilter === "signed-up" ? "all" : initialFilter);
+  const [sort, setSort] = useState<SortOption>("newest");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const visibleCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return customers.filter((customer) => {
-      if (!query) return true;
-      return `${customer.full_name} ${customer.mobile} ${customer.email ?? ""}`.toLowerCase().includes(query);
-    });
-  }, [customers, search]);
+    return customers
+      .filter((customer) => {
+        if (filter === "with-applications") return customer.applicationsCount > 0;
+        if (filter === "with-wallet") return customer.walletBalance > 0;
+        if (filter === "with-referrals") return customer.referredUsersCount > 0 || customer.referralCount > 0;
+        if (filter === "referred-users") return Boolean(customer.referredBy);
+        if (filter === "no-mobile") return !customer.mobile;
+        if (filter === "new-today") return isNewToday(customer.created_at);
+        return true;
+      })
+      .filter((customer) => {
+        if (!query) return true;
+        const referralPreview = customer.referredUsersPreview.map(personLabel).join(" ");
+        return `${customer.full_name} ${customer.mobile} ${customer.email ?? ""} ${customer.referralCode} ${personLabel(customer.referredBy)} ${referralPreview}`.toLowerCase().includes(query);
+      })
+      .sort((a, b) => {
+        if (sort === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        if (sort === "name-az") return a.full_name.localeCompare(b.full_name);
+        if (sort === "wallet-high") return b.walletBalance - a.walletBalance;
+        if (sort === "referrals-high") return b.referredUsersCount - a.referredUsersCount || b.referralCount - a.referralCount;
+        if (sort === "applications-high") return b.applicationsCount - a.applicationsCount;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+  }, [customers, filter, search, sort]);
   const pagedCustomers = visibleCustomers.slice(0, visibleCount);
 
   function updateSearch(value: string) {
     setSearch(value);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function updateFilter(value: AdminCustomerFilter) {
+    setFilter(value);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function updateSort(value: SortOption) {
+    setSort(value);
     setVisibleCount(PAGE_SIZE);
   }
 
@@ -66,6 +130,11 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
       "Applications Count",
       "Last Application Status",
       "Created Date",
+      "Referral Code",
+      "Referred By",
+      "Referred Users Count",
+      "Referred Users Preview",
+      "Wallet Source",
     ];
     const lines = [
       headers.map(csvCell).join(","),
@@ -80,6 +149,11 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
           customer.applicationsCount,
           customer.lastStatus.replace(/_/g, " ") || "Not provided",
           formatDate(customer.created_at),
+          displayValue(customer.referralCode),
+          personLabel(customer.referredBy),
+          customer.referredUsersCount,
+          customer.referredUsersPreview.map(personLabel).join("; ") || "No referrals yet",
+          displayValue(customer.walletSource),
         ].map(csvCell).join(","),
       ),
     ];
@@ -97,11 +171,35 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_14rem_14rem_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input value={search} onChange={(event) => updateSearch(event.target.value)} placeholder="Search name, mobile, email..." className="h-11 pl-11" />
+            <Input value={search} onChange={(event) => updateSearch(event.target.value)} placeholder="Search name, mobile, email, referral code..." className="h-11 pl-11" />
           </label>
+          <Select value={filter} onValueChange={(value) => updateFilter(value as AdminCustomerFilter)}>
+            <SelectTrigger className="h-11 rounded-full">
+              <SelectValue placeholder="Filter users" />
+            </SelectTrigger>
+            <SelectContent>
+              {filterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(value) => updateSort(value as SortOption)}>
+            <SelectTrigger className="h-11 rounded-full">
+              <SelectValue placeholder="Sort users" />
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <button type="button" onClick={downloadCsv} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white">
             <Download className="h-4 w-4" />
             Download Excel
@@ -113,7 +211,7 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
         {!visibleCustomers.length ? <AdminEmptyState title="No users found" description="Try a different search or filter." /> : null}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {pagedCustomers.map((customer) => (
-            <article key={customer.id} className="flex min-h-[19rem] flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-blue-100 hover:shadow-md">
+            <article key={customer.id} className="flex min-h-[23rem] flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-blue-100 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-slate-950">{displayValue(customer.full_name)}</p>
@@ -132,8 +230,8 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
                   <p className="mt-1 font-bold text-slate-900">{safeCurrency(customer.cashbackBalance)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-2">
-                  <p>Referrals</p>
-                  <p className="mt-1 font-bold text-slate-900">{customer.referralCount}</p>
+                  <p>Referred Users</p>
+                  <p className="mt-1 font-bold text-slate-900">{customer.referredUsersCount}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-2">
                   <p>Applications</p>
@@ -141,6 +239,22 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
                 </div>
               </div>
               <div className="mt-3 grid gap-1.5 text-xs text-slate-600">
+                <p className="flex items-center justify-between gap-3">
+                  <span>Referral code</span>
+                  <span className="truncate font-bold text-slate-900">{customer.referralCode || "Not provided"}</span>
+                </p>
+                <p className="flex items-center justify-between gap-3">
+                  <span>Referred by</span>
+                  <span className="truncate font-bold text-slate-900">{personLabel(customer.referredBy)}</span>
+                </p>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="font-semibold text-slate-500">Referred users preview</p>
+                  {customer.referredUsersPreview.length ? (
+                    <p className="mt-1 line-clamp-2 text-slate-700">{customer.referredUsersPreview.map(personLabel).join("; ")}</p>
+                  ) : (
+                    <p className="mt-1 text-slate-500">No referrals yet</p>
+                  )}
+                </div>
                 <p className="flex items-center justify-between gap-3">
                   <span>Last status</span>
                   <span className="truncate font-bold capitalize text-slate-900">{customer.lastStatus.replace(/_/g, " ") || "Not provided"}</span>

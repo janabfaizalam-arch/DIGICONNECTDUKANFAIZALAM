@@ -97,7 +97,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
         />
       </section>
 
-      <AdminCustomerManager customers={result.rows} />
+      <AdminCustomerManager customers={result.rows} initialFilter={result.filter} />
     </div>
   );
 }
