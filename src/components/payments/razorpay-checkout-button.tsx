@@ -80,6 +80,9 @@ export type VerifiedRazorpayPayment = {
 type RazorpayCheckoutButtonProps = {
   amountPaise: number;
   receipt: string;
+  serviceSlug?: string;
+  serviceSlugs?: string[];
+  walletUseAmount?: number;
   customer?: {
     name?: string;
     email?: string;
@@ -104,6 +107,9 @@ async function readApiResponse<T extends { message?: string; error?: string }>(r
 export function RazorpayCheckoutButton({
   amountPaise,
   receipt,
+  serviceSlug,
+  serviceSlugs,
+  walletUseAmount,
   customer,
   description = "DigiConnect Dukan service payment",
   disabled,
@@ -141,6 +147,9 @@ export function RazorpayCheckoutButton({
           amount: amountPaise,
           currency: "INR",
           receipt,
+          serviceSlug,
+          serviceSlugs,
+          walletUseAmount,
         }),
       });
       const order = await readApiResponse<CreateOrderResponse>(orderResponse);

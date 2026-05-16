@@ -38,11 +38,11 @@ type ProfileRow = {
 type WalletRow = {
   user_id: string | null;
   balance?: number | null;
-  total_cashback_earned?: number | null;
+  lifetime_earned?: number | null;
 };
 
 type ReferralRow = {
-  referrer_id: string | null;
+  referrer_user_id: string | null;
   referred_user_id?: string | null;
 };
 
@@ -98,7 +98,7 @@ function buildCustomers(customers: Customer[], profiles: ProfileRow[], applicati
   }, {});
 
   const referralCounts = referrals.reduce<Record<string, number>>((grouped, referral) => {
-    if (referral.referrer_id) grouped[referral.referrer_id] = (grouped[referral.referrer_id] ?? 0) + 1;
+    if (referral.referrer_user_id) grouped[referral.referrer_user_id] = (grouped[referral.referrer_user_id] ?? 0) + 1;
     return grouped;
   }, {});
 
@@ -113,7 +113,7 @@ function buildCustomers(customers: Customer[], profiles: ProfileRow[], applicati
       mobile: firstText(customer.mobile, profile?.mobile),
       email: firstText(customer.email, profile?.email),
       walletBalance: safeCurrency(wallet?.balance),
-      cashbackBalance: safeCurrency(wallet?.total_cashback_earned),
+      cashbackBalance: safeCurrency(wallet?.lifetime_earned),
       referralCount: customer.user_id ? referralCounts[customer.user_id] ?? 0 : 0,
       applicationsCount: (customer.user_id ? applicationCounts[customer.user_id] ?? 0 : 0) + (applicationCounts[customer.id] ?? 0),
       joinedDate: safeDate(customer.created_at),
@@ -130,7 +130,7 @@ function buildCustomers(customers: Customer[], profiles: ProfileRow[], applicati
       mobile: firstText(profile.mobile),
       email: firstText(profile.email),
       walletBalance: safeCurrency(wallet?.balance),
-      cashbackBalance: safeCurrency(wallet?.total_cashback_earned),
+      cashbackBalance: safeCurrency(wallet?.lifetime_earned),
       referralCount: referralCounts[profile.id] ?? 0,
       applicationsCount: applicationCounts[profile.id] ?? 0,
       joinedDate: safeDate(profile.created_at),
@@ -173,8 +173,8 @@ export default async function AdminPage() {
         supabase.from("applications").select("id", { count: "exact", head: true }),
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "completed"),
         supabase.from("insurance_quotations").select("id", { count: "exact", head: true }),
-        supabase.from("wallets").select("user_id, balance, total_cashback_earned").limit(1000),
-        supabase.from("referrals").select("referrer_id, referred_user_id").limit(1000),
+        supabase.from("reward_wallets").select("user_id, balance, lifetime_earned").limit(1000),
+        supabase.from("referral_events").select("referrer_user_id, referred_user_id").limit(1000),
       ]);
 
       const [

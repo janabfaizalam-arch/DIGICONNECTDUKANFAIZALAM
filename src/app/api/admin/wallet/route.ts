@@ -94,8 +94,8 @@ export async function POST(request: Request) {
     title: amount > 0 ? "DigiWallet bonus credited" : "DigiWallet adjusted",
     message:
       amount > 0
-        ? `₹${Math.abs(amount).toLocaleString("en-IN")} has been added to your DigiWallet.`
-        : `₹${Math.abs(amount).toLocaleString("en-IN")} has been adjusted from your DigiWallet.`,
+        ? `Rs ${Math.abs(amount).toLocaleString("en-IN")} has been added to your DigiWallet.`
+        : `Rs ${Math.abs(amount).toLocaleString("en-IN")} has been adjusted from your DigiWallet.`,
   });
 
   return NextResponse.json({ message: "Wallet updated successfully." });

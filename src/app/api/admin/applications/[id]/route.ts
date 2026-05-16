@@ -148,11 +148,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       if (
         isCashbackCompletionStatus(updates.status) &&
-        !isCashbackCompletionStatus(application.status) &&
         application.user_id &&
-        Number(application.amount ?? 0) > 0 &&
-        application.payment_status === "verified" &&
-        !application.cashback_credited_at
+        Number(application.amount ?? 0) > 0
       ) {
         const creditedTransactionId = await creditCashbackForApplication({
           applicationId: id,

@@ -6,8 +6,9 @@ import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth"
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getServiceBySlug } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
+import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getRealPayableAmount, getRewardRuleForOrder, getWalletMaxUsable, getWalletSnapshot, redeemWalletForApplication } from "@/lib/wallet";
+import { getRealPayableAmount, getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
 
 type UploadedDocument = {
   document_type: string;
@@ -136,13 +137,15 @@ export async function POST(request: Request) {
     const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
     const rewardRule = await getRewardRuleForOrder(resolvedServices.map((service) => service.slug));
     const maxRedemptionPercent = Number(rewardRule?.max_redemption_percent ?? 50);
+    const wallet = await createWalletIfMissing(user.id);
+    const maxWalletAllowed = Math.min(
+      calculateMaxRedeem(orderAmount, Number(wallet.balance ?? 0)),
+      Math.floor(orderAmount * (Math.min(Math.max(maxRedemptionPercent, 0), 50) / 100)),
+    );
 
     if (requestedWalletAmount > 0) {
-      const snapshot = await getWalletSnapshot(user.id, 1);
-      const maxWalletAllowed = getWalletMaxUsable(orderAmount, Number(snapshot.wallet?.balance_points ?? snapshot.wallet?.balance ?? 0), maxRedemptionPercent);
-
       if (requestedWalletAmount > maxWalletAllowed) {
-        return jsonError(`DigiWallet can be used up to ₹${maxWalletAllowed.toLocaleString("en-IN")} for this order.`, 400);
+        return jsonError(`DigiWallet can be used up to Rs ${maxWalletAllowed.toLocaleString("en-IN")} for this order.`, 400);
       }
     }
 
@@ -178,7 +181,7 @@ export async function POST(request: Request) {
       return jsonError("At least 50% of the service amount must be paid through Razorpay.", 400);
     }
 
-    const hasVerifiedRazorpayPayment = isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
+    const hasVerifiedRazorpayPayment = realPaymentAmount === 0 || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
 
     if (!hasVerifiedRazorpayPayment) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
@@ -415,7 +418,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         application_id: applications[0].id,
         title: "DigiWallet used successfully",
-        message: `₹${walletUsedAmount.toLocaleString("en-IN")} DigiWallet credit was applied. Please pay ₹${realPaymentAmount.toLocaleString("en-IN")} securely with Razorpay.`,
+        message: `Rs ${walletUsedAmount.toLocaleString("en-IN")} DigiWallet credit was applied. Please pay Rs ${realPaymentAmount.toLocaleString("en-IN")} securely with Razorpay.`,
       });
     }
 

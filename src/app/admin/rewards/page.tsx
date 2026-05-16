@@ -26,7 +26,7 @@ export default async function AdminRewardsPage() {
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.from("reward_transactions").select("*").order("created_at", { ascending: false }).limit(300);
+      const { data, error } = await supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(300);
       if (error) dataUnavailable = true;
       transactions = (data ?? []) as RewardTransaction[];
     } catch (error) {
@@ -38,8 +38,8 @@ export default async function AdminRewardsPage() {
   }
 
   const issued = transactions.filter((item) => getRewardDirection(item.type) === "credit").reduce((total, item) => total + Number(item.amount ?? 0), 0);
-  const redeemed = transactions.filter((item) => item.type === "redemption").reduce((total, item) => total + Number(item.amount ?? 0), 0);
-  const expired = transactions.filter((item) => item.type === "expiry").reduce((total, item) => total + Number(item.amount ?? 0), 0);
+  const redeemed = transactions.filter((item) => item.type === "redeem").reduce((total, item) => total + Number(item.amount ?? 0), 0);
+  const expired = 0;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -75,7 +75,7 @@ export default async function AdminRewardsPage() {
                   <td className="py-3 text-slate-700">{formatDate(transaction.created_at)}</td>
                   <td className="py-3 font-mono text-xs text-slate-500">{transaction.user_id}</td>
                   <td className="py-3 text-slate-700">{transaction.type.replace(/_/g, " ")}</td>
-                  <td className="py-3 text-slate-600">{transaction.description}</td>
+                  <td className="py-3 text-slate-600">{transaction.description || transaction.note}</td>
                   <td className={`py-3 font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
                     {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{safeCurrency(transaction.amount)}
                   </td>

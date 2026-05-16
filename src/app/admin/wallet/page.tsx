@@ -34,7 +34,7 @@ export default async function AdminWalletPage() {
   if (supabase) {
     try {
       const [transactionResult, customerResult, applicationResult] = await Promise.all([
-        supabase.from("reward_transactions").select("*").order("created_at", { ascending: false }).limit(100),
+        supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(100),
         supabase.from("profiles").select("id, full_name, email").eq("role", "customer").order("full_name", { ascending: true }),
         supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(2000),
       ]);
@@ -50,7 +50,7 @@ export default async function AdminWalletPage() {
       .filter((transaction) => getRewardDirection(transaction.type) === "credit" && transaction.type !== "expiry")
       .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
     totalRedeemed = transactions
-      .filter((transaction) => transaction.type === "redemption")
+      .filter((transaction) => transaction.type === "redeem")
       .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
 
     const userOrderCounts = new Map<string, number>();
@@ -133,7 +133,7 @@ export default async function AdminWalletPage() {
                 {transactions.map((transaction) => (
                   <tr key={transaction.id}>
                     <td className="py-3 font-medium text-slate-700">{formatDate(transaction.created_at)}</td>
-                    <td className="py-3 text-slate-700">{transaction.description || "Reward Wallet"}</td>
+                    <td className="py-3 text-slate-700">{transaction.description || transaction.note || "Reward Wallet"}</td>
                     <td className="py-3 text-slate-600">{transaction.type.replace(/_/g, " ")}</td>
                     <td className={`py-3 font-extrabold ${getRewardDirection(transaction.type) === "credit" ? "text-emerald-700" : "text-orange-700"}`}>
                       {getRewardDirection(transaction.type) === "credit" ? "+" : "-"}{safeCurrency(transaction.amount)}

@@ -94,7 +94,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const wallet = useWallet(totalAmount);
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
-  const expectedCashback = clampedWalletUseAmount > 0 ? Math.round(realPayableAmount * 0.2) : realPayableAmount;
+  const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
+  const expectedCashback = hasFirstServiceCashback ? Math.round(realPayableAmount * 0.2) : realPayableAmount;
   const payableAmountPaise = Math.round(realPayableAmount * 100);
   const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
 
@@ -386,6 +387,9 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   <RazorpayCheckoutButton
                     amountPaise={payableAmountPaise}
                     receipt={paymentReceipt}
+                    serviceSlug={selectedServices[0]?.slug}
+                    serviceSlugs={selectedServices.map((item) => item.slug)}
+                    walletUseAmount={clampedWalletUseAmount}
                     customer={{
                       name: applicantName,
                       email: applicantEmail,
@@ -422,6 +426,9 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
               </p>
+              {!wallet.isLoading && wallet.balance <= 0 ? (
+                <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No reward balance available.</p>
+              ) : null}
               <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold leading-5 text-blue-800">
                 Rewards can be used only on DigiConnect Dukan services and cannot be withdrawn as cash.
               </p>
@@ -439,6 +446,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   type="number"
                   min={0}
                   max={wallet.maxUsable}
+                  disabled={wallet.maxUsable <= 0}
                   value={walletUseAmount}
                   onChange={(event) => setWalletUseAmount(Math.max(0, Number(event.target.value || 0)))}
                   aria-label="DigiWallet amount to use"
@@ -468,7 +476,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   <span className="font-bold text-emerald-700">{formatCurrency(expectedCashback)}</span>
                 </div>
                 <p className="text-xs font-semibold leading-5 text-slate-500">
-                  {clampedWalletUseAmount > 0
+                  {hasFirstServiceCashback
                     ? "Get 20% cashback on fresh paid amount after service completion."
                     : "Eligible for 100% cashback after service completion if this is your first paid service."}
                 </p>

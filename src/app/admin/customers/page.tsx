@@ -42,11 +42,11 @@ type AuthUserRow = {
 type WalletRow = {
   user_id: string | null;
   balance?: number | null;
-  total_cashback_earned?: number | null;
+  lifetime_earned?: number | null;
 };
 
 type ReferralRow = {
-  referrer_id: string | null;
+  referrer_user_id: string | null;
 };
 
 const PAGE_SIZE = 500;
@@ -155,8 +155,8 @@ export default async function AdminCustomersPage() {
         supabase.from("customer_profiles").select("id, full_name, mobile, email, created_at").order("created_at", { ascending: false }).range(from, to),
       ),
       safeAuthUsers(supabase),
-      safeRangeQuery<WalletRow>("wallets", (from, to) => supabase.from("wallets").select("user_id, balance, total_cashback_earned").range(from, to)),
-      safeRangeQuery<ReferralRow>("referrals", (from, to) => supabase.from("referrals").select("referrer_id").range(from, to)),
+      safeRangeQuery<WalletRow>("reward_wallets", (from, to) => supabase.from("reward_wallets").select("user_id, balance, lifetime_earned").range(from, to)),
+      safeRangeQuery<ReferralRow>("referral_events", (from, to) => supabase.from("referral_events").select("referrer_user_id").range(from, to)),
     ]);
 
     customers = results[0].status === "fulfilled" ? results[0].value : [];
@@ -175,7 +175,7 @@ export default async function AdminCustomersPage() {
   const authUserById = new Map(authUsers.map((authUser) => [authUser.id, authUser]));
   const walletByUserId = new Map(wallets.filter((wallet) => wallet.user_id).map((wallet) => [String(wallet.user_id), wallet]));
   const referralCounts = referrals.reduce<Record<string, number>>((grouped, referral) => {
-    if (referral.referrer_id) grouped[referral.referrer_id] = (grouped[referral.referrer_id] ?? 0) + 1;
+    if (referral.referrer_user_id) grouped[referral.referrer_user_id] = (grouped[referral.referrer_user_id] ?? 0) + 1;
     return grouped;
   }, {});
 
@@ -247,7 +247,7 @@ export default async function AdminCustomersPage() {
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
       walletBalance: Number(wallet?.balance ?? 0),
-      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      cashbackBalance: Number(wallet?.lifetime_earned ?? 0),
       referralCount: customer.user_id ? referralCounts[customer.user_id] ?? 0 : 0,
       canOpenDetails: true,
     });
@@ -273,7 +273,7 @@ export default async function AdminCustomersPage() {
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
       walletBalance: Number(wallet?.balance ?? 0),
-      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      cashbackBalance: Number(wallet?.lifetime_earned ?? 0),
       referralCount: referralCounts[profile.id] ?? 0,
       canOpenDetails: false,
     });
@@ -299,7 +299,7 @@ export default async function AdminCustomersPage() {
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
       walletBalance: Number(wallet?.balance ?? 0),
-      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      cashbackBalance: Number(wallet?.lifetime_earned ?? 0),
       referralCount: referralCounts[authUser.id] ?? 0,
       canOpenDetails: false,
     });
@@ -325,7 +325,7 @@ export default async function AdminCustomersPage() {
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
       walletBalance: Number(wallet?.balance ?? 0),
-      cashbackBalance: Number(wallet?.total_cashback_earned ?? 0),
+      cashbackBalance: Number(wallet?.lifetime_earned ?? 0),
       referralCount: referralCounts[customerProfile.id] ?? 0,
       canOpenDetails: false,
     });

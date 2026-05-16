@@ -5,6 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { getWalletMaxUsable } from "@/lib/wallet";
 
 type WalletApiResponse = {
+  balance?: number;
+  lifetime_earned?: number;
+  lifetime_redeemed?: number;
+  maxRedeemPreview?: {
+    serviceAmount: number;
+    maxRedeem: number;
+    freshPayableAmount: number;
+  } | null;
   wallet: {
     balance?: number;
     balance_points?: number;
@@ -36,7 +44,8 @@ export function useWallet(orderAmount = 0) {
       setIsLoading(true);
 
       try {
-        const response = await fetch("/api/wallet", { cache: "no-store" });
+        const params = orderAmount > 0 ? `?serviceAmount=${encodeURIComponent(orderAmount)}` : "";
+        const response = await fetch(`/api/customer/wallet${params}`, { cache: "no-store" });
 
         if (!response.ok) {
           throw new Error("Wallet unavailable");
@@ -63,10 +72,13 @@ export function useWallet(orderAmount = 0) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [orderAmount]);
 
-  const balance = Number(data?.wallet?.balance_points ?? data?.wallet?.balance ?? 0);
-  const maxUsable = useMemo(() => getWalletMaxUsable(orderAmount, balance), [balance, orderAmount]);
+  const balance = Number(data?.balance ?? data?.wallet?.balance_points ?? data?.wallet?.balance ?? 0);
+  const maxUsable = useMemo(
+    () => Number(data?.maxRedeemPreview?.maxRedeem ?? getWalletMaxUsable(orderAmount, balance)),
+    [balance, data?.maxRedeemPreview?.maxRedeem, orderAmount],
+  );
 
   return {
     wallet: data?.wallet ?? null,

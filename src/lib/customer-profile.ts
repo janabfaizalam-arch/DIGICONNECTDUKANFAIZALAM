@@ -6,6 +6,8 @@ import {
   type CustomerProfile,
   type CustomerProfileFormValues,
 } from "@/lib/customer-profile-shared";
+import { ensureReferralCodeForUser } from "@/lib/referrals";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -31,6 +33,11 @@ export async function getCustomerProfile(userId: string) {
   const supabaseAdmin = getSupabaseAdmin();
 
   if (supabaseAdmin) {
+    await Promise.all([
+      ensureReferralCodeForUser(userId).catch(() => null),
+      createWalletIfMissing(userId).catch(() => null),
+    ]);
+
     const { data } = await supabaseAdmin
       .from("customer_profiles")
       .select(customerProfileColumns)

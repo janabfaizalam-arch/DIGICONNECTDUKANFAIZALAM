@@ -45,6 +45,7 @@ export type RewardTransaction = {
   amount: number;
   remaining_amount: number;
   description: string;
+  note?: string | null;
   status: RewardTransactionStatus;
   expires_at: string | null;
   reference_type: string | null;
@@ -226,88 +227,10 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
     return { wallet: null, transactions: [], cashbackEarned: 0, cashbackUsed: 0, expiringSoonAmount: 0, referralSummary: null };
   }
 
-  const [newWalletResult, newTransactionResult] = await Promise.all([
-    (async () => {
-      try {
-        return await supabase.rpc("create_reward_wallet_if_missing", { p_user_id: userId });
-      } catch {
-        return { data: null };
-      }
-    })(),
-    (async () => {
-      try {
-        return await supabase
-          .from("wallet_transactions")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(limit);
-      } catch {
-        return { data: null };
-      }
-    })(),
-  ]);
-
-  if (newWalletResult.data) {
-    const newWallet = newWalletResult.data as {
-      id: string;
-      user_id: string;
-      balance: number;
-      lifetime_earned: number;
-      lifetime_redeemed: number;
-      created_at: string;
-      updated_at: string;
-      frozen?: boolean;
-      suspicious?: boolean;
-      admin_note?: string | null;
-    };
-    const newTransactions = ((newTransactionResult.data ?? []) as {
-      id: string;
-      user_id: string;
-      type: RewardTransactionType;
-      direction: WalletTransactionDirection;
-      amount: number;
-      status: string;
-      note?: string | null;
-      created_at: string;
-    }[]).map((transaction) => ({
-      id: transaction.id,
-      user_id: transaction.user_id,
-      type: transaction.type,
-      amount: Number(transaction.amount ?? 0),
-      remaining_amount: transaction.direction === "credit" && transaction.status === "posted" ? Number(transaction.amount ?? 0) : 0,
-      description: transaction.note || transaction.type.replace(/_/g, " "),
-      status: transaction.status === "posted" ? "active" : transaction.status === "reversed" ? "reversed" : "used",
-      expires_at: null,
-      reference_type: null,
-      reference_id: null,
-      created_at: transaction.created_at,
-    })) as RewardTransaction[];
-
-    return {
-      wallet: {
-        ...newWallet,
-        balance_points: Number(newWallet.balance ?? 0),
-        total_reward_earned: Number(newWallet.lifetime_earned ?? 0),
-        total_reward_redeemed: Number(newWallet.lifetime_redeemed ?? 0),
-        total_cashback_earned: Number(newWallet.lifetime_earned ?? 0),
-        total_cashback_used: Number(newWallet.lifetime_redeemed ?? 0),
-        nearest_expiry_at: null,
-      },
-      transactions: newTransactions,
-      cashbackEarned: Number(newWallet.lifetime_earned ?? 0),
-      cashbackUsed: Number(newWallet.lifetime_redeemed ?? 0),
-      expiringSoonAmount: 0,
-      referralSummary: await getReferralSummary(userId),
-    };
-  }
-
-  await supabase.rpc("refresh_reward_wallet_summary", { p_user_id: userId });
-
-  const [{ data: walletData }, { data: transactionData }, referralSummary] = await Promise.all([
-    supabase.from("wallets").select("*").eq("user_id", userId).maybeSingle(),
+  const [{ data: walletData, error: walletError }, { data: transactionData }, referralSummary] = await Promise.all([
+    supabase.rpc("create_reward_wallet_if_missing", { p_user_id: userId }),
     supabase
-      .from("reward_transactions")
+      .from("wallet_transactions")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
@@ -315,27 +238,63 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
     getReferralSummary(userId),
   ]);
 
-  const wallet = (walletData ?? null) as Wallet | null;
-  const transactions = (transactionData ?? []) as RewardTransaction[];
-  const soon = new Date();
-  soon.setDate(soon.getDate() + 14);
-  const expiringSoonAmount = transactions
-    .filter((transaction) => {
-      if (!["signup_bonus", "referral_bonus", "cashback", "admin_adjustment"].includes(transaction.type) || transaction.status !== "active" || !transaction.expires_at) {
-        return false;
-      }
+  if (walletError) {
+    throw walletError;
+  }
 
-      const expiry = new Date(transaction.expires_at);
-      return expiry > new Date() && expiry <= soon;
-    })
-    .reduce((total, transaction) => total + toNumber(transaction.remaining_amount), 0);
+  const walletDataRow = walletData as {
+    id: string;
+    user_id: string;
+    balance: number;
+    lifetime_earned: number;
+    lifetime_redeemed: number;
+    created_at: string;
+    updated_at: string;
+    frozen?: boolean;
+    suspicious?: boolean;
+    admin_note?: string | null;
+  } | null;
+  const transactions = ((transactionData ?? []) as {
+    id: string;
+    user_id: string;
+    type: RewardTransactionType;
+    direction: WalletTransactionDirection;
+    amount: number;
+    status: string;
+    note?: string | null;
+    application_id?: string | null;
+    created_at: string;
+  }[]).map((transaction) => ({
+    id: transaction.id,
+    user_id: transaction.user_id,
+    type: transaction.type,
+    amount: Number(transaction.amount ?? 0),
+    remaining_amount: transaction.direction === "credit" && transaction.status === "posted" ? Number(transaction.amount ?? 0) : 0,
+    description: transaction.note || transaction.type.replace(/_/g, " "),
+    status: transaction.status === "posted" ? "active" : transaction.status === "reversed" ? "reversed" : "used",
+    expires_at: null,
+    reference_type: transaction.application_id ? "application" : null,
+    reference_id: transaction.application_id ?? null,
+    created_at: transaction.created_at,
+  })) as RewardTransaction[];
+  const wallet = walletDataRow
+    ? {
+        ...walletDataRow,
+        balance_points: Number(walletDataRow.balance ?? 0),
+        total_reward_earned: Number(walletDataRow.lifetime_earned ?? 0),
+        total_reward_redeemed: Number(walletDataRow.lifetime_redeemed ?? 0),
+        total_cashback_earned: Number(walletDataRow.lifetime_earned ?? 0),
+        total_cashback_used: Number(walletDataRow.lifetime_redeemed ?? 0),
+        nearest_expiry_at: null,
+      }
+    : null;
 
   return {
     wallet,
     transactions,
-    cashbackEarned: toNumber(wallet?.total_reward_earned ?? wallet?.total_cashback_earned),
-    cashbackUsed: toNumber(wallet?.total_reward_redeemed ?? wallet?.total_cashback_used),
-    expiringSoonAmount,
+    cashbackEarned: toNumber(wallet?.total_reward_earned),
+    cashbackUsed: toNumber(wallet?.total_reward_redeemed),
+    expiringSoonAmount: 0,
     referralSummary,
   };
 }

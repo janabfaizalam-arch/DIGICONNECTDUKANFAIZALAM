@@ -2,6 +2,7 @@ import { User } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function getCurrentUser() {
@@ -283,19 +284,13 @@ export async function syncUserProfile(user: User) {
     );
 
     if (isEmailVerified) {
-      await supabaseAdmin.rpc("ensure_customer_reward_profile", {
-        p_user_id: user.id,
-        p_full_name: customerName,
-        p_email: emailValue,
-        p_pincode: pincode,
-        p_city: city,
-        p_state: state,
-        p_referral_code: referralCode || null,
-        p_ip_address: null,
-      });
-
       await ensureReferralCodeForUser(user.id).catch((error) => {
         console.error("[auth] Referral code generation failed", error);
+        return null;
+      });
+
+      await createWalletIfMissing(user.id).catch((error) => {
+        console.error("[auth] Reward wallet creation failed", error);
         return null;
       });
 

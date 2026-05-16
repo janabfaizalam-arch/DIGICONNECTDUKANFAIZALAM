@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
 import { AdminUpdateForm } from "@/components/portal/admin-update-form";
+import { ReprocessRewardsButton } from "@/components/admin/reprocess-rewards-button";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -89,17 +90,23 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     is_active?: boolean | null;
   }[] = [];
   let statusLogs: { id: string; old_status: string | null; new_status: string; note: string | null; created_at: string }[] = [];
+  type ReferralDebug = { referral_code_used: string | null; referred_by_user_id: string | null };
+  let referralDebug: ReferralDebug | null = null;
 
   try {
-    const [notesResult, staffResult, statusLogsResult] = await Promise.all([
+    const [notesResult, staffResult, statusLogsResult, referralResult] = await Promise.all([
       supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
       supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
       supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
+      application.user_id
+        ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     notes = notesResult.error ? [] : (notesResult.data ?? []) as typeof notes;
     staffData = staffResult.error ? [] : (staffResult.data ?? []) as typeof staffData;
     statusLogs = statusLogsResult.error ? [] : (statusLogsResult.data ?? []) as typeof statusLogs;
+    referralDebug = referralResult.error ? null : referralResult.data as ReferralDebug | null;
   } catch (error) {
     console.error("[admin-application-detail] Failed to load related data", error);
   }
@@ -186,10 +193,14 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <div className="mt-3 grid gap-3 rounded-2xl bg-blue-50/70 p-4 md:grid-cols-2">
               {[
                 ["Wallet Redeemed", safeCurrency(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0)],
+                ["Total Amount", safeCurrency(application.amount ?? 0)],
                 ["Fresh Razorpay Paid", safeCurrency(application.fresh_payable_amount ?? application.real_payment_amount ?? payment?.amount ?? 0)],
+                ["Payment Verified", (application.payment_status ?? payment?.status) === "verified" ? "yes" : "no"],
                 ["Cashback Eligible", safeCurrency(application.cashback_eligible_amount ?? application.real_payment_amount ?? 0)],
                 ["Cashback Status", application.cashback_awarded || application.cashback_credited_at ? "credited" : "pending completion"],
                 ["Referral Reward", application.referral_reward_processed ? "processed" : "pending / not applicable"],
+                ["Referral Code Used", referralDebug?.referral_code_used ?? "-"],
+                ["Referrer", referralDebug?.referred_by_user_id ?? "-"],
                 ["Closed-loop Use", "DigiConnect services only; no cash withdrawal"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-white p-3">
@@ -217,6 +228,9 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                   staff={staffData ?? []}
                   assignedStaffId={application.assigned_staff_id ?? ""}
                 />
+                <div className="mt-3">
+                  <ReprocessRewardsButton applicationId={application.id} />
+                </div>
               </div>
             </Card>
 

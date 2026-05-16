@@ -28,7 +28,7 @@ export default async function AdminCashbackPage() {
   if (supabase) {
     try {
       const [cashbackResult, ruleResult] = await Promise.all([
-        supabase.from("reward_transactions").select("*").eq("type", "cashback").order("created_at", { ascending: false }).limit(200),
+        supabase.from("wallet_transactions").select("*").in("type", ["first_service_cashback", "repeat_cashback"]).order("created_at", { ascending: false }).limit(200),
         supabase.from("service_reward_rules").select("*").order("service_slug", { ascending: true }),
       ]);
 
@@ -44,7 +44,7 @@ export default async function AdminCashbackPage() {
   }
 
   const issued = cashback.reduce((total, item) => total + Number(item.amount ?? 0), 0);
-  const active = cashback.filter((item) => item.status === "active").reduce((total, item) => total + Number(item.remaining_amount ?? 0), 0);
+  const active = cashback.filter((item) => String(item.status) === "posted").reduce((total, item) => total + Number(item.amount ?? 0), 0);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -93,9 +93,9 @@ export default async function AdminCashbackPage() {
                   <tr key={transaction.id}>
                     <td className="py-3 text-slate-700">{formatDate(transaction.created_at)}</td>
                     <td className="py-3 font-mono text-xs text-slate-500">{transaction.user_id}</td>
-                    <td className="py-3 text-slate-600">{transaction.description}</td>
+                    <td className="py-3 text-slate-600">{transaction.description || transaction.note}</td>
                     <td className="py-3 font-extrabold text-emerald-700">{safeCurrency(transaction.amount)}</td>
-                    <td className="py-3 text-slate-700">{safeCurrency(transaction.remaining_amount)}</td>
+                    <td className="py-3 text-slate-700">{safeCurrency(transaction.remaining_amount ?? transaction.amount)}</td>
                     <td className="py-3 text-slate-600">{transaction.expires_at ? formatDate(transaction.expires_at) : "-"}</td>
                   </tr>
                 ))}
