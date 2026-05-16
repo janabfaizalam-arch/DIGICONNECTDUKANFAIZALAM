@@ -10,26 +10,9 @@ import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
+import type { AdminCustomerRow } from "@/lib/admin-customers";
 
 const PAGE_SIZE = 30;
-
-export type AdminCustomerRow = {
-  id: string;
-  customerId: string | null;
-  userId: string | null;
-  full_name: string;
-  mobile: string;
-  email: string | null;
-  role: string;
-  source: string;
-  created_at: string;
-  applicationsCount: number;
-  lastStatus: string;
-  walletBalance: number;
-  cashbackBalance: number;
-  referralCount: number;
-  canOpenDetails: boolean;
-};
 
 function formatDate(date: string) {
   return safeDate(date);
@@ -65,7 +48,7 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
 
     return customers.filter((customer) => {
       if (!query) return true;
-      return `${customer.full_name} ${customer.mobile} ${customer.email ?? ""} ${customer.role}`.toLowerCase().includes(query);
+      return `${customer.full_name} ${customer.mobile} ${customer.email ?? ""}`.toLowerCase().includes(query);
     });
   }, [customers, search]);
   const pagedCustomers = visibleCustomers.slice(0, visibleCount);
@@ -77,14 +60,16 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
 
   function downloadCsv() {
     const headers = [
-      "Customer Name",
+      "Name",
       "Mobile",
       "Email",
       "Wallet Balance",
-      "Cashback Balance",
-      "Referral Count",
+      "Cashback / Lifetime Earned",
+      "Referrals Count",
       "Applications Count",
-      "Joined Date",
+      "Last Application Status",
+      "Created Date",
+      "Source",
     ];
     const lines = [
       headers.map(csvCell).join(","),
@@ -97,7 +82,9 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
           safeCurrency(customer.cashbackBalance),
           customer.referralCount,
           customer.applicationsCount,
+          customer.lastStatus.replace(/_/g, " ") || "Not provided",
           formatDate(customer.created_at),
+          customer.source.replace(/_/g, " "),
         ].map(csvCell).join(","),
       ),
     ];
@@ -180,39 +167,60 @@ export function AdminCustomerManager({ customers }: { customers: AdminCustomerRo
         {!visibleCustomers.length ? <AdminEmptyState title="No customers found" description="Try a different search or add a customer manually." /> : null}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {pagedCustomers.map((customer) => (
-            <article key={customer.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <article key={customer.id} className="flex min-h-[19rem] flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-blue-100 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-slate-950">{displayValue(customer.full_name)}</p>
-                  <p className="mt-1 font-mono text-sm text-slate-600">{displayValue(customer.mobile)}</p>
+                  <p className="mt-1 font-mono text-xs text-slate-600">{displayValue(customer.mobile)}</p>
+                  <p className="mt-1 truncate text-xs text-slate-500">{displayValue(customer.email)}</p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold capitalize text-blue-700">{displayValue(customer.role).replace(/_/g, " ")}</span>
+                <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold capitalize text-blue-700">{displayValue(customer.source).replace(/_/g, " ")}</span>
               </div>
-              <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                <p>Email: <span className="font-semibold text-slate-800">{displayValue(customer.email)}</span></p>
-                <p>Source: <span className="font-semibold capitalize text-slate-800">{displayValue(customer.source).replace(/_/g, " ")}</span></p>
-                <p>Wallet: <span className="font-semibold text-slate-800">{safeCurrency(customer.walletBalance)}</span></p>
-                <p>Cashback: <span className="font-semibold text-slate-800">{safeCurrency(customer.cashbackBalance)}</span></p>
-                <p>Referrals: <span className="font-semibold text-slate-800">{customer.referralCount}</span></p>
-                <p>Applications: <span className="font-semibold text-slate-800">{customer.applicationsCount}</span></p>
-                <p>Last Status: <span className="font-semibold capitalize text-slate-800">{customer.lastStatus.replace(/_/g, " ") || "Not provided"}</span></p>
-                <p>Created: <span className="font-semibold text-slate-800">{formatDate(customer.created_at)}</span></p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p>Wallet</p>
+                  <p className="mt-1 font-bold text-slate-900">{safeCurrency(customer.walletBalance)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p>Cashback</p>
+                  <p className="mt-1 font-bold text-slate-900">{safeCurrency(customer.cashbackBalance)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p>Referrals</p>
+                  <p className="mt-1 font-bold text-slate-900">{customer.referralCount}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p>Applications</p>
+                  <p className="mt-1 font-bold text-slate-900">{customer.applicationsCount}</p>
+                </div>
               </div>
-              {customer.canOpenDetails && customer.customerId ? (
-                <Link
-                  href={`/admin/customers/${customer.customerId}`}
-                  onClick={() => setOpeningId(customer.id)}
-                  className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white"
-                  aria-disabled={openingId === customer.id}
-                >
-                  {openingId === customer.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                  {openingId === customer.id ? "Opening..." : "View Details"}
-                </Link>
-              ) : (
-                <span className="mt-4 inline-flex h-10 items-center rounded-full bg-slate-100 px-4 text-sm font-bold text-slate-600">
-                  Signed-up user
-                </span>
-              )}
+              <div className="mt-3 grid gap-1.5 text-xs text-slate-600">
+                <p className="flex items-center justify-between gap-3">
+                  <span>Last status</span>
+                  <span className="truncate font-bold capitalize text-slate-900">{customer.lastStatus.replace(/_/g, " ") || "Not provided"}</span>
+                </p>
+                <p className="flex items-center justify-between gap-3">
+                  <span>Created</span>
+                  <span className="font-bold text-slate-900">{formatDate(customer.created_at)}</span>
+                </p>
+              </div>
+              <div className="mt-auto pt-4">
+                {customer.canOpenDetails && customer.customerId ? (
+                  <Link
+                    href={`/admin/customers/${customer.customerId}`}
+                    onClick={() => setOpeningId(customer.id)}
+                    className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700"
+                    aria-disabled={openingId === customer.id}
+                  >
+                    {openingId === customer.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    {openingId === customer.id ? "Opening..." : "View Details"}
+                  </Link>
+                ) : (
+                  <span className="inline-flex h-9 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
+                    Signed-up user
+                  </span>
+                )}
+              </div>
             </article>
           ))}
         </div>
