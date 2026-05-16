@@ -60,6 +60,8 @@ type CreateOrderResponse = {
   order_id?: string;
   amount?: number;
   currency?: string;
+  application_id?: string;
+  application_ids?: string[];
   message?: string;
   error?: string;
 };
@@ -76,6 +78,8 @@ export type VerifiedRazorpayPayment = {
   razorpay_payment_id: string;
   razorpay_order_id: string;
   razorpay_signature: string;
+  application_id?: string;
+  application_ids?: string[];
 };
 
 type RazorpayCheckoutButtonProps = {
@@ -88,6 +92,16 @@ type RazorpayCheckoutButtonProps = {
     name?: string;
     email?: string;
     mobile?: string;
+  };
+  applicationDraft?: {
+    customer?: {
+      name?: string;
+      email?: string;
+      mobile?: string;
+      city?: string;
+      message?: string;
+    };
+    details?: Record<string, string>;
   };
   description?: string;
   disabled?: boolean;
@@ -112,6 +126,7 @@ export function RazorpayCheckoutButton({
   serviceSlugs,
   walletUseAmount,
   customer,
+  applicationDraft,
   description = "DigiConnect Dukan service payment",
   disabled,
   onVerified,
@@ -157,6 +172,7 @@ export function RazorpayCheckoutButton({
           serviceSlug,
           serviceSlugs,
           walletUseAmount,
+          applicationDraft,
         }),
       });
       const order = await readApiResponse<CreateOrderResponse>(orderResponse);
@@ -200,7 +216,11 @@ export function RazorpayCheckoutButton({
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify(payment),
+              body: JSON.stringify({
+                ...payment,
+                application_id: order.application_id,
+                application_ids: order.application_ids,
+              }),
             });
             const verifyResult = await readApiResponse<VerifyPaymentResponse>(verifyResponse);
 
@@ -208,7 +228,11 @@ export function RazorpayCheckoutButton({
               throw new Error(verifyResult.error || verifyResult.message || "Payment verification failed.");
             }
 
-            onVerified(payment);
+            onVerified({
+              ...payment,
+              application_id: order.application_id,
+              application_ids: order.application_ids,
+            });
             trackPurchase(amountPaise / 100);
             trackGooglePurchase(amountPaise / 100);
             success("Payment verified successfully.");

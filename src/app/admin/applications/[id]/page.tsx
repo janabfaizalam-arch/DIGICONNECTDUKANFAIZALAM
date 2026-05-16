@@ -176,11 +176,11 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
               {[
                 ["Payment Status", application.payment_status ?? payment?.status ?? "pending"],
-                ["Razorpay Order ID", payment?.razorpay_order_id ?? "-"],
-                ["Razorpay Payment ID", payment?.razorpay_payment_id ?? "-"],
+                ["Razorpay Order ID", payment?.razorpay_order_id ?? application.razorpay_order_id ?? "-"],
+                ["Razorpay Payment ID", payment?.razorpay_payment_id ?? application.razorpay_payment_id ?? "-"],
                 ["Amount", safeCurrency(payment?.amount ?? application.real_payment_amount ?? application.amount)],
                 ["Payment Method", payment?.payment_method ?? "-"],
-                ["Paid At", payment?.paid_at ? formatDate(payment.paid_at) : "-"],
+                ["Paid At", payment?.paid_at ? formatDate(payment.paid_at) : application.paid_at ? formatDate(application.paid_at) : "-"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-white p-3">
                   <p className="text-xs font-bold uppercase text-slate-500">{label}</p>

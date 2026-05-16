@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getServiceBySlug } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type CreateOrderBody = {
   amount?: number;
@@ -12,6 +13,16 @@ type CreateOrderBody = {
   serviceSlug?: string;
   serviceSlugs?: string[];
   walletUseAmount?: number;
+  applicationDraft?: {
+    customer?: {
+      name?: string;
+      mobile?: string;
+      email?: string;
+      city?: string;
+      message?: string;
+    };
+    details?: Record<string, string>;
+  };
 };
 
 function jsonError(message: string, status: number) {
@@ -38,12 +49,19 @@ function devInfo(message: string, details?: Record<string, unknown>) {
   }
 }
 
+function required(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 export async function POST(request: Request) {
   try {
+    devInfo("[razorpay/create-order] Request received");
     const body = (await request.json().catch(() => null)) as CreateOrderBody | null;
     let amount = Math.round(Number(body?.amount ?? 0));
     const currency = String(body?.currency ?? "INR").trim().toUpperCase() || "INR";
     const receipt = getSafeReceipt(String(body?.receipt ?? `digi-${Date.now()}`));
+    let applicationIds: string[] = [];
+    let orderUserId: string | null = null;
     const serviceSlugs = Array.from(
       new Set((Array.isArray(body?.serviceSlugs) && body?.serviceSlugs.length ? body.serviceSlugs : [body?.serviceSlug])
         .map((slug) => String(slug ?? "").trim())
@@ -56,6 +74,7 @@ export async function POST(request: Request) {
       if (!user) {
         return jsonError("Please login to create a Razorpay order.", 401);
       }
+      orderUserId = user.id;
 
       const services = serviceSlugs.map((slug) => getServiceBySlug(slug));
 
@@ -83,6 +102,84 @@ export async function POST(request: Request) {
       }
 
       amount = expectedAmount;
+
+      if (body?.applicationDraft) {
+        const supabase = getSupabaseAdmin();
+
+        if (!supabase) {
+          console.error("[razorpay/create-order] Supabase admin client missing before application draft creation");
+          return jsonError("Application could not be prepared for payment.", 500);
+        }
+
+        const customer = body.applicationDraft.customer ?? {};
+
+        if (!required(customer.name) || !required(customer.mobile)) {
+          return jsonError("Name and mobile are required before payment.", 400);
+        }
+
+        devInfo("[razorpay/create-order] Creating payment-pending application", {
+          userId: user.id,
+          serviceSlugs,
+          serviceAmount,
+          walletRedeemAmount,
+          freshPayableAmount,
+        });
+
+        const { data: linkedCustomer } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const formData = {
+          service: services.filter(Boolean).map((service) => service?.title).join(", "),
+          name: String(customer.name ?? "").trim(),
+          mobile: String(customer.mobile ?? "").trim(),
+          email: String(customer.email ?? "").trim(),
+          city: String(customer.city ?? "").trim(),
+          message: String(customer.message ?? "").trim(),
+          service_slugs: serviceSlugs,
+          ...(body.applicationDraft.details ?? {}),
+        };
+        let remainingWalletToAllocate = walletRedeemAmount;
+        const applicationsToInsert = services.filter(Boolean).map((service, index) => {
+          const serviceAmountForRow = isItrMsmeCombo ? (index === 0 ? serviceAmount : 0) : Number(service?.amount ?? 0);
+          const walletAmountForRow = isItrMsmeCombo ? (index === 0 ? walletRedeemAmount : 0) : Math.min(remainingWalletToAllocate, serviceAmountForRow);
+          remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
+          const freshAmountForRow = Math.max(0, serviceAmountForRow - walletAmountForRow);
+
+          return {
+            user_id: user.id,
+            customer_id: linkedCustomer?.id ?? null,
+            service_slug: service!.slug,
+            service_name: service!.title,
+            amount: serviceAmountForRow,
+            total_amount: serviceAmountForRow,
+            wallet_used_amount: walletAmountForRow,
+            wallet_redeemed_amount: walletAmountForRow,
+            real_payment_amount: freshAmountForRow,
+            fresh_payable_amount: freshAmountForRow,
+            cashback_eligible_amount: freshAmountForRow,
+            form_data: formData,
+            status: "payment_pending",
+            payment_status: "pending",
+            created_by: user.id,
+            source: "online",
+            submitted_by_role: "customer",
+          };
+        });
+
+        const { data: applications, error: applicationError } = await supabase
+          .from("applications")
+          .insert(applicationsToInsert)
+          .select("id");
+
+        if (applicationError || !applications?.length) {
+          console.error("[razorpay/create-order] Payment-pending application creation failed", applicationError);
+          return jsonError("Application could not be prepared for payment.", 500);
+        }
+
+        applicationIds = applications.map((application) => application.id);
+      }
     }
 
     if (!Number.isFinite(amount) || amount < 100) {
@@ -109,6 +206,43 @@ export async function POST(request: Request) {
       receipt,
     });
 
+    if (applicationIds.length) {
+      const supabase = getSupabaseAdmin();
+      const primaryApplicationId = applicationIds[0];
+
+      if (!supabase || !primaryApplicationId) {
+        console.error("[razorpay/create-order] Supabase admin missing after Razorpay order creation", { orderId: order.id });
+        return jsonError("Razorpay order was created, but application could not be linked. Please contact support.", 500);
+      }
+
+      const { error: applicationUpdateError } = await supabase
+        .from("applications")
+        .update({
+          razorpay_order_id: order.id,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", applicationIds);
+
+      const { error: paymentInsertError } = await supabase.from("payments").insert({
+        application_id: primaryApplicationId,
+        user_id: orderUserId,
+        amount: amount / 100,
+        wallet_used_amount: Number(body?.walletUseAmount ?? 0),
+        real_payment_amount: amount / 100,
+        status: "pending",
+        razorpay_order_id: order.id,
+      });
+
+      if (applicationUpdateError || paymentInsertError) {
+        console.error("[razorpay/create-order] Razorpay order link failed", {
+          orderId: order.id,
+          applicationUpdateError,
+          paymentInsertError,
+        });
+        return jsonError("Razorpay order was created, but application could not be linked. Please contact support.", 500);
+      }
+    }
+
     devInfo("[razorpay/create-order] Order created", {
       orderId: order.id,
       amount: order.amount,
@@ -120,6 +254,8 @@ export async function POST(request: Request) {
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
+      application_id: applicationIds[0],
+      application_ids: applicationIds,
     });
   } catch (error) {
     const status = getRazorpayErrorStatus(error);

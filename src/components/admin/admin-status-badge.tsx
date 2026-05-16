@@ -1,7 +1,19 @@
 import { cn } from "@/lib/utils";
 
 function label(status: string) {
-  if (["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(status)) {
+  if (status === "verified") {
+    return "Paid";
+  }
+
+  if (status === "payment_pending") {
+    return "Payment Pending";
+  }
+
+  if (status === "payment_failed") {
+    return "Payment Failed";
+  }
+
+  if (["documents_pending", "in_process", "submitted", "in_progress"].includes(status)) {
     return "In Progress";
   }
 
@@ -13,7 +25,7 @@ function tone(status: string) {
     return "bg-emerald-50 text-emerald-700 ring-emerald-100";
   }
 
-  if (status === "rejected" || status === "failed") {
+  if (status === "rejected" || status === "failed" || status === "payment_failed") {
     return "bg-red-50 text-red-700 ring-red-100";
   }
 

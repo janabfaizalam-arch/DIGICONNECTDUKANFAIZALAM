@@ -45,9 +45,14 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
       const matchesStatus =
         statusFilter === "all" ||
         row.application_status === statusFilter ||
-        (statusFilter === "pending" && ["documents_pending", "payment_pending", "submitted", "pending"].includes(row.application_status)) ||
-        (statusFilter === "in_progress" && ["documents_pending", "payment_pending", "in_process", "submitted", "in_progress"].includes(row.application_status));
-      const matchesPayment = paymentFilter === "all" || row.payment_status === paymentFilter;
+        (statusFilter === "paid_submitted" && ["verified"].includes(String(row.payment_status ?? ""))) ||
+        (statusFilter === "pending" && ["documents_pending", "submitted", "pending"].includes(row.application_status)) ||
+        (statusFilter === "in_progress" && ["documents_pending", "in_process", "submitted", "in_progress"].includes(row.application_status)) ||
+        (statusFilter === "failed_payment" && (row.application_status === "payment_failed" || row.payment_status === "failed"));
+      const matchesPayment =
+        paymentFilter === "all" ||
+        row.payment_status === paymentFilter ||
+        (paymentFilter === "paid" && row.payment_status === "verified");
       const matchesService = serviceFilter === "all" || row.service === serviceFilter;
       const matchesStaff = staffFilter === "all" || (staffFilter === "none" ? !row.assigned_staff_id : row.assigned_staff_id === staffFilter);
       const rowDate = row.created_at.slice(0, 10);
@@ -79,7 +84,7 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
 
       <section className="grid gap-3 sm:grid-cols-3">
         <AdminStatCard title="Total Applications" value={applicationRows.length} icon="fileText" tone="blue" />
-        <AdminStatCard title="Pending" value={applicationRows.filter((row) => row.application_status !== "completed" && row.application_status !== "rejected").length} icon="receiptText" tone="orange" />
+        <AdminStatCard title="Payment Pending" value={applicationRows.filter((row) => row.application_status === "payment_pending" || row.payment_status === "pending").length} icon="receiptText" tone="orange" />
         <AdminStatCard title="Completed" value={applicationRows.filter((row) => row.application_status === "completed").length} icon="fileText" tone="green" />
       </section>
 
@@ -95,10 +100,11 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="payment_pending">Payment Pending</SelectItem>
+              <SelectItem value="paid_submitted">Paid/Submitted</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="failed_payment">Failed Payment</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
@@ -109,8 +115,9 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
             <SelectContent>
               <SelectItem value="all">All payment</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="verified">Verified</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="refunded">Refunded</SelectItem>
             </SelectContent>
           </Select>
           <Select value={serviceFilter} onValueChange={setServiceFilter}>

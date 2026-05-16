@@ -28,6 +28,7 @@ type VerifiedRazorpayPayment = {
 type ApplicationPayload = {
   serviceSlug?: string;
   serviceSlugs?: string[];
+  applicationIds?: string[];
   price?: number;
   customer?: {
     name?: string;
@@ -223,6 +224,148 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
+    const existingApplicationIds = Array.from(
+      new Set((Array.isArray(body.applicationIds) ? body.applicationIds : [])
+        .map((id) => String(id ?? "").trim())
+        .filter(Boolean)),
+    );
+
+    if (existingApplicationIds.length) {
+      const { data: existingApplications, error: existingApplicationsError } = await supabase
+        .from("applications")
+        .select("id, user_id, service_name, service_slug, amount, payment_status, razorpay_order_id, razorpay_payment_id, customer_id")
+        .in("id", existingApplicationIds)
+        .eq("user_id", user.id);
+
+      if (existingApplicationsError || !existingApplications?.length) {
+        console.error("[applications] Existing payment-pending application lookup failed", {
+          userId: user.id,
+          existingApplicationIds,
+          error: existingApplicationsError,
+        });
+        return jsonError("Paid application could not be found. Please contact support.", 500);
+      }
+
+      if (!existingApplications.every((application) => application.payment_status === "verified")) {
+        return jsonError("Payment has not been verified for this application yet.", 400);
+      }
+
+      const expectedOrderId = body.razorpayPayment?.razorpay_order_id ?? null;
+      const orderMismatch = expectedOrderId && existingApplications.some((application) => application.razorpay_order_id !== expectedOrderId);
+
+      if (orderMismatch) {
+        return jsonError("Payment order does not match this application.", 400);
+      }
+
+      const existingIds = existingApplications.map((application) => application.id);
+      const { error: updateError } = await supabase
+        .from("applications")
+        .update({
+          form_data: formData,
+          status: "submitted",
+          payment_status: "verified",
+          razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? existingApplications[0]?.razorpay_order_id ?? null,
+          razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? existingApplications[0]?.razorpay_payment_id ?? null,
+          submitted_at: new Date().toISOString(),
+          customer_id: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", existingIds);
+
+      if (updateError) {
+        console.error("[applications] Existing application finalization failed", {
+          userId: user.id,
+          existingIds,
+          error: updateError,
+        });
+        return jsonError("Application could not be finalized after payment. Please contact support.", 500);
+      }
+
+      await supabase.from("application_documents").delete().in("application_id", existingIds);
+
+      const documentsToInsert = existingApplications.flatMap((application) =>
+        body.documents!.map((document) => ({
+          application_id: application.id,
+          user_id: user.id,
+          document_type: document.document_type,
+          file_name: document.file_name,
+          file_url: document.file_url,
+          file_type: document.file_type ?? null,
+          storage_path: document.storage_path ?? null,
+        })),
+      );
+      const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
+
+      if (documentsError) {
+        console.error("[applications] Existing application documents save failed", {
+          userId: user.id,
+          existingIds,
+          error: documentsError,
+        });
+        return jsonError("Documents could not be saved.", 500);
+      }
+
+      const serviceName = existingApplications.map((application) => application.service_name).join(", ");
+      const invoice = await createInvoiceForApplication({
+        applicationId: existingApplications[0].id,
+        userId: user.id,
+        customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+        customerName: customer.name!.trim(),
+        customerEmail: customer.email?.trim() ?? "",
+        customerMobile: customer.mobile!.trim(),
+        serviceName,
+        amount: orderAmount,
+        paymentStatus: "verified",
+      });
+
+      if (!invoice) {
+        console.error("[applications] Existing application invoice creation failed", {
+          userId: user.id,
+          applicationId: existingApplications[0].id,
+        });
+        return jsonError("Invoice could not be generated.", 500);
+      }
+
+      await supabase.from("notifications").insert(
+        existingApplications.map((application) => ({
+          user_id: user.id,
+          application_id: application.id,
+          title: "Payment received - application submitted",
+          message: `${application.service_name} payment has been received and your application was submitted.`,
+        })),
+      );
+
+      await createAdminNotifications(
+        supabase,
+        existingApplications.flatMap((application) => [
+          {
+            type: "new_application" as const,
+            title: "Paid application submitted",
+            message: `${customer.name!.trim()} submitted ${application.service_name} after verified Razorpay payment.`,
+            relatedType: "application" as const,
+            relatedId: application.id,
+          },
+          {
+            type: "document_uploaded" as const,
+            title: "Documents uploaded",
+            message: `${customer.name!.trim()} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
+            relatedType: "document" as const,
+            relatedId: application.id,
+          },
+        ]),
+      );
+
+      return NextResponse.json({
+        message:
+          existingApplications.length > 1
+            ? "Applications submitted successfully. One combined invoice has been generated."
+            : "Payment received - application submitted. Track the status in your dashboard.",
+        applicationId: existingApplications[0].id,
+        applicationIds: existingIds,
+        invoiceId: invoice.id,
+      });
+    }
+
     const applicationsToInsert = resolvedServices.map((service, index) => ({
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
@@ -235,7 +378,7 @@ export async function POST(request: Request) {
         fresh_payable_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
         cashback_eligible_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
         form_data: formData,
-        status: hasVerifiedRazorpayPayment ? "in_process" : "payment_pending",
+        status: hasVerifiedRazorpayPayment ? "submitted" : "payment_pending",
         created_by: user.id,
         source: "online",
         payment_status: hasVerifiedRazorpayPayment ? "verified" : "pending",

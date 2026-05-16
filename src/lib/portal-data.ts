@@ -6,13 +6,15 @@ export const applicationStatuses = [
   "new",
   "documents_pending",
   "payment_pending",
+  "payment_failed",
   "in_process",
+  "in_progress",
   "submitted",
   "completed",
   "rejected",
 ] as const;
 
-export const paymentStatuses = ["pending", "verified", "failed"] as const;
+export const paymentStatuses = ["pending", "verified", "failed", "refunded"] as const;
 
 export type ApplicationStatus = (typeof applicationStatuses)[number];
 export type PaymentStatus = (typeof paymentStatuses)[number];
@@ -119,9 +121,11 @@ export const featuredServices = featuredServiceSlugs
 
 export const statusLabels: Record<ApplicationStatus, string> = {
   new: "New",
-  documents_pending: "In Progress",
-  payment_pending: "In Progress",
+  documents_pending: "Documents Pending",
+  payment_pending: "Payment Pending",
+  payment_failed: "Payment Failed",
   in_process: "In Progress",
+  in_progress: "In Progress",
   submitted: "In Progress",
   completed: "Completed",
   rejected: "Rejected",
@@ -129,8 +133,9 @@ export const statusLabels: Record<ApplicationStatus, string> = {
 
 export const paymentStatusLabels: Record<PaymentStatus, string> = {
   pending: "Pending",
-  verified: "Verified",
+  verified: "Paid",
   failed: "Failed",
+  refunded: "Refunded",
 };
 
 export function createInvoiceNumber(date = new Date()) {

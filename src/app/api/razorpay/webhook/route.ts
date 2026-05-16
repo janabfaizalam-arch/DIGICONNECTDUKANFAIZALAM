@@ -103,7 +103,11 @@ export async function POST(request: Request) {
         .from("applications")
         .update({
           payment_status: status,
-          status: status === "verified" ? "in_process" : "payment_pending",
+          status: status === "verified" ? "submitted" : status === "failed" ? "payment_failed" : "payment_pending",
+          razorpay_order_id: payment.order_id ?? null,
+          razorpay_payment_id: payment.id,
+          paid_at: status === "verified" ? paidAt : null,
+          submitted_at: status === "verified" ? paidAt : null,
           updated_at: new Date().toISOString(),
         })
         .in("id", applicationIds),

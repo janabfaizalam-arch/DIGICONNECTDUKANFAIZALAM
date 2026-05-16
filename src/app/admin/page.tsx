@@ -79,7 +79,28 @@ function isCompleted(status: string | null | undefined) {
 }
 
 function isPendingWork(status: string | null | undefined) {
-  return ["new", "documents_pending", "payment_pending", "in_process", "in_progress", "submitted", "pending"].includes(String(status ?? "").toLowerCase());
+  return ["new", "documents_pending", "in_process", "in_progress", "submitted", "pending"].includes(String(status ?? "").toLowerCase());
+}
+
+function isPaidApplication(application: Application) {
+  return String(application.payment_status ?? application.payments?.[0]?.status ?? "").toLowerCase() === "verified";
+}
+
+function isFailedPayment(application: Application) {
+  return String(application.payment_status ?? application.payments?.[0]?.status ?? "").toLowerCase() === "failed" || String(application.status ?? "").toLowerCase() === "payment_failed";
+}
+
+function verifiedPaymentAmount(application: Application) {
+  if (!isPaidApplication(application)) {
+    return 0;
+  }
+
+  const payment = application.payments?.[0];
+  return Number(payment?.real_payment_amount ?? payment?.amount ?? application.fresh_payable_amount ?? application.real_payment_amount ?? 0);
+}
+
+function walletRedeemedAmount(application: Application) {
+  return Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? application.payments?.[0]?.wallet_used_amount ?? 0);
 }
 
 function firstText(...values: Array<string | null | undefined>) {
@@ -159,7 +180,6 @@ export default async function AdminPage() {
   let insuranceQuotations: InsuranceQuotationRow[] = [];
   let totalApplications = 0;
   let completedApplications = 0;
-  let totalCustomers = 0;
   let quotationCount = 0;
 
   if (supabase) {
@@ -214,11 +234,15 @@ export default async function AdminPage() {
   const today = startOfToday();
   const todayApplications = applications.filter((application) => sameDay(application.created_at, today)).length;
   const pendingWork = applications.filter((application) => isPendingWork(application.status)).length;
-  const revenueEstimate = applications
-    .filter((application) => application.payment_status === "verified" || isCompleted(application.status))
-    .reduce((total, application) => total + Number(application.amount ?? 0), 0);
+  const paidApplications = applications.filter(isPaidApplication).length;
+  const paymentPendingApplications = applications.filter((application) => String(application.status ?? "").toLowerCase() === "payment_pending").length;
+  const failedPayments = applications.filter(isFailedPayment).length;
+  const verifiedRevenue = applications.reduce((total, application) => total + verifiedPaymentAmount(application), 0);
+  const walletRedeemedTotal = applications.reduce((total, application) => total + walletRedeemedAmount(application), 0);
+  const cashbackLiability = applications
+    .filter((application) => isPaidApplication(application) && !application.cashback_awarded)
+    .reduce((total, application) => total + Number(application.cashback_eligible_amount ?? application.real_payment_amount ?? 0), 0);
   const customerRows = buildCustomers(customers, profiles, applications, wallets, referrals);
-  totalCustomers = customerRows.length;
 
   const charts: DashboardChartData = {
     workflow: days.map((date) => ({
@@ -229,8 +253,7 @@ export default async function AdminPage() {
       label: formatWeekday(date),
       revenue: applications
         .filter((application) => sameDay(application.created_at, date))
-        .filter((application) => application.payment_status === "verified" || isCompleted(application.status))
-        .reduce((total, application) => total + Number(application.amount ?? 0), 0),
+        .reduce((total, application) => total + verifiedPaymentAmount(application), 0),
     })),
     statuses: Array.from(
       applications.reduce((grouped, application) => {
@@ -249,12 +272,12 @@ export default async function AdminPage() {
   };
 
   const kpis: DashboardKpi[] = [
-    { title: "New Applications", value: todayApplications, trend: `+${todayApplications} today`, href: "/admin/applications", icon: "application" },
-    { title: "Pending Applications", value: pendingWork, trend: "Needs office action", href: "/admin/applications", icon: "pending" },
-    { title: "Completed Applications", value: completedApplications, trend: `${totalApplications} total applications`, href: "/admin/applications", icon: "completed" },
-    { title: "Total Customers", value: totalCustomers, trend: "Signed-up and CRM customers", href: "/admin/customers", icon: "customers" },
-    { title: "Revenue Estimate", value: safeCurrency(revenueEstimate), trend: "Verified and completed", href: "/admin/applications", icon: "revenue" },
-    { title: "Insurance Quotations", value: safeNumber(quotationCount), trend: "Quotes created", href: "/admin/insurance-quotations", icon: "quotation" },
+    { title: "Today Applications", value: todayApplications, trend: `${totalApplications} total applications`, href: "/admin/applications", icon: "application" },
+    { title: "Paid Applications", value: paidApplications, trend: `${paymentPendingApplications} payment pending`, href: "/admin/applications", icon: "revenue" },
+    { title: "Pending Processing", value: pendingWork, trend: "Needs office action", href: "/admin/applications", icon: "pending" },
+    { title: "Completed Applications", value: completedApplications, trend: `${failedPayments} failed payments`, href: "/admin/applications", icon: "completed" },
+    { title: "Verified Revenue", value: safeCurrency(verifiedRevenue), trend: `${safeCurrency(walletRedeemedTotal)} wallet redeemed`, href: "/admin/applications", icon: "revenue" },
+    { title: "Cashback Liability", value: safeCurrency(cashbackLiability), trend: `${safeNumber(quotationCount)} insurance quotes`, href: "/admin/rewards", icon: "quotation" },
   ];
 
   const staffById = new Map(staff.map((member) => [member.id, member.full_name || member.email || "Staff"]));

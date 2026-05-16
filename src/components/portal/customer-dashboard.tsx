@@ -72,11 +72,11 @@ function getTrackerStep(status: string) {
     return 3;
   }
 
-  if (status === "processing" || status === "documents_pending") {
+  if (status === "processing" || status === "documents_pending" || status === "in_process" || status === "in_progress") {
     return 2;
   }
 
-  if (status === "under_review" || status === "in_review" || status === "pending") {
+  if (status === "under_review" || status === "in_review" || status === "pending" || status === "submitted" || status === "payment_pending") {
     return 1;
   }
 
@@ -413,6 +413,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                   const latestNotification = notifications.find((notification) => notification.application_id === application.id);
                   const adminMessage = application.customer_message || latestNotification?.message || "No admin message yet.";
                   const paymentStatus = payment?.status ?? application.payment_status ?? "pending";
+                  const paymentReceived = paymentStatus === "verified";
                   const trackerStep = getTrackerStep(application.status);
 
                   return (
@@ -441,6 +442,15 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                       <p className="mt-4 text-sm text-slate-600">
                         <span className="font-bold text-slate-800">Admin Message:</span> {adminMessage}
                       </p>
+                      {paymentReceived ? (
+                        <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                          Payment received - application submitted.
+                        </p>
+                      ) : application.status === "payment_pending" ? (
+                        <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700">
+                          Payment pending. Complete payment to submit this application.
+                        </p>
+                      ) : null}
                       <p className="mt-2 text-sm font-bold text-slate-700">{formatCurrency(application.amount)}</p>
                       {application.status === "documents_pending" ? <CustomerDocumentUpload applicationId={application.id} /> : null}
                       <div className="mt-4 flex flex-wrap gap-2">

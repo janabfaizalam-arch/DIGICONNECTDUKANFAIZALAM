@@ -184,6 +184,7 @@ export type Application = {
   service_slug: string;
   service_name: string;
   amount: number;
+  total_amount?: number | null;
   wallet_used_amount?: number;
   wallet_redeemed_amount?: number;
   real_payment_amount?: number | null;
@@ -205,6 +206,10 @@ export type Application = {
   staff_note?: string | null;
   customer_message?: string | null;
   payment_status?: PaymentStatus;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  submitted_at?: string | null;
+  paid_at?: string | null;
   payment_screenshot_url?: string | null;
   payment_screenshot_path?: string | null;
   commission_amount?: number;

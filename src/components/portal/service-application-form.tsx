@@ -98,6 +98,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const expectedCashback = hasFirstServiceCashback ? Math.round(realPayableAmount * 0.2) : realPayableAmount;
   const payableAmountPaise = Math.round(realPayableAmount * 100);
   const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
+  const canStartPayment =
+    !isSubmitting &&
+    applicantName.trim().length > 1 &&
+    /^\d{10}$/.test(applicantMobile) &&
+    selectedDocuments.length > 0;
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -212,6 +217,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           },
           documents: uploadedDocuments,
           razorpayPayment,
+          applicationIds: razorpayPayment?.application_ids,
           walletUseAmount: clampedWalletUseAmount,
         }),
         signal: controller.signal,
@@ -402,8 +408,16 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                       email: applicantEmail,
                       mobile: applicantMobile,
                     }}
+                    applicationDraft={{
+                      customer: {
+                        name: applicantName,
+                        email: applicantEmail,
+                        mobile: applicantMobile,
+                      },
+                      details: {},
+                    }}
                     description={selectedServices.map((item) => item.title).join(", ")}
-                    disabled={isSubmitting}
+                    disabled={!canStartPayment}
                     onVerified={(payment) => {
                       setRazorpayPayment({
                         ...payment,
@@ -417,6 +431,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                     <CheckCircle2 className="h-4 w-4" />
                     Payment verified: {razorpayPayment.razorpay_payment_id}
                   </div>
+                ) : null}
+                {!canStartPayment ? (
+                  <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
+                    Fill name, 10 digit mobile, and upload documents before payment.
+                  </p>
                 ) : null}
               </div>
             </div>
