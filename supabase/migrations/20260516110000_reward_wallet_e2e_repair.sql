@@ -1,6 +1,125 @@
 -- Incremental repair for the closed-loop Referral + Reward Wallet system.
 -- Base schema is in 20260514130000_secure_referral_reward_wallet.sql.
 
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+alter extension pgcrypto set schema extensions;
+
+create or replace function public.generate_secure_referral_code()
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_code text := '';
+  v_bytes bytea;
+  v_i int;
+begin
+  v_bytes := extensions.gen_random_bytes(9);
+  for v_i in 0..8 loop
+    v_code := v_code || substr(v_alphabet, (get_byte(v_bytes, v_i) % length(v_alphabet)) + 1, 1);
+  end loop;
+  return v_code;
+end;
+$$;
+
+alter table public.wallet_transactions
+  add column if not exists type text,
+  add column if not exists balance_after numeric(12, 2) not null default 0,
+  add column if not exists payment_id uuid references public.payments(id) on delete set null,
+  add column if not exists referred_user_id uuid references public.profiles(id) on delete set null,
+  add column if not exists referrer_user_id uuid references public.profiles(id) on delete set null,
+  add column if not exists idempotency_key text;
+
+do $$
+declare
+  v_constraint record;
+begin
+  for v_constraint in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.wallet_transactions'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%status%'
+  loop
+    execute format('alter table public.wallet_transactions drop constraint if exists %I', v_constraint.conname);
+  end loop;
+end;
+$$;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'wallet_transactions'
+      and column_name = 'transaction_type'
+  ) then
+    execute $sql$
+      update public.wallet_transactions
+      set type = case
+          when type is not null and type <> '' then type
+          when transaction_type = 'wallet_usage' then 'redeem'
+          when transaction_type = 'cashback_credit' then 'repeat_cashback'
+          when transaction_type = 'admin_bonus' then 'admin_adjustment'
+          when transaction_type = 'refund_adjustment' then 'reversal'
+          else 'admin_adjustment'
+        end,
+        status = case
+          when status in ('active', 'used') then 'posted'
+          else coalesce(nullif(status, ''), 'posted')
+        end,
+        idempotency_key = coalesce(nullif(idempotency_key, ''), 'legacy:' || id::text)
+      where type is null
+        or type = ''
+        or idempotency_key is null
+        or idempotency_key = ''
+        or status in ('active', 'used')
+    $sql$;
+  else
+    update public.wallet_transactions
+    set type = coalesce(nullif(type, ''), 'admin_adjustment'),
+      status = case
+        when status in ('active', 'used') then 'posted'
+        else coalesce(nullif(status, ''), 'posted')
+      end,
+      idempotency_key = coalesce(nullif(idempotency_key, ''), 'legacy:' || id::text)
+    where type is null
+      or type = ''
+      or idempotency_key is null
+      or idempotency_key = ''
+      or status in ('active', 'used');
+  end if;
+end;
+$$;
+
+with duplicate_keys as (
+  select id, row_number() over (partition by idempotency_key order by created_at, id) as duplicate_position
+  from public.wallet_transactions
+  where idempotency_key is not null
+    and idempotency_key <> ''
+)
+update public.wallet_transactions wt
+set idempotency_key = wt.idempotency_key || ':dedupe:' || wt.id::text
+from duplicate_keys dk
+where wt.id = dk.id
+  and dk.duplicate_position > 1;
+
+alter table public.wallet_transactions
+  alter column type set not null,
+  alter column idempotency_key set not null,
+  alter column status set default 'posted';
+
+alter table public.wallet_transactions
+  add constraint wallet_transactions_status_check
+  check (status in ('pending','posted','reversed','active','used','expired'));
+
+create unique index if not exists wallet_transactions_idempotency_key_idx
+  on public.wallet_transactions(idempotency_key);
+
 create unique index if not exists wallet_redeem_application_once_idx
   on public.wallet_transactions (user_id, application_id)
   where type = 'redeem' and status <> 'reversed';
