@@ -69,6 +69,9 @@ export default async function AdminCrmDiagnosticsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {item.application_id ? <Link href={`/admin/applications/${item.application_id}`} className="font-mono text-xs font-bold text-blue-700">{item.application_id.slice(0, 8)}</Link> : <span className="text-slate-400">-</span>}
+                      {item.issue_type === "unmatched_razorpay_payment" ? (
+                        <Link href="/admin/payment-reconciliation" className="mt-2 block text-xs font-bold text-blue-700">Link to existing or create manually</Link>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.payment_id?.slice(0, 8) ?? "-"}</td>
                     <td className="px-4 py-3">
@@ -91,6 +94,9 @@ export default async function AdminCrmDiagnosticsPage() {
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{item.message}</p>
                 {item.application_id ? <Link href={`/admin/applications/${item.application_id}`} className="mt-3 inline-flex text-sm font-bold text-blue-700">Open application</Link> : null}
+                {item.issue_type === "unmatched_razorpay_payment" ? (
+                  <Link href="/admin/payment-reconciliation" className="mt-3 inline-flex text-sm font-bold text-blue-700">Create Application Manually or Link to Existing</Link>
+                ) : null}
               </article>
             ))}
           </div>

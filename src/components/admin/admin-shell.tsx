@@ -23,6 +23,7 @@ import {
   Phone,
   ReceiptText,
   Repeat2,
+  RefreshCcw,
   ShieldCheck,
   UserCheck,
   UserCog,
@@ -89,6 +90,7 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
     title: "Finance & Growth",
     items: [
       { href: "/admin/wallet", label: "DigiWallet", description: "Wallet balances", icon: WalletCards },
+      { href: "/admin/payment-reconciliation", label: "Payment Reconciliation", description: "Sync Razorpay", icon: RefreshCcw },
       { href: "/admin/crm-diagnostics", label: "CRM Diagnostics", description: "Payment data checks", icon: ListChecks },
       { href: "/admin/rewards-referrals", label: "Rewards & Referrals", description: "Wallet ledger and referral risk", icon: Gift },
       { href: "/admin/referrals", label: "Referrals", description: "Referral tracking", icon: Gift },

@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { getPaymentReconciliationSummary } from "@/lib/admin-payment-reconciliation";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getAdminApplications, getAdminCrmSummary, getAdminCustomerSummary, getAdminPaymentDiagnostics } from "@/lib/admin-crm";
@@ -21,13 +22,14 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   if (!isAdminRole(role)) redirect("/dashboard");
 
-  const [summary, customers, recentApplications, pendingApplications, failedApplications, diagnostics] = await Promise.all([
+  const [summary, customers, recentApplications, pendingApplications, failedApplications, diagnostics, reconciliation] = await Promise.all([
     getAdminCrmSummary(),
     getAdminCustomerSummary(),
     getAdminApplications({ pageSize: 8 }),
     getAdminApplications({ status: "payment_pending", pageSize: 6 }),
     getAdminApplications({ status: "failed_payment", pageSize: 6 }),
     getAdminPaymentDiagnostics(8),
+    getPaymentReconciliationSummary(),
   ]);
 
   const stats = [
@@ -42,6 +44,7 @@ export default async function AdminPage() {
     { title: "Wallet Redeemed", value: safeCurrency(summary.walletRedeemed), icon: "wallet" as const, tone: "blue" as const },
     { title: "Cashback Liability", value: safeCurrency(summary.cashbackLiability), icon: "gift" as const, tone: "orange" as const },
     { title: "New Customers Today", value: summary.newCustomersToday, icon: "users" as const, tone: "blue" as const },
+    { title: "Unmatched Razorpay", value: reconciliation.unmatchedCount, icon: "repeat" as const, tone: reconciliation.unmatchedCount ? "orange" as const : "green" as const },
   ];
 
   return (
@@ -51,8 +54,8 @@ export default async function AdminPage() {
         title="Control Room"
         description="Canonical application, payment, wallet, and customer numbers from one clean CRM data layer."
         action={
-          <Link href="/admin/crm-diagnostics" className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white">
-            Diagnostics
+          <Link href="/admin/payment-reconciliation" className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white">
+            Sync Razorpay
             <ArrowRight className="h-4 w-4" />
           </Link>
         }
@@ -78,6 +81,25 @@ export default async function AdminPage() {
             </div>
             <Link href="/admin/crm-diagnostics" className="inline-flex h-10 items-center justify-center rounded-full bg-orange-600 px-4 text-sm font-bold text-white">
               Review diagnostics
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {reconciliation.unmatchedCount ? (
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-rose-700">
+                <AlertTriangle className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-bold text-rose-950">{reconciliation.unmatchedCount} Razorpay payment{reconciliation.unmatchedCount === 1 ? "" : "s"} need reconciliation</p>
+                <p className="mt-1 text-sm text-rose-800">Payments exist in Razorpay but are not matched to CRM applications yet.</p>
+              </div>
+            </div>
+            <Link href="/admin/payment-reconciliation" className="inline-flex h-10 items-center justify-center rounded-full bg-rose-600 px-4 text-sm font-bold text-white">
+              Open reconciliation
             </Link>
           </div>
         </section>
