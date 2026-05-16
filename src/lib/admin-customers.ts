@@ -83,6 +83,13 @@ export type AdminCustomerRow = {
   cashbackBalance: number;
   referralCount: number;
   canOpenDetails: boolean;
+  debug?: {
+    profileId: string;
+    possibleIds: string[];
+    matchedWalletUserId: string | null;
+    matchedCustomerId: string | null;
+    matchedReferralCount: number;
+  };
 };
 
 export type AdminCustomersResult = {
@@ -105,6 +112,12 @@ function asArray<T>(value: unknown): T[] {
 
 function timestamp(value: string | null | undefined) {
   return safeDateValue(value)?.getTime() ?? 0;
+}
+
+function normalizeMobile(value: string | null | undefined) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.length > 10 ? digits.slice(-10) : digits;
 }
 
 function normalizeFilter(value: string | string[] | null | undefined): AdminCustomerFilter {
@@ -205,7 +218,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
   const authUsers = results[7].status === "fulfilled" ? results[7].value : [];
 
   const customersByUserId = new Map<string, CustomerRow[]>();
-  const firstCustomerByUserId = new Map<string, CustomerRow>();
+  const customersById = new Map(customers.map((customer) => [customer.id, customer]));
   const customerProfilesByUserId = new Map(customerProfiles.map((profile) => [profile.id, profile]));
   const walletsByUserId = new Map(wallets.filter((wallet) => wallet.user_id).map((wallet) => [String(wallet.user_id), wallet]));
   const authUsersById = new Map(authUsers.map((authUser) => [authUser.id, authUser]));
@@ -213,9 +226,20 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     if (referral.referrer_user_id) grouped[referral.referrer_user_id] = (grouped[referral.referrer_user_id] ?? 0) + 1;
     return grouped;
   }, {});
+  const walletPostedSums = walletTransactions.reduce<Record<string, { credits: number; debits: number }>>((grouped, transaction) => {
+    if (!transaction.user_id) return grouped;
+    if (transaction.status && !["posted", "active"].includes(transaction.status)) return grouped;
+    const current = grouped[transaction.user_id] ?? { credits: 0, debits: 0 };
+    const amount = Number(transaction.amount ?? 0);
+    if (transaction.direction === "credit") current.credits += amount;
+    if (transaction.direction === "debit") current.debits += amount;
+    grouped[transaction.user_id] = current;
+    return grouped;
+  }, {});
+
   const walletCreditSums = walletTransactions.reduce<Record<string, number>>((grouped, transaction) => {
     if (!transaction.user_id || transaction.direction !== "credit") return grouped;
-    if (transaction.status && ["reversed", "failed", "cancelled"].includes(transaction.status)) return grouped;
+    if (transaction.status && !["posted", "active"].includes(transaction.status)) return grouped;
     grouped[transaction.user_id] = (grouped[transaction.user_id] ?? 0) + Number(transaction.amount ?? 0);
     return grouped;
   }, {});
@@ -225,18 +249,69 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     const group = customersByUserId.get(customer.user_id) ?? [];
     group.push(customer);
     customersByUserId.set(customer.user_id, group);
-    if (!firstCustomerByUserId.has(customer.user_id)) {
-      firstCustomerByUserId.set(customer.user_id, customer);
-    }
   }
 
-  function applicationSummary(profileId: string) {
-    const linkedCustomerIds = new Set((customersByUserId.get(profileId) ?? []).map((customer) => customer.id));
-    linkedCustomerIds.add(profileId);
+  function getPossibleIds(profileId: string) {
+    const linkedCustomerIds = new Set<string>();
+    const possibleIds = new Set<string>([profileId]);
+
+    for (const customer of customersByUserId.get(profileId) ?? []) {
+      linkedCustomerIds.add(customer.id);
+      possibleIds.add(customer.id);
+    }
+
+    const customerProfile = customerProfilesByUserId.get(profileId);
+    if (customerProfile?.id) {
+      possibleIds.add(customerProfile.id);
+    }
+
+    for (const application of applications) {
+      if (application.user_id === profileId && application.customer_id) {
+        linkedCustomerIds.add(application.customer_id);
+        possibleIds.add(application.customer_id);
+      }
+    }
+
+    return {
+      possibleIds,
+      linkedCustomerIds,
+    };
+  }
+
+  function pickFirstByPossibleId<T extends { user_id: string | null }>(rowsById: Map<string, T>, possibleIds: Set<string>) {
+    for (const id of possibleIds) {
+      const row = rowsById.get(id);
+      if (row) return row;
+    }
+
+    return null;
+  }
+
+  function sumByPossibleId(values: Record<string, number>, possibleIds: Set<string>) {
+    let total = 0;
+    for (const id of possibleIds) {
+      total += values[id] ?? 0;
+    }
+    return total;
+  }
+
+  function walletBalanceFromTransactions(possibleIds: Set<string>) {
+    let total = 0;
+    for (const id of possibleIds) {
+      const sums = walletPostedSums[id];
+      if (sums) total += sums.credits - sums.debits;
+    }
+    return total;
+  }
+
+  function applicationSummary(possibleIds: Set<string>, linkedCustomerIds: Set<string>) {
     const deduped = Array.from(
       new Map(
         applications
-          .filter((application) => application.user_id === profileId || (application.customer_id ? linkedCustomerIds.has(application.customer_id) : false))
+          .filter((application) =>
+            (application.user_id ? possibleIds.has(application.user_id) : false) ||
+            (application.customer_id ? linkedCustomerIds.has(application.customer_id) || possibleIds.has(application.customer_id) : false),
+          )
           .map((application) => [application.id, application]),
       ).values(),
     ).sort((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
@@ -248,28 +323,50 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
   }
 
   const rows = profiles.map((profile) => {
-    const customer = firstCustomerByUserId.get(profile.id);
+    const { possibleIds, linkedCustomerIds } = getPossibleIds(profile.id);
+    const customer = (customersByUserId.get(profile.id) ?? [])[0] ?? Array.from(linkedCustomerIds).map((id) => customersById.get(id)).find(Boolean) ?? null;
     const customerProfile = customerProfilesByUserId.get(profile.id);
     const authUser = authUsersById.get(profile.id);
-    const wallet = walletsByUserId.get(profile.id);
-    const summary = applicationSummary(profile.id);
+    const wallet = pickFirstByPossibleId(walletsByUserId, possibleIds);
+    const summary = applicationSummary(possibleIds, linkedCustomerIds);
+    const referralCount = sumByPossibleId(referralCounts, possibleIds);
+    const walletTransactionBalance = walletBalanceFromTransactions(possibleIds);
+    const cashbackFromTransactions = sumByPossibleId(walletCreditSums, possibleIds);
+    const mobile = normalizeMobile(firstText(profile.mobile, customer?.mobile, customerProfile?.mobile, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone));
+
+    if (process.env.NODE_ENV === "development") {
+      console.info("[admin-customers] user fact mapping", {
+        profileId: profile.id,
+        possibleIds: Array.from(possibleIds),
+        matchedWalletUserId: wallet?.user_id ?? null,
+        matchedCustomerId: customer?.id ?? null,
+        matchedReferralCount: referralCount,
+      });
+    }
 
     return {
       id: profile.id,
       customerId: customer?.id ?? null,
       userId: profile.id,
       full_name: firstText(profile.full_name, customerProfile?.full_name, customer?.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, profile.email),
-      mobile: firstText(profile.mobile, customerProfile?.mobile, customer?.mobile, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone),
+      mobile,
       email: profile.email ?? customerProfile?.email ?? customer?.email ?? authUser?.email ?? null,
       role: "customer",
       source: "profile",
       created_at: profile.created_at ?? new Date(0).toISOString(),
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
-      walletBalance: Number(wallet?.balance ?? 0),
-      cashbackBalance: Number(wallet?.lifetime_earned ?? walletCreditSums[profile.id] ?? 0),
-      referralCount: referralCounts[profile.id] ?? 0,
+      walletBalance: Number(wallet?.balance ?? walletTransactionBalance ?? 0),
+      cashbackBalance: Number(wallet?.lifetime_earned ?? cashbackFromTransactions ?? 0),
+      referralCount,
       canOpenDetails: Boolean(customer?.id),
+      debug: {
+        profileId: profile.id,
+        possibleIds: Array.from(possibleIds),
+        matchedWalletUserId: wallet?.user_id ?? null,
+        matchedCustomerId: customer?.id ?? null,
+        matchedReferralCount: referralCount,
+      },
     } satisfies AdminCustomerRow;
   }).sort((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
 
