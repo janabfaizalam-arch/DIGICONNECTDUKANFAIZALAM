@@ -20,6 +20,7 @@ alter table public.applications
     'documents_pending',
     'payment_pending',
     'payment_failed',
+    'cancelled',
     'in_process',
     'in_progress',
     'submitted',
@@ -32,7 +33,14 @@ alter table public.applications
 
 alter table public.applications
   add constraint applications_payment_status_check
-  check (payment_status in ('pending', 'verified', 'failed', 'refunded'));
+  check (payment_status in ('unpaid', 'pending', 'verified', 'paid', 'failed', 'refunded'));
+
+alter table public.payments
+  drop constraint if exists payments_status_check;
+
+alter table public.payments
+  add constraint payments_status_check
+  check (status in ('unpaid', 'pending', 'verified', 'paid', 'failed', 'refunded'));
 
 update public.applications
 set

@@ -7,6 +7,7 @@ export const applicationStatuses = [
   "documents_pending",
   "payment_pending",
   "payment_failed",
+  "cancelled",
   "in_process",
   "in_progress",
   "submitted",
@@ -14,7 +15,7 @@ export const applicationStatuses = [
   "rejected",
 ] as const;
 
-export const paymentStatuses = ["pending", "verified", "failed", "refunded"] as const;
+export const paymentStatuses = ["unpaid", "pending", "verified", "paid", "failed", "refunded"] as const;
 
 export type ApplicationStatus = (typeof applicationStatuses)[number];
 export type PaymentStatus = (typeof paymentStatuses)[number];
@@ -124,6 +125,7 @@ export const statusLabels: Record<ApplicationStatus, string> = {
   documents_pending: "Documents Pending",
   payment_pending: "Payment Pending",
   payment_failed: "Payment Failed",
+  cancelled: "Cancelled",
   in_process: "In Progress",
   in_progress: "In Progress",
   submitted: "In Progress",
@@ -132,8 +134,10 @@ export const statusLabels: Record<ApplicationStatus, string> = {
 };
 
 export const paymentStatusLabels: Record<PaymentStatus, string> = {
+  unpaid: "Unpaid",
   pending: "Pending",
   verified: "Paid",
+  paid: "Paid",
   failed: "Failed",
   refunded: "Refunded",
 };

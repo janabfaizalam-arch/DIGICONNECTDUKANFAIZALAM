@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { ExternalLink, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, Search } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { AdminApplicationInlineUpdate } from "@/components/admin/admin-application-inline-update";
@@ -12,66 +13,63 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 
-function formatDate(date: string) {
-  return safeDateTime(date);
+const statusFilters = [
+  { value: "all", label: "All" },
+  { value: "payment_pending", label: "Payment Pending" },
+  { value: "paid_submitted", label: "Paid / Submitted" },
+  { value: "in_process", label: "In Process" },
+  { value: "completed", label: "Completed" },
+  { value: "failed_payment", label: "Failed Payment" },
+  { value: "cancelled_refunded", label: "Cancelled / Refunded" },
+];
+
+function pageHref(page: number, query: string, status: string) {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set("q", query.trim());
+  if (status && status !== "all") params.set("status", status);
+  if (page > 1) params.set("page", String(page));
+  const suffix = params.toString();
+  return suffix ? `/admin/applications?${suffix}` : "/admin/applications";
 }
 
-function formatCurrency(amount?: number | null) {
-  return safeCurrency(amount);
-}
-
-export function AdminApplications({ rows, staff = [], initialSearch = "" }: { rows: AdminApplicationRow[]; agents?: PortalUser[]; staff?: PortalUser[]; initialSearch?: string }) {
-  const applicationRows = rows.filter((row) => row.source === "application");
+export function AdminApplications({
+  rows,
+  staff = [],
+  total,
+  page,
+  pageSize,
+  initialSearch = "",
+  initialStatus = "all",
+}: {
+  rows: AdminApplicationRow[];
+  agents?: PortalUser[];
+  staff?: PortalUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  initialSearch?: string;
+  initialStatus?: string;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState(initialSearch);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState("all");
-  const [serviceFilter, setServiceFilter] = useState("all");
-  const [staffFilter, setStaffFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [status, setStatus] = useState(initialStatus || "all");
   const [openingId, setOpeningId] = useState<string | null>(null);
   const staffOptions = staff.map((item) => ({ id: item.id, label: item.full_name || item.email }));
-  const services = useMemo(() => Array.from(new Set(applicationRows.map((row) => row.service))).sort(), [applicationRows]);
-  const filteredRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    return applicationRows.filter((row) => {
-      const matchesSearch =
-        !query ||
-        row.customer_name.toLowerCase().includes(query) ||
-        row.mobile.toLowerCase().includes(query) ||
-        row.service.toLowerCase().includes(query) ||
-        String(row.application_id ?? row.id).toLowerCase().includes(query);
-      const matchesStatus =
-        statusFilter === "all" ||
-        row.application_status === statusFilter ||
-        (statusFilter === "paid_submitted" && ["verified"].includes(String(row.payment_status ?? ""))) ||
-        (statusFilter === "pending" && ["documents_pending", "submitted", "pending"].includes(row.application_status)) ||
-        (statusFilter === "in_progress" && ["documents_pending", "in_process", "submitted", "in_progress"].includes(row.application_status)) ||
-        (statusFilter === "failed_payment" && (row.application_status === "payment_failed" || row.payment_status === "failed"));
-      const matchesPayment =
-        paymentFilter === "all" ||
-        row.payment_status === paymentFilter ||
-        (paymentFilter === "paid" && row.payment_status === "verified");
-      const matchesService = serviceFilter === "all" || row.service === serviceFilter;
-      const matchesStaff = staffFilter === "all" || (staffFilter === "none" ? !row.assigned_staff_id : row.assigned_staff_id === staffFilter);
-      const rowDate = row.created_at.slice(0, 10);
-      const matchesDateFrom = !dateFrom || rowDate >= dateFrom;
-      const matchesDateTo = !dateTo || rowDate <= dateTo;
-
-      return matchesSearch && matchesStatus && matchesPayment && matchesService && matchesStaff && matchesDateFrom && matchesDateTo;
+  function submitFilters(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    startTransition(() => {
+      router.push(pageHref(1, search, status));
     });
-  }, [applicationRows, dateFrom, dateTo, paymentFilter, search, serviceFilter, staffFilter, statusFilter]);
-  const hasFilters = search || statusFilter !== "all" || paymentFilter !== "all" || serviceFilter !== "all" || staffFilter !== "all" || dateFrom || dateTo;
+  }
 
-  function clearFilters() {
-    setSearch("");
-    setStatusFilter("all");
-    setPaymentFilter("all");
-    setServiceFilter("all");
-    setStaffFilter("all");
-    setDateFrom("");
-    setDateTo("");
+  function updateStatus(value: string) {
+    setStatus(value);
+    startTransition(() => {
+      router.push(pageHref(1, search, value));
+    });
   }
 
   return (
@@ -79,110 +77,83 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
       <AdminPageHeader
         eyebrow="Applications"
         title="Applications"
-        description="Track customer applications, Razorpay payments, uploaded documents, and final status."
+        description="One row per application with canonical payment status, Razorpay IDs, and server-side search."
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Total Applications" value={applicationRows.length} icon="fileText" tone="blue" />
-        <AdminStatCard title="Payment Pending" value={applicationRows.filter((row) => row.application_status === "payment_pending" || row.payment_status === "pending").length} icon="receiptText" tone="orange" />
-        <AdminStatCard title="Completed" value={applicationRows.filter((row) => row.application_status === "completed").length} icon="fileText" tone="green" />
+        <AdminStatCard title="Showing" value={rows.length} icon="fileText" tone="blue" />
+        <AdminStatCard title="Total Match" value={total} icon="listChecks" tone="green" />
+        <AdminStatCard title="Payment Pending" value={rows.filter((row) => row.application_status === "payment_pending" || row.payment_status === "pending").length} icon="receiptText" tone="orange" />
       </section>
 
-      <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_150px_150px_190px_170px_150px_150px_auto]">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <form onSubmit={submitFilters} className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, mobile, service..." className="h-11 pl-11" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search name, mobile, email, application id, service, Razorpay..."
+              className="h-11 pl-11"
+            />
           </label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger aria-label="Status filter">
+          <Select value={status} onValueChange={updateStatus} disabled={isPending}>
+            <SelectTrigger aria-label="Status filter" className="h-11">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="payment_pending">Payment Pending</SelectItem>
-              <SelectItem value="paid_submitted">Paid/Submitted</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="failed_payment">Failed Payment</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-            <SelectTrigger aria-label="Payment filter">
-              <SelectValue placeholder="Payment" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All payment</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-              <SelectItem value="refunded">Refunded</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={serviceFilter} onValueChange={setServiceFilter}>
-            <SelectTrigger aria-label="Service filter">
-              <SelectValue placeholder="Service" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All services</SelectItem>
-              {services.map((service) => (
-                <SelectItem key={service} value={service}>{service}</SelectItem>
+              {statusFilters.map((item) => (
+                <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={staffFilter} onValueChange={setStaffFilter}>
-            <SelectTrigger aria-label="Staff filter">
-              <SelectValue placeholder="Staff" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All staff</SelectItem>
-              <SelectItem value="none">Unassigned</SelectItem>
-              {staffOptions.map((staffMember) => (
-                <SelectItem key={staffMember.id} value={staffMember.id}>{staffMember.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Date from" />
-          <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} aria-label="Date to" />
-          <button type="button" onClick={clearFilters} disabled={!hasFilters} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-700 disabled:opacity-50">
-            <RotateCcw className="h-4 w-4" />
-            Clear
+          <button type="submit" disabled={isPending} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-bold text-white disabled:opacity-60">
+            {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {isPending ? "Searching..." : "Search"}
           </button>
-        </div>
+        </form>
 
-        {!filteredRows.length ? (
+        {!rows.length ? (
           <div className="mt-5">
-            <AdminEmptyState title={applicationRows.length ? "No matching applications" : "No applications yet"} description={applicationRows.length ? "Try a different search or filter." : "New customer applications will appear here."} />
+            <AdminEmptyState title="No applications found" description="Try a different search or status filter." />
           </div>
         ) : null}
 
-        <div className="mt-5 hidden overflow-hidden rounded-2xl border border-slate-100 lg:block">
+        <div className="mt-5 hidden overflow-hidden rounded-2xl border border-slate-100 xl:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
               <tr>
+                <th className="px-4 py-3">Application</th>
                 <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Service</th>
-                <th className="px-4 py-3">Docs / Payment</th>
-                <th className="px-4 py-3">Update</th>
-                <th className="px-4 py-3">Razorpay</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Payment</th>
+                <th className="px-4 py-3 text-right">Total</th>
+                <th className="px-4 py-3 text-right">Fresh Paid</th>
+                <th className="px-4 py-3 text-right">Wallet</th>
                 <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3">Update</th>
                 <th className="px-4 py-3">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRows.map((row) => (
+              {rows.map((row) => (
                 <tr key={row.id} className="bg-white">
-                  <td className="px-4 py-3 font-bold text-slate-950">{row.customer_name}</td>
-                  <td className="px-4 py-3 font-mono text-slate-700">{row.mobile || "-"}</td>
-                  <td className="px-4 py-3 text-slate-700">{row.service}</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <AdminStatusBadge status={row.uploaded_files.length ? "documents_uploaded" : "documents_pending"} />
-                      <AdminStatusBadge status={row.payment_status ?? "pending"} />
-                    </div>
+                    <p className="font-mono text-xs font-bold text-slate-800">{(row.application_id ?? row.id).slice(0, 8)}</p>
+                    {row.razorpay_payment_id ? <p className="mt-1 max-w-36 truncate font-mono text-[11px] text-slate-500">{row.razorpay_payment_id}</p> : null}
                   </td>
+                  <td className="px-4 py-3">
+                    <p className="font-bold text-slate-950">{row.customer_name}</p>
+                    <p className="mt-1 font-mono text-xs text-slate-500">{row.mobile || row.customer_email || "-"}</p>
+                  </td>
+                  <td className="px-4 py-3 max-w-44 truncate text-slate-700">{row.service}</td>
+                  <td className="px-4 py-3"><AdminStatusBadge status={row.application_status} /></td>
+                  <td className="px-4 py-3"><AdminStatusBadge status={row.payment_status} /></td>
+                  <td className="px-4 py-3 text-right font-bold text-slate-900">{safeCurrency(row.total_amount)}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{safeCurrency(row.fresh_paid_amount ?? row.payment_amount)}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{safeCurrency(row.wallet_redeemed_amount)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{safeDateTime(row.created_at)}</td>
                   <td className="px-4 py-3">
                     {row.application_id ? (
                       <AdminApplicationInlineUpdate
@@ -194,26 +165,8 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
                     ) : null}
                   </td>
                   <td className="px-4 py-3">
-                    {row.razorpay_payment_id || row.razorpay_order_id ? (
-                      <div className="max-w-48 space-y-1">
-                        <p className="truncate font-mono text-xs font-bold text-slate-800">{row.razorpay_payment_id ?? row.razorpay_order_id}</p>
-                        <p className="text-xs font-bold capitalize text-slate-500">
-                          {formatCurrency(row.payment_amount)}
-                          {row.payment_method ? ` - ${row.payment_method}` : ""}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatDate(row.created_at)}</td>
-                  <td className="px-4 py-3">
                     {row.application_id ? (
-                      <Link
-                        href={`/admin/applications/${row.application_id}`}
-                        onClick={() => setOpeningId(row.id)}
-                        className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white"
-                      >
+                      <Link href={`/admin/applications/${row.application_id}`} onClick={() => setOpeningId(row.id)} className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white">
                         {openingId === row.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
                         {openingId === row.id ? "Opening..." : "View"}
                       </Link>
@@ -225,13 +178,13 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
           </table>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:hidden">
-          {filteredRows.map((row) => (
+        <div className="mt-5 grid gap-3 xl:hidden">
+          {rows.map((row) => (
             <article key={row.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-slate-950">{row.customer_name}</p>
-                  <p className="mt-1 font-mono text-sm text-slate-600">{row.mobile || "-"}</p>
+                  <p className="mt-1 font-mono text-sm text-slate-600">{row.mobile || row.customer_email || "-"}</p>
                 </div>
                 <AdminStatusBadge status={row.application_status} />
               </div>
@@ -239,37 +192,50 @@ export function AdminApplications({ rows, staff = [], initialSearch = "" }: { ro
               <div className="mt-3 flex flex-wrap gap-2">
                 <AdminStatusBadge status={row.payment_status} />
                 <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                  {row.assigned_staff_name || "Unassigned"}
+                  Fresh {safeCurrency(row.fresh_paid_amount ?? row.payment_amount)}
                 </span>
-                {row.razorpay_payment_id ? (
-                  <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                    Razorpay {row.razorpay_payment_id}
-                  </span>
-                ) : null}
+                <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                  Wallet {safeCurrency(row.wallet_redeemed_amount)}
+                </span>
               </div>
-              <p className="mt-3 font-mono text-xs text-slate-500">{formatDate(row.created_at)}</p>
+              <p className="mt-3 font-mono text-xs text-slate-500">{safeDateTime(row.created_at)}</p>
               {row.application_id ? (
                 <div className="mt-4">
-                  <AdminApplicationInlineUpdate
-                    applicationId={row.application_id}
-                    status={row.application_status}
-                    assignedStaffId={row.assigned_staff_id}
-                    staffOptions={staffOptions}
-                  />
+                  <AdminApplicationInlineUpdate applicationId={row.application_id} status={row.application_status} assignedStaffId={row.assigned_staff_id} staffOptions={staffOptions} />
                 </div>
               ) : null}
               {row.application_id ? (
-                <Link
-                  href={`/admin/applications/${row.application_id}`}
-                  onClick={() => setOpeningId(row.id)}
-                  className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white"
-                >
+                <Link href={`/admin/applications/${row.application_id}`} onClick={() => setOpeningId(row.id)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
                   {openingId === row.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
                   {openingId === row.id ? "Opening..." : "View Details"}
                 </Link>
               ) : null}
             </article>
           ))}
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-500">
+            Page {page} of {totalPages} · {total} matching applications
+          </p>
+          <div className="flex gap-2">
+            <Link
+              href={pageHref(Math.max(1, page - 1), search, status)}
+              aria-disabled={page <= 1}
+              className="inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold text-slate-700 aria-disabled:pointer-events-none aria-disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Link>
+            <Link
+              href={pageHref(Math.min(totalPages, page + 1), search, status)}
+              aria-disabled={page >= totalPages}
+              className="inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold text-slate-700 aria-disabled:pointer-events-none aria-disabled:opacity-40"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
     </div>

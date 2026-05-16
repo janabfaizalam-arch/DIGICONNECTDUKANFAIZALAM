@@ -6,7 +6,11 @@ import { getAdminApplicationRows } from "@/lib/admin-applications";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function AdminApplicationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
@@ -18,8 +22,23 @@ export default async function AdminApplicationsPage({ searchParams }: { searchPa
     redirect("/dashboard");
   }
 
-  const { rows, staff } = await getAdminApplicationRows();
-  const { q } = await searchParams;
+  const { q, status, page } = await searchParams;
+  const { rows, staff, total, page: currentPage, pageSize } = await getAdminApplicationRows({
+    query: q,
+    status,
+    page: Number(page ?? 1),
+    pageSize: 25,
+  });
 
-  return <AdminApplications rows={rows} staff={staff} initialSearch={q ?? ""} />;
+  return (
+    <AdminApplications
+      rows={rows}
+      staff={staff}
+      total={total}
+      page={currentPage}
+      pageSize={pageSize}
+      initialSearch={q ?? ""}
+      initialStatus={status ?? "all"}
+    />
+  );
 }

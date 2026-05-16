@@ -49,6 +49,10 @@ export type AdminApplicationRow = {
   razorpay_order_id?: string | null;
   razorpay_payment_id?: string | null;
   payment_amount?: number | null;
+  total_amount?: number | null;
+  fresh_paid_amount?: number | null;
+  wallet_redeemed_amount?: number | null;
+  customer_email?: string | null;
   payment_method?: string | null;
   paid_at?: string | null;
   commission_amount?: number | null;
