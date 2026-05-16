@@ -1,5 +1,6 @@
 import { safeDateValue } from "@/lib/admin-format";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { resolveUserWalletFacts } from "@/lib/wallet-resolver";
 
 const PAGE_SIZE = 500;
 const AUTH_PAGE_SIZE = 100;
@@ -41,6 +42,7 @@ type CustomerProfileRow = {
 type AuthUserRow = {
   id: string;
   email?: string;
+  phone?: string | null;
   user_metadata?: {
     full_name?: string;
     name?: string;
@@ -55,13 +57,6 @@ type WalletRow = {
   lifetime_earned?: number | null;
 };
 
-type WalletTransactionRow = {
-  user_id: string | null;
-  direction?: string | null;
-  amount?: number | null;
-  status?: string | null;
-};
-
 type ReferralRow = {
   referrer_user_id: string | null;
   referred_user_id?: string | null;
@@ -74,17 +69,6 @@ type ApplicationLinkRow = {
   user_id: string | null;
   status: string | null;
   created_at: string;
-};
-
-type LegacyWalletRow = {
-  id?: string | null;
-  user_id?: string | null;
-  customer_id?: string | null;
-  balance?: number | null;
-  amount?: number | null;
-  lifetime_earned?: number | null;
-  total_cashback_earned?: number | null;
-  cashback_balance?: number | null;
 };
 
 export type AdminCustomerFilter = "all" | "with-applications" | "signed-up";
@@ -239,14 +223,9 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       supabase.from("applications").select("id, customer_id, user_id, status, created_at").order("created_at", { ascending: false }).range(from, to),
     ),
     safeRangeQuery<WalletRow>("reward_wallets", (from, to) => supabase.from("reward_wallets").select("user_id, balance, lifetime_earned").range(from, to)),
-    safeRangeQuery<WalletTransactionRow>("wallet_transactions", (from, to) => supabase.from("wallet_transactions").select("user_id, direction, amount, status").range(from, to)),
     safeRangeQuery<ReferralRow>("referral_events", (from, to) => supabase.from("referral_events").select("referrer_user_id").range(from, to)),
     safeRangeQuery<ReferralRow>("referrals", (from, to) => supabase.from("referrals").select("*").range(from, to)),
     safeAuthUsers(supabase),
-    safeRangeQuery<LegacyWalletRow>("wallets", (from, to) => supabase.from("wallets").select("*").range(from, to)),
-    safeRangeQuery<WalletTransactionRow>("reward_transactions", (from, to) => supabase.from("reward_transactions").select("*").range(from, to)),
-    safeRangeQuery<LegacyWalletRow>("customer_wallets", (from, to) => supabase.from("customer_wallets").select("*").range(from, to)),
-    safeRangeQuery<LegacyWalletRow>("cashback_wallets", (from, to) => supabase.from("cashback_wallets").select("*").range(from, to)),
   ]);
 
   const profiles = results[0].status === "fulfilled" ? results[0].value : [];
@@ -254,14 +233,9 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
   const customerProfiles = results[2].status === "fulfilled" ? results[2].value : [];
   const applications = results[3].status === "fulfilled" ? results[3].value : [];
   const wallets = results[4].status === "fulfilled" ? results[4].value : [];
-  const walletTransactions = results[5].status === "fulfilled" ? results[5].value : [];
-  const referrals = results[6].status === "fulfilled" ? results[6].value : [];
-  const legacyReferrals = results[7].status === "fulfilled" ? results[7].value : [];
-  const authUsers = results[8].status === "fulfilled" ? results[8].value : [];
-  const legacyWallets = results[9].status === "fulfilled" ? results[9].value : [];
-  const legacyRewardTransactions = results[10].status === "fulfilled" ? results[10].value : [];
-  const customerWallets = results[11].status === "fulfilled" ? results[11].value : [];
-  const cashbackWallets = results[12].status === "fulfilled" ? results[12].value : [];
+  const referrals = results[5].status === "fulfilled" ? results[5].value : [];
+  const legacyReferrals = results[6].status === "fulfilled" ? results[6].value : [];
+  const authUsers = results[7].status === "fulfilled" ? results[7].value : [];
   const walletRpcRows = await Promise.all(
     profiles.map((profile) =>
       safeRpc<WalletRow>("create_reward_wallet_if_missing", () => supabase.rpc("create_reward_wallet_if_missing", { p_user_id: profile.id })),
@@ -284,34 +258,6 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     const referrerId = referral.referrer_user_id ?? referral.referrer_id;
     if (referrerId) referralCounts[referrerId] = (referralCounts[referrerId] ?? 0) + 1;
   }
-  const walletPostedSums = walletTransactions.reduce<Record<string, { credits: number; debits: number }>>((grouped, transaction) => {
-    if (!transaction.user_id) return grouped;
-    if (transaction.status && !["posted", "active"].includes(transaction.status)) return grouped;
-    const current = grouped[transaction.user_id] ?? { credits: 0, debits: 0 };
-    const amount = Number(transaction.amount ?? 0);
-    if (transaction.direction === "credit") current.credits += amount;
-    if (transaction.direction === "debit") current.debits += amount;
-    grouped[transaction.user_id] = current;
-    return grouped;
-  }, {});
-
-  const walletCreditSums = walletTransactions.reduce<Record<string, number>>((grouped, transaction) => {
-    if (!transaction.user_id || transaction.direction !== "credit") return grouped;
-    if (transaction.status && !["posted", "active"].includes(transaction.status)) return grouped;
-    grouped[transaction.user_id] = (grouped[transaction.user_id] ?? 0) + Number(transaction.amount ?? 0);
-    return grouped;
-  }, {});
-  for (const transaction of legacyRewardTransactions) {
-    if (!transaction.user_id || transaction.direction !== "credit") continue;
-    if (transaction.status && !["posted", "active", "credited"].includes(transaction.status)) continue;
-    walletCreditSums[transaction.user_id] = (walletCreditSums[transaction.user_id] ?? 0) + Number(transaction.amount ?? 0);
-  }
-  const legacyWalletById = new Map<string, LegacyWalletRow>();
-  for (const wallet of [...legacyWallets, ...customerWallets, ...cashbackWallets]) {
-    const key = wallet.user_id ?? wallet.customer_id;
-    if (key && !legacyWalletById.has(key)) legacyWalletById.set(key, wallet);
-  }
-
   for (const customer of customers) {
     if (!customer.user_id) continue;
     const group = customersByUserId.get(customer.user_id) ?? [];
@@ -366,23 +312,6 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     return total;
   }
 
-  function walletBalanceFromTransactions(possibleIds: Set<string>) {
-    let total = 0;
-    for (const id of possibleIds) {
-      const sums = walletPostedSums[id];
-      if (sums) total += sums.credits - sums.debits;
-    }
-    return total;
-  }
-
-  function pickLegacyWallet(possibleIds: Set<string>) {
-    for (const id of possibleIds) {
-      const wallet = legacyWalletById.get(id);
-      if (wallet) return wallet;
-    }
-    return null;
-  }
-
   function applicationSummary(possibleIds: Set<string>, linkedCustomerIds: Set<string>) {
     const deduped = Array.from(
       new Map(
@@ -401,18 +330,19 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     };
   }
 
-  const rows = profiles.map((profile) => {
+  const rows = await Promise.all(profiles.map(async (profile) => {
     const { possibleIds, linkedCustomerIds } = getPossibleIds(profile.id);
     const customer = (customersByUserId.get(profile.id) ?? [])[0] ?? Array.from(linkedCustomerIds).map((id) => customersById.get(id)).find(Boolean) ?? null;
     const customerProfile = customerProfilesByUserId.get(profile.id);
     const authUser = authUsersById.get(profile.id);
     const wallet = pickFirstByPossibleId(walletsByUserId, possibleIds);
-    const legacyWallet = pickLegacyWallet(possibleIds);
     const summary = applicationSummary(possibleIds, linkedCustomerIds);
-    const referralCount = sumByPossibleId(referralCounts, possibleIds);
-    const walletTransactionBalance = walletBalanceFromTransactions(possibleIds);
-    const cashbackFromTransactions = sumByPossibleId(walletCreditSums, possibleIds);
-    const mobile = normalizeMobile(firstText(profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone));
+    const walletFacts = await resolveUserWalletFacts({
+      userIds: Array.from(possibleIds),
+      customerIds: Array.from(linkedCustomerIds),
+    });
+    const referralCount = walletFacts.referralsCount || sumByPossibleId(referralCounts, possibleIds);
+    const mobile = normalizeMobile(firstText(authUser?.phone, profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone));
 
     if (process.env.NODE_ENV === "development") {
       console.info("[admin-customers] user fact mapping", {
@@ -421,6 +351,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
         matchedWalletUserId: wallet?.user_id ?? null,
         matchedCustomerId: customer?.id ?? null,
         matchedReferralCount: referralCount,
+        walletSourceUsed: walletFacts.sourceUsed,
       });
     }
 
@@ -436,8 +367,8 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       created_at: profile.created_at ?? new Date(0).toISOString(),
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
-      walletBalance: Number(wallet?.balance ?? legacyWallet?.balance ?? legacyWallet?.amount ?? walletTransactionBalance ?? 0),
-      cashbackBalance: Number(wallet?.lifetime_earned ?? legacyWallet?.lifetime_earned ?? legacyWallet?.total_cashback_earned ?? legacyWallet?.cashback_balance ?? cashbackFromTransactions ?? 0),
+      walletBalance: walletFacts.walletBalance,
+      cashbackBalance: walletFacts.cashbackEarned,
       referralCount,
       canOpenDetails: Boolean(customer?.id),
       debug: {
@@ -448,7 +379,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
         matchedReferralCount: referralCount,
       },
     } satisfies AdminCustomerRow;
-  }).sort((a, b) => timestamp(b.created_at) - timestamp(a.created_at));
+  })).then((items) => items.sort((a, b) => timestamp(b.created_at) - timestamp(a.created_at)));
 
   const stats = {
     totalCustomers: rows.length,

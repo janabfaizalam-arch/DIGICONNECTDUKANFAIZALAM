@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
+import { resolveUserWalletFacts } from "@/lib/wallet-resolver";
 import {
   calculateMaxRedeem,
   processRewardsOnApplicationCompleted,
@@ -277,7 +278,7 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
     reference_id: transaction.application_id ?? null,
     created_at: transaction.created_at,
   })) as RewardTransaction[];
-  const wallet = walletDataRow
+  let wallet: Wallet | null = walletDataRow
     ? {
         ...walletDataRow,
         balance_points: Number(walletDataRow.balance ?? 0),
@@ -288,14 +289,43 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
         nearest_expiry_at: null,
       }
     : null;
+  const resolvedFacts = await resolveUserWalletFacts({ userIds: [userId] });
+
+  if (resolvedFacts.sourceUsed !== "none" && (!wallet || Number(wallet.balance_points ?? 0) === 0)) {
+    const now = new Date().toISOString();
+    wallet = {
+      id: walletDataRow?.id ?? `resolved-${userId}`,
+      user_id: userId,
+      balance: resolvedFacts.walletBalance,
+      balance_points: resolvedFacts.walletBalance,
+      total_reward_earned: resolvedFacts.cashbackEarned,
+      total_reward_redeemed: Number(walletDataRow?.lifetime_redeemed ?? 0),
+      total_cashback_earned: resolvedFacts.cashbackEarned,
+      total_cashback_used: Number(walletDataRow?.lifetime_redeemed ?? 0),
+      nearest_expiry_at: null,
+      frozen: walletDataRow?.frozen,
+      suspicious: walletDataRow?.suspicious,
+      admin_note: walletDataRow?.admin_note,
+      created_at: walletDataRow?.created_at ?? now,
+      updated_at: walletDataRow?.updated_at ?? now,
+    };
+  }
+
+  const resolvedReferralSummary = referralSummary && resolvedFacts.referralsCount > referralSummary.total
+    ? {
+        ...referralSummary,
+        total: resolvedFacts.referralsCount,
+        pending: Math.max(referralSummary.pending, resolvedFacts.referralsCount - referralSummary.completed),
+      }
+    : referralSummary;
 
   return {
     wallet,
     transactions,
-    cashbackEarned: toNumber(wallet?.total_reward_earned),
+    cashbackEarned: Math.max(toNumber(wallet?.total_reward_earned), resolvedFacts.cashbackEarned),
     cashbackUsed: toNumber(wallet?.total_reward_redeemed),
     expiringSoonAmount: 0,
-    referralSummary,
+    referralSummary: resolvedReferralSummary,
   };
 }
 
