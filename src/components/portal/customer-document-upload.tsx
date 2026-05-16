@@ -1,9 +1,9 @@
 "use client";
 
 import { type FormEvent, useRef, useState } from "react";
-import { LoaderCircle, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/loading";
 
 const maxFileSize = 5 * 1024 * 1024;
 
@@ -24,6 +24,7 @@ export function CustomerDocumentUpload({ applicationId }: CustomerDocumentUpload
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isUploading) return;
     setMessage("");
     setError("");
 
@@ -65,7 +66,8 @@ export function CustomerDocumentUpload({ applicationId }: CustomerDocumentUpload
   }
 
   return (
-    <form ref={formRef} onSubmit={handleUpload} className="mt-3 grid gap-3 rounded-2xl bg-orange-50 p-3">
+    <form ref={formRef} onSubmit={handleUpload} className="mt-3 grid gap-3 rounded-2xl bg-orange-50 p-3" aria-busy={isUploading}>
+      <fieldset disabled={isUploading} className="grid gap-3">
       <p className="text-sm font-bold text-orange-800">Upload requested documents</p>
       <input
         type="text"
@@ -82,10 +84,10 @@ export function CustomerDocumentUpload({ applicationId }: CustomerDocumentUpload
         className="text-sm text-slate-700"
         disabled={isUploading}
       />
-      <Button type="submit" size="default" disabled={isUploading} className="h-10 rounded-xl">
-        {isUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {isUploading ? "Uploading..." : "Upload Document"}
-      </Button>
+      <FormSubmitButton size="default" loading={isUploading} loadingText="Uploading..." icon={<Upload className="h-4 w-4" />} className="h-10 rounded-xl">
+        Upload Document
+      </FormSubmitButton>
+      </fieldset>
       {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
     </form>

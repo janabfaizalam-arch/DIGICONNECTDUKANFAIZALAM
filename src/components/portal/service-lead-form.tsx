@@ -1,11 +1,11 @@
 "use client";
 
 import { type FormEvent, useState, useTransition } from "react";
-import { LoaderCircle, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Textarea } from "@/components/ui/textarea";
 import { trackLeadSubmit } from "@/lib/google-analytics";
 import { trackLead } from "@/lib/meta-pixel";
@@ -27,6 +27,7 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPending) return;
 
     startTransition(async () => {
       try {
@@ -57,7 +58,8 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="space-y-4">
       <Input
         value={form.name}
         onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
@@ -82,10 +84,10 @@ export function ServiceLeadForm({ serviceTitle }: ServiceLeadFormProps) {
         placeholder="Message"
         className="min-h-28"
       />
-      <Button type="submit" size="lg" disabled={isPending} className="w-full rounded-2xl">
-        {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+      <FormSubmitButton size="lg" loading={isPending} loadingText="Submitting..." icon={<Send className="h-5 w-5" />} className="w-full rounded-2xl">
         Submit Request
-      </Button>
+      </FormSubmitButton>
+      </fieldset>
     </form>
   );
 }

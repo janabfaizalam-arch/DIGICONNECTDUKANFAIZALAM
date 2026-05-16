@@ -32,6 +32,12 @@ function getSafeReceipt(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 40);
 }
 
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as CreateOrderBody | null;
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
       receipt,
     });
 
-    console.info("[razorpay/create-order] Order created", {
+    devInfo("[razorpay/create-order] Order created", {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,

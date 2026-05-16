@@ -51,6 +51,12 @@ function isRateLimited(key: string) {
   return current.count > maxRequestsPerWindow;
 }
 
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as ForgotPasswordBody | null;
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
       redirectTo,
     });
 
-    console.info("[auth/forgot-password] Reset email requested", {
+    devInfo("[auth/forgot-password] Reset email requested", {
       emailDomain: getEmailDomain(email),
       redirectTo,
       errorCode: error?.code ?? null,

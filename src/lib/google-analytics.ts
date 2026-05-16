@@ -20,6 +20,10 @@ function debugAnalytics(message: string, details?: GoogleAnalyticsEventParameter
     return;
   }
 
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
   console.debug(`[ga4] ${message}`, details ?? {});
 }
 

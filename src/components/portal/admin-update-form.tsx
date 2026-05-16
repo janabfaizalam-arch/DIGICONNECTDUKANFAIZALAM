@@ -2,11 +2,11 @@
 
 import { type FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -56,6 +56,7 @@ export function AdminUpdateForm({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPending) return;
     const formData = new FormData(event.currentTarget);
     formData.set("status", status);
 
@@ -80,7 +81,8 @@ export function AdminUpdateForm({
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="space-y-4">
       <Select value={status} onValueChange={(value) => setStatus(value as ApplicationStatus)}>
         <SelectTrigger aria-label="Work status">
           <SelectValue />
@@ -139,10 +141,10 @@ export function AdminUpdateForm({
       <Textarea name="note" placeholder="Add note to history" className="min-h-24" />
       <Input name="finalDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" />
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+      <FormSubmitButton loading={isPending} loadingText="Updating..." className="w-full">
         Update Application
-      </Button>
+      </FormSubmitButton>
+      </fieldset>
 
       {whatsappNumber ? (
         <a

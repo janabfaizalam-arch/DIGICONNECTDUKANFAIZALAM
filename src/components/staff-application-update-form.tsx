@@ -1,9 +1,9 @@
 "use client";
 
 import { type FormEvent, useRef, useState } from "react";
-import { LoaderCircle, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { applicationStatuses, type ApplicationStatus } from "@/lib/portal-data";
 
 type StaffApplicationUpdateFormProps = {
@@ -31,6 +31,7 @@ export function StaffApplicationUpdateForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSaving) return;
     setSuccessMessage("");
     setErrorMessage("");
     setIsSaving(true);
@@ -63,7 +64,8 @@ export function StaffApplicationUpdateForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" aria-busy={isSaving}>
+      <fieldset disabled={isSaving} className="space-y-4">
       <label className="grid gap-2">
         <span className="text-sm font-bold text-slate-700">Current status</span>
         <select
@@ -111,10 +113,10 @@ export function StaffApplicationUpdateForm({
         <input name="finalDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="text-sm text-slate-700" />
       </label>
 
-      <Button type="submit" className="h-12 w-full rounded-2xl" disabled={isSaving}>
-        {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        {isSaving ? "Saving..." : "Save Update"}
-      </Button>
+      <FormSubmitButton loading={isSaving} loadingText="Updating..." icon={<Save className="h-4 w-4" />} className="h-12 w-full rounded-2xl">
+        Save Update
+      </FormSubmitButton>
+      </fieldset>
 
       {successMessage ? <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{successMessage}</p> : null}
       {errorMessage ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{errorMessage}</p> : null}

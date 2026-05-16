@@ -2,13 +2,13 @@
 
 import { type FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, FileUp, LoaderCircle, Send } from "lucide-react";
+import { CheckCircle2, CreditCard, FileUp, Send } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trackApplicationSubmit } from "@/lib/google-analytics";
@@ -44,6 +44,7 @@ export function AgentApplicationForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
 
     if (payableAmountPaise > 0 && !razorpayPayment) {
       toastError("Please complete Razorpay checkout before submitting.");
@@ -86,7 +87,8 @@ export function AgentApplicationForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-[1fr_340px]">
+    <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-[1fr_340px]" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="contents">
       <Card className="p-4 md:p-6">
         <div className="grid gap-4">
           <div>
@@ -190,11 +192,11 @@ export function AgentApplicationForm({
           </p>
         </Card>
 
-        <Button type="submit" disabled={isPending || !serviceId} className="w-full">
-          {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        <FormSubmitButton loading={isPending} disabled={!serviceId} loadingText="Submitting..." icon={<Send className="h-4 w-4" />} className="w-full">
           Submit Application
-        </Button>
+        </FormSubmitButton>
       </div>
+      </fieldset>
     </form>
   );
 }

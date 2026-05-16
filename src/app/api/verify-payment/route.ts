@@ -28,6 +28,12 @@ function timingSafeEqualHex(a: string, b: string) {
   return crypto.timingSafeEqual(left, right);
 }
 
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as VerifyPaymentBody | null;
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
       return jsonError("Payment verification failed.", 400);
     }
 
-    console.info("[razorpay/verify-payment] Payment verified", {
+    devInfo("[razorpay/verify-payment] Payment verified", {
       orderId,
       paymentId,
     });

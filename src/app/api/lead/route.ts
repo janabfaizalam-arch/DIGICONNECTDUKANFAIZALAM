@@ -13,9 +13,15 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message, message }, { status });
 }
 
+function devLog(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.log(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    console.log("[api/lead] POST request received");
+    devLog("[api/lead] POST request received");
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
@@ -30,7 +36,7 @@ export async function POST(request: Request) {
     const message = String(formData.get("message") ?? "").trim();
     const file = formData.get("file");
 
-    console.log("[api/lead] Parsed payload", {
+    devLog("[api/lead] Parsed payload", {
       hasName: Boolean(name),
       mobile,
       service,
@@ -101,7 +107,7 @@ export async function POST(request: Request) {
       return jsonError(error.message, 500);
     }
 
-    console.log("[api/lead] Lead inserted successfully", { mobile, service });
+    devLog("[api/lead] Lead inserted successfully", { mobile, service });
     return NextResponse.json({
       message: "Thank you. Our team will contact you shortly.",
       ok: true,

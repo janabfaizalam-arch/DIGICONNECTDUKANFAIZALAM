@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
 
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { MetaPixelEvents } from "@/components/meta-pixel-events";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
@@ -116,6 +118,9 @@ export default function RootLayout({
           </>
         ) : null}
         <ToastProvider>
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
           <SiteHeader />
           {children}
           <Script id="organization-schema" type="application/ld+json">

@@ -3,10 +3,10 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ButtonSpinner, FormSubmitButton } from "@/components/ui/loading";
 import { trackPasswordReset } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -137,6 +137,7 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     setMessage(null);
 
     if (!isSessionReady) {
@@ -226,11 +227,11 @@ export default function ResetPasswordPage() {
 
           {isSessionPending ? (
             <div className="mt-7 flex items-center justify-center gap-2 rounded-2xl bg-white/45 px-4 py-4 text-sm font-bold text-slate-600">
-              <LoaderCircle className="h-5 w-5 animate-spin text-blue-700" />
+              <ButtonSpinner className="text-blue-700" />
               Verifying reset link...
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-7 grid gap-3 text-left">
+            <form onSubmit={handleSubmit} className="mt-7 grid gap-3 text-left" aria-busy={isPending}>
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">New Password</span>
                 <div className="relative">
@@ -304,14 +305,15 @@ export default function ResetPasswordPage() {
                 </p>
               ) : null}
 
-              <Button
-                type="submit"
+              <FormSubmitButton
                 disabled={isPending || !isSessionReady}
+                loading={isPending}
+                loadingText="Updating password..."
+                icon={<LockKeyhole className="h-4 w-4" />}
                 className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]"
               >
-                {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
-                {isPending ? "Updating password..." : "Update password"}
-              </Button>
+                Update password
+              </FormSubmitButton>
             </form>
           )}
 

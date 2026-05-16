@@ -2,11 +2,10 @@
 
 import { type FormEvent, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CustomerOption = {
@@ -22,6 +21,7 @@ export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOp
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
@@ -52,7 +52,8 @@ export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOp
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-3">
+    <form onSubmit={onSubmit} className="grid gap-3" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="grid gap-3">
       <Select name="userId" required>
         <SelectTrigger aria-label="Customer">
           <SelectValue placeholder="Select customer" />
@@ -77,10 +78,10 @@ export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOp
       <Input name="amount" type="number" step="1" placeholder="Amount (+ add, - remove)" required />
       <Input name="expiryDays" type="number" min="1" defaultValue="90" placeholder="Expiry days" />
       <Input name="note" placeholder="Mandatory adjustment reason" required />
-      <Button type="submit" disabled={isPending}>
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+      <FormSubmitButton loading={isPending} loadingText="Updating...">
         Update Reward Wallet
-      </Button>
+      </FormSubmitButton>
+      </fieldset>
     </form>
   );
 }
@@ -92,6 +93,7 @@ export function AdminWalletStatusForm({ customers }: { customers: CustomerOption
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
@@ -120,7 +122,8 @@ export function AdminWalletStatusForm({ customers }: { customers: CustomerOption
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-3">
+    <form onSubmit={onSubmit} className="grid gap-3" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="grid gap-3">
       <Select name="userId" required>
         <SelectTrigger aria-label="Customer">
           <SelectValue placeholder="Select customer" />
@@ -141,10 +144,10 @@ export function AdminWalletStatusForm({ customers }: { customers: CustomerOption
         <input name="suspicious" type="checkbox" className="h-4 w-4 accent-orange-600" />
         Mark suspicious
       </label>
-      <Button type="submit" disabled={isPending}>
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+      <FormSubmitButton loading={isPending} loadingText="Updating...">
         Update Status
-      </Button>
+      </FormSubmitButton>
+      </fieldset>
     </form>
   );
 }

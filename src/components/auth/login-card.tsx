@@ -2,11 +2,12 @@
 
 import { type FormEvent, useState } from "react";
 import Image from "next/image";
-import { LoaderCircle, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner, FormSubmitButton } from "@/components/ui/loading";
 import { trackLogin } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -26,6 +27,7 @@ export function LoginCard({
   const [isPasswordPending, setIsPasswordPending] = useState(false);
 
   const handleGoogleLogin = async () => {
+    if (isPending || isPasswordPending) return;
     setIsPending(true);
 
     try {
@@ -73,6 +75,7 @@ export function LoginCard({
 
   const handlePasswordLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPasswordPending || isPending) return;
     setIsPasswordPending(true);
 
     try {
@@ -118,12 +121,13 @@ export function LoginCard({
       <p className="mt-4 text-base leading-relaxed text-slate-600">{description}</p>
       <p className="mt-1 text-sm text-slate-500">Fast, secure, and role-based access</p>
 
-      <form onSubmit={handlePasswordLogin} className="mt-6 grid gap-3 text-left">
+      <form onSubmit={handlePasswordLogin} className="mt-6 grid gap-3 text-left" aria-busy={isPasswordPending || isPending}>
         <input
           name="email"
           type="email"
           required
           placeholder="Email"
+          disabled={isPasswordPending || isPending}
           className="h-12 rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none"
         />
         <input
@@ -131,23 +135,23 @@ export function LoginCard({
           type="password"
           required
           placeholder="Password"
+          disabled={isPasswordPending || isPending}
           className="h-12 rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none"
         />
-        <Button type="submit" disabled={isPasswordPending} className="h-12 w-full rounded-2xl">
-          {isPasswordPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
+        <FormSubmitButton loading={isPasswordPending} disabled={isPending} loadingText="Logging in..." icon={<LockKeyhole className="h-4 w-4" />} className="h-12 w-full rounded-2xl">
           Login
-        </Button>
+        </FormSubmitButton>
       </form>
 
       <Button
         type="button"
         size="lg"
         onClick={handleGoogleLogin}
-        disabled={isPending}
+        disabled={isPending || isPasswordPending}
         className="mt-8 h-14 w-full rounded-2xl bg-white text-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.12)] hover:bg-slate-50"
       >
-        {isPending ? <LoaderCircle className="h-5 w-5 animate-spin text-[var(--primary)]" /> : <GoogleIcon />}
-        Continue with Google
+        {isPending ? <ButtonSpinner className="text-[var(--primary)]" /> : <GoogleIcon />}
+        {isPending ? "Opening Google..." : "Continue with Google"}
       </Button>
 
       <div className="mt-6 rounded-2xl bg-[var(--muted)] px-4 py-3 text-left text-sm text-slate-600">

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/loading";
 
 export function ReprocessRewardsButton({ applicationId }: { applicationId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -18,6 +19,7 @@ export function ReprocessRewardsButton({ applicationId }: { applicationId: strin
       variant="outline"
       disabled={isPending}
       onClick={() => {
+        if (isPending) return;
         startTransition(async () => {
           try {
             const response = await fetch(`/api/admin/applications/${applicationId}/reprocess-rewards`, {
@@ -38,8 +40,8 @@ export function ReprocessRewardsButton({ applicationId }: { applicationId: strin
       }}
       className="w-full"
     >
-      <RotateCcw className="h-4 w-4" />
-      Reprocess Rewards
+      {isPending ? <ButtonSpinner className="text-blue-700" /> : <RotateCcw className="h-4 w-4" />}
+      {isPending ? "Reprocessing..." : "Reprocess Rewards"}
     </Button>
   );
 }

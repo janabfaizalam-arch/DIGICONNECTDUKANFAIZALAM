@@ -2,12 +2,12 @@
 
 import { type FormEvent, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string }) {
@@ -17,6 +17,7 @@ export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
@@ -42,7 +43,8 @@ export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string
 
   return (
     <Card className="p-4 md:p-6">
-      <form onSubmit={onSubmit} className="grid gap-4">
+      <form onSubmit={onSubmit} className="grid gap-4" aria-busy={isPending}>
+        <fieldset disabled={isPending} className="grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
           <Input name="fullName" placeholder="Full Name" required />
           <Input name="mobile" placeholder="Mobile Number" inputMode="numeric" required />
@@ -69,10 +71,10 @@ export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string
             </SelectContent>
           </Select>
         </div>
-        <Button type="submit" disabled={isPending} className="w-full md:w-fit">
-          {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+        <FormSubmitButton loading={isPending} loadingText="Creating agent..." icon={<UserPlus className="h-4 w-4" />} className="w-full md:w-fit">
           Create Agent
-        </Button>
+        </FormSubmitButton>
+        </fieldset>
       </form>
     </Card>
   );

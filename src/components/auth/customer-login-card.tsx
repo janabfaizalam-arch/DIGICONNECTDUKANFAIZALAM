@@ -3,12 +3,13 @@
 import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, Gift, LoaderCircle, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, Gift, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ButtonSpinner, FormSubmitButton } from "@/components/ui/loading";
 import { trackLogin, trackSignup } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -170,6 +171,7 @@ function CustomerLoginCardInner({
   }
 
   async function handleGoogleLogin() {
+    if (isPending || isGooglePending) return;
     setFormMessage(null);
     setIsGooglePending(true);
 
@@ -205,6 +207,7 @@ function CustomerLoginCardInner({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending || isGooglePending) return;
     setFormMessage(null);
 
     const formData = new FormData(event.currentTarget);
@@ -349,7 +352,7 @@ function CustomerLoginCardInner({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-6 grid gap-3 text-left">
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-3 text-left" aria-busy={isPending || isGooglePending}>
         {mode === "signup" ? (
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Full Name</span>
@@ -489,14 +492,19 @@ function CustomerLoginCardInner({
           </p>
         ) : null}
 
-        <Button type="submit" disabled={isPending || isGooglePending} className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]">
-          {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Mail className="h-4 w-4" />}
-          {isPending ? (mode === "signup" ? "Creating account..." : "Logging in...") : mode === "signup" ? "Create Account" : "Login with Email"}
-        </Button>
+        <FormSubmitButton
+          loading={isPending}
+          disabled={isGooglePending}
+          loadingText={mode === "signup" ? "Creating account..." : "Logging in..."}
+          icon={<Mail className="h-4 w-4" />}
+          className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]"
+        >
+          {mode === "signup" ? "Create Account" : "Login with Email"}
+        </FormSubmitButton>
       </form>
 
       <Button type="button" variant="outline" disabled={isPending || isGooglePending} onClick={() => void handleGoogleLogin()} className="mt-3 h-[3.15rem] w-full rounded-2xl bg-white/70">
-        {isGooglePending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <GoogleIcon />}
+        {isGooglePending ? <ButtonSpinner className="text-blue-700" /> : <GoogleIcon />}
         {isGooglePending ? "Opening Google..." : "Continue with Google"}
       </Button>
 

@@ -2,11 +2,11 @@
 
 import { type FormEvent, useState } from "react";
 import Image from "next/image";
-import { LoaderCircle, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { trackLogin } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -16,6 +16,7 @@ export function StaffLoginCard() {
 
   async function handleStaffLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     setIsPending(true);
 
     try {
@@ -78,7 +79,7 @@ export function StaffLoginCard() {
         Sign in with your staff email and password to manage assigned applications only.
       </p>
 
-      <form onSubmit={handleStaffLogin} className="mt-6 grid gap-3 text-left">
+      <form onSubmit={handleStaffLogin} className="mt-6 grid gap-3 text-left" aria-busy={isPending}>
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Email</span>
           <Input name="email" type="email" required placeholder="staff@example.com" disabled={isPending} />
@@ -87,10 +88,9 @@ export function StaffLoginCard() {
           <span className="text-sm font-bold text-slate-700">Password</span>
           <Input name="password" type="password" required placeholder="Password" disabled={isPending} />
         </label>
-        <Button type="submit" disabled={isPending} className="h-12 w-full rounded-2xl">
-          {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
+        <FormSubmitButton loading={isPending} loadingText="Logging in..." icon={<LockKeyhole className="h-4 w-4" />} className="h-12 w-full rounded-2xl">
           Login to Staff Panel
-        </Button>
+        </FormSubmitButton>
       </form>
 
       <div className="mt-6 rounded-2xl bg-[var(--muted)] px-4 py-3 text-left text-sm text-slate-600">

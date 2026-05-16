@@ -6,6 +6,7 @@ import { Search, X } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/browser";
 import { serviceCategories, servicesData, type ServiceCategorySlug } from "@/lib/services-data";
+import { ButtonSpinner } from "@/components/ui/loading";
 
 type ServiceCategory = "All" | ServiceCategorySlug;
 
@@ -80,7 +81,6 @@ export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionMo
   }, [query, selectedCategory]);
 
   function handleServiceClick(slug: string) {
-    console.log("SERVICE_CLICK", slug);
     router.push(`/apply/${slug}`);
     onOpenChange(false);
   }
@@ -181,6 +181,10 @@ export function ApplyServiceTrigger({
   const router = useRouter();
 
   async function handleClick() {
+    if (loading) {
+      return;
+    }
+
     if (!serviceSlug) {
       setOpen(true);
       return;
@@ -193,8 +197,15 @@ export function ApplyServiceTrigger({
 
   return (
     <>
-      <button type="button" onClick={() => void handleClick()} disabled={loading} className={className}>
-        {loading ? "Opening..." : children}
+      <button type="button" onClick={() => void handleClick()} disabled={loading} className={className} aria-busy={loading}>
+        {loading ? (
+          <span className="inline-flex items-center justify-center gap-2">
+            <ButtonSpinner className="h-4 w-4" />
+            Opening...
+          </span>
+        ) : (
+          children
+        )}
       </button>
       <ServiceSelectionModal open={open} onOpenChange={setOpen} />
     </>

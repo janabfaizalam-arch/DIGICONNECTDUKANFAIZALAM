@@ -79,12 +79,18 @@ function getSignupEnvDebug(request: Request) {
   };
 }
 
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    console.info("[auth/signup] Request received");
+    devInfo("[auth/signup] Request received");
     const envDebug = getSignupEnvDebug(request);
 
-    console.info("[auth/signup] Environment check", {
+    devInfo("[auth/signup] Environment check", {
       hasSupabaseUrl: envDebug.hasSupabaseUrl,
       hasSupabaseAnonKey: envDebug.hasSupabaseAnonKey,
       siteUrl: envDebug.siteUrl,
@@ -101,7 +107,7 @@ export async function POST(request: Request) {
     const state = String(body?.state ?? "").trim();
     const referredBy = String(body?.referred_by ?? body?.referralCode ?? "").trim().toUpperCase();
 
-    console.info("[auth/signup] Request details", {
+    devInfo("[auth/signup] Request details", {
       emailDomain: email ? getEmailDomain(email) : "missing",
       hasPincode: Boolean(pincode),
       hasCity: Boolean(city),
@@ -187,7 +193,7 @@ export async function POST(request: Request) {
       },
     });
 
-    console.info("[auth/signup] Supabase signup response", {
+    devInfo("[auth/signup] Supabase signup response", {
       emailDomain: getEmailDomain(email),
       errorCode: error?.code ?? null,
       errorMessage: error?.message ?? null,

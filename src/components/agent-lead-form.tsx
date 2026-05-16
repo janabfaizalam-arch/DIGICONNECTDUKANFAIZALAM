@@ -1,12 +1,12 @@
 "use client";
 
 import { type FormEvent, useState, useTransition } from "react";
-import { LoaderCircle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Textarea } from "@/components/ui/textarea";
 import { trackLeadSubmit } from "@/lib/google-analytics";
 
@@ -22,6 +22,7 @@ export function AgentLeadForm({ services }: AgentLeadFormProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     const formData = new FormData(event.currentTarget);
     formData.set("service", service);
 
@@ -48,7 +49,8 @@ export function AgentLeadForm({ services }: AgentLeadFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2">
+    <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="contents">
       <Input name="customerName" placeholder="Customer name" required />
       <Input name="mobile" placeholder="Mobile number" inputMode="tel" required />
       <select
@@ -64,10 +66,10 @@ export function AgentLeadForm({ services }: AgentLeadFormProps) {
       </select>
       <Input name="city" placeholder="City" />
       <Textarea name="notes" placeholder="Lead notes" className="min-h-24 md:col-span-2" />
-      <Button type="submit" disabled={isPending} className="h-12 md:col-span-2">
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+      <FormSubmitButton loading={isPending} loadingText="Saving lead..." icon={<Plus className="h-4 w-4" />} className="h-12 md:col-span-2">
         Add Lead
-      </Button>
+      </FormSubmitButton>
+      </fieldset>
     </form>
   );
 }

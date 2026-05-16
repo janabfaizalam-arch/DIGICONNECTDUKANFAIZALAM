@@ -20,6 +20,12 @@ function getSiteUrl(request: Request) {
   return new URL(request.url).origin;
 }
 
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as { email?: string } | null;
@@ -44,7 +50,7 @@ export async function POST(request: Request) {
       },
     });
 
-    console.info("[auth/resend-verification] Supabase resend response", {
+    devInfo("[auth/resend-verification] Supabase resend response", {
       emailDomain: email.split("@")[1] ?? "unknown",
       error: error?.message ?? null,
     });

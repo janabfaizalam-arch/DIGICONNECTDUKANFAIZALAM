@@ -25,6 +25,7 @@ function getContactType(href: string) {
 export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   const pathname = usePathname();
   const previousPathname = useRef<string | null>(null);
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   useEffect(() => {
     if (previousPathname.current === null) {
@@ -39,7 +40,9 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   }, [pathname]);
 
   useEffect(() => {
-    console.debug("[ga4] contact click listener attached");
+    if (isDevelopment) {
+      console.debug("[ga4] contact click listener attached");
+    }
 
     function onClick(event: MouseEvent) {
       const link = (event.target as Element | null)?.closest("a[href]");
@@ -52,12 +55,16 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
       const contactType = getContactType(href);
 
       if (contactType === "call") {
-        console.debug("[ga4] call CTA click detected", { href });
+        if (isDevelopment) {
+          console.debug("[ga4] call CTA click detected", { href });
+        }
         trackCallClick();
       }
 
       if (contactType === "whatsapp") {
-        console.debug("[ga4] WhatsApp CTA click detected", { href });
+        if (isDevelopment) {
+          console.debug("[ga4] WhatsApp CTA click detected", { href });
+        }
         trackWhatsAppClick();
       }
     }
@@ -65,7 +72,7 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
     document.addEventListener("click", onClick);
 
     return () => document.removeEventListener("click", onClick);
-  }, []);
+  }, [isDevelopment]);
 
   return (
     <>
@@ -80,7 +87,9 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
             window.gtag('consent', 'default', { analytics_storage: 'granted' });
             window.gtag('js', new Date());
             window.gtag('config', ${JSON.stringify(measurementId)});
-            console.debug('[ga4] gtag initialized', { measurementId: ${JSON.stringify(measurementId)} });
+            if (${JSON.stringify(process.env.NODE_ENV === "development")}) {
+              console.debug('[ga4] gtag initialized', { measurementId: ${JSON.stringify(measurementId)} });
+            }
           `,
         }}
       />

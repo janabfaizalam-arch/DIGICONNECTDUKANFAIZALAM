@@ -2,13 +2,13 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, LoaderCircle, Trash2, WalletCards } from "lucide-react";
+import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, Trash2, WalletCards } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton, LoadingOverlay } from "@/components/ui/loading";
 import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/hooks/use-wallet";
 import { trackApplicationSubmit } from "@/lib/google-analytics";
@@ -105,6 +105,10 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+
     const form = event.currentTarget;
     const formData = new FormData(form);
     const supabase = createClient();
@@ -247,7 +251,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
   return (
     <>
-    <form onSubmit={onSubmit} className="grid gap-4 pb-4 lg:grid-cols-[1fr_340px]">
+    <form onSubmit={onSubmit} className="grid gap-4 pb-4 lg:grid-cols-[1fr_340px]" aria-busy={isSubmitting}>
+      <fieldset disabled={isSubmitting} className="contents">
       <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 shadow-sm md:p-6">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
@@ -312,6 +317,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                 required={!selectedDocuments.length}
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="mt-4"
+                disabled={isSubmitting}
                 onChange={(event) => {
                   const files = Array.from(event.target.files ?? []);
 
@@ -343,6 +349,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                       <span className="min-w-0 truncate font-semibold text-slate-700">{file.name}</span>
                       <button
                         type="button"
+                        disabled={isSubmitting}
                         onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                         className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-600"
                       >
@@ -416,6 +423,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           </Card>
         ) : null}
 
+        <LoadingOverlay show={wallet.isLoading} label="Checking wallet balance...">
         <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 md:p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
@@ -435,7 +443,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               <div className="mt-3 grid gap-2">
                 <button
                   type="button"
-                  disabled={wallet.maxUsable <= 0}
+                  disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
                   onClick={() => setWalletUseAmount(wallet.maxUsable)}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
@@ -446,7 +454,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   type="number"
                   min={0}
                   max={wallet.maxUsable}
-                  disabled={wallet.maxUsable <= 0}
+                  disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
                   value={walletUseAmount}
                   onChange={(event) => setWalletUseAmount(Math.max(0, Number(event.target.value || 0)))}
                   aria-label="DigiWallet amount to use"
@@ -484,12 +492,13 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             </div>
           </div>
         </Card>
+        </LoadingOverlay>
 
-        <Button type="submit" size="lg" disabled={isSubmitting} className="sticky bottom-3 mb-4 h-14 w-full rounded-2xl shadow-lg md:static md:mb-0">
-          {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
-          {progressText || "Submit Application"}
-        </Button>
+        <FormSubmitButton type="submit" size="lg" loading={isSubmitting} loadingText={progressText || "Please wait..."} className="sticky bottom-3 mb-4 h-14 w-full rounded-2xl shadow-lg md:static md:mb-0">
+          Submit Application
+        </FormSubmitButton>
       </div>
+      </fieldset>
     </form>
     </>
   );

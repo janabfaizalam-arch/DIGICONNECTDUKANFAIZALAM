@@ -3,10 +3,10 @@
 import { type FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 
 type AuthApiResponse = {
   message?: string;
@@ -37,6 +37,7 @@ export default function ForgotPasswordPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     setMessage(null);
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -102,7 +103,7 @@ export default function ForgotPasswordPage() {
             Enter your registered email and we will send a secure reset link.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-7 grid gap-3 text-left">
+          <form onSubmit={handleSubmit} className="mt-7 grid gap-3 text-left" aria-busy={isPending}>
             <label className="grid gap-2">
               <span className="text-sm font-semibold text-slate-700">Email</span>
               <div className="relative">
@@ -130,14 +131,14 @@ export default function ForgotPasswordPage() {
               </p>
             ) : null}
 
-            <Button
-              type="submit"
-              disabled={isPending}
+            <FormSubmitButton
+              loading={isPending}
+              loadingText="Sending reset link..."
+              icon={<Mail className="h-4 w-4" />}
               className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]"
             >
-              {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Mail className="h-4 w-4" />}
-              {isPending ? "Sending reset link..." : "Send reset link"}
-            </Button>
+              Send reset link
+            </FormSubmitButton>
           </form>
 
           <Link

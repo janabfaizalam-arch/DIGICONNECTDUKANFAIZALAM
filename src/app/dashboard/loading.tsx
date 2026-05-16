@@ -1,5 +1,5 @@
-import { LoadingLogo } from "@/components/loading-logo";
+import { PageLoader } from "@/components/ui/loading";
 
 export default function DashboardLoading() {
-  return <LoadingLogo label="Loading DigiConnect Dukan dashboard" />;
+  return <PageLoader label="Loading DigiConnect Dukan dashboard" />;
 }

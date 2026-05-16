@@ -3,11 +3,11 @@
 import { type FormEvent, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, LoaderCircle, Save } from "lucide-react";
+import { CheckCircle2, Save } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Textarea } from "@/components/ui/textarea";
 import {
   getCustomerProfileCompletion,
@@ -55,6 +55,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     setMessage(null);
     setIsPending(true);
 
@@ -173,7 +174,8 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
         </div>
       </aside>
 
-      <form onSubmit={handleSubmit} className="glass-panel rounded-[1.75rem] border border-white/15 p-5 md:p-6">
+      <form onSubmit={handleSubmit} className="glass-panel rounded-[1.75rem] border border-white/15 p-5 md:p-6" aria-busy={isPending}>
+        <fieldset disabled={isPending}>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Personal Details</p>
@@ -254,10 +256,10 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
           </p>
         ) : null}
 
-        <Button type="submit" disabled={isPending} className="mt-6 h-12 w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold md:w-auto">
-          {isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Save className="h-4 w-4" />}
-          {isPending ? "Saving..." : "Save Profile"}
-        </Button>
+        <FormSubmitButton loading={isPending} loadingText="Saving profile..." icon={<Save className="h-4 w-4" />} className="mt-6 h-12 w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold md:w-auto">
+          Save Profile
+        </FormSubmitButton>
+        </fieldset>
       </form>
     </div>
   );

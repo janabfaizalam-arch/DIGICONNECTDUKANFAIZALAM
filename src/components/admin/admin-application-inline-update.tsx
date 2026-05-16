@@ -2,8 +2,8 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle } from "lucide-react";
 
+import { ButtonSpinner } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/providers/toast-provider";
 import { applicationStatuses, statusLabels, type ApplicationStatus } from "@/lib/portal-data";
@@ -29,6 +29,7 @@ export function AdminApplicationInlineUpdate({
   const { success, error: toastError } = useToast();
 
   function update(field: "status" | "assignedStaffId", value: string) {
+    if (isPending) return;
     const formData = new FormData();
     formData.set(field, value);
 
@@ -65,7 +66,7 @@ export function AdminApplicationInlineUpdate({
             ))}
           </SelectContent>
         </Select>
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin text-blue-600" /> : null}
+        {isPending ? <ButtonSpinner className="h-4 w-4 text-blue-600" /> : null}
       </div>
       <Select value={assignedStaffId || "none"} onValueChange={(value) => update("assignedStaffId", value)} disabled={isPending}>
         <SelectTrigger aria-label="Assigned staff" className="h-9 min-w-36">

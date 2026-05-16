@@ -2,8 +2,8 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle } from "lucide-react";
 
+import { ButtonSpinner } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -20,6 +20,7 @@ export function AdminLeadActions({ leadId, status }: { leadId: string; status: s
   const { success, error: toastError } = useToast();
 
   function update(payload: { status?: string; convert?: boolean }) {
+    if (isPending) return;
     startTransition(async () => {
       try {
         const response = await fetch(`/api/admin/leads/${leadId}`, {
@@ -41,7 +42,7 @@ export function AdminLeadActions({ leadId, status }: { leadId: string; status: s
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Select value={status} onValueChange={(value) => update({ status: value })}>
+      <Select value={status} onValueChange={(value) => update({ status: value })} disabled={isPending}>
         <SelectTrigger aria-label="Lead status" className="h-9 w-36">
           <SelectValue />
         </SelectTrigger>
@@ -57,8 +58,8 @@ export function AdminLeadActions({ leadId, status }: { leadId: string; status: s
         onClick={() => update({ convert: true })}
         className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-orange-500 px-3 text-xs font-bold text-white disabled:opacity-50"
       >
-        {isPending ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}
-        Convert
+        {isPending ? <ButtonSpinner className="h-3.5 w-3.5" /> : null}
+        {isPending ? "Updating..." : "Convert"}
       </button>
     </div>
   );

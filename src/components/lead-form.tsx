@@ -4,6 +4,7 @@ import { type FormEvent, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ButtonSpinner } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { services } from "@/lib/constants";
@@ -26,6 +27,7 @@ export function LeadForm() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPending) return;
     setFeedback(null);
 
     const formData = new FormData();
@@ -64,7 +66,8 @@ export function LeadForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 pb-3 md:pb-0">
+    <form onSubmit={onSubmit} className="space-y-4 pb-3 md:pb-0" aria-busy={isPending}>
+      <fieldset disabled={isPending} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <Input
           value={form.name}
@@ -105,8 +108,10 @@ export function LeadForm() {
         Our team will contact you shortly after submission.
       </p>
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isPending}>
-        {isPending ? "Submitting..." : "Get Started"}
+        {isPending ? <ButtonSpinner /> : null}
+        {isPending ? "Please wait..." : "Get Started"}
       </Button>
+      </fieldset>
       {feedback ? <p className="text-sm font-medium text-slate-600">{feedback}</p> : null}
     </form>
   );

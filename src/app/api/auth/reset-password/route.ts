@@ -57,6 +57,12 @@ function isRateLimited(key: string) {
   return current.count > maxRequestsPerWindow;
 }
 
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const rateLimitKey = getClientIp(request);
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
 
     const { error } = await supabase.auth.updateUser({ password });
 
-    console.info("[auth/reset-password] Password update requested", {
+    devInfo("[auth/reset-password] Password update requested", {
       userId: user.id,
       errorCode: error?.code ?? null,
       hasError: Boolean(error),

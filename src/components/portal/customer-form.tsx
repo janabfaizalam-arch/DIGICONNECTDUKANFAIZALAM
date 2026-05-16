@@ -2,12 +2,12 @@
 
 import { type FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FormSubmitButton } from "@/components/ui/loading";
 import { Textarea } from "@/components/ui/textarea";
 
 export function CustomerForm() {
@@ -18,6 +18,7 @@ export function CustomerForm() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPending) return;
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
@@ -43,7 +44,8 @@ export function CustomerForm() {
 
   return (
     <Card className="p-4 md:p-6">
-      <form onSubmit={onSubmit} className="grid gap-4">
+      <form onSubmit={onSubmit} className="grid gap-4" aria-busy={isPending}>
+        <fieldset disabled={isPending} className="grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
           <Input name="fullName" placeholder="Customer name" required />
           <Input name="mobile" placeholder="Mobile number" inputMode="numeric" required />
@@ -63,10 +65,10 @@ export function CustomerForm() {
           Create an application for this customer next
         </label>
 
-        <Button type="submit" disabled={isPending} className="w-full md:w-fit">
-          {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        <FormSubmitButton loading={isPending} loadingText="Saving customer..." icon={<Save className="h-4 w-4" />} className="w-full md:w-fit">
           Save Customer
-        </Button>
+        </FormSubmitButton>
+        </fieldset>
       </form>
     </Card>
   );
