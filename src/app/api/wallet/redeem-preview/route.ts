@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { calculateMaxRedeem, createWalletIfMissing } from "@/lib/rewards-wallet";
+import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -20,16 +21,19 @@ export async function POST(request: Request) {
 
   const wallet = await createWalletIfMissing(user.id);
   const balance = Number(wallet.balance ?? 0);
-  const maxRedeem = calculateMaxRedeem(serviceAmount, balance);
-  const redeemAmount = Math.min(requestedAmount || maxRedeem, maxRedeem);
+  const redeem = calculateWalletRedeemBreakdown({
+    serviceAmount,
+    walletBalance: balance,
+    requestedRedeem: requestedAmount || balance,
+  });
 
   return NextResponse.json({
     balance,
     serviceAmount,
     requestedAmount,
-    maxRedeem,
-    redeemAmount,
-    freshPayableAmount: Math.max(0, serviceAmount - redeemAmount),
-    cashbackEligibleAmount: Math.max(0, serviceAmount - redeemAmount),
+    maxRedeem: redeem.maxRedeem,
+    redeemAmount: redeem.walletRedeem,
+    freshPayableAmount: redeem.freshPayable,
+    cashbackEligibleAmount: redeem.cashbackEligibleAmount,
   });
 }

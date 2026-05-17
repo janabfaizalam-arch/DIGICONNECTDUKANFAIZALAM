@@ -5,11 +5,11 @@ import { createAdminNotifications, type CreateAdminNotificationInput } from "@/l
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
-import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
-import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
+import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getRealPayableAmount, getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
+import { getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
 
 type UploadedDocument = {
   document_type: string;
@@ -63,6 +63,12 @@ function required(value: unknown) {
 
 function isItrMsmeCombo(serviceSlugs: string[]) {
   return serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
+}
+
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
 }
 
 function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undefined, expectedAmountPaise: number) {
@@ -138,17 +144,32 @@ export async function POST(request: Request) {
     const orderAmount = comboOrder ? 699 : resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
     const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
     const rewardRule = await getRewardRuleForOrder(resolvedServices.map((service) => service.slug));
-    const maxRedemptionPercent = Math.min(Number(rewardRule?.max_redemption_percent ?? MAX_WALLET_REDEEM_PERCENT), MAX_WALLET_REDEEM_PERCENT);
+    void rewardRule;
     const wallet = await createWalletIfMissing(user.id);
-    const maxWalletAllowed = Math.min(
-      calculateMaxRedeem(orderAmount, Number(wallet.balance ?? 0)),
-      Math.floor(orderAmount * (Math.min(Math.max(maxRedemptionPercent, 0), MAX_WALLET_REDEEM_PERCENT) / 100)),
-    );
+    const redeem = calculateWalletRedeemBreakdown({
+      serviceAmount: orderAmount,
+      walletBalance: Number(wallet.balance ?? 0),
+      requestedRedeem: requestedWalletAmount,
+    });
+    const walletRedeemAmount = redeem.walletRedeem;
+    const realPaymentAmount = redeem.freshPayable;
+    const expectedRazorpayAmountPaise = Math.round(realPaymentAmount * 100);
 
-    if (requestedWalletAmount > 0) {
-      if (requestedWalletAmount > maxWalletAllowed) {
-        return jsonError(`DigiWallet can be used up to Rs ${maxWalletAllowed.toLocaleString("en-IN")} for this order.`, 400);
-      }
+    if (redeem.wasClamped) {
+      console.warn("[applications] Wallet redeem clamped to 50% cap", redeem);
+    }
+
+    devInfo("[applications] Wallet redeem calculation", {
+      serviceAmount: redeem.serviceAmount,
+      walletBalance: redeem.walletBalance,
+      requestedRedeem: redeem.requestedRedeem,
+      maxRedeem: redeem.maxRedeem,
+      finalRedeem: redeem.walletRedeem,
+      freshPayable: redeem.freshPayable,
+    });
+
+    if (orderAmount > 0 && realPaymentAmount < redeem.minimumFreshPayable) {
+      return jsonError("Wallet redeem cannot exceed 50% of service amount", 400);
     }
 
     const customer = body.customer ?? {};
@@ -175,15 +196,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
-    const expectedRazorpayAmountPaise = Math.round(realPaymentAmount * 100);
-    const minimumFreshPayment = Math.ceil(orderAmount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
-
-    if (realPaymentAmount < minimumFreshPayment) {
-      return jsonError("At least 50% of the service amount must be paid through Razorpay.", 400);
-    }
-
-    const hasVerifiedRazorpayPayment = realPaymentAmount === 0 || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
+    const hasVerifiedRazorpayPayment = orderAmount === 0 || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
 
     if (!hasVerifiedRazorpayPayment) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
@@ -367,24 +380,33 @@ export async function POST(request: Request) {
       });
     }
 
-    const applicationsToInsert = resolvedServices.map((service, index) => ({
+    let remainingWalletForApplications = walletRedeemAmount;
+    const applicationsToInsert = resolvedServices.map((service, index) => {
+      const rowAmount = comboOrder ? (index === 0 ? orderAmount : 0) : Number(service.amount ?? 0);
+      const rowWalletRedeem = Math.min(remainingWalletForApplications, rowAmount);
+      remainingWalletForApplications = Math.max(0, remainingWalletForApplications - rowWalletRedeem);
+      const rowFreshPayable = Math.max(0, rowAmount - rowWalletRedeem);
+
+      return {
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
         service_slug: service.slug,
         service_name: service.title,
-        amount: comboOrder ? (index === 0 ? orderAmount : 0) : service.amount,
-        wallet_used_amount: comboOrder ? (index === 0 ? requestedWalletAmount : 0) : 0,
-        wallet_redeemed_amount: comboOrder ? (index === 0 ? requestedWalletAmount : 0) : 0,
-        real_payment_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
-        fresh_payable_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
-        cashback_eligible_amount: comboOrder ? (index === 0 ? realPaymentAmount : 0) : service.amount,
+        amount: rowAmount,
+        total_amount: rowAmount,
+        wallet_used_amount: rowWalletRedeem,
+        wallet_redeemed_amount: rowWalletRedeem,
+        real_payment_amount: rowFreshPayable,
+        fresh_payable_amount: rowFreshPayable,
+        cashback_eligible_amount: rowFreshPayable,
         form_data: formData,
         status: hasVerifiedRazorpayPayment ? "submitted" : "payment_pending",
         created_by: user.id,
         source: "online",
         payment_status: hasVerifiedRazorpayPayment ? "verified" : "pending",
         submitted_by_role: role,
-      }));
+      };
+    });
 
     const { data: applications, error: applicationError } = await supabase
       .from("applications")
@@ -413,7 +435,7 @@ export async function POST(request: Request) {
       return jsonError("Documents could not be saved.", 500);
     }
 
-    let remainingWalletToApply = requestedWalletAmount;
+    let remainingWalletToApply = walletRedeemAmount;
     const paymentRows = applications.map((application) => {
       const applicationAmount = Number(application.amount ?? 0);
       const applicationWalletAmount = Math.min(applicationAmount, remainingWalletToApply);
@@ -443,14 +465,14 @@ export async function POST(request: Request) {
 
     let walletUsedAmount = 0;
 
-    if (requestedWalletAmount > 0) {
+    if (walletRedeemAmount > 0) {
       walletUsedAmount = await redeemWalletForApplication({
         userId: user.id,
         applicationId: applications[0].id,
         serviceName: applications.map((application) => application.service_name).join(", "),
         orderAmount,
-        requestedAmount: requestedWalletAmount,
-        maxRedemptionPercent,
+        requestedAmount: walletRedeemAmount,
+        maxRedemptionPercent: 50,
       });
     }
 

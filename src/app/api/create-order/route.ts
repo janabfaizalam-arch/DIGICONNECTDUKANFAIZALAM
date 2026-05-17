@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
-import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
-import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
+import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -90,22 +90,45 @@ export async function POST(request: Request) {
         : services.reduce((total, service) => total + Number(service?.amount ?? 0), 0);
       const requestedWalletAmount = Math.max(0, Math.round(Number(body?.walletUseAmount ?? 0)));
       const wallet = await createWalletIfMissing(user.id);
-      const maxRedeem = calculateMaxRedeem(serviceAmount, Number(wallet.balance ?? 0));
-      walletRedeemAmount = Math.min(requestedWalletAmount, maxRedeem);
-      const freshPayableAmount = Math.max(0, serviceAmount - walletRedeemAmount);
-      const minimumFreshPayment = Math.ceil(serviceAmount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
+      const redeem = calculateWalletRedeemBreakdown({
+        serviceAmount,
+        walletBalance: Number(wallet.balance ?? 0),
+        requestedRedeem: requestedWalletAmount,
+      });
+      walletRedeemAmount = redeem.walletRedeem;
+      const freshPayableAmount = redeem.freshPayable;
       const expectedAmount = Math.round(freshPayableAmount * 100);
 
-      if (requestedWalletAmount > maxRedeem) {
-        return jsonError(`Reward Wallet can be used up to Rs ${maxRedeem.toLocaleString("en-IN")} for this order.`, 400);
+      if (redeem.wasClamped) {
+        console.warn("[razorpay/create-order] Wallet redeem clamped to 50% cap", redeem);
       }
 
       if (amount !== expectedAmount) {
         return jsonError("Razorpay amount does not match the server-side payable amount.", 400);
       }
 
-      if (freshPayableAmount < minimumFreshPayment) {
-        return jsonError("At least 50% of the service amount must be paid through Razorpay.", 400);
+      if (serviceAmount > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
+        return jsonError("Wallet redeem cannot exceed 50% of service amount", 400);
+      }
+
+      devInfo("[razorpay/create-order] Wallet redeem calculation", {
+        serviceAmount: redeem.serviceAmount,
+        walletBalance: redeem.walletBalance,
+        requestedRedeem: redeem.requestedRedeem,
+        maxRedeem: redeem.maxRedeem,
+        finalRedeem: redeem.walletRedeem,
+        freshPayable: redeem.freshPayable,
+      });
+
+      if (serviceAmount === 0) {
+        return NextResponse.json({
+          order_id: null,
+          amount: 0,
+          currency,
+          application_id: undefined,
+          application_ids: [],
+          message: "No payment is required for this free service.",
+        });
       }
 
       amount = expectedAmount;

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
 import { getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
@@ -143,6 +144,24 @@ export async function POST(request: Request) {
     const primaryApplication = applications[0];
     const paidAt = new Date().toISOString();
     const alreadyVerified = applications.every((application) => application.payment_status === "verified");
+    const serviceAmount = applications.reduce((total, application) => total + Number(application.total_amount ?? application.amount ?? 0), 0);
+    const walletRedeemedAmount = applications.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? 0), 0);
+    const freshPayableAmount = applications.reduce((total, application) => total + Number(application.fresh_payable_amount ?? application.amount ?? 0), 0);
+    const maxWalletRedeem = Math.floor(serviceAmount * (MAX_WALLET_REDEEM_PERCENT / 100));
+    const minimumFreshPayable = Math.ceil(serviceAmount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
+
+    if (serviceAmount > 0 && (walletRedeemedAmount > maxWalletRedeem || freshPayableAmount < minimumFreshPayable)) {
+      console.error("[razorpay/verify-payment] Wallet redeem cap violation", {
+        orderId,
+        paymentId,
+        serviceAmount,
+        walletRedeemedAmount,
+        freshPayableAmount,
+        maxWalletRedeem,
+        minimumFreshPayable,
+      });
+      return jsonError("Wallet redeem cannot exceed 50% of service amount", 400);
+    }
 
     if (!alreadyVerified) {
       const { error: applicationUpdateError } = await supabase
@@ -210,8 +229,6 @@ export async function POST(request: Request) {
         return jsonError("Payment verified, but payment record could not be saved. Please contact support.", 500);
       }
     }
-
-    const walletRedeemedAmount = Number(primaryApplication.wallet_redeemed_amount ?? 0);
 
     if (walletRedeemedAmount > 0) {
       try {

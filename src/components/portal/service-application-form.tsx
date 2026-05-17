@@ -95,6 +95,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const wallet = useWallet(totalAmount);
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
+  const walletLimitMessage = "You can use wallet up to 50% only. Remaining 50% must be paid online.";
   const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
   const expectedCashback = calculateCashbackForFreshPayment(realPayableAmount, !hasFirstServiceCashback);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
@@ -144,7 +145,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     }
 
     if (walletUseAmount > wallet.maxUsable) {
-      toastError(`You can use up to ${formatCurrency(wallet.maxUsable)} from DigiWallet on this order.`);
+      toastError(walletLimitMessage);
       return;
     }
 
@@ -452,13 +453,13 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             <div className="min-w-0 flex-1">
               <p className="font-bold text-slate-950">Use DigiWallet</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
+                Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max redeem: {formatCurrency(wallet.maxUsable)}
               </p>
               {!wallet.isLoading && wallet.balance <= 0 ? (
                 <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No reward balance available.</p>
               ) : null}
               <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold leading-5 text-blue-800">
-                Rewards can be used only on DigiConnect Dukan services and cannot be withdrawn as cash.
+                You can use wallet up to 50% only. Remaining 50% must be paid online.
               </p>
               <div className="mt-3 grid gap-2">
                 <button
@@ -476,7 +477,15 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   max={wallet.maxUsable}
                   disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
                   value={walletUseAmount}
-                  onChange={(event) => setWalletUseAmount(Math.max(0, Number(event.target.value || 0)))}
+                  onChange={(event) => {
+                    const nextValue = Math.max(0, Math.round(Number(event.target.value || 0)));
+                    if (nextValue > wallet.maxUsable) {
+                      setWalletUseAmount(wallet.maxUsable);
+                      toastError(walletLimitMessage);
+                      return;
+                    }
+                    setWalletUseAmount(nextValue);
+                  }}
                   aria-label="DigiWallet amount to use"
                   placeholder="Wallet amount"
                 />
