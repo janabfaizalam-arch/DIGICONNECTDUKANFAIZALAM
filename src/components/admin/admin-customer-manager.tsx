@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download, ExternalLink, LoaderCircle, Search } from "lucide-react";
+import { Copy, Download, ExternalLink, LoaderCircle, Search } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,32 @@ function displayValue(value: string | null | undefined) {
 }
 
 function displayMobile(value: string | null | undefined) {
-  return value?.trim() || "Mobile not provided";
+  const mobile = value?.trim();
+  if (!mobile) return "Not provided";
+
+  const digits = mobile.replace(/\D/g, "");
+  if (digits.length < 10) return "Not provided";
+
+  return mobile;
 }
 
 function personLabel(person: AdminCustomerReferralPerson | null) {
   if (!person) return "Not referred";
   return [person.name, person.email, person.mobile, person.referralCode].filter(Boolean).join(" / ");
+}
+
+function personName(person: AdminCustomerReferralPerson | null) {
+  return person?.name?.trim() || "Not provided";
+}
+
+function personContact(person: AdminCustomerReferralPerson | null) {
+  if (!person) return "Not provided";
+  return person.email?.trim() || displayMobile(person.mobile) || person.referralCode?.trim() || "Not provided";
+}
+
+function copyToClipboard(value: string) {
+  if (!value || typeof navigator === "undefined" || !navigator.clipboard) return;
+  void navigator.clipboard.writeText(value);
 }
 
 function csvCell(value: unknown) {
@@ -211,72 +231,102 @@ export function AdminCustomerManager({ customers, initialFilter = "all" }: { cus
         {!visibleCustomers.length ? <AdminEmptyState title="No users found" description="Try a different search or filter." /> : null}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {pagedCustomers.map((customer) => (
-            <article key={customer.id} className="flex min-h-[23rem] flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-blue-100 hover:shadow-md">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-950">{displayValue(customer.full_name)}</p>
-                  <p className="mt-1 truncate text-xs text-slate-500">{displayValue(customer.email)}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-600">{displayMobile(customer.mobile)}</p>
+            <article key={customer.id} className="flex min-h-[25rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-blue-100 hover:shadow-md">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <p className="line-clamp-1 font-bold text-slate-950">{displayValue(customer.full_name)}</p>
+                  <p className="mt-1 line-clamp-1 text-xs text-slate-500">{displayValue(customer.email)}</p>
+                  <p className="mt-1 truncate text-xs text-slate-600">
+                    <span className="font-semibold text-slate-500">Mobile: </span>
+                    <span className="font-mono">{displayMobile(customer.mobile)}</span>
+                  </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">User</span>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
-                <div className="rounded-xl bg-slate-50 p-2">
-                  <p>Wallet</p>
+                <div className="min-w-0 overflow-hidden rounded-xl bg-slate-50 p-2">
+                  <p className="truncate">Wallet</p>
                   <p className="mt-1 font-bold text-slate-900">{safeCurrency(customer.walletBalance)}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-2">
-                  <p>Cashback</p>
+                <div className="min-w-0 overflow-hidden rounded-xl bg-slate-50 p-2">
+                  <p className="truncate">Cashback</p>
                   <p className="mt-1 font-bold text-slate-900">{safeCurrency(customer.cashbackBalance)}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-2">
-                  <p>Referred Users</p>
+                <div className="min-w-0 overflow-hidden rounded-xl bg-slate-50 p-2">
+                  <p className="truncate">Referred Users</p>
                   <p className="mt-1 font-bold text-slate-900">{customer.referredUsersCount}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-2">
-                  <p>Applications</p>
+                <div className="min-w-0 overflow-hidden rounded-xl bg-slate-50 p-2">
+                  <p className="truncate">Applications</p>
                   <p className="mt-1 font-bold text-slate-900">{customer.applicationsCount}</p>
                 </div>
               </div>
-              <div className="mt-3 grid gap-1.5 text-xs text-slate-600">
-                <p className="flex items-center justify-between gap-3">
-                  <span>Referral code</span>
-                  <span className="truncate font-bold text-slate-900">{customer.referralCode || "Not provided"}</span>
-                </p>
-                <p className="flex items-center justify-between gap-3">
-                  <span>Referred by</span>
-                  <span className="truncate font-bold text-slate-900">{personLabel(customer.referredBy)}</span>
-                </p>
-                <div className="rounded-xl bg-slate-50 p-2">
-                  <p className="font-semibold text-slate-500">Referred users preview</p>
+              <div className="mt-3 grid min-w-0 gap-2 text-xs text-slate-600">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <span className="shrink-0 text-slate-500">Referral code</span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="min-w-0 truncate rounded-full bg-blue-50 px-2.5 py-1 font-mono text-[11px] font-bold text-blue-700">
+                      {customer.referralCode || "Not provided"}
+                    </span>
+                    {customer.referralCode ? (
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(customer.referralCode)}
+                        title="Copy referral code"
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-blue-200 hover:text-blue-700"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="min-w-0 overflow-hidden rounded-xl border border-slate-100 bg-white p-2">
+                  <p className="line-clamp-1 font-semibold text-slate-500">
+                    Referred by: <span className="font-bold text-slate-900">{personName(customer.referredBy)}</span>
+                  </p>
+                  <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">{personContact(customer.referredBy)}</p>
+                </div>
+                <div className="min-h-[5.5rem] min-w-0 overflow-hidden rounded-xl bg-slate-50 p-2">
+                  <p className="truncate font-semibold text-slate-500">Referred users preview</p>
                   {customer.referredUsersPreview.length ? (
-                    <p className="mt-1 line-clamp-2 text-slate-700">{customer.referredUsersPreview.map(personLabel).join("; ")}</p>
+                    <div className="mt-1 space-y-1 overflow-hidden">
+                      {customer.referredUsersPreview.slice(0, 2).map((person, index) => (
+                        <p key={`${person.name ?? person.email ?? person.mobile ?? "referral"}-${index}`} className="line-clamp-1 min-w-0 text-slate-700">
+                          <span className="font-semibold text-slate-900">{personName(person)}</span>
+                          <span className="text-slate-400"> - </span>
+                          <span className="font-mono text-[11px] text-slate-500">{personContact(person)}</span>
+                        </p>
+                      ))}
+                      {customer.referredUsersPreview.length > 2 ? (
+                        <p className="truncate text-[11px] font-bold text-blue-700">+{customer.referredUsersPreview.length - 2} more</p>
+                      ) : null}
+                    </div>
                   ) : (
                     <p className="mt-1 text-slate-500">No referrals yet</p>
                   )}
                 </div>
-                <p className="flex items-center justify-between gap-3">
-                  <span>Last status</span>
+                <div className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                  <span className="truncate text-slate-500">Last status</span>
                   <span className="truncate font-bold capitalize text-slate-900">{customer.lastStatus.replace(/_/g, " ") || "Not provided"}</span>
-                </p>
-                <p className="flex items-center justify-between gap-3">
-                  <span>Created</span>
-                  <span className="font-bold text-slate-900">{formatDate(customer.created_at)}</span>
-                </p>
+                </div>
+                <div className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] gap-2">
+                  <span className="truncate text-slate-500">Created</span>
+                  <span className="truncate font-bold text-slate-900">{formatDate(customer.created_at)}</span>
+                </div>
               </div>
               <div className="mt-auto pt-4">
                 {customer.canOpenDetails && customer.customerId ? (
                   <Link
                     href={`/admin/customers/${customer.customerId}`}
                     onClick={() => setOpeningId(customer.id)}
-                    className="inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700"
+                    className="inline-flex h-8 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700"
                     aria-disabled={openingId === customer.id}
                   >
                     {openingId === customer.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
                     {openingId === customer.id ? "Opening..." : "View Details"}
                   </Link>
                 ) : (
-                  <span className="inline-flex h-9 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
+                  <span className="inline-flex h-8 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
                     Registered user
                   </span>
                 )}
