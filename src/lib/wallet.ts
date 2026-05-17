@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
-import { resolveUserWalletFacts } from "@/lib/wallet-resolver";
+import { MAX_WALLET_REDEEM_PERCENT, REPEAT_CASHBACK_PERCENT } from "@/lib/reward-rules";
 import {
   calculateMaxRedeem,
   processRewardsOnApplicationCompleted,
@@ -10,11 +10,14 @@ import {
 export type RewardTransactionType =
   | "signup_referral_bonus"
   | "referrer_bonus"
+  | "signup_bonus"
+  | "referrer_signup_bonus"
+  | "referrer_first_service_bonus"
+  | "legacy_wallet_migration"
   | "first_service_cashback"
   | "repeat_cashback"
   | "redeem"
   | "reversal"
-  | "signup_bonus"
   | "referral_bonus"
   | "cashback"
   | "redemption"
@@ -115,7 +118,7 @@ export type WalletSnapshot = {
   referralSummary: ReferralSummary | null;
 };
 
-export const walletMaxRedemptionPercent = 50;
+export const walletMaxRedemptionPercent = MAX_WALLET_REDEEM_PERCENT;
 export const defaultRewardValidityMonths = 6;
 
 function toNumber(value: unknown) {
@@ -176,7 +179,7 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
   }
 
   const code = await ensureReferralCodeForUser(userId).catch(() => "");
-  const [{ data: profile }, { data: referralEventRows }, { data: legacyReferralRows }] = await Promise.all([
+  const [{ data: profile }, { data: referralEventRows }, { data: legacyReferralRows }, { data: referrerRewardRows }] = await Promise.all([
     supabase.from("profiles").select("referral_code").eq("id", userId).maybeSingle(),
     supabase
       .from("referral_events")
@@ -190,16 +193,32 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
       .eq("referrer_id", userId)
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("wallet_transactions")
+      .select("referred_user_id, amount")
+      .eq("user_id", userId)
+      .in("type", ["referrer_signup_bonus", "referrer_first_service_bonus"])
+      .neq("status", "reversed"),
   ]);
 
-  const referrals: Referral[] = referralEventRows?.length
-    ? referralEventRows.map((event) => ({
+  const rewardByReferredUserId = ((referrerRewardRows ?? []) as Array<{ referred_user_id: string | null; amount: number | null }>).reduce<Record<string, number>>((grouped, row) => {
+    if (row.referred_user_id) {
+      grouped[row.referred_user_id] = (grouped[row.referred_user_id] ?? 0) + Number(row.amount ?? 0);
+    }
+    return grouped;
+  }, {});
+
+  const uniqueReferralEvents = Array.from(
+    new Map((referralEventRows ?? []).map((event) => [String(event.referred_user_id), event])).values(),
+  );
+  const referrals: Referral[] = uniqueReferralEvents.length
+    ? uniqueReferralEvents.map((event) => ({
         id: String(event.id),
         referrer_id: String(event.referrer_user_id),
         referred_user_id: String(event.referred_user_id),
         referral_code: String(event.referral_code),
         status: event.referrer_reward_status === "credited" ? "completed" as const : "pending" as const,
-        reward_amount: 100,
+        reward_amount: rewardByReferredUserId[String(event.referred_user_id)] ?? 0,
         created_at: String(event.created_at),
         completed_at: event.referred_first_completed_at ? String(event.referred_first_completed_at) : null,
         referred_profile: null,
@@ -278,7 +297,7 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
     reference_id: transaction.application_id ?? null,
     created_at: transaction.created_at,
   })) as RewardTransaction[];
-  let wallet: Wallet | null = walletDataRow
+  const wallet: Wallet | null = walletDataRow
     ? {
         ...walletDataRow,
         balance_points: Number(walletDataRow.balance ?? 0),
@@ -287,45 +306,16 @@ export async function getWalletSnapshot(userId: string, limit = 20): Promise<Wal
         total_cashback_earned: Number(walletDataRow.lifetime_earned ?? 0),
         total_cashback_used: Number(walletDataRow.lifetime_redeemed ?? 0),
         nearest_expiry_at: null,
-      }
+    }
     : null;
-  const resolvedFacts = await resolveUserWalletFacts({ userIds: [userId] });
-
-  if (resolvedFacts.sourceUsed !== "none" && (!wallet || Number(wallet.balance_points ?? 0) === 0)) {
-    const now = new Date().toISOString();
-    wallet = {
-      id: walletDataRow?.id ?? `resolved-${userId}`,
-      user_id: userId,
-      balance: resolvedFacts.walletBalance,
-      balance_points: resolvedFacts.walletBalance,
-      total_reward_earned: resolvedFacts.cashbackEarned,
-      total_reward_redeemed: Number(walletDataRow?.lifetime_redeemed ?? 0),
-      total_cashback_earned: resolvedFacts.cashbackEarned,
-      total_cashback_used: Number(walletDataRow?.lifetime_redeemed ?? 0),
-      nearest_expiry_at: null,
-      frozen: walletDataRow?.frozen,
-      suspicious: walletDataRow?.suspicious,
-      admin_note: walletDataRow?.admin_note,
-      created_at: walletDataRow?.created_at ?? now,
-      updated_at: walletDataRow?.updated_at ?? now,
-    };
-  }
-
-  const resolvedReferralSummary = referralSummary && resolvedFacts.referralsCount > referralSummary.total
-    ? {
-        ...referralSummary,
-        total: resolvedFacts.referralsCount,
-        pending: Math.max(referralSummary.pending, resolvedFacts.referralsCount - referralSummary.completed),
-      }
-    : referralSummary;
 
   return {
     wallet,
     transactions,
-    cashbackEarned: Math.max(toNumber(wallet?.total_reward_earned), resolvedFacts.cashbackEarned),
+    cashbackEarned: toNumber(wallet?.total_reward_earned),
     cashbackUsed: toNumber(wallet?.total_reward_redeemed),
     expiringSoonAmount: 0,
-    referralSummary: resolvedReferralSummary,
+    referralSummary,
   };
 }
 
@@ -359,7 +349,7 @@ export async function getRewardRuleForOrder(serviceSlugs: string[]) {
 }
 
 export function calculateCashbackAmount(orderAmount: number) {
-  return Math.round(Math.max(0, orderAmount) * 0.2);
+  return Math.round(Math.max(0, orderAmount) * (REPEAT_CASHBACK_PERCENT / 100));
 }
 
 export async function creditCashbackForApplication({

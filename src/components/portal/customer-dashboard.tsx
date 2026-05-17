@@ -299,7 +299,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                 </div>
                 <Gift className="h-6 w-6 text-orange-500" />
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">Invite a friend. They get Rs 100 on signup, and you earn Rs 100 after their first completed paid service.</p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">Invite a friend. They get Rs 500 on signup, you earn Rs 100 when they join, and another Rs 100 after their first completed paid service.</p>
               <p className="mt-3 break-all rounded-2xl bg-slate-50 p-3 font-mono text-xs font-bold text-slate-700">
                 {referral.link || "Your referral link will appear after profile sync."}
               </p>

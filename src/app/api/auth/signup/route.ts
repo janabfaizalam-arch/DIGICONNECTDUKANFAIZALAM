@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
 import { syncUserProfile } from "@/lib/auth";
+import { creditSignupBonus } from "@/lib/wallet-ledger";
 
 type SignupBody = {
   fullName?: string;
@@ -212,6 +213,9 @@ export async function POST(request: Request) {
 
     if (data.user) {
       await syncUserProfile(data.user);
+      await creditSignupBonus(data.user.id).catch((rewardError) => {
+        console.error("[auth/signup] Signup bonus credit failed", rewardError);
+      });
     }
 
     if (data.user?.id && referredBy) {

@@ -32,7 +32,7 @@ export default async function SignupPage({ searchParams }: { searchParams?: Prom
           <div className="liquid-card absolute left-7 top-8 w-[58%] rounded-2xl p-5">
             <Gift className="h-8 w-8 text-orange-600" />
             <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Verified Signup Reward</p>
-            <h2 className="mt-2 text-2xl font-semibold leading-tight text-slate-950">Rs 50 wallet credit after email verification</h2>
+            <h2 className="mt-2 text-2xl font-semibold leading-tight text-slate-950">Rs 500 reward wallet credit on signup</h2>
           </div>
           <div className="liquid-card absolute bottom-10 right-8 w-[62%] rounded-2xl p-5">
             <div className="grid gap-3">

@@ -1,6 +1,5 @@
 import { safeDateValue } from "@/lib/admin-format";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { resolveUserWalletFacts } from "@/lib/wallet-resolver";
 
 const PAGE_SIZE = 500;
 const AUTH_PAGE_SIZE = 100;
@@ -285,7 +284,6 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     ),
     safeRangeQuery<WalletRow>("reward_wallets", (from, to) => supabase.from("reward_wallets").select("user_id, balance, lifetime_earned").range(from, to)),
     safeRangeQuery<ReferralRow>("referral_events", (from, to) => supabase.from("referral_events").select("*").range(from, to)),
-    safeRangeQuery<ReferralRow>("referrals", (from, to) => supabase.from("referrals").select("*").range(from, to)),
     safeAuthUsers(supabase),
   ]);
 
@@ -295,8 +293,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
   const applications = results[3].status === "fulfilled" ? results[3].value : [];
   const wallets = results[4].status === "fulfilled" ? results[4].value : [];
   const referrals = results[5].status === "fulfilled" ? results[5].value : [];
-  const legacyReferrals = results[6].status === "fulfilled" ? results[6].value : [];
-  const authUsers = results[7].status === "fulfilled" ? results[7].value : [];
+  const authUsers = results[6].status === "fulfilled" ? results[6].value : [];
   const walletRpcRows = await Promise.all(
     profiles.map((profile) =>
       safeRpc<WalletRow>("create_reward_wallet_if_missing", () => supabase.rpc("create_reward_wallet_if_missing", { p_user_id: profile.id })),
@@ -316,14 +313,13 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     if (wallet?.user_id) walletsByUserId.set(String(wallet.user_id), wallet);
   }
   const authUsersById = new Map(authUsers.map((authUser) => [authUser.id, authUser]));
-  const referralCounts = referrals.reduce<Record<string, number>>((grouped, referral) => {
-    if (referral.referrer_user_id) grouped[referral.referrer_user_id] = (grouped[referral.referrer_user_id] ?? 0) + 1;
+  const referredUsersByReferrer = referrals.reduce<Record<string, Set<string>>>((grouped, referral) => {
+    if (referral.referrer_user_id && referral.referred_user_id) {
+      grouped[referral.referrer_user_id] ??= new Set<string>();
+      grouped[referral.referrer_user_id].add(referral.referred_user_id);
+    }
     return grouped;
   }, {});
-  for (const referral of legacyReferrals) {
-    const referrerId = referral.referrer_user_id ?? referral.referrer_id;
-    if (referrerId) referralCounts[referrerId] = (referralCounts[referrerId] ?? 0) + 1;
-  }
   for (const customer of customers) {
     if (!customer.user_id) continue;
     const group = customersByUserId.get(customer.user_id) ?? [];
@@ -370,12 +366,14 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     return null;
   }
 
-  function sumByPossibleId(values: Record<string, number>, possibleIds: Set<string>) {
-    let total = 0;
+  function sumUniqueReferrals(values: Record<string, Set<string>>, possibleIds: Set<string>) {
+    const referredUserIds = new Set<string>();
     for (const id of possibleIds) {
-      total += values[id] ?? 0;
+      for (const referredUserId of values[id] ?? []) {
+        referredUserIds.add(referredUserId);
+      }
     }
-    return total;
+    return referredUserIds.size;
   }
 
   function applicationSummary(possibleIds: Set<string>, linkedCustomerIds: Set<string>) {
@@ -472,7 +470,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     const sentIds = new Set<string>();
     const receivedIds = new Set<string>();
 
-    for (const referral of [...referrals, ...legacyReferrals]) {
+    for (const referral of referrals) {
       const referrerId = referral.referrer_user_id ?? referral.referrer_id;
       const referredId = referral.referred_user_id ?? referral.referred_id ?? referral.user_id ?? referral.customer_id;
       if (referrerId && possibleIds.has(referrerId) && referredId && !possibleIds.has(referredId)) sentIds.add(referredId);
@@ -504,11 +502,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     const authUser = authUsersById.get(profile.id);
     const wallet = pickFirstByPossibleId(walletsByUserId, possibleIds);
     const summary = applicationSummary(possibleIds, linkedCustomerIds);
-    const walletFacts = await resolveUserWalletFacts({
-      userIds: Array.from(possibleIds),
-      customerIds: Array.from(linkedCustomerIds),
-    });
-    const referralCount = walletFacts.referralsCount || sumByPossibleId(referralCounts, possibleIds);
+    const referralCount = sumUniqueReferrals(referredUsersByReferrer, possibleIds);
     const mobile = normalizeMobile(firstText(authUser?.phone, profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone));
     const referralCode = referralCodeFor(profile, customer, customerProfile);
     const referralsSummary = referralRelationship(possibleIds, profile, customer, customerProfile);
@@ -520,7 +514,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
         matchedWalletUserId: wallet?.user_id ?? null,
         matchedCustomerId: customer?.id ?? null,
         matchedReferralCount: referralCount,
-        walletSourceUsed: walletFacts.sourceUsed,
+        walletSourceUsed: wallet ? "new" : "none",
       });
     }
 
@@ -536,14 +530,14 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       created_at: profile.created_at ?? new Date(0).toISOString(),
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
-      walletBalance: walletFacts.walletBalance,
-      cashbackBalance: walletFacts.cashbackEarned,
+      walletBalance: Number(wallet?.balance ?? 0),
+      cashbackBalance: Number(wallet?.lifetime_earned ?? 0),
       referralCount,
       referralCode,
       referredBy: referralsSummary.referredBy,
       referredUsersCount: Math.max(referralCount, referralsSummary.referredUsersCount),
       referredUsersPreview: referralsSummary.referredUsersPreview,
-      walletSource: walletFacts.sourceUsed,
+      walletSource: wallet ? "new" : "none",
       canOpenDetails: Boolean(customer?.id),
       debug: {
         profileId: profile.id,

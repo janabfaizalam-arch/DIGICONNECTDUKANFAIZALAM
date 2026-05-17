@@ -40,7 +40,7 @@ export function getDefaultHomepageNotices(): HomepageNotice[] {
     },
     {
       id: "default-referral",
-      notice_text: "Refer & Earn Rs 50",
+      notice_text: "Refer & Earn Rs 200",
       link_url: "/signup",
       emoji_icon: "🎁",
       color_theme: "green",

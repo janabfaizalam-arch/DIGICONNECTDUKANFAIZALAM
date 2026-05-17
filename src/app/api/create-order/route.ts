@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getServiceBySlug } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
+import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type CreateOrderBody = {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     const receipt = getSafeReceipt(String(body?.receipt ?? `digi-${Date.now()}`));
     let applicationIds: string[] = [];
     let orderUserId: string | null = null;
+    let walletRedeemAmount = 0;
     const serviceSlugs = Array.from(
       new Set((Array.isArray(body?.serviceSlugs) && body?.serviceSlugs.length ? body.serviceSlugs : [body?.serviceSlug])
         .map((slug) => String(slug ?? "").trim())
@@ -89,8 +91,9 @@ export async function POST(request: Request) {
       const requestedWalletAmount = Math.max(0, Math.round(Number(body?.walletUseAmount ?? 0)));
       const wallet = await createWalletIfMissing(user.id);
       const maxRedeem = calculateMaxRedeem(serviceAmount, Number(wallet.balance ?? 0));
-      const walletRedeemAmount = Math.min(requestedWalletAmount, maxRedeem);
+      walletRedeemAmount = Math.min(requestedWalletAmount, maxRedeem);
       const freshPayableAmount = Math.max(0, serviceAmount - walletRedeemAmount);
+      const minimumFreshPayment = Math.ceil(serviceAmount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
       const expectedAmount = Math.round(freshPayableAmount * 100);
 
       if (requestedWalletAmount > maxRedeem) {
@@ -99,6 +102,10 @@ export async function POST(request: Request) {
 
       if (amount !== expectedAmount) {
         return jsonError("Razorpay amount does not match the server-side payable amount.", 400);
+      }
+
+      if (freshPayableAmount < minimumFreshPayment) {
+        return jsonError("At least 50% of the service amount must be paid through Razorpay.", 400);
       }
 
       amount = expectedAmount;
@@ -227,7 +234,7 @@ export async function POST(request: Request) {
         application_id: primaryApplicationId,
         user_id: orderUserId,
         amount: amount / 100,
-        wallet_used_amount: Number(body?.walletUseAmount ?? 0),
+        wallet_used_amount: walletRedeemAmount,
         real_payment_amount: amount / 100,
         status: "pending",
         razorpay_order_id: order.id,

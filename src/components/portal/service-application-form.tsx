@@ -14,6 +14,7 @@ import { useWallet } from "@/hooks/use-wallet";
 import { trackApplicationSubmit } from "@/lib/google-analytics";
 import { trackSubmitApplication } from "@/lib/meta-pixel";
 import { formatCurrency } from "@/lib/portal-data";
+import { calculateCashbackForFreshPayment } from "@/lib/reward-rules";
 import { createClient } from "@/lib/supabase/browser";
 import { getRealPayableAmount } from "@/lib/wallet";
 
@@ -95,7 +96,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
   const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
-  const expectedCashback = hasFirstServiceCashback ? Math.round(realPayableAmount * 0.2) : realPayableAmount;
+  const expectedCashback = calculateCashbackForFreshPayment(realPayableAmount, !hasFirstServiceCashback);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
   const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
   const canStartPayment =

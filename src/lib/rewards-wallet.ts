@@ -1,4 +1,9 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import {
+  calculateCashbackForFreshPayment,
+  calculateMaxWalletRedeem,
+} from "@/lib/reward-rules";
+import { ensureRewardWallet } from "@/lib/wallet-ledger";
 
 export type RewardWallet = {
   id: string;
@@ -17,11 +22,13 @@ export type WalletLedgerTransaction = {
   id: string;
   user_id: string;
   type:
-    | "signup_referral_bonus"
-    | "referrer_bonus"
+    | "signup_bonus"
+    | "referrer_signup_bonus"
+    | "referrer_first_service_bonus"
     | "first_service_cashback"
     | "repeat_cashback"
     | "redeem"
+    | "legacy_wallet_migration"
     | "admin_adjustment"
     | "reversal";
   direction: "credit" | "debit";
@@ -40,7 +47,7 @@ export type WalletLedgerTransaction = {
 };
 
 export function calculateMaxRedeem(amount: number, walletBalance = Number.POSITIVE_INFINITY) {
-  return Math.max(0, Math.min(walletBalance, Math.floor(Math.max(0, amount) * 0.5)));
+  return calculateMaxWalletRedeem(amount, walletBalance);
 }
 
 export function calculateExpectedCashback({
@@ -51,23 +58,11 @@ export function calculateExpectedCashback({
   isFirstService: boolean;
 }) {
   const amount = Math.max(0, freshPaidAmount);
-  return isFirstService ? amount : Math.round(amount * 0.2);
+  return calculateCashbackForFreshPayment(amount, isFirstService);
 }
 
 export async function createWalletIfMissing(userId: string) {
-  const supabase = getSupabaseAdmin();
-
-  if (!supabase) {
-    throw new Error("Supabase service role key is missing.");
-  }
-
-  const { data, error } = await supabase.rpc("create_reward_wallet_if_missing", { p_user_id: userId });
-
-  if (error) {
-    throw error;
-  }
-
-  return data as RewardWallet;
+  return ensureRewardWallet(userId);
 }
 
 export async function getWallet(userId: string) {

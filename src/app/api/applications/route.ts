@@ -6,6 +6,7 @@ import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth"
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getServiceBySlug } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
+import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
 import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRealPayableAmount, getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
@@ -137,11 +138,11 @@ export async function POST(request: Request) {
     const orderAmount = comboOrder ? 699 : resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
     const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
     const rewardRule = await getRewardRuleForOrder(resolvedServices.map((service) => service.slug));
-    const maxRedemptionPercent = Number(rewardRule?.max_redemption_percent ?? 50);
+    const maxRedemptionPercent = Math.min(Number(rewardRule?.max_redemption_percent ?? MAX_WALLET_REDEEM_PERCENT), MAX_WALLET_REDEEM_PERCENT);
     const wallet = await createWalletIfMissing(user.id);
     const maxWalletAllowed = Math.min(
       calculateMaxRedeem(orderAmount, Number(wallet.balance ?? 0)),
-      Math.floor(orderAmount * (Math.min(Math.max(maxRedemptionPercent, 0), 50) / 100)),
+      Math.floor(orderAmount * (Math.min(Math.max(maxRedemptionPercent, 0), MAX_WALLET_REDEEM_PERCENT) / 100)),
     );
 
     if (requestedWalletAmount > 0) {
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
 
     const realPaymentAmount = getRealPayableAmount(orderAmount, requestedWalletAmount);
     const expectedRazorpayAmountPaise = Math.round(realPaymentAmount * 100);
-    const minimumFreshPayment = Math.ceil(orderAmount * 0.5);
+    const minimumFreshPayment = Math.ceil(orderAmount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
 
     if (realPaymentAmount < minimumFreshPayment) {
       return jsonError("At least 50% of the service amount must be paid through Razorpay.", 400);

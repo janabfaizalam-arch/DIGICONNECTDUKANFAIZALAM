@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
 import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { creditSignupBonus } from "@/lib/wallet-ledger";
 
 export async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
@@ -291,6 +292,11 @@ export async function syncUserProfile(user: User) {
 
       await createWalletIfMissing(user.id).catch((error) => {
         console.error("[auth] Reward wallet creation failed", error);
+        return null;
+      });
+
+      await creditSignupBonus(user.id).catch((error) => {
+        console.error("[auth] Signup bonus credit failed", error);
         return null;
       });
 
