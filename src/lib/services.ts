@@ -207,7 +207,7 @@ function activeServiceFilter(service: DbService) {
 }
 
 const serviceSelect =
-  "*, service_categories(*), service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*)";
+  "*, service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*)";
 
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
   const fallback = getFallbackCategoryBySlug(category.slug);
@@ -222,6 +222,21 @@ function categoryFromDb(category: DbServiceCategory, services: DbService[] = [])
     id: category.id,
     sortOrder: category.sort_order,
     isActive: category.is_active,
+    serviceCount: services.filter(activeServiceFilter).length,
+  };
+}
+
+function categoryFromSlug(categorySlug: string, services: DbService[] = []): ServiceCategoryWithCount {
+  const fallback = getFallbackCategoryBySlug(categorySlug);
+  const categoryName = fallback?.title ?? categorySlug.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  return {
+    title: categoryName,
+    slug: categorySlug,
+    heading: fallback?.heading ?? `${categoryName} Services`,
+    description: fallback?.description ?? "",
+    icon: fallback?.icon ?? FileText,
+    featuredSlugs: services.filter((service) => service.is_featured ?? service.featured).map((service) => service.slug),
     serviceCount: services.filter(activeServiceFilter).length,
   };
 }
@@ -393,16 +408,26 @@ export async function getPublicCategoriesWithCounts() {
   }
 
   const bySlug = new Map<string, { category: DbServiceCategory; services: DbService[] }>();
+  const byCanonicalSlug = new Map<string, DbService[]>();
   rows.forEach((service) => {
     const category = service.service_categories;
-    if (!category?.is_active) return;
-    const current = bySlug.get(category.slug) ?? { category, services: [] };
-    current.services.push(service);
-    bySlug.set(category.slug, current);
+    if (category?.is_active) {
+      const current = bySlug.get(category.slug) ?? { category, services: [] };
+      current.services.push(service);
+      bySlug.set(category.slug, current);
+      return;
+    }
+
+    const canonicalSlug = categorySlugFromService(service);
+    const current = byCanonicalSlug.get(canonicalSlug) ?? [];
+    current.push(service);
+    byCanonicalSlug.set(canonicalSlug, current);
   });
 
-  return Array.from(bySlug.values())
-    .map(({ category, services }) => categoryFromDb(category, services))
+  return [
+    ...Array.from(bySlug.values()).map(({ category, services }) => categoryFromDb(category, services)),
+    ...Array.from(byCanonicalSlug.entries()).map(([slug, services]) => categoryFromSlug(slug, services)),
+  ]
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 

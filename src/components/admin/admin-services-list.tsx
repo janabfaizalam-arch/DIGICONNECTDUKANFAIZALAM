@@ -117,16 +117,16 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
     });
   }
 
-  async function seedServices() {
+  async function importExistingServices() {
     startTransition(async () => {
       try {
         const response = await fetch("/api/admin/services/seed", { method: "POST" });
-        const result = (await response.json()) as { message?: string };
-        if (!response.ok) throw new Error(result.message ?? "Services could not be seeded.");
-        success(result.message ?? "Services seeded.");
+        const result = (await response.json()) as { message?: string; found?: number; imported?: number; updated?: number };
+        if (!response.ok) throw new Error(result.message ?? "Existing services could not be imported.");
+        success(result.message ?? `Imported ${result.found ?? 0} existing services.`);
         window.location.reload();
       } catch (error) {
-        toastError(error instanceof Error ? error.message : "Services could not be seeded.");
+        toastError(error instanceof Error ? error.message : "Existing services could not be imported.");
       }
     });
   }
@@ -154,9 +154,9 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" onClick={seedServices} disabled={isPending}>
+        <Button type="button" variant="outline" onClick={importExistingServices} disabled={isPending}>
           {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-          Seed fallback
+          Import Existing Services
         </Button>
       </div>
 
