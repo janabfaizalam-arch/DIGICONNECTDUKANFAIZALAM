@@ -251,7 +251,7 @@ export function SiteHeader() {
               className="h-full w-auto object-contain"
             />
           </span>
-          <span className="hidden max-w-[8.5rem] text-[0.62rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500 min-[390px]:block">
+          <span className={`hidden max-w-[8.5rem] text-[0.62rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500 ${appShell ? "lg:block" : "min-[390px]:block"}`}>
             Powered By RNoS India Pvt Ltd
           </span>
         </Link>
@@ -332,22 +332,12 @@ export function SiteHeader() {
           )}
         </div>
         {appShell ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 md:hidden">
-            <Link href={appShellHref} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white">
+          <div className="ml-auto flex shrink-0 flex-nowrap items-center justify-end gap-2 overflow-hidden md:hidden">
+            <Link href={appShellHref} className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white shadow-sm">
               <LayoutDashboard className="h-4 w-4" />
               {agentShell ? "Agent" : staffShell ? "Staff" : "Dashboard"}
             </Link>
-            {agentShell ? (
-              <>
-                <Link href="/agent/leads" className="inline-flex h-10 items-center justify-center rounded-full border bg-white px-3 text-xs font-bold text-slate-900">
-                  Leads
-                </Link>
-                <Link href="/agent/commissions" className="inline-flex h-10 items-center justify-center rounded-full border bg-white px-3 text-xs font-bold text-slate-900">
-                  Commissions
-                </Link>
-              </>
-            ) : null}
-            {user ? <LogoutButton className="h-10 px-3 text-xs" /> : null}
+            {user ? <LogoutButton showLabel={false} className="h-9 w-9 shrink-0 rounded-full p-0" /> : null}
           </div>
         ) : (
           <div className="flex items-center gap-2 md:hidden">

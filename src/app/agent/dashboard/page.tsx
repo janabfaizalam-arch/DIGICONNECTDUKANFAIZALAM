@@ -60,7 +60,7 @@ export default async function AgentDashboardPage() {
               <h1 className="mt-2 truncate text-2xl font-bold text-slate-950 md:text-3xl">{agentName}</h1>
               <p className="mt-1 font-mono text-sm font-semibold text-slate-500">{agentCode}</p>
             </div>
-            <LogoutButton className="h-11 w-full justify-center sm:w-auto" />
+            <LogoutButton className="hidden h-11 justify-center sm:inline-flex sm:w-auto" />
           </div>
         </header>
 

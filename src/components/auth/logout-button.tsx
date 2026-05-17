@@ -12,9 +12,10 @@ type LogoutButtonProps = {
   className?: string;
   onLoggedOut?: () => void;
   variant?: "default" | "secondary" | "outline" | "ghost";
+  showLabel?: boolean;
 };
 
-export function LogoutButton({ className, onLoggedOut, variant = "outline" }: LogoutButtonProps) {
+export function LogoutButton({ className, onLoggedOut, variant = "outline", showLabel = true }: LogoutButtonProps) {
   const router = useRouter();
   const { error: toastError } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -45,9 +46,16 @@ export function LogoutButton({ className, onLoggedOut, variant = "outline" }: Lo
   };
 
   return (
-    <Button type="button" onClick={handleLogout} disabled={isLoggingOut} variant={variant} className={className}>
+    <Button
+      type="button"
+      onClick={handleLogout}
+      disabled={isLoggingOut}
+      variant={variant}
+      className={className}
+      aria-label={showLabel ? undefined : "Logout"}
+    >
       {isLoggingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-      Logout
+      {showLabel ? "Logout" : null}
     </Button>
   );
 }
