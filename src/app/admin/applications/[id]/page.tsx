@@ -18,8 +18,10 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-function displayValue(value: unknown) {
+function displayValue(value: unknown): string {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map((item) => displayValue(item)).filter(Boolean).join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value, null, 2);
   return "";
 }
 
@@ -57,10 +59,14 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     statusLogs,
     referralDebug,
     diagnostics,
+    documentDiagnostics,
+    possibleDocuments,
     warnings,
     facts,
   } = detail;
   const formData = asRecord(application.form_data);
+  const customerDetails = asRecord(application.customer_details);
+  const serviceSnapshot = asRecord(application.service_snapshot);
   const customerMobile = customer.mobile;
   const warningItems = [...warnings, ...diagnostics.map((item: { message?: string }) => item.message).filter(Boolean) as string[]];
 
@@ -115,6 +121,22 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             </div>
           </div>
 
+          <h2 className="mt-6 text-lg font-bold text-slate-950">Customer Info</h2>
+          <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
+            <DetailTile label="Name" value={String(customer.name || customerDetails.name || "-")} />
+            <DetailTile label="Mobile" value={String(customerMobile || customerDetails.mobile || "-")} mono />
+            <DetailTile label="Email" value={String(customer.email || customerDetails.email || "-")} />
+            <DetailTile label="Address" value={String(customer.address || customerDetails.address || formData.address || "-")} />
+          </div>
+
+          <h2 className="mt-6 text-lg font-bold text-slate-950">Service Info</h2>
+          <div className="mt-3 grid gap-3 rounded-2xl bg-blue-50/70 p-4 md:grid-cols-2">
+            <DetailTile label="Title" value={String(serviceSnapshot.title || application.service_name)} />
+            <DetailTile label="Slug" value={String(serviceSnapshot.slug || application.service_slug)} mono />
+            <DetailTile label="Category" value={String(serviceSnapshot.category || "-")} />
+            <DetailTile label="Price" value={safeCurrency(Number(serviceSnapshot.price ?? application.total_amount ?? application.amount ?? 0))} />
+          </div>
+
           <h2 className="mt-6 text-lg font-bold text-slate-950">Payment Facts</h2>
           <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
             <DetailTile label="Payment Status" value={application.payment_status ?? payment?.status ?? "pending"} />
@@ -139,14 +161,16 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <DetailTile label="Referrer" value={referralDebug?.referred_by_user_id ?? "-"} mono />
           </div>
 
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Service Details</h2>
+          <h2 className="mt-6 text-lg font-bold text-slate-950">Submitted Form Details</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {Object.entries(formData).map(([key, value]) => (
-              <div key={key} className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
-              </div>
-            ))}
+            {Object.entries(formData)
+              .filter(([key, value]) => key !== "documents" && displayValue(value))
+              .map(([key, value]) => (
+                <div key={key} className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
+                </div>
+              ))}
           </div>
 
           <h2 className="mt-6 text-lg font-bold text-slate-950">Documents</h2>
@@ -156,17 +180,39 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 <div key={document.id} className="rounded-2xl border bg-white p-4 text-sm font-bold text-slate-900">
                   <a href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3">
                     <FileText className="h-4 w-4 text-blue-600" />
-                    {document.file_name}
+                    <span className="min-w-0 truncate">{document.document_name || document.file_name}</span>
                   </a>
+                  <p className="mt-1 break-all font-mono text-xs text-slate-500">{document.file_name}</p>
                   <p className="mt-2 text-xs font-bold capitalize text-slate-500">
-                    {String(document.review_status ?? "pending").replace(/_/g, " ")}
+                    {String(document.review_status ?? document.status ?? "pending").replace(/_/g, " ")}
                   </p>
                   {document.rejection_reason ? <p className="mt-1 text-xs text-orange-700">{document.rejection_reason}</p> : null}
                   <AdminDocumentReviewActions documentId={document.id} />
                 </div>
               ))
             ) : (
-              <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No documents uploaded.</p>
+              <div className="md:col-span-2 space-y-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-bold">No documents linked to this application.</p>
+                  <p className="mt-2">Expected query: {documentDiagnostics.expectedQuery}</p>
+                  <p className="mt-1 font-mono text-xs">application: {documentDiagnostics.applicationId}</p>
+                  <p className="mt-1 font-mono text-xs">user: {documentDiagnostics.userId ?? "-"}</p>
+                  <p className="mt-1 font-mono text-xs">customer: {documentDiagnostics.customerId ?? "-"}</p>
+                </div>
+                {possibleDocuments.length ? (
+                  <div className="rounded-2xl border border-orange-200 bg-white p-4">
+                    <p className="font-bold text-orange-900">Possible documents found but not linked</p>
+                    <div className="mt-3 grid gap-2">
+                      {possibleDocuments.map((document) => (
+                        <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl bg-orange-50 px-3 py-2 text-sm font-bold text-orange-900">
+                          <FileText className="h-4 w-4" />
+                          <span className="min-w-0 truncate">{document.document_name || document.file_name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             )}
           </div>
         </Card>

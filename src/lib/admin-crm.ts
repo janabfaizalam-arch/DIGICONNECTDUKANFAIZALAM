@@ -1,5 +1,5 @@
 import { safeCurrency, safeDate, safeDateTime } from "@/lib/admin-format";
-import { asRecord, getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
+import { asRecord, getCustomerMobile, getCustomerName, hydrateApplications, resolveDocumentUrls } from "@/lib/crm";
 import type { AdminApplicationRow, Application, ApplicationDocument, Customer, Invoice, Payment, PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -115,11 +115,13 @@ function dedupePayments(payments: PaymentRow[]) {
 
 function customerFromApplication(application: Application) {
   const formData = asRecord(application.form_data);
+  const customerDetails = asRecord(application.customer_details);
 
   return {
-    name: getCustomerName(application),
-    mobile: getCustomerMobile(application),
-    email: String(formData.email ?? application.customers?.email ?? ""),
+    name: String(customerDetails.name ?? getCustomerName(application)),
+    mobile: String(customerDetails.mobile ?? getCustomerMobile(application)),
+    email: String(customerDetails.email ?? formData.email ?? application.customers?.email ?? ""),
+    address: String(customerDetails.address ?? formData.address ?? application.customers?.address ?? ""),
   };
 }
 
@@ -408,13 +410,48 @@ export async function getAdminApplicationDetail(id: string) {
   if (amountMismatch) warnings.push("Payment amount does not match application fresh payable amount.");
   if (!application.service_slug) warnings.push("Service slug is missing.");
 
-  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult] = await Promise.all([
+  const documentSelect = "id, application_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, metadata, uploaded_at, created_at";
+  const possibleDocumentQueries = [];
+  if (application.user_id) {
+    possibleDocumentQueries.push(
+      supabase
+        .from("application_documents")
+        .select(documentSelect)
+        .eq("user_id", application.user_id)
+        .neq("application_id", id)
+        .order("uploaded_at", { ascending: false, nullsFirst: false })
+        .limit(10),
+    );
+  }
+  if (application.customer_id) {
+    possibleDocumentQueries.push(
+      supabase
+        .from("application_documents")
+        .select(documentSelect)
+        .eq("customer_id", application.customer_id)
+        .neq("application_id", id)
+        .order("uploaded_at", { ascending: false, nullsFirst: false })
+        .limit(10),
+    );
+  }
+
+  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     application.user_id ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from("admin_crm_diagnostics").select("issue_type, severity, message").eq("application_id", id).limit(10),
+    Promise.all(possibleDocumentQueries),
   ]);
+  const possibleDocuments = application.documents?.length
+    ? []
+    : await resolveDocumentUrls(
+        Array.from(
+          new Map(
+            possibleDocumentResults.flatMap((result) => (result.error ? [] : ((result.data ?? []) as ApplicationDocument[]))).map((document) => [document.id, document]),
+          ).values(),
+        ),
+      );
 
   return {
     application,
@@ -422,6 +459,7 @@ export async function getAdminApplicationDetail(id: string) {
     invoice: application.invoices?.[0] ?? null,
     customer,
     documents: (application.documents ?? []) as ApplicationDocument[],
+    possibleDocuments,
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
     notes: notesResult.error ? [] : notesResult.data ?? [],
@@ -429,6 +467,12 @@ export async function getAdminApplicationDetail(id: string) {
     statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
     referralDebug: referralResult.error ? null : referralResult.data,
     diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],
+    documentDiagnostics: {
+      applicationId: id,
+      userId: application.user_id ?? null,
+      customerId: application.customer_id ?? null,
+      expectedQuery: `application_documents.application_id = ${id}`,
+    },
     warnings,
     facts: {
       totalAmount: Number(application.total_amount ?? application.amount ?? 0),

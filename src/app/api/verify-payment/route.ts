@@ -2,10 +2,11 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
+import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
 
 type VerifyPaymentBody = {
   razorpay_payment_id?: string;
@@ -147,20 +148,27 @@ export async function POST(request: Request) {
     const serviceAmount = applications.reduce((total, application) => total + Number(application.total_amount ?? application.amount ?? 0), 0);
     const walletRedeemedAmount = applications.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? 0), 0);
     const freshPayableAmount = applications.reduce((total, application) => total + Number(application.fresh_payable_amount ?? application.amount ?? 0), 0);
-    const maxWalletRedeem = Math.floor(serviceAmount * (MAX_WALLET_REDEEM_PERCENT / 100));
-    const minimumFreshPayable = Math.ceil(serviceAmount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
+    const wallet = await createWalletIfMissing(user.id);
+    const redeemLimit = calculateWalletRedeemBreakdown({
+      serviceAmount,
+      walletBalance: Number(wallet.balance ?? 0),
+      requestedRedeem: walletRedeemedAmount,
+    });
 
-    if (serviceAmount > 0 && (walletRedeemedAmount > maxWalletRedeem || freshPayableAmount < minimumFreshPayable)) {
+    if (serviceAmount > 0 && (walletRedeemedAmount > redeemLimit.maxRedeem || freshPayableAmount !== redeemLimit.freshPayable)) {
       console.error("[razorpay/verify-payment] Wallet redeem cap violation", {
         orderId,
         paymentId,
         serviceAmount,
+        walletBalance: redeemLimit.walletBalance,
         walletRedeemedAmount,
         freshPayableAmount,
-        maxWalletRedeem,
-        minimumFreshPayable,
+        walletHalf: redeemLimit.walletHalf,
+        serviceHalf: redeemLimit.serviceHalf,
+        maxWalletRedeem: redeemLimit.maxRedeem,
+        expectedFreshPayable: redeemLimit.freshPayable,
       });
-      return jsonError("Wallet redeem cannot exceed 50% of service amount", 400);
+      return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
     }
 
     if (!alreadyVerified) {

@@ -163,13 +163,15 @@ export async function POST(request: Request) {
       serviceAmount: redeem.serviceAmount,
       walletBalance: redeem.walletBalance,
       requestedRedeem: redeem.requestedRedeem,
+      walletHalf: redeem.walletHalf,
+      serviceHalf: redeem.serviceHalf,
       maxRedeem: redeem.maxRedeem,
       finalRedeem: redeem.walletRedeem,
       freshPayable: redeem.freshPayable,
     });
 
     if (orderAmount > 0 && realPaymentAmount < redeem.minimumFreshPayable) {
-      return jsonError("Wallet redeem cannot exceed 50% of service amount", 400);
+      return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
     }
 
     const customer = body.customer ?? {};
@@ -229,8 +231,49 @@ export async function POST(request: Request) {
       city: customer.city?.trim() ?? "",
       message: customer.message?.trim() ?? "",
       service_slugs: resolvedServices.map((service) => service.slug),
+      payment: {
+        total_amount: orderAmount,
+        wallet_redeemed_amount: walletRedeemAmount,
+        fresh_payable_amount: realPaymentAmount,
+        cashback_eligible_amount: realPaymentAmount,
+      },
       ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
       documents: body.documents,
+    };
+    const customerDetails = {
+      name: customer.name!.trim(),
+      mobile: customer.mobile!.trim(),
+      email: customer.email?.trim() ?? "",
+      city: customer.city?.trim() ?? "",
+      address: String(details.address ?? "").trim(),
+      notes: customer.message?.trim() ?? "",
+    };
+    const serviceSnapshot = {
+      title: resolvedServices.map((service) => service.title).join(", "),
+      slug: resolvedServices.map((service) => service.slug).join(","),
+      slugs: resolvedServices.map((service) => service.slug),
+      category: resolvedServices.map((service) => service.category).filter(Boolean).join(", "),
+      category_slug: resolvedServices.map((service) => service.categorySlug).filter(Boolean).join(", "),
+      price: orderAmount,
+      services: resolvedServices.map((service) => ({
+        title: service.title,
+        slug: service.slug,
+        category: service.category,
+        categorySlug: service.categorySlug,
+        amount: service.amount,
+        documents: service.documents,
+      })),
+    };
+    const applicationMetadata = {
+      source: "customer_service_application",
+      payment: {
+        total_amount: orderAmount,
+        wallet_redeemed_amount: walletRedeemAmount,
+        fresh_payable_amount: realPaymentAmount,
+        cashback_eligible_amount: realPaymentAmount,
+      },
+      razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? null,
+      razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? null,
     };
     const { data: linkedCustomer } = await supabase
       .from("customers")
@@ -276,6 +319,9 @@ export async function POST(request: Request) {
         .from("applications")
         .update({
           form_data: formData,
+          customer_details: customerDetails,
+          service_snapshot: serviceSnapshot,
+          metadata: applicationMetadata,
           status: "submitted",
           payment_status: "verified",
           razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? existingApplications[0]?.razorpay_order_id ?? null,
@@ -302,10 +348,18 @@ export async function POST(request: Request) {
           application_id: application.id,
           user_id: user.id,
           document_type: document.document_type,
+          document_name: document.document_type,
           file_name: document.file_name,
           file_url: document.file_url,
           file_type: document.file_type ?? null,
           storage_path: document.storage_path ?? null,
+          customer_id: linkedCustomer?.id ?? application.customer_id ?? null,
+          status: "pending",
+          uploaded_at: new Date().toISOString(),
+          metadata: {
+            application_id: application.id,
+            source: "customer_finalize_existing_application",
+          },
         })),
       );
       const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
@@ -400,6 +454,9 @@ export async function POST(request: Request) {
         fresh_payable_amount: rowFreshPayable,
         cashback_eligible_amount: rowFreshPayable,
         form_data: formData,
+        customer_details: customerDetails,
+        service_snapshot: serviceSnapshot,
+        metadata: applicationMetadata,
         status: hasVerifiedRazorpayPayment ? "submitted" : "payment_pending",
         created_by: user.id,
         source: "online",
@@ -422,10 +479,18 @@ export async function POST(request: Request) {
         application_id: application.id,
         user_id: user.id,
         document_type: document.document_type,
+        document_name: document.document_type,
         file_name: document.file_name,
         file_url: document.file_url,
         file_type: document.file_type ?? null,
         storage_path: document.storage_path ?? null,
+        customer_id: linkedCustomer?.id ?? null,
+        status: "pending",
+        uploaded_at: new Date().toISOString(),
+        metadata: {
+          application_id: application.id,
+          source: "customer_new_application",
+        },
       })),
     );
 

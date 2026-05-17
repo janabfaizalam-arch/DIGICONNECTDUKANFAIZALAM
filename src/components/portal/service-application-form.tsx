@@ -77,6 +77,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [applicantName, setApplicantName] = useState("");
   const [applicantMobile, setApplicantMobile] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
+  const [applicantAddress, setApplicantAddress] = useState("");
+  const [applicantMessage, setApplicantMessage] = useState("");
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
     const seen = new Set<string>();
@@ -95,7 +97,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const wallet = useWallet(totalAmount);
   const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
-  const walletLimitMessage = "You can use wallet up to 50% only. Remaining 50% must be paid online.";
+  const walletLimitMessage = "You can redeem up to 50% of your wallet balance, limited to 50% of service amount.";
   const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
   const expectedCashback = calculateCashbackForFreshPayment(realPayableAmount, !hasFirstServiceCashback);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
@@ -305,8 +307,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
           />
           <Input name="email" placeholder="Email (optional)" aria-label="Email (optional)" type="email" className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
-          <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" />
-          <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" />
+          <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" value={applicantAddress} onChange={(event) => setApplicantAddress(event.target.value)} />
+          <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" value={applicantMessage} onChange={(event) => setApplicantMessage(event.target.value)} />
           </div>
         </div>
 
@@ -415,8 +417,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                         name: applicantName,
                         email: applicantEmail,
                         mobile: applicantMobile,
+                        message: applicantMessage,
                       },
-                      details: {},
+                      details: {
+                        address: applicantAddress,
+                      },
                     }}
                     description={selectedServices.map((item) => item.title).join(", ")}
                     disabled={!canStartPayment}
@@ -459,7 +464,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                 <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No reward balance available.</p>
               ) : null}
               <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold leading-5 text-blue-800">
-                You can use wallet up to 50% only. Remaining 50% must be paid online.
+                You can redeem up to 50% of your wallet balance, limited to 50% of service amount.
               </p>
               <div className="mt-3 grid gap-2">
                 <button

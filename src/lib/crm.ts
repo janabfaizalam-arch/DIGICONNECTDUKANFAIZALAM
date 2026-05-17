@@ -28,6 +28,38 @@ export function groupByApplicationId<T extends { application_id: string }>(items
   }, {});
 }
 
+export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase || !documents.length) {
+    return documents;
+  }
+
+  return Promise.all(
+    documents.map(async (document) => {
+      if (!document.storage_path) {
+        return document;
+      }
+
+      try {
+        const { data, error } = await supabase.storage.from("documents").createSignedUrl(document.storage_path, 60 * 60);
+        if (!error && data?.signedUrl) {
+          return { ...document, file_url: data.signedUrl };
+        }
+      } catch {
+        // Fall back to the stored URL below.
+      }
+
+      if (document.file_url) {
+        return document;
+      }
+
+      const { data } = supabase.storage.from("documents").getPublicUrl(document.storage_path);
+      return { ...document, file_url: data.publicUrl };
+    }),
+  );
+}
+
 export async function getServiceCatalog() {
   const supabase = getSupabaseAdmin();
 
@@ -181,7 +213,7 @@ export async function hydrateApplications(applications: Application[]) {
   const [documentsResult, paymentsResult, invoicesResult, commissionsResult, customersResult] = await Promise.all([
     supabase
       .from("application_documents")
-      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, review_status, rejection_reason, reviewed_by, reviewed_at, created_at")
+      .select("id, application_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, metadata, uploaded_at, created_at")
       .in("application_id", applicationIds),
     supabase
       .from("payments")
@@ -197,7 +229,8 @@ export async function hydrateApplications(applications: Application[]) {
       : Promise.resolve({ data: [] }),
   ]);
 
-  const documentsByApplicationId = groupByApplicationId((documentsResult.data ?? []) as ApplicationDocument[]);
+  const resolvedDocuments = await resolveDocumentUrls((documentsResult.data ?? []) as ApplicationDocument[]);
+  const documentsByApplicationId = groupByApplicationId(resolvedDocuments);
   const paymentsByApplicationId = groupByApplicationId((paymentsResult.data ?? []) as Payment[]);
   const invoicesByApplicationId = groupByApplicationId((invoicesResult.data ?? []) as Invoice[]);
   const commissionsByApplicationId = groupByApplicationId((commissionsResult.data ?? []) as Commission[]);

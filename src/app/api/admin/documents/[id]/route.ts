@@ -29,6 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .from("application_documents")
     .update({
       review_status: status === "accepted" ? "accepted" : "reupload_required",
+      status: status === "accepted" ? "accepted" : "reupload_required",
       rejection_reason: status === "accepted" ? null : reason || "Please re-upload a clear document.",
       reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),

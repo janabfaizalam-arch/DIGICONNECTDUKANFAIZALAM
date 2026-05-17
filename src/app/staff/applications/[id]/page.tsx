@@ -19,10 +19,12 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
-function displayValue(value: unknown) {
+function displayValue(value: unknown): string {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
+  if (Array.isArray(value)) return value.map((item) => displayValue(item)).filter(Boolean).join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value, null, 2);
 
   return "";
 }
@@ -60,6 +62,8 @@ export default async function StaffApplicationDetailPage({ params }: { params: P
 
   const [application] = (await hydrateApplications([data as Application])) as Application[];
   const formData = asRecord(application.form_data);
+  const customerDetails = asRecord(application.customer_details);
+  const serviceSnapshot = asRecord(application.service_snapshot);
   const customerName = getCustomerName(application);
   const customerMobile = getCustomerMobile(application);
 
@@ -85,8 +89,9 @@ export default async function StaffApplicationDetailPage({ params }: { params: P
             <div className="mt-6 grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl bg-blue-50 p-4">
                 <p className="text-xs font-bold uppercase text-blue-700">Customer</p>
-                <p className="mt-2 font-bold text-slate-950">{customerName}</p>
-                <p className="mt-1 text-sm text-slate-600">{customerMobile || "No mobile number"}</p>
+                <p className="mt-2 font-bold text-slate-950">{String(customerDetails.name ?? customerName)}</p>
+                <p className="mt-1 text-sm text-slate-600">{String(customerDetails.mobile ?? customerMobile) || "No mobile number"}</p>
+                <p className="mt-1 text-sm text-slate-600">{String(customerDetails.address ?? formData.address ?? "")}</p>
               </div>
               <div className="rounded-2xl bg-orange-50 p-4">
                 <p className="text-xs font-bold uppercase text-orange-700">Submitted</p>
@@ -96,12 +101,20 @@ export default async function StaffApplicationDetailPage({ params }: { params: P
             </div>
 
             <div className="mt-6 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase text-slate-500">Service Slug</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-900">{String(serviceSnapshot.slug ?? application.service_slug)}</p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase text-slate-500">Category</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-900">{String(serviceSnapshot.category ?? "-")}</p>
+              </div>
               {Object.entries(formData)
-                .filter((entry) => displayValue(entry[1]))
+                .filter((entry) => entry[0] !== "documents" && displayValue(entry[1]))
                 .map(([key, value]) => (
                   <div key={key} className="rounded-2xl bg-slate-50 p-4">
                     <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
-                    <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
                   </div>
                 ))}
             </div>
@@ -119,7 +132,7 @@ export default async function StaffApplicationDetailPage({ params }: { params: P
                       className="flex items-center gap-3 rounded-2xl border bg-white p-4 text-sm font-bold text-slate-900"
                     >
                       <FileText className="h-4 w-4 shrink-0 text-[var(--primary)]" />
-                      <span className="min-w-0 truncate">{document.file_name}</span>
+                      <span className="min-w-0 truncate">{document.document_name || document.file_name}</span>
                     </a>
                   ))
                 ) : (

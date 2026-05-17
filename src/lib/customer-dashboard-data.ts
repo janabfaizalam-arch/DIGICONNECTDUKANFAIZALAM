@@ -1,4 +1,5 @@
 import type { Application, ApplicationDocument, Invoice, NotificationItem, Payment, Rating } from "@/lib/portal-types";
+import { resolveDocumentUrls } from "@/lib/crm";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getWalletSnapshot } from "@/lib/wallet";
 
@@ -44,7 +45,7 @@ export async function getCustomerDashboardData(userId: string) {
   const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.all([
     supabase
       .from("application_documents")
-      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+      .select("id, application_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, metadata, uploaded_at, created_at")
       .in("application_id", applicationIds),
     supabase
       .from("payments")
@@ -57,7 +58,7 @@ export async function getCustomerDashboardData(userId: string) {
     supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").in("application_id", applicationIds),
   ]);
 
-  const documentsByApplicationId = groupByApplicationId((documentsResult.data ?? []) as ApplicationDocument[]);
+  const documentsByApplicationId = groupByApplicationId(await resolveDocumentUrls((documentsResult.data ?? []) as ApplicationDocument[]));
   const paymentsByApplicationId = groupByApplicationId((paymentsResult.data ?? []) as Payment[]);
   const invoicesByApplicationId = groupByApplicationId((invoicesResult.data ?? []) as Invoice[]);
   const ratingsByApplicationId = groupByApplicationId((ratingsResult.data ?? []) as Rating[]);

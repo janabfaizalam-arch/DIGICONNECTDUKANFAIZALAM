@@ -108,13 +108,15 @@ export async function POST(request: Request) {
       }
 
       if (serviceAmount > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
-        return jsonError("Wallet redeem cannot exceed 50% of service amount", 400);
+        return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
       }
 
       devInfo("[razorpay/create-order] Wallet redeem calculation", {
         serviceAmount: redeem.serviceAmount,
         walletBalance: redeem.walletBalance,
         requestedRedeem: redeem.requestedRedeem,
+        walletHalf: redeem.walletHalf,
+        serviceHalf: redeem.serviceHalf,
         maxRedeem: redeem.maxRedeem,
         finalRedeem: redeem.walletRedeem,
         freshPayable: redeem.freshPayable,
@@ -168,7 +170,46 @@ export async function POST(request: Request) {
           city: String(customer.city ?? "").trim(),
           message: String(customer.message ?? "").trim(),
           service_slugs: serviceSlugs,
+          payment: {
+            total_amount: serviceAmount,
+            wallet_redeemed_amount: walletRedeemAmount,
+            fresh_payable_amount: freshPayableAmount,
+            cashback_eligible_amount: freshPayableAmount,
+          },
           ...(body.applicationDraft.details ?? {}),
+        };
+        const customerDetails = {
+          name: String(customer.name ?? "").trim(),
+          mobile: String(customer.mobile ?? "").trim(),
+          email: String(customer.email ?? "").trim(),
+          city: String(customer.city ?? "").trim(),
+          address: String(body.applicationDraft.details?.address ?? "").trim(),
+          notes: String(customer.message ?? "").trim(),
+        };
+        const serviceSnapshot = {
+          title: services.filter(Boolean).map((service) => service?.title).join(", "),
+          slug: serviceSlugs.join(","),
+          slugs: serviceSlugs,
+          category: services.filter(Boolean).map((service) => service?.category).filter(Boolean).join(", "),
+          category_slug: services.filter(Boolean).map((service) => service?.categorySlug).filter(Boolean).join(", "),
+          price: serviceAmount,
+          services: services.filter(Boolean).map((service) => ({
+            title: service!.title,
+            slug: service!.slug,
+            category: service!.category,
+            categorySlug: service!.categorySlug,
+            amount: service!.amount,
+            documents: service!.documents,
+          })),
+        };
+        const metadata = {
+          source: "razorpay_pending_application",
+          payment: {
+            total_amount: serviceAmount,
+            wallet_redeemed_amount: walletRedeemAmount,
+            fresh_payable_amount: freshPayableAmount,
+            cashback_eligible_amount: freshPayableAmount,
+          },
         };
         let remainingWalletToAllocate = walletRedeemAmount;
         const applicationsToInsert = services.filter(Boolean).map((service, index) => {
@@ -190,6 +231,9 @@ export async function POST(request: Request) {
             fresh_payable_amount: freshAmountForRow,
             cashback_eligible_amount: freshAmountForRow,
             form_data: formData,
+            customer_details: customerDetails,
+            service_snapshot: serviceSnapshot,
+            metadata,
             status: "payment_pending",
             payment_status: "pending",
             created_by: user.id,

@@ -139,15 +139,20 @@ export type ServiceCatalogItem = {
 export type ApplicationDocument = {
   id: string;
   application_id: string;
+  customer_id?: string | null;
   file_name: string;
   file_url: string;
   file_type: string | null;
   document_type: string;
+  document_name?: string | null;
   storage_path?: string | null;
+  status?: "pending" | "accepted" | "rejected" | "reupload_required";
   review_status?: "pending" | "accepted" | "rejected" | "reupload_required";
   rejection_reason?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  uploaded_at?: string | null;
   created_at: string;
 };
 
@@ -255,6 +260,9 @@ export type Application = {
   payment_screenshot_path?: string | null;
   commission_amount?: number;
   submitted_by_role?: string | null;
+  customer_details?: Record<string, unknown> | null;
+  service_snapshot?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   customers?: Customer | null;
