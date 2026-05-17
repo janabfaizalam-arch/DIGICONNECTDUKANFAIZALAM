@@ -106,7 +106,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     priority={index === 0}
                     loading={index === 0 ? undefined : "lazy"}
                     sizes="100vw"
-                    className="object-cover object-center sm:hidden"
+                    className="object-contain object-center sm:hidden"
                   />
                   <Image
                     src={slide.image_url}
