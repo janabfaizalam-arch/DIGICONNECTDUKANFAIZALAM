@@ -3,15 +3,26 @@
 import { type FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
 import { trackLogin } from "@/lib/google-analytics";
-import { createClient } from "@/lib/supabase/browser";
 
-const agentAccessError = "Your agent access is not active. Please contact admin.";
+type AgentLoginResponse = {
+  message?: string;
+  destination?: string;
+};
+
+const genericLoginError = "Invalid username/email or password.";
+
+function getSafeMessage(response: AgentLoginResponse, status: number) {
+  if (status === 403) return "Access denied. Please contact admin.";
+  if (status === 401) return genericLoginError;
+
+  return response.message || "Agent login failed. Please try again.";
+}
 
 export function AgentLoginCard() {
   const { error: toastError } = useToast();
@@ -26,52 +37,30 @@ export function AgentLoginCard() {
     setIsPending(true);
 
     try {
-      const supabase = createClient();
-
-      if (!supabase) {
-        throw new Error("Supabase environment variables are missing.");
-      }
-
       const formData = new FormData(event.currentTarget);
-      const email = String(formData.get("email") ?? "").trim().toLowerCase();
+      const identifier = String(formData.get("identifier") ?? "").trim();
       const password = String(formData.get("password") ?? "");
 
-      if (!email || !password) {
-        throw new Error("Please enter your email and password.");
+      if (!identifier || !password) {
+        throw new Error("Please enter your username/email and password.");
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        throw error;
-      }
-
-      const accessResponse = await fetch("/api/auth/agent-access", {
-        method: "GET",
+      const response = await fetch("/api/auth/agent-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         cache: "no-store",
+        body: JSON.stringify({ identifier, password }),
       });
-      const access = (await accessResponse.json()) as {
-        ok?: boolean;
-        reason?: string;
-        role?: string | null;
-        message?: string;
-      };
+      const result = (await response.json().catch(() => ({}))) as AgentLoginResponse;
 
-      if (!accessResponse.ok || !access.ok) {
-        console.error("[agent-login] Agent access denied.", {
-          userId: data.user?.id,
-          reason: access.reason,
-          role: access.role,
-          message: access.message,
-        });
-        await supabase.auth.signOut();
-        throw new Error(agentAccessError);
+      if (!response.ok) {
+        throw new Error(getSafeMessage(result, response.status));
       }
 
       trackLogin("agent_email");
-      window.location.assign("/agent/dashboard");
+      window.location.assign(result.destination || "/agent/dashboard");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Agent login failed. Please try again.";
+      const message = error instanceof Error ? error.message : genericLoginError;
       setFormError(message);
       toastError(message);
     } finally {
@@ -99,15 +88,15 @@ export function AgentLoginCard() {
 
       <form onSubmit={handleAgentLogin} className="mt-6 grid gap-3 text-left" aria-busy={isPending}>
         <label className="grid gap-2">
-          <span className="text-sm font-semibold text-slate-700">Email</span>
+          <span className="text-sm font-semibold text-slate-700">Username / Email</span>
           <div className="relative">
-            <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
-              name="email"
-              type="email"
-              autoComplete="email"
+              name="identifier"
+              type="text"
+              autoComplete="username"
               required
-              placeholder="agent@example.com"
+              placeholder="Agent code or email"
               disabled={isPending}
               className="h-[3.15rem] bg-white/75 pl-11 text-base"
             />

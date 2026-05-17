@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AgentLoginCard } from "@/components/auth/agent-login-card";
-import { getCurrentUser, getCurrentUserRole, getRoleHome, isActiveAgent } from "@/lib/auth";
+import { getAgentAccessStatus, getCurrentUser, getCurrentUserRole, getRoleHome } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Agent Login | DigiConnect Dukan",
@@ -13,11 +13,17 @@ export default async function AgentLoginPage() {
   const user = await getCurrentUser();
 
   if (user) {
-    if (await isActiveAgent(user)) {
+    const access = await getAgentAccessStatus(user);
+
+    if (access.ok) {
       redirect("/agent/dashboard");
     }
 
     const role = await getCurrentUserRole(user);
+    if (role === "agent") {
+      redirect("/unauthorized");
+    }
+
     redirect(getRoleHome(role));
   }
 
