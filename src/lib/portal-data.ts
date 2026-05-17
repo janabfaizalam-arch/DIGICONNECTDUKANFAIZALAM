@@ -4,18 +4,25 @@ import { getServiceBySlug as getRichServiceBySlug, servicesData } from "@/lib/se
 
 export const applicationStatuses = [
   "new",
+  "lead_submitted",
   "documents_pending",
+  "documents_under_review",
+  "documents_required",
   "payment_pending",
+  "payment_verified",
   "payment_failed",
   "cancelled",
   "in_process",
   "in_progress",
+  "application_processing",
   "submitted",
+  "submitted_to_department",
+  "under_government_review",
   "completed",
   "rejected",
 ] as const;
 
-export const paymentStatuses = ["unpaid", "pending", "verified", "paid", "failed", "refunded"] as const;
+export const paymentStatuses = ["unpaid", "pending", "submitted", "verified", "paid", "rejected", "failed", "refunded"] as const;
 
 export type ApplicationStatus = (typeof applicationStatuses)[number];
 export type PaymentStatus = (typeof paymentStatuses)[number];
@@ -122,13 +129,20 @@ export const featuredServices = featuredServiceSlugs
 
 export const statusLabels: Record<ApplicationStatus, string> = {
   new: "New",
+  lead_submitted: "Lead Submitted",
   documents_pending: "Documents Pending",
+  documents_under_review: "Documents Under Review",
+  documents_required: "Documents Required",
   payment_pending: "Payment Pending",
+  payment_verified: "Payment Verified",
   payment_failed: "Payment Failed",
   cancelled: "Cancelled",
   in_process: "In Progress",
   in_progress: "In Progress",
+  application_processing: "Application Processing",
   submitted: "In Progress",
+  submitted_to_department: "Submitted to Department",
+  under_government_review: "Under Government Review",
   completed: "Completed",
   rejected: "Rejected",
 };
@@ -136,8 +150,10 @@ export const statusLabels: Record<ApplicationStatus, string> = {
 export const paymentStatusLabels: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   pending: "Pending",
+  submitted: "Submitted",
   verified: "Paid",
   paid: "Paid",
+  rejected: "Rejected",
   failed: "Failed",
   refunded: "Refunded",
 };

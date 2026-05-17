@@ -16,7 +16,19 @@ import {
 } from "@/lib/portal-data";
 import type { PortalUser } from "@/lib/portal-types";
 
-const adminStatuses: ApplicationStatus[] = ["new", "in_process", "completed", "rejected"];
+const adminStatuses: ApplicationStatus[] = [
+  "lead_submitted",
+  "payment_pending",
+  "payment_verified",
+  "documents_under_review",
+  "documents_required",
+  "application_processing",
+  "submitted_to_department",
+  "under_government_review",
+  "completed",
+  "rejected",
+  "cancelled",
+];
 
 export function AdminUpdateForm({
   applicationId,

@@ -18,7 +18,7 @@ export async function getAgentLeads(agentId: string, limit = 100) {
 
   const { data } = await supabase
     .from("leads")
-    .select("id, name, customer_name, mobile, service, city, message, notes, status, agent_id, created_at")
+    .select("id, name, customer_name, mobile, service, city, address, message, notes, status, payment_status, payment_amount, payment_method, payment_reference, payment_proof_url, payment_proof_path, documents, agent_id, created_at")
     .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
     .limit(limit);

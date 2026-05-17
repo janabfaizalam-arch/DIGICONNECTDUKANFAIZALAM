@@ -53,7 +53,7 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
     const [agentResult, applicationResult, leadResult, commissionResult, authResult] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, full_name, email, avatar_url, role, mobile, agent_code, address, area, commission_type, commission_value, commission_rate, active, is_active, created_at, updated_at")
+        .select("id, full_name, email, avatar_url, role, mobile, agent_code, address, area, commission_type, commission_value, commission_rate, active, is_active, bank_account_name, bank_account_number, bank_ifsc, bank_name, upi_id, created_at, updated_at")
         .eq("id", id)
         .eq("role", "agent")
         .maybeSingle(),
@@ -125,6 +125,10 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
             <InfoTile label="Mobile" value={agent.mobile || "-"} mono />
             <InfoTile label="Email" value={agent.email || "-"} />
             <InfoTile label="Address / Area" value={agent.area || agent.address || "-"} />
+            <InfoTile label="Bank Name" value={agent.bank_name || "-"} />
+            <InfoTile label="Account Holder" value={agent.bank_account_name || "-"} />
+            <InfoTile label="Account Number" value={agent.bank_account_number || "-"} mono />
+            <InfoTile label="IFSC / UPI" value={[agent.bank_ifsc, agent.upi_id].filter(Boolean).join(" / ") || "-"} mono />
           </div>
         </Card>
 

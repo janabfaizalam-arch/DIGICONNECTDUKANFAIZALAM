@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { calculateCommission, getAgents, getServiceCatalog } from "@/lib/crm";
 import { getServiceBySlug, portalServices } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-const leadStatuses = ["new", "contacted", "converted", "closed"] as const;
+const leadStatuses = ["new", "contacted", "converted", "closed", "lead_submitted", "payment_pending", "payment_verified", "documents_under_review", "documents_required", "application_processing", "submitted_to_department", "under_government_review", "rejected", "cancelled"] as const;
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/&/g, "and").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
@@ -34,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.convert) {
     const { data: lead } = await supabase
       .from("leads")
-      .select("id, name, mobile, service, message, status, file_name, file_url, file_type, storage_path, created_at")
+      .select("id, name, mobile, service, message, notes, status, file_name, file_url, file_type, storage_path, address, agent_id, payment_status, payment_amount, payment_method, payment_reference, payment_proof_url, payment_proof_path, documents, created_at")
       .eq("id", id)
       .single();
 
@@ -43,15 +44,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const service = getServiceBySlug(slugify(lead.service)) ?? portalServices.find((item) => item.title.toLowerCase() === String(lead.service).toLowerCase());
+    const serviceCatalog = await getServiceCatalog();
+    const catalogService = serviceCatalog.find((item) => item.slug === service?.slug || item.name.toLowerCase() === String(lead.service).toLowerCase());
+    const agents = lead.agent_id ? await getAgents() : [];
+    const agent = agents.find((item) => item.id === lead.agent_id);
     const { data: customer } = await supabase
       .from("customers")
       .insert({
         full_name: lead.name,
         mobile: lead.mobile,
         email: "",
-        notes: lead.message ?? "",
-        source: "offline",
+        address: lead.address ?? "",
+        notes: lead.notes ?? lead.message ?? "",
+        source: lead.agent_id ? "agent_pos" : "offline",
         created_by: auth.user?.id ?? null,
+        assigned_agent_id: lead.agent_id ?? null,
       })
       .select("id")
       .single();
@@ -62,24 +69,61 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         user_id: null,
         customer_id: customer?.id ?? null,
         created_by: auth.user?.id ?? null,
+        agent_id: lead.agent_id ?? null,
+        assigned_agent_id: lead.agent_id ?? null,
         service_slug: service?.slug ?? slugify(lead.service),
         service_name: lead.service,
         amount: service?.amount ?? 0,
         form_data: {
           name: lead.name,
           mobile: lead.mobile,
-          message: lead.message ?? "",
+          address: lead.address ?? "",
+          message: lead.notes ?? lead.message ?? "",
           sourceLeadId: lead.id,
         },
-        source: "offline",
-        status: "new",
-        payment_status: "pending",
+        source: lead.agent_id ? "agent_pos" : "offline",
+        status: lead.payment_status === "verified" ? "payment_verified" : "lead_submitted",
+        payment_status: lead.payment_status ?? "pending",
+        payment_screenshot_url: lead.payment_proof_url ?? null,
+        payment_screenshot_path: lead.payment_proof_path ?? null,
+        commission_amount: catalogService ? calculateCommission(catalogService, agent) : 0,
       })
       .select("id")
       .single();
 
     if (applicationError || !application) {
       return NextResponse.json({ message: "Lead could not be converted." }, { status: 500 });
+    }
+
+    const leadDocuments = Array.isArray(lead.documents)
+      ? lead.documents.filter((item): item is { name?: string; type?: string | null; path?: string; url?: string } => Boolean(item && typeof item === "object"))
+      : [];
+    const documentsToInsert = leadDocuments.length
+      ? leadDocuments.map((document) => ({
+          application_id: application.id,
+          user_id: lead.agent_id ?? auth.user?.id,
+          document_type: "agent_uploaded_document",
+          file_name: document.name ?? "Lead document",
+          file_url: document.url,
+          file_type: document.type ?? null,
+          storage_path: document.path,
+          review_status: "pending",
+        }))
+      : lead.file_url
+        ? [{
+        application_id: application.id,
+        user_id: lead.agent_id ?? auth.user?.id,
+        document_type: "agent_uploaded_document",
+        file_name: lead.file_name ?? "Lead document",
+        file_url: lead.file_url,
+        file_type: lead.file_type,
+        storage_path: lead.storage_path,
+        review_status: "pending",
+      }]
+        : [];
+
+    if (documentsToInsert.length) {
+      await supabase.from("application_documents").insert(documentsToInsert);
     }
 
     await supabase

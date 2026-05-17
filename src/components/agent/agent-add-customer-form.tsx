@@ -83,8 +83,17 @@ export function AgentAddCustomerForm() {
           onChange={(event) => setMobile(normalizeMobile(event.target.value))}
           required
         />
+        <Input name="address" placeholder="Customer address" />
         <Input name="service" placeholder="Service required" required />
         <Textarea name="notes" placeholder="Notes" className="min-h-24" />
+        <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <p className="text-sm font-bold text-slate-800">Documents & Payment</p>
+          <Input name="documents" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" />
+          <Input name="paymentAmount" type="number" min="0" step="0.01" placeholder="Payment amount, if collected" />
+          <Input name="paymentMethod" placeholder="Payment method: cash, UPI, Razorpay" />
+          <Input name="paymentReference" placeholder="UTR / Razorpay / receipt reference" />
+          <Input name="paymentProof" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" />
+        </div>
         {formError ? (
           <p className="rounded-2xl bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700" role="alert">
             {formError}

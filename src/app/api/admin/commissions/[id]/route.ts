@@ -18,8 +18,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const formData = await request.formData();
   const status = String(formData.get("status") ?? "");
+  const payoutTransactionId = String(formData.get("payoutTransactionId") ?? "").trim();
+  const payoutDate = String(formData.get("payoutDate") ?? "").trim();
 
-  if (!["pending", "approved", "paid", "rejected"].includes(status)) {
+  if (!["pending", "approved", "paid", "hold", "cancelled", "rejected"].includes(status)) {
     return jsonError("Invalid commission status.", 400);
   }
 
@@ -42,6 +44,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (status === "paid") {
     updates.paid_at = now;
+    updates.payout_transaction_id = payoutTransactionId || null;
+    updates.payout_date = payoutDate || now.slice(0, 10);
   }
 
   const { error } = await supabase.from("commissions").update(updates).eq("id", id);

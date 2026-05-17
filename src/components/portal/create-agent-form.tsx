@@ -198,6 +198,26 @@ export function CreateAgentForm({ defaultAgentCode }: { defaultAgentCode: string
                 </SelectContent>
               </Select>
             </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-700">Bank Account Name</span>
+              <Input name="bankAccountName" placeholder="Account holder name" />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-700">Bank Account Number</span>
+              <Input name="bankAccountNumber" placeholder="Account number" inputMode="numeric" />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-700">IFSC</span>
+              <Input name="bankIfsc" placeholder="IFSC code" className="uppercase" />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-bold text-slate-700">Bank Name</span>
+              <Input name="bankName" placeholder="Bank name" />
+            </label>
+            <label className="grid gap-2 md:col-span-2">
+              <span className="text-sm font-bold text-slate-700">UPI ID</span>
+              <Input name="upiId" placeholder="agent@upi" />
+            </label>
           </div>
 
           {formError ? (

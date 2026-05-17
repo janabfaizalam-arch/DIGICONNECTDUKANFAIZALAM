@@ -41,6 +41,11 @@ export async function POST(request: Request) {
   const password = String(formData.get("password") ?? "");
   const agentCode = normalizeAgentCode(String(formData.get("agentCode") ?? ""));
   const address = String(formData.get("address") ?? "").trim();
+  const bankAccountName = String(formData.get("bankAccountName") ?? "").trim();
+  const bankAccountNumber = String(formData.get("bankAccountNumber") ?? "").trim();
+  const bankIfsc = String(formData.get("bankIfsc") ?? "").trim().toUpperCase();
+  const bankName = String(formData.get("bankName") ?? "").trim();
+  const upiId = String(formData.get("upiId") ?? "").trim();
   const commissionType = String(formData.get("commissionType") ?? "fixed");
   const commissionValue = Number(formData.get("commissionValue") ?? 0);
   const isActive = String(formData.get("isActive") ?? "true") === "true";
@@ -124,6 +129,11 @@ export async function POST(request: Request) {
     agent_code: agentCode,
     address,
     area: address,
+    bank_account_name: bankAccountName,
+    bank_account_number: bankAccountNumber,
+    bank_ifsc: bankIfsc,
+    bank_name: bankName,
+    upi_id: upiId,
     commission_type: commissionType,
     commission_value: commissionValue,
     commission_rate: commissionType === "percentage" ? commissionValue : null,

@@ -1,6 +1,22 @@
 import type { ApplicationStatus, PaymentStatus } from "@/lib/portal-data";
 
-export type LeadStatus = "new" | "contacted" | "converted" | "closed" | "in_progress" | "completed";
+export type LeadStatus =
+  | "new"
+  | "contacted"
+  | "converted"
+  | "closed"
+  | "in_progress"
+  | "completed"
+  | "lead_submitted"
+  | "payment_pending"
+  | "payment_verified"
+  | "documents_under_review"
+  | "documents_required"
+  | "application_processing"
+  | "submitted_to_department"
+  | "under_government_review"
+  | "rejected"
+  | "cancelled";
 
 export type Lead = {
   id: string;
@@ -9,9 +25,17 @@ export type Lead = {
   mobile: string;
   service: string;
   city?: string | null;
+  address?: string | null;
   message: string | null;
   notes?: string | null;
   status: LeadStatus;
+  payment_status?: string | null;
+  payment_amount?: number | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_path?: string | null;
+  documents?: { name?: string; url?: string; path?: string; type?: string }[] | null;
   source?: string | null;
   converted_application_id?: string | null;
   agent_id?: string | null;
@@ -70,6 +94,11 @@ export type PortalUser = {
   agent_code?: string | null;
   address?: string | null;
   area?: string | null;
+  bank_account_name?: string | null;
+  bank_account_number?: string | null;
+  bank_ifsc?: string | null;
+  bank_name?: string | null;
+  upi_id?: string | null;
   commission_type?: "fixed" | "percentage" | null;
   commission_value?: number | null;
   commission_rate?: number | null;
@@ -115,6 +144,10 @@ export type ApplicationDocument = {
   file_type: string | null;
   document_type: string;
   storage_path?: string | null;
+  review_status?: "pending" | "accepted" | "rejected" | "reupload_required";
+  rejection_reason?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
 };
 
@@ -240,10 +273,14 @@ export type Commission = {
   agent_id: string;
   service_id: string | null;
   amount: number;
-  status: "pending" | "approved" | "paid" | "rejected";
+  status: "pending" | "approved" | "paid" | "hold" | "cancelled" | "rejected";
   approved_by: string | null;
   approved_at: string | null;
   paid_at: string | null;
+  payout_transaction_id?: string | null;
+  payout_date?: string | null;
+  payout_proof_url?: string | null;
+  payout_proof_path?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;

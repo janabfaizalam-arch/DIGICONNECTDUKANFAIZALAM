@@ -181,7 +181,7 @@ export async function hydrateApplications(applications: Application[]) {
   const [documentsResult, paymentsResult, invoicesResult, commissionsResult, customersResult] = await Promise.all([
     supabase
       .from("application_documents")
-      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, review_status, rejection_reason, reviewed_by, reviewed_at, created_at")
       .in("application_id", applicationIds),
     supabase
       .from("payments")

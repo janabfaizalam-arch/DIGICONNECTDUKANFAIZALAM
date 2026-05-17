@@ -292,7 +292,7 @@ export function SiteHeader() {
                 <LayoutDashboard className="h-4 w-4" />
                 {agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Dashboard"}
               </Link>
-              {user ? <LogoutButton className="h-11" /> : null}
+              {user && !agentShell ? <LogoutButton className="h-11" /> : null}
             </>
           ) : user && panelConfig ? (
             <>
@@ -337,7 +337,7 @@ export function SiteHeader() {
               <LayoutDashboard className="h-4 w-4" />
               {agentShell ? "Agent" : staffShell ? "Staff" : "Dashboard"}
             </Link>
-            {user ? <LogoutButton showLabel={false} className="h-9 w-9 shrink-0 rounded-full p-0" /> : null}
+            {user && !agentShell ? <LogoutButton showLabel={false} className="h-9 w-9 shrink-0 rounded-full p-0" /> : null}
           </div>
         ) : (
           <div className="flex items-center gap-2 md:hidden">

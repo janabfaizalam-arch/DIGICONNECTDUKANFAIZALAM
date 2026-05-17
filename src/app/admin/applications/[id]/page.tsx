@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AlertTriangle, ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
 import { ReprocessRewardsButton } from "@/components/admin/reprocess-rewards-button";
+import { AdminDocumentReviewActions } from "@/components/admin/admin-document-review-actions";
 import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
@@ -152,10 +153,17 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {documents.length ? (
               documents.map((document) => (
-                <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border bg-white p-4 text-sm font-bold text-slate-900">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                  {document.file_name}
-                </a>
+                <div key={document.id} className="rounded-2xl border bg-white p-4 text-sm font-bold text-slate-900">
+                  <a href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    {document.file_name}
+                  </a>
+                  <p className="mt-2 text-xs font-bold capitalize text-slate-500">
+                    {String(document.review_status ?? "pending").replace(/_/g, " ")}
+                  </p>
+                  {document.rejection_reason ? <p className="mt-1 text-xs text-orange-700">{document.rejection_reason}</p> : null}
+                  <AdminDocumentReviewActions documentId={document.id} />
+                </div>
               ))
             ) : (
               <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No documents uploaded.</p>

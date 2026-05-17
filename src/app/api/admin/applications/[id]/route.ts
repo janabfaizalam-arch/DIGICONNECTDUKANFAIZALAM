@@ -40,7 +40,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, assigned_staff_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data")
+      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, agent_id, assigned_agent_id, assigned_staff_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data")
       .eq("id", id)
       .single();
 
@@ -97,11 +97,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application could not be updated." }, { status: 500 });
     }
 
-    if (assignedAgentId && assignedAgentId !== "none") {
+    const nextStatus = String(updates.status ?? application.status);
+    const nextAgentId = assignedAgentId && assignedAgentId !== "none" ? assignedAgentId : application.assigned_agent_id ?? application.agent_id;
+    const paymentVerified = ["verified", "paid"].includes(String(application.payment_status ?? "").toLowerCase());
+
+    if (nextAgentId && nextStatus === "completed" && paymentVerified) {
       await supabase.from("commissions").upsert(
         {
           application_id: id,
-          agent_id: assignedAgentId,
+          agent_id: nextAgentId,
           service_id: application.service_id,
           amount: application.commission_amount ?? 0,
           status: "pending",
