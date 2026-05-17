@@ -2,14 +2,28 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { CreateAgentForm } from "@/components/portal/create-agent-form";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-function formatAgentCode(count: number) {
-  return `DCD-AGT-${String(count + 1).padStart(4, "0")}`;
+function formatAgentCode(sequence: number) {
+  return `DCD-AGT-${String(sequence).padStart(4, "0")}`;
+}
+
+function getNextAgentCode(existingCodes: string[]) {
+  const usedNumbers = new Set(
+    existingCodes
+      .map((code) => Number(String(code).match(/DCD-AGT-(\d+)/i)?.[1] ?? 0))
+      .filter((value) => Number.isFinite(value) && value > 0),
+  );
+
+  let next = 1;
+  while (usedNumbers.has(next)) next += 1;
+
+  return formatAgentCode(next);
 }
 
 export default async function NewAgentPage() {
@@ -20,12 +34,12 @@ export default async function NewAgentPage() {
   if (!isAdminRole(role)) redirect("/dashboard");
 
   const supabase = getSupabaseAdmin();
-  let agentCount = 0;
+  let defaultAgentCode = formatAgentCode(1);
 
   if (supabase) {
     try {
-      const { count, error } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "agent");
-      agentCount = error ? 0 : count ?? 0;
+      const { data, error } = await supabase.from("profiles").select("agent_code").eq("role", "agent");
+      defaultAgentCode = error ? defaultAgentCode : getNextAgentCode((data ?? []).map((agent) => String(agent.agent_code ?? "")));
     } catch (error) {
       console.error("[admin-agent-new] Failed to count agents", error);
     }
@@ -38,11 +52,12 @@ export default async function NewAgentPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to agents
         </Link>
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Agent Setup</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-950">Create Agent</h1>
-        </div>
-        <CreateAgentForm defaultAgentCode={formatAgentCode(agentCount)} />
+        <AdminPageHeader
+          eyebrow="Agent Setup"
+          title="Create Agent"
+          description="Create a secure Supabase Auth login and profile record for a new active or inactive agent."
+        />
+        <CreateAgentForm defaultAgentCode={defaultAgentCode} />
       </div>
     </main>
   );

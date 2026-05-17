@@ -17,15 +17,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    return NextResponse.json({ message: "Supabase service role key is missing." }, { status: 500 });
+    console.error("[admin-agents] Supabase service role key is missing.");
+    return NextResponse.json({ message: "Agent update is not available right now." }, { status: 500 });
   }
 
   const { error } = await supabase
     .from("profiles")
     .update({ is_active: isActive, active: isActive, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("role", "agent");
 
   if (error) {
+    console.error("[admin-agents] Agent status update failed.", error.message);
     return NextResponse.json({ message: "Agent status could not be updated." }, { status: 500 });
   }
 

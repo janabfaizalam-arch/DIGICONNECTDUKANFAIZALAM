@@ -74,6 +74,7 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
     title: "Users",
     items: [
       { href: "/admin/customers", label: "Customers", description: "Customer records", icon: UsersRound },
+      { href: "/admin/agents", label: "Agents", description: "Agent IDs and commissions", icon: UserCheck },
       { href: "/admin/staff", label: "Staff", description: "Office users", icon: UserCog },
     ],
   },

@@ -68,11 +68,15 @@ export type PortalUser = {
   role?: string | null;
   mobile?: string | null;
   agent_code?: string | null;
+  address?: string | null;
+  area?: string | null;
   commission_type?: "fixed" | "percentage" | null;
   commission_value?: number | null;
   commission_rate?: number | null;
   active?: boolean | null;
   is_active?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type Customer = {
