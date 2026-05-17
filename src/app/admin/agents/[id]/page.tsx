@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ClipboardList, Inbox, IndianRupee, ShieldCheck } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { AgentPasswordResetForm } from "@/components/portal/agent-password-reset-form";
 import { AgentStatusButton } from "@/components/portal/agent-status-button";
 import { Card } from "@/components/ui/card";
 import { safeCurrency } from "@/lib/admin-format";
@@ -140,6 +141,17 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
           </div>
         </Card>
       </div>
+
+      <Card className="p-5 md:p-6">
+        <p className="text-sm font-bold uppercase tracking-[0.14em] text-orange-600">Reset / Change Password</p>
+        <h2 className="mt-2 text-xl font-bold text-slate-950">Update agent login password</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          Password changes use Supabase Admin Auth and are never stored in the profile table.
+        </p>
+        <div className="max-w-xl">
+          <AgentPasswordResetForm agentId={agent.id} />
+        </div>
+      </Card>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="p-5 md:p-6">

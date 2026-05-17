@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const formData = await request.formData();
-  const isActive = String(formData.get("isActive") ?? "false") === "true";
+  const action = String(formData.get("action") ?? "status");
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
@@ -21,6 +21,41 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ message: "Agent update is not available right now." }, { status: 500 });
   }
 
+  if (action === "reset_password") {
+    const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+    if (password.length < 8) {
+      return NextResponse.json({ message: "Password must be at least 8 characters." }, { status: 400 });
+    }
+
+    if (password !== confirmPassword) {
+      return NextResponse.json({ message: "Passwords do not match." }, { status: 400 });
+    }
+
+    const { data: agent, error: agentError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", id)
+      .eq("role", "agent")
+      .maybeSingle();
+
+    if (agentError || !agent) {
+      console.error("[admin-agents] Agent password reset target lookup failed.", agentError?.message);
+      return NextResponse.json({ message: "Agent could not be updated." }, { status: 404 });
+    }
+
+    const { error } = await supabase.auth.admin.updateUserById(id, { password });
+
+    if (error) {
+      console.error("[admin-agents] Agent password reset failed.", error.message);
+      return NextResponse.json({ message: "Password could not be updated." }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: "Agent password updated successfully." });
+  }
+
+  const isActive = String(formData.get("isActive") ?? "false") === "true";
   const { error } = await supabase
     .from("profiles")
     .update({ is_active: isActive, active: isActive, updated_at: new Date().toISOString() })
