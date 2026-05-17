@@ -2,35 +2,12 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 import { ServiceCard } from "@/components/service-card";
-import { getPublicCategoriesWithCounts, getPublicFeaturedServices, getPublicServices } from "@/lib/services";
+import { getPublicCategoriesWithCounts, getPublicFeaturedServices, getPublicHomepageServices } from "@/lib/services";
 import type { ServiceItem } from "@/lib/services-data";
-
-const priorityFeaturedServices = [
-  "gst-registration",
-  "itr-filing",
-  "msme-certificate",
-  "food-license-fssai",
-  "pan-card",
-  "dsc",
-  "digital-signature-certificate",
-];
 
 export async function ServicesSection() {
   const serviceCategories = await getPublicCategoriesWithCounts();
-  const publicServices = await getPublicServices();
-  const featuredServices: ServiceItem[] = [];
-
-  for (const slug of priorityFeaturedServices) {
-    const service = publicServices.find((item) => item.slug === slug || item.title.toLowerCase() === slug.replace(/-/g, " "));
-
-    if (service && !featuredServices.some((item) => item.slug === service.slug)) {
-      featuredServices.push(service);
-    }
-
-    if (featuredServices.length === 6) {
-      break;
-    }
-  }
+  const featuredServices: ServiceItem[] = await getPublicHomepageServices(6);
 
   return (
     <section id="services" className="section-pad scroll-mt-20">

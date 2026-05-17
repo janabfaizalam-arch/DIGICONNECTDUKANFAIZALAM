@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { getServiceBySlug } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
 import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
+import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type CreateOrderBody = {
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       }
       orderUserId = user.id;
 
-      const services = serviceSlugs.map((slug) => getServiceBySlug(slug));
+      const services = await Promise.all(serviceSlugs.map((slug) => getPublicServiceBySlug(slug)));
 
       if (services.some((service) => !service)) {
         return jsonError("Service not found.", 404);

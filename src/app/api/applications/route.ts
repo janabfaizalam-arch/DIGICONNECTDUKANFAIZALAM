@@ -4,10 +4,10 @@ import crypto from "crypto";
 import { createAdminNotifications, type CreateAdminNotificationInput } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
 import { createInvoiceForApplication } from "@/lib/crm";
-import { getServiceBySlug } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { MAX_WALLET_REDEEM_PERCENT } from "@/lib/reward-rules";
 import { createWalletIfMissing, calculateMaxRedeem } from "@/lib/rewards-wallet";
+import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRealPayableAmount, getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
 
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     }
 
     const serviceSlugs = Array.from(new Set((Array.isArray(body.serviceSlugs) && body.serviceSlugs.length ? body.serviceSlugs : [body.serviceSlug]).map((slug) => String(slug ?? "").trim()).filter(Boolean)));
-    const services = serviceSlugs.map((slug) => getServiceBySlug(slug));
+    const services = await Promise.all(serviceSlugs.map((slug) => getPublicServiceBySlug(slug)));
 
     if (!services.length || services.some((service) => !service)) {
       return jsonError("Service not found.", 404);

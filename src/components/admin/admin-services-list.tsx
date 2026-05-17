@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Archive, Eye, LoaderCircle, Search } from "lucide-react";
+import { Archive, Copy, Eye, LoaderCircle, Search } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
@@ -38,16 +38,28 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
     formData.set("slug", service.slug);
     formData.set("shortDescription", service.short_description ?? "");
     formData.set("overview", service.overview ?? "");
+    formData.set("fullDescription", service.full_description ?? service.overview ?? "");
     formData.set("benefits", JSON.stringify(service.benefits ?? []));
     formData.set("documents", JSON.stringify(service.documents ?? []));
     formData.set("process", JSON.stringify(service.process ?? []));
-    formData.set("oldPrice", service.old_price?.toString() ?? "");
-    formData.set("offerPrice", service.offer_price?.toString() ?? "");
+    formData.set("basePrice", service.base_price?.toString() ?? service.old_price?.toString() ?? "");
+    formData.set("salePrice", service.sale_price?.toString() ?? service.offer_price?.toString() ?? "");
     formData.set("priceLabel", service.price_label ?? "");
     formData.set("ctaType", service.cta_type);
     formData.set("badge", service.badge ?? "");
     formData.set("icon", service.icon ?? "FileText");
     formData.set("status", nextStatus);
+    formData.set("isActive", nextStatus === "published" ? "true" : "false");
+    formData.set("isPaid", service.is_paid ? "true" : "false");
+    formData.set("isFeatured", service.is_featured ?? service.featured ? "true" : "false");
+    formData.set("showOnHomepage", service.show_on_homepage ? "true" : "false");
+    formData.set("categorySlug", service.category_slug ?? service.category?.slug ?? "");
+    formData.set("heroImageUrl", service.hero_image_url ?? "");
+    formData.set("heroImageStoragePath", service.hero_image_storage_path ?? "");
+    formData.set("ctaPrimaryLabel", service.cta_primary_label ?? "");
+    formData.set("ctaPrimaryUrl", service.cta_primary_url ?? "");
+    formData.set("ctaSecondaryLabel", service.cta_secondary_label ?? "");
+    formData.set("ctaSecondaryUrl", service.cta_secondary_url ?? "");
     formData.set("featured", String(service.featured));
     formData.set("sortOrder", String(service.sort_order));
     formData.set("seoTitle", service.seo_title ?? "");
@@ -56,6 +68,14 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
     formData.set("blogContent", service.blog_content ?? "");
     formData.set("faqs", JSON.stringify(service.faqs ?? []));
     formData.set("reviews", JSON.stringify(service.reviews ?? []));
+    formData.set("sections", JSON.stringify((service.service_sections ?? []).map((section) => ({
+      section_type: section.section_type,
+      title: section.title,
+      subtitle: section.subtitle,
+      content: section.content,
+      sort_order: section.sort_order,
+      is_active: section.is_active,
+    }))));
 
     startTransition(async () => {
       try {
@@ -79,6 +99,20 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
         window.location.reload();
       } else {
         toastError("Service could not be archived.");
+      }
+    });
+  }
+
+  function duplicateService(service: AdminService) {
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/admin/services/${service.id}/duplicate`, { method: "POST" });
+        const result = (await response.json()) as { message?: string };
+        if (!response.ok) throw new Error(result.message ?? "Service could not be duplicated.");
+        success(result.message ?? "Service duplicated.");
+        window.location.reload();
+      } catch (error) {
+        toastError(error instanceof Error ? error.message : "Service could not be duplicated.");
       }
     });
   }
@@ -147,12 +181,15 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
                   <p className="font-mono text-xs text-slate-500">{service.slug}</p>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{service.category?.name ?? "Uncategorized"}</td>
-                <td className="px-4 py-3 text-slate-600">{service.offer_price ? `₹${service.offer_price}` : service.price_label || "Enquiry"}</td>
+                <td className="px-4 py-3 text-slate-600">{service.is_paid === false ? "Free" : service.sale_price || service.offer_price ? `Rs ${service.sale_price ?? service.offer_price}` : service.price_label || "Enquiry"}</td>
                 <td className="px-4 py-3"><AdminStatusBadge status={service.status} /></td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <Link href={`/services/${service.slug}`} className={cn(buttonVariants({ variant: "outline" }), "h-9 px-3")}><Eye className="h-4 w-4" /></Link>
                     <Link href={`/admin/services/${service.id}/edit`} className={cn(buttonVariants(), "h-9 px-3")}>Edit</Link>
+                    <Button type="button" variant="outline" onClick={() => duplicateService(service)} className="h-9 px-3">
+                      <Copy className="h-4 w-4" />
+                    </Button>
                     <Button type="button" variant="outline" onClick={() => updateStatus(service, service.status === "published" ? "draft" : "published")} className="h-9 px-3">
                       {service.status === "published" ? "Unpublish" : "Publish"}
                     </Button>
@@ -179,6 +216,7 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={`/admin/services/${service.id}/edit`} className={cn(buttonVariants(), "h-9 px-3")}>Edit</Link>
+              <Button type="button" variant="outline" onClick={() => duplicateService(service)} className="h-9 px-3">Duplicate</Button>
               <Button type="button" variant="outline" onClick={() => updateStatus(service, service.status === "published" ? "draft" : "published")} className="h-9 px-3">
                 {service.status === "published" ? "Unpublish" : "Publish"}
               </Button>

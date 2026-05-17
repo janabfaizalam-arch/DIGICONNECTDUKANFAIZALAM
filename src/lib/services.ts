@@ -29,19 +29,33 @@ export type DbServiceCategory = {
 export type DbService = {
   id: string;
   category_id: string | null;
+  category: string | null;
   title: string;
   slug: string;
   short_description: string | null;
+  full_description: string | null;
   overview: string | null;
   benefits: string[] | null;
   documents: string[] | null;
   process: string[] | null;
+  base_price: number | null;
+  sale_price: number | null;
+  is_paid: boolean | null;
+  is_featured: boolean | null;
+  show_on_homepage: boolean | null;
+  is_active: boolean | null;
   old_price: number | null;
   offer_price: number | null;
   price_label: string | null;
   cta_type: "apply" | "enquiry";
   badge: string | null;
   icon: string | null;
+  hero_image_url: string | null;
+  hero_image_storage_path: string | null;
+  cta_primary_label: string | null;
+  cta_primary_url: string | null;
+  cta_secondary_label: string | null;
+  cta_secondary_url: string | null;
   status: ServiceStatus;
   featured: boolean;
   sort_order: number;
@@ -54,10 +68,99 @@ export type DbService = {
   created_at: string;
   updated_at: string;
   service_categories?: DbServiceCategory | null;
+  service_sections?: DbServiceSection[] | null;
+  service_media?: DbServiceMedia[] | null;
+  service_faqs?: DbServiceFaq[] | null;
+  service_documents_required?: DbServiceDocument[] | null;
+  service_process_steps?: DbServiceProcessStep[] | null;
+  service_testimonials?: DbServiceTestimonial[] | null;
 };
 
-export type AdminService = DbService & {
+export type AdminService = Omit<DbService, "category"> & {
   category?: DbServiceCategory | null;
+  category_slug?: string | null;
+};
+
+export type ServiceSectionType =
+  | "hero"
+  | "overview"
+  | "benefits"
+  | "documents"
+  | "process"
+  | "faq"
+  | "gallery"
+  | "testimonials"
+  | "pricing"
+  | "stats"
+  | "banner"
+  | "rich_text"
+  | "custom_html"
+  | "video"
+  | "trust_badges"
+  | "offer_strip"
+  | "contact_cta";
+
+export type DbServiceSection = {
+  id: string;
+  service_id: string;
+  section_type: ServiceSectionType;
+  title: string | null;
+  subtitle: string | null;
+  content: Record<string, unknown> | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type DbServiceMedia = {
+  id: string;
+  service_id: string;
+  section_id: string | null;
+  file_url: string;
+  storage_path: string | null;
+  alt_text: string | null;
+  media_type: string | null;
+  sort_order: number;
+  created_at?: string;
+};
+
+export type DbServiceFaq = {
+  id: string;
+  service_id: string;
+  question: string;
+  answer: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type DbServiceDocument = {
+  id: string;
+  service_id: string;
+  document_name: string;
+  description: string | null;
+  is_required: boolean;
+  sort_order: number;
+};
+
+export type DbServiceProcessStep = {
+  id: string;
+  service_id: string;
+  step_title: string;
+  step_description: string | null;
+  step_icon: string | null;
+  sort_order: number;
+};
+
+export type DbServiceTestimonial = {
+  id: string;
+  service_id: string;
+  customer_name: string;
+  review_text: string;
+  rating: number;
+  photo_url: string | null;
+  sort_order: number;
+  is_active: boolean;
 };
 
 export type ServiceCategoryWithCount = ServiceCategory & {
@@ -95,6 +198,17 @@ function priceOverride(slug: string) {
   return null;
 }
 
+function categorySlugFromService(service: DbService) {
+  return service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
+}
+
+function activeServiceFilter(service: DbService) {
+  return (service.is_active ?? service.status === "published") && service.status === "published";
+}
+
+const serviceSelect =
+  "*, service_categories(*), service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*)";
+
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
   const fallback = getFallbackCategoryBySlug(category.slug);
 
@@ -104,11 +218,11 @@ function categoryFromDb(category: DbServiceCategory, services: DbService[] = [])
     heading: fallback?.heading ?? `${category.name} Services`,
     description: category.description || fallback?.description || "",
     icon: fallback?.icon ?? FileText,
-    featuredSlugs: services.filter((service) => service.featured).map((service) => service.slug),
+    featuredSlugs: services.filter((service) => service.is_featured ?? service.featured).map((service) => service.slug),
     id: category.id,
     sortOrder: category.sort_order,
     isActive: category.is_active,
-    serviceCount: services.filter((service) => service.status === "published").length,
+    serviceCount: services.filter(activeServiceFilter).length,
   };
 }
 
@@ -116,29 +230,46 @@ export function serviceFromDb(service: DbService): ServiceItem {
   const category = service.service_categories ?? undefined;
   const fallback = getFallbackServiceBySlug(service.slug);
   const override = priceOverride(service.slug);
-  const offerPrice = formatPrice(override?.offerPrice ?? service.offer_price);
-  const oldPrice = formatPrice(override?.oldPrice ?? service.old_price);
-  const priceLabel = override ? offerPrice || "Enquiry Now" : service.price_label || offerPrice || fallback?.priceLabel || "Enquiry Now";
+  const baseAmount = Number(override?.oldPrice ?? service.base_price ?? service.old_price ?? service.sale_price ?? service.offer_price ?? 0);
+  const saleAmount = Number(override?.offerPrice ?? service.sale_price ?? service.offer_price ?? service.base_price ?? service.old_price ?? 0);
+  const isPaid = service.is_paid ?? saleAmount > 0;
+  const offerPrice = isPaid ? formatPrice(saleAmount) : undefined;
+  const oldPrice = isPaid ? formatPrice(baseAmount && baseAmount !== saleAmount ? baseAmount : service.old_price) : undefined;
+  const childFaqs = (service.service_faqs ?? [])
+    .filter((item) => item.is_active)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item) => ({ question: item.question, answer: item.answer }));
+  const childDocuments = (service.service_documents_required ?? [])
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item) => item.document_name);
+  const childProcess = (service.service_process_steps ?? [])
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item) => item.step_title);
+  const childReviews = (service.service_testimonials ?? [])
+    .filter((item) => item.is_active)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((item) => ({ name: item.customer_name, location: "", text: item.review_text }));
+  const priceLabel = isPaid ? service.price_label || offerPrice || fallback?.priceLabel || "Apply Now" : service.price_label || "Free";
 
   return {
     title: service.title,
     slug: service.slug,
     category: category?.name ?? fallback?.category ?? "Services",
-    categorySlug: category?.slug ?? fallback?.categorySlug ?? "services",
+    categorySlug: categorySlugFromService(service),
     shortDescription: service.short_description || fallback?.shortDescription || "",
-    overview: service.overview || fallback?.overview || "",
+    overview: service.full_description || service.overview || fallback?.overview || "",
     benefits: jsonArray<string>(service.benefits, fallback?.benefits ?? []),
-    documents: jsonArray<string>(service.documents, fallback?.documents ?? []),
-    process: jsonArray<string>(service.process, fallback?.process ?? []),
+    documents: childDocuments.length ? childDocuments : jsonArray<string>(service.documents, fallback?.documents ?? []),
+    process: childProcess.length ? childProcess : jsonArray<string>(service.process, fallback?.process ?? []),
     oldPrice,
     offerPrice,
     priceLabel,
-    amount: Number(override?.offerPrice ?? service.offer_price ?? 0),
-    ctaType: service.cta_type === "enquiry" ? "enquiry" : "apply",
+    amount: isPaid ? saleAmount : 0,
+    ctaType: !isPaid || service.cta_type === "enquiry" ? "enquiry" : "apply",
     icon: iconByName(service.icon),
     badge: service.badge || fallback?.badge || (service.cta_type === "apply" ? "Limited Offer" : "Enquiry"),
-    faqs: jsonArray(service.faqs, fallback?.faqs ?? []),
-    reviews: jsonArray(service.reviews, fallback?.reviews ?? []),
+    faqs: childFaqs.length ? childFaqs : jsonArray(service.faqs, fallback?.faqs ?? []),
+    reviews: childReviews.length ? childReviews : jsonArray(service.reviews, fallback?.reviews ?? []),
     seoTitle: service.seo_title || fallback?.seoTitle || `${service.title} | DigiConnect Dukan`,
     seoDescription: service.seo_description || fallback?.seoDescription || service.short_description || "",
     seoKeywords: jsonArray<string>(service.seo_keywords, fallback?.seoKeywords ?? []),
@@ -153,8 +284,9 @@ async function fetchPublishedServiceRows() {
   try {
     const { data, error } = await supabase
       .from("services")
-      .select("*, service_categories(*)")
+      .select(serviceSelect)
       .eq("status", "published")
+      .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("title", { ascending: true });
 
@@ -202,9 +334,10 @@ export async function getPublicServiceBySlug(slug: string) {
     try {
       const { data, error } = await supabase
         .from("services")
-        .select("*, service_categories(*)")
+        .select(serviceSelect)
         .eq("slug", normalizedSlug)
         .eq("status", "published")
+        .eq("is_active", true)
         .maybeSingle();
 
       if (!error && data) return serviceFromDb(data as DbService);
@@ -215,6 +348,38 @@ export async function getPublicServiceBySlug(slug: string) {
 
   const shouldFallback = !(await hasDatabaseServices());
   return shouldFallback ? getFallbackServiceBySlug(normalizedSlug) ?? null : null;
+}
+
+export async function getPublicServiceRowBySlug(slug: string) {
+  const aliases: Record<string, string> = {
+    msme: "msme-certificate",
+    "food-license": "food-license-fssai",
+    passport: "passport-assistance",
+  };
+  const normalizedSlug = aliases[slug] ?? slug;
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from("services")
+      .select(serviceSelect)
+      .eq("slug", normalizedSlug)
+      .eq("status", "published")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[services] service page lookup failed", error.message);
+      return null;
+    }
+
+    return data as DbService | null;
+  } catch (error) {
+    console.error("[services] service page lookup failed", error);
+    return null;
+  }
 }
 
 export async function getPublicCategoriesWithCounts() {
@@ -251,7 +416,7 @@ export async function getPublicServicesByCategory(slug: string) {
   if (!rows.length) return (await hasDatabaseServices()) ? [] : getFallbackServicesByCategory(slug);
 
   return rows
-    .filter((service) => service.service_categories?.slug === slug && service.service_categories?.is_active)
+    .filter((service) => categorySlugFromService(service) === slug && (service.service_categories?.is_active ?? true))
     .map(serviceFromDb);
 }
 
@@ -272,7 +437,21 @@ export async function getPublicFeaturedServices(categorySlug?: string) {
   }
 
   return rows
-    .filter((service) => service.slug !== "pan-card" && service.featured && (!categorySlug || service.service_categories?.slug === categorySlug))
+    .filter((service) => service.slug !== "pan-card" && (service.is_featured ?? service.featured) && (!categorySlug || categorySlugFromService(service) === categorySlug))
+    .map(serviceFromDb);
+}
+
+export async function getPublicHomepageServices(limit = 6) {
+  const rows = await fetchPublishedServiceRows();
+  if (!rows.length) {
+    if (await hasDatabaseServices()) return [];
+    return servicesData.slice(0, limit);
+  }
+
+  return rows
+    .filter((service) => service.show_on_homepage || service.is_featured || service.featured)
+    .sort((a, b) => Number(b.is_featured ?? b.featured) - Number(a.is_featured ?? a.featured) || a.sort_order - b.sort_order || a.title.localeCompare(b.title))
+    .slice(0, limit)
     .map(serviceFromDb);
 }
 
@@ -295,11 +474,12 @@ export async function getAdminServices() {
   if (!supabase) return [] as AdminService[];
 
   try {
-    const { data, error } = await supabase.from("services").select("*, service_categories(*)").order("sort_order").order("title");
+    const { data, error } = await supabase.from("services").select(serviceSelect).order("sort_order").order("title");
     if (error) return [] as AdminService[];
     return (data ?? []).map((service) => ({
       ...(service as DbService),
       category: (service as DbService).service_categories,
+      category_slug: (service as DbService).category,
     }));
   } catch (error) {
     console.error("[services] admin services lookup failed", error);
@@ -312,12 +492,13 @@ export async function getAdminServiceById(id: string) {
   if (!supabase) return null;
 
   try {
-    const { data, error } = await supabase.from("services").select("*, service_categories(*)").eq("id", id).maybeSingle();
+    const { data, error } = await supabase.from("services").select(serviceSelect).eq("id", id).maybeSingle();
     if (error || !data) return null;
 
     return {
       ...(data as DbService),
       category: (data as DbService).service_categories,
+      category_slug: (data as DbService).category,
     } as AdminService;
   } catch (error) {
     console.error("[services] admin service lookup failed", error);
@@ -330,19 +511,27 @@ export function getServiceSeedRows() {
     title: service.title,
     slug: service.slug,
     category_slug: service.categorySlug,
+    category: service.categorySlug,
     short_description: service.shortDescription,
+    full_description: service.overview,
     overview: service.overview,
     benefits: service.benefits,
     documents: service.documents,
     process: service.process,
     old_price: service.oldPrice ? Number(service.oldPrice.replace(/[^\d]/g, "")) : null,
     offer_price: service.offerPrice ? Number(service.offerPrice.replace(/[^\d]/g, "")) : null,
+    base_price: service.oldPrice ? Number(service.oldPrice.replace(/[^\d]/g, "")) : null,
+    sale_price: service.offerPrice ? Number(service.offerPrice.replace(/[^\d]/g, "")) : null,
+    is_paid: service.ctaType === "apply",
     price_label: service.priceLabel,
     cta_type: service.ctaType,
     badge: service.badge,
     icon: "FileText",
     status: "published" as const,
     featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
+    is_featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
+    show_on_homepage: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
+    is_active: true,
     sort_order: index + 1,
     seo_title: service.seoTitle,
     seo_description: service.seoDescription,
