@@ -38,14 +38,33 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
     .from("applications")
     .select("*")
     .eq("id", id)
-    .or(`agent_id.eq.${user.id},created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
-    .single();
+    .maybeSingle();
 
   if (!data) {
     notFound();
   }
 
-  const [application] = (await hydrateApplications([data as Application])) as Application[];
+  const applicationRow = data as Application;
+  const directlyAllowed =
+    applicationRow.agent_id === user.id ||
+    applicationRow.created_by === user.id ||
+    applicationRow.created_by_agent_id === user.id ||
+    applicationRow.assigned_agent_id === user.id;
+  const { data: assignment } = directlyAllowed
+    ? { data: null }
+    : await supabase
+        .from("assignments")
+        .select("id")
+        .eq("application_id", id)
+        .eq("agent_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
+
+  if (!directlyAllowed && !assignment) {
+    notFound();
+  }
+
+  const [application] = (await hydrateApplications([applicationRow])) as Application[];
   const commission = application.commissions?.[0];
   const mobile = getCustomerMobile(application);
 

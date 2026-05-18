@@ -1,47 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import type { Application, Commission, Customer, Lead } from "@/lib/portal-types";
+import type { Application, Commission } from "@/lib/portal-types";
 import { hydrateApplications } from "@/lib/crm";
-
-export type AgentLead = Lead & {
-  customer_name?: string | null;
-  city?: string | null;
-  notes?: string | null;
-  agent_id?: string | null;
-};
-
-export async function getAgentLeads(agentId: string, limit = 100) {
-  const supabase = getSupabaseAdmin();
-
-  if (!supabase) {
-    return [] as AgentLead[];
-  }
-
-  const { data } = await supabase
-    .from("leads")
-    .select("id, name, customer_name, mobile, service, city, address, message, notes, status, payment_status, payment_amount, payment_method, payment_reference, payment_proof_url, payment_proof_path, documents, agent_id, created_at")
-    .eq("agent_id", agentId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  return (data ?? []) as AgentLead[];
-}
-
-export async function getAgentCustomers(agentId: string, limit = 100) {
-  const supabase = getSupabaseAdmin();
-
-  if (!supabase) {
-    return [] as Customer[];
-  }
-
-  const { data } = await supabase
-    .from("customers")
-    .select("*")
-    .or(`created_by.eq.${agentId},assigned_agent_id.eq.${agentId}`)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  return (data ?? []) as Customer[];
-}
 
 export async function getAgentApplications(agentId: string, limit = 100) {
   const supabase = getSupabaseAdmin();
@@ -53,7 +12,33 @@ export async function getAgentApplications(agentId: string, limit = 100) {
   const { data } = await supabase
     .from("applications")
     .select("*")
-    .or(`agent_id.eq.${agentId},created_by.eq.${agentId},assigned_agent_id.eq.${agentId}`)
+    .or(`agent_id.eq.${agentId},created_by.eq.${agentId},created_by_agent_id.eq.${agentId},assigned_agent_id.eq.${agentId}`)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (await hydrateApplications((data ?? []) as Application[])) as Application[];
+}
+
+export async function getAgentAssignedApplications(agentId: string, limit = 100) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    return [] as Application[];
+  }
+
+  const { data: assignmentRows } = await supabase
+    .from("assignments")
+    .select("application_id")
+    .eq("agent_id", agentId)
+    .eq("active", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  const assignmentIds = (assignmentRows ?? []).map((row) => String(row.application_id)).filter(Boolean);
+
+  const { data } = await supabase
+    .from("applications")
+    .select("*")
+    .or(`assigned_agent_id.eq.${agentId}${assignmentIds.length ? `,id.in.(${assignmentIds.join(",")})` : ""}`)
     .order("created_at", { ascending: false })
     .limit(limit);
 

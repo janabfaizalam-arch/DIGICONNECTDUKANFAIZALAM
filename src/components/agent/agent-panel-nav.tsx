@@ -2,22 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, type LucideIcon, PlusCircle, UsersRound, Inbox, FileText, FileWarning, CreditCard, HandCoins, Receipt, UserCog, Headphones } from "lucide-react";
+import { LayoutDashboard, type LucideIcon, PlusCircle, FileText, ClipboardList, HandCoins, WalletCards, UserCog, Headphones } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
 
 const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/agent/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/agent/add-customer", label: "Add Customer", icon: PlusCircle },
-  { href: "/agent/customers", label: "My Customers", icon: UsersRound },
-  { href: "/agent/leads", label: "My Leads", icon: Inbox },
+  { href: "/agent/applications/new", label: "New Application", icon: PlusCircle },
   { href: "/agent/applications", label: "My Applications", icon: FileText },
-  { href: "/agent/documents-required", label: "Documents Required", icon: FileWarning },
-  { href: "/agent/payments", label: "Payments", icon: CreditCard },
-  { href: "/agent/commissions", label: "My Commission", icon: HandCoins },
-  { href: "/agent/payout-history", label: "Payout History", icon: Receipt },
-  { href: "/agent/profile", label: "Profile / Bank", icon: UserCog },
+  { href: "/agent/assigned-work", label: "Assigned Work", icon: ClipboardList },
+  { href: "/agent/commissions", label: "Commission", icon: HandCoins },
+  { href: "/agent/payout-history", label: "Wallet / Payout", icon: WalletCards },
+  { href: "/agent/profile", label: "Profile", icon: UserCog },
   { href: "/agent/support", label: "Support", icon: Headphones },
 ];
 

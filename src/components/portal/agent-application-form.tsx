@@ -113,13 +113,18 @@ export function AgentApplicationForm({
             <div className="grid gap-3 md:grid-cols-2">
               <Input name="customerName" placeholder="Customer name" required={!customerId} />
               <Input name="mobile" placeholder="Mobile number" inputMode="numeric" required={!customerId} />
-              <Input name="email" placeholder="Email optional" type="email" />
-              <Input name="city" placeholder="City" />
+              <Input name="email" placeholder="Email" type="email" required={!customerId} />
+              <Input name="pincode" placeholder="Pincode" inputMode="numeric" required={!customerId} />
+              <Input name="city" placeholder="City" required={!customerId} />
+              <Input name="state" placeholder="State" required={!customerId} />
             </div>
           ) : (
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="font-bold text-slate-950">{selectedCustomer.full_name}</p>
               <p className="mt-1 font-mono text-sm text-slate-600">{selectedCustomer.mobile}</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {selectedCustomer.email || "Email missing"} - {selectedCustomer.pincode || "PIN missing"} - {selectedCustomer.city || "City missing"} - {selectedCustomer.state || "State missing"}
+              </p>
             </div>
           )}
 
@@ -155,6 +160,7 @@ export function AgentApplicationForm({
               <RazorpayCheckoutButton
                 amountPaise={payableAmountPaise}
                 receipt={paymentReceipt}
+                serviceSlug={selectedService?.slug}
                 customer={{
                   name: selectedCustomer?.full_name,
                   email: selectedCustomer?.email ?? undefined,

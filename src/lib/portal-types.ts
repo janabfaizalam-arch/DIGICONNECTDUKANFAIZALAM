@@ -116,7 +116,9 @@ export type Customer = {
   full_name: string;
   mobile: string;
   email: string | null;
+  pincode?: string | null;
   city: string | null;
+  state?: string | null;
   address: string | null;
   notes: string | null;
   source: "online" | "offline" | "agent_pos";

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, Clock3, FileText, HandCoins, Inbox, IndianRupee, PlusCircle } from "lucide-react";
+import { CheckCircle2, Clock3, FileText, HandCoins, IndianRupee, PlusCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { getAgentApplications, getAgentCommissions, getAgentLeads } from "@/lib/agent-data";
+import { getAgentApplications, getAgentAssignedApplications, getAgentCommissions } from "@/lib/agent-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -30,16 +30,15 @@ export default async function AgentDashboardPage() {
   if (!user) redirect("/login/agent");
   if (!(await isActiveAgent(user))) redirect("/unauthorized");
 
-  const [profile, leads, applications, commissions] = await Promise.all([
+  const [profile, applications, assignedApplications, commissions] = await Promise.all([
     getAgentProfile(user.id),
-    getAgentLeads(user.id, 500),
     getAgentApplications(user.id, 500),
+    getAgentAssignedApplications(user.id, 500),
     getAgentCommissions(user.id, 500),
   ]);
 
-  const pendingLeads = leads.filter((lead) => !["converted", "closed", "completed", "cancelled", "rejected"].includes(lead.status)).length;
   const processingApplications = applications.filter((application) =>
-    ["in_process", "in_progress", "application_processing", "submitted", "submitted_to_department", "under_government_review", "documents_under_review"].includes(application.status),
+    ["in_process", "in_progress", "submitted", "assigned_to_agent", "documents_required", "document_pending"].includes(application.status),
   ).length;
   const completedServices = applications.filter((application) => application.status === "completed").length;
   const totalCommission = commissions.reduce((total, commission) => total + Number(commission.amount ?? 0), 0);
@@ -51,8 +50,8 @@ export default async function AgentDashboardPage() {
     .reduce((total, commission) => total + Number(commission.amount ?? 0), 0);
 
   const stats = [
-    { label: "Total Leads", value: leads.length, icon: Inbox, tone: "text-blue-700 bg-blue-50" },
-    { label: "Pending Leads", value: pendingLeads, icon: Clock3, tone: "text-orange-700 bg-orange-50" },
+    { label: "My Applications", value: applications.length, icon: FileText, tone: "text-blue-700 bg-blue-50" },
+    { label: "Assigned Work", value: assignedApplications.length, icon: Clock3, tone: "text-orange-700 bg-orange-50" },
     { label: "Processing Applications", value: processingApplications, icon: FileText, tone: "text-slate-700 bg-slate-100" },
     { label: "Completed Services", value: completedServices, icon: CheckCircle2, tone: "text-emerald-700 bg-emerald-50" },
     { label: "Total Commission", value: formatCurrency(totalCommission), icon: HandCoins, tone: "text-blue-700 bg-blue-50" },
@@ -70,9 +69,9 @@ export default async function AgentDashboardPage() {
               <h1 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">{profile?.full_name || user.email || "Agent"}</h1>
               <p className="mt-1 font-mono text-sm font-semibold text-slate-500">{profile?.agent_code || "Agent"}</p>
             </div>
-            <Link href="/agent/add-customer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
+            <Link href="/agent/applications/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
               <PlusCircle className="h-4 w-4" />
-              Add Customer
+              New Application
             </Link>
           </div>
         </section>

@@ -92,6 +92,7 @@ async function fetchRazorpayPaymentDetails(paymentId: string) {
     return (await razorpay.payments.fetch(paymentId)) as {
       id?: string;
       order_id?: string;
+      amount?: number;
       status?: string;
       method?: string;
       created_at?: number;
@@ -188,18 +189,41 @@ export async function POST(request: Request) {
     }
 
     const razorpayDetails = razorpayPaymentId ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
+
+    if (expectedAmountPaise > 0) {
+      if (!razorpayDetails) {
+        return jsonError("Razorpay payment could not be verified on the server.", 400);
+      }
+
+      if (razorpayDetails.order_id !== razorpayOrderId || razorpayDetails.id !== razorpayPaymentId) {
+        return jsonError("Razorpay payment does not match the verified order.", 400);
+      }
+
+      if (Number(razorpayDetails.amount ?? 0) !== expectedAmountPaise) {
+        return jsonError("Razorpay payment amount does not match the selected service.", 400);
+      }
+
+      if (!["captured", "authorized"].includes(String(razorpayDetails.status ?? "").toLowerCase())) {
+        return jsonError("Razorpay payment is not successful yet.", 400);
+      }
+    }
+
     const paidAt = razorpayDetails?.created_at ? new Date(razorpayDetails.created_at * 1000).toISOString() : new Date().toISOString();
 
     let resolvedCustomerId = customerId;
-    let customer = null as { id: string; full_name: string; mobile: string; email: string | null; city: string | null } | null;
+    let customer = null as { id: string; full_name: string; mobile: string; email: string | null; city: string | null; pincode?: string | null; state?: string | null } | null;
 
     if (resolvedCustomerId) {
       const { data } = await supabase
         .from("customers")
-        .select("id, full_name, mobile, email, city")
+        .select("id, full_name, mobile, email, city, pincode, state")
         .eq("id", resolvedCustomerId)
+        .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
         .single();
       customer = data;
+      if (!customer?.email || !customer.mobile || !customer.pincode || !customer.city || !customer.state) {
+        return jsonError("Selected customer is missing email, mobile, pincode, city, or state. Create a new application with complete customer details.", 400);
+      }
     } else {
       const { data, error } = await supabase
         .from("customers")
@@ -214,7 +238,7 @@ export async function POST(request: Request) {
           created_by: user.id,
           assigned_agent_id: user.id,
         })
-        .select("id, full_name, mobile, email, city")
+        .select("id, full_name, mobile, email, city, pincode, state")
         .single();
 
       if (error || !data) {
@@ -255,9 +279,9 @@ export async function POST(request: Request) {
           name: customer.full_name,
           mobile: customer.mobile,
           email: customer.email?.toLowerCase() ?? "",
-          pincode,
+          pincode: customer.pincode ?? pincode,
           city: customer.city ?? city,
-          state,
+          state: customer.state ?? state,
           message,
           invoiceNumber,
         },
