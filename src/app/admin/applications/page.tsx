@@ -13,12 +13,8 @@ export default async function AdminApplicationsPage({
     q?: string;
     status?: string;
     payment?: string;
-    service?: string;
     staff?: string;
-    agent?: string;
     range?: string;
-    unassigned?: string;
-    docs?: string;
     page?: string;
   }>;
 }) {
@@ -33,7 +29,7 @@ export default async function AdminApplicationsPage({
     redirect("/dashboard");
   }
 
-  const { q, status, payment, service, staff: staffId, agent, range, unassigned, docs, page } = await searchParams;
+  const { q, status, payment, staff: staffId, range, page } = await searchParams;
   const {
     rows,
     agents,
@@ -48,12 +44,8 @@ export default async function AdminApplicationsPage({
     query: q,
     status,
     paymentStatus: payment,
-    service,
     staffId,
-    agent,
     dateRange: range,
-    unassignedOnly: unassigned === "1",
-    documentsMissingOnly: docs === "missing",
     page: Number(page ?? 1),
     pageSize: 25,
   });
@@ -72,12 +64,8 @@ export default async function AdminApplicationsPage({
       initialSearch={q ?? ""}
       initialStatus={status ?? "all"}
       initialPaymentStatus={payment ?? "all"}
-      initialService={service ?? "all"}
       initialStaffId={staffId ?? "all"}
-      initialAgent={agent ?? "all"}
       initialDateRange={range ?? "all"}
-      initialUnassignedOnly={unassigned === "1"}
-      initialDocumentsMissingOnly={docs === "missing"}
     />
   );
 }

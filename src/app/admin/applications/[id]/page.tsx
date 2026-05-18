@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { AlertTriangle, ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
+import { ArrowLeft, Download, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
-import { ReprocessRewardsButton } from "@/components/admin/reprocess-rewards-button";
-import { GenerateInvoiceButton } from "@/components/admin/generate-invoice-button";
 import { AdminDocumentReviewActions } from "@/components/admin/admin-document-review-actions";
+import { GenerateInvoiceButton } from "@/components/admin/generate-invoice-button";
 import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
+import { safeCurrency, safeDateTime } from "@/lib/admin-format";
+import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
@@ -19,38 +18,17 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-function displayValue(value: unknown): string {
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) return value.map((item) => displayValue(item)).filter(Boolean).join(", ");
-  if (value && typeof value === "object") return JSON.stringify(value, null, 2);
-  return "";
-}
-
-function DetailTile({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+function DetailRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
-    <div className="rounded-2xl bg-white p-3">
+    <div>
       <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
-      <p className={`mt-1 break-words text-sm font-bold text-slate-950 ${mono ? "font-mono" : ""}`}>{value}</p>
+      <p className={`mt-1 break-words text-sm font-semibold text-slate-950 ${mono ? "font-mono" : ""}`}>{value || "-"}</p>
     </div>
   );
 }
 
-function JsonSection({ title, data }: { title: string; data: Record<string, unknown> }) {
-  const entries = Object.entries(data);
-
-  return (
-    <>
-      <h2 className="mt-6 text-lg font-bold text-slate-950">{title}</h2>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {entries.length ? entries.map(([key, value]) => (
-          <div key={`${title}-${key}`} className="rounded-2xl bg-slate-50 p-4">
-            <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold text-slate-900">{displayValue(value) || "-"}</p>
-          </div>
-        )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No data stored.</p>}
-      </div>
-    </>
-  );
+function text(value: unknown) {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
 }
 
 export default async function AdminApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -62,34 +40,17 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
   const { id } = await params;
   const detail = await getAdminApplicationDetail(id);
-
   if (!detail) notFound();
 
-  const {
-    application,
-    payment,
-    invoice,
-    customer,
-    documents,
-    invoices,
-    payments,
-    notes,
-    statusLogs,
-    referralDebug,
-    diagnostics,
-    documentDiagnostics,
-    possibleDocuments,
-    warnings,
-    facts,
-  } = detail;
+  const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, staff, facts } = detail;
   const formData = asRecord(application.form_data);
-  const customerDetails = asRecord(application.customer_details);
   const serviceSnapshot = asRecord(application.service_snapshot);
-  const metadata = asRecord(application.metadata);
   const customerMobile = customer.mobile;
-  const warningItems = [...warnings, ...diagnostics.map((item: { message?: string }) => item.message).filter(Boolean) as string[]];
   const finalDocuments = documents.filter((document) => document.is_final || document.document_type === "final_document");
   const customerDocuments = documents.filter((document) => !(document.is_final || document.document_type === "final_document"));
+  const whatsapp = customerMobile
+    ? generateWhatsAppLink(customerMobile, `DigiConnect Dukan update for your ${application.service_name} application.`)
+    : null;
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -98,228 +59,131 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
         Back to applications
       </Link>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
-        <Card className="p-5 md:p-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-600">Admin Application</p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-950">{application.service_name}</h1>
-              <p className="mt-2 font-mono text-xs text-slate-500">ID: {application.id}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge status={application.status} />
-              <PaymentBadge status={application.payment_status ?? payment?.status ?? "pending"} />
-            </div>
-          </div>
-
-          {warningItems.length ? (
-            <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-700" />
-                <div>
-                  <p className="font-bold text-orange-950">CRM warnings</p>
-                  <ul className="mt-2 space-y-1 text-sm text-orange-800">
-                    {warningItems.map((warning) => <li key={warning}>{warning}</li>)}
-                  </ul>
-                </div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="space-y-5">
+          <Card className="p-5 md:p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Application</p>
+                <h1 className="mt-2 text-3xl font-bold text-slate-950">{application.service_name}</h1>
+                <p className="mt-1 font-mono text-xs text-slate-500">{application.id}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge status={application.status} />
+                <PaymentBadge status={application.payment_status ?? payment?.status ?? "pending"} />
               </div>
             </div>
-          ) : null}
 
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
-            <DetailTile label="Application Short ID" value={application.id.slice(0, 8)} mono />
-            <DetailTile label="Service Slug" value={application.service_slug || "-"} mono />
-            <DetailTile label="Created" value={facts.createdAt} mono />
-            <DetailTile label="Submitted" value={facts.submittedAt} mono />
-            <DetailTile label="Paid" value={facts.paidAt} mono />
-            <DetailTile label="Completed" value={facts.completedAt} mono />
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Customer</p>
-              <p className="mt-1 font-bold text-slate-950">{customer.name}</p>
-              <p className="mt-1 text-sm text-slate-600">{customer.email || application.customers?.email || "-"}</p>
+            <div className="mt-5 grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <DetailRow label="Amount" value={safeCurrency(facts.totalAmount)} />
+              <DetailRow label="Created" value={facts.createdAt} mono />
+              <DetailRow label="Paid" value={facts.paidAt} mono />
+              <DetailRow label="Completed" value={facts.completedAt} mono />
             </div>
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Mobile</p>
-              <p className="mt-1 font-mono font-bold text-slate-950">{customerMobile || "Not provided"}</p>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Customer Details</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailRow label="Name" value={customer.name || text(formData.name)} />
+              <DetailRow label="Mobile" value={customerMobile || text(formData.mobile)} mono />
+              <DetailRow label="Email" value={customer.email || text(formData.email)} />
+              <DetailRow label="Address" value={customer.address || text(formData.address)} />
             </div>
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Total Amount</p>
-              <p className="mt-1 font-bold text-slate-950">{safeCurrency(facts.totalAmount)}</p>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Service Details</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailRow label="Service" value={application.service_name} />
+              <DetailRow label="Slug" value={application.service_slug} mono />
+              <DetailRow label="Category" value={text(serviceSnapshot.category)} />
+              <DetailRow label="Source" value={application.submitted_by_role || application.source || "website"} />
             </div>
-          </div>
+          </Card>
 
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Customer Info</h2>
-          <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
-            <DetailTile label="Name" value={String(customer.name || customerDetails.name || "-")} />
-            <DetailTile label="Mobile" value={String(customerMobile || customerDetails.mobile || "-")} mono />
-            <DetailTile label="Email" value={String(customer.email || customerDetails.email || "-")} />
-            <DetailTile label="Address" value={String(customer.address || customerDetails.address || formData.address || "-")} />
-          </div>
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Payment Details</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailRow label="Payment Status" value={application.payment_status ?? payment?.status ?? "pending"} />
+              <DetailRow label="Net Received" value={safeCurrency(facts.verifiedPaidAmount || application.fresh_payable_amount || application.real_payment_amount)} />
+              <DetailRow label="Wallet Used" value={safeCurrency(facts.walletRedeemed)} />
+              <DetailRow label="Cashback Eligible" value={safeCurrency(facts.cashbackEligible)} />
+              <DetailRow label="Razorpay Order" value={application.razorpay_order_id ?? payment?.razorpay_order_id} mono />
+              <DetailRow label="Razorpay Payment" value={application.razorpay_payment_id ?? payment?.razorpay_payment_id} mono />
+            </div>
+          </Card>
 
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Service Info</h2>
-          <div className="mt-3 grid gap-3 rounded-2xl bg-blue-50/70 p-4 md:grid-cols-2">
-            <DetailTile label="Title" value={String(serviceSnapshot.title || application.service_name)} />
-            <DetailTile label="Slug" value={String(serviceSnapshot.slug || application.service_slug)} mono />
-            <DetailTile label="Category" value={String(serviceSnapshot.category || "-")} />
-            <DetailTile label="Price" value={safeCurrency(Number(serviceSnapshot.price ?? application.total_amount ?? application.amount ?? 0))} />
-          </div>
-
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Payment Facts</h2>
-          <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
-            <DetailTile label="Payment Status" value={application.payment_status ?? payment?.status ?? "pending"} />
-            <DetailTile label="Verified Razorpay Paid" value={safeCurrency(facts.verifiedPaidAmount)} />
-            <DetailTile label="Wallet Redeemed" value={safeCurrency(facts.walletRedeemed)} />
-            <DetailTile label="Cashback Eligible" value={safeCurrency(facts.cashbackEligible)} />
-            <DetailTile label="Razorpay Order ID" value={application.razorpay_order_id ?? payment?.razorpay_order_id ?? "-"} mono />
-            <DetailTile label="Razorpay Payment ID" value={application.razorpay_payment_id ?? payment?.razorpay_payment_id ?? "-"} mono />
-            <DetailTile label="Payment Method" value={payment?.payment_method ?? "-"} />
-            <DetailTile label="Paid At" value={facts.paidAt} mono />
-          </div>
-
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Lifecycle</h2>
-          <div className="mt-3 grid gap-3 rounded-2xl bg-blue-50/70 p-4 md:grid-cols-2">
-            <DetailTile label="Created" value={facts.createdAt} mono />
-            <DetailTile label="Submitted" value={facts.submittedAt} mono />
-            <DetailTile label="Completed" value={facts.completedAt} mono />
-            <DetailTile label="Payment Rows" value={payments.length} />
-            <DetailTile label="Cashback Status" value={application.cashback_awarded || application.cashback_credited_at ? "credited" : "pending / not applicable"} />
-            <DetailTile label="Referral Reward" value={application.referral_reward_processed ? "processed" : "pending / not applicable"} />
-            <DetailTile label="Referral Code Used" value={referralDebug?.referral_code_used ?? "-"} mono />
-            <DetailTile label="Referrer" value={referralDebug?.referred_by_user_id ?? "-"} mono />
-          </div>
-
-          <JsonSection title="Submitted Form Details" data={formData} />
-          <JsonSection title="Customer Details JSON" data={customerDetails} />
-          <JsonSection title="Service Snapshot JSON" data={serviceSnapshot} />
-          <JsonSection title="Application Metadata JSON" data={metadata} />
-
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Customer Uploaded Documents</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {customerDocuments.length ? (
-              customerDocuments.map((document) => (
-                <div key={document.id} className="rounded-2xl border bg-white p-4 text-sm font-bold text-slate-900">
-                  <div className="flex items-center gap-3">
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Documents</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {customerDocuments.length ? customerDocuments.map((document) => (
+                <div key={document.id} className="rounded-2xl border bg-white p-4 text-sm">
+                  <div className="flex items-center gap-2 font-bold text-slate-950">
                     <FileText className="h-4 w-4 text-blue-600" />
                     <span className="min-w-0 truncate">{document.document_name || document.document_type || document.file_name}</span>
                   </div>
                   <p className="mt-1 break-all font-mono text-xs text-slate-500">{document.file_name}</p>
-                  <p className="mt-1 text-xs text-slate-500">{document.file_type || "Unknown type"} · {safeDateTime(document.uploaded_at ?? document.created_at)}</p>
-                  <p className="mt-2 text-xs font-bold capitalize text-slate-500">
-                    {String(document.review_status ?? document.status ?? "pending").replace(/_/g, " ")}
-                  </p>
+                  <p className="mt-1 text-xs font-bold capitalize text-slate-500">{String(document.review_status ?? document.status ?? "pending").replace(/_/g, " ")}</p>
                   {document.rejection_reason ? <p className="mt-1 text-xs text-orange-700">{document.rejection_reason}</p> : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {document.file_url ? (
-                      <>
-                        <a href={document.file_url} target="_blank" rel="noreferrer" className="rounded-full bg-blue-700 px-3 py-2 text-xs font-bold text-white">Preview / View</a>
-                        <a href={document.file_url} download className="rounded-full border px-3 py-2 text-xs font-bold text-slate-900">Download</a>
-                      </>
-                    ) : <span className="rounded-full bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">No signed URL available</span>}
+                      <a href={document.file_url} target="_blank" rel="noreferrer" className="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white">Open</a>
+                    ) : null}
+                    <AdminDocumentReviewActions documentId={document.id} />
                   </div>
-                  <AdminDocumentReviewActions documentId={document.id} />
                 </div>
-              ))
-            ) : (
-              <div className="md:col-span-2 space-y-3">
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  <p className="font-bold">No documents linked to this application.</p>
-                  <p className="mt-2">Expected query: {documentDiagnostics.expectedQuery}</p>
-                  <p className="mt-1 font-mono text-xs">application: {documentDiagnostics.applicationId}</p>
-                  <p className="mt-1 font-mono text-xs">user: {documentDiagnostics.userId ?? "-"}</p>
-                  <p className="mt-1 font-mono text-xs">customer: {documentDiagnostics.customerId ?? "-"}</p>
+              )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No customer documents uploaded yet.</p>}
+            </div>
+
+            <h3 className="mt-5 text-sm font-bold uppercase text-slate-500">Final Document</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {finalDocuments.length ? finalDocuments.map((document) => (
+                <div key={document.id} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="font-bold text-emerald-950">{document.document_name || document.file_name}</p>
+                  <p className="mt-1 text-xs text-emerald-800">{safeDateTime(document.uploaded_at ?? document.created_at)}</p>
+                  {document.file_url ? (
+                    <a href={document.file_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Open Final Document</a>
+                  ) : null}
                 </div>
-                {possibleDocuments.length ? (
-                  <div className="rounded-2xl border border-orange-200 bg-white p-4">
-                    <p className="font-bold text-orange-900">Possible documents found but not linked</p>
-                    <div className="mt-3 grid gap-2">
-                      {possibleDocuments.map((document) => (
-                        <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl bg-orange-50 px-3 py-2 text-sm font-bold text-orange-900">
-                          <FileText className="h-4 w-4" />
-                          <span className="min-w-0 truncate">{document.document_name || document.file_name}</span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-
-          <h2 className="mt-6 text-lg font-bold text-slate-950">Final Completed Documents</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {finalDocuments.length ? finalDocuments.map((document) => (
-              <div key={document.id} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                <p className="font-bold text-emerald-950">{document.document_name || document.file_name}</p>
-                <p className="mt-1 break-all font-mono text-xs text-emerald-800">{document.storage_path}</p>
-                <p className="mt-1 text-xs text-emerald-800">{safeDateTime(document.uploaded_at ?? document.created_at)}</p>
-                {document.file_url ? (
-                  <a href={document.file_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">View / Download</a>
-                ) : null}
-              </div>
-            )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No final document uploaded yet.</p>}
-          </div>
-        </Card>
-
-        <div className="space-y-4">
-          <Card className="p-5">
-            <h2 className="text-lg font-bold text-slate-950">Update Work</h2>
-            <div className="mt-4">
-              <AdminUpdateForm
-                applicationId={application.id}
-                currentStatus={application.status}
-                currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
-                cashbackEnabled={application.cashback_enabled ?? true}
-                cashbackAmount={application.cashback_amount ?? application.amount}
-                cashbackExpiryDays={application.cashback_expiry_days ?? 90}
-                customerMobile={customerMobile}
-                serviceName={application.service_name}
-                hideAgentFields
-              />
-              <div className="mt-3">
-                <ReprocessRewardsButton applicationId={application.id} />
-              </div>
+              )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No final document uploaded yet.</p>}
             </div>
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-lg font-bold text-slate-950">Invoices & Payments</h2>
-            <div className="mt-4 space-y-3">
+            <h2 className="text-lg font-bold text-slate-950">Invoice</h2>
+            <div className="mt-4">
               {invoice ? (
                 <div className="rounded-2xl bg-slate-50 p-4">
                   <p className="font-bold text-slate-950">{invoice.invoice_number}</p>
                   <p className="mt-1 text-sm text-slate-600">{safeCurrency(invoice.amount)} · {invoice.payment_status}</p>
-                  <Link href={`/invoice/${invoice.id}`} className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
+                  <Link href={`/invoice/${invoice.id}`} className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
                     <ReceiptText className="h-4 w-4" />
-                    View Invoice
+                    Open Invoice
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Invoice not generated.</p>
+                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Invoice has not been generated yet.</p>
                   <GenerateInvoiceButton applicationId={application.id} />
                 </div>
               )}
-              <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">{invoices.length} invoice row(s), {payments.length} payment row(s) linked.</p>
+              <p className="mt-3 text-xs text-slate-500">{invoices.length} invoice row(s), {payments.length} payment row(s) linked.</p>
             </div>
           </Card>
 
-          {customerMobile ? (
-            <Card className="p-5">
-              <h2 className="text-lg font-bold text-slate-950">WhatsApp Status</h2>
-              <div className="mt-4 grid gap-2">
-                {[
-                  ["Send received message", "Your application has been received by DigiConnect Dukan. We will review it shortly."],
-                  ["Send documents pending message", "Your DigiConnect Dukan application needs pending documents. Please share them to continue."],
-                  ["Send completed message", "Your DigiConnect Dukan application is completed. Thank you for choosing us."],
-                ].map(([label, message]) => (
-                  <a key={label} href={generateWhatsAppLink(customerMobile, message)} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
-                    <MessageCircle className="h-4 w-4" />
-                    {label}
-                  </a>
-                ))}
-              </div>
-            </Card>
-          ) : null}
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Status Timeline</h2>
+            <div className="mt-4 space-y-3">
+              {statusLogs.length ? statusLogs.map((log: { id: string; old_status: string | null; new_status: string; note: string | null; created_at: string }) => (
+                <div key={log.id} className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-sm font-bold text-slate-950">{String(log.old_status ?? "new").replace(/_/g, " ")} to {String(log.new_status).replace(/_/g, " ")}</p>
+                  {log.note ? <p className="mt-1 text-sm text-slate-600">{log.note}</p> : null}
+                  <p className="mt-2 text-xs font-bold text-slate-500">{safeDateTime(log.created_at)}</p>
+                </div>
+              )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No status history yet.</p>}
+            </div>
+          </Card>
 
           <Card className="p-5">
             <h2 className="text-lg font-bold text-slate-950">Internal Notes</h2>
@@ -332,22 +196,55 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No notes yet.</p>}
             </div>
           </Card>
+        </div>
 
+        <aside className="space-y-4 lg:sticky lg:top-5 lg:self-start">
           <Card className="p-5">
-            <h2 className="text-lg font-bold text-slate-950">Activity Timeline</h2>
-            <div className="mt-4 space-y-3">
-              {statusLogs.length ? statusLogs.map((log: { id: string; old_status: string | null; new_status: string; note: string | null; created_at: string }) => (
-                <div key={log.id} className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-sm font-bold text-slate-950">
-                    {String(log.old_status ?? "new").replace(/_/g, " ")} to {String(log.new_status).replace(/_/g, " ")}
-                  </p>
-                  {log.note ? <p className="mt-1 text-sm text-slate-600">{log.note}</p> : null}
-                  <p className="mt-2 text-xs font-bold text-slate-500">{safeDateTime(log.created_at)}</p>
-                </div>
-              )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No activity history yet.</p>}
+            <h2 className="text-lg font-bold text-slate-950">Actions</h2>
+            <div className="mt-4">
+              <AdminUpdateForm
+                applicationId={application.id}
+                currentStatus={application.status}
+                currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
+                customerMobile={customerMobile}
+                serviceName={application.service_name}
+                staffOptions={staff}
+                assignedStaffId={application.assigned_staff_id}
+              />
             </div>
           </Card>
-        </div>
+
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Customer</h2>
+            <div className="mt-4 grid gap-2">
+              {whatsapp ? (
+                <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp Customer
+                </a>
+              ) : (
+                <span className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-slate-100 px-4 text-sm font-bold text-slate-400" title="Customer mobile is missing">
+                  <MessageCircle className="h-4 w-4" />
+                  No customer mobile
+                </span>
+              )}
+              {invoice ? (
+                <Link href={`/invoice/${invoice.id}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
+                  <ReceiptText className="h-4 w-4" />
+                  Open Invoice
+                </Link>
+              ) : (
+                <GenerateInvoiceButton applicationId={application.id} />
+              )}
+              {application.final_document_url ? (
+                <a href={application.final_document_url} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
+                  <Download className="h-4 w-4" />
+                  Open Final Document
+                </a>
+              ) : null}
+            </div>
+          </Card>
+        </aside>
       </div>
     </div>
   );

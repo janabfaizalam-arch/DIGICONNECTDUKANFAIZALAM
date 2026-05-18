@@ -85,6 +85,7 @@ export type AdminApplicationsCommandStats = {
   paymentPending: number;
   documentsMissing: number;
   inProgress: number;
+  completed: number;
   completedToday: number;
   staffUnassigned: number;
   agentApplications: number;
@@ -116,6 +117,7 @@ const EMPTY_COMMAND_STATS: AdminApplicationsCommandStats = {
   paymentPending: 0,
   documentsMissing: 0,
   inProgress: 0,
+  completed: 0,
   completedToday: 0,
   staffUnassigned: 0,
   agentApplications: 0,
@@ -363,6 +365,7 @@ async function getApplicationCommandMeta(): Promise<{
       paymentPending: withDocuments.filter(isPaymentPending).length,
       documentsMissing,
       inProgress: withDocuments.filter((application) => ["in_process", "in_progress", "submitted", "assigned_to_agent"].includes(normalizeStatus(application.status))).length,
+      completed: withDocuments.filter((application) => normalizeStatus(application.status) === "completed").length,
       completedToday: withDocuments.filter((application) => normalizeStatus(application.status) === "completed" && (application.updated_at ?? application.created_at) >= todayIso).length,
       staffUnassigned,
       agentApplications: withDocuments.filter((application) => application.agent_id || application.assigned_agent_id || normalizeStatus(application.submitted_by_role) === "agent" || normalizeStatus(application.source) === "agent_pos").length,
@@ -693,9 +696,9 @@ export async function getAdminApplicationDetail(id: string) {
     );
   }
 
-  const [notesResult, agentResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, possibleDocumentResults] = await Promise.all([
+  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
-    supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "agent"),
+    supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     application.user_id ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from("admin_crm_diagnostics").select("issue_type, severity, message").eq("application_id", id).limit(10),
@@ -731,7 +734,7 @@ export async function getAdminApplicationDetail(id: string) {
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
     notes: notesResult.error ? [] : notesResult.data ?? [],
-    staff: agentResult.error ? [] : (agentResult.data ?? []) as PortalUser[],
+    staff: staffResult.error ? [] : (staffResult.data ?? []) as PortalUser[],
     statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
     referralDebug: referralResult.error ? null : referralResult.data,
     diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],

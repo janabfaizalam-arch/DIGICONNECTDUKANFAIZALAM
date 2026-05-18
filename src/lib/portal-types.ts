@@ -192,6 +192,7 @@ export type Payment = {
 export type Invoice = {
   id: string;
   application_id: string;
+  application_short_id?: string | null;
   user_id?: string | null;
   customer_id?: string | null;
   invoice_number: string;
@@ -237,6 +238,7 @@ export type Application = {
   id: string;
   user_id: string | null;
   customer_id?: string | null;
+  invoice_id?: string | null;
   customer_email?: string | null;
   customer_mobile?: string | null;
   agent_id?: string | null;

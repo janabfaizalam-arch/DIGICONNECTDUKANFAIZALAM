@@ -28,6 +28,58 @@ export function groupByApplicationId<T extends { application_id: string }>(items
   }, {});
 }
 
+function groupInvoicesByApplication(applications: Application[], invoices: Invoice[]) {
+  const applicationByInvoiceId = new Map(applications.filter((application) => application.invoice_id).map((application) => [String(application.invoice_id), application.id]));
+  const applicationIds = new Set(applications.map((application) => application.id));
+
+  return invoices.reduce<Record<string, Invoice[]>>((grouped, invoice) => {
+    const candidates = [
+      invoice.application_id,
+      invoice.application_short_id,
+      applicationByInvoiceId.get(invoice.id),
+    ].filter(Boolean) as string[];
+    const applicationId = candidates.find((candidate) => applicationIds.has(candidate)) ?? candidates.find((candidate) => applicationIds.has(String(candidate)));
+    if (!applicationId) return grouped;
+    grouped[applicationId] = [...(grouped[applicationId] ?? []), invoice];
+    return grouped;
+  }, {});
+}
+
+export async function fetchInvoicesForApplications(applications: Application[]) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase || applications.length === 0) {
+    return [] as Invoice[];
+  }
+
+  const applicationIds = applications.map((application) => application.id);
+  const invoiceIds = applications.map((application) => application.invoice_id).filter(Boolean) as string[];
+  const shortIds = applicationIds.map((id) => id.slice(0, 8));
+  const baseSelect = "id, application_id, user_id, customer_id, invoice_number, customer_name, customer_email, customer_mobile, service_name, amount, wallet_used_amount, real_payment_amount, payment_status, created_at";
+  const fullSelect = `${baseSelect}, application_short_id`;
+  const filters = [`application_id.in.(${applicationIds.join(",")})`];
+  if (invoiceIds.length) filters.push(`id.in.(${invoiceIds.join(",")})`);
+  if (shortIds.length) filters.push(`application_short_id.in.(${shortIds.join(",")})`);
+
+  const fullResult = await supabase
+    .from("invoices")
+    .select(fullSelect)
+    .or(filters.join(","));
+
+  if (!fullResult.error) {
+    return (fullResult.data ?? []) as Invoice[];
+  }
+
+  const fallbackFilters = [`application_id.in.(${applicationIds.join(",")})`];
+  if (invoiceIds.length) fallbackFilters.push(`id.in.(${invoiceIds.join(",")})`);
+  const fallbackResult = await supabase
+    .from("invoices")
+    .select(baseSelect)
+    .or(fallbackFilters.join(","));
+
+  return (fallbackResult.data ?? []) as Invoice[];
+}
+
 export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
   const supabase = getSupabaseAdmin();
 
@@ -186,6 +238,7 @@ export async function createInvoiceForApplication({
   const { data: existing } = await supabase.from("invoices").select("id").eq("application_id", applicationId).maybeSingle();
 
   if (existing?.id) {
+    await supabase.from("applications").update({ invoice_id: existing.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
     return existing as Invoice;
   }
 
@@ -206,6 +259,10 @@ export async function createInvoiceForApplication({
     .select("id")
     .single();
 
+  if (data?.id) {
+    await supabase.from("applications").update({ invoice_id: data.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
+  }
+
   return data as Invoice | null;
 }
 
@@ -218,7 +275,7 @@ export async function hydrateApplications(applications: Application[]) {
 
   const applicationIds = applications.map((application) => application.id);
   const customerIds = applications.map((application) => application.customer_id).filter(Boolean) as string[];
-  const [documentsResult, paymentsResult, invoicesResult, commissionsResult, customersResult] = await Promise.all([
+  const [documentsResult, paymentsResult, invoices, commissionsResult, customersResult] = await Promise.all([
     supabase
       .from("application_documents")
       .select("id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at")
@@ -227,10 +284,7 @@ export async function hydrateApplications(applications: Application[]) {
       .from("payments")
       .select("id, application_id, amount, wallet_used_amount, real_payment_amount, status, screenshot_url, storage_path, razorpay_order_id, razorpay_payment_id, razorpay_status, payment_method, paid_at, created_at")
       .in("application_id", applicationIds),
-    supabase
-      .from("invoices")
-      .select("id, application_id, customer_id, invoice_number, customer_name, customer_email, customer_mobile, service_name, amount, payment_status, created_at")
-      .in("application_id", applicationIds),
+    fetchInvoicesForApplications(applications),
     supabase.from("commissions").select("*").in("application_id", applicationIds),
     customerIds.length
       ? supabase.from("customers").select("*").in("id", customerIds)
@@ -240,7 +294,7 @@ export async function hydrateApplications(applications: Application[]) {
   const resolvedDocuments = await resolveDocumentUrls((documentsResult.data ?? []) as ApplicationDocument[]);
   const documentsByApplicationId = groupByApplicationId(resolvedDocuments);
   const paymentsByApplicationId = groupByApplicationId((paymentsResult.data ?? []) as Payment[]);
-  const invoicesByApplicationId = groupByApplicationId((invoicesResult.data ?? []) as Invoice[]);
+  const invoicesByApplicationId = groupInvoicesByApplication(applications, invoices);
   const commissionsByApplicationId = groupByApplicationId((commissionsResult.data ?? []) as Commission[]);
   const customersById = ((customersResult.data ?? []) as Customer[]).reduce<Record<string, Customer>>((grouped, customer) => {
     grouped[customer.id] = customer;

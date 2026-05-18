@@ -16,7 +16,6 @@ import {
   Plus,
   ReceiptText,
   Share2,
-  RotateCcw,
   ShieldCheck,
   Sparkles,
   TrendingUp,
@@ -70,22 +69,6 @@ function formatDate(date: string) {
 
 function scrollToApplications() {
   document.getElementById("my-applications")?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function getTrackerStep(status: string) {
-  if (status === "completed") {
-    return 3;
-  }
-
-  if (status === "processing" || status === "documents_pending" || status === "in_process" || status === "in_progress") {
-    return 2;
-  }
-
-  if (status === "under_review" || status === "in_review" || status === "pending" || status === "submitted" || status === "payment_pending") {
-    return 1;
-  }
-
-  return 0;
 }
 
 function getRewardStatusLabel(status: string) {
@@ -415,19 +398,18 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                 {applications.map((application) => {
                   const payment = application.payments?.[0];
                   const invoice = application.invoices?.[0];
-                  const latestNotification = notifications.find((notification) => notification.application_id === application.id);
-                  const adminMessage = application.customer_message || latestNotification?.message || "No admin message yet.";
                   const paymentStatus = payment?.status ?? application.payment_status ?? "pending";
-                  const paymentReceived = paymentStatus === "verified";
-                  const trackerStep = getTrackerStep(application.status);
+                  const documents = application.documents?.filter((document) => !(document.is_final || document.document_type === "final_document")) ?? [];
+                  const finalDocument = application.documents?.find((document) => document.is_final || document.document_type === "final_document");
+                  const finalDocumentUrl = application.final_document_url || finalDocument?.file_url || "";
 
                   return (
-                    <article key={application.id} className="rounded-[1.35rem] border bg-white p-4 shadow-sm">
+                    <article key={application.id} className="rounded-2xl border bg-white p-4 shadow-sm">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <p className="text-lg font-bold text-slate-950">{application.service_name}</p>
                           <p className="mt-1 font-mono text-xs text-slate-500">Application ID: {application.id}</p>
-                          <p className="mt-1 text-xs font-medium text-slate-500">Submitted Date: {formatDate(application.created_at)}</p>
+                          <p className="mt-1 text-xs font-medium text-slate-500">Submitted: {formatDate(application.created_at)}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <StatusBadge status={application.status} />
@@ -435,50 +417,45 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-4 gap-2">
-                        {["Submitted", "Review", "Processing", "Completed"].map((step, index) => (
-                          <div key={step} className="min-w-0">
-                            <div className={`h-2 rounded-full ${index <= trackerStep ? "bg-gradient-to-r from-blue-700 to-orange-500" : "bg-slate-200"}`} />
-                            <p className="mt-2 truncate text-[0.68rem] font-bold text-slate-600">{step}</p>
-                          </div>
-                        ))}
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="rounded-2xl bg-slate-50 p-3">
+                          <p className="text-xs font-bold uppercase text-slate-500">Invoice</p>
+                          {invoice ? (
+                            <Link href={`/invoice/${invoice.id}`} className="mt-2 inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-3 text-xs font-bold text-white">
+                              <ReceiptText className="h-4 w-4" />
+                              Open Invoice
+                            </Link>
+                          ) : (
+                            <p className="mt-2 text-sm font-semibold text-slate-600">Not generated yet</p>
+                          )}
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 p-3">
+                          <p className="text-xs font-bold uppercase text-slate-500">Documents</p>
+                          <p className="mt-2 text-sm font-semibold text-slate-700">{documents.length ? `${documents.length} uploaded` : "No documents uploaded"}</p>
+                          {application.status === "documents_required" ? <CustomerDocumentUpload applicationId={application.id} /> : null}
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 p-3">
+                          <p className="text-xs font-bold uppercase text-slate-500">Final Document</p>
+                          {finalDocumentUrl ? (
+                            <a href={finalDocumentUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex h-9 items-center gap-2 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
+                              <Download className="h-4 w-4" />
+                              Open
+                            </a>
+                          ) : (
+                            <p className="mt-2 text-sm font-semibold text-slate-600">Not uploaded yet</p>
+                          )}
+                        </div>
                       </div>
 
-                      <p className="mt-4 text-sm text-slate-600">
-                        <span className="font-bold text-slate-800">Admin Message:</span> {adminMessage}
-                      </p>
-                      {paymentReceived ? (
-                        <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
-                          Payment received - application submitted.
-                        </p>
-                      ) : application.status === "payment_pending" ? (
-                        <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700">
-                          Payment pending. Complete payment to submit this application.
-                        </p>
-                      ) : null}
-                      <p className="mt-2 text-sm font-bold text-slate-700">{formatCurrency(application.amount)}</p>
-                      {application.status === "documents_required" ? <CustomerDocumentUpload applicationId={application.id} /> : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link href={`/dashboard/applications/${application.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
                           <FileText className="h-4 w-4" />
                           View Details
                         </Link>
-                        {invoice ? (
-                          <Link href={`/invoice/${invoice.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
-                            <Download className="h-4 w-4" />
-                            Invoice
-                          </Link>
-                        ) : null}
-                        {application.final_document_url ? (
-                          <a href={application.final_document_url} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
-                            <Download className="h-4 w-4" />
-                            Certificate
-                          </a>
-                        ) : null}
-                        <Link href={`/services/${application.service_slug}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-orange-500 px-4 text-sm font-bold text-white">
-                          <RotateCcw className="h-4 w-4" />
-                          Apply Again
-                        </Link>
+                        <a href={generateWhatsAppLink(undefined, `I need support for my ${application.service_name} application ${application.id}.`)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
+                          <MessageCircle className="h-4 w-4" />
+                          Support WhatsApp
+                        </a>
                       </div>
                     </article>
                   );

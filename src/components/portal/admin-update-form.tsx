@@ -41,21 +41,16 @@ export function AdminUpdateForm({
   currentPaymentStatus,
   customerMobile,
   serviceName,
-  agents = [],
-  assignedAgentId = "",
-  hideAgentFields = false,
+  staffOptions = [],
+  assignedStaffId = "",
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus;
   currentPaymentStatus: PaymentStatus;
-  cashbackEnabled?: boolean;
-  cashbackAmount?: number | string | null;
-  cashbackExpiryDays?: number | null;
   customerMobile: string;
   serviceName: string;
-  agents?: PortalUser[];
-  assignedAgentId?: string;
-  hideAgentFields?: boolean;
+  staffOptions?: PortalUser[];
+  assignedStaffId?: string | null;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [isPending, startTransition] = useTransition();
@@ -109,35 +104,25 @@ export function AdminUpdateForm({
         </SelectContent>
       </Select>
 
-      <div className="rounded-2xl bg-blue-50/70 px-4 py-3 text-sm font-bold text-blue-800">
-        Payment status is updated automatically from Razorpay: {currentPaymentStatus.replace(/_/g, " ")}
-      </div>
+      <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+        Payment is managed by Razorpay: {currentPaymentStatus.replace(/_/g, " ")}
+      </p>
 
-      {hideAgentFields ? null : (
-        <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>
-          <SelectTrigger aria-label="Assigned agent">
-            <SelectValue placeholder="Assign agent" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No agent</SelectItem>
-            {agents.map((agent) => (
-              <SelectItem key={agent.id} value={agent.id}>
-                {agent.full_name || agent.email}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      <Select name="assignedStaffId" defaultValue={assignedStaffId || "none"}>
+        <SelectTrigger aria-label="Assigned staff">
+          <SelectValue placeholder="Assign staff" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Unassigned</SelectItem>
+          {staffOptions.map((staff) => (
+            <SelectItem key={staff.id} value={staff.id}>
+              {staff.full_name || staff.email}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <Input name="assignedTo" placeholder="Assign to team member" />
-      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-        <p className="text-sm font-bold text-slate-900">Get 20% Cashback in Wallet</p>
-        <p className="mt-1 text-xs font-medium leading-5 text-slate-600">
-          Cashback is credited after successful service completion and verified payment. It is automatic and credited only once per application.
-        </p>
-      </div>
       <Textarea name="internalNotes" placeholder="Internal notes" className="min-h-24" />
-      <Textarea name="customerNote" placeholder="Customer visible note" className="min-h-20" />
       <Textarea name="note" placeholder="Add note to history" className="min-h-24" />
       <Input name="finalDocumentTitle" placeholder="Final document title" />
       <Input name="finalDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" />
