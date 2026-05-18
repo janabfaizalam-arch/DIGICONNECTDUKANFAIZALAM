@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star } from "lucide-react";
 
 import { ServicePrice } from "@/components/service-card";
@@ -74,8 +75,15 @@ function ServiceHero({ row }: { row: DbService }) {
       </div>
 
       {heroImage ? (
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <img src={heroImage} alt={service.title} className="h-full min-h-[260px] w-full object-contain md:min-h-[420px]" loading="eager" />
+        <div className="relative min-h-[260px] overflow-hidden rounded-2xl border bg-white shadow-sm md:min-h-[420px]">
+          <Image
+            src={heroImage}
+            alt={service.title}
+            fill
+            priority
+            sizes="(min-width: 1024px) 46vw, 100vw"
+            className="object-contain"
+          />
         </div>
       ) : (
         <Card className="overflow-hidden rounded-2xl p-0">
@@ -219,7 +227,17 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
       <section>
         {title ? <h2 className="text-2xl font-bold text-slate-950">{title}</h2> : null}
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {images.map((image) => <img key={image} src={image} alt={title || service.title} className="aspect-[4/3] w-full rounded-xl border bg-white object-contain" loading="lazy" />)}
+          {images.map((image) => (
+            <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-xl border bg-white">
+              <Image
+                src={image}
+                alt={title || service.title}
+                fill
+                sizes="(min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw"
+                className="object-contain"
+              />
+            </div>
+          ))}
         </div>
       </section>
     );
