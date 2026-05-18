@@ -42,7 +42,7 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
       }
 
       try {
-        const { data, error } = await supabase.storage.from("documents").createSignedUrl(document.storage_path, 60 * 60);
+        const { data, error } = await supabase.storage.from("application-documents").createSignedUrl(document.storage_path, 60 * 60);
         if (!error && data?.signedUrl) {
           return { ...document, file_url: data.signedUrl };
         }
@@ -54,8 +54,7 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
         return document;
       }
 
-      const { data } = supabase.storage.from("documents").getPublicUrl(document.storage_path);
-      return { ...document, file_url: data.publicUrl };
+      return document;
     }),
   );
 }
@@ -110,7 +109,9 @@ export async function getAgents() {
   const { data } = await supabase
     .from("profiles")
     .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-    .in("role", ["agent", "admin", "super_admin"])
+    .eq("role", "agent")
+    .eq("active", true)
+    .eq("kyc_status", "approved")
     .order("full_name", { ascending: true });
 
   return (data ?? []) as PortalUser[];

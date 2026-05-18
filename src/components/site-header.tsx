@@ -21,9 +21,9 @@ const navLinks = [
   { href: "/#support", label: "Support" },
 ];
 
-type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
+type AppRole = "admin" | "agent" | "customer";
 
-const roleValues = ["super_admin", "admin", "agent", "staff", "customer"];
+const roleValues = ["admin", "agent", "customer"];
 
 function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
@@ -52,10 +52,6 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
     .map((adminEmail) => adminEmail.trim().toLowerCase())
     .filter(Boolean);
 
-  if (email === "janabfaizalam@gmail.com") {
-    return "super_admin";
-  }
-
   if (adminEmails.includes(email)) {
     return "admin";
   }
@@ -80,7 +76,7 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
 }
 
 function getPanelConfig(role: AppRole | null) {
-  if (role === "super_admin" || role === "admin") {
+  if (role === "admin") {
     return { href: "/admin", label: "Admin Dashboard" };
   }
 
@@ -88,19 +84,11 @@ function getPanelConfig(role: AppRole | null) {
     return { href: "/agent/dashboard", label: "Agent Dashboard" };
   }
 
-  if (role === "staff") {
-    return { href: "/staff/dashboard", label: "Staff Dashboard" };
-  }
-
   if (role === "customer") {
     return { href: "/customer/dashboard", label: "Dashboard" };
   }
 
   return null;
-}
-
-function isStaffShellPath(pathname: string) {
-  return pathname === "/staff/dashboard" || pathname.startsWith("/staff/");
 }
 
 function isAgentShellPath(pathname: string) {
@@ -114,12 +102,11 @@ export function SiteHeader() {
   const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
   const publicCtaConfig = panelConfig ?? { href: "/login/customer", label: "Login" };
-  const staffShell = isStaffShellPath(pathname);
   const agentShell = isAgentShellPath(pathname);
   const logoHref = "/";
-  const appShell = staffShell || agentShell;
-  const appShellLabel = agentShell ? "Agent Dashboard" : "Staff Dashboard";
-  const appShellHref = agentShell ? "/agent/dashboard" : "/staff/dashboard";
+  const appShell = agentShell;
+  const appShellLabel = "Agent Dashboard";
+  const appShellHref = "/agent/dashboard";
   const [scrolled, setScrolled] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const scrolledRef = useRef(false);
@@ -290,7 +277,7 @@ export function SiteHeader() {
             <>
               <Link href={appShellHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-all duration-200 md:hover:-translate-y-0.5">
                 <LayoutDashboard className="h-4 w-4" />
-                {agentShell ? "Agent Dashboard" : staffShell ? "Staff Dashboard" : "Dashboard"}
+                {agentShell ? "Agent Dashboard" : "Dashboard"}
               </Link>
               {user && !agentShell ? <LogoutButton className="h-11" /> : null}
             </>
@@ -335,7 +322,7 @@ export function SiteHeader() {
           <div className="ml-auto flex shrink-0 flex-nowrap items-center justify-end gap-2 overflow-hidden md:hidden">
             <Link href={appShellHref} className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--primary)] px-3 text-xs font-bold text-white shadow-sm">
               <LayoutDashboard className="h-4 w-4" />
-              {agentShell ? "Agent" : staffShell ? "Staff" : "Dashboard"}
+              {agentShell ? "Agent" : "Dashboard"}
             </Link>
             {user && !agentShell ? <LogoutButton showLabel={false} className="h-9 w-9 shrink-0 rounded-full p-0" /> : null}
           </div>

@@ -32,17 +32,17 @@ export function isAdminUser(user: User | null) {
   const role = String(user.user_metadata.role ?? "").toLowerCase();
   const email = (user.email ?? "").toLowerCase();
 
-  return role === "super_admin" || role === "admin" || adminEmails.includes(email);
+  return role === "admin" || adminEmails.includes(email);
 }
 
-export type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
+export type AppRole = "admin" | "agent" | "customer";
 
 export function isAdminRole(role: AppRole | string | null | undefined) {
-  return role === "super_admin" || role === "admin";
+  return role === "admin";
 }
 
 export function isAgentRole(role: AppRole | string | null | undefined) {
-  return role === "super_admin" || role === "admin" || role === "agent";
+  return role === "admin" || role === "agent";
 }
 
 export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
@@ -50,8 +50,8 @@ export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
 }
 
 export type AgentAccessResult =
-  | { ok: true; reason: "active_agent" }
-  | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "missing_server_config"; role?: AppRole | string | null };
+  | { ok: true; reason: "active_approved_agent" }
+  | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "kyc_not_approved" | "missing_server_config"; role?: AppRole | string | null };
 
 type SupabaseAdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
@@ -113,7 +113,7 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
 
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, role")
+    .select("id, role, kyc_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -134,6 +134,11 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
     return { ok: false, reason: "wrong_role", role: profileRole };
   }
 
+  if (String(profile.kyc_status ?? "").toLowerCase() !== "approved") {
+    console.error("[agent-auth] Agent KYC is not approved.", { userId: user.id, kycStatus: profile.kyc_status });
+    return { ok: false, reason: "kyc_not_approved", role };
+  }
+
   const [activeStatus, isActiveStatus] = await Promise.all([
     readOptionalProfileBoolean(supabaseAdmin, user.id, "active"),
     readOptionalProfileBoolean(supabaseAdmin, user.id, "is_active"),
@@ -149,17 +154,13 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
     return { ok: false, reason: "inactive_profile", role };
   }
 
-  return { ok: true, reason: "active_agent" };
+  return { ok: true, reason: "active_approved_agent" };
 }
 
 export async function isActiveAgent(user: User | null) {
   const access = await getAgentAccessStatus(user);
 
   return access.ok;
-}
-
-export function isStaffRole(role: AppRole | string | null | undefined) {
-  return role === "staff";
 }
 
 export function isCustomerRole(role: AppRole | string | null | undefined) {
@@ -174,7 +175,7 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   const supabaseAdmin = getSupabaseAdmin();
   const metadataRole = String(user.user_metadata.role ?? "").toLowerCase();
 
-  if (metadataRole === "super_admin" || metadataRole === "admin" || metadataRole === "agent" || metadataRole === "staff") {
+  if (metadataRole === "admin" || metadataRole === "agent" || metadataRole === "customer") {
     return metadataRole as AppRole;
   }
 
@@ -190,7 +191,7 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
 
   const profileRole = String(profile?.role ?? "");
 
-  if (["super_admin", "admin", "agent", "staff", "customer"].includes(profileRole)) {
+  if (["admin", "agent", "customer"].includes(profileRole)) {
     return profileRole as AppRole;
   }
 
@@ -198,7 +199,7 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
 
   const portalRole = String(portalUser?.role ?? "");
 
-  if (["super_admin", "admin", "agent", "staff", "customer"].includes(portalRole)) {
+  if (["admin", "agent", "customer"].includes(portalRole)) {
     return portalRole as AppRole;
   }
 
@@ -212,10 +213,6 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
 
   if (role === "agent") {
     return "/agent/dashboard";
-  }
-
-  if (role === "staff") {
-    return "/staff/dashboard";
   }
 
   return getCustomerHome();
@@ -232,12 +229,12 @@ export async function syncUserProfile(user: User) {
     return;
   }
 
-  const superAdminEmails = ["janabfaizalam@gmail.com"];
-  const email = (user.email ?? "").toLowerCase();
-  const adminRole = superAdminEmails.includes(email) ? "super_admin" : isAdminUser(user) ? "admin" : null;
+  const adminRole = isAdminUser(user) ? "admin" : null;
   const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
-  const role = adminRole ?? existingProfile?.role ?? existingUser?.role ?? "customer";
+  const storedRole = String(existingProfile?.role ?? existingUser?.role ?? "customer").toLowerCase();
+  const normalizedStoredRole = storedRole === "agent" ? "agent" : storedRole === "admin" || storedRole === "super_admin" ? "admin" : "customer";
+  const role = adminRole ?? normalizedStoredRole;
   const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim();
   const mobile = String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").replace(/\D/g, "").trim();
   const pincode = String(user.user_metadata.pincode ?? "").trim();
@@ -318,6 +315,7 @@ export async function syncUserProfile(user: User) {
           return null;
         });
       }
+
     }
 
     const { data: existingCustomer } = await supabaseAdmin

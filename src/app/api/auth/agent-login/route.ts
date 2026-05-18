@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAgentAccessStatus } from "@/lib/auth";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
@@ -54,6 +55,12 @@ async function resolveAgentEmail(identifier: string) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(`agent-login:${getClientIp(request)}`, 8, 60_000);
+
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfter);
+    }
+
     const body = (await request.json().catch(() => null)) as AgentLoginBody | null;
     const identifier = String(body?.identifier ?? body?.email ?? "").trim();
     const password = String(body?.password ?? "");

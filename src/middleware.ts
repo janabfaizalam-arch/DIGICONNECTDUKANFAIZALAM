@@ -3,19 +3,19 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseUrl } from "@/lib/supabase/config";
 
-const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/staff", "/apply"];
-const authRoutes = ["/login", "/login/agent", "/login/customer", "/login/staff", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
+const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/apply"];
+const authRoutes = ["/login", "/login/agent", "/login/customer", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
 
-type AppRole = "super_admin" | "admin" | "agent" | "staff" | "customer";
+type AppRole = "admin" | "agent" | "customer";
 
-const appRoles = ["super_admin", "admin", "agent", "staff", "customer"];
+const appRoles = ["admin", "agent", "customer"];
 
 function matchesRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
 function getRoleHome(role: AppRole) {
-  if (role === "super_admin" || role === "admin") {
+  if (role === "admin") {
     return "/admin";
   }
 
@@ -23,24 +23,16 @@ function getRoleHome(role: AppRole) {
     return "/agent/dashboard";
   }
 
-  if (role === "staff") {
-    return "/staff/dashboard";
-  }
-
   return "/customer/dashboard";
 }
 
 function isAllowedForPath(pathname: string, role: AppRole) {
   if (matchesRoute(pathname, "/admin")) {
-    return role === "super_admin" || role === "admin";
+    return role === "admin";
   }
 
   if (matchesRoute(pathname, "/agent")) {
     return role === "agent";
-  }
-
-  if (matchesRoute(pathname, "/staff")) {
-    return role === "staff";
   }
 
   if (matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer")) {
@@ -59,10 +51,6 @@ function isMissingActiveColumn(errorMessage: string) {
 function getLoginPathForProtectedRoute(pathname: string) {
   if (matchesRoute(pathname, "/agent")) {
     return "/login/agent";
-  }
-
-  if (matchesRoute(pathname, "/staff")) {
-    return "/login/staff";
   }
 
   if (matchesRoute(pathname, "/customer") || matchesRoute(pathname, "/apply")) {
@@ -86,6 +74,12 @@ export async function middleware(request: NextRequest) {
   });
 
   const { pathname } = request.nextUrl;
+  if (matchesRoute(pathname, "/staff") || matchesRoute(pathname, "/login/staff")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/unauthorized";
+    return NextResponse.redirect(url);
+  }
+
   const isProtectedRoute = protectedRoutes.some((route) => matchesRoute(pathname, route));
   const isAuthRoute = authRoutes.some((route) => matchesRoute(pathname, route));
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -138,9 +132,7 @@ export async function middleware(request: NextRequest) {
       .filter(Boolean);
     const email = (user.email ?? "").toLowerCase();
 
-    if (email === "janabfaizalam@gmail.com") {
-      role = "super_admin";
-    } else if (adminEmails.includes(email)) {
+    if (adminEmails.includes(email)) {
       role = "admin";
     } else {
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
@@ -177,8 +169,8 @@ export async function middleware(request: NextRequest) {
       };
     };
 
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-    const resolvedProfile = profile as { role?: string | null } | null;
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
+    const resolvedProfile = profile as { role?: string | null; kyc_status?: string | null } | null;
 
     if (profileError) {
       console.error("[middleware:agent-auth] Profile lookup failed.", { userId: user.id, error: profileError.message });
@@ -189,6 +181,9 @@ export async function middleware(request: NextRequest) {
       isAgentActive = false;
     } else if (String(resolvedProfile.role ?? "").toLowerCase() !== "agent") {
       console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: resolvedProfile.role });
+      isAgentActive = false;
+    } else if (String(resolvedProfile.kyc_status ?? "").toLowerCase() !== "approved") {
+      console.error("[middleware:agent-auth] Agent KYC is not approved.", { userId: user.id, kycStatus: resolvedProfile.kyc_status });
       isAgentActive = false;
     } else {
       const [activeStatus, isActiveStatus] = await Promise.all([
@@ -214,12 +209,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && matchesRoute(pathname, "/login/staff")) {
-    const url = request.nextUrl.clone();
-    url.pathname = role === "staff" ? "/staff/dashboard" : "/unauthorized";
-    return NextResponse.redirect(url);
-  }
-
   if (user && matchesRoute(pathname, "/login/customer")) {
     const url = request.nextUrl.clone();
     const redirectTo = request.nextUrl.searchParams.get("redirect");
@@ -242,7 +231,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isProtectedRoute && !isAllowedForPath(pathname, role)) {
     const url = request.nextUrl.clone();
-    url.pathname = matchesRoute(pathname, "/agent") || matchesRoute(pathname, "/staff") ? "/unauthorized" : getRoleHome(role);
+    url.pathname = matchesRoute(pathname, "/agent") ? "/unauthorized" : getRoleHome(role);
     return NextResponse.redirect(url);
   }
 

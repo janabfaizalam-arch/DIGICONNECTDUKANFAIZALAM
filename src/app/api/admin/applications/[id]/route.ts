@@ -28,7 +28,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const status = String(formData.get("status") ?? "");
     const assignedTo = String(formData.get("assignedTo") ?? "").trim();
     const assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
-    const assignedStaffId = String(formData.get("assignedStaffId") ?? "").trim();
     const internalNotes = String(formData.get("internalNotes") ?? "").trim();
     const note = String(formData.get("note") ?? "").trim();
     const finalDocument = formData.get("finalDocument");
@@ -40,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, agent_id, assigned_agent_id, assigned_staff_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data")
+      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, agent_id, assigned_agent_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data")
       .eq("id", id)
       .single();
 
@@ -62,12 +61,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       updates.assigned_to = assignedTo;
     }
 
-    if (assignedStaffId) {
-      updates.assigned_staff_id = assignedStaffId === "none" ? null : assignedStaffId;
-    }
-
-    if (assignedAgentId && assignedAgentId !== "none") {
-      updates.assigned_agent_id = assignedAgentId;
+    if (assignedAgentId) {
+      updates.assigned_agent_id = assignedAgentId === "none" ? null : assignedAgentId;
+      updates.status = assignedAgentId === "none" ? updates.status ?? application.status : "assigned_to_agent";
     }
 
     if (internalNotes) {
@@ -88,6 +84,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const { data } = await supabase.storage.from("application-documents").createSignedUrl(path, 60 * 60 * 24 * 365);
       updates.final_document_url = data?.signedUrl ?? "";
+      updates.final_document_path = path;
       updates.final_document_name = finalDocument.name;
     }
 
@@ -115,6 +112,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
     }
 
+    if (assignedAgentId && assignedAgentId !== "none") {
+      await supabase.from("assignments").upsert(
+        {
+          application_id: id,
+          agent_id: assignedAgentId,
+          assigned_by: user?.id,
+          active: true,
+          note: note || "Assigned by admin.",
+        },
+        { onConflict: "application_id,agent_id" },
+      );
+    }
+
     if (note) {
       await supabase.from("admin_notes").insert({
         application_id: id,
@@ -128,6 +138,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await supabase.from("status_logs").insert({
         application_id: id,
         changed_by: user?.id,
+        old_status: application.status,
+        new_status: updates.status,
+        note: note || "Status updated by admin.",
+      });
+
+      await supabase.from("application_status_logs").insert({
+        application_id: id,
+        actor_id: user?.id,
+        actor_role: "admin",
         old_status: application.status,
         new_status: updates.status,
         note: note || "Status updated by admin.",

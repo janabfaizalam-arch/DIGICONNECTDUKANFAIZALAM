@@ -8,6 +8,7 @@ import { createInvoiceNumber } from "@/lib/portal-data";
 import type { PortalUser, ServiceCatalogItem } from "@/lib/portal-types";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -37,7 +38,7 @@ async function uploadFile(applicationId: string, ownerId: string, file: File, fo
 
   const path = `${ownerId}/${applicationId}/${folder}/${Date.now()}-${cleanFileName(file.name)}`;
   const bytes = await file.arrayBuffer();
-  const { error } = await supabase.storage.from("documents").upload(path, bytes, {
+  const { error } = await supabase.storage.from("application-documents").upload(path, bytes, {
     contentType: file.type || "application/octet-stream",
     upsert: false,
   });
@@ -46,11 +47,11 @@ async function uploadFile(applicationId: string, ownerId: string, file: File, fo
     throw error;
   }
 
-  const { data } = supabase.storage.from("documents").getPublicUrl(path);
+  const { data } = await supabase.storage.from("application-documents").createSignedUrl(path, 60 * 60);
 
   return {
     file_name: file.name,
-    file_url: data.publicUrl,
+    file_url: data?.signedUrl ?? "",
     file_type: file.type,
     storage_path: path,
   };
@@ -102,6 +103,12 @@ async function fetchRazorpayPaymentDetails(paymentId: string) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(`agent-applications:${getClientIp(request)}`, 20, 60_000);
+
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfter);
+    }
+
     const user = await getCurrentUser();
     const role = await getCurrentUserRole(user);
 
@@ -121,7 +128,9 @@ export async function POST(request: Request) {
     const customerName = String(formData.get("customerName") ?? "").trim();
     const mobile = String(formData.get("mobile") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+    const pincode = String(formData.get("pincode") ?? "").replace(/\D/g, "").slice(0, 6);
     const city = String(formData.get("city") ?? "").trim();
+    const state = String(formData.get("state") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
     const razorpayPaymentId = String(formData.get("razorpay_payment_id") ?? "").trim();
     const razorpayOrderId = String(formData.get("razorpay_order_id") ?? "").trim();
@@ -133,8 +142,16 @@ export async function POST(request: Request) {
       return jsonError("Service is required.", 400);
     }
 
-    if (!customerId && (!customerName || !mobile)) {
-      return jsonError("Customer name and mobile are required.", 400);
+    if (!customerId && (!customerName || !mobile || !email || !pincode || !city || !state)) {
+      return jsonError("Customer name, email, mobile, pincode, city, and state are required.", 400);
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return jsonError("Enter a valid customer email.", 400);
+    }
+
+    if (pincode && !/^\d{6}$/.test(pincode)) {
+      return jsonError("Enter a valid 6 digit PIN code.", 400);
     }
 
     for (const file of documentFiles) {
@@ -189,8 +206,10 @@ export async function POST(request: Request) {
         .insert({
           full_name: customerName,
           mobile,
-          email,
+          email: email.toLowerCase(),
           city,
+          pincode,
+          state,
           source: "agent_pos",
           created_by: user.id,
           assigned_agent_id: user.id,
@@ -225,6 +244,9 @@ export async function POST(request: Request) {
         agent_id: user.id,
         created_by: user.id,
         assigned_agent_id: user.id,
+        created_by_agent_id: user.id,
+        customer_email: customer.email?.toLowerCase() ?? email.toLowerCase(),
+        customer_mobile: customer.mobile.replace(/\D/g, ""),
         service_id: service.id,
         service_slug: service.slug,
         service_name: service.name,
@@ -232,12 +254,14 @@ export async function POST(request: Request) {
         form_data: {
           name: customer.full_name,
           mobile: customer.mobile,
-          email: customer.email ?? "",
-          city: customer.city ?? "",
+          email: customer.email?.toLowerCase() ?? "",
+          pincode,
+          city: customer.city ?? city,
+          state,
           message,
           invoiceNumber,
         },
-        status: "in_process",
+        status: "submitted",
         payment_status: "verified",
         source: "agent_pos",
         commission_amount: commissionAmount,

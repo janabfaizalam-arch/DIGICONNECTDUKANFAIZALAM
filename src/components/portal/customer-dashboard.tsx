@@ -452,7 +452,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                         </p>
                       ) : null}
                       <p className="mt-2 text-sm font-bold text-slate-700">{formatCurrency(application.amount)}</p>
-                      {application.status === "documents_pending" ? <CustomerDocumentUpload applicationId={application.id} /> : null}
+                      {application.status === "documents_required" ? <CustomerDocumentUpload applicationId={application.id} /> : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link href={`/dashboard/applications/${application.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
                           <FileText className="h-4 w-4" />

@@ -3,22 +3,18 @@ import { IdCard } from "lucide-react";
 import { getServiceBySlug as getRichServiceBySlug, servicesData } from "@/lib/services-data";
 
 export const applicationStatuses = [
-  "new",
-  "lead_submitted",
-  "documents_pending",
-  "documents_under_review",
-  "documents_required",
   "payment_pending",
-  "payment_verified",
-  "payment_failed",
-  "cancelled",
-  "in_process",
-  "in_progress",
-  "application_processing",
+  "draft",
+  "payment_success",
   "submitted",
-  "submitted_to_department",
-  "under_government_review",
+  "documents_required",
+  "documents_verified",
+  "assigned_to_agent",
+  "in_process",
+  "objection",
   "completed",
+  "delivered",
+  "cancelled",
   "rejected",
 ] as const;
 
@@ -128,22 +124,18 @@ export const featuredServices = featuredServiceSlugs
   .filter((service): service is PortalService => Boolean(service));
 
 export const statusLabels: Record<ApplicationStatus, string> = {
-  new: "New",
-  lead_submitted: "Lead Submitted",
-  documents_pending: "Documents Pending",
-  documents_under_review: "Documents Under Review",
-  documents_required: "Documents Required",
+  draft: "Draft",
   payment_pending: "Payment Pending",
-  payment_verified: "Payment Verified",
-  payment_failed: "Payment Failed",
-  cancelled: "Cancelled",
+  payment_success: "Payment Success",
+  submitted: "Submitted",
+  documents_required: "Documents Required",
+  documents_verified: "Documents Verified",
+  assigned_to_agent: "Assigned to Agent",
   in_process: "In Progress",
-  in_progress: "In Progress",
-  application_processing: "Application Processing",
-  submitted: "In Progress",
-  submitted_to_department: "Submitted to Department",
-  under_government_review: "Under Government Review",
+  objection: "Objection",
   completed: "Completed",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
   rejected: "Rejected",
 };
 

@@ -41,6 +41,14 @@ export async function POST(request: Request) {
   const password = String(formData.get("password") ?? "");
   const agentCode = normalizeAgentCode(String(formData.get("agentCode") ?? ""));
   const address = String(formData.get("address") ?? "").trim();
+  const shopName = String(formData.get("shopName") ?? "").trim();
+  const shopAddress = String(formData.get("shopAddress") ?? "").trim();
+  const pincode = String(formData.get("pincode") ?? "").replace(/\D/g, "").slice(0, 6);
+  const city = String(formData.get("city") ?? "").trim();
+  const state = String(formData.get("state") ?? "").trim();
+  const aadhaarNumber = String(formData.get("aadhaarNumber") ?? "").replace(/\D/g, "").slice(0, 12);
+  const panNumber = String(formData.get("panNumber") ?? "").trim().toUpperCase();
+  const gstNumber = String(formData.get("gstNumber") ?? "").trim().toUpperCase();
   const bankAccountName = String(formData.get("bankAccountName") ?? "").trim();
   const bankAccountNumber = String(formData.get("bankAccountNumber") ?? "").trim();
   const bankIfsc = String(formData.get("bankIfsc") ?? "").trim().toUpperCase();
@@ -48,6 +56,7 @@ export async function POST(request: Request) {
   const upiId = String(formData.get("upiId") ?? "").trim();
   const commissionType = String(formData.get("commissionType") ?? "fixed");
   const commissionValue = Number(formData.get("commissionValue") ?? 0);
+  const kycStatus = String(formData.get("kycStatus") ?? "approved").toLowerCase();
   const isActive = String(formData.get("isActive") ?? "true") === "true";
 
   if (!fullName || !mobile || !email || !password || !agentCode || !address) {
@@ -68,6 +77,10 @@ export async function POST(request: Request) {
 
   if (!["fixed", "percentage"].includes(commissionType)) {
     return jsonError("Invalid commission type.", 400);
+  }
+
+  if (!["pending", "approved", "rejected"].includes(kycStatus)) {
+    return jsonError("Invalid KYC status.", 400);
   }
 
   if (!Number.isFinite(commissionValue) || commissionValue < 0) {
@@ -129,6 +142,14 @@ export async function POST(request: Request) {
     agent_code: agentCode,
     address,
     area: address,
+    shop_name: shopName,
+    shop_address: shopAddress,
+    pincode,
+    city,
+    state,
+    aadhaar_number: aadhaarNumber,
+    pan_number: panNumber,
+    gst_number: gstNumber,
     bank_account_name: bankAccountName,
     bank_account_number: bankAccountNumber,
     bank_ifsc: bankIfsc,
@@ -137,13 +158,50 @@ export async function POST(request: Request) {
     commission_type: commissionType,
     commission_value: commissionValue,
     commission_rate: commissionType === "percentage" ? commissionValue : null,
+    commission_rules: {
+      sale: { type: commissionType, value: commissionValue },
+      completion: { type: commissionType, value: commissionValue },
+    },
+    kyc_status: kycStatus,
     active: isActive,
     is_active: isActive,
     updated_at: new Date().toISOString(),
   };
 
-  const [{ error: profileError }, { error: userError }] = await Promise.all([
+  const [{ error: profileError }, { error: agentError }, { error: userError }] = await Promise.all([
     supabase.from("profiles").upsert(profilePayload, { onConflict: "id" }),
+    supabase.from("agents").upsert(
+      {
+        id: created.user.id,
+        profile_id: created.user.id,
+        full_name: fullName,
+        email,
+        mobile,
+        shop_name: shopName,
+        shop_address: shopAddress,
+        address,
+        pincode,
+        city,
+        state,
+        aadhaar_number: aadhaarNumber,
+        pan_number: panNumber,
+        gst_number: gstNumber,
+        bank_account_name: bankAccountName,
+        bank_account_number: bankAccountNumber,
+        bank_ifsc: bankIfsc,
+        bank_name: bankName,
+        upi_id: upiId,
+        kyc_status: kycStatus,
+        commission_rules: {
+          sale: { type: commissionType, value: commissionValue },
+          completion: { type: commissionType, value: commissionValue },
+        },
+        active: isActive,
+        created_by: user.id,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    ),
     supabase.from("users").upsert(
       {
         id: created.user.id,
@@ -157,8 +215,8 @@ export async function POST(request: Request) {
     ),
   ]);
 
-  if (profileError || userError) {
-    console.error("[admin-agents] Agent profile save failed.", profileError?.message ?? userError?.message);
+  if (profileError || agentError || userError) {
+    console.error("[admin-agents] Agent profile save failed.", profileError?.message ?? agentError?.message ?? userError?.message);
     await supabase.auth.admin.deleteUser(created.user.id).catch((deleteError) => {
       console.error("[admin-agents] Failed to clean up auth user after profile error.", deleteError.message);
     });

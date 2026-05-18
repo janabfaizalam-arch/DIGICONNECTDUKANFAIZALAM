@@ -16,7 +16,7 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 
 type HeroViewer =
   | { role: "customer"; name: string }
-  | { role: "agent" | "staff" | "admin" | "super_admin" }
+  | { role: "agent" | "admin" }
   | null;
 
 type HeroSectionProps = {
@@ -34,11 +34,7 @@ function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
     return { href: "/agent/dashboard", label: "Agent Dashboard" };
   }
 
-  if (viewer.role === "staff") {
-    return { href: "/staff/dashboard", label: "Staff Dashboard" };
-  }
-
-  if (viewer.role === "admin" || viewer.role === "super_admin") {
+  if (viewer.role === "admin") {
     return { href: "/admin", label: "Admin Dashboard" };
   }
 

@@ -17,15 +17,17 @@ import {
 import type { PortalUser } from "@/lib/portal-types";
 
 const adminStatuses: ApplicationStatus[] = [
-  "lead_submitted",
+  "draft",
   "payment_pending",
-  "payment_verified",
-  "documents_under_review",
+  "payment_success",
+  "submitted",
   "documents_required",
-  "application_processing",
-  "submitted_to_department",
-  "under_government_review",
+  "documents_verified",
+  "assigned_to_agent",
+  "in_process",
+  "objection",
   "completed",
+  "delivered",
   "rejected",
   "cancelled",
 ];
@@ -39,8 +41,6 @@ export function AdminUpdateForm({
   agents = [],
   assignedAgentId = "",
   hideAgentFields = false,
-  staff = [],
-  assignedStaffId = "",
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus;
@@ -53,8 +53,6 @@ export function AdminUpdateForm({
   agents?: PortalUser[];
   assignedAgentId?: string;
   hideAgentFields?: boolean;
-  staff?: PortalUser[];
-  assignedStaffId?: string;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [isPending, startTransition] = useTransition();
@@ -127,20 +125,6 @@ export function AdminUpdateForm({
           </SelectContent>
         </Select>
       )}
-
-      <Select name="assignedStaffId" defaultValue={assignedStaffId || "none"}>
-        <SelectTrigger aria-label="Assigned staff">
-          <SelectValue placeholder="Assign staff" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">No staff</SelectItem>
-          {staff.map((staffMember) => (
-            <SelectItem key={staffMember.id} value={staffMember.id}>
-              {staffMember.full_name || staffMember.email}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
 
       <Input name="assignedTo" placeholder="Assign to team member" />
       <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">

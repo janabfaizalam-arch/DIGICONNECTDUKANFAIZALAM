@@ -222,7 +222,9 @@ export type Application = {
   id: string;
   user_id: string | null;
   customer_id?: string | null;
+  agent_id?: string | null;
   created_by?: string | null;
+  created_by_agent_id?: string | null;
   assigned_agent_id?: string | null;
   assigned_staff_id?: string | null;
   service_id?: string | null;

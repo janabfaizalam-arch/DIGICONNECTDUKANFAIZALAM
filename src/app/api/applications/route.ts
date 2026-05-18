@@ -10,6 +10,7 @@ import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 type UploadedDocument = {
   document_type: string;
@@ -109,6 +110,12 @@ async function fetchRazorpayPaymentDetails(paymentId: string) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(`applications:${getClientIp(request)}`, 20, 60_000);
+
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfter);
+    }
+
     const user = await getCurrentUser();
 
     if (!user) {
@@ -178,6 +185,8 @@ export async function POST(request: Request) {
     const requiredCustomerFields = [
       ["name", "Name"],
       ["mobile", "Mobile"],
+      ["email", "Email"],
+      ["city", "City"],
     ] as const;
 
     for (const [fieldName, label] of requiredCustomerFields) {
@@ -227,8 +236,8 @@ export async function POST(request: Request) {
       service: resolvedServices.map((service) => service.title).join(", "),
       name: customer.name!.trim(),
       mobile: customer.mobile!.trim(),
-      email: customer.email?.trim() ?? "",
-      city: customer.city?.trim() ?? "",
+      email: customer.email!.trim().toLowerCase(),
+      city: customer.city!.trim(),
       message: customer.message?.trim() ?? "",
       service_slugs: resolvedServices.map((service) => service.slug),
       payment: {
@@ -328,6 +337,8 @@ export async function POST(request: Request) {
           razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? existingApplications[0]?.razorpay_payment_id ?? null,
           submitted_at: new Date().toISOString(),
           customer_id: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+          customer_email: customer.email!.trim().toLowerCase(),
+          customer_mobile: customer.mobile!.replace(/\D/g, ""),
           updated_at: new Date().toISOString(),
         })
         .in("id", existingIds);
@@ -444,6 +455,8 @@ export async function POST(request: Request) {
       return {
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
+        customer_email: customer.email!.trim().toLowerCase(),
+        customer_mobile: customer.mobile!.replace(/\D/g, ""),
         service_slug: service.slug,
         service_name: service.title,
         amount: rowAmount,

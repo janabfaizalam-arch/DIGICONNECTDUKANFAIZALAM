@@ -5,6 +5,7 @@ import { CustomerDashboard } from "@/components/portal/customer-dashboard";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import { getCustomerProfileStatus } from "@/lib/customer-profile";
 import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,16 @@ export default async function CustomerDashboardPage() {
 
   if (!isCustomerRole(role)) {
     redirect(getRoleHome(role));
+  }
+
+  if (user.email_confirmed_at) {
+    const supabase = await getSupabaseServerClient();
+    if (supabase) {
+      const { error } = await supabase.rpc("claim_customer_applications");
+      if (error) {
+        console.error("[customer-dashboard] Application claim failed", error.message);
+      }
+    }
   }
 
   const customerProfileStatus = await getCustomerProfileStatus(user.id);

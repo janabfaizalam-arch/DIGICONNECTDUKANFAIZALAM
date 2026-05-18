@@ -6,6 +6,7 @@ import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 type CreateOrderBody = {
   amount?: number;
@@ -56,6 +57,12 @@ function required(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(`create-order:${getClientIp(request)}`, 20, 60_000);
+
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfter);
+    }
+
     devInfo("[razorpay/create-order] Request received");
     const body = (await request.json().catch(() => null)) as CreateOrderBody | null;
     let amount = Math.round(Number(body?.amount ?? 0));
@@ -145,9 +152,13 @@ export async function POST(request: Request) {
 
         const customer = body.applicationDraft.customer ?? {};
 
-        if (!required(customer.name) || !required(customer.mobile)) {
-          return jsonError("Name and mobile are required before payment.", 400);
-        }
+          if (!required(customer.name) || !required(customer.mobile)) {
+            return jsonError("Name and mobile are required before payment.", 400);
+          }
+
+          if (!required(customer.email) || !required(customer.city)) {
+            return jsonError("Customer email and city are required before payment.", 400);
+          }
 
         devInfo("[razorpay/create-order] Creating payment-pending application", {
           userId: user.id,
@@ -165,9 +176,9 @@ export async function POST(request: Request) {
         const formData = {
           service: services.filter(Boolean).map((service) => service?.title).join(", "),
           name: String(customer.name ?? "").trim(),
-          mobile: String(customer.mobile ?? "").trim(),
-          email: String(customer.email ?? "").trim(),
-          city: String(customer.city ?? "").trim(),
+            mobile: String(customer.mobile ?? "").trim(),
+            email: String(customer.email ?? "").trim().toLowerCase(),
+            city: String(customer.city ?? "").trim(),
           message: String(customer.message ?? "").trim(),
           service_slugs: serviceSlugs,
           payment: {
@@ -221,6 +232,8 @@ export async function POST(request: Request) {
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
+            customer_email: String(customer.email ?? "").trim().toLowerCase(),
+            customer_mobile: String(customer.mobile ?? "").replace(/\D/g, ""),
             service_slug: service!.slug,
             service_name: service!.title,
             amount: serviceAmountForRow,

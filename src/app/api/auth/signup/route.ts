@@ -4,6 +4,7 @@ import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
 import { syncUserProfile } from "@/lib/auth";
 import { creditSignupBonus } from "@/lib/wallet-ledger";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 type SignupBody = {
   fullName?: string;
@@ -60,14 +61,6 @@ function getEmailDomain(email: string) {
   return email.split("@")[1] || "unknown";
 }
 
-function getClientIp(request: Request) {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    null
-  );
-}
-
 function getSignupEnvDebug(request: Request) {
   const siteUrl = getSiteUrl(request);
 
@@ -88,6 +81,12 @@ function devInfo(message: string, details?: Record<string, unknown>) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(`signup:${getClientIp(request)}`, 5, 60_000);
+
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfter);
+    }
+
     devInfo("[auth/signup] Request received");
     const envDebug = getSignupEnvDebug(request);
 

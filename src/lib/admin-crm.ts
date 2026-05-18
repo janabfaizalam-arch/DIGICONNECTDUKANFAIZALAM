@@ -130,10 +130,11 @@ function pickPrimaryPayment(application: Application) {
   return payments.find(isVerifiedPayment) ?? payments[0] ?? null;
 }
 
-function applicationToAdminRow(application: Application, staffById: Record<string, PortalUser>): AdminApplicationRow {
+function applicationToAdminRow(application: Application, agentById: Record<string, PortalUser>): AdminApplicationRow {
   const payment = pickPrimaryPayment(application);
   const invoice = application.invoices?.[0];
-  const staff = application.assigned_staff_id ? staffById[application.assigned_staff_id] : null;
+  const assignedAgentId = application.assigned_agent_id ?? application.agent_id ?? null;
+  const assignedAgent = assignedAgentId ? agentById[assignedAgentId] : null;
   const customer = customerFromApplication(application);
 
   return {
@@ -155,8 +156,8 @@ function applicationToAdminRow(application: Application, staffById: Record<strin
     payment_status: application.payment_status ?? payment?.status ?? "pending",
     invoice_status: invoice?.payment_status ?? null,
     application_status: application.status,
-    assigned_staff_id: application.assigned_staff_id ?? null,
-    assigned_staff_name: staff?.full_name || staff?.email || null,
+    assigned_staff_id: assignedAgentId,
+    assigned_staff_name: assignedAgent?.full_name || assignedAgent?.email || null,
     razorpay_order_id: application.razorpay_order_id ?? payment?.razorpay_order_id ?? null,
     razorpay_payment_id: application.razorpay_payment_id ?? payment?.razorpay_payment_id ?? null,
     payment_amount: paymentAmount(payment) || Number(application.fresh_payable_amount ?? application.real_payment_amount ?? application.amount ?? 0),
@@ -170,17 +171,17 @@ function applicationToAdminRow(application: Application, staffById: Record<strin
   };
 }
 
-async function getStaffById() {
+async function getAgentsById() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return {};
 
   const { data } = await supabase
     .from("profiles")
     .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-    .eq("role", "staff");
+    .eq("role", "agent");
 
-  return ((data ?? []) as PortalUser[]).reduce<Record<string, PortalUser>>((grouped, staff) => {
-    grouped[staff.id] = staff;
+  return ((data ?? []) as PortalUser[]).reduce<Record<string, PortalUser>>((grouped, agent) => {
+    grouped[agent.id] = agent;
     return grouped;
   }, {});
 }
@@ -364,7 +365,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.or(`id.ilike.%${escaped}%,service_name.ilike.%${escaped}%,service_slug.ilike.%${escaped}%,razorpay_payment_id.ilike.%${escaped}%,razorpay_order_id.ilike.%${escaped}%,form_data->>name.ilike.%${escaped}%,form_data->>mobile.ilike.%${escaped}%,form_data->>email.ilike.%${escaped}%`);
   }
 
-  const [applicationResult, staffById] = await Promise.all([query, getStaffById()]);
+  const [applicationResult, agentById] = await Promise.all([query, getAgentsById()]);
   const baseApplications = (applicationResult.data ?? []) as Application[];
   let applications = baseApplications;
 
@@ -375,8 +376,8 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
   }
 
   return {
-    rows: applications.map((application) => applicationToAdminRow(application, staffById)),
-    staff: Object.values(staffById),
+    rows: applications.map((application) => applicationToAdminRow(application, agentById)),
+    staff: Object.values(agentById),
     total: applicationResult.count ?? applications.length,
     page,
     pageSize,
@@ -435,9 +436,9 @@ export async function getAdminApplicationDetail(id: string) {
     );
   }
 
-  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult, possibleDocumentResults] = await Promise.all([
+  const [notesResult, agentResult, statusLogsResult, referralResult, diagnosticsResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
-    supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
+    supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "agent"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     application.user_id ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from("admin_crm_diagnostics").select("issue_type, severity, message").eq("application_id", id).limit(10),
@@ -463,7 +464,7 @@ export async function getAdminApplicationDetail(id: string) {
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
     notes: notesResult.error ? [] : notesResult.data ?? [],
-    staff: staffResult.error ? [] : (staffResult.data ?? []) as PortalUser[],
+    staff: agentResult.error ? [] : (agentResult.data ?? []) as PortalUser[],
     statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
     referralDebug: referralResult.error ? null : referralResult.data,
     diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],

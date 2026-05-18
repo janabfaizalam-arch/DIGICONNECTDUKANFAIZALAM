@@ -7,6 +7,7 @@ import { getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
 import { createWalletIfMissing } from "@/lib/rewards-wallet";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 type VerifyPaymentBody = {
   razorpay_payment_id?: string;
@@ -43,6 +44,12 @@ function devInfo(message: string, details?: Record<string, unknown>) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = checkRateLimit(`verify-payment:${getClientIp(request)}`, 30, 60_000);
+
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfter);
+    }
+
     devInfo("[razorpay/verify-payment] Request received");
     const body = (await request.json().catch(() => null)) as VerifyPaymentBody | null;
     const paymentId = String(body?.razorpay_payment_id ?? "").trim();

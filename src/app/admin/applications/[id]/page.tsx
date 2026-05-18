@@ -55,7 +55,6 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     invoices,
     payments,
     notes,
-    staff,
     statusLogs,
     referralDebug,
     diagnostics,
@@ -231,8 +230,6 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 customerMobile={customerMobile}
                 serviceName={application.service_name}
                 hideAgentFields
-                staff={staff ?? []}
-                assignedStaffId={application.assigned_staff_id ?? ""}
               />
               <div className="mt-3">
                 <ReprocessRewardsButton applicationId={application.id} />
