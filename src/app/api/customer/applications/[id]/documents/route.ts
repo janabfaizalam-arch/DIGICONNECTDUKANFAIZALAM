@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, service_slug, service_name, form_data")
+      .select("id, user_id, customer_id, service_slug, service_name, form_data")
       .eq("id", id)
       .eq("user_id", user.id)
       .single();
@@ -57,7 +57,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return jsonError("Document must be smaller than 5MB.", 400);
     }
 
-    const storagePath = `${user.id}/${application.service_slug}/documents/${Date.now()}-${cleanFileName(file.name)}`;
+    const storagePath = `applications/${id}/customer-documents/${Date.now()}-${cleanFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, {
       contentType: file.type,
       upsert: false,
@@ -67,19 +67,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return jsonError(uploadError.message, 500);
     }
 
-    const { data: publicUrlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
+    const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(storagePath, 60 * 60);
     const { data: document, error: insertError } = await supabase
       .from("application_documents")
       .insert({
         application_id: id,
         user_id: user.id,
+        customer_id: application.customer_id,
+        uploaded_by: user.id,
+        uploaded_by_role: "customer",
         document_type: documentType || "Additional Document",
+        document_name: documentType || "Additional Document",
         file_name: file.name,
-        file_url: publicUrlData.publicUrl,
+        file_url: signedUrlData?.signedUrl ?? "",
         file_type: file.type,
         storage_path: storagePath,
+        status: "pending",
+        review_status: "pending",
+        is_final: false,
+        uploaded_at: new Date().toISOString(),
       })
-      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, uploaded_at, created_at")
       .single();
 
     if (insertError) {

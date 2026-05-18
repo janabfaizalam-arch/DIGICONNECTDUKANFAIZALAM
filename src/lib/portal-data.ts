@@ -11,11 +11,14 @@ export const applicationStatuses = [
   "documents_verified",
   "assigned_to_agent",
   "in_process",
+  "in_progress",
+  "document_pending",
   "objection",
   "completed",
   "delivered",
   "cancelled",
   "rejected",
+  "refunded",
 ] as const;
 
 export const paymentStatuses = ["unpaid", "pending", "submitted", "verified", "paid", "rejected", "failed", "refunded"] as const;
@@ -132,11 +135,14 @@ export const statusLabels: Record<ApplicationStatus, string> = {
   documents_verified: "Documents Verified",
   assigned_to_agent: "Assigned to Agent",
   in_process: "In Progress",
+  in_progress: "In Progress",
+  document_pending: "Document Pending",
   objection: "Objection",
   completed: "Completed",
   delivered: "Delivered",
   cancelled: "Cancelled",
   rejected: "Rejected",
+  refunded: "Refunded",
 };
 
 export const paymentStatusLabels: Record<PaymentStatus, string> = {

@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string; documentId: string }> },
+) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
@@ -11,7 +14,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ message: "Admin access required." }, { status: 403 });
   }
 
-  const { id } = await params;
+  const { id, documentId } = await params;
   const formData = await request.formData();
   const status = String(formData.get("status") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
@@ -35,10 +38,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", documentId)
+    .eq("application_id", id);
 
   if (error) {
-    console.error("[admin-documents] Review failed.", error.message);
+    console.error("[admin-application-documents] Review failed.", error.message);
     return NextResponse.json({ message: "Document could not be updated." }, { status: 500 });
   }
 

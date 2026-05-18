@@ -42,9 +42,16 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
       }
 
       try {
-        const { data, error } = await supabase.storage.from("application-documents").createSignedUrl(document.storage_path, 60 * 60);
+        const bucket = document.storage_path.startsWith("applications/") || document.storage_path.startsWith("final-documents/")
+          ? "documents"
+          : "application-documents";
+        const { data, error } = await supabase.storage.from(bucket).createSignedUrl(document.storage_path, 60 * 60);
         if (!error && data?.signedUrl) {
           return { ...document, file_url: data.signedUrl };
+        }
+        const fallback = await supabase.storage.from(bucket === "documents" ? "application-documents" : "documents").createSignedUrl(document.storage_path, 60 * 60);
+        if (!fallback.error && fallback.data?.signedUrl) {
+          return { ...document, file_url: fallback.data.signedUrl };
         }
       } catch {
         // Fall back to the stored URL below.
@@ -214,7 +221,7 @@ export async function hydrateApplications(applications: Application[]) {
   const [documentsResult, paymentsResult, invoicesResult, commissionsResult, customersResult] = await Promise.all([
     supabase
       .from("application_documents")
-      .select("id, application_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, metadata, uploaded_at, created_at")
+      .select("id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at")
       .in("application_id", applicationIds),
     supabase
       .from("payments")
@@ -240,12 +247,19 @@ export async function hydrateApplications(applications: Application[]) {
     return grouped;
   }, {});
 
-  return applications.map((application) => ({
-    ...application,
-    customers: application.customer_id ? customersById[application.customer_id] ?? null : null,
-    documents: documentsByApplicationId[application.id] ?? [],
-    payments: paymentsByApplicationId[application.id] ?? [],
-    invoices: invoicesByApplicationId[application.id] ?? [],
-    commissions: commissionsByApplicationId[application.id] ?? [],
-  }));
+  return applications.map((application) => {
+    const documents = documentsByApplicationId[application.id] ?? [];
+    const finalDocument = documents.find((document) => document.is_final || document.document_type === "final_document");
+
+    return {
+      ...application,
+      final_document_url: application.final_document_url || finalDocument?.file_url || null,
+      final_document_name: application.final_document_name || finalDocument?.file_name || null,
+      customers: application.customer_id ? customersById[application.customer_id] ?? null : null,
+      documents,
+      payments: paymentsByApplicationId[application.id] ?? [],
+      invoices: invoicesByApplicationId[application.id] ?? [],
+      commissions: commissionsByApplicationId[application.id] ?? [],
+    };
+  });
 }

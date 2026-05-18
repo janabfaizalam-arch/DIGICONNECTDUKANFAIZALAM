@@ -25,11 +25,14 @@ const adminStatuses: ApplicationStatus[] = [
   "documents_verified",
   "assigned_to_agent",
   "in_process",
+  "in_progress",
+  "document_pending",
   "objection",
   "completed",
   "delivered",
   "rejected",
   "cancelled",
+  "refunded",
 ];
 
 export function AdminUpdateForm({
@@ -134,7 +137,9 @@ export function AdminUpdateForm({
         </p>
       </div>
       <Textarea name="internalNotes" placeholder="Internal notes" className="min-h-24" />
+      <Textarea name="customerNote" placeholder="Customer visible note" className="min-h-20" />
       <Textarea name="note" placeholder="Add note to history" className="min-h-24" />
+      <Input name="finalDocumentTitle" placeholder="Final document title" />
       <Input name="finalDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" />
 
       <FormSubmitButton loading={isPending} loadingText="Updating..." className="w-full">

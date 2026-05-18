@@ -7,6 +7,7 @@ import { RatingForm } from "@/components/portal/rating-form";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
+import { resolveDocumentUrls } from "@/lib/crm";
 import type { Application, ApplicationDocument, Invoice, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -62,7 +63,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.all([
     supabase
       .from("application_documents")
-      .select("id, application_id, document_type, file_name, file_url, file_type, storage_path, created_at")
+      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, uploaded_at, created_at")
       .eq("application_id", id),
     supabase
       .from("payments")
@@ -75,9 +76,12 @@ export default async function CustomerApplicationDetailPage({ params }: { params
     supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").eq("application_id", id),
   ]);
 
+  const signedDocuments = await resolveDocumentUrls((documentsResult.data ?? []) as ApplicationDocument[]);
+  const finalDocument = signedDocuments.find((document) => document.is_final || document.document_type === "final_document");
   const application = {
     ...(data as Application),
-    documents: (documentsResult.data ?? []) as ApplicationDocument[],
+    final_document_url: (data as Application).final_document_url || finalDocument?.file_url || null,
+    documents: signedDocuments,
     payments: (paymentsResult.data ?? []) as Payment[],
     invoices: (invoicesResult.data ?? []) as Invoice[],
     ratings: (ratingsResult.data ?? []) as Rating[],

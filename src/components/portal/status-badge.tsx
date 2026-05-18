@@ -10,11 +10,14 @@ const applicationClasses: Record<ApplicationStatus, string> = {
   documents_verified: "bg-amber-50 text-amber-700 ring-amber-100",
   assigned_to_agent: "bg-blue-50 text-blue-700 ring-blue-100",
   in_process: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+  in_progress: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+  document_pending: "bg-amber-50 text-amber-700 ring-amber-100",
   objection: "bg-rose-50 text-rose-700 ring-rose-100",
   completed: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   delivered: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   cancelled: "bg-slate-100 text-slate-700 ring-slate-200",
   rejected: "bg-rose-50 text-rose-700 ring-rose-100",
+  refunded: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
 const paymentClasses: Record<PaymentStatus, string> = {

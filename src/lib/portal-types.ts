@@ -151,6 +151,9 @@ export type ApplicationDocument = {
   rejection_reason?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
+  uploaded_by?: string | null;
+  uploaded_by_role?: "admin" | "agent" | "customer" | null;
+  is_final?: boolean | null;
   metadata?: Record<string, unknown> | null;
   uploaded_at?: string | null;
   created_at: string;
@@ -222,6 +225,8 @@ export type Application = {
   id: string;
   user_id: string | null;
   customer_id?: string | null;
+  customer_email?: string | null;
+  customer_mobile?: string | null;
   agent_id?: string | null;
   created_by?: string | null;
   created_by_agent_id?: string | null;
@@ -253,6 +258,12 @@ export type Application = {
   internal_notes: string | null;
   staff_note?: string | null;
   customer_message?: string | null;
+  admin_note?: string | null;
+  customer_note?: string | null;
+  completed_document_url?: string | null;
+  completed_document_storage_path?: string | null;
+  completed_at?: string | null;
+  final_document_path?: string | null;
   payment_status?: PaymentStatus;
   razorpay_order_id?: string | null;
   razorpay_payment_id?: string | null;

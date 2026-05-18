@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getAdminApplicationDetail } from "@/lib/admin-crm";
+import { createInvoiceForApplication } from "@/lib/crm";
 import { applicationStatuses } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { creditCashbackForApplication } from "@/lib/wallet";
@@ -12,6 +14,27 @@ function cleanFileName(name: string) {
 
 function isCashbackCompletionStatus(status: unknown) {
   return ["completed", "delivered", "approved", "done"].includes(String(status ?? "").toLowerCase());
+}
+
+const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+const maxFileSize = 8 * 1024 * 1024;
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  const role = await getCurrentUserRole(user);
+
+  if (!user || !isAdminRole(role)) {
+    return NextResponse.json({ message: "Admin access required." }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const detail = await getAdminApplicationDetail(id);
+
+  if (!detail) {
+    return NextResponse.json({ message: "Application not found." }, { status: 404 });
+  }
+
+  return NextResponse.json(detail);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +52,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const assignedTo = String(formData.get("assignedTo") ?? "").trim();
     const assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
     const internalNotes = String(formData.get("internalNotes") ?? "").trim();
+    const customerNote = String(formData.get("customerNote") ?? "").trim();
     const note = String(formData.get("note") ?? "").trim();
+    const finalTitle = String(formData.get("finalDocumentTitle") ?? "Final completed document").trim();
     const finalDocument = formData.get("finalDocument");
     const supabase = getSupabaseAdmin();
 
@@ -39,7 +64,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, status, payment_status, agent_id, assigned_agent_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data")
+      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, total_amount, status, payment_status, agent_id, assigned_agent_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data, customer_details")
       .eq("id", id)
       .single();
 
@@ -68,12 +93,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (internalNotes) {
       updates.internal_notes = internalNotes;
+      updates.admin_note = internalNotes;
+    }
+
+    if (customerNote) {
+      updates.customer_message = customerNote;
+      updates.customer_note = customerNote;
     }
 
     if (finalDocument instanceof File && finalDocument.size > 0) {
-      const path = `${application.user_id}/${id}/final/${Date.now()}-${cleanFileName(finalDocument.name)}`;
+      if (!allowedFileTypes.includes(finalDocument.type)) {
+        return NextResponse.json({ message: "Final document must be PDF, JPG, PNG, or WebP." }, { status: 400 });
+      }
+
+      if (finalDocument.size > maxFileSize) {
+        return NextResponse.json({ message: "Final document must be smaller than 8MB." }, { status: 400 });
+      }
+
+      const path = `final-documents/${id}/${Date.now()}-${cleanFileName(finalDocument.name)}`;
       const bytes = await finalDocument.arrayBuffer();
-      const { error: uploadError } = await supabase.storage.from("application-documents").upload(path, bytes, {
+      const { error: uploadError } = await supabase.storage.from("documents").upload(path, bytes, {
         contentType: finalDocument.type || "application/octet-stream",
         upsert: true,
       });
@@ -82,10 +121,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         throw uploadError;
       }
 
-      const { data } = await supabase.storage.from("application-documents").createSignedUrl(path, 60 * 60 * 24 * 365);
+      const { data } = await supabase.storage.from("documents").createSignedUrl(path, 60 * 60);
       updates.final_document_url = data?.signedUrl ?? "";
       updates.final_document_path = path;
+      updates.completed_document_url = data?.signedUrl ?? "";
+      updates.completed_document_storage_path = path;
       updates.final_document_name = finalDocument.name;
+      updates.completed_at = new Date().toISOString();
+
+      await supabase.from("application_documents").insert({
+        application_id: id,
+        user_id: application.user_id,
+        customer_id: application.customer_id,
+        uploaded_by: user?.id,
+        uploaded_by_role: "admin",
+        document_type: "final_document",
+        document_name: finalTitle || "Final completed document",
+        file_name: finalDocument.name,
+        file_url: data?.signedUrl ?? "",
+        file_type: finalDocument.type || "application/octet-stream",
+        storage_path: path,
+        status: "approved",
+        review_status: "approved",
+        is_final: true,
+        uploaded_at: new Date().toISOString(),
+        metadata: { title: finalTitle, note: customerNote || note || null },
+      });
     }
 
     const { error } = await supabase.from("applications").update(updates).eq("id", id);
@@ -131,6 +192,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         admin_id: user?.id,
         note,
         assigned_to: assignedTo || null,
+      });
+    }
+
+    if (customerNote && application.user_id) {
+      await supabase.from("notifications").insert({
+        user_id: application.user_id,
+        application_id: id,
+        title: "Application note",
+        message: customerNote,
       });
     }
 
@@ -202,4 +272,55 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  const role = await getCurrentUserRole(user);
+
+  if (!user || !isAdminRole(role)) {
+    return NextResponse.json({ message: "Admin access required." }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const body = (await request.json().catch(() => ({}))) as { action?: string };
+
+  if (body.action !== "generate_invoice") {
+    return NextResponse.json({ message: "Unsupported action." }, { status: 400 });
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json({ message: "Supabase service role key is missing." }, { status: 500 });
+  }
+
+  const { data: application } = await supabase
+    .from("applications")
+    .select("id, user_id, customer_id, service_name, amount, total_amount, payment_status, form_data, customer_details")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!application) {
+    return NextResponse.json({ message: "Application not found." }, { status: 404 });
+  }
+
+  const formData = (application.form_data ?? {}) as Record<string, unknown>;
+  const customerDetails = (application.customer_details ?? {}) as Record<string, unknown>;
+  const invoice = await createInvoiceForApplication({
+    applicationId: id,
+    userId: application.user_id,
+    customerId: application.customer_id,
+    customerName: String(customerDetails.name ?? formData.name ?? "Customer"),
+    customerEmail: String(customerDetails.email ?? formData.email ?? ""),
+    customerMobile: String(customerDetails.mobile ?? formData.mobile ?? ""),
+    serviceName: application.service_name,
+    amount: Number(application.total_amount ?? application.amount ?? 0),
+    paymentStatus: application.payment_status ?? "pending",
+  });
+
+  if (!invoice?.id) {
+    return NextResponse.json({ message: "Invoice could not be generated." }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: "Invoice generated.", invoiceId: invoice.id });
 }

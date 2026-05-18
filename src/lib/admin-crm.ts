@@ -125,6 +125,15 @@ function customerFromApplication(application: Application) {
   };
 }
 
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+}
+
 function pickPrimaryPayment(application: Application) {
   const payments = dedupePayments((application.payments ?? []) as PaymentRow[]);
   return payments.find(isVerifiedPayment) ?? payments[0] ?? null;
@@ -400,7 +409,7 @@ export async function getAdminApplicationDetail(id: string) {
 
   const payment = pickPrimaryPayment(application);
   const allPayments = dedupePayments((application.payments ?? []) as PaymentRow[]);
-  const customer = customerFromApplication(application);
+  const fallbackCustomer = customerFromApplication(application);
   const warnings: string[] = [];
   const amountMismatch = payment && Math.round(paymentAmount(payment)) !== Math.round(Number(application.fresh_payable_amount ?? application.real_payment_amount ?? paymentAmount(payment)));
 
@@ -411,7 +420,7 @@ export async function getAdminApplicationDetail(id: string) {
   if (amountMismatch) warnings.push("Payment amount does not match application fresh payable amount.");
   if (!application.service_slug) warnings.push("Service slug is missing.");
 
-  const documentSelect = "id, application_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, metadata, uploaded_at, created_at";
+  const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at";
   const possibleDocumentQueries = [];
   if (application.user_id) {
     possibleDocumentQueries.push(
@@ -436,15 +445,20 @@ export async function getAdminApplicationDetail(id: string) {
     );
   }
 
-  const [notesResult, agentResult, statusLogsResult, referralResult, diagnosticsResult, possibleDocumentResults] = await Promise.all([
+  const [notesResult, agentResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "agent"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     application.user_id ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from("admin_crm_diagnostics").select("issue_type, severity, message").eq("application_id", id).limit(10),
+    supabase.from("application_documents").select(documentSelect).eq("application_id", id).order("uploaded_at", { ascending: false, nullsFirst: false }),
+    application.user_id ? supabase.from("profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    application.user_id ? supabase.from("customer_profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     Promise.all(possibleDocumentQueries),
   ]);
-  const possibleDocuments = application.documents?.length
+  const directDocuments = await resolveDocumentUrls((directDocumentsResult.data ?? []) as ApplicationDocument[]);
+  const documents = directDocuments.length ? directDocuments : ((application.documents ?? []) as ApplicationDocument[]);
+  const possibleDocuments = documents.length
     ? []
     : await resolveDocumentUrls(
         Array.from(
@@ -458,8 +472,13 @@ export async function getAdminApplicationDetail(id: string) {
     application,
     payment,
     invoice: application.invoices?.[0] ?? null,
-    customer,
-    documents: (application.documents ?? []) as ApplicationDocument[],
+    customer: {
+      name: firstText(profileResult.data?.full_name, customerProfileResult.data?.full_name, fallbackCustomer.name),
+      mobile: firstText(profileResult.data?.mobile, customerProfileResult.data?.mobile, fallbackCustomer.mobile, application.customer_mobile),
+      email: firstText(profileResult.data?.email, customerProfileResult.data?.email, fallbackCustomer.email, application.customer_email),
+      address: firstText(profileResult.data?.address, customerProfileResult.data?.address, fallbackCustomer.address),
+    },
+    documents,
     possibleDocuments,
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
