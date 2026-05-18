@@ -56,6 +56,13 @@ export type AdminPaymentDiagnostic = {
 export type AdminApplicationFilters = {
   query?: string;
   status?: string;
+  paymentStatus?: string;
+  service?: string;
+  staffId?: string;
+  agent?: string;
+  dateRange?: string;
+  unassignedOnly?: boolean;
+  documentsMissingOnly?: boolean;
   page?: number;
   pageSize?: number;
 };
@@ -63,13 +70,58 @@ export type AdminApplicationFilters = {
 export type AdminApplicationsResult = {
   rows: AdminApplicationRow[];
   staff: PortalUser[];
+  agents: PortalUser[];
+  stats: AdminApplicationsCommandStats;
+  alerts: AdminApplicationsAlert[];
+  filterOptions: AdminApplicationsFilterOptions;
   total: number;
   page: number;
   pageSize: number;
 };
 
+export type AdminApplicationsCommandStats = {
+  totalApplications: number;
+  newToday: number;
+  paymentPending: number;
+  documentsMissing: number;
+  inProgress: number;
+  completedToday: number;
+  staffUnassigned: number;
+  agentApplications: number;
+  revenueToday: number;
+  walletUsed: number;
+  cashbackLiability: number;
+};
+
+export type AdminApplicationsAlert = {
+  type: "payment" | "staff" | "documents" | "verification";
+  label: string;
+  count: number;
+  tone: "orange" | "red" | "blue" | "purple";
+};
+
+export type AdminApplicationsFilterOptions = {
+  services: string[];
+  paymentStatuses: string[];
+  statuses: string[];
+};
+
 type PaymentRow = Payment & {
   updated_at?: string | null;
+};
+
+const EMPTY_COMMAND_STATS: AdminApplicationsCommandStats = {
+  totalApplications: 0,
+  newToday: 0,
+  paymentPending: 0,
+  documentsMissing: 0,
+  inProgress: 0,
+  completedToday: 0,
+  staffUnassigned: 0,
+  agentApplications: 0,
+  revenueToday: 0,
+  walletUsed: 0,
+  cashbackLiability: 0,
 };
 
 function startOfTodayIso() {
@@ -139,12 +191,17 @@ function pickPrimaryPayment(application: Application) {
   return payments.find(isVerifiedPayment) ?? payments[0] ?? null;
 }
 
-function applicationToAdminRow(application: Application, agentById: Record<string, PortalUser>): AdminApplicationRow {
+function applicationToAdminRow(application: Application, agentById: Record<string, PortalUser>, staffById: Record<string, PortalUser>): AdminApplicationRow {
   const payment = pickPrimaryPayment(application);
   const invoice = application.invoices?.[0];
   const assignedAgentId = application.assigned_agent_id ?? application.agent_id ?? null;
   const assignedAgent = assignedAgentId ? agentById[assignedAgentId] : null;
+  const assignedStaff = application.assigned_staff_id ? staffById[application.assigned_staff_id] : null;
   const customer = customerFromApplication(application);
+  const documents = application.documents ?? [];
+  const rejectedDocuments = documents.filter((document) => ["rejected", "reupload_required"].includes(normalizeStatus(document.review_status ?? document.status))).length;
+  const finalDocuments = documents.filter((document) => document.is_final || document.document_type === "final_document").length;
+  const sourceLabel = firstText(application.submitted_by_role, application.source, assignedAgent ? "agent" : "", "website");
 
   return {
     id: application.id,
@@ -165,8 +222,11 @@ function applicationToAdminRow(application: Application, agentById: Record<strin
     payment_status: application.payment_status ?? payment?.status ?? "pending",
     invoice_status: invoice?.payment_status ?? null,
     application_status: application.status,
-    assigned_staff_id: assignedAgentId,
-    assigned_staff_name: assignedAgent?.full_name || assignedAgent?.email || null,
+    assigned_staff_id: application.assigned_staff_id ?? null,
+    assigned_staff_name: assignedStaff?.full_name || assignedStaff?.email || application.assigned_to || null,
+    agent_id: assignedAgentId,
+    agent_name: assignedAgent?.full_name || assignedAgent?.email || null,
+    agent_code: assignedAgent?.agent_code ?? null,
     razorpay_order_id: application.razorpay_order_id ?? payment?.razorpay_order_id ?? null,
     razorpay_payment_id: application.razorpay_payment_id ?? payment?.razorpay_payment_id ?? null,
     payment_amount: paymentAmount(payment) || Number(application.fresh_payable_amount ?? application.real_payment_amount ?? application.amount ?? 0),
@@ -177,6 +237,17 @@ function applicationToAdminRow(application: Application, agentById: Record<strin
     fresh_paid_amount: Number(application.fresh_payable_amount ?? application.real_payment_amount ?? paymentAmount(payment)),
     wallet_redeemed_amount: Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0),
     customer_email: customer.email,
+    service_slug: application.service_slug,
+    source_label: sourceLabel,
+    document_count: documents.length,
+    rejected_document_count: rejectedDocuments,
+    final_document_count: finalDocuments,
+    invoice_id: invoice?.id ?? null,
+    invoice_number: invoice?.invoice_number ?? null,
+    commission_amount: application.commissions?.[0]?.amount ?? application.commission_amount ?? null,
+    commission_status: application.commissions?.[0]?.status ?? null,
+    updated_at: application.updated_at,
+    latest_note: application.customer_message ?? application.admin_note ?? application.internal_notes ?? null,
   };
 }
 
@@ -193,6 +264,124 @@ async function getAgentsById() {
     grouped[agent.id] = agent;
     return grouped;
   }, {});
+}
+
+async function getUsersByRole(role: "staff" | "agent") {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [] as PortalUser[];
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
+    .eq("role", role)
+    .order("full_name", { ascending: true });
+
+  if (error) {
+    console.error(`[admin-crm] ${role} lookup failed`, error.message);
+    return [] as PortalUser[];
+  }
+
+  return (data ?? []) as PortalUser[];
+}
+
+function getDateRangeStart(range?: string) {
+  const now = new Date();
+  if (range === "today") {
+    now.setHours(0, 0, 0, 0);
+    return now.toISOString();
+  }
+  if (range === "7d") {
+    now.setDate(now.getDate() - 7);
+    return now.toISOString();
+  }
+  if (range === "30d") {
+    now.setDate(now.getDate() - 30);
+    return now.toISOString();
+  }
+  return null;
+}
+
+function isPaymentPending(application: Pick<Application, "status" | "payment_status">) {
+  return normalizeStatus(application.status) === "payment_pending" || ["pending", "unpaid"].includes(normalizeStatus(application.payment_status));
+}
+
+function isDocumentsMissing(application: Application) {
+  const documents = application.documents ?? [];
+  const rejected = documents.some((document) => ["rejected", "reupload_required"].includes(normalizeStatus(document.review_status ?? document.status)));
+  return normalizeStatus(application.status) === "documents_required" || normalizeStatus(application.status) === "document_pending" || rejected;
+}
+
+async function getApplicationCommandMeta(): Promise<{
+  stats: AdminApplicationsCommandStats;
+  alerts: AdminApplicationsAlert[];
+  filterOptions: AdminApplicationsFilterOptions;
+}> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return {
+      stats: EMPTY_COMMAND_STATS,
+      alerts: [],
+      filterOptions: { services: [], paymentStatuses: [], statuses: [] },
+    };
+  }
+
+  const todayIso = startOfTodayIso();
+  const yesterdayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [applicationsResult, documentsResult, walletsResult] = await Promise.all([
+    supabase
+      .from("applications")
+      .select("id, status, payment_status, service_name, source, submitted_by_role, agent_id, assigned_agent_id, assigned_staff_id, created_at, updated_at, total_amount, amount, fresh_payable_amount, real_payment_amount, wallet_redeemed_amount, wallet_used_amount, cashback_amount, cashback_credited_at, razorpay_payment_id"),
+    supabase
+      .from("application_documents")
+      .select("application_id, status, review_status, is_final, document_type")
+      .limit(5000),
+    supabase.from("reward_wallets").select("balance").limit(5000),
+  ]);
+  const applications = (applicationsResult.data ?? []) as Application[];
+  const documentsByApplication = ((documentsResult.data ?? []) as ApplicationDocument[]).reduce<Record<string, ApplicationDocument[]>>((grouped, document) => {
+    grouped[document.application_id] = grouped[document.application_id] ?? [];
+    grouped[document.application_id].push(document);
+    return grouped;
+  }, {});
+  const withDocuments = applications.map((application) => ({
+    ...application,
+    documents: documentsByApplication[application.id] ?? [],
+  }));
+  const paymentPendingOld = withDocuments.filter((application) => isPaymentPending(application) && application.created_at < yesterdayIso).length;
+  const staffUnassigned = withDocuments.filter((application) => !application.assigned_staff_id && normalizeStatus(application.status) !== "completed").length;
+  const documentsMissing = withDocuments.filter(isDocumentsMissing).length;
+  const verificationIssues = withDocuments.filter((application) => ["verified", "paid"].includes(normalizeStatus(application.payment_status)) && normalizeStatus(application.status) === "payment_pending").length;
+  const wallets = (walletsResult.data ?? []) as { balance?: number | null }[];
+  const revenueToday = withDocuments
+    .filter((application) => application.created_at >= todayIso && ["verified", "paid"].includes(normalizeStatus(application.payment_status)))
+    .reduce((total, application) => total + Number(application.fresh_payable_amount ?? application.real_payment_amount ?? application.total_amount ?? application.amount ?? 0), 0);
+
+  return {
+    stats: {
+      totalApplications: withDocuments.length,
+      newToday: withDocuments.filter((application) => application.created_at >= todayIso).length,
+      paymentPending: withDocuments.filter(isPaymentPending).length,
+      documentsMissing,
+      inProgress: withDocuments.filter((application) => ["in_process", "in_progress", "submitted", "assigned_to_agent"].includes(normalizeStatus(application.status))).length,
+      completedToday: withDocuments.filter((application) => normalizeStatus(application.status) === "completed" && (application.updated_at ?? application.created_at) >= todayIso).length,
+      staffUnassigned,
+      agentApplications: withDocuments.filter((application) => application.agent_id || application.assigned_agent_id || normalizeStatus(application.submitted_by_role) === "agent" || normalizeStatus(application.source) === "agent_pos").length,
+      revenueToday,
+      walletUsed: withDocuments.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0), 0),
+      cashbackLiability: wallets.reduce((total, wallet) => total + Number(wallet.balance ?? 0), 0),
+    },
+    alerts: [
+      { type: "payment", label: "Payment pending older than 24h", count: paymentPendingOld, tone: "orange" },
+      { type: "staff", label: "Applications without staff assignment", count: staffUnassigned, tone: "blue" },
+      { type: "documents", label: "Documents missing or rejected", count: documentsMissing, tone: "red" },
+      { type: "verification", label: "Payment verification needs review", count: verificationIssues, tone: "purple" },
+    ].filter((alert) => alert.count > 0) as AdminApplicationsAlert[],
+    filterOptions: {
+      services: [...new Set(withDocuments.map((application) => application.service_name).filter(Boolean))].sort(),
+      paymentStatuses: [...new Set(withDocuments.map((application) => normalizeStatus(application.payment_status)).filter(Boolean))].sort(),
+      statuses: [...new Set(withDocuments.map((application) => normalizeStatus(application.status)).filter(Boolean))].sort(),
+    },
+  };
 }
 
 export async function getAdminRevenueSummary(): Promise<AdminRevenueSummary> {
@@ -345,7 +534,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  if (!supabase) return { rows: [], staff: [], total: 0, page, pageSize };
+  if (!supabase) return { rows: [], staff: [], agents: [], stats: EMPTY_COMMAND_STATS, alerts: [], filterOptions: { services: [], paymentStatuses: [], statuses: [] }, total: 0, page, pageSize };
 
   let query = supabase
     .from("applications")
@@ -354,8 +543,16 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     .range(from, to);
 
   const status = normalizeStatus(filters.status);
-  if (status === "payment_pending") {
+  if (status === "today") {
+    query = query.gte("created_at", startOfTodayIso());
+  } else if (status === "payment_pending") {
     query = query.eq("status", "payment_pending");
+  } else if (status === "need_docs") {
+    query = query.in("status", ["documents_required", "document_pending"]);
+  } else if (status === "unassigned") {
+    query = query.is("assigned_staff_id", null);
+  } else if (status === "agent_apps") {
+    query = query.or("submitted_by_role.eq.agent,source.eq.agent_pos,agent_id.not.is.null,assigned_agent_id.not.is.null");
   } else if (status === "paid_submitted") {
     query = query.eq("payment_status", "verified").eq("status", "submitted");
   } else if (status === "in_process") {
@@ -366,6 +563,48 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.or("status.eq.payment_failed,payment_status.eq.failed");
   } else if (status === "cancelled_refunded") {
     query = query.or("status.eq.cancelled,payment_status.eq.refunded");
+  } else if (status && status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  if (filters.paymentStatus && filters.paymentStatus !== "all") {
+    query = query.eq("payment_status", filters.paymentStatus);
+  }
+
+  if (filters.service && filters.service !== "all") {
+    query = query.eq("service_name", filters.service);
+  }
+
+  if (filters.staffId && filters.staffId !== "all") {
+    query = filters.staffId === "none" ? query.is("assigned_staff_id", null) : query.eq("assigned_staff_id", filters.staffId);
+  }
+
+  if (filters.agent && filters.agent !== "all") {
+    if (filters.agent === "agent") {
+      query = query.or("submitted_by_role.eq.agent,source.eq.agent_pos,agent_id.not.is.null,assigned_agent_id.not.is.null");
+    } else if (filters.agent === "website") {
+      query = query.or("submitted_by_role.eq.customer,source.eq.online");
+    } else if (filters.agent === "admin") {
+      query = query.eq("submitted_by_role", "admin");
+    } else if (filters.agent === "staff") {
+      query = query.eq("submitted_by_role", "staff");
+    } else if (filters.agent.startsWith("agent:")) {
+      const agentId = filters.agent.slice("agent:".length);
+      query = query.or(`agent_id.eq.${agentId},assigned_agent_id.eq.${agentId}`);
+    }
+  }
+
+  const rangeStart = getDateRangeStart(filters.dateRange);
+  if (rangeStart) {
+    query = query.gte("created_at", rangeStart);
+  }
+
+  if (filters.unassignedOnly) {
+    query = query.is("assigned_staff_id", null);
+  }
+
+  if (filters.documentsMissingOnly) {
+    query = query.in("status", ["documents_required", "document_pending"]);
   }
 
   const search = String(filters.query ?? "").trim();
@@ -374,7 +613,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.or(`id.ilike.%${escaped}%,service_name.ilike.%${escaped}%,service_slug.ilike.%${escaped}%,razorpay_payment_id.ilike.%${escaped}%,razorpay_order_id.ilike.%${escaped}%,form_data->>name.ilike.%${escaped}%,form_data->>mobile.ilike.%${escaped}%,form_data->>email.ilike.%${escaped}%`);
   }
 
-  const [applicationResult, agentById] = await Promise.all([query, getAgentsById()]);
+  const [applicationResult, agentById, staff, agents, meta] = await Promise.all([query, getAgentsById(), getUsersByRole("staff"), getUsersByRole("agent"), getApplicationCommandMeta()]);
   const baseApplications = (applicationResult.data ?? []) as Application[];
   let applications = baseApplications;
 
@@ -384,9 +623,18 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     console.error("[admin-crm] Failed to hydrate admin applications", error);
   }
 
+  const staffById = staff.reduce<Record<string, PortalUser>>((grouped, staffMember) => {
+    grouped[staffMember.id] = staffMember;
+    return grouped;
+  }, {});
+
   return {
-    rows: applications.map((application) => applicationToAdminRow(application, agentById)),
-    staff: Object.values(agentById),
+    rows: applications.map((application) => applicationToAdminRow(application, agentById, staffById)),
+    staff,
+    agents,
+    stats: meta.stats,
+    alerts: meta.alerts,
+    filterOptions: meta.filterOptions,
     total: applicationResult.count ?? applications.length,
     page,
     pageSize,

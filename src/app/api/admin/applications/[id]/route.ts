@@ -50,6 +50,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const formData = await request.formData();
     const status = String(formData.get("status") ?? "");
     const assignedTo = String(formData.get("assignedTo") ?? "").trim();
+    const assignedStaffId = String(formData.get("assignedStaffId") ?? "").trim();
     const assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
     const internalNotes = String(formData.get("internalNotes") ?? "").trim();
     const customerNote = String(formData.get("customerNote") ?? "").trim();
@@ -84,6 +85,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (assignedTo) {
       updates.assigned_to = assignedTo;
+    }
+
+    if (assignedStaffId) {
+      updates.assigned_staff_id = assignedStaffId === "none" ? null : assignedStaffId;
     }
 
     if (assignedAgentId) {

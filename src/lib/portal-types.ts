@@ -81,6 +81,16 @@ export type AdminApplicationRow = {
   paid_at?: string | null;
   commission_amount?: number | null;
   commission_status?: string | null;
+  service_slug?: string | null;
+  source_label?: string | null;
+  agent_code?: string | null;
+  document_count?: number;
+  rejected_document_count?: number;
+  final_document_count?: number;
+  invoice_id?: string | null;
+  invoice_number?: string | null;
+  updated_at?: string | null;
+  latest_note?: string | null;
   created_at: string;
 };
 
