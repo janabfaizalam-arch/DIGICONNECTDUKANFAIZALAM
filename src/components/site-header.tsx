@@ -21,9 +21,9 @@ const navLinks = [
   { href: "/#support", label: "Support" },
 ];
 
-type AppRole = "admin" | "agent" | "customer";
+type AppRole = "super_admin" | "admin" | "staff" | "agent" | "customer";
 
-const roleValues = ["admin", "agent", "customer"];
+const roleValues = ["super_admin", "admin", "staff", "agent", "customer"];
 
 function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
@@ -76,12 +76,16 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
 }
 
 function getPanelConfig(role: AppRole | null) {
-  if (role === "admin") {
+  if (role === "admin" || role === "super_admin") {
     return { href: "/admin", label: "Admin Dashboard" };
   }
 
   if (role === "agent") {
     return { href: "/agent/dashboard", label: "Agent Dashboard" };
+  }
+
+  if (role === "staff") {
+    return { href: "/staff/dashboard", label: "Staff Dashboard" };
   }
 
   if (role === "customer") {
@@ -247,7 +251,7 @@ export function SiteHeader() {
             <nav className="hidden flex-1 items-center justify-center gap-3 text-sm font-bold text-slate-600 md:flex">
               {[
                 ["/agent/dashboard", "Agent Dashboard"],
-                ["/agent/leads", "Leads"],
+                ["/agent/applications/new", "New Application"],
                 ["/agent/applications", "Applications"],
                 ["/agent/commissions", "Commissions"],
               ].map(([href, label]) => (
