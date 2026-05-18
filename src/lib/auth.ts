@@ -32,17 +32,33 @@ export function isAdminUser(user: User | null) {
   const role = String(user.user_metadata.role ?? "").toLowerCase();
   const email = (user.email ?? "").toLowerCase();
 
-  return role === "admin" || adminEmails.includes(email);
+  return role === "admin" || role === "super_admin" || adminEmails.includes(email);
 }
 
-export type AppRole = "admin" | "agent" | "customer";
+export type AppRole = "super_admin" | "admin" | "staff" | "agent" | "customer";
+
+const appRoles: AppRole[] = ["super_admin", "admin", "staff", "agent", "customer"];
+
+export function normalizeAppRole(role: unknown): AppRole | null {
+  const value = String(role ?? "").toLowerCase();
+
+  return appRoles.includes(value as AppRole) ? (value as AppRole) : null;
+}
 
 export function isAdminRole(role: AppRole | string | null | undefined) {
-  return role === "admin";
+  return role === "admin" || role === "super_admin";
+}
+
+export function isSuperAdminRole(role: AppRole | string | null | undefined) {
+  return role === "super_admin";
+}
+
+export function isStaffRole(role: AppRole | string | null | undefined) {
+  return role === "staff";
 }
 
 export function isAgentRole(role: AppRole | string | null | undefined) {
-  return role === "admin" || role === "agent";
+  return isAdminRole(role) || role === "agent";
 }
 
 export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
@@ -173,10 +189,10 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   }
 
   const supabaseAdmin = getSupabaseAdmin();
-  const metadataRole = String(user.user_metadata.role ?? "").toLowerCase();
+  const metadataRole = normalizeAppRole(user.user_metadata.role);
 
-  if (metadataRole === "admin" || metadataRole === "agent" || metadataRole === "customer") {
-    return metadataRole as AppRole;
+  if (metadataRole) {
+    return metadataRole;
   }
 
   if (isAdminUser(user)) {
@@ -189,18 +205,18 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
 
   const { data: profile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
 
-  const profileRole = String(profile?.role ?? "");
+  const profileRole = normalizeAppRole(profile?.role);
 
-  if (["admin", "agent", "customer"].includes(profileRole)) {
-    return profileRole as AppRole;
+  if (profileRole) {
+    return profileRole;
   }
 
   const { data: portalUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
 
-  const portalRole = String(portalUser?.role ?? "");
+  const portalRole = normalizeAppRole(portalUser?.role);
 
-  if (["admin", "agent", "customer"].includes(portalRole)) {
-    return portalRole as AppRole;
+  if (portalRole) {
+    return portalRole;
   }
 
   return "customer";
@@ -213,6 +229,10 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
 
   if (role === "agent") {
     return "/agent/dashboard";
+  }
+
+  if (role === "staff") {
+    return "/staff/dashboard";
   }
 
   return getCustomerHome();
@@ -233,7 +253,7 @@ export async function syncUserProfile(user: User) {
   const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
   const storedRole = String(existingProfile?.role ?? existingUser?.role ?? "customer").toLowerCase();
-  const normalizedStoredRole = storedRole === "agent" ? "agent" : storedRole === "admin" || storedRole === "super_admin" ? "admin" : "customer";
+  const normalizedStoredRole = normalizeAppRole(storedRole) ?? "customer";
   const role = adminRole ?? normalizedStoredRole;
   const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim();
   const mobile = String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").replace(/\D/g, "").trim();

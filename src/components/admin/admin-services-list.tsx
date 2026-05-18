@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Archive, Copy, Eye, LoaderCircle, Search } from "lucide-react";
+import { Archive, Copy, Eye, Search } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
@@ -17,7 +17,7 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const { success, error: toastError } = useToast();
 
   const visibleServices = useMemo(() => {
@@ -117,23 +117,9 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
     });
   }
 
-  async function importExistingServices() {
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/admin/services/seed", { method: "POST" });
-        const result = (await response.json()) as { message?: string; found?: number; imported?: number; updated?: number };
-        if (!response.ok) throw new Error(result.message ?? "Existing services could not be imported.");
-        success(result.message ?? `Imported ${result.found ?? 0} existing services.`);
-        window.location.reload();
-      } catch (error) {
-        toastError(error instanceof Error ? error.message : "Existing services could not be imported.");
-      }
-    });
-  }
-
   return (
     <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm md:p-5">
-      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_220px_180px_auto]">
+      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_220px_180px]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search service, slug, category..." className="h-11 pl-11" />
@@ -154,13 +140,9 @@ export function AdminServicesList({ services, categories }: { services: AdminSer
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" onClick={importExistingServices} disabled={isPending}>
-          {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-          Import Existing Services
-        </Button>
       </div>
 
-      {!visibleServices.length ? <AdminEmptyState title="No services found" description="Add a service, seed the current fallback data, or change the filters." /> : null}
+      {!visibleServices.length ? <AdminEmptyState title="No services found" description="Add a service or change the filters." /> : null}
 
       <div className="hidden overflow-hidden rounded-xl border border-slate-100 md:block">
         <table className="w-full text-left text-sm">

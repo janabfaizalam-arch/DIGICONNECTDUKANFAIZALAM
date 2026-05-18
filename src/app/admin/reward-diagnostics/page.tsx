@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
 import { safeDate } from "@/lib/admin-format";
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isSuperAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function AdminRewardDiagnosticsPage() {
   const role = await getCurrentUserRole(user);
 
   if (!user) redirect("/login");
-  if (!isAdminRole(role)) redirect("/dashboard");
+  if (!isSuperAdminRole(role)) redirect("/unauthorized");
 
   const supabase = getSupabaseAdmin();
   let diagnostics: DiagnosticRow[] = [];

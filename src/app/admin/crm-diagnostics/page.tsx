@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isSuperAdminRole } from "@/lib/auth";
 import { safeDateTime } from "@/lib/admin-format";
 import { getAdminPaymentDiagnostics } from "@/lib/admin-crm";
 
@@ -15,7 +15,7 @@ export default async function AdminCrmDiagnosticsPage() {
   const role = await getCurrentUserRole(user);
 
   if (!user) redirect("/login");
-  if (!isAdminRole(role)) redirect("/dashboard");
+  if (!isSuperAdminRole(role)) redirect("/unauthorized");
 
   const diagnostics = await getAdminPaymentDiagnostics(100);
 

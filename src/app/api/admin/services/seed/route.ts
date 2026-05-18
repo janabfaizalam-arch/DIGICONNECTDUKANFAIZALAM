@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isSuperAdminRole } from "@/lib/auth";
 import { revalidateServicePaths } from "@/lib/service-admin";
 import { servicesData } from "@/lib/services-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 async function requireAdmin() {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
-  if (!user || !isAdminRole(role)) return NextResponse.json({ message: "Admin access required." }, { status: 403 });
+  if (!user || !isSuperAdminRole(role)) return NextResponse.json({ message: "Super admin access required." }, { status: 403 });
   return null;
 }
 

@@ -1,5 +1,9 @@
-import { redirect } from "next/navigation";
+import { StaffLoginCard } from "@/components/auth/staff-login-card";
 
 export default function StaffLoginPage() {
-  redirect("/unauthorized");
+  return (
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <StaffLoginCard />
+    </main>
+  );
 }

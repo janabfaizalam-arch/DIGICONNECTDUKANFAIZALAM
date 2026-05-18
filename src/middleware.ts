@@ -3,19 +3,19 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseUrl } from "@/lib/supabase/config";
 
-const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/apply"];
-const authRoutes = ["/login", "/login/agent", "/login/customer", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
+const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/staff", "/apply"];
+const authRoutes = ["/login", "/login/agent", "/login/customer", "/login/staff", "/admin-login", "/agent-login", "/customer-login", "/super-admin-login"];
 
-type AppRole = "admin" | "agent" | "customer";
+type AppRole = "super_admin" | "admin" | "staff" | "agent" | "customer";
 
-const appRoles = ["admin", "agent", "customer"];
+const appRoles: AppRole[] = ["super_admin", "admin", "staff", "agent", "customer"];
 
 function matchesRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
 function getRoleHome(role: AppRole) {
-  if (role === "admin") {
+  if (role === "admin" || role === "super_admin") {
     return "/admin";
   }
 
@@ -23,16 +23,24 @@ function getRoleHome(role: AppRole) {
     return "/agent/dashboard";
   }
 
+  if (role === "staff") {
+    return "/staff/dashboard";
+  }
+
   return "/customer/dashboard";
 }
 
 function isAllowedForPath(pathname: string, role: AppRole) {
   if (matchesRoute(pathname, "/admin")) {
-    return role === "admin";
+    return role === "admin" || role === "super_admin";
   }
 
   if (matchesRoute(pathname, "/agent")) {
     return role === "agent";
+  }
+
+  if (matchesRoute(pathname, "/staff")) {
+    return role === "staff";
   }
 
   if (matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer")) {
@@ -51,6 +59,10 @@ function isMissingActiveColumn(errorMessage: string) {
 function getLoginPathForProtectedRoute(pathname: string) {
   if (matchesRoute(pathname, "/agent")) {
     return "/login/agent";
+  }
+
+  if (matchesRoute(pathname, "/staff")) {
+    return "/login/staff";
   }
 
   if (matchesRoute(pathname, "/customer") || matchesRoute(pathname, "/apply")) {
@@ -74,12 +86,6 @@ export async function middleware(request: NextRequest) {
   });
 
   const { pathname } = request.nextUrl;
-  if (matchesRoute(pathname, "/staff") || matchesRoute(pathname, "/login/staff")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/unauthorized";
-    return NextResponse.redirect(url);
-  }
-
   const isProtectedRoute = protectedRoutes.some((route) => matchesRoute(pathname, route));
   const isAuthRoute = authRoutes.some((route) => matchesRoute(pathname, route));
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -138,12 +144,12 @@ export async function middleware(request: NextRequest) {
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
       const profileRole = String(profile?.role ?? "").toLowerCase();
 
-      if (appRoles.includes(profileRole)) {
+      if (appRoles.includes(profileRole as AppRole)) {
         role = profileRole as AppRole;
       } else {
         const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
         const portalRole = String(portalUser?.role ?? "").toLowerCase();
-        role = appRoles.includes(portalRole) ? (portalRole as AppRole) : "customer";
+        role = appRoles.includes(portalRole as AppRole) ? (portalRole as AppRole) : "customer";
       }
     }
   }
@@ -220,6 +226,12 @@ export async function middleware(request: NextRequest) {
       url.pathname = getRoleHome(role);
       url.search = "";
     }
+    return NextResponse.redirect(url);
+  }
+
+  if (user && matchesRoute(pathname, "/login/staff")) {
+    const url = request.nextUrl.clone();
+    url.pathname = role === "staff" ? "/staff/dashboard" : "/unauthorized";
     return NextResponse.redirect(url);
   }
 

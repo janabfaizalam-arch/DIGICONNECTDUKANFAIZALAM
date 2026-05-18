@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isSuperAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const DEFAULT_EMAILS = ["atifsiddiqui4536@gmail.com", "mohtatifsiddiqui431@gmail.com"];
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   const role = await getCurrentUserRole(user);
 
   if (!user) return jsonError("Please login.", 401);
-  if (!isAdminRole(role)) return jsonError("Admin access required.", 403);
+  if (!isSuperAdminRole(role)) return jsonError("Super admin access required.", 403);
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return jsonError("Supabase service role key is missing.", 500);
