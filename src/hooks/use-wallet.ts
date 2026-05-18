@@ -45,7 +45,7 @@ export function useWallet(orderAmount = 0) {
 
       try {
         const params = orderAmount > 0 ? `?serviceAmount=${encodeURIComponent(orderAmount)}` : "";
-        const response = await fetch(`/api/customer/wallet${params}`, { cache: "no-store" });
+        const response = await fetch(`/api/wallet${params}`, { cache: "no-store" });
 
         if (!response.ok) {
           throw new Error("Wallet unavailable");

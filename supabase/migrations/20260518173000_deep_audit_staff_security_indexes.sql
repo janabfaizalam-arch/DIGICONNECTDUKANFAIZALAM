@@ -108,6 +108,11 @@ create index if not exists invoices_application_created_idx
 create index if not exists commissions_agent_created_idx
   on public.commissions (agent_id, created_at desc);
 
+alter table public.application_status_logs
+  add column if not exists actor_id uuid references auth.users(id) on delete set null,
+  add column if not exists actor_role text,
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
 drop policy if exists "Staff read assigned applications" on public.applications;
 create policy "Staff read assigned applications" on public.applications
   for select
@@ -191,7 +196,7 @@ create policy "Staff insert assigned application status logs" on public.applicat
   for insert
   with check (
     public.is_staff_role()
-    and changed_by = auth.uid()
+    and actor_id = auth.uid()
     and exists (
       select 1
       from public.applications a

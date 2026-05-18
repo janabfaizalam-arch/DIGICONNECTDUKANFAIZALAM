@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Bell,
   CheckCircle2,
@@ -26,7 +27,6 @@ import {
 
 import { CustomerDocumentUpload } from "@/components/portal/customer-document-upload";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
-import { ServiceSelectionModal } from "@/components/service-selection-modal";
 import { Card } from "@/components/ui/card";
 import type { Application, NotificationItem } from "@/lib/portal-types";
 import { formatCurrency } from "@/lib/portal-data";
@@ -34,6 +34,11 @@ import { contactDetails } from "@/lib/constants";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import type { WalletSnapshot } from "@/lib/wallet";
 import { getRewardDirection } from "@/lib/wallet";
+
+const ServiceSelectionModal = dynamic(
+  () => import("@/components/service-selection-modal").then((mod) => mod.ServiceSelectionModal),
+  { ssr: false },
+);
 
 type CustomerDashboardProps = {
   applications: Application[];

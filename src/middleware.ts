@@ -10,6 +10,13 @@ type AppRole = "super_admin" | "admin" | "staff" | "agent" | "customer";
 
 const appRoles: AppRole[] = ["super_admin", "admin", "staff", "agent", "customer"];
 
+type ProfileAuthShape = {
+  role?: string | null;
+  kyc_status?: string | null;
+  active?: boolean | null;
+  is_active?: boolean | null;
+};
+
 function matchesRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
@@ -48,12 +55,6 @@ function isAllowedForPath(pathname: string, role: AppRole) {
   }
 
   return true;
-}
-
-function isMissingActiveColumn(errorMessage: string) {
-  const normalized = errorMessage.toLowerCase();
-
-  return normalized.includes("active") && (normalized.includes("does not exist") || normalized.includes("could not find"));
 }
 
 function getLoginPathForProtectedRoute(pathname: string) {
@@ -130,6 +131,7 @@ export async function middleware(request: NextRequest) {
   }
 
   let role = String(user?.user_metadata.role ?? "").toLowerCase() as AppRole;
+  let profile: ProfileAuthShape | null = null;
 
   if (user && !appRoles.includes(role)) {
     const adminEmails = (process.env.ADMIN_EMAILS ?? process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
@@ -141,7 +143,13 @@ export async function middleware(request: NextRequest) {
     if (adminEmails.includes(email)) {
       role = "admin";
     } else {
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active").eq("id", user.id).maybeSingle();
+      if (profileResult.error) {
+        const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
+        profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
+      } else {
+        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
+      }
       const profileRole = String(profile?.role ?? "").toLowerCase();
 
       if (appRoles.includes(profileRole as AppRole)) {
@@ -157,53 +165,34 @@ export async function middleware(request: NextRequest) {
   let isAgentActive = true;
 
   if (user && role === "agent") {
-    const readOptionalProfileBoolean = async (column: "active" | "is_active") => {
-      const { data, error } = await supabase.from("profiles").select(column).eq("id", user.id).maybeSingle();
-
-      if (error) {
-        if (isMissingActiveColumn(error.message)) {
-          return { exists: false, value: null };
-        }
-
-        console.error("[middleware:agent-auth] Active status lookup failed.", { userId: user.id, column, error: error.message });
-        return { exists: true, value: false };
+    if (!profile) {
+      const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active").eq("id", user.id).maybeSingle();
+      if (profileResult.error) {
+        const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
+        profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
+      } else {
+        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
       }
-
-      return {
-        exists: true,
-        value: Boolean((data as Record<string, unknown> | null)?.[column]),
-      };
-    };
-
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
-    const resolvedProfile = profile as { role?: string | null; kyc_status?: string | null } | null;
-
-    if (profileError) {
-      console.error("[middleware:agent-auth] Profile lookup failed.", { userId: user.id, error: profileError.message });
     }
 
-    if (!resolvedProfile) {
+    if (!profile) {
       console.error("[middleware:agent-auth] Agent profile missing.", { userId: user.id });
       isAgentActive = false;
-    } else if (String(resolvedProfile.role ?? "").toLowerCase() !== "agent") {
-      console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: resolvedProfile.role });
+    } else if (String(profile.role ?? "").toLowerCase() !== "agent") {
+      console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: profile.role });
       isAgentActive = false;
-    } else if (String(resolvedProfile.kyc_status ?? "").toLowerCase() !== "approved") {
-      console.error("[middleware:agent-auth] Agent KYC is not approved.", { userId: user.id, kycStatus: resolvedProfile.kyc_status });
+    } else if (String(profile.kyc_status ?? "").toLowerCase() !== "approved") {
+      console.error("[middleware:agent-auth] Agent KYC is not approved.", { userId: user.id, kycStatus: profile.kyc_status });
       isAgentActive = false;
     } else {
-      const [activeStatus, isActiveStatus] = await Promise.all([
-        readOptionalProfileBoolean("active"),
-        readOptionalProfileBoolean("is_active"),
-      ]);
-      const activeChecks = [activeStatus, isActiveStatus].filter((status) => status.exists);
-      isAgentActive = activeChecks.every((status) => status.value === true);
+      const activeChecks = [profile.active, profile.is_active].filter((value) => typeof value === "boolean");
+      isAgentActive = activeChecks.every((value) => value === true);
 
       if (!isAgentActive) {
         console.error("[middleware:agent-auth] Agent profile inactive.", {
           userId: user.id,
-          active: activeStatus.exists ? activeStatus.value : "missing",
-          is_active: isActiveStatus.exists ? isActiveStatus.value : "missing",
+          active: typeof profile.active === "boolean" ? profile.active : "missing",
+          is_active: typeof profile.is_active === "boolean" ? profile.is_active : "missing",
         });
       }
     }

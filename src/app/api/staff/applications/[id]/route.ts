@@ -134,7 +134,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     old_status: application.status,
     new_status: status,
     note: staffNote || customerMessage || null,
-    changed_by: user.id,
+    actor_id: user.id,
+    actor_role: "staff",
   });
 
   if (application.user_id && (customerMessage || file instanceof File)) {
