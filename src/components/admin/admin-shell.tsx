@@ -71,6 +71,13 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
     ],
   },
   {
+    title: "Offline Invoices",
+    items: [
+      { href: "/admin/offline-invoices/new", label: "Create Invoice", description: "Walk-in billing", icon: ReceiptText },
+      { href: "/admin/offline-invoices", label: "Invoice History", description: "Search and print", icon: FileClock },
+    ],
+  },
+  {
     title: "Users",
     items: [
       { href: "/admin/customers", label: "Customers", description: "Customer records", icon: UsersRound },
@@ -175,7 +182,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-950">
       <div className="flex min-h-screen w-full">
-        <aside className="sticky top-0 hidden h-screen w-80 shrink-0 border-r border-slate-200 bg-white px-5 py-6 shadow-sm lg:block">
+        <aside data-admin-chrome className="sticky top-0 hidden h-screen w-80 shrink-0 border-r border-slate-200 bg-white px-5 py-6 shadow-sm lg:block">
           <Link href="/admin" className="block px-2">
             <p className="text-xl font-bold text-slate-950">DigiConnect Dukan</p>
             <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Admin CRM</p>
@@ -220,7 +227,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         ) : null}
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur lg:px-8">
+          <header data-admin-chrome className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur lg:px-8">
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
