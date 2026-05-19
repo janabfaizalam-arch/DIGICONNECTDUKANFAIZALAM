@@ -1,13 +1,15 @@
 import { MessageCircle } from "lucide-react";
 
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export function HomepageContactActions() {
+  const whatsappUrl = buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "floating", topic: "Website service enquiry" }));
+
   return (
     <a
-      href={generateWhatsAppLink()}
+      href={whatsappUrl}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       aria-label="Chat with DigiConnect Dukan on WhatsApp"
       className="whatsapp-floating-button"
     >

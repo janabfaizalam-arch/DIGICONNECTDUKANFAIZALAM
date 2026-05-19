@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MessageCircle, ShieldCheck } from "lucide-react";
 
 import { ServiceApplicationForm } from "@/components/portal/service-application-form";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { portalServices, type ServiceField } from "@/lib/portal-data";
 import { getPublicServiceBySlug, getPublicServicesByCategory } from "@/lib/services";
+import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -54,6 +55,12 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
   const selectedPublicServices = selectedServices
     .map((item) => [service, ...relatedServices].find((candidate) => candidate.slug === item))
     .filter((item): item is typeof service => Boolean(item));
+  const whatsappUrl = buildWhatsAppUrl(
+    buildApplicationWhatsAppMessage({
+      action: "apply_help",
+      serviceName: service.title,
+    }),
+  );
 
   function fieldsFor(categorySlug: string, serviceSlug: string): ServiceField[] {
     if (serviceSlug === "pan-card") return [{ name: "fullName", label: "Full Name", required: true }, { name: "fatherName", label: "Father's Name", required: false }];
@@ -91,6 +98,10 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
               <p>3. Pay securely with Razorpay</p>
               <p>4. Receive invoice and updates</p>
             </div>
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
+              <MessageCircle className="h-4 w-4" />
+              Get WhatsApp Help
+            </a>
           </Card>
 
           <ServiceApplicationForm

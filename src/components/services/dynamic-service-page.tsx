@@ -7,8 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { DbService, DbServiceSection } from "@/lib/services";
 import { serviceFromDb } from "@/lib/services";
-import { createServiceWhatsAppMessage } from "@/lib/services-data";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 function stringItems(value: unknown) {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
@@ -37,7 +36,7 @@ function legacySections(service: ReturnType<typeof serviceFromDb>): DbServiceSec
 function ServiceHero({ row }: { row: DbService }) {
   const service = serviceFromDb(row);
   const Icon = service.icon;
-  const whatsappHref = generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(service.title));
+  const whatsappHref = buildWhatsAppUrl(buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: service.ctaType === "apply" ? "apply" : "enquiry", page: `/services/${service.slug}` }));
   const heroImage = row.hero_image_url;
 
   return (
@@ -62,12 +61,12 @@ function ServiceHero({ row }: { row: DbService }) {
               <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
-            <a href={whatsappHref} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg" })}>
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ size: "lg" })}>
               {row.cta_primary_label || "Enquiry Now"}
               <MessageCircle className="h-4 w-4" />
             </a>
           )}
-          <a href={row.cta_secondary_url || whatsappHref} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
             <MessageCircle className="h-4 w-4" />
             {row.cta_secondary_label || "WhatsApp"}
           </a>
@@ -283,7 +282,7 @@ export function DynamicServicePage({ row }: { row: DbService }) {
   const sections = (row.service_sections?.length ? row.service_sections : legacySections(service))
     .filter((section) => section.is_active && section.section_type !== "hero")
     .sort((a, b) => a.sort_order - b.sort_order);
-  const whatsappHref = generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(service.title));
+  const whatsappHref = buildWhatsAppUrl(buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: "support", page: `/services/${service.slug}` }));
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -305,7 +304,7 @@ export function DynamicServicePage({ row }: { row: DbService }) {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : null}
-              <a href={whatsappHref} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="premium-button premium-button-whatsapp">
                 WhatsApp
                 <MessageCircle className="h-4 w-4" />
               </a>

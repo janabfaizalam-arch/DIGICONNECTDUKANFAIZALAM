@@ -23,6 +23,7 @@ import {
   vehicleTypes,
 } from "@/lib/insurance-quotations";
 import { cn } from "@/lib/utils";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 type ApiResponse = {
   quotation?: InsuranceQuotation;
@@ -412,7 +413,7 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
             <TableBody>
               {quotations.map((quotation) => {
                 const link = getInsuranceQuotationPublicUrl(quotation.public_token);
-                const whatsappUrl = `https://wa.me/91${quotation.mobile.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(createInsuranceQuotationWhatsappText(quotation))}`;
+                const whatsappUrl = buildWhatsAppUrl(createInsuranceQuotationWhatsappText(quotation));
 
                 return (
                   <TableRow key={quotation.id}>
@@ -442,7 +443,7 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
                         <Button type="button" variant="outline" size="icon" title="Copy link" onClick={() => void copyQuotation(quotation)}>
                           <Copy className="h-4 w-4" />
                         </Button>
-                        <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-white text-emerald-700 hover:bg-emerald-50" title="WhatsApp Now">
+                        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-white text-emerald-700 hover:bg-emerald-50" title="WhatsApp Now">
                           <MessageCircle className="h-4 w-4" />
                         </a>
                         <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-11 w-11 items-center justify-center rounded-full border bg-white text-blue-700 hover:bg-blue-50" title="Open public quote">

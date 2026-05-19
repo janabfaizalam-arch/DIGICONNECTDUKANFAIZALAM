@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const proofItems = [
   { value: "50000+", label: "Customers Served", icon: BadgeCheck },
@@ -70,6 +70,8 @@ const faqs = [
 ];
 
 export function HomepageExtendedSections() {
+  const whatsappUrl = buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "homepage" }));
+
   return (
     <>
       <section className="section-pad pt-0">
@@ -131,7 +133,7 @@ export function HomepageExtendedSections() {
             <p className="mt-3 text-base leading-7 text-slate-600">
               Short answers for customers applying for digital and government services online.
             </p>
-            <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp mt-5">
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="premium-button premium-button-whatsapp mt-5">
               <MessageCircle className="h-4 w-4" />
               WhatsApp Support
             </a>

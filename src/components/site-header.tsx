@@ -11,7 +11,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { createClient } from "@/lib/supabase/browser";
 import { MobileMenu } from "@/components/mobile-menu";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildAgentWhatsAppMessage, buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -123,6 +123,18 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const scrolledRef = useRef(false);
+  const whatsappUrl = buildWhatsAppUrl(
+    role === "agent"
+      ? buildAgentWhatsAppMessage({
+          agentName: user?.user_metadata.full_name ?? user?.user_metadata.name ?? user?.email,
+          topic: "Header support",
+        })
+      : buildSupportWhatsAppMessage({
+          page: "header",
+          customerName: role === "customer" ? user?.user_metadata.full_name ?? user?.user_metadata.name : null,
+          topic: role === "admin" ? "Admin dashboard support" : "Website service enquiry",
+        }),
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -312,7 +324,7 @@ export function SiteHeader() {
                 <LayoutDashboard className="h-4 w-4" />
                 {panelConfig.label}
               </Link>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-200 md:hover:-translate-y-0.5 md:hover:bg-white/60">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-200 md:hover:-translate-y-0.5 md:hover:bg-white/60">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>
@@ -324,7 +336,7 @@ export function SiteHeader() {
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-200 md:hover:-translate-y-0.5 md:hover:bg-white/60">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-200 md:hover:-translate-y-0.5 md:hover:bg-white/60">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>

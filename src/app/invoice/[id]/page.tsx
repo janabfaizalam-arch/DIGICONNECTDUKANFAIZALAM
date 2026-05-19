@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Globe2, Phone, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Globe2, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 
 import { PrintButton } from "@/components/portal/print-button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { getCurrentUser, getCurrentUserRole, isAdminRole, isAgentRole } from "@/
 import { formatCurrency, paymentStatusLabels } from "@/lib/portal-data";
 import type { Invoice } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { buildInvoiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   const invoice = data as Invoice;
   const invoiceServices = getInvoiceServices(invoice.service_name);
+  const whatsappUrl = buildWhatsAppUrl(
+    buildInvoiceWhatsAppMessage({
+      invoiceNumber: invoice.invoice_number,
+      serviceName: invoice.service_name,
+      amount: invoice.amount,
+      status: invoice.payment_status,
+    }),
+  );
 
   if (!isAdminRole(role) && invoice.user_id !== user.id) {
     if (!isAgentRole(role)) {
@@ -72,7 +81,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
-          <PrintButton />
+          <div className="flex items-center gap-2">
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp Support
+            </a>
+            <PrintButton />
+          </div>
         </div>
 
         <Card className="invoice-card overflow-hidden rounded-2xl bg-white p-0 shadow-sm md:rounded-[1.5rem] print:rounded-none print:border-0 print:shadow-none">

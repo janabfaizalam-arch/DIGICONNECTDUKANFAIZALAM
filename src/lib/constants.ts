@@ -1,4 +1,4 @@
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import { servicesData } from "@/lib/services-data";
 
 export const services = servicesData.map((service) => ({
@@ -52,12 +52,12 @@ export const processSteps = [
 export const contactDetails = {
   phone: "7007595931",
   primaryPhone: "7007595931",
-  officeSupportPhone: "9305086491",
+  officeSupportPhone: "7007595931",
   email: "digiconnectdukan@rnos.in",
   website: "https://www.rnos.in",
   availability: "Service available across India",
 };
 
 export function createWhatsappLink(serviceName?: string) {
-  return generateWhatsAppLink(serviceName);
+  return buildWhatsAppUrl(buildServiceWhatsAppMessage({ serviceName, action: serviceName ? "enquiry" : "support" }));
 }

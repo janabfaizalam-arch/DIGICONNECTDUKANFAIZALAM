@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BadgePercent, MessageCircle, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
-import { createServiceWhatsAppMessage, getCategoryBySlug, getServiceBySlug, serviceIconMap, type ServiceItem } from "@/lib/services-data";
+import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getCategoryBySlug, getServiceBySlug, serviceIconMap, type ServiceItem } from "@/lib/services-data";
 
 type OfferSlide = {
   title: string;
@@ -48,7 +48,7 @@ function getFixedOffer(slug: string): OfferSlide | null {
 }
 
 function makeEnquiryHref(title: string) {
-  return generateWhatsAppLink("917007595931", createServiceWhatsAppMessage(title));
+  return buildWhatsAppUrl(buildServiceWhatsAppMessage({ serviceName: title, action: "enquiry", page: "homepage offers" }));
 }
 
 export function HomepageOfferSlider({ initialSlides }: { initialSlides?: HomepageOfferSlide[] }) {
@@ -206,7 +206,7 @@ export function HomepageOfferSlider({ initialSlides }: { initialSlides?: Homepag
                                 <ArrowRight className="h-4 w-4" />
                               </Link>
                             ) : (
-                              <a href={slide.href ?? makeEnquiryHref(slide.title)} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+                              <a href={slide.href ?? makeEnquiryHref(slide.title)} target="_blank" rel="noopener noreferrer" className="premium-button premium-button-whatsapp">
                                 Enquiry Now
                                 <MessageCircle className="h-4 w-4" />
                               </a>

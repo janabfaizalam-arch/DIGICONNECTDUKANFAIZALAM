@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { ApplyServiceTrigger } from "@/components/service-selection-modal";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 type HeroViewer =
   | { role: "customer"; name: string }
@@ -44,6 +44,13 @@ function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
 export function HeroSection({ viewer = null }: HeroSectionProps) {
   const isCustomer = viewer?.role === "customer";
   const dashboardConfig = viewer ? getDashboardConfig(viewer) : null;
+  const whatsappUrl = buildWhatsAppUrl(
+    buildSupportWhatsAppMessage({
+      page: "homepage",
+      customerName: isCustomer ? viewer.name : null,
+      topic: viewer?.role === "agent" ? "Agent dashboard support" : viewer?.role === "admin" ? "Admin dashboard support" : "Online services enquiry",
+    }),
+  );
 
   return (
     <section className="relative isolate overflow-hidden px-0 pb-4 pt-3 md:pb-8 md:pt-6">
@@ -81,7 +88,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                       Apply Now
                       <ArrowRight className="h-4 w-4" />
                     </ApplyServiceTrigger>
-                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] md:hover:bg-white/22">
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] md:hover:bg-white/22">
                       <MessageCircle className="h-4 w-4" />
                       WhatsApp
                     </a>
@@ -93,7 +100,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                       {dashboardConfig.label}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] transition-all duration-200 md:hover:bg-white/22">
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] transition-all duration-200 md:hover:bg-white/22">
                       <MessageCircle className="h-4 w-4" />
                       WhatsApp
                     </a>
@@ -105,7 +112,7 @@ export function HeroSection({ viewer = null }: HeroSectionProps) {
                       Login
                       <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] transition-all duration-200 md:hover:bg-white/22">
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="premium-button border border-white/34 bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] transition-all duration-200 md:hover:bg-white/22">
                       <MessageCircle className="h-4 w-4" />
                       WhatsApp
                     </a>

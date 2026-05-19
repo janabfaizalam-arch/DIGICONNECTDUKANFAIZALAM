@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Globe, Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 
 import { contactDetails } from "@/lib/constants";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export function ContactSection() {
+  const whatsappUrl = buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "contact", topic: "Website contact section enquiry" }));
+
   return (
     <section id="support" className="section-pad pt-0">
       <div className="container-shell">
@@ -21,7 +23,7 @@ export function ContactSection() {
                 <Phone className="h-4 w-4" />
                 Call Now
               </a>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="premium-button premium-button-whatsapp">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="premium-button premium-button-whatsapp">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp Now
               </a>

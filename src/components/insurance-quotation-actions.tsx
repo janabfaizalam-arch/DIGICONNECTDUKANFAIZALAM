@@ -3,10 +3,10 @@
 import { CheckCircle2, MessageCircle, Phone, Printer } from "lucide-react";
 
 import { createInsuranceQuotationWhatsappText, type InsuranceQuotation } from "@/lib/insurance-quotations";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export function InsuranceQuotationActions({ quotation }: { quotation: InsuranceQuotation }) {
-  const mobile = quotation.mobile.replace(/\D/g, "").slice(-10);
-  const whatsappUrl = `https://wa.me/91${mobile || "7007595931"}?text=${encodeURIComponent(createInsuranceQuotationWhatsappText(quotation))}`;
+  const whatsappUrl = buildWhatsAppUrl(createInsuranceQuotationWhatsappText(quotation));
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row print:hidden">
@@ -14,11 +14,11 @@ export function InsuranceQuotationActions({ quotation }: { quotation: InsuranceQ
         <Phone className="h-4 w-4" />
         Call Now
       </a>
-      <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm">
+      <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm">
         <MessageCircle className="h-4 w-4" />
         WhatsApp Now
       </a>
-      <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-sm font-bold text-white shadow-sm">
+      <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-sm font-bold text-white shadow-sm">
         <CheckCircle2 className="h-4 w-4" />
         Accept Quotation
       </a>

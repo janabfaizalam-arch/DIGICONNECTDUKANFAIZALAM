@@ -3,7 +3,7 @@ import { MessageCircle, Phone } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildAgentWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,12 @@ export default async function AgentSupportPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login/agent");
   if (!(await isActiveAgent(user))) redirect("/unauthorized");
+  const whatsappUrl = buildWhatsAppUrl(
+    buildAgentWhatsAppMessage({
+      agentName: user.user_metadata.full_name ?? user.user_metadata.name ?? user.email,
+      topic: "Agent support for customer, document, payment, or commission help",
+    }),
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-5 md:px-8 md:py-8">
@@ -26,7 +32,7 @@ export default async function AgentSupportPage() {
               <Phone className="h-4 w-4" />
               Call Support
             </a>
-            <a href={generateWhatsAppLink("7007595931", "Agent support required.")} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
               <MessageCircle className="h-4 w-4" />
               WhatsApp
             </a>

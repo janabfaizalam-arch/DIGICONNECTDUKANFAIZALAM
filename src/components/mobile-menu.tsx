@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ApplyServiceTrigger } from "@/components/service-selection-modal";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const menuLinks = [
   { href: "/", label: "Home" },
@@ -28,6 +28,12 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const whatsappUrl = buildWhatsAppUrl(
+    buildSupportWhatsAppMessage({
+      page: "mobile_menu",
+      topic: isLoggedIn ? `${panelLabel ?? "Dashboard"} support` : "Website service enquiry",
+    }),
+  );
 
   useEffect(() => {
     setOpen(false);
@@ -107,9 +113,9 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
                   {panelLabel}
                 </Link>
                 <a
-                  href={generateWhatsAppLink()}
+                  href={whatsappUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   onClick={() => setOpen(false)}
                   className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
                 >
@@ -129,9 +135,9 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
                   Login
                 </Link>
                 <a
-                  href={generateWhatsAppLink()}
+                  href={whatsappUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   onClick={() => setOpen(false)}
                   className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
                 >

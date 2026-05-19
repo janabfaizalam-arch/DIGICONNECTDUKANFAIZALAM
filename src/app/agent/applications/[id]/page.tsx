@@ -4,7 +4,7 @@ import { ArrowLeft, FileText, MessageCircle, ReceiptText } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildAgentWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
@@ -140,11 +140,11 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
             {mobile ? (
               <div className="grid gap-2">
                 {[
-                  ["Send received message", "Your application has been received by DigiConnect Dukan. We will review it shortly."],
-                  ["Send documents pending message", "Your DigiConnect Dukan application needs pending documents. Please share them to continue."],
-                  ["Send completed message", "Your DigiConnect Dukan application is completed. Thank you for choosing us."],
-                ].map(([label, message]) => (
-                  <a key={label} href={generateWhatsAppLink(mobile, message)} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
+                  ["Application support", "Agent support for this customer application"],
+                  ["Documents support", "Agent needs help with pending customer documents"],
+                  ["Completion support", "Agent needs help with completed application handover"],
+                ].map(([label, topic]) => (
+                  <a key={label} href={buildWhatsAppUrl(buildAgentWhatsAppMessage({ agentName: user.user_metadata.full_name ?? user.user_metadata.name ?? user.email, applicationId: application.id, serviceName: application.service_name, customerName: getCustomerName(application), topic }))} target="_blank" rel="noopener noreferrer" title={topic} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
                     <MessageCircle className="h-4 w-4" />
                     {label}
                   </a>

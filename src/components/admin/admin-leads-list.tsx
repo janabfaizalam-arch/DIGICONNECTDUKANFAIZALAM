@@ -9,7 +9,7 @@ import { AdminLeadActions } from "@/components/admin/admin-lead-actions";
 import { Input } from "@/components/ui/input";
 import { safeDateTime } from "@/lib/admin-format";
 import type { Lead } from "@/lib/portal-types";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 function formatDate(date: string) {
   return safeDateTime(date);
@@ -81,7 +81,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatDate(lead.created_at)}</td>
                 <td className="px-4 py-3">
-                  <a href={generateWhatsAppLink(lead.mobile, `Assalamu Alaikum, DigiConnect Dukan se ${lead.service} enquiry ke liye contact kar rahe hain.`)} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
+                  <a href={buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "admin_leads", customerName: lead.name || lead.customer_name, mobile: lead.mobile, topic: `Lead follow-up for ${lead.service}` }))} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
                     <MessageCircle className="h-3.5 w-3.5" />
                     WhatsApp
                   </a>
@@ -111,7 +111,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                 <Phone className="h-3.5 w-3.5" />
                 Call
               </a>
-              <a href={generateWhatsAppLink(lead.mobile, `Assalamu Alaikum, DigiConnect Dukan se ${lead.service} enquiry ke liye contact kar rahe hain.`)} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
+              <a href={buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "admin_leads", customerName: lead.name || lead.customer_name, mobile: lead.mobile, topic: `Lead follow-up for ${lead.service}` }))} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
                 <MessageCircle className="h-3.5 w-3.5" />
                 WhatsApp
               </a>

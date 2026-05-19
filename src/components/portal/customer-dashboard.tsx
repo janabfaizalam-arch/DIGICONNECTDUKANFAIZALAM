@@ -30,7 +30,7 @@ import { Card } from "@/components/ui/card";
 import type { Application, NotificationItem } from "@/lib/portal-types";
 import { formatCurrency } from "@/lib/portal-data";
 import { contactDetails } from "@/lib/constants";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildApplicationWhatsAppMessage, buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import type { WalletSnapshot } from "@/lib/wallet";
 import { getRewardDirection } from "@/lib/wallet";
 
@@ -83,7 +83,7 @@ function getRewardStatusLabel(status: string) {
   return status.replace(/_/g, " ");
 }
 
-export function CustomerDashboard({ applications, notifications, walletSnapshot, profileCompletion }: CustomerDashboardProps) {
+export function CustomerDashboard({ applications, notifications, walletSnapshot, profile, profileCompletion }: CustomerDashboardProps) {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const completed = applications.filter((application) => application.status === "completed").length;
@@ -95,6 +95,13 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
   const expiringSoonAmount = Number(walletSnapshot.expiringSoonAmount ?? 0);
   const usagePercent = cashbackEarned > 0 ? Math.min(100, Math.round((cashbackUsed / cashbackEarned) * 100)) : 0;
   const referral = walletSnapshot.referralSummary;
+  const supportWhatsappUrl = buildWhatsAppUrl(
+    buildSupportWhatsAppMessage({
+      page: "customer_dashboard",
+      customerName: profile.name,
+      topic: "Customer dashboard support",
+    }),
+  );
   function openServices() {
     setActionMessage(null);
     setServicesOpen(true);
@@ -150,7 +157,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                   <ClipboardCheck className="h-4 w-4" />
                   My Applications
                 </button>
-                <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border bg-emerald-50 px-5 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-100">
+                <a href={supportWhatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border bg-emerald-50 px-5 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-100">
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp Support
                 </a>
@@ -297,9 +304,15 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                   Copy Link
                 </button>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Join DigiConnect Dukan using my referral link: ${referral.link}`)}`}
+                  href={buildWhatsAppUrl(
+                    buildSupportWhatsAppMessage({
+                      page: "customer_dashboard",
+                      customerName: profile.name,
+                      topic: referral.link ? `Referral support. Referral link: ${referral.link}` : "Referral support",
+                    }),
+                  )}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white"
                 >
                   <Share2 className="h-4 w-4" />
@@ -350,10 +363,10 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
             { title: "Upload Documents", description: "Complete pending files.", icon: UploadCloud, action: handleUploadDocuments },
             { title: "My Profile", description: "Manage saved details.", icon: UserRound, href: "/customer/profile" },
             { title: "Download Invoice", description: "Open receipt if available.", icon: Download, action: handleDownloadInvoice },
-            { title: "Contact Support", description: "Talk on WhatsApp.", icon: MessageCircle, href: generateWhatsAppLink() },
+            { title: "Contact Support", description: "Talk on WhatsApp.", icon: MessageCircle, href: supportWhatsappUrl },
           ].map(({ title, description, icon: Icon, action, href }) =>
             href ? (
-              <a key={title} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noreferrer" : undefined} className="liquid-card rounded-2xl p-4">
+              <a key={title} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noopener noreferrer" : undefined} className="liquid-card rounded-2xl p-4">
                 <Icon className="h-5 w-5 text-[var(--primary)]" />
                 <p className="mt-3 text-sm font-bold text-slate-950">{title}</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>
@@ -452,7 +465,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                           <FileText className="h-4 w-4" />
                           View Details
                         </Link>
-                        <a href={generateWhatsAppLink(undefined, `I need support for my ${application.service_name} application ${application.id}.`)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
+                        <a href={buildWhatsAppUrl(buildApplicationWhatsAppMessage({ applicationId: application.id, serviceName: application.service_name, status: application.status }))} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
                           <MessageCircle className="h-4 w-4" />
                           Support WhatsApp
                         </a>
@@ -525,7 +538,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
               <h2 className="mt-2 text-2xl font-bold text-slate-950">Need help with any service? Our support team is ready.</h2>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-white">
+              <a href={supportWhatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-white">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp Support
               </a>

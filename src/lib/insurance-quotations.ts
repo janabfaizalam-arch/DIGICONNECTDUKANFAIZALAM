@@ -64,16 +64,16 @@ export function getInsuranceQuotationPublicUrl(publicToken: string) {
   return `${siteUrl}/insurance-quotation/${publicToken}`;
 }
 
-export function createInsuranceQuotationWhatsappText(quote: Pick<InsuranceQuotation, "customer_name" | "total_amount" | "valid_till" | "public_token">) {
+export function createInsuranceQuotationWhatsappText(quote: Pick<InsuranceQuotation, "customer_name" | "quote_number" | "total_amount" | "valid_till" | "public_token">) {
   const link = getInsuranceQuotationPublicUrl(quote.public_token);
 
   return [
-    `Assalamu Alaikum / Namaste ${quote.customer_name},`,
-    "Aapka vehicle insurance quotation ready hai.",
+    "I need help regarding this vehicle insurance quotation.",
+    `Customer: ${quote.customer_name}`,
+    `Quotation No: ${quote.quote_number}`,
     `Quotation Link: ${link}`,
     `Total Payable: ${formatInsuranceCurrency(quote.total_amount)}`,
     `Valid Till: ${formatInsuranceDate(quote.valid_till)}`,
-    "DigiConnect Dukan",
   ].join("\n");
 }
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Download, FileText, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, FileText, MessageCircle, RotateCcw } from "lucide-react";
 
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { RatingForm } from "@/components/portal/rating-form";
@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/portal-data";
 import { resolveDocumentUrls } from "@/lib/crm";
 import type { Application, ApplicationDocument, Invoice, Payment, Rating } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,13 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   const payment = application.payments?.[0];
   const invoice = application.invoices?.[0];
   const rating = application.ratings?.[0];
+  const whatsappUrl = buildWhatsAppUrl(
+    buildApplicationWhatsAppMessage({
+      applicationId: application.id,
+      serviceName: application.service_name,
+      status: application.status,
+    }),
+  );
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
@@ -165,6 +173,11 @@ export default async function CustomerApplicationDetailPage({ params }: { params
               <RotateCcw className="h-4 w-4" />
               Apply Again
             </Link>
+
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp Support
+            </a>
 
             {application.status === "completed" ? (
               <RatingForm applicationId={application.id} existingRating={rating?.rating} />

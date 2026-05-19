@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +48,16 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
   const customerMobile = customer.mobile;
   const finalDocuments = documents.filter((document) => document.is_final || document.document_type === "final_document");
   const customerDocuments = documents.filter((document) => !(document.is_final || document.document_type === "final_document"));
-  const whatsapp = customerMobile
-    ? generateWhatsAppLink(customerMobile, `DigiConnect Dukan update for your ${application.service_name} application.`)
-    : null;
+  const whatsapp = buildWhatsAppUrl(
+    buildApplicationWhatsAppMessage({
+      action: "admin_followup",
+      applicationId: application.id,
+      serviceName: application.service_name,
+      status: application.status,
+      customerName: customer.name,
+      mobile: customerMobile,
+    }),
+  );
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -220,7 +227,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             <h2 className="text-lg font-bold text-slate-950">Customer</h2>
             <div className="mt-4 grid gap-2">
               {whatsapp ? (
-                <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
+                <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp Customer
                 </a>

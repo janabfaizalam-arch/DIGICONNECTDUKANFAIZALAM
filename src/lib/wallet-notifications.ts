@@ -1,4 +1,4 @@
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export type WalletNotificationKind = "cashback_credited" | "wallet_expiring" | "wallet_used";
 
@@ -32,9 +32,13 @@ export function getWalletNotificationCopy(kind: WalletNotificationKind, amount: 
 }
 
 export function getWalletWhatsAppLink(mobile: string, kind: WalletNotificationKind, amount: number, serviceName?: string) {
-  const digits = mobile.replace(/\D/g, "");
-  const normalized = digits.length === 10 ? `91${digits}` : digits;
   const copy = getWalletNotificationCopy(kind, amount, serviceName);
 
-  return generateWhatsAppLink(normalized, copy.whatsappText);
+  return buildWhatsAppUrl(
+    buildSupportWhatsAppMessage({
+      page: "wallet",
+      mobile,
+      topic: `${copy.title}. ${copy.message}`,
+    }),
+  );
 }

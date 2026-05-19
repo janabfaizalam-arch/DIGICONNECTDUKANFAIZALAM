@@ -24,7 +24,7 @@ import { MarketingFooter } from "@/components/marketing-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const metadata: Metadata = {
   title: "ITR Filing + MSME Registration Combo Package | DigiConnect Dukan",
@@ -44,9 +44,12 @@ export const metadata: Metadata = {
 
 const rupee = "\u20B9";
 const applyHref = "/apply/itr-filing?services=msme-certificate";
-const whatsappHref = generateWhatsAppLink(
-  "ITR Filing + MSME Registration Combo Package",
-  "I want to apply for the ITR Filing + MSME Registration Combo Package. Please share the required documents and next steps.",
+const whatsappHref = buildWhatsAppUrl(
+  buildServiceWhatsAppMessage({
+    serviceName: "ITR Filing + MSME Registration Combo Package",
+    action: "apply",
+    page: "/combo/itr-msme",
+  }),
 );
 
 const highlights = [
@@ -241,7 +244,7 @@ function CtaButtons({ light = false }: { light?: boolean }) {
       <a
         href={whatsappHref}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         className={cn(
           buttonVariants({ variant: "secondary", size: "lg" }),
           light

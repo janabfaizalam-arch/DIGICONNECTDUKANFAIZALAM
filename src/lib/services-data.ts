@@ -421,7 +421,3 @@ export function getFeaturedServices(categorySlug: ServiceCategorySlug) {
     .map((slug) => getServiceBySlug(slug))
     .filter((service): service is ServiceItem => Boolean(service));
 }
-
-export function createServiceWhatsAppMessage(serviceName: string) {
-  return `Assalamu Alaikum, mujhe ${serviceName} ke baare mein enquiry karni hai.`;
-}

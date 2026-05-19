@@ -132,7 +132,7 @@ export default async function PublicInsuranceQuotationPage({ params }: { params:
             <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-orange-100 bg-orange-50/50 p-4 md:flex-row md:items-center md:justify-between print:hidden">
               <div>
                 <p className="text-sm font-bold text-slate-950">Need help accepting this quotation?</p>
-                <p className="mt-1 text-sm text-slate-600">Call +91 7007595931 or office support 9305086491.</p>
+                <p className="mt-1 text-sm text-slate-600">Call +91 7007595931 or use WhatsApp support for quotation help.</p>
               </div>
               <InsuranceQuotationActions quotation={quotation as InsuranceQuotation} />
             </div>
@@ -216,7 +216,7 @@ export default async function PublicInsuranceQuotationPage({ params }: { params:
                 </div>
                 <div className="grid gap-1 text-sm font-semibold text-white/85">
                   <p className="inline-flex items-center gap-2"><Phone className="h-4 w-4 text-orange-300" /> +91 7007595931</p>
-                  <p>Office Support: 9305086491</p>
+                  <p>WhatsApp Support: +91 7007595931</p>
                 </div>
               </div>
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">

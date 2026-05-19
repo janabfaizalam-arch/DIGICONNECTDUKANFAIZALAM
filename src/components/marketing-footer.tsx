@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Globe, MessageCircle, Phone } from "lucide-react";
 
 import { contactDetails } from "@/lib/constants";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const footerLinks = [
   { label: "Home", href: "/" },
@@ -22,6 +22,8 @@ const popularServices = [
 ];
 
 export function MarketingFooter() {
+  const whatsappUrl = buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "footer", topic: "Website footer service enquiry" }));
+
   return (
     <footer className="px-0 pb-6 pt-2">
       <div className="container-shell">
@@ -68,7 +70,7 @@ export function MarketingFooter() {
                   <Phone className="h-4 w-4 text-orange-300" />
                   +91 {contactDetails.primaryPhone}
                 </a>
-                <a href={generateWhatsAppLink()} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white transition-colors hover:bg-white/15">
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white transition-colors hover:bg-white/15">
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
                 </a>

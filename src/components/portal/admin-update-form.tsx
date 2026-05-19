@@ -15,6 +15,7 @@ import {
   type PaymentStatus,
 } from "@/lib/portal-data";
 import type { PortalUser } from "@/lib/portal-types";
+import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const adminStatuses: ApplicationStatus[] = [
   "draft",
@@ -56,10 +57,14 @@ export function AdminUpdateForm({
   const [isPending, startTransition] = useTransition();
   const { success, error: toastError } = useToast();
   const router = useRouter();
-  const digits = customerMobile.replace(/\D/g, "");
-  const whatsappNumber = digits.length === 10 ? `91${digits}` : digits;
-  const whatsappMessage = encodeURIComponent(
-    `DigiConnect Dukan update: Your ${serviceName} application status is now ${statusLabels[status]}.`,
+  const whatsappUrl = buildWhatsAppUrl(
+    buildApplicationWhatsAppMessage({
+      action: "admin_followup",
+      applicationId,
+      serviceName,
+      status: statusLabels[status],
+      mobile: customerMobile,
+    }),
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -132,11 +137,11 @@ export function AdminUpdateForm({
       </FormSubmitButton>
       </fieldset>
 
-      {whatsappNumber ? (
+      {customerMobile ? (
         <a
-          href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
+          href={whatsappUrl}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white"
         >
           <MessageCircle className="h-4 w-4" />

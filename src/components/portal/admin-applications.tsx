@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import type { AdminApplicationsCommandStats, AdminApplicationsFilterOptions } from "@/lib/admin-crm";
 import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
+import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const statusFilters = [
   { value: "all", label: "All statuses" },
@@ -51,11 +52,16 @@ function invoiceHref(row: AdminApplicationRow) {
 }
 
 function whatsappHref(row: AdminApplicationRow) {
-  const digits = String(row.mobile ?? "").replace(/\D/g, "");
-  if (!digits) return null;
-  const mobile = digits.length === 10 ? `91${digits}` : digits;
-  const message = `DigiConnect Dukan update for ${row.service} application ${shortId(row.application_id)}.`;
-  return `https://wa.me/${mobile}?text=${encodeURIComponent(message)}`;
+  return buildWhatsAppUrl(
+    buildApplicationWhatsAppMessage({
+      action: "admin_followup",
+      applicationId: row.application_id ?? row.id,
+      serviceName: row.service,
+      status: row.application_status,
+      customerName: row.customer_name,
+      mobile: row.mobile,
+    }),
+  );
 }
 
 function pageHref(page: number, filters: FiltersState) {
@@ -80,7 +86,7 @@ function RowActions({ row }: { row: AdminApplicationRow }) {
         View
       </Link>
       {whatsapp ? (
-        <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
+        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
           <MessageCircle className="h-3.5 w-3.5" />
           WhatsApp
         </a>
