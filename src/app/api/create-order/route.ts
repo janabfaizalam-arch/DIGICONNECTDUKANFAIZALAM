@@ -27,8 +27,28 @@ type CreateOrderBody = {
   };
 };
 
+type ApplicationDraftCustomer = NonNullable<NonNullable<CreateOrderBody["applicationDraft"]>["customer"]>;
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message, message }, { status });
+}
+
+function jsonCustomerValidationError(message: string, customer: ReturnType<typeof normalizeCustomer>) {
+  if (process.env.NODE_ENV === "development") {
+    return NextResponse.json(
+      {
+        error: message,
+        message,
+        missingFields: {
+          email: !customer.email,
+          city: !customer.city,
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  return jsonError(message, 400);
 }
 
 function getRazorpayErrorStatus(error: unknown) {
@@ -53,6 +73,28 @@ function devInfo(message: string, details?: Record<string, unknown>) {
 
 function required(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeCustomer(customer: ApplicationDraftCustomer = {}) {
+  const normalizedName = customer.name?.trim() ?? "";
+  const normalizedMobile = customer.mobile?.trim() ?? "";
+  const normalizedEmail = customer.email?.trim() ?? "";
+  const normalizedCity = customer.city?.trim() ?? "";
+
+  return {
+    name: normalizedName,
+    mobile: normalizedMobile,
+    email: normalizedEmail,
+    city: normalizedCity,
+    message: customer.message?.trim() ?? "",
+  };
+}
+
+function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>) {
+  if (!required(customer.name)) return "Name is required before payment.";
+  if (!required(customer.mobile)) return "Mobile is required before payment.";
+  if (!required(customer.email) || !required(customer.city)) return "Customer email and city are required before payment.";
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -150,15 +192,24 @@ export async function POST(request: Request) {
           return jsonError("Application could not be prepared for payment.", 500);
         }
 
-        const customer = body.applicationDraft.customer ?? {};
+        const customer = normalizeCustomer(body.applicationDraft.customer);
+        const customerValidationError = getCustomerValidationError(customer);
 
-          if (!required(customer.name) || !required(customer.mobile)) {
-            return jsonError("Name and mobile are required before payment.", 400);
-          }
+        devInfo("[razorpay/create-order] Customer validation before payment", {
+          hasName: Boolean(customer.name),
+          hasMobile: Boolean(customer.mobile),
+          hasEmail: Boolean(customer.email),
+          hasCity: Boolean(customer.city),
+          emailLength: customer.email.length,
+          cityLength: customer.city.length,
+          serviceSlugs,
+          walletRedeemAmount,
+          freshPayableAmount,
+        });
 
-          if (!required(customer.email) || !required(customer.city)) {
-            return jsonError("Customer email and city are required before payment.", 400);
-          }
+        if (customerValidationError) {
+          return jsonCustomerValidationError(customerValidationError, customer);
+        }
 
         devInfo("[razorpay/create-order] Creating payment-pending application", {
           userId: user.id,
@@ -175,11 +226,11 @@ export async function POST(request: Request) {
           .maybeSingle();
         const formData = {
           service: services.filter(Boolean).map((service) => service?.title).join(", "),
-          name: String(customer.name ?? "").trim(),
-            mobile: String(customer.mobile ?? "").trim(),
-            email: String(customer.email ?? "").trim().toLowerCase(),
-            city: String(customer.city ?? "").trim(),
-          message: String(customer.message ?? "").trim(),
+          name: customer.name,
+          mobile: customer.mobile,
+          email: customer.email.toLowerCase(),
+          city: customer.city,
+          message: customer.message,
           service_slugs: serviceSlugs,
           payment: {
             total_amount: serviceAmount,
@@ -190,12 +241,12 @@ export async function POST(request: Request) {
           ...(body.applicationDraft.details ?? {}),
         };
         const customerDetails = {
-          name: String(customer.name ?? "").trim(),
-          mobile: String(customer.mobile ?? "").trim(),
-          email: String(customer.email ?? "").trim(),
-          city: String(customer.city ?? "").trim(),
+          name: customer.name,
+          mobile: customer.mobile,
+          email: customer.email,
+          city: customer.city,
           address: String(body.applicationDraft.details?.address ?? "").trim(),
-          notes: String(customer.message ?? "").trim(),
+          notes: customer.message,
         };
         const serviceSnapshot = {
           title: services.filter(Boolean).map((service) => service?.title).join(", "),
@@ -232,8 +283,8 @@ export async function POST(request: Request) {
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
-            customer_email: String(customer.email ?? "").trim().toLowerCase(),
-            customer_mobile: String(customer.mobile ?? "").replace(/\D/g, ""),
+            customer_email: customer.email.toLowerCase(),
+            customer_mobile: customer.mobile.replace(/\D/g, ""),
             service_slug: service!.slug,
             service_name: service!.title,
             amount: serviceAmountForRow,

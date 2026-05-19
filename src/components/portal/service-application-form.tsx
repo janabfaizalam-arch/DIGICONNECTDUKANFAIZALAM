@@ -41,6 +41,28 @@ type VerifiedApplicationPayment = VerifiedRazorpayPayment & {
   amount_paise: number;
 };
 
+type ApplicantFormValues = {
+  name?: string;
+  mobile?: string;
+  email?: string;
+  city?: string;
+  address?: string;
+  message?: string;
+};
+
+type NormalizedApplicationDraft = {
+  customer: {
+    name: string;
+    mobile: string;
+    email: string;
+    city: string;
+    message: string;
+  };
+  details: {
+    address: string;
+  };
+};
+
 function validateFile(file: File, label: string) {
   if (!allowedFileTypes.includes(file.type)) {
     return `${label} must be uploaded in PDF, JPG, or PNG format.`;
@@ -66,6 +88,40 @@ function withTimeout<T>(promise: Promise<T>, message: string) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
+function buildNormalizedApplicationDraft(form: ApplicantFormValues): NormalizedApplicationDraft {
+  const normalizedName = form.name?.trim() ?? "";
+  const normalizedMobile = form.mobile?.trim() ?? "";
+  const normalizedEmail = form.email?.trim() ?? "";
+  const normalizedCity = form.city?.trim() ?? "";
+
+  return {
+    customer: {
+      name: normalizedName,
+      mobile: normalizedMobile,
+      email: normalizedEmail,
+      city: normalizedCity,
+      message: form.message?.trim() ?? "",
+    },
+    details: {
+      address: form.address?.trim() ?? "",
+    },
+  };
+}
+
+function getApplicantValidationError(draft: NormalizedApplicationDraft) {
+  if (!draft.customer.name) return "Name is required.";
+  if (!draft.customer.mobile) return "Mobile is required.";
+  if (!draft.customer.email) return "Email is required.";
+  if (!draft.customer.city) return "City is required.";
+  return null;
+}
+
+function devInfo(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "development") {
+    console.info(message, details ?? {});
+  }
+}
+
 export function ServiceApplicationForm({ service, services }: { service: ApplicationFormService; services?: ApplicationFormService[] }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -77,6 +133,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [applicantName, setApplicantName] = useState("");
   const [applicantMobile, setApplicantMobile] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
+  const [applicantCity, setApplicantCity] = useState("");
   const [applicantAddress, setApplicantAddress] = useState("");
   const [applicantMessage, setApplicantMessage] = useState("");
   const selectedServices = useMemo(() => {
@@ -102,10 +159,22 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const expectedCashback = calculateCashbackForFreshPayment(realPayableAmount, !hasFirstServiceCashback);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
   const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
+  const normalizedApplicationDraft = useMemo(
+    () =>
+      buildNormalizedApplicationDraft({
+        name: applicantName,
+        mobile: applicantMobile,
+        email: applicantEmail,
+        city: applicantCity,
+        address: applicantAddress,
+        message: applicantMessage,
+      }),
+    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName],
+  );
   const canStartPayment =
     !isSubmitting &&
-    applicantName.trim().length > 1 &&
-    /^\d{10}$/.test(applicantMobile) &&
+    !getApplicantValidationError(normalizedApplicationDraft) &&
+    /^\d{10}$/.test(normalizedApplicationDraft.customer.mobile) &&
     selectedDocuments.length > 0;
 
   useEffect(() => {
@@ -129,6 +198,32 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
     if (!selectedDocuments.length) {
       toastError("Please upload Aadhaar / Documents.");
+      return;
+    }
+
+    const submittedDraft = buildNormalizedApplicationDraft({
+      name: String(formData.get("name") ?? ""),
+      mobile: String(formData.get("mobile") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      city: String(formData.get("city") ?? ""),
+      address: String(formData.get("address") ?? ""),
+      message: String(formData.get("message") ?? ""),
+    });
+    const applicantValidationError = getApplicantValidationError(submittedDraft);
+
+    devInfo("[service-application-form] Applicant validation before submit", {
+      hasName: Boolean(submittedDraft.customer.name),
+      hasMobile: Boolean(submittedDraft.customer.mobile),
+      hasEmail: Boolean(submittedDraft.customer.email),
+      hasCity: Boolean(submittedDraft.customer.city),
+      emailLength: submittedDraft.customer.email.length,
+      cityLength: submittedDraft.customer.city.length,
+      walletUseAmount: clampedWalletUseAmount,
+      payableAmountPaise,
+    });
+
+    if (applicantValidationError) {
+      toastError(applicantValidationError);
       return;
     }
 
@@ -209,16 +304,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         body: JSON.stringify({
           serviceSlug: selectedServices[0]?.slug,
           serviceSlugs: selectedServices.map((item) => item.slug),
-          customer: {
-            name: String(formData.get("name") ?? "").trim(),
-            mobile: String(formData.get("mobile") ?? "").trim(),
-            email: String(formData.get("email") ?? "").trim(),
-            city: "",
-            message: String(formData.get("message") ?? "").trim(),
-          },
-          details: {
-            address: String(formData.get("address") ?? "").trim(),
-          },
+          customer: submittedDraft.customer,
+          details: submittedDraft.details,
           documents: uploadedDocuments,
           razorpayPayment,
           applicationIds: razorpayPayment?.application_ids,
@@ -306,7 +393,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
             value={applicantMobile}
             onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
           />
-          <Input name="email" placeholder="Email (optional)" aria-label="Email (optional)" type="email" className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
+          <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
+          <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" value={applicantCity} onChange={(event) => setApplicantCity(event.target.value)} />
           <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" value={applicantAddress} onChange={(event) => setApplicantAddress(event.target.value)} />
           <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" value={applicantMessage} onChange={(event) => setApplicantMessage(event.target.value)} />
           </div>
@@ -408,21 +496,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                     serviceSlugs={selectedServices.map((item) => item.slug)}
                     walletUseAmount={clampedWalletUseAmount}
                     customer={{
-                      name: applicantName,
-                      email: applicantEmail,
-                      mobile: applicantMobile,
+                      name: normalizedApplicationDraft.customer.name,
+                      email: normalizedApplicationDraft.customer.email,
+                      mobile: normalizedApplicationDraft.customer.mobile,
                     }}
-                    applicationDraft={{
-                      customer: {
-                        name: applicantName,
-                        email: applicantEmail,
-                        mobile: applicantMobile,
-                        message: applicantMessage,
-                      },
-                      details: {
-                        address: applicantAddress,
-                      },
-                    }}
+                    applicationDraft={normalizedApplicationDraft}
                     description={selectedServices.map((item) => item.title).join(", ")}
                     disabled={!canStartPayment}
                     onVerified={(payment) => {
@@ -441,7 +519,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                 ) : null}
                 {!canStartPayment ? (
                   <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
-                    Fill name, 10 digit mobile, and upload documents before payment.
+                    Fill name, 10 digit mobile, email, city, and upload documents before payment.
                   </p>
                 ) : null}
               </div>

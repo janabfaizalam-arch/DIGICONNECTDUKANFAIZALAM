@@ -62,6 +62,29 @@ function required(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function normalizeCustomer(customer: ApplicationPayload["customer"] = {}) {
+  const normalizedName = customer.name?.trim() ?? "";
+  const normalizedMobile = customer.mobile?.trim() ?? "";
+  const normalizedEmail = customer.email?.trim() ?? "";
+  const normalizedCity = customer.city?.trim() ?? "";
+
+  return {
+    name: normalizedName,
+    mobile: normalizedMobile,
+    email: normalizedEmail,
+    city: normalizedCity,
+    message: customer.message?.trim() ?? "",
+  };
+}
+
+function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>) {
+  if (!required(customer.name)) return "Name is required.";
+  if (!required(customer.mobile)) return "Mobile is required.";
+  if (!required(customer.email)) return "Email is required.";
+  if (!required(customer.city)) return "City is required.";
+  return null;
+}
+
 function isItrMsmeCombo(serviceSlugs: string[]) {
   return serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
 }
@@ -181,18 +204,24 @@ export async function POST(request: Request) {
       return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
     }
 
-    const customer = body.customer ?? {};
-    const requiredCustomerFields = [
-      ["name", "Name"],
-      ["mobile", "Mobile"],
-      ["email", "Email"],
-      ["city", "City"],
-    ] as const;
+    const customer = normalizeCustomer(body.customer);
+    const customerValidationError = getCustomerValidationError(customer);
 
-    for (const [fieldName, label] of requiredCustomerFields) {
-      if (!required(customer[fieldName])) {
-        return jsonError(`${label} is required.`, 400);
-      }
+    devInfo("[applications] Customer validation before application submit", {
+      hasName: Boolean(customer.name),
+      hasMobile: Boolean(customer.mobile),
+      hasEmail: Boolean(customer.email),
+      hasCity: Boolean(customer.city),
+      emailLength: customer.email.length,
+      cityLength: customer.city.length,
+      walletRedeemAmount,
+      realPaymentAmount,
+      hasRazorpayPayment: Boolean(body.razorpayPayment),
+      existingApplicationIds: Array.isArray(body.applicationIds) ? body.applicationIds.length : 0,
+    });
+
+    if (customerValidationError) {
+      return jsonError(customerValidationError, 400);
     }
 
     const details = body.details ?? {};
@@ -234,11 +263,11 @@ export async function POST(request: Request) {
 
     const formData = {
       service: resolvedServices.map((service) => service.title).join(", "),
-      name: customer.name!.trim(),
-      mobile: customer.mobile!.trim(),
-      email: customer.email!.trim().toLowerCase(),
-      city: customer.city!.trim(),
-      message: customer.message?.trim() ?? "",
+      name: customer.name,
+      mobile: customer.mobile,
+      email: customer.email.toLowerCase(),
+      city: customer.city,
+      message: customer.message,
       service_slugs: resolvedServices.map((service) => service.slug),
       payment: {
         total_amount: orderAmount,
@@ -250,12 +279,12 @@ export async function POST(request: Request) {
       documents: body.documents,
     };
     const customerDetails = {
-      name: customer.name!.trim(),
-      mobile: customer.mobile!.trim(),
-      email: customer.email?.trim() ?? "",
-      city: customer.city?.trim() ?? "",
+      name: customer.name,
+      mobile: customer.mobile,
+      email: customer.email,
+      city: customer.city,
       address: String(details.address ?? "").trim(),
-      notes: customer.message?.trim() ?? "",
+      notes: customer.message,
     };
     const serviceSnapshot = {
       title: resolvedServices.map((service) => service.title).join(", "),
@@ -337,8 +366,8 @@ export async function POST(request: Request) {
           razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? existingApplications[0]?.razorpay_payment_id ?? null,
           submitted_at: new Date().toISOString(),
           customer_id: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
-          customer_email: customer.email!.trim().toLowerCase(),
-          customer_mobile: customer.mobile!.replace(/\D/g, ""),
+          customer_email: customer.email.toLowerCase(),
+          customer_mobile: customer.mobile.replace(/\D/g, ""),
           updated_at: new Date().toISOString(),
         })
         .in("id", existingIds);
@@ -389,9 +418,9 @@ export async function POST(request: Request) {
         applicationId: existingApplications[0].id,
         userId: user.id,
         customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
-        customerName: customer.name!.trim(),
-        customerEmail: customer.email?.trim() ?? "",
-        customerMobile: customer.mobile!.trim(),
+        customerName: customer.name,
+        customerEmail: customer.email,
+        customerMobile: customer.mobile,
         serviceName,
         amount: orderAmount,
         paymentStatus: "verified",
@@ -420,14 +449,14 @@ export async function POST(request: Request) {
           {
             type: "new_application" as const,
             title: "Paid application submitted",
-            message: `${customer.name!.trim()} submitted ${application.service_name} after verified Razorpay payment.`,
+            message: `${customer.name} submitted ${application.service_name} after verified Razorpay payment.`,
             relatedType: "application" as const,
             relatedId: application.id,
           },
           {
             type: "document_uploaded" as const,
             title: "Documents uploaded",
-            message: `${customer.name!.trim()} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
+            message: `${customer.name} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
             relatedType: "document" as const,
             relatedId: application.id,
           },
@@ -455,8 +484,8 @@ export async function POST(request: Request) {
       return {
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
-        customer_email: customer.email!.trim().toLowerCase(),
-        customer_mobile: customer.mobile!.replace(/\D/g, ""),
+        customer_email: customer.email.toLowerCase(),
+        customer_mobile: customer.mobile.replace(/\D/g, ""),
         service_slug: service.slug,
         service_name: service.title,
         amount: rowAmount,
@@ -592,9 +621,9 @@ export async function POST(request: Request) {
     const invoice = await createInvoiceForApplication({
       applicationId: applications[0].id,
       userId: user.id,
-      customerName: customer.name!.trim(),
-      customerEmail: customer.email?.trim() ?? "",
-      customerMobile: customer.mobile!.trim(),
+      customerName: customer.name,
+      customerEmail: customer.email,
+      customerMobile: customer.mobile,
       serviceName,
       amount: totalAmount,
       paymentStatus: hasVerifiedRazorpayPayment ? "verified" : "pending",
@@ -630,14 +659,14 @@ export async function POST(request: Request) {
           {
             type: "new_application" as const,
             title: "New application received",
-            message: `${customer.name!.trim()} submitted ${application.service_name}.`,
+            message: `${customer.name} submitted ${application.service_name}.`,
             relatedType: "application" as const,
             relatedId: application.id,
           },
           {
             type: "document_uploaded" as const,
             title: "Documents uploaded",
-            message: `${customer.name!.trim()} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
+            message: `${customer.name} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
             relatedType: "document" as const,
             relatedId: application.id,
           },
@@ -647,7 +676,7 @@ export async function POST(request: Request) {
           baseNotifications.push({
             type: "payment_pending",
             title: "Payment pending",
-            message: `${customer.name!.trim()} has a pending payment for ${application.service_name}.`,
+            message: `${customer.name} has a pending payment for ${application.service_name}.`,
             relatedType: "payment",
             relatedId: application.id,
           });

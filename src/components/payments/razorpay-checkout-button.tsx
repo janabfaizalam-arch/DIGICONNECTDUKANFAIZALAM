@@ -66,6 +66,16 @@ type CreateOrderResponse = {
   error?: string;
 };
 
+type CreateOrderRequestBody = {
+  amount: number;
+  currency: "INR";
+  receipt: string;
+  serviceSlug?: string;
+  serviceSlugs?: string[];
+  walletUseAmount?: number;
+  applicationDraft?: RazorpayCheckoutButtonProps["applicationDraft"];
+};
+
 type VerifyPaymentResponse = {
   success?: boolean;
   message?: string;
@@ -160,20 +170,26 @@ export function RazorpayCheckoutButton({
     setPaymentStep("creating");
 
     try {
+      const body: CreateOrderRequestBody = {
+        amount: amountPaise,
+        currency: "INR",
+        receipt,
+        serviceSlug,
+        serviceSlugs,
+        walletUseAmount,
+        applicationDraft,
+      };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("CREATE_ORDER_BODY", body);
+      }
+
       const orderResponse = await fetch("/api/create-order", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          amount: amountPaise,
-          currency: "INR",
-          receipt,
-          serviceSlug,
-          serviceSlugs,
-          walletUseAmount,
-          applicationDraft,
-        }),
+        body: JSON.stringify(body),
       });
       const order = await readApiResponse<CreateOrderResponse>(orderResponse);
 
