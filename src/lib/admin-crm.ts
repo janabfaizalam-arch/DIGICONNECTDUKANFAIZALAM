@@ -1,4 +1,5 @@
 import { safeCurrency, safeDate, safeDateTime } from "@/lib/admin-format";
+import { getApplicationCustomerIdentity } from "@/lib/admin/customer-resolver";
 import { asRecord, getCustomerMobile, getCustomerName, hydrateApplications, resolveDocumentUrls } from "@/lib/crm";
 import type { AdminApplicationRow, Application, ApplicationDocument, Customer, Invoice, Payment, PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -168,14 +169,13 @@ function dedupePayments(payments: PaymentRow[]) {
 }
 
 function customerFromApplication(application: Application) {
-  const formData = asRecord(application.form_data);
-  const customerDetails = asRecord(application.customer_details);
+  const identity = getApplicationCustomerIdentity(application);
 
   return {
-    name: String(customerDetails.name ?? getCustomerName(application)),
-    mobile: String(customerDetails.mobile ?? getCustomerMobile(application)),
-    email: String(customerDetails.email ?? formData.email ?? application.customers?.email ?? ""),
-    address: String(customerDetails.address ?? formData.address ?? application.customers?.address ?? ""),
+    name: identity.name || getCustomerName(application) || "Not available",
+    mobile: identity.mobile || getCustomerMobile(application) || "",
+    email: identity.email || "",
+    address: identity.address || "",
   };
 }
 
@@ -696,7 +696,7 @@ export async function getAdminApplicationDetail(id: string) {
     );
   }
 
-  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, possibleDocumentResults] = await Promise.all([
+  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, customerResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
@@ -705,6 +705,7 @@ export async function getAdminApplicationDetail(id: string) {
     supabase.from("application_documents").select(documentSelect).eq("application_id", id).order("uploaded_at", { ascending: false, nullsFirst: false }),
     application.user_id ? supabase.from("profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.user_id ? supabase.from("customer_profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    application.customer_id ? supabase.from("customers").select("id, user_id, full_name, email, mobile, address, city, state, pincode").eq("id", application.customer_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     Promise.all(possibleDocumentQueries),
   ]);
   const directDocuments = await resolveDocumentUrls((directDocumentsResult.data ?? []) as ApplicationDocument[]);
@@ -725,9 +726,12 @@ export async function getAdminApplicationDetail(id: string) {
     invoice: application.invoices?.[0] ?? null,
     customer: {
       name: firstText(profileResult.data?.full_name, customerProfileResult.data?.full_name, fallbackCustomer.name),
-      mobile: firstText(profileResult.data?.mobile, customerProfileResult.data?.mobile, fallbackCustomer.mobile, application.customer_mobile),
-      email: firstText(profileResult.data?.email, customerProfileResult.data?.email, fallbackCustomer.email, application.customer_email),
-      address: firstText(profileResult.data?.address, customerProfileResult.data?.address, fallbackCustomer.address),
+      mobile: firstText(profileResult.data?.mobile, customerProfileResult.data?.mobile, customerResult.data?.mobile, fallbackCustomer.mobile, application.customer_mobile),
+      email: firstText(profileResult.data?.email, customerProfileResult.data?.email, customerResult.data?.email, fallbackCustomer.email, application.customer_email),
+      address: firstText(profileResult.data?.address, customerProfileResult.data?.address, customerResult.data?.address, fallbackCustomer.address),
+      city: firstText(profileResult.data?.city, customerProfileResult.data?.city, customerResult.data?.city),
+      state: firstText(profileResult.data?.state, customerProfileResult.data?.state, customerResult.data?.state),
+      pincode: firstText(profileResult.data?.pincode, customerProfileResult.data?.pincode, customerResult.data?.pincode),
     },
     documents,
     possibleDocuments,

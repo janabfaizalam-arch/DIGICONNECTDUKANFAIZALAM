@@ -4,7 +4,7 @@ import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/ad
 import { AdminWalletAdjustmentForm, AdminWalletStatusForm } from "@/components/admin/admin-wallet-adjustment-form";
 import { Card } from "@/components/ui/card";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isAdminRole, isSuperAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { RewardTransaction } from "@/lib/wallet";
 import { getRewardDirection } from "@/lib/wallet";
@@ -24,7 +24,7 @@ export default async function AdminWalletPage() {
 
   const supabase = getSupabaseAdmin();
   let transactions: RewardTransaction[] = [];
-  let customers: { id: string; full_name: string | null; email: string | null }[] = [];
+  let customers: { id: string; full_name: string | null; email: string | null; mobile?: string | null }[] = [];
   let totalIssued = 0;
   let totalRedeemed = 0;
   let repeatCustomerPercent = 0;
@@ -35,7 +35,7 @@ export default async function AdminWalletPage() {
     try {
       const [transactionResult, customerResult, applicationResult] = await Promise.all([
         supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(100),
-        supabase.from("profiles").select("id, full_name, email").eq("role", "customer").order("full_name", { ascending: true }),
+        supabase.from("profiles").select("id, full_name, email, mobile").eq("role", "customer").order("full_name", { ascending: true }),
         supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(2000),
       ]);
 
@@ -80,8 +80,8 @@ export default async function AdminWalletPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader
         eyebrow="DigiWallet"
-        title="Cashback Analytics"
-        description="Monitor wallet issuance, redemptions, customer repeat behavior, and manual adjustments."
+        title="Wallet & Rewards"
+        description="Canonical reward wallet ledger. Balance is traceable through wallet_transactions; manual adjustment is restricted to super admins."
       />
 
       {dataUnavailable ? (
@@ -97,18 +97,26 @@ export default async function AdminWalletPage() {
 
       {!dataUnavailable ? <section className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <Card className="rounded-2xl p-5">
-          <h2 className="text-lg font-bold text-slate-950">Manual Wallet Adjustment</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Add bonuses or remove balance with a refund adjustment. Negative balances are blocked server-side.</p>
-          <div className="mt-4">
-            <AdminWalletAdjustmentForm customers={customers} />
-          </div>
-          <div className="mt-6 border-t border-slate-100 pt-5">
-            <h3 className="font-bold text-slate-950">Fraud Controls</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600">Freeze wallet usage or mark an account suspicious.</p>
-            <div className="mt-4">
-              <AdminWalletStatusForm customers={customers} />
-            </div>
-          </div>
+          <h2 className="text-lg font-bold text-slate-950">Manual Wallet Controls</h2>
+          {isSuperAdminRole(role) ? (
+            <>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Add bonuses or remove balance with a mandatory ledger reason. Negative balances are blocked server-side.</p>
+              <div className="mt-4">
+                <AdminWalletAdjustmentForm customers={customers} />
+              </div>
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <h3 className="font-bold text-slate-950">Fraud Controls</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-600">Freeze wallet usage or mark an account suspicious.</p>
+                <div className="mt-4">
+                  <AdminWalletStatusForm customers={customers} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="mt-2 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+              Wallet adjustments are visible to admins but can only be changed by a super admin.
+            </p>
+          )}
         </Card>
 
         <Card className="rounded-2xl p-5">

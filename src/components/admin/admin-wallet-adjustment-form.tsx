@@ -12,6 +12,7 @@ type CustomerOption = {
   id: string;
   full_name: string | null;
   email: string | null;
+  mobile?: string | null;
 };
 
 export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOption[] }) {
@@ -61,7 +62,7 @@ export function AdminWalletAdjustmentForm({ customers }: { customers: CustomerOp
         <SelectContent>
           {customers.map((customer) => (
             <SelectItem key={customer.id} value={customer.id}>
-              {customer.full_name || customer.email || customer.id}
+              {[customer.full_name, customer.mobile, customer.email].filter(Boolean).join(" / ") || customer.id}
             </SelectItem>
           ))}
         </SelectContent>
@@ -131,7 +132,7 @@ export function AdminWalletStatusForm({ customers }: { customers: CustomerOption
         <SelectContent>
           {customers.map((customer) => (
             <SelectItem key={customer.id} value={customer.id}>
-              {customer.full_name || customer.email || customer.id}
+              {[customer.full_name, customer.mobile, customer.email].filter(Boolean).join(" / ") || customer.id}
             </SelectItem>
           ))}
         </SelectContent>

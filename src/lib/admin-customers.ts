@@ -1,4 +1,5 @@
 import { safeDateValue } from "@/lib/admin-format";
+import { resolveAdminCustomerIdentity } from "@/lib/admin/customer-resolver";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const PAGE_SIZE = 500;
@@ -86,6 +87,11 @@ type ApplicationLinkRow = {
   user_id: string | null;
   status: string | null;
   created_at: string;
+  customer_email?: string | null;
+  customer_mobile?: string | null;
+  customer_details?: Record<string, unknown> | null;
+  form_data?: Record<string, unknown> | null;
+  service_name?: string | null;
 };
 
 export type AdminCustomerFilter = "all" | "with-applications" | "with-wallet" | "with-referrals" | "referred-users" | "no-mobile" | "new-today" | "signed-up";
@@ -219,20 +225,6 @@ async function safeRangeQuery<T>(
   return rows;
 }
 
-async function safeRpc<T>(label: string, run: () => PromiseLike<{ data: unknown; error: { message?: string } | null }>) {
-  try {
-    const result = await run();
-    if (result.error) {
-      console.error(`[admin-customers] ${label} rpc failed`, result.error.message ?? result.error);
-      return null;
-    }
-    return result.data as T;
-  } catch (error) {
-    console.error(`[admin-customers] ${label} rpc threw`, error);
-    return null;
-  }
-}
-
 async function safeAuthUsers(supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>) {
   const users: AuthUserRow[] = [];
 
@@ -280,7 +272,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       supabase.from("customer_profiles").select("*").order("created_at", { ascending: false }).range(from, to),
     ),
     safeRangeQuery<ApplicationLinkRow>("applications", (from, to) =>
-      supabase.from("applications").select("id, customer_id, user_id, status, created_at").order("created_at", { ascending: false }).range(from, to),
+      supabase.from("applications").select("id, customer_id, user_id, status, created_at, customer_email, customer_mobile, customer_details, form_data, service_name").order("created_at", { ascending: false }).range(from, to),
     ),
     safeRangeQuery<WalletRow>("reward_wallets", (from, to) => supabase.from("reward_wallets").select("user_id, balance, lifetime_earned").range(from, to)),
     safeRangeQuery<ReferralRow>("referral_events", (from, to) => supabase.from("referral_events").select("*").range(from, to)),
@@ -294,11 +286,6 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
   const wallets = results[4].status === "fulfilled" ? results[4].value : [];
   const referrals = results[5].status === "fulfilled" ? results[5].value : [];
   const authUsers = results[6].status === "fulfilled" ? results[6].value : [];
-  const walletRpcRows = await Promise.all(
-    profiles.map((profile) =>
-      safeRpc<WalletRow>("create_reward_wallet_if_missing", () => supabase.rpc("create_reward_wallet_if_missing", { p_user_id: profile.id })),
-    ),
-  );
 
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
   const customersByUserId = new Map<string, CustomerRow[]>();
@@ -309,9 +296,6 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     if (profile.user_id) customerProfilesByUserId.set(profile.user_id, profile);
   }
   const walletsByUserId = new Map(wallets.filter((wallet) => wallet.user_id).map((wallet) => [String(wallet.user_id), wallet]));
-  for (const wallet of walletRpcRows) {
-    if (wallet?.user_id) walletsByUserId.set(String(wallet.user_id), wallet);
-  }
   const authUsersById = new Map(authUsers.map((authUser) => [authUser.id, authUser]));
   const referredUsersByReferrer = referrals.reduce<Record<string, Set<string>>>((grouped, referral) => {
     if (referral.referrer_user_id && referral.referred_user_id) {
@@ -495,21 +479,56 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     };
   }
 
-  const rows = await Promise.all(profiles.map(async (profile) => {
-    const { possibleIds, linkedCustomerIds } = getPossibleIds(profile.id);
-    const customer = (customersByUserId.get(profile.id) ?? [])[0] ?? Array.from(linkedCustomerIds).map((id) => customersById.get(id)).find(Boolean) ?? null;
-    const customerProfile = customerProfilesByUserId.get(profile.id) ?? null;
-    const authUser = authUsersById.get(profile.id);
+  const identityKeys = new Set<string>();
+  for (const profile of profiles) identityKeys.add(`user:${profile.id}`);
+  for (const customer of customers) identityKeys.add(customer.user_id ? `user:${customer.user_id}` : `customer:${customer.id}`);
+  for (const customerProfile of customerProfiles) identityKeys.add(`user:${customerProfile.user_id ?? customerProfile.id}`);
+  for (const application of applications) {
+    if (application.user_id) identityKeys.add(`user:${application.user_id}`);
+    else if (application.customer_id) identityKeys.add(`customer:${application.customer_id}`);
+    else identityKeys.add(`application:${application.id}`);
+  }
+
+  const rows = await Promise.all(Array.from(identityKeys).map(async (identityKey) => {
+    const [identityType, identityId] = identityKey.split(":");
+    const profile = identityType === "user" ? profilesById.get(identityId) ?? null : null;
+    const customerCandidates =
+      identityType === "user"
+        ? customersByUserId.get(identityId) ?? []
+        : identityType === "customer"
+          ? [customersById.get(identityId)].filter(Boolean) as CustomerRow[]
+          : [];
+    const customer = customerCandidates[0] ?? null;
+    const profileId = profile?.id ?? customer?.user_id ?? (identityType === "user" ? identityId : "");
+    const { possibleIds, linkedCustomerIds } = profileId ? getPossibleIds(profileId) : { possibleIds: new Set<string>([identityId]), linkedCustomerIds: new Set<string>(customer?.id ? [customer.id] : []) };
+    if (customer?.id) linkedCustomerIds.add(customer.id);
+    const customerProfile = profileId ? customerProfilesByUserId.get(profileId) ?? null : null;
+    const authUser = profileId ? authUsersById.get(profileId) : undefined;
+    const latestApplication = applications
+      .filter((application) =>
+        (profileId && application.user_id === profileId) ||
+        (customer?.id && application.customer_id === customer.id) ||
+        (identityType === "application" && application.id === identityId),
+      )
+      .sort((a, b) => timestamp(b.created_at) - timestamp(a.created_at))[0] ?? null;
     const wallet = pickFirstByPossibleId(walletsByUserId, possibleIds);
     const summary = applicationSummary(possibleIds, linkedCustomerIds);
     const referralCount = sumUniqueReferrals(referredUsersByReferrer, possibleIds);
-    const mobile = normalizeMobile(firstText(authUser?.phone, profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone));
-    const referralCode = referralCodeFor(profile, customer, customerProfile);
-    const referralsSummary = referralRelationship(possibleIds, profile, customer, customerProfile);
+    const identity = resolveAdminCustomerIdentity({
+      userId: profileId || null,
+      customerId: customer?.id ?? (identityType === "customer" ? identityId : null),
+      profile,
+      customer,
+      customerProfile,
+      authUser,
+      latestApplication: latestApplication as never,
+    });
+    const referralCode = profile ? referralCodeFor(profile, customer, customerProfile) : firstText(customer?.referral_code, customer?.code);
+    const referralsSummary = profile ? referralRelationship(possibleIds, profile, customer, customerProfile) : { referredBy: null, referredUsersCount: 0, referredUsersPreview: [] };
 
     if (process.env.NODE_ENV === "development") {
       console.info("[admin-customers] user fact mapping", {
-        profileId: profile.id,
+        profileId: profileId || null,
         possibleIds: Array.from(possibleIds),
         matchedWalletUserId: wallet?.user_id ?? null,
         matchedCustomerId: customer?.id ?? null,
@@ -519,15 +538,15 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     }
 
     return {
-      id: profile.id,
-      customerId: customer?.id ?? null,
-      userId: profile.id,
-      full_name: firstText(profile.full_name, profile.name, customerProfile?.full_name, customer?.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, profile.email),
-      mobile,
-      email: profile.email ?? customerProfile?.email ?? customer?.email ?? authUser?.email ?? null,
+      id: identity.userId ?? identity.customerId ?? identityKey,
+      customerId: identity.customerId,
+      userId: identity.userId ?? identity.customerId ?? identityKey,
+      full_name: identity.name || "Not provided",
+      mobile: identity.mobile,
+      email: identity.email || null,
       role: "customer",
-      source: "profile",
-      created_at: profile.created_at ?? new Date(0).toISOString(),
+      source: identity.sources.join(", ") || "application",
+      created_at: identity.createdAt ?? latestApplication?.created_at ?? new Date(0).toISOString(),
       applicationsCount: summary.count,
       lastStatus: summary.lastStatus,
       walletBalance: Number(wallet?.balance ?? 0),
@@ -540,7 +559,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
       walletSource: wallet ? "new" : "none",
       canOpenDetails: Boolean(customer?.id),
       debug: {
-        profileId: profile.id,
+        profileId: profileId || identityKey,
         possibleIds: Array.from(possibleIds),
         matchedWalletUserId: wallet?.user_id ?? null,
         matchedCustomerId: customer?.id ?? null,

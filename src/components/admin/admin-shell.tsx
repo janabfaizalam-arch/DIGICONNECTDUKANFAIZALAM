@@ -4,16 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BadgePercent,
-  BellRing,
+  BarChart3,
   BriefcaseBusiness,
   CalendarDays,
   ClipboardList,
   ChevronDown,
+  CreditCard,
   FileClock,
   FileText,
+  FolderCheck,
   GalleryHorizontalEnd,
   Gift,
-  Images,
   Inbox,
   IndianRupee,
   LayoutDashboard,
@@ -31,6 +32,7 @@ import {
   WalletCards,
   X,
   LoaderCircle,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -59,55 +61,45 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
     ],
   },
   {
-    title: "Work Management",
+    title: "Operations",
     items: [
       { href: "/admin/applications", label: "Applications", description: "Service workflow", icon: FileText },
-      {
-        href: "/admin/insurance-quotations",
-        label: "Insurance Quotations",
-        description: "Quotes and follow-ups",
-        icon: ShieldCheck,
-      },
+      { href: "/admin/documents", label: "Documents", description: "Uploads and final files", icon: FolderCheck },
     ],
   },
   {
-    title: "Offline Invoices",
-    items: [
-      { href: "/admin/offline-invoices/new", label: "Create Invoice", description: "Walk-in billing", icon: ReceiptText },
-      { href: "/admin/offline-invoices", label: "Invoice History", description: "Search and print", icon: FileClock },
-    ],
-  },
-  {
-    title: "Users",
+    title: "People",
     items: [
       { href: "/admin/customers", label: "Customers", description: "Customer records", icon: UsersRound },
       { href: "/admin/agents", label: "Agents", description: "Agent IDs and commissions", icon: UserCheck },
-      { href: "/admin/staff", label: "Staff", description: "Office users", icon: UserCog },
+      { href: "/admin/staff", label: "Staff / Team", description: "Office users", icon: UserCog },
     ],
   },
   {
-    title: "Marketing",
+    title: "Finance",
     items: [
-      { href: "/admin/homepage-notices", label: "Homepage Notices", description: "Offer strip", icon: BellRing },
-      { href: "/admin/homepage-slides", label: "Homepage Slides", description: "Hero slider", icon: Images },
+      { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: CreditCard },
+      { href: "/admin/offline-invoices", label: "Invoices", description: "Search and print", icon: ReceiptText },
+      { href: "/admin/wallet", label: "Wallet & Rewards", description: "Ledger and rewards", icon: WalletCards },
+      { href: "/admin/commissions", label: "Commissions", description: "Agent payouts", icon: BadgePercent },
+    ],
+  },
+  {
+    title: "Content",
+    items: [
       { href: "/admin/gallery", label: "Gallery", description: "Photos and proof", icon: GalleryHorizontalEnd },
       { href: "/admin/articles", label: "Articles", description: "Blog content", icon: Newspaper },
     ],
   },
   {
-    title: "Finance & Growth",
+    title: "Control",
     items: [
-      { href: "/admin/wallet", label: "DigiWallet", description: "Wallet balances", icon: WalletCards },
-      { href: "/admin/payment-reconciliation", label: "Payment Reconciliation", description: "Sync Razorpay", icon: RefreshCcw },
-      { href: "/admin/rewards-referrals", label: "Rewards & Referrals", description: "Wallet ledger and referral risk", icon: Gift },
-      { href: "/admin/referrals", label: "Referrals", description: "Referral tracking", icon: Gift },
-      { href: "/admin/rewards", label: "Rewards", description: "Reward rules", icon: BadgePercent },
-      { href: "/admin/cashback", label: "Cashback", description: "Cashback offers", icon: WalletCards },
+      { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
+      { href: "/admin/settings", label: "Settings", description: "Catalog and setup", icon: Settings },
+      { href: "/admin/services", label: "Services", description: "Catalog and pricing", icon: BriefcaseBusiness },
+      { href: "/admin/insurance-quotations", label: "Insurance Quotations", description: "Quotes and follow-ups", icon: ShieldCheck },
+      { href: "/admin/payment-reconciliation", label: "Reconciliation", description: "Sync Razorpay", icon: RefreshCcw },
     ],
-  },
-  {
-    title: "Settings",
-    items: [{ href: "/admin/services", label: "Services", description: "Catalog and pricing", icon: BriefcaseBusiness }],
   },
 ];
 

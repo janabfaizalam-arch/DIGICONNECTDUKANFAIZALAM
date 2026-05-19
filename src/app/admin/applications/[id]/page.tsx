@@ -89,6 +89,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               <DetailRow label="Mobile" value={customerMobile || text(formData.mobile)} mono />
               <DetailRow label="Email" value={customer.email || text(formData.email)} />
               <DetailRow label="Address" value={customer.address || text(formData.address)} />
+              <DetailRow label="City" value={customer.city || text(formData.city)} />
+              <DetailRow label="State / PIN" value={[customer.state || text(formData.state), customer.pincode || text(formData.pincode)].filter(Boolean).join(" / ")} />
             </div>
           </Card>
 
