@@ -12,7 +12,7 @@ const publicRoutes = [
   "/apply/gst-registration",
   "/login/customer",
   "/login/agent",
-  "/login/staff",
+  "/admin-login",
   "/unauthorized",
 ];
 
@@ -21,7 +21,6 @@ const protectedRoutes = [
   "/admin/applications",
   "/agent/dashboard",
   "/customer/dashboard",
-  "/staff/dashboard",
 ];
 
 let server;

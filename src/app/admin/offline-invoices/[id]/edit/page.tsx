@@ -17,12 +17,12 @@ export default async function EditOfflineInvoicePage({ params }: { params: Promi
   const invoice = await getOfflineInvoice(id);
   if (!invoice) notFound();
 
-  const staffName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Admin Staff");
+  const adminName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Admin");
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <AdminPageHeader eyebrow="Edit Invoice" title={invoice.invoice_number} description="Update walk-in customer invoice details." />
-      <OfflineInvoiceForm invoice={invoice} staffName={staffName} />
+      <OfflineInvoiceForm invoice={invoice} adminName={adminName} />
     </div>
   );
 }

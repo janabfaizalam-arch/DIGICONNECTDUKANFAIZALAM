@@ -25,7 +25,7 @@ export type DashboardApplicationRow = {
   service: string;
   status: string;
   paymentStatus: string;
-  assignedStaff: string;
+  assignedAgent: string;
   date: string;
   href: string;
 };
@@ -131,7 +131,7 @@ function ApplicationsTable({ rows }: { rows: DashboardApplicationRow[] }) {
                 <TableHead className="hidden md:table-cell">Mobile</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead className="hidden lg:table-cell">Payment</TableHead>
-                <TableHead className="hidden xl:table-cell">Staff</TableHead>
+                <TableHead className="hidden xl:table-cell">Agent</TableHead>
                 <TableHead className="hidden sm:table-cell">Date</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -149,7 +149,7 @@ function ApplicationsTable({ rows }: { rows: DashboardApplicationRow[] }) {
                     <div className="mt-1 hidden sm:block"><AdminStatusBadge status={row.status} /></div>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell"><AdminStatusBadge status={row.paymentStatus || "pending"} /></TableCell>
-                  <TableCell className="hidden text-sm text-slate-600 xl:table-cell">{row.assignedStaff || "-"}</TableCell>
+                  <TableCell className="hidden text-sm text-slate-600 xl:table-cell">{row.assignedAgent || "-"}</TableCell>
                   <TableCell className="hidden text-xs text-slate-500 sm:table-cell">{row.date}</TableCell>
                   <TableCell className="text-right">
                     <Link href={row.href} className="inline-flex h-9 items-center justify-center rounded-full border border-slate-200 px-3 text-xs font-bold text-blue-700 transition hover:bg-blue-50">

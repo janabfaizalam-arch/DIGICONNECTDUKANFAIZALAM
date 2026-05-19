@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, getCurrentUserRole, isAdminRole, isSuperAdminRole } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { postWalletTransaction } from "@/lib/rewards-wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -10,10 +10,6 @@ export async function POST(request: Request) {
 
   if (!user || !isAdminRole(role)) {
     return NextResponse.json({ message: "Admin access required." }, { status: 403 });
-  }
-
-  if (!isSuperAdminRole(role)) {
-    return NextResponse.json({ message: "Super admin access required for wallet adjustments." }, { status: 403 });
   }
 
   const supabase = getSupabaseAdmin();

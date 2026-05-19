@@ -9,7 +9,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-async function getStaffName(userId: string | null, fallback: string) {
+async function getAdminName(userId: string | null, fallback: string) {
   if (!userId) return fallback;
   const supabase = getSupabaseAdmin();
   if (!supabase) return fallback;
@@ -37,8 +37,8 @@ export default async function OfflineInvoiceDetailPage({ params }: { params: Pro
   const invoice = await getOfflineInvoice(id);
   if (!invoice) notFound();
 
-  const fallbackStaffName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Admin Staff");
-  const staffName = await getStaffName(invoice.created_by, fallbackStaffName);
+  const fallbackAdminName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Admin");
+  const adminName = await getAdminName(invoice.created_by, fallbackAdminName);
   const subtotal = Number(invoice.quantity) * Number(invoice.unit_price);
   const taxable = Math.max(subtotal - Number(invoice.discount), 0);
   const taxAmount = (taxable * Number(invoice.tax_percent)) / 100;
@@ -76,8 +76,8 @@ export default async function OfflineInvoiceDetailPage({ params }: { params: Pro
           <div className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-blue-700">Office Details</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Detail label="Staff Name" value={staffName} />
-              <Detail label="Invoice Created By" value={staffName} />
+              <Detail label="Admin Name" value={adminName} />
+              <Detail label="Invoice Created By" value={adminName} />
               <Detail label="Payment Status" value={invoice.payment_status} />
               <Detail label="Payment Method" value={invoice.payment_method} />
             </div>

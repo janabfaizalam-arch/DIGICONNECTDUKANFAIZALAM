@@ -90,7 +90,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function OfflineInvoiceForm({ invoice, staffName }: { invoice?: OfflineInvoice | null; staffName: string }) {
+export function OfflineInvoiceForm({ invoice, adminName }: { invoice?: OfflineInvoice | null; adminName: string }) {
   const [form, setForm] = useState<FormState>(() => stateFromInvoice(invoice));
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -218,8 +218,8 @@ export function OfflineInvoiceForm({ invoice, staffName }: { invoice?: OfflineIn
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-slate-950">Office Details</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Field label="Staff Name"><Input value={staffName} disabled /></Field>
-          <Field label="Invoice Created By"><Input value={staffName} disabled /></Field>
+          <Field label="Admin Name"><Input value={adminName} disabled /></Field>
+          <Field label="Invoice Created By"><Input value={adminName} disabled /></Field>
         </div>
       </section>
 

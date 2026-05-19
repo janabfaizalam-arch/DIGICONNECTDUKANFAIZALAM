@@ -19,10 +19,8 @@ function getSafeRedirect(value: string | undefined) {
   if (
     value.startsWith("/admin") ||
     value.startsWith("/agent") ||
-    value.startsWith("/staff") ||
     value.startsWith("/login") ||
-    value.startsWith("/admin-login") ||
-    value.startsWith("/super-admin-login")
+    value.startsWith("/admin-login")
   ) {
     return "/customer/dashboard";
   }

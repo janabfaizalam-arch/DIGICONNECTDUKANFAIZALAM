@@ -41,16 +41,16 @@ export function AdminUpdateForm({
   currentPaymentStatus,
   customerMobile,
   serviceName,
-  staffOptions = [],
-  assignedStaffId = "",
+  agentOptions = [],
+  assignedAgentId = "",
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus;
   currentPaymentStatus: PaymentStatus;
   customerMobile: string;
   serviceName: string;
-  staffOptions?: PortalUser[];
-  assignedStaffId?: string | null;
+  agentOptions?: PortalUser[];
+  assignedAgentId?: string | null;
 }) {
   const [status, setStatus] = useState<ApplicationStatus>(currentStatus);
   const [isPending, startTransition] = useTransition();
@@ -108,15 +108,15 @@ export function AdminUpdateForm({
         Payment is managed by Razorpay: {currentPaymentStatus.replace(/_/g, " ")}
       </p>
 
-      <Select name="assignedStaffId" defaultValue={assignedStaffId || "none"}>
-        <SelectTrigger aria-label="Assigned staff">
-          <SelectValue placeholder="Assign staff" />
+      <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>
+        <SelectTrigger aria-label="Assigned agent">
+          <SelectValue placeholder="Assign agent" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="none">Unassigned</SelectItem>
-          {staffOptions.map((staff) => (
-            <SelectItem key={staff.id} value={staff.id}>
-              {staff.full_name || staff.email}
+          {agentOptions.map((agent) => (
+            <SelectItem key={agent.id} value={agent.id}>
+              {agent.full_name || agent.email || agent.agent_code || agent.id}
             </SelectItem>
           ))}
         </SelectContent>

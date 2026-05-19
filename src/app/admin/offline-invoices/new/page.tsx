@@ -10,12 +10,12 @@ export default async function NewOfflineInvoicePage() {
   if (!user) redirect("/login");
   if (!isAdminRole(role)) redirect("/dashboard");
 
-  const staffName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Admin Staff");
+  const adminName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? user.email ?? "Admin");
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <AdminPageHeader eyebrow="Create Invoice" title="Walk-In Customer Invoice" description="Generate an office invoice for an offline customer." />
-      <OfflineInvoiceForm staffName={staffName} />
+      <OfflineInvoiceForm adminName={adminName} />
     </div>
   );
 }

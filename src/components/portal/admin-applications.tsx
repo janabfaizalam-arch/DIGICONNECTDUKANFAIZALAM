@@ -34,7 +34,7 @@ type FiltersState = {
   query: string;
   status: string;
   paymentStatus: string;
-  staffId: string;
+  agentId: string;
   dateRange: string;
 };
 
@@ -63,7 +63,7 @@ function pageHref(page: number, filters: FiltersState) {
   if (filters.query.trim()) params.set("q", filters.query.trim());
   if (filters.status !== "all") params.set("status", filters.status);
   if (filters.paymentStatus !== "all") params.set("payment", filters.paymentStatus);
-  if (filters.staffId !== "all") params.set("staff", filters.staffId);
+  if (filters.agentId !== "all") params.set("agent", filters.agentId === "none" ? "unassigned" : `agent:${filters.agentId}`);
   if (filters.dateRange !== "all") params.set("range", filters.dateRange);
   if (page > 1) params.set("page", String(page));
   const suffix = params.toString();
@@ -100,21 +100,20 @@ function RowActions({ row }: { row: AdminApplicationRow }) {
 
 export function AdminApplications({
   rows,
-  staff = [],
+  agents = [],
   total,
   page,
   pageSize,
   initialSearch = "",
   initialStatus = "all",
   initialPaymentStatus = "all",
-  initialStaffId = "all",
+  initialAgentId = "all",
   initialDateRange = "all",
   stats,
   filterOptions,
 }: {
   rows: AdminApplicationRow[];
   agents?: PortalUser[];
-  staff?: PortalUser[];
   total: number;
   page: number;
   pageSize: number;
@@ -122,7 +121,7 @@ export function AdminApplications({
   initialStatus?: string;
   initialPaymentStatus?: string;
   initialService?: string;
-  initialStaffId?: string;
+  initialAgentId?: string;
   initialAgent?: string;
   initialDateRange?: string;
   initialUnassignedOnly?: boolean;
@@ -137,10 +136,10 @@ export function AdminApplications({
     query: initialSearch,
     status: initialStatus || "all",
     paymentStatus: initialPaymentStatus || "all",
-    staffId: initialStaffId || "all",
+    agentId: initialAgentId || "all",
     dateRange: initialDateRange || "all",
   });
-  const staffOptions = useMemo(() => staff.map((item) => ({ id: item.id, label: item.full_name || item.email })), [staff]);
+  const agentOptions = useMemo(() => agents.map((item) => ({ id: item.id, label: item.full_name || item.email || item.agent_code || item.id })), [agents]);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   function go(nextFilters: FiltersState, nextPage = 1) {
@@ -204,12 +203,12 @@ export function AdminApplications({
               {filterOptions.paymentStatuses.map((item) => <SelectItem key={item} value={item}>{item.replace(/_/g, " ")}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={filters.staffId} onValueChange={(value) => go({ ...filters, staffId: value })} disabled={isPending}>
-            <SelectTrigger aria-label="Staff filter" className="h-10"><SelectValue placeholder="Staff" /></SelectTrigger>
+          <Select value={filters.agentId} onValueChange={(value) => go({ ...filters, agentId: value })} disabled={isPending}>
+            <SelectTrigger aria-label="Agent filter" className="h-10"><SelectValue placeholder="Agent" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All staff</SelectItem>
+              <SelectItem value="all">All agents</SelectItem>
               <SelectItem value="none">Unassigned</SelectItem>
-              {staffOptions.map((staffMember) => <SelectItem key={staffMember.id} value={staffMember.id}>{staffMember.label}</SelectItem>)}
+              {agentOptions.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.dateRange} onValueChange={(value) => go({ ...filters, dateRange: value })} disabled={isPending}>
@@ -223,7 +222,7 @@ export function AdminApplications({
 
         {!rows.length ? (
           <div className="mt-4">
-            <AdminEmptyState title="No applications found" description="Try a different search, status, payment, staff, or date filter." />
+            <AdminEmptyState title="No applications found" description="Try a different search, status, payment, agent, or date filter." />
           </div>
         ) : null}
 
@@ -237,7 +236,7 @@ export function AdminApplications({
                 <th className="px-3 py-2.5">Status</th>
                 <th className="px-3 py-2.5">Payment</th>
                 <th className="px-3 py-2.5 text-right">Amount</th>
-                <th className="px-3 py-2.5">Staff</th>
+                <th className="px-3 py-2.5">Agent</th>
                 <th className="px-3 py-2.5">Created</th>
                 <th className="px-3 py-2.5">Actions</th>
               </tr>
@@ -254,7 +253,7 @@ export function AdminApplications({
                   <td className="px-3 py-2.5"><AdminStatusBadge status={row.application_status} /></td>
                   <td className="px-3 py-2.5"><AdminStatusBadge status={row.payment_status} /></td>
                   <td className="px-3 py-2.5 text-right font-bold text-slate-900">{safeCurrency(row.total_amount)}</td>
-                  <td className="px-3 py-2.5 text-slate-700">{row.assigned_staff_name || <span className="text-orange-600">Unassigned</span>}</td>
+                  <td className="px-3 py-2.5 text-slate-700">{row.agent_name || <span className="text-orange-600">Unassigned</span>}</td>
                   <td className="px-3 py-2.5 font-mono text-xs text-slate-500">{safeDateTime(row.created_at)}</td>
                   <td className="px-3 py-2.5"><RowActions row={row} /></td>
                 </tr>
@@ -278,7 +277,7 @@ export function AdminApplications({
                 <div className="mt-3 flex flex-wrap gap-2">
                   <AdminStatusBadge status={row.payment_status} />
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{safeCurrency(row.total_amount)}</span>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{row.assigned_staff_name || "Unassigned"}</span>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{row.agent_name || "Unassigned"}</span>
                 </div>
               </Link>
               <div className="mt-3"><RowActions row={row} /></div>

@@ -29,40 +29,38 @@ export function isAdminUser(user: User | null) {
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
-  const role = String(user.user_metadata.role ?? "").toLowerCase();
+  const role = normalizeAppRole(user.user_metadata.role);
   const email = (user.email ?? "").toLowerCase();
 
-  return role === "admin" || role === "super_admin" || adminEmails.includes(email);
+  return role === "admin" || adminEmails.includes(email);
 }
 
-export type AppRole = "super_admin" | "admin" | "staff" | "agent" | "customer";
+export type AppRole = "admin" | "agent" | "customer";
 
-const appRoles: AppRole[] = ["super_admin", "admin", "staff", "agent", "customer"];
+const appRoles: AppRole[] = ["admin", "agent", "customer"];
+const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
 
 export function normalizeAppRole(role: unknown): AppRole | null {
   const value = String(role ?? "").toLowerCase();
+
+  if (adminRoleAliases.has(value)) {
+    return "admin";
+  }
 
   return appRoles.includes(value as AppRole) ? (value as AppRole) : null;
 }
 
 export function isAdminRole(role: AppRole | string | null | undefined) {
-  return role === "admin" || role === "super_admin";
-}
-
-export function isSuperAdminRole(role: AppRole | string | null | undefined) {
-  return role === "super_admin";
-}
-
-export function isStaffRole(role: AppRole | string | null | undefined) {
-  return role === "staff";
+  return normalizeAppRole(role) === "admin";
 }
 
 export function isAgentRole(role: AppRole | string | null | undefined) {
-  return isAdminRole(role) || role === "agent";
+  const normalizedRole = normalizeAppRole(role);
+  return normalizedRole === "admin" || normalizedRole === "agent";
 }
 
 export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
-  return role === "agent";
+  return normalizeAppRole(role) === "agent";
 }
 
 export type AgentAccessResult =
@@ -180,7 +178,7 @@ export async function isActiveAgent(user: User | null) {
 }
 
 export function isCustomerRole(role: AppRole | string | null | undefined) {
-  return role === "customer";
+  return normalizeAppRole(role) === "customer";
 }
 
 export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
@@ -227,12 +225,8 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
     return "/admin";
   }
 
-  if (role === "agent") {
+  if (normalizeAppRole(role) === "agent") {
     return "/agent/dashboard";
-  }
-
-  if (role === "staff") {
-    return "/staff/dashboard";
   }
 
   return getCustomerHome();

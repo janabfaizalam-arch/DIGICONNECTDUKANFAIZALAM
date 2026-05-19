@@ -29,7 +29,7 @@ export default async function OfflineInvoicesPage({
       <AdminPageHeader
         eyebrow="Offline Invoices"
         title="Invoice History"
-        description="Create and manage invoices for walk-in customers handled by office staff."
+        description="Create and manage invoices for walk-in customers handled by admins."
         action={
           <Link href="/admin/offline-invoices/new" className="inline-flex h-11 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
             <Plus className="h-4 w-4" />

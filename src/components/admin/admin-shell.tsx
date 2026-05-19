@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   BadgePercent,
   BarChart3,
-  BriefcaseBusiness,
   CalendarDays,
   ClipboardList,
   ChevronDown,
@@ -20,14 +19,10 @@ import {
   LayoutDashboard,
   ListChecks,
   Menu,
-  Newspaper,
   Phone,
   ReceiptText,
   Repeat2,
-  RefreshCcw,
-  ShieldCheck,
   UserCheck,
-  UserCog,
   UsersRound,
   WalletCards,
   X,
@@ -50,55 +45,20 @@ type AdminNavItem = {
 
 const navGroups: { title: string; items: AdminNavItem[] }[] = [
   {
-    title: "Dashboard",
+    title: "Admin",
     items: [
-      {
-        href: "/admin",
-        label: "Control Room",
-        description: "KPIs, charts, alerts",
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-  {
-    title: "Operations",
-    items: [
+      { href: "/admin", label: "Dashboard", description: "KPIs and alerts", icon: LayoutDashboard },
       { href: "/admin/applications", label: "Applications", description: "Service workflow", icon: FileText },
-      { href: "/admin/documents", label: "Documents", description: "Uploads and final files", icon: FolderCheck },
-    ],
-  },
-  {
-    title: "People",
-    items: [
       { href: "/admin/customers", label: "Customers", description: "Customer records", icon: UsersRound },
       { href: "/admin/agents", label: "Agents", description: "Agent IDs and commissions", icon: UserCheck },
-      { href: "/admin/staff", label: "Staff / Team", description: "Office users", icon: UserCog },
-    ],
-  },
-  {
-    title: "Finance",
-    items: [
       { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: CreditCard },
       { href: "/admin/offline-invoices", label: "Invoices", description: "Search and print", icon: ReceiptText },
       { href: "/admin/wallet", label: "Wallet & Rewards", description: "Ledger and rewards", icon: WalletCards },
       { href: "/admin/commissions", label: "Commissions", description: "Agent payouts", icon: BadgePercent },
-    ],
-  },
-  {
-    title: "Content",
-    items: [
+      { href: "/admin/documents", label: "Documents", description: "Uploads and final files", icon: FolderCheck },
       { href: "/admin/gallery", label: "Gallery", description: "Photos and proof", icon: GalleryHorizontalEnd },
-      { href: "/admin/articles", label: "Articles", description: "Blog content", icon: Newspaper },
-    ],
-  },
-  {
-    title: "Control",
-    items: [
       { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
       { href: "/admin/settings", label: "Settings", description: "Catalog and setup", icon: Settings },
-      { href: "/admin/services", label: "Services", description: "Catalog and pricing", icon: BriefcaseBusiness },
-      { href: "/admin/insurance-quotations", label: "Insurance Quotations", description: "Quotes and follow-ups", icon: ShieldCheck },
-      { href: "/admin/payment-reconciliation", label: "Reconciliation", description: "Sync Razorpay", icon: RefreshCcw },
     ],
   },
 ];
@@ -306,7 +266,6 @@ type AdminStatIconKey =
   | "receiptText"
   | "repeat"
   | "userCheck"
-  | "userCog"
   | "users"
   | "wallet";
 
@@ -324,7 +283,6 @@ const statIconMap: Record<AdminStatIconKey, LucideIcon> = {
   receiptText: ReceiptText,
   repeat: Repeat2,
   userCheck: UserCheck,
-  userCog: UserCog,
   users: UsersRound,
   wallet: WalletCards,
 };

@@ -42,7 +42,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
   const detail = await getAdminApplicationDetail(id);
   if (!detail) notFound();
 
-  const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, staff, facts } = detail;
+  const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, agents, facts } = detail;
   const formData = asRecord(application.form_data);
   const serviceSnapshot = asRecord(application.service_snapshot);
   const customerMobile = customer.mobile;
@@ -210,8 +210,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
                 customerMobile={customerMobile}
                 serviceName={application.service_name}
-                staffOptions={staff}
-                assignedStaffId={application.assigned_staff_id}
+                agentOptions={agents}
+                assignedAgentId={application.assigned_agent_id ?? application.agent_id}
               />
             </div>
           </Card>

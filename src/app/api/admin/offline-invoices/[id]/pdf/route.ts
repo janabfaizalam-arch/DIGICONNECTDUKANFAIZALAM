@@ -54,10 +54,10 @@ async function buildInvoicePdf(request: Request, id: string) {
   if (!invoice) return null;
 
   const supabase = getSupabaseAdmin();
-  const { data: staff } = invoice.created_by && supabase
+  const { data: adminUser } = invoice.created_by && supabase
     ? await supabase.from("profiles").select("full_name, email").eq("id", invoice.created_by).maybeSingle()
     : { data: null };
-  const staffName = text(staff?.full_name ?? staff?.email, "Admin Staff");
+  const adminName = text(adminUser?.full_name ?? adminUser?.email, "Admin");
   const baseUrl = new URL(request.url).origin;
   const invoiceUrl = `${baseUrl}/admin/offline-invoices/${invoice.id}`;
   const qrDataUrl = await QRCode.toDataURL(invoiceUrl, { margin: 1, width: 160 }).catch(() => "");
@@ -92,7 +92,7 @@ async function buildInvoicePdf(request: Request, id: string) {
   doc.roundedRect(40, 270, contentWidth, 82, 10).strokeColor("#e2e8f0").lineWidth(1).stroke();
   drawLabelValue(doc, "Supplier", "DigiConnect Dukan", 58, 288, 145);
   drawLabelValue(doc, "GSTIN", "As applicable", 220, 288, 105);
-  drawLabelValue(doc, "Staff Name", staffName, 340, 288, 180);
+  drawLabelValue(doc, "Admin Name", adminName, 340, 288, 180);
   drawLabelValue(doc, "Payment Status", invoice.payment_status, 58, 323, 145);
   drawLabelValue(doc, "Payment Method", invoice.payment_method, 220, 323, 145);
   drawLabelValue(doc, "Amount Paid", currency(invoice.amount_paid), 385, 323, 135);
@@ -119,7 +119,7 @@ async function buildInvoicePdf(request: Request, id: string) {
   doc.fillColor("#0f172a").font("Helvetica-Bold").fontSize(11).text("Payment Details", 58, summaryTop + 18);
   doc.fillColor("#475569").font("Helvetica").fontSize(9).text(`Amount paid: ${currency(invoice.amount_paid)}`, 58, summaryTop + 42);
   doc.text(`Balance due: ${currency(invoice.balance_due)}`, 58, summaryTop + 60);
-  doc.text(`Invoice created by: ${staffName}`, 58, summaryTop + 78);
+  doc.text(`Invoice created by: ${adminName}`, 58, summaryTop + 78);
 
   doc.roundedRect(340, summaryTop, 195, 142, 10).strokeColor("#e2e8f0").stroke();
   drawAmountRow(doc, "Subtotal", currency(subtotal), summaryTop + 18);

@@ -24,7 +24,6 @@ export type AdminDashboardStats = {
   verifiedPayments: number;
   totalAgents: number;
   activeAgents: number;
-  totalStaff: number;
   walletTotalBalance: number;
   totalCashbackIssued: number;
   totalRewardsIssued: number;
@@ -48,7 +47,6 @@ const EMPTY_STATS: AdminDashboardStats = {
   verifiedPayments: 0,
   totalAgents: 0,
   activeAgents: 0,
-  totalStaff: 0,
   walletTotalBalance: 0,
   totalCashbackIssued: 0,
   totalRewardsIssued: 0,
@@ -105,7 +103,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     applicationsResult,
     paymentsResult,
     agentsResult,
-    staffResult,
     walletsResult,
     walletTransactionsResult,
     commissionsResult,
@@ -121,7 +118,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       .limit(10000),
     supabase.from("payments").select("id, status, amount, real_payment_amount, created_at, razorpay_payment_id").limit(10000),
     supabase.from("profiles").select("id, active, is_active", { count: "exact" }).eq("role", "agent"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "staff"),
     supabase.from("reward_wallets").select("user_id, balance, lifetime_earned, lifetime_redeemed").limit(10000),
     supabase.from("wallet_transactions").select("id, type, direction, amount, status").limit(10000),
     supabase.from("commissions").select("id, amount, status").limit(10000),
@@ -140,7 +136,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     applicationsResult,
     paymentsResult,
     agentsResult,
-    staffResult,
     walletsResult,
     walletTransactionsResult,
     commissionsResult,
@@ -179,7 +174,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     verifiedPayments: verifiedPayments.length,
     totalAgents: agentsResult.count ?? agents.length,
     activeAgents: agents.filter((agent) => agent.active === true || agent.is_active === true).length,
-    totalStaff: staffResult.count ?? 0,
     walletTotalBalance: sum(wallets, "balance"),
     totalCashbackIssued: creditTransactions
       .filter((transaction) => ["first_service_cashback", "repeat_cashback"].includes(normalize(transaction.type)))

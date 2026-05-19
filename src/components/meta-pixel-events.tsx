@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { trackContact, trackPageView } from "@/lib/meta-pixel";
 
-const internalToolPrefixes = ["/admin", "/agent", "/staff"];
+const internalToolPrefixes = ["/admin", "/agent"];
 
 function isContactHref(href: string) {
   return href.startsWith("tel:") || href.includes("wa.me/") || href.includes("whatsapp.com/");

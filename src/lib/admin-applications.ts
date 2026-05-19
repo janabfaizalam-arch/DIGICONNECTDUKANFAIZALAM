@@ -6,7 +6,6 @@ export async function getAdminApplicationRows(filters: AdminApplicationFilters =
   return {
     rows: result.rows,
     agents: result.agents,
-    staff: result.staff,
     stats: result.stats,
     alerts: result.alerts,
     filterOptions: result.filterOptions,

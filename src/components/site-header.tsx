@@ -21,9 +21,10 @@ const navLinks = [
   { href: "/#support", label: "Support" },
 ];
 
-type AppRole = "super_admin" | "admin" | "staff" | "agent" | "customer";
+type AppRole = "admin" | "agent" | "customer";
 
-const roleValues = ["super_admin", "admin", "staff", "agent", "customer"];
+const roleValues = ["admin", "agent", "customer"];
+const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
 
 function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
@@ -31,6 +32,10 @@ function isAppRole(role: string): role is AppRole {
 
 function getMetadataRole(user: User | null) {
   const role = String(user?.user_metadata.role ?? "").toLowerCase();
+
+  if (adminRoleAliases.has(role)) {
+    return "admin";
+  }
 
   return isAppRole(role) ? role : null;
 }
@@ -65,6 +70,10 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const profileRole = String(profile?.role ?? "").toLowerCase();
 
+  if (adminRoleAliases.has(profileRole)) {
+    return "admin";
+  }
+
   if (isAppRole(profileRole)) {
     return profileRole;
   }
@@ -72,20 +81,20 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
   const portalRole = String(portalUser?.role ?? "").toLowerCase();
 
+  if (adminRoleAliases.has(portalRole)) {
+    return "admin";
+  }
+
   return isAppRole(portalRole) ? portalRole : "customer";
 }
 
 function getPanelConfig(role: AppRole | null) {
-  if (role === "admin" || role === "super_admin") {
+  if (role === "admin") {
     return { href: "/admin", label: "Admin Dashboard" };
   }
 
   if (role === "agent") {
     return { href: "/agent/dashboard", label: "Agent Dashboard" };
-  }
-
-  if (role === "staff") {
-    return { href: "/staff/dashboard", label: "Staff Dashboard" };
   }
 
   if (role === "customer") {

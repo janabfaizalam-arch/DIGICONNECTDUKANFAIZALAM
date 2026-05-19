@@ -59,7 +59,6 @@ export type AdminApplicationFilters = {
   status?: string;
   paymentStatus?: string;
   service?: string;
-  staffId?: string;
   agent?: string;
   dateRange?: string;
   unassignedOnly?: boolean;
@@ -70,7 +69,6 @@ export type AdminApplicationFilters = {
 
 export type AdminApplicationsResult = {
   rows: AdminApplicationRow[];
-  staff: PortalUser[];
   agents: PortalUser[];
   stats: AdminApplicationsCommandStats;
   alerts: AdminApplicationsAlert[];
@@ -88,7 +86,7 @@ export type AdminApplicationsCommandStats = {
   inProgress: number;
   completed: number;
   completedToday: number;
-  staffUnassigned: number;
+  unassignedApplications: number;
   agentApplications: number;
   revenueToday: number;
   walletUsed: number;
@@ -96,7 +94,7 @@ export type AdminApplicationsCommandStats = {
 };
 
 export type AdminApplicationsAlert = {
-  type: "payment" | "staff" | "documents" | "verification";
+  type: "payment" | "assignment" | "documents" | "verification";
   label: string;
   count: number;
   tone: "orange" | "red" | "blue" | "purple";
@@ -120,7 +118,7 @@ const EMPTY_COMMAND_STATS: AdminApplicationsCommandStats = {
   inProgress: 0,
   completed: 0,
   completedToday: 0,
-  staffUnassigned: 0,
+  unassignedApplications: 0,
   agentApplications: 0,
   revenueToday: 0,
   walletUsed: 0,
@@ -193,12 +191,11 @@ function pickPrimaryPayment(application: Application) {
   return payments.find(isVerifiedPayment) ?? payments[0] ?? null;
 }
 
-function applicationToAdminRow(application: Application, agentById: Record<string, PortalUser>, staffById: Record<string, PortalUser>): AdminApplicationRow {
+function applicationToAdminRow(application: Application, agentById: Record<string, PortalUser>): AdminApplicationRow {
   const payment = pickPrimaryPayment(application);
   const invoice = application.invoices?.[0];
   const assignedAgentId = application.assigned_agent_id ?? application.agent_id ?? null;
   const assignedAgent = assignedAgentId ? agentById[assignedAgentId] : null;
-  const assignedStaff = application.assigned_staff_id ? staffById[application.assigned_staff_id] : null;
   const customer = customerFromApplication(application);
   const documents = application.documents ?? [];
   const rejectedDocuments = documents.filter((document) => ["rejected", "reupload_required"].includes(normalizeStatus(document.review_status ?? document.status))).length;
@@ -224,8 +221,6 @@ function applicationToAdminRow(application: Application, agentById: Record<strin
     payment_status: application.payment_status ?? payment?.status ?? "pending",
     invoice_status: invoice?.payment_status ?? null,
     application_status: application.status,
-    assigned_staff_id: application.assigned_staff_id ?? null,
-    assigned_staff_name: assignedStaff?.full_name || assignedStaff?.email || application.assigned_to || null,
     agent_id: assignedAgentId,
     agent_name: assignedAgent?.full_name || assignedAgent?.email || null,
     agent_code: assignedAgent?.agent_code ?? null,
@@ -268,7 +263,7 @@ async function getAgentsById() {
   }, {});
 }
 
-async function getUsersByRole(role: "staff" | "agent") {
+async function getUsersByRole(role: "agent") {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [] as PortalUser[];
 
@@ -332,7 +327,7 @@ async function getApplicationCommandMeta(): Promise<{
   const [applicationsResult, documentsResult, walletsResult] = await Promise.all([
     supabase
       .from("applications")
-      .select("id, status, payment_status, service_name, source, submitted_by_role, agent_id, assigned_agent_id, assigned_staff_id, created_at, updated_at, total_amount, amount, fresh_payable_amount, real_payment_amount, wallet_redeemed_amount, wallet_used_amount, cashback_amount, cashback_credited_at, razorpay_payment_id"),
+      .select("id, status, payment_status, service_name, source, submitted_by_role, agent_id, assigned_agent_id, created_at, updated_at, total_amount, amount, fresh_payable_amount, real_payment_amount, wallet_redeemed_amount, wallet_used_amount, cashback_amount, cashback_credited_at, razorpay_payment_id"),
     supabase
       .from("application_documents")
       .select("application_id, status, review_status, is_final, document_type")
@@ -350,7 +345,7 @@ async function getApplicationCommandMeta(): Promise<{
     documents: documentsByApplication[application.id] ?? [],
   }));
   const paymentPendingOld = withDocuments.filter((application) => isPaymentPending(application) && application.created_at < yesterdayIso).length;
-  const staffUnassigned = withDocuments.filter((application) => !application.assigned_staff_id && normalizeStatus(application.status) !== "completed").length;
+  const unassignedApplications = withDocuments.filter((application) => !(application.assigned_agent_id ?? application.agent_id) && normalizeStatus(application.status) !== "completed").length;
   const documentsMissing = withDocuments.filter(isDocumentsMissing).length;
   const verificationIssues = withDocuments.filter((application) => ["verified", "paid"].includes(normalizeStatus(application.payment_status)) && normalizeStatus(application.status) === "payment_pending").length;
   const wallets = (walletsResult.data ?? []) as { balance?: number | null }[];
@@ -367,7 +362,7 @@ async function getApplicationCommandMeta(): Promise<{
       inProgress: withDocuments.filter((application) => ["in_process", "in_progress", "submitted", "assigned_to_agent"].includes(normalizeStatus(application.status))).length,
       completed: withDocuments.filter((application) => normalizeStatus(application.status) === "completed").length,
       completedToday: withDocuments.filter((application) => normalizeStatus(application.status) === "completed" && (application.updated_at ?? application.created_at) >= todayIso).length,
-      staffUnassigned,
+      unassignedApplications,
       agentApplications: withDocuments.filter((application) => application.agent_id || application.assigned_agent_id || normalizeStatus(application.submitted_by_role) === "agent" || normalizeStatus(application.source) === "agent_pos").length,
       revenueToday,
       walletUsed: withDocuments.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0), 0),
@@ -375,7 +370,7 @@ async function getApplicationCommandMeta(): Promise<{
     },
     alerts: [
       { type: "payment", label: "Payment pending older than 24h", count: paymentPendingOld, tone: "orange" },
-      { type: "staff", label: "Applications without staff assignment", count: staffUnassigned, tone: "blue" },
+      { type: "assignment", label: "Applications without agent assignment", count: unassignedApplications, tone: "blue" },
       { type: "documents", label: "Documents missing or rejected", count: documentsMissing, tone: "red" },
       { type: "verification", label: "Payment verification needs review", count: verificationIssues, tone: "purple" },
     ].filter((alert) => alert.count > 0) as AdminApplicationsAlert[],
@@ -537,7 +532,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  if (!supabase) return { rows: [], staff: [], agents: [], stats: EMPTY_COMMAND_STATS, alerts: [], filterOptions: { services: [], paymentStatuses: [], statuses: [] }, total: 0, page, pageSize };
+  if (!supabase) return { rows: [], agents: [], stats: EMPTY_COMMAND_STATS, alerts: [], filterOptions: { services: [], paymentStatuses: [], statuses: [] }, total: 0, page, pageSize };
 
   let query = supabase
     .from("applications")
@@ -553,7 +548,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
   } else if (status === "need_docs") {
     query = query.in("status", ["documents_required", "document_pending"]);
   } else if (status === "unassigned") {
-    query = query.is("assigned_staff_id", null);
+    query = query.is("assigned_agent_id", null).is("agent_id", null);
   } else if (status === "agent_apps") {
     query = query.or("submitted_by_role.eq.agent,source.eq.agent_pos,agent_id.not.is.null,assigned_agent_id.not.is.null");
   } else if (status === "paid_submitted") {
@@ -578,19 +573,15 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.eq("service_name", filters.service);
   }
 
-  if (filters.staffId && filters.staffId !== "all") {
-    query = filters.staffId === "none" ? query.is("assigned_staff_id", null) : query.eq("assigned_staff_id", filters.staffId);
-  }
-
   if (filters.agent && filters.agent !== "all") {
     if (filters.agent === "agent") {
       query = query.or("submitted_by_role.eq.agent,source.eq.agent_pos,agent_id.not.is.null,assigned_agent_id.not.is.null");
+    } else if (filters.agent === "unassigned") {
+      query = query.is("assigned_agent_id", null).is("agent_id", null);
     } else if (filters.agent === "website") {
       query = query.or("submitted_by_role.eq.customer,source.eq.online");
     } else if (filters.agent === "admin") {
       query = query.eq("submitted_by_role", "admin");
-    } else if (filters.agent === "staff") {
-      query = query.eq("submitted_by_role", "staff");
     } else if (filters.agent.startsWith("agent:")) {
       const agentId = filters.agent.slice("agent:".length);
       query = query.or(`agent_id.eq.${agentId},assigned_agent_id.eq.${agentId}`);
@@ -603,7 +594,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
   }
 
   if (filters.unassignedOnly) {
-    query = query.is("assigned_staff_id", null);
+    query = query.is("assigned_agent_id", null).is("agent_id", null);
   }
 
   if (filters.documentsMissingOnly) {
@@ -616,7 +607,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.or(`id.ilike.%${escaped}%,service_name.ilike.%${escaped}%,service_slug.ilike.%${escaped}%,razorpay_payment_id.ilike.%${escaped}%,razorpay_order_id.ilike.%${escaped}%,form_data->>name.ilike.%${escaped}%,form_data->>mobile.ilike.%${escaped}%,form_data->>email.ilike.%${escaped}%`);
   }
 
-  const [applicationResult, agentById, staff, agents, meta] = await Promise.all([query, getAgentsById(), getUsersByRole("staff"), getUsersByRole("agent"), getApplicationCommandMeta()]);
+  const [applicationResult, agentById, agents, meta] = await Promise.all([query, getAgentsById(), getUsersByRole("agent"), getApplicationCommandMeta()]);
   const baseApplications = (applicationResult.data ?? []) as Application[];
   let applications = baseApplications;
 
@@ -626,14 +617,8 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     console.error("[admin-crm] Failed to hydrate admin applications", error);
   }
 
-  const staffById = staff.reduce<Record<string, PortalUser>>((grouped, staffMember) => {
-    grouped[staffMember.id] = staffMember;
-    return grouped;
-  }, {});
-
   return {
-    rows: applications.map((application) => applicationToAdminRow(application, agentById, staffById)),
-    staff,
+    rows: applications.map((application) => applicationToAdminRow(application, agentById)),
     agents,
     stats: meta.stats,
     alerts: meta.alerts,
@@ -696,9 +681,9 @@ export async function getAdminApplicationDetail(id: string) {
     );
   }
 
-  const [notesResult, staffResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, customerResult, possibleDocumentResults] = await Promise.all([
+  const [notesResult, agentsResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, customerResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
-    supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "staff"),
+    supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "agent"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     application.user_id ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from("admin_crm_diagnostics").select("issue_type, severity, message").eq("application_id", id).limit(10),
@@ -738,7 +723,7 @@ export async function getAdminApplicationDetail(id: string) {
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
     notes: notesResult.error ? [] : notesResult.data ?? [],
-    staff: staffResult.error ? [] : (staffResult.data ?? []) as PortalUser[],
+    agents: agentsResult.error ? [] : (agentsResult.data ?? []) as PortalUser[],
     statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
     referralDebug: referralResult.error ? null : referralResult.data,
     diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],

@@ -36,10 +36,8 @@ function getSafeCustomerRedirect(value: string | null) {
   if (
     value.startsWith("/admin") ||
     value.startsWith("/agent") ||
-    value.startsWith("/staff") ||
     value.startsWith("/login") ||
-    value.startsWith("/admin-login") ||
-    value.startsWith("/super-admin-login")
+    value.startsWith("/admin-login")
   ) {
     return "/customer/dashboard";
   }
@@ -509,13 +507,13 @@ function CustomerLoginCardInner({
       </Button>
 
       <div className="mt-6 rounded-2xl border border-white/15 bg-white/25 p-3 text-center backdrop-blur-md">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Team access</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Admin / agent access</p>
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           <Link href="/login/agent" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
             Agent Login
           </Link>
-          <Link href="/login/staff" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
-            Staff Login
+          <Link href="/admin-login" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
+            Admin Login
           </Link>
         </div>
       </div>

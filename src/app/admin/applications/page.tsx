@@ -13,7 +13,7 @@ export default async function AdminApplicationsPage({
     q?: string;
     status?: string;
     payment?: string;
-    staff?: string;
+    agent?: string;
     range?: string;
     page?: string;
   }>;
@@ -29,11 +29,10 @@ export default async function AdminApplicationsPage({
     redirect("/dashboard");
   }
 
-  const { q, status, payment, staff: staffId, range, page } = await searchParams;
+  const { q, status, payment, agent, range, page } = await searchParams;
   const {
     rows,
     agents,
-    staff,
     stats,
     alerts,
     filterOptions,
@@ -44,7 +43,7 @@ export default async function AdminApplicationsPage({
     query: q,
     status,
     paymentStatus: payment,
-    staffId,
+    agent,
     dateRange: range,
     page: Number(page ?? 1),
     pageSize: 25,
@@ -54,7 +53,6 @@ export default async function AdminApplicationsPage({
     <AdminApplications
       rows={rows}
       agents={agents}
-      staff={staff}
       stats={stats}
       alerts={alerts}
       filterOptions={filterOptions}
@@ -64,7 +62,7 @@ export default async function AdminApplicationsPage({
       initialSearch={q ?? ""}
       initialStatus={status ?? "all"}
       initialPaymentStatus={payment ?? "all"}
-      initialStaffId={staffId ?? "all"}
+      initialAgentId={agent?.startsWith("agent:") ? agent.slice("agent:".length) : agent === "unassigned" ? "none" : "all"}
       initialDateRange={range ?? "all"}
     />
   );
