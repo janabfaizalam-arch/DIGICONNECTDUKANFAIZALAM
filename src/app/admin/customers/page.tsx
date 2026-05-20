@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, Phone, UsersRound, type LucideIcon } from "lucide-react";
+import { CalendarDays, Phone, UserPlus, UsersRound, type LucideIcon } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminCustomerManager } from "@/components/admin/admin-customer-manager";
@@ -68,6 +68,12 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
         eyebrow="Users"
         title="Registered Users"
         description="Canonical customer users from profiles, enriched with application, wallet, and referral facts."
+        action={
+          <Link href="/admin/customers/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800">
+            <UserPlus className="h-4 w-4" />
+            Create Customer
+          </Link>
+        }
       />
 
       <section className="grid gap-3 sm:grid-cols-3">

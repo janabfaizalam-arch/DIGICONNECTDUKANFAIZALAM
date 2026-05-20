@@ -4,23 +4,6 @@ import { getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
-function getSafeCustomerRedirect(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
-  }
-
-  if (
-    value.startsWith("/admin") ||
-    value.startsWith("/agent") ||
-    value.startsWith("/login") ||
-    value.startsWith("/admin-login")
-  ) {
-    return "/";
-  }
-
-  return value;
-}
-
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/";
@@ -102,7 +85,7 @@ export async function GET(request: Request) {
   }
 
   const role = await getCurrentUserRole(data.user);
-  const destination = next ? getSafeNext(next) : isCustomerRole(role) ? getSafeCustomerRedirect(next) : getRoleHome(role);
+  const destination = next ? getSafeNext(next) : isCustomerRole(role) ? "/customer/dashboard" : getRoleHome(role);
 
   return NextResponse.redirect(new URL(destination, requestUrl.origin));
 }

@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
 import { syncUserProfile } from "@/lib/auth";
+import { assertCustomerIdentityAvailable, CUSTOMER_EXISTS_MESSAGE } from "@/lib/customer-identity";
 import { creditSignupBonus } from "@/lib/wallet-ledger";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type SignupBody = {
   fullName?: string;
@@ -69,7 +71,7 @@ function getSignupEnvDebug(request: Request) {
     hasSupabaseAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     siteUrl,
     siteUrlIsRnos: siteUrl === "https://rnos.in",
-    emailRedirectTo: `${siteUrl}/auth/callback`,
+    emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`,
   };
 }
 
@@ -166,6 +168,22 @@ export async function POST(request: Request) {
       }
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
+    if (!supabaseAdmin) {
+      console.error("[auth/signup] Supabase admin client missing", {
+        hasSupabaseUrl: envDebug.hasSupabaseUrl,
+        hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      });
+      return jsonSignupError("Signup is not configured on the server.", 500, envDebug);
+    }
+
+    const duplicateCheck = await assertCustomerIdentityAvailable(supabaseAdmin, { email, mobile });
+
+    if (duplicateCheck?.ok === false) {
+      return jsonSignupError(duplicateCheck.message, 409, envDebug);
+    }
+
     const supabase = await getSupabaseRouteHandlerClient();
 
     if (!supabase) {
@@ -180,7 +198,7 @@ export async function POST(request: Request) {
       email,
       password,
       options: {
-        emailRedirectTo: `${getSiteUrl(request)}/auth/callback`,
+        emailRedirectTo: `${getSiteUrl(request)}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`,
         data: {
           full_name: fullName,
           mobile,
@@ -204,7 +222,8 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return jsonSignupError(error.message, 400, {
+      const alreadyExists = error.message.toLowerCase().includes("already") || error.message.toLowerCase().includes("registered");
+      return jsonSignupError(alreadyExists ? CUSTOMER_EXISTS_MESSAGE : error.message, alreadyExists ? 409 : 400, {
         ...envDebug,
         supabaseErrorCode: error.code ?? null,
       });

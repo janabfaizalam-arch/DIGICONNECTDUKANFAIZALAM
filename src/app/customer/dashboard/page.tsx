@@ -40,13 +40,14 @@ export default async function CustomerDashboardPage() {
 
   const customerProfileStatus = await getCustomerProfileStatus(user.id);
 
-  if (!customerProfileStatus.complete) {
-    redirect("/customer/profile");
-  }
-
   const { applications, notifications, walletSnapshot } = await getCustomerDashboardData(user.id);
   const customerProfile = customerProfileStatus.profile;
-  const name = customerProfile?.full_name ?? user.user_metadata.full_name ?? user.user_metadata.name ?? "Customer";
+  const name =
+    customerProfile?.full_name ||
+    String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim() ||
+    user.email ||
+    customerProfile?.mobile ||
+    "Customer";
   const email = customerProfile?.email ?? user.email ?? "";
   const avatarUrl = customerProfile?.photo_url ?? user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "";
 
@@ -56,10 +57,6 @@ export default async function CustomerDashboardPage() {
       notifications={notifications}
       walletSnapshot={walletSnapshot}
       profile={{ name, email, avatarUrl }}
-      profileCompletion={{
-        complete: customerProfileStatus.complete,
-        percent: customerProfileStatus.completion.percent,
-      }}
     />
   );
 }

@@ -48,10 +48,6 @@ type CustomerDashboardProps = {
     email: string;
     avatarUrl: string;
   };
-  profileCompletion: {
-    complete: boolean;
-    percent: number;
-  };
 };
 
 const featureCards = [
@@ -60,7 +56,7 @@ const featureCards = [
   { title: "Upload documents securely", description: "Submit pending files directly from your dashboard.", icon: UploadCloud },
   { title: "Download invoices", description: "Open receipts and invoices whenever available.", icon: ReceiptText },
   { title: "Get WhatsApp support", description: "Reach the team quickly for guidance and updates.", icon: MessageCircle },
-  { title: "Save profile faster", description: "Complete details once and apply faster next time.", icon: UserRound },
+  { title: "Use saved details", description: "Your account details stay synced with customer support.", icon: UserRound },
 ];
 
 function formatDate(date: string) {
@@ -83,7 +79,7 @@ function getRewardStatusLabel(status: string) {
   return status.replace(/_/g, " ");
 }
 
-export function CustomerDashboard({ applications, notifications, walletSnapshot, profile, profileCompletion }: CustomerDashboardProps) {
+export function CustomerDashboard({ applications, notifications, walletSnapshot, profile }: CustomerDashboardProps) {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const completed = applications.filter((application) => application.status === "completed").length;
@@ -144,7 +140,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
           <div className="grid gap-7 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Dashboard</p>
-              <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">Welcome to DigiConnect Dukan</h1>
+              <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">Welcome, {profile.name}</h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
                 Apply, track and manage your digital services from one secure dashboard.
               </p>
@@ -179,8 +175,8 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
                     <p className="text-xl font-bold text-emerald-600">{completed}</p>
                   </div>
                   <div className="rounded-2xl bg-white/55 p-3">
-                    <p className="text-xs text-slate-500">Profile</p>
-                    <p className="text-xl font-bold text-blue-700">{profileCompletion.percent}%</p>
+                    <p className="text-xs text-slate-500">Account</p>
+                    <p className="text-xl font-bold text-blue-700">Ready</p>
                   </div>
                 </div>
               </div>
@@ -361,7 +357,7 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
             { title: "Apply New Service", description: "Choose from all services.", icon: Plus, action: openServices },
             { title: "Track Application", description: "Jump to your status list.", icon: ClipboardCheck, action: scrollToApplications },
             { title: "Upload Documents", description: "Complete pending files.", icon: UploadCloud, action: handleUploadDocuments },
-            { title: "My Profile", description: "Manage saved details.", icon: UserRound, href: "/customer/profile" },
+            { title: "Account Support", description: "Ask for detail updates.", icon: UserRound, href: supportWhatsappUrl },
             { title: "Download Invoice", description: "Open receipt if available.", icon: Download, action: handleDownloadInvoice },
             { title: "Contact Support", description: "Talk on WhatsApp.", icon: MessageCircle, href: supportWhatsappUrl },
           ].map(({ title, description, icon: Icon, action, href }) =>
@@ -478,22 +474,6 @@ export function CustomerDashboard({ applications, notifications, walletSnapshot,
           </Card>
 
           <div className="grid gap-6">
-            <Card className="rounded-[1.5rem] p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Profile Completion</p>
-              <h2 className="mt-2 text-xl font-bold text-slate-950">
-                {profileCompletion.complete ? "Profile Complete" : "Complete your profile to apply faster"}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Complete your profile once and apply faster next time.</p>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-700 to-orange-500" style={{ width: `${profileCompletion.percent}%` }} />
-              </div>
-              <p className="mt-2 text-sm font-bold text-slate-700">{profileCompletion.percent}% complete</p>
-              <Link href="/customer/profile" className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
-                <UserRound className="h-4 w-4" />
-                Complete Profile
-              </Link>
-            </Card>
-
             <Card className="rounded-[1.5rem] p-5">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-[var(--primary)]" />

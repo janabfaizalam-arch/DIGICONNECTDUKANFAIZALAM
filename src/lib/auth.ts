@@ -5,6 +5,7 @@ import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referra
 import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { creditSignupBonus } from "@/lib/wallet-ledger";
+import { syncCustomerIdentity } from "@/lib/customer-identity";
 
 export async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
@@ -293,20 +294,6 @@ export async function syncUserProfile(user: User) {
     const emailValue = user.email ?? "";
     const isEmailVerified = Boolean(user.email_confirmed_at);
 
-    await supabaseAdmin.from("customer_profiles").upsert(
-      {
-        id: user.id,
-        full_name: customerName,
-        email: emailValue,
-        mobile,
-        pincode,
-        city,
-        state,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
-    );
-
     if (isEmailVerified) {
       await ensureReferralCodeForUser(user.id).catch((error) => {
         console.error("[auth] Referral code generation failed", error);
@@ -332,31 +319,15 @@ export async function syncUserProfile(user: User) {
 
     }
 
-    const { data: existingCustomer } = await supabaseAdmin
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (existingCustomer?.id) {
-      await supabaseAdmin
-        .from("customers")
-        .update({
-          full_name: customerName,
-          email: emailValue,
-          mobile: mobile || emailValue || "not-provided",
-          source: "online",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingCustomer.id);
-    } else {
-      await supabaseAdmin.from("customers").insert({
-        user_id: user.id,
-        full_name: customerName,
-        email: emailValue,
-        mobile: mobile || emailValue || "not-provided",
-        source: "online",
-      });
-    }
+    await syncCustomerIdentity(supabaseAdmin, {
+      userId: user.id,
+      fullName: customerName,
+      email: emailValue,
+      mobile,
+      pincode,
+      city,
+      state,
+      source: "online",
+    });
   }
 }
