@@ -22,7 +22,7 @@ function NoticePill({ notice, compact = false }: { notice: HomepageNotice; compa
   const content = (
     <span
       className={cn(
-        "group inline-flex h-9 max-w-[84vw] shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold leading-none shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:h-10 md:max-w-none md:px-4 md:text-sm",
+        "group inline-flex h-9 max-w-[82vw] shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold leading-none shadow-sm transition md:h-10 md:max-w-none md:px-4 md:text-sm md:hover:-translate-y-0.5 md:hover:shadow-md motion-reduce:transition-none",
         compact ? "h-8 md:h-9" : "",
         themeClasses[notice.color_theme],
       )}
@@ -55,7 +55,7 @@ function NoticePill({ notice, compact = false }: { notice: HomepageNotice; compa
 function NoticeTrack({ notices, mode }: { notices: HomepageNotice[]; mode: NoticeMode }) {
   if (mode === "chips") {
     return (
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-1.5 md:justify-center md:px-6">
+      <div className="no-scrollbar flex touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 py-1.5 md:justify-center md:px-6">
         {notices.map((notice) => (
           <NoticePill key={notice.id} notice={notice} compact />
         ))}

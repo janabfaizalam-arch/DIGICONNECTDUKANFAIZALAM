@@ -497,6 +497,12 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   body {
     background:
       radial-gradient(circle at 10% 0%, rgba(37, 99, 235, 0.08), transparent 18rem),
@@ -523,6 +529,45 @@ textarea {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.44),
       0 6px 16px rgba(15, 23, 42, 0.05);
+  }
+
+  .homepage-mobile-shell {
+    overflow-x: clip;
+  }
+
+  .homepage-mobile-shell img,
+  .homepage-mobile-shell svg,
+  .homepage-mobile-shell video,
+  .homepage-mobile-shell canvas {
+    max-width: 100%;
+  }
+
+  .homepage-mobile-shell .section-pad {
+    padding-block: 1.85rem;
+    contain-intrinsic-size: 560px;
+  }
+
+  .homepage-mobile-shell .glass-panel::before,
+  .homepage-mobile-shell .liquid-card::before {
+    opacity: 0.42;
+  }
+
+  .homepage-mobile-shell .premium-button {
+    min-height: 2.9rem;
+    touch-action: manipulation;
+  }
+
+  .homepage-mobile-shell a,
+  .homepage-mobile-shell button {
+    touch-action: manipulation;
+  }
+
+  @supports not (overflow: clip) {
+    html,
+    body,
+    .homepage-mobile-shell {
+      overflow-x: hidden;
+    }
   }
 }
 

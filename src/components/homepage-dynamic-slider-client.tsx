@@ -9,6 +9,7 @@ import type { HomepageSlide } from "@/lib/homepage-slides";
 import { cn } from "@/lib/utils";
 
 const AUTOPLAY_MS = 4000;
+const PROGRESS_TICK_MS = 160;
 
 type HomepageDynamicSliderClientProps = {
   slides: HomepageSlide[];
@@ -23,6 +24,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const startedAtRef = useRef(Date.now());
   const pausedAtRef = useRef<number | null>(null);
   const scrollSnaps = useMemo(() => slides.map((_, index) => index), [slides]);
@@ -33,6 +35,16 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
     },
     [emblaApi],
   );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    updatePreference();
+    mediaQuery.addEventListener("change", updatePreference);
+
+    return () => mediaQuery.removeEventListener("change", updatePreference);
+  }, []);
 
   useEffect(() => {
     if (!emblaApi) {
@@ -55,7 +67,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
   }, [emblaApi]);
 
   useEffect(() => {
-    if (!emblaApi || slides.length <= 1) {
+    if (!emblaApi || slides.length <= 1 || prefersReducedMotion) {
       return;
     }
 
@@ -77,10 +89,10 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
       if (elapsed >= AUTOPLAY_MS) {
         emblaApi.scrollNext();
       }
-    }, 80);
+    }, PROGRESS_TICK_MS);
 
     return () => window.clearInterval(tick);
-  }, [emblaApi, isPaused, slides.length]);
+  }, [emblaApi, isPaused, prefersReducedMotion, slides.length]);
 
   return (
     <section
@@ -105,8 +117,10 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     fill
                     priority={index === 0}
                     loading={index === 0 ? undefined : "lazy"}
+                    decoding="async"
                     sizes="100vw"
-                    className="object-contain object-center sm:hidden"
+                    className="select-none object-contain object-center sm:hidden"
+                    draggable={false}
                   />
                   <Image
                     src={slide.image_url}
@@ -114,8 +128,10 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                     fill
                     priority={index === 0}
                     loading={index === 0 ? undefined : "lazy"}
-                    sizes="100vw"
-                    className="hidden object-contain object-center sm:block"
+                    decoding="async"
+                    sizes="(min-width: 1280px) 1280px, 100vw"
+                    className="hidden select-none object-contain object-center sm:block"
+                    draggable={false}
                   />
                 </div>
               );
@@ -151,7 +167,7 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
                 onClick={() => scrollTo(index)}
                 className={cn(
                   "relative h-1.5 overflow-hidden rounded-full bg-white/65 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
-                  selectedIndex === index ? "w-5" : "w-1.5 hover:bg-white",
+                  selectedIndex === index ? "w-5" : "w-1.5 md:hover:bg-white",
                 )}
               >
                 {selectedIndex === index ? (

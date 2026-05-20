@@ -38,7 +38,9 @@ export async function PhotoGallerySection() {
                     src={item.image_url}
                     alt={item.title || "DigiConnect Dukan gallery photo"}
                     fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, calc(100vw - 2rem)"
+                    loading="lazy"
+                    decoding="async"
                     className="object-cover"
                     unoptimized
                   />

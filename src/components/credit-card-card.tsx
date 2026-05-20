@@ -8,7 +8,7 @@ export function CreditCardCard({ card }: { card: CreditCardOffer }) {
   return (
     <Link
       href={`/credit-cards/${card.slug}`}
-      className="group block min-w-[20rem] rounded-3xl border border-white/70 bg-white p-3 shadow-[0_14px_34px_rgba(15,23,42,0.08)] transition duration-300 md:min-w-0 md:hover:-translate-y-1"
+      className="group block min-w-[min(19rem,86vw)] snap-start rounded-3xl border border-white/70 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] transition-colors duration-200 md:min-w-0 md:shadow-[0_14px_34px_rgba(15,23,42,0.08)] md:transition md:duration-300 md:hover:-translate-y-1"
     >
       <div className="transition duration-300 md:group-hover:[transform:perspective(900px)_rotateX(4deg)_rotateY(-5deg)_translateY(-2px)]">
         <CreditCardVisual card={card} />

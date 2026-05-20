@@ -26,7 +26,7 @@ export function CreditCardOffersSection() {
             </Link>
           </div>
 
-          <div className="mt-6 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:gap-5 md:overflow-visible md:pb-0 xl:grid-cols-4">
+          <div className="mt-6 flex snap-x snap-mandatory touch-pan-x gap-3 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:gap-5 md:overflow-visible md:pb-0 xl:grid-cols-4">
             {creditCards.map((card) => (
               <CreditCardCard key={card.slug} card={card} />
             ))}

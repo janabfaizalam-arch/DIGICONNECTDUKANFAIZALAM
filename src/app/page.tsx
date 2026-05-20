@@ -41,7 +41,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   return (
     <>
-      <main className="bg-white pb-8 md:pb-0">
+      <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
         <HomepageOfferNoticeBar />
         <HomepageDynamicSlider />
         <HomepageServiceIconRow />
