@@ -324,6 +324,7 @@ export async function POST(request: Request) {
           state,
           source: "online",
           avatarUrl: String(existingAuthUser.user_metadata.avatar_url ?? existingAuthUser.user_metadata.picture ?? ""),
+          skipCustomers: true,
         });
         await resendCustomerVerification(request, email);
 
@@ -434,18 +435,28 @@ export async function POST(request: Request) {
           state,
           source: "online",
           avatarUrl: String(data.user.user_metadata.avatar_url ?? data.user.user_metadata.picture ?? ""),
+          skipCustomers: true,
         });
       } catch (syncError) {
+        const debug = getSupabaseErrorDebug(syncError);
+        console.error("SIGNUP_FATAL_DEBUG", {
+          step: "complete_customer_account_after_auth_signup",
+          errorCode: debug.code,
+          errorMessage: debug.message,
+          errorDetails: debug.details,
+          errorHint: debug.hint,
+          stack: syncError instanceof Error ? syncError.stack : null,
+        });
         logSignupStepFailed({
           label: "SIGNUP_CUSTOMER_SYNC_FAILED",
-          step: "sync_customer_records_after_auth_signup",
+          step: "complete_customer_account_after_auth_signup",
           email,
           mobile,
           userId: data.user.id,
           error: syncError,
         });
         logSignupFailure({
-          step: "sync_customer_records_after_auth_signup",
+          step: "complete_customer_account_after_auth_signup",
           email,
           mobile,
           userId: data.user.id,
@@ -477,7 +488,7 @@ export async function POST(request: Request) {
         return signupStepErrorResponse({
           message: isCustomerUniqueConstraintError(syncError) ? CUSTOMER_EXISTS_MESSAGE : "Signup failed. Please try again.",
           status: isCustomerUniqueConstraintError(syncError) ? 409 : 500,
-          step: "sync_customer_records_after_auth_signup",
+          step: "complete_customer_account_after_auth_signup",
           email,
           mobile,
           userId: data.user.id,
@@ -493,9 +504,35 @@ export async function POST(request: Request) {
 
     if (data.user?.id && referredBy) {
       try {
+        console.info("REFERRAL_SYNC_START", {
+          step: "optional_attach_referral_on_signup",
+          email,
+          mobile,
+          userId: data.user.id,
+          referralCode: referredBy,
+        });
         await attachReferralOnSignup(data.user.id, referredBy, getClientIp(request), request.headers.get("user-agent"));
+        console.info("REFERRAL_SYNC_OK", {
+          step: "optional_attach_referral_on_signup",
+          email,
+          mobile,
+          userId: data.user.id,
+          referralCode: referredBy,
+        });
       } catch (rewardError) {
         const debug = getSupabaseErrorDebug(rewardError);
+        console.error("REFERRAL_SYNC_FAIL", {
+          step: "optional_attach_referral_on_signup",
+          email,
+          mobile,
+          userId: data.user.id,
+          referralCode: referredBy,
+          errorCode: debug.code,
+          errorMessage: debug.message,
+          errorDetails: debug.details,
+          errorHint: debug.hint,
+          stack: rewardError instanceof Error ? rewardError.stack : null,
+        });
         console.warn("REFERRAL_SIGNUP_ATTACHMENT_FAILED", {
           step: "optional_attach_referral_on_signup",
           email,
@@ -520,6 +557,15 @@ export async function POST(request: Request) {
       ...(process.env.NODE_ENV === "development" ? { debug: envDebug } : {}),
     });
   } catch (error) {
+    const debug = getSupabaseErrorDebug(error);
+    console.error("SIGNUP_FATAL_DEBUG", {
+      step: "signup_route_outer_catch",
+      errorCode: debug.code,
+      errorMessage: debug.message,
+      errorDetails: debug.details,
+      errorHint: debug.hint,
+      stack: error instanceof Error ? error.stack : null,
+    });
     console.error("[auth/signup] Signup failed", error);
     return jsonSignupError("Signup failed. Please try again.", 500);
   }
