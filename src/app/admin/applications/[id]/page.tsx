@@ -137,6 +137,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               <DetailRow label="Slug" value={application.service_slug} mono />
               <DetailRow label="Category" value={text(serviceSnapshot.category)} />
               <DetailRow label="Source" value={application.submitted_by_role || application.source || "website"} />
+              <DetailRow label="Customer Fee" value={safeCurrency(application.customer_fee_snapshot ?? application.amount ?? application.total_amount)} />
+              <DetailRow label="Agent Payout" value={application.agent_payout_snapshot != null ? safeCurrency(application.agent_payout_snapshot) : "-"} />
             </div>
           </Card>
 

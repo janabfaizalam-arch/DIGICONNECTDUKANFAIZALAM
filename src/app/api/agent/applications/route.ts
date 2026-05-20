@@ -127,13 +127,28 @@ export async function POST(request: Request) {
     const customerId = String(formData.get("customerId") ?? "").trim();
     const agentServiceId = String(formData.get("agentServiceId") ?? "").trim();
     const serviceId = String(formData.get("serviceId") ?? "").trim();
-    const customerName = String(formData.get("customerName") ?? "").trim();
+    const customerName = String(formData.get("customerName") ?? formData.get("name") ?? "").trim();
     const mobile = String(formData.get("mobile") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const pincode = String(formData.get("pincode") ?? "").replace(/\D/g, "").slice(0, 6);
     const city = String(formData.get("city") ?? "").trim();
+    const district = String(formData.get("district") ?? "").trim();
     const state = String(formData.get("state") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
+    const address = String(formData.get("address") ?? "").trim();
+    const pmVishwakarmaDetails = {
+      pincode,
+      district,
+      state,
+      maritalStatus: String(formData.get("maritalStatus") ?? "").trim(),
+      casteCategory: String(formData.get("casteCategory") ?? "").trim(),
+      tradeWorkType: String(formData.get("tradeWorkType") ?? "").trim(),
+      traditionalOccupationCommunity: String(formData.get("traditionalOccupationCommunity") ?? "").trim(),
+      migrantWorker: String(formData.get("migrantWorker") ?? "").trim(),
+      upResidentFamilyBenefit: String(formData.get("upResidentFamilyBenefit") ?? "").trim(),
+      termsAccepted: formData.get("termsAccepted") === "true" ? "true" : "",
+      address,
+    };
     const razorpayPaymentId = String(formData.get("razorpay_payment_id") ?? "").trim();
     const razorpayOrderId = String(formData.get("razorpay_order_id") ?? "").trim();
     const razorpaySignature = String(formData.get("razorpay_signature") ?? "").trim();
@@ -142,18 +157,6 @@ export async function POST(request: Request) {
 
     if (!agentServiceId) {
       return jsonError("Service is required.", 400);
-    }
-
-    if (!customerId && (!customerName || !mobile || !email || !pincode || !city || !state)) {
-      return jsonError("Customer name, email, mobile, pincode, city, and state are required.", 400);
-    }
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return jsonError("Enter a valid customer email.", 400);
-    }
-
-    if (pincode && !/^\d{6}$/.test(pincode)) {
-      return jsonError("Enter a valid 6 digit PIN code.", 400);
     }
 
     for (const file of documentFiles) {
@@ -169,6 +172,36 @@ export async function POST(request: Request) {
 
     if (!service) {
       return jsonError("Service not found.", 404);
+    }
+
+    const isPmVishwakarmaApplication = service.slug === "pm-vishwakarma-yojana";
+
+    if (!customerId && (!customerName || !mobile || !pincode || !city || !state || (!isPmVishwakarmaApplication && !email))) {
+      return jsonError(
+        isPmVishwakarmaApplication
+          ? "Customer name, mobile, pincode, city, and state are required."
+          : "Customer name, email, mobile, pincode, city, and state are required.",
+        400,
+      );
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return jsonError("Enter a valid customer email.", 400);
+    }
+
+    if (mobile && !/^\d{10}$/.test(mobile.replace(/\D/g, ""))) {
+      return jsonError("Enter a valid 10 digit Indian mobile number.", 400);
+    }
+
+    if (pincode && !/^\d{6}$/.test(pincode)) {
+      return jsonError("Enter a valid 6 digit PIN code.", 400);
+    }
+
+    if (isPmVishwakarmaApplication) {
+      const missingPmField = Object.entries(pmVishwakarmaDetails).find(([key, value]) => key !== "address" && !value);
+      if (missingPmField) {
+        return jsonError("Please complete all required PM Vishwakarma fields.", 400);
+      }
     }
 
     const expectedAmountPaise = Math.round(Number(service.customer_fee ?? 0) * 100);
@@ -219,7 +252,24 @@ export async function POST(request: Request) {
         .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
         .single();
       customer = data;
-      if (!customer?.email || !customer.mobile || !customer.pincode || !customer.city || !customer.state) {
+      if (isPmVishwakarmaApplication && customer) {
+        const { data: updatedCustomer } = await supabase
+          .from("customers")
+          .update({
+            full_name: customerName || customer.full_name,
+            mobile: mobile.replace(/\D/g, "") || customer.mobile,
+            email: email ? email.toLowerCase() : customer.email,
+            ...(address ? { address } : {}),
+            city: city || customer.city,
+            pincode: pincode || customer.pincode,
+            state: state || customer.state,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", resolvedCustomerId)
+          .select("id, full_name, mobile, email, city, pincode, state")
+          .single();
+        customer = updatedCustomer ?? customer;
+      } else if (!customer?.email || !customer.mobile || !customer.pincode || !customer.city || !customer.state) {
         return jsonError("Selected customer is missing email, mobile, pincode, city, or state. Create a new application with complete customer details.", 400);
       }
     } else {
@@ -227,8 +277,9 @@ export async function POST(request: Request) {
         .from("customers")
         .insert({
           full_name: customerName,
-          mobile,
-          email: email.toLowerCase(),
+          mobile: mobile.replace(/\D/g, ""),
+          email: email ? email.toLowerCase() : null,
+          address: address || null,
           city,
           pincode,
           state,
@@ -292,6 +343,19 @@ export async function POST(request: Request) {
           pincode: customer.pincode ?? pincode,
           city: customer.city ?? city,
           state: customer.state ?? state,
+          ...(isPmVishwakarmaApplication
+            ? {
+                district,
+                maritalStatus: pmVishwakarmaDetails.maritalStatus,
+                casteCategory: pmVishwakarmaDetails.casteCategory,
+                tradeWorkType: pmVishwakarmaDetails.tradeWorkType,
+                traditionalOccupationCommunity: pmVishwakarmaDetails.traditionalOccupationCommunity,
+                migrantWorker: pmVishwakarmaDetails.migrantWorker,
+                upResidentFamilyBenefit: pmVishwakarmaDetails.upResidentFamilyBenefit,
+                termsAccepted: pmVishwakarmaDetails.termsAccepted,
+                address,
+              }
+            : {}),
           message,
           invoiceNumber,
         },

@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, FileUp, Send } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
+import {
+  createPmVishwakarmaInitialValues,
+  getPmVishwakarmaValidationError,
+  isPmVishwakarmaComplete,
+  PmVishwakarmaApplicationFields,
+  type PmVishwakarmaApplicationValues,
+  usePmVishwakarmaPincodeAutofill,
+} from "@/components/portal/pm-vishwakarma-application-fields";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,11 +39,14 @@ export function AgentApplicationForm({
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? "");
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [razorpayPayment, setRazorpayPayment] = useState<(VerifiedRazorpayPayment & { amount_paise: number }) | null>(null);
+  const [pmVishwakarmaValues, setPmVishwakarmaValues] = useState(() => createPmVishwakarmaInitialValues());
+  const [pincodeStatus, setPincodeStatus] = useState("");
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer.id === customerId),
     [customerId, customers],
   );
   const selectedService = services.find((service) => service.id === serviceId);
+  const isPmVishwakarma = selectedService?.slug === "pm-vishwakarma-yojana";
   const payableAmountPaise = Math.round(Number(selectedService?.customer_fee ?? 0) * 100);
   const paymentReceipt = useMemo(() => `agent-${selectedService?.slug ?? "service"}-${Date.now()}`, [selectedService?.slug]);
   const selectedPayout = selectedService ? payoutForAgentService(selectedService) : 0;
@@ -44,6 +55,31 @@ export function AgentApplicationForm({
     setRazorpayPayment(null);
   }, [payableAmountPaise]);
 
+  useEffect(() => {
+    if (!isPmVishwakarma || !selectedCustomer) return;
+
+    setPmVishwakarmaValues((current) => ({
+      ...current,
+      name: selectedCustomer.full_name ?? current.name,
+      mobile: (selectedCustomer.mobile ?? current.mobile).replace(/\D/g, "").slice(0, 10),
+      email: selectedCustomer.email ?? current.email,
+      pincode: (selectedCustomer.pincode ?? current.pincode ?? "").replace(/\D/g, "").slice(0, 6),
+      city: selectedCustomer.city ?? current.city,
+      state: selectedCustomer.state ?? current.state,
+    }));
+  }, [isPmVishwakarma, selectedCustomer]);
+
+  usePmVishwakarmaPincodeAutofill({
+    enabled: Boolean(isPmVishwakarma),
+    values: pmVishwakarmaValues,
+    setValues: setPmVishwakarmaValues,
+    setStatus: setPincodeStatus,
+  });
+
+  function updatePmVishwakarmaValue<Key extends keyof PmVishwakarmaApplicationValues>(key: Key, value: PmVishwakarmaApplicationValues[Key]) {
+    setPmVishwakarmaValues((current) => ({ ...current, [key]: value }));
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isPending) return;
@@ -51,6 +87,14 @@ export function AgentApplicationForm({
     if (payableAmountPaise > 0 && !razorpayPayment) {
       toastError("Please complete Razorpay checkout before submitting.");
       return;
+    }
+
+    if (isPmVishwakarma) {
+      const pmValidationError = getPmVishwakarmaValidationError(pmVishwakarmaValues);
+      if (pmValidationError) {
+        toastError(pmValidationError);
+        return;
+      }
     }
 
     if (razorpayPayment && razorpayPayment.amount_paise !== payableAmountPaise) {
@@ -112,7 +156,14 @@ export function AgentApplicationForm({
             </SelectContent>
           </Select>
 
-          {!selectedCustomer ? (
+          {isPmVishwakarma ? (
+            <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4">
+              <p className="text-sm font-bold text-slate-950">PM Vishwakarma application details</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                Fill the same dedicated PM Vishwakarma form used in the customer apply workflow. Email, address, and note are optional.
+              </p>
+            </div>
+          ) : !selectedCustomer ? (
             <div className="grid gap-3 md:grid-cols-2">
               <Input name="customerName" placeholder="Customer name" required={!customerId} />
               <Input name="mobile" placeholder="Mobile number" inputMode="numeric" required={!customerId} />
@@ -171,7 +222,11 @@ export function AgentApplicationForm({
             </div>
           ) : null}
 
-          <Textarea name="message" placeholder="Application notes" className="min-h-24" />
+          {isPmVishwakarma ? (
+            <PmVishwakarmaApplicationFields values={pmVishwakarmaValues} onChange={updatePmVishwakarmaValue} pincodeStatus={pincodeStatus} />
+          ) : (
+            <Textarea name="message" placeholder="Application notes" className="min-h-24" />
+          )}
 
           <div className="rounded-2xl border border-dashed bg-blue-50/60 p-4">
             <div className="flex items-center gap-2 font-bold text-slate-950">
@@ -192,12 +247,12 @@ export function AgentApplicationForm({
                 receipt={paymentReceipt}
                 serviceSlug={selectedService?.slug}
                 customer={{
-                  name: selectedCustomer?.full_name,
-                  email: selectedCustomer?.email ?? undefined,
-                  mobile: selectedCustomer?.mobile,
+                  name: isPmVishwakarma ? pmVishwakarmaValues.name : selectedCustomer?.full_name,
+                  email: isPmVishwakarma ? pmVishwakarmaValues.email || undefined : selectedCustomer?.email ?? undefined,
+                  mobile: isPmVishwakarma ? pmVishwakarmaValues.mobile : selectedCustomer?.mobile,
                 }}
                 description={selectedService?.title ?? "Agent POS application"}
-                disabled={isPending || !selectedService}
+                disabled={isPending || !selectedService || Boolean(isPmVishwakarma && !isPmVishwakarmaComplete(pmVishwakarmaValues))}
                 onVerified={(payment) =>
                   setRazorpayPayment({
                     ...payment,
