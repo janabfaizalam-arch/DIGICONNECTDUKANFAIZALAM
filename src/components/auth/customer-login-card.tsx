@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff, Gift, LockKeyhole, Mail, MapPin, Phone, UserRound } from "lucide-react";
 
+import { FacebookIcon } from "@/components/auth/facebook-icon";
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,12 @@ function getCurrentCustomerRedirect() {
   return getSafeCustomerRedirect(params.get("redirect") ?? params.get("next"));
 }
 
+function getOAuthCallbackUrl() {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  const origin = configuredSiteUrl || (typeof window === "undefined" ? "" : window.location.origin);
+  return `${origin}/auth/callback`;
+}
+
 async function readAuthApiResponse(response: Response): Promise<AuthApiResponse> {
   const fallback = response.ok ? "Request completed." : `Request failed with status ${response.status}.`;
 
@@ -90,6 +97,7 @@ function CustomerLoginCardInner({
   const [formMessage, setFormMessage] = useState<FormMessage | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [isGooglePending, setIsGooglePending] = useState(false);
+  const [isFacebookPending, setIsFacebookPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
@@ -162,25 +170,25 @@ function CustomerLoginCardInner({
   }, [mode, pincode]);
 
   function switchMode(nextMode: AuthMode) {
-    if (isPending || isGooglePending) return;
+    if (isPending || isGooglePending || isFacebookPending) return;
     setMode(nextMode);
     setFormMessage(null);
     setShowPassword(false);
   }
 
-  async function handleGoogleLogin() {
-    if (isPending || isGooglePending) return;
+  async function handleOAuthLogin(provider: "google" | "facebook") {
+    if (isPending || isGooglePending || isFacebookPending) return;
     setFormMessage(null);
-    setIsGooglePending(true);
+    if (provider === "google") setIsGooglePending(true);
+    if (provider === "facebook") setIsFacebookPending(true);
 
     try {
       const supabase = createClient();
       if (!supabase) throw new Error("Supabase environment variables are missing.");
 
-      const origin = window.location.origin;
-      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(getCurrentCustomerRedirect())}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
+      const redirectTo = `${getOAuthCallbackUrl()}?next=${encodeURIComponent(getCurrentCustomerRedirect())}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
+        provider,
         options: {
           redirectTo,
           queryParams: {
@@ -191,21 +199,24 @@ function CustomerLoginCardInner({
       });
 
       if (error) throw error;
-      if (!data.url) throw new Error("Google login URL could not be generated. Please try again.");
+      const providerName = provider === "facebook" ? "Facebook" : "Google";
+      if (!data.url) throw new Error(`${providerName} login URL could not be generated. Please try again.`);
 
-      trackLogin("google");
+      trackLogin(provider);
       window.location.assign(data.url);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Google login failed. Please try again.";
+      const providerName = provider === "facebook" ? "Facebook" : "Google";
+      const message = error instanceof Error ? error.message : `${providerName} login failed. Please try again.`;
       setFormMessage({ type: "error", text: message });
       toastError(message);
       setIsGooglePending(false);
+      setIsFacebookPending(false);
     }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isPending || isGooglePending) return;
+    if (isPending || isGooglePending || isFacebookPending) return;
     setFormMessage(null);
 
     const formData = new FormData(event.currentTarget);
@@ -342,7 +353,7 @@ function CustomerLoginCardInner({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-5 grid gap-3 text-left" aria-busy={isPending || isGooglePending}>
+      <form onSubmit={handleSubmit} className="mt-5 grid gap-3 text-left" aria-busy={isPending || isGooglePending || isFacebookPending}>
         {mode === "signup" ? (
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Full Name</span>
@@ -483,7 +494,7 @@ function CustomerLoginCardInner({
 
         <FormSubmitButton
           loading={isPending}
-          disabled={isGooglePending}
+          disabled={isGooglePending || isFacebookPending}
           loadingText={mode === "signup" ? "Creating account..." : "Logging in..."}
           icon={<Mail className="h-4 w-4" />}
           className="h-12 w-full rounded-xl bg-blue-700 text-base font-semibold shadow-sm transition hover:bg-blue-800 active:scale-[0.99]"
@@ -492,9 +503,13 @@ function CustomerLoginCardInner({
         </FormSubmitButton>
       </form>
 
-      <Button type="button" variant="outline" disabled={isPending || isGooglePending} onClick={() => void handleGoogleLogin()} className="mt-3 h-12 w-full rounded-xl bg-white">
+      <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => void handleOAuthLogin("google")} className="mt-3 h-12 w-full rounded-xl bg-white">
         {isGooglePending ? <ButtonSpinner className="text-blue-700" /> : <GoogleIcon />}
         {isGooglePending ? "Opening Google..." : "Continue with Google"}
+      </Button>
+      <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => void handleOAuthLogin("facebook")} className="mt-3 h-12 w-full rounded-xl bg-white">
+        {isFacebookPending ? <ButtonSpinner className="text-blue-700" /> : <FacebookIcon />}
+        {isFacebookPending ? "Opening Facebook..." : "Continue with Facebook"}
       </Button>
     </div>
   );

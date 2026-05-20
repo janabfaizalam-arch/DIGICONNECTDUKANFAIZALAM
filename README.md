@@ -41,6 +41,26 @@ The lead form posts to `/api/leads`. If Supabase env vars are missing, the UI st
 6. Add `${NEXT_PUBLIC_SITE_URL}/reset-password` to Supabase Auth redirect URLs for password reset emails.
 7. Visit `/login` for Google sign-in and `/dashboard` for the protected account page.
 
+## Facebook Auth Setup
+
+In Supabase Dashboard -> Authentication -> Providers -> Facebook:
+
+1. Enable the Facebook provider.
+2. Add your Facebook App ID and Facebook App Secret.
+3. In Facebook Developer setup, add this callback URL:
+
+```text
+https://<SUPABASE_PROJECT_REF>.supabase.co/auth/v1/callback
+```
+
+Required permission:
+
+```text
+email
+```
+
+The app reuses the existing `/auth/callback` route through `NEXT_PUBLIC_SITE_URL`.
+
 ## Supabase password reset URL settings
 
 In Supabase Dashboard, open Authentication -> URL Configuration.

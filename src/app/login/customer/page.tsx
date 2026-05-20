@@ -27,10 +27,15 @@ function getSafeRedirect(value: string | undefined) {
   return value;
 }
 
-export default async function CustomerLoginPage({ searchParams }: { searchParams?: Promise<{ redirect?: string; next?: string; reset?: string }> }) {
+export default async function CustomerLoginPage({ searchParams }: { searchParams?: Promise<{ redirect?: string; next?: string; reset?: string; error?: string }> }) {
   const query = await searchParams;
   const redirectTo = getSafeRedirect(query?.redirect ?? query?.next);
-  const initialMessage = query?.reset === "success" ? "Password updated successfully. Please login with your new password." : undefined;
+  const initialMessage =
+    query?.reset === "success"
+      ? "Password updated successfully. Please login with your new password."
+      : query?.error === "oauth"
+        ? "Social login could not be completed. Please try again."
+        : undefined;
   const user = await getCurrentUser();
 
   if (user) {
