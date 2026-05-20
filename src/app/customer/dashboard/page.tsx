@@ -51,24 +51,31 @@ export default async function CustomerDashboardPage() {
     redirect(getRoleHome(role));
   }
 
-  if (user.email_confirmed_at) {
-    const supabase = await getSupabaseServerClient();
-    if (supabase) {
-      const { error } = await supabase.rpc("claim_customer_applications");
-      if (error) {
-        console.error("CUSTOMER_DASHBOARD_APPLICATIONS_FETCH_FAILED", {
-          step: "claim_customer_applications",
-          userId: user.id,
-          errorMessage: error.message,
-          errorCode: error.code,
-        });
-      }
-    }
-  }
-
   const metadataName = textValue(user.user_metadata.full_name) || textValue(user.user_metadata.name);
   const metadataMobile = textValue(user.phone) || textValue(user.user_metadata.mobile) || textValue(user.user_metadata.phone);
   const metadataEmail = user.email ?? "";
+
+  if (user.email_confirmed_at) {
+    if (!metadataMobile) {
+      console.info("CLAIM_SKIPPED_MISSING_MOBILE", {
+        userId: user.id,
+        email: metadataEmail || null,
+      });
+    } else {
+      const supabase = await getSupabaseServerClient();
+      if (supabase) {
+        const { error } = await supabase.rpc("claim_customer_applications");
+        if (error) {
+          console.error("CUSTOMER_DASHBOARD_APPLICATIONS_FETCH_FAILED", {
+            step: "claim_customer_applications",
+            userId: user.id,
+            errorMessage: error.message,
+            errorCode: error.code,
+          });
+        }
+      }
+    }
+  }
   const supabaseAdmin = getSupabaseAdmin();
 
   if (supabaseAdmin) {

@@ -24,6 +24,15 @@ export async function POST(request: Request) {
 
   await syncUserProfile(user);
 
+  const verifiedMobile = String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").trim();
+  if (!verifiedMobile) {
+    console.info("CLAIM_SKIPPED_MISSING_MOBILE", {
+      userId: user.id,
+      email: user.email ?? null,
+    });
+    return NextResponse.json({ claimed: 0, skipped: "missing_mobile" });
+  }
+
   const supabase = await getSupabaseRouteHandlerClient();
 
   if (!supabase) {

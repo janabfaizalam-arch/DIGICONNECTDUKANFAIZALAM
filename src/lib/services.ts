@@ -30,6 +30,7 @@ export type DbService = {
   id: string;
   category_id: string | null;
   category: string | null;
+  name?: string | null;
   title: string;
   slug: string;
   short_description: string | null;
@@ -209,6 +210,98 @@ function activeServiceFilter(service: DbService) {
 const serviceSelect =
   "*, service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*)";
 
+const legacyServiceSelect = "*";
+const serviceCatalogSelect = "id, slug, name, description, amount, commission_amount, required_documents, active, created_at, updated_at";
+
+function isSchemaMismatch(error: { message?: string; code?: string } | null | undefined) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return error?.code === "42703" || error?.code === "PGRST200" || message.includes("does not exist") || message.includes("relationship");
+}
+
+function normalizeServiceRow(row: Record<string, unknown>): DbService {
+  const slug = String(row.slug ?? row.id ?? "");
+  const fallback = getFallbackServiceBySlug(slug);
+  const title = String(row.title ?? row.name ?? row.service_name ?? fallback?.title ?? slug.replace(/-/g, " "));
+  const amount = Number(row.offer_price ?? row.sale_price ?? row.amount ?? 0);
+  const active = row.is_active ?? row.active ?? (row.status ? row.status === "published" : true);
+
+  return {
+    ...row,
+    id: String(row.id ?? slug),
+    category_id: (row.category_id as string | null | undefined) ?? null,
+    category: (row.category as string | null | undefined) ?? (row.category_slug as string | null | undefined) ?? fallback?.categorySlug ?? null,
+    title,
+    slug,
+    short_description: (row.short_description as string | null | undefined) ?? (row.description as string | null | undefined) ?? fallback?.shortDescription ?? null,
+    full_description: (row.full_description as string | null | undefined) ?? (row.description as string | null | undefined) ?? fallback?.overview ?? null,
+    overview: (row.overview as string | null | undefined) ?? (row.description as string | null | undefined) ?? fallback?.overview ?? null,
+    benefits: (row.benefits as string[] | null | undefined) ?? fallback?.benefits ?? null,
+    documents: (row.documents as string[] | null | undefined) ?? (row.required_documents as string[] | null | undefined) ?? fallback?.documents ?? null,
+    process: (row.process as string[] | null | undefined) ?? fallback?.process ?? null,
+    base_price: (row.base_price as number | null | undefined) ?? (row.old_price as number | null | undefined) ?? amount,
+    sale_price: (row.sale_price as number | null | undefined) ?? (row.offer_price as number | null | undefined) ?? amount,
+    is_paid: (row.is_paid as boolean | null | undefined) ?? amount > 0,
+    is_featured: (row.is_featured as boolean | null | undefined) ?? (row.featured as boolean | null | undefined) ?? false,
+    show_on_homepage: (row.show_on_homepage as boolean | null | undefined) ?? false,
+    is_active: Boolean(active),
+    old_price: (row.old_price as number | null | undefined) ?? null,
+    offer_price: (row.offer_price as number | null | undefined) ?? amount,
+    price_label: (row.price_label as string | null | undefined) ?? null,
+    cta_type: (row.cta_type as "apply" | "enquiry" | null | undefined) ?? (amount > 0 ? "apply" : "enquiry"),
+    badge: (row.badge as string | null | undefined) ?? null,
+    icon: (row.icon as string | null | undefined) ?? null,
+    hero_image_url: (row.hero_image_url as string | null | undefined) ?? null,
+    hero_image_storage_path: (row.hero_image_storage_path as string | null | undefined) ?? null,
+    cta_primary_label: (row.cta_primary_label as string | null | undefined) ?? null,
+    cta_primary_url: (row.cta_primary_url as string | null | undefined) ?? null,
+    cta_secondary_label: (row.cta_secondary_label as string | null | undefined) ?? null,
+    cta_secondary_url: (row.cta_secondary_url as string | null | undefined) ?? null,
+    status: (row.status as ServiceStatus | null | undefined) ?? (active ? "published" : "draft"),
+    featured: Boolean(row.featured ?? row.is_featured ?? false),
+    sort_order: Number(row.sort_order ?? 0),
+    seo_title: (row.seo_title as string | null | undefined) ?? null,
+    seo_description: (row.seo_description as string | null | undefined) ?? null,
+    seo_keywords: (row.seo_keywords as string[] | null | undefined) ?? null,
+    blog_content: (row.blog_content as string | null | undefined) ?? null,
+    faqs: (row.faqs as { question: string; answer: string }[] | null | undefined) ?? null,
+    reviews: (row.reviews as { name: string; location: string; text: string }[] | null | undefined) ?? null,
+    created_at: String(row.created_at ?? ""),
+    updated_at: String(row.updated_at ?? row.created_at ?? ""),
+  } as DbService;
+}
+
+async function fetchLegacyPublishedServiceRows() {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [] as DbService[];
+
+  const legacyResult = await supabase
+    .from("services")
+    .select(legacyServiceSelect)
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (!legacyResult.error) {
+    return (legacyResult.data ?? []).map((row) => normalizeServiceRow(row as Record<string, unknown>));
+  }
+
+  if (!isSchemaMismatch(legacyResult.error)) {
+    console.error("[services] legacy published service lookup failed", legacyResult.error.message);
+  }
+
+  const catalogResult = await supabase
+    .from("service_catalog")
+    .select(serviceCatalogSelect)
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (catalogResult.error) {
+    console.error("[services] service_catalog published lookup failed", catalogResult.error.message);
+    return [];
+  }
+
+  return (catalogResult.data ?? []).map((row) => normalizeServiceRow(row as Record<string, unknown>));
+}
+
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
   const fallback = getFallbackCategoryBySlug(category.slug);
 
@@ -302,15 +395,17 @@ async function fetchPublishedServiceRows() {
       .select(serviceSelect)
       .eq("status", "published")
       .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("title", { ascending: true });
+      .order("sort_order", { ascending: true });
 
     if (error) {
+      if (isSchemaMismatch(error)) {
+        return fetchLegacyPublishedServiceRows();
+      }
       console.error("[services] published service lookup failed", error.message);
       return [];
     }
 
-    return (data ?? []) as DbService[];
+    return (data ?? []).map((row) => normalizeServiceRow(row as Record<string, unknown>));
   } catch (error) {
     console.error("[services] published service lookup failed", error);
     return [];
@@ -355,14 +450,18 @@ export async function getPublicServiceBySlug(slug: string) {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!error && data) return serviceFromDb(data as DbService);
+      if (!error && data) return serviceFromDb(normalizeServiceRow(data as Record<string, unknown>));
+      if (error && isSchemaMismatch(error)) {
+        const rows = await fetchLegacyPublishedServiceRows();
+        const service = rows.find((item) => item.slug === normalizedSlug);
+        return service ? serviceFromDb(service) : null;
+      }
     } catch (error) {
       console.error("[services] service lookup failed", error);
     }
   }
 
-  const shouldFallback = !(await hasDatabaseServices());
-  return shouldFallback ? getFallbackServiceBySlug(normalizedSlug) ?? null : null;
+  return getFallbackServiceBySlug(normalizedSlug) ?? null;
 }
 
 export async function getPublicServiceRowBySlug(slug: string) {
@@ -386,11 +485,15 @@ export async function getPublicServiceRowBySlug(slug: string) {
       .maybeSingle();
 
     if (error) {
+      if (isSchemaMismatch(error)) {
+        const rows = await fetchLegacyPublishedServiceRows();
+        return rows.find((service) => service.slug === normalizedSlug) ?? null;
+      }
       console.error("[services] service page lookup failed", error.message);
       return null;
     }
 
-    return data as DbService | null;
+    return data ? normalizeServiceRow(data as Record<string, unknown>) : null;
   } catch (error) {
     console.error("[services] service page lookup failed", error);
     return null;
@@ -499,13 +602,16 @@ export async function getAdminServices() {
   if (!supabase) return [] as AdminService[];
 
   try {
-    const { data, error } = await supabase.from("services").select(serviceSelect).order("sort_order").order("title");
+    const { data, error } = await supabase.from("services").select(serviceSelect).order("sort_order");
     if (error) return [] as AdminService[];
-    return (data ?? []).map((service) => ({
-      ...(service as DbService),
-      category: (service as DbService).service_categories,
-      category_slug: (service as DbService).category,
-    }));
+    return (data ?? []).map((row) => {
+      const service = normalizeServiceRow(row as Record<string, unknown>);
+      return {
+        ...service,
+        category: service.service_categories,
+        category_slug: service.category,
+      };
+    });
   } catch (error) {
     console.error("[services] admin services lookup failed", error);
     return [] as AdminService[];
