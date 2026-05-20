@@ -190,7 +190,6 @@ export type Payment = {
 export type Invoice = {
   id: string;
   application_id: string;
-  application_short_id?: string | null;
   user_id?: string | null;
   customer_id?: string | null;
   invoice_number: string;

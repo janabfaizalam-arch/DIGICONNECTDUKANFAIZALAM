@@ -7,7 +7,6 @@ export type AdminIdentitySourceRow = {
   id?: NullableText;
   user_id?: NullableText;
   full_name?: NullableText;
-  name?: NullableText;
   email?: NullableText;
   mobile?: NullableText;
   phone?: NullableText;
@@ -117,11 +116,8 @@ export function resolveAdminCustomerIdentity({
     customerId: firstText(customerId, customer?.id, applicationIdentity?.customerId) || null,
     name: firstText(
       profile?.full_name,
-      profile?.name,
       customerProfile?.full_name,
-      customerProfile?.name,
       customer?.full_name,
-      customer?.name,
       authUser?.user_metadata?.full_name,
       authUser?.user_metadata?.name,
       applicationIdentity?.name,

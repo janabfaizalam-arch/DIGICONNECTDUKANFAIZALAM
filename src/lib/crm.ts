@@ -35,8 +35,8 @@ function groupInvoicesByApplication(applications: Application[], invoices: Invoi
   return invoices.reduce<Record<string, Invoice[]>>((grouped, invoice) => {
     const candidates = [
       invoice.application_id,
-      invoice.application_short_id,
       applicationByInvoiceId.get(invoice.id),
+      invoice.invoice_number,
     ].filter(Boolean) as string[];
     const applicationId = candidates.find((candidate) => applicationIds.has(candidate)) ?? candidates.find((candidate) => applicationIds.has(String(candidate)));
     if (!applicationId) return grouped;
@@ -54,16 +54,13 @@ export async function fetchInvoicesForApplications(applications: Application[]) 
 
   const applicationIds = applications.map((application) => application.id);
   const invoiceIds = applications.map((application) => application.invoice_id).filter(Boolean) as string[];
-  const shortIds = applicationIds.map((id) => id.slice(0, 8));
   const baseSelect = "id, application_id, user_id, customer_id, invoice_number, customer_name, customer_email, customer_mobile, service_name, amount, wallet_used_amount, real_payment_amount, payment_status, created_at";
-  const fullSelect = `${baseSelect}, application_short_id`;
   const filters = [`application_id.in.(${applicationIds.join(",")})`];
   if (invoiceIds.length) filters.push(`id.in.(${invoiceIds.join(",")})`);
-  if (shortIds.length) filters.push(`application_short_id.in.(${shortIds.join(",")})`);
 
   const fullResult = await supabase
     .from("invoices")
-    .select(fullSelect)
+    .select(baseSelect)
     .or(filters.join(","));
 
   if (!fullResult.error) {

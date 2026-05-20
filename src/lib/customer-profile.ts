@@ -16,7 +16,6 @@ const customerProfileColumns =
 
 export type CustomerDashboardProfile = {
   full_name?: string | null;
-  name?: string | null;
   mobile?: string | null;
   email?: string | null;
   photo_url?: string | null;
@@ -93,9 +92,9 @@ export async function getCustomerDashboardProfile(userId: string) {
   }
 
   const [profileResult, customerResult, customerProfileResult] = await Promise.allSettled([
-    supabaseAdmin.from("profiles").select("id, full_name, name, mobile, email, avatar_url").eq("id", userId).maybeSingle(),
-    supabaseAdmin.from("customers").select("id, full_name, name, mobile, email").eq("user_id", userId).limit(1).maybeSingle(),
-    supabaseAdmin.from("customer_profiles").select("id, full_name, name, mobile, email, photo_url").eq("id", userId).maybeSingle(),
+    supabaseAdmin.from("profiles").select("id, full_name, mobile, email, avatar_url").eq("id", userId).maybeSingle(),
+    supabaseAdmin.from("customers").select("id, full_name, mobile, email").eq("user_id", userId).limit(1).maybeSingle(),
+    supabaseAdmin.from("customer_profiles").select("id, full_name, mobile, email, photo_url").eq("id", userId).maybeSingle(),
   ]);
 
   const values: CustomerDashboardProfile[] = [];

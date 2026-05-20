@@ -115,7 +115,6 @@ export default async function CustomerDashboardPage() {
   });
   const name =
     textValue(customerProfile?.full_name) ||
-    textValue(customerProfile?.name) ||
     metadataName ||
     textValue(customerProfile?.email) ||
     metadataEmail ||

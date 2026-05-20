@@ -11,7 +11,6 @@ type ProfileRow = {
   user_id?: string | null;
   email: string | null;
   full_name: string | null;
-  name?: string | null;
   mobile: string | null;
   phone?: string | null;
   mobile_number?: string | null;
@@ -388,7 +387,7 @@ export async function getAdminCustomers(input: { filter?: string | string[] | nu
     const authUser = authUsersById.get(profile.id);
 
     return {
-      name: firstText(profile.full_name, profile.name, customerProfile?.full_name, customer?.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, profile.email),
+      name: firstText(profile.full_name, customerProfile?.full_name, customer?.full_name, authUser?.user_metadata?.full_name, authUser?.user_metadata?.name, profile.email),
       email: profile.email ?? customerProfile?.email ?? customer?.email ?? authUser?.email ?? null,
       mobile: normalizeMobile(firstText(authUser?.phone, profile.mobile, profile.phone, profile.mobile_number, customer?.mobile, customer?.phone, customer?.mobile_number, customerProfile?.mobile, customerProfile?.phone, customerProfile?.mobile_number, authUser?.user_metadata?.mobile, authUser?.user_metadata?.phone)),
       referralCode: referralCodeFor(profile, customer, customerProfile),

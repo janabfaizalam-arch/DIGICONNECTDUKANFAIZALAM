@@ -49,7 +49,7 @@ function groupInvoicesByApplication(applications: Application[], invoices: Invoi
   const applicationByInvoiceId = new Map(applications.filter((application) => application.invoice_id).map((application) => [String(application.invoice_id), application.id]));
 
   return invoices.reduce<Record<string, Invoice[]>>((grouped, invoice) => {
-    const candidates = [invoice.application_id, invoice.application_short_id, applicationByInvoiceId.get(invoice.id)].filter(Boolean) as string[];
+    const candidates = [invoice.application_id, applicationByInvoiceId.get(invoice.id), invoice.invoice_number].filter(Boolean) as string[];
     const applicationId = candidates.find((candidate) => applicationIds.has(candidate));
     if (!applicationId) return grouped;
     grouped[applicationId] = [...(grouped[applicationId] ?? []), invoice];
@@ -113,11 +113,9 @@ export async function getCustomerDashboardData(userId: string) {
   }
 
   const invoiceIds = baseApplications.map((application) => application.invoice_id).filter(Boolean) as string[];
-  const shortIds = applicationIds.map((id) => id.slice(0, 8));
   const invoiceBaseSelect = "id, application_id, invoice_number, customer_name, customer_email, service_name, amount, wallet_used_amount, real_payment_amount, payment_status, created_at";
   const invoiceFilters = [`application_id.in.(${applicationIds.join(",")})`];
   if (invoiceIds.length) invoiceFilters.push(`id.in.(${invoiceIds.join(",")})`);
-  if (shortIds.length) invoiceFilters.push(`application_short_id.in.(${shortIds.join(",")})`);
 
   const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.allSettled([
     supabase
@@ -130,7 +128,7 @@ export async function getCustomerDashboardData(userId: string) {
       .in("application_id", applicationIds),
     supabase
       .from("invoices")
-      .select(`${invoiceBaseSelect}, application_short_id`)
+      .select(invoiceBaseSelect)
       .or(invoiceFilters.join(",")),
     supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").in("application_id", applicationIds),
   ]);
