@@ -90,10 +90,11 @@ function normalizeCustomer(customer: ApplicationDraftCustomer = {}) {
   };
 }
 
-function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>) {
+function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>, options: { emailOptional?: boolean } = {}) {
   if (!required(customer.name)) return "Name is required before payment.";
   if (!required(customer.mobile)) return "Mobile is required before payment.";
-  if (!required(customer.email) || !required(customer.city)) return "Customer email and city are required before payment.";
+  if (!options.emailOptional && !required(customer.email)) return "Customer email is required before payment.";
+  if (!required(customer.city)) return "Customer city is required before payment.";
   return null;
 }
 
@@ -193,7 +194,9 @@ export async function POST(request: Request) {
         }
 
         const customer = normalizeCustomer(body.applicationDraft.customer);
-        const customerValidationError = getCustomerValidationError(customer);
+        const customerValidationError = getCustomerValidationError(customer, {
+          emailOptional: serviceSlugs.includes("pm-vishwakarma-yojana"),
+        });
 
         devInfo("[razorpay/create-order] Customer validation before payment", {
           hasName: Boolean(customer.name),

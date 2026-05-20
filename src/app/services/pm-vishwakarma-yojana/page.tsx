@@ -20,6 +20,7 @@ import {
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { buttonVariants } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth";
 import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 
@@ -197,9 +198,18 @@ const terms = [
 ];
 
 const testimonials = [
-  "Smooth registration guidance and document support.",
-  "Very helpful service for scheme application.",
-  "Professional support and clear process explanation.",
+  {
+    label: "Verified Applicant",
+    text: "Documentation support was clear and the application process was explained properly.",
+  },
+  {
+    label: "Verified Customer",
+    text: "Good guidance for PM Vishwakarma registration and required documents.",
+  },
+  {
+    label: "Service User",
+    text: "Professional support with quick response.",
+  },
 ];
 
 const faqSchema = {
@@ -235,7 +245,10 @@ function SectionHeading({
   );
 }
 
-export default function PmVishwakarmaYojanaPage() {
+export default async function PmVishwakarmaYojanaPage() {
+  const user = await getCurrentUser();
+  const applyCtaLabel = user ? "Apply Now" : "Login to Apply";
+
   return (
     <>
       <main className="bg-white">
@@ -254,9 +267,12 @@ export default function PmVishwakarmaYojanaPage() {
               <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
                 DigiConnect Dukan helps eligible artisans and skilled workers with online registration guidance, document checks, certificate and ID card assistance, training support, toolkit incentive guidance, and business support under PM Vishwakarma Yojana.
               </p>
+              <p className="mt-4 inline-flex rounded-2xl border border-orange-100 bg-white/85 px-4 py-3 text-sm font-extrabold text-orange-700 shadow-sm">
+                Service fee: ₹250
+              </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link href={applyPath} className={buttonVariants({ size: "lg" })}>
-                  Login to Apply
+                  {applyCtaLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
@@ -423,15 +439,15 @@ export default function PmVishwakarmaYojanaPage() {
             <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
               <SectionHeading eyebrow="Trust" title="Customer experience" />
               <div className="mt-5 grid gap-3">
-                {testimonials.map((text, index) => (
-                  <article key={text} className="rounded-2xl bg-slate-50 p-4">
+                {testimonials.map((review) => (
+                  <article key={review.label} className="rounded-2xl bg-slate-50 p-4">
                     <div className="flex gap-1 text-orange-500">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star key={star} className="h-4 w-4 fill-orange-400 text-orange-400" />
                       ))}
                     </div>
-                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">{text}</p>
-                    <p className="mt-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Customer {index + 1}</p>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">{review.text}</p>
+                    <p className="mt-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{review.label}</p>
                   </article>
                 ))}
               </div>
@@ -451,7 +467,7 @@ export default function PmVishwakarmaYojanaPage() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link href={applyPath} className={buttonVariants({ size: "lg" })}>
-                  Login to Apply
+                  {applyCtaLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>

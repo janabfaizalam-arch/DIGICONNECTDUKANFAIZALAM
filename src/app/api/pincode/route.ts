@@ -36,7 +36,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      city: postOffice.District || postOffice.Block || postOffice.Name || "",
+      city: postOffice.Name || postOffice.Block || postOffice.District || "",
+      district: postOffice.District || "",
       state: postOffice.State,
     });
   } catch {

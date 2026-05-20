@@ -31,6 +31,24 @@ function text(value: unknown) {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
 }
 
+const hiddenFormKeys = new Set(["documents", "payment", "service_slugs"]);
+const formLabels: Record<string, string> = {
+  pincode: "Pin Code",
+  district: "District",
+  state: "State",
+  maritalStatus: "Marital Status",
+  casteCategory: "Caste / Category",
+  tradeWorkType: "Trade / Work Type",
+  traditionalOccupationCommunity: "Traditional occupation caste/community",
+  migrantWorker: "Migrant worker/artisan",
+  upResidentFamilyBenefit: "UP resident and family benefit declaration",
+  termsAccepted: "Terms Accepted",
+};
+
+function labelFromKey(key: string) {
+  return formLabels[key] ?? key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default async function AdminApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
@@ -98,6 +116,17 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               <DetailRow label="Address" value={customer.address || text(formData.address)} />
               <DetailRow label="City" value={customer.city || text(formData.city)} />
               <DetailRow label="State / PIN" value={[customer.state || text(formData.state), customer.pincode || text(formData.pincode)].filter(Boolean).join(" / ")} />
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-lg font-bold text-slate-950">Submitted Form Details</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {Object.entries(formData)
+                .filter(([key, value]) => !hiddenFormKeys.has(key) && text(value))
+                .map(([key, value]) => (
+                  <DetailRow key={key} label={labelFromKey(key)} value={text(value)} />
+                ))}
             </div>
           </Card>
 

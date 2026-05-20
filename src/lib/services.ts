@@ -359,7 +359,7 @@ export function serviceFromDb(service: DbService): ServiceItem {
     .map((item) => ({ name: item.customer_name, location: "", text: item.review_text }));
   const priceLabel = isPaid ? service.price_label || offerPrice || fallback?.priceLabel || "Apply Now" : service.price_label || "Free";
 
-  return {
+  const item: ServiceItem = {
     title: service.title,
     slug: service.slug,
     category: category?.name ?? fallback?.category ?? "Services",
@@ -383,6 +383,24 @@ export function serviceFromDb(service: DbService): ServiceItem {
     seoKeywords: jsonArray<string>(service.seo_keywords, fallback?.seoKeywords ?? []),
     blogContent: service.blog_content || fallback?.blogContent || "",
   };
+
+  if (item.slug === "pm-vishwakarma-yojana") {
+    return {
+      ...item,
+      title: "PM Vishwakarma Yojana Registration",
+      shortDescription: "PM Vishwakarma scheme registration assistance for eligible traditional artisans and skilled workers.",
+      amount: 250,
+      oldPrice: "₹499",
+      offerPrice: "₹250",
+      priceLabel: "₹250",
+      ctaType: "apply",
+      seoTitle: "PM Vishwakarma Yojana Registration | DigiConnect Dukan",
+      seoDescription: "Apply for PM Vishwakarma Yojana with DigiConnect Dukan. Get assistance for registration, documents, toolkit incentive, training stipend, certificate, ID card and business support.",
+      seoKeywords: ["PM Vishwakarma Yojana", "Vishwakarma Registration", "Toolkit Incentive", "Skill Training", "Artisan Scheme", "DigiConnect Dukan"],
+    };
+  }
+
+  return item;
 }
 
 async function fetchPublishedServiceRows() {

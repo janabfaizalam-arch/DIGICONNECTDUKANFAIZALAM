@@ -77,10 +77,10 @@ function normalizeCustomer(customer: ApplicationPayload["customer"] = {}) {
   };
 }
 
-function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>) {
+function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>, options: { emailOptional?: boolean } = {}) {
   if (!required(customer.name)) return "Name is required.";
   if (!required(customer.mobile)) return "Mobile is required.";
-  if (!required(customer.email)) return "Email is required.";
+  if (!options.emailOptional && !required(customer.email)) return "Email is required.";
   if (!required(customer.city)) return "City is required.";
   return null;
 }
@@ -205,7 +205,10 @@ export async function POST(request: Request) {
     }
 
     const customer = normalizeCustomer(body.customer);
-    const customerValidationError = getCustomerValidationError(customer);
+    const isPmVishwakarmaApplication = resolvedServices.some((service) => service.slug === "pm-vishwakarma-yojana");
+    const customerValidationError = getCustomerValidationError(customer, {
+      emailOptional: isPmVishwakarmaApplication,
+    });
 
     devInfo("[applications] Customer validation before application submit", {
       hasName: Boolean(customer.name),
@@ -222,6 +225,26 @@ export async function POST(request: Request) {
 
     if (customerValidationError) {
       return jsonError(customerValidationError, 400);
+    }
+
+    if (isPmVishwakarmaApplication) {
+      const requiredDetailKeys = [
+        "pincode",
+        "district",
+        "state",
+        "maritalStatus",
+        "casteCategory",
+        "tradeWorkType",
+        "traditionalOccupationCommunity",
+        "migrantWorker",
+        "upResidentFamilyBenefit",
+        "termsAccepted",
+      ];
+      const missingDetail = requiredDetailKeys.find((key) => !required((body.details ?? {})[key]));
+
+      if (missingDetail) {
+        return jsonError("Please complete all required PM Vishwakarma fields.", 400);
+      }
     }
 
     const details = body.details ?? {};

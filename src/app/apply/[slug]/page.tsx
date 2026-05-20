@@ -63,6 +63,7 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
   );
 
   function fieldsFor(categorySlug: string, serviceSlug: string): ServiceField[] {
+    if (serviceSlug === "pm-vishwakarma-yojana") return [];
     if (serviceSlug === "pan-card") return [{ name: "fullName", label: "Full Name", required: true }, { name: "fatherName", label: "Father's Name", required: false }];
     if (categorySlug === "tax-business") return [{ name: "businessName", label: "Business Name", required: false }, { name: "panNumber", label: "PAN", required: false }];
     if (categorySlug === "insurance") return [{ name: "vehicleNumber", label: "Vehicle Number", required: false }, { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false }];
@@ -106,7 +107,7 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
 
           <ServiceApplicationForm
             service={{
-              title: service.title,
+              title: service.slug === "pm-vishwakarma-yojana" ? "PM Vishwakarma Yojana Registration" : service.title,
               slug: service.slug,
               amount: service.amount,
               description: service.shortDescription,

@@ -50,6 +50,14 @@ type ApplicantFormValues = {
   message?: string;
 };
 
+type PincodeLookupResponse = {
+  ok?: boolean;
+  city?: string;
+  district?: string;
+  state?: string;
+  message?: string;
+};
+
 type NormalizedApplicationDraft = {
   customer: {
     name: string;
@@ -108,10 +116,10 @@ function buildNormalizedApplicationDraft(form: ApplicantFormValues): NormalizedA
   };
 }
 
-function getApplicantValidationError(draft: NormalizedApplicationDraft) {
+function getApplicantValidationError(draft: NormalizedApplicationDraft, options: { emailOptional?: boolean } = {}) {
   if (!draft.customer.name) return "Name is required.";
   if (!draft.customer.mobile) return "Mobile is required.";
-  if (!draft.customer.email) return "Email is required.";
+  if (!options.emailOptional && !draft.customer.email) return "Email is required.";
   if (!draft.customer.city) return "City is required.";
   return null;
 }
@@ -121,6 +129,35 @@ function devInfo(message: string, details?: Record<string, unknown>) {
     console.info(message, details ?? {});
   }
 }
+
+function RequiredMark() {
+  return <span className="text-red-600">*</span>;
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="text-sm font-bold text-slate-800">{children}</label>;
+}
+
+const pmVishwakarmaTrades = [
+  "Tailor (Darzi)",
+  "Barber (Nai)",
+  "Carpenter (Badhai)",
+  "Blacksmith (Lohar)",
+  "Goldsmith (Sunar)",
+  "Cobbler (Mochi)",
+  "Potter (Kumhar)",
+  "Mason (Rajmistri)",
+  "Washerman (Dhobi)",
+  "Garland Maker",
+  "Basket/Broom Maker",
+  "Toy Maker",
+  "Locksmith",
+  "Fishing Net Maker",
+  "Sculptor",
+  "Boat Maker",
+  "Hammer & Tool Kit Maker",
+  "Other Eligible Traditional Work",
+];
 
 export function ServiceApplicationForm({ service, services }: { service: ApplicationFormService; services?: ApplicationFormService[] }) {
   const router = useRouter();
@@ -136,6 +173,17 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [applicantCity, setApplicantCity] = useState("");
   const [applicantAddress, setApplicantAddress] = useState("");
   const [applicantMessage, setApplicantMessage] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [district, setDistrict] = useState("");
+  const [stateName, setStateName] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [casteCategory, setCasteCategory] = useState("");
+  const [tradeWorkType, setTradeWorkType] = useState("");
+  const [traditionalOccupationCommunity, setTraditionalOccupationCommunity] = useState("");
+  const [migrantWorker, setMigrantWorker] = useState("");
+  const [upResidentFamilyBenefit, setUpResidentFamilyBenefit] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [pincodeStatus, setPincodeStatus] = useState("");
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
     const seen = new Set<string>();
@@ -149,6 +197,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       return true;
     });
   }, [service, services]);
+  const isPmVishwakarma = selectedServices.length === 1 && selectedServices[0]?.slug === "pm-vishwakarma-yojana";
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
   const totalAmount = isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
@@ -171,15 +220,87 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       }),
     [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName],
   );
+  const pmVishwakarmaDetailsForPayment = useMemo(
+    () =>
+      isPmVishwakarma
+        ? {
+            pincode,
+            district,
+            state: stateName,
+            maritalStatus,
+            casteCategory,
+            tradeWorkType,
+            traditionalOccupationCommunity,
+            migrantWorker,
+            upResidentFamilyBenefit,
+            termsAccepted: termsAccepted ? "true" : "",
+            address: applicantAddress.trim(),
+          }
+        : normalizedApplicationDraft.details,
+    [
+      applicantAddress,
+      casteCategory,
+      district,
+      isPmVishwakarma,
+      maritalStatus,
+      migrantWorker,
+      normalizedApplicationDraft.details,
+      pincode,
+      stateName,
+      termsAccepted,
+      traditionalOccupationCommunity,
+      tradeWorkType,
+      upResidentFamilyBenefit,
+    ],
+  );
   const canStartPayment =
     !isSubmitting &&
-    !getApplicantValidationError(normalizedApplicationDraft) &&
+    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma }) &&
     /^\d{10}$/.test(normalizedApplicationDraft.customer.mobile) &&
-    selectedDocuments.length > 0;
+    selectedDocuments.length > 0 &&
+    (!isPmVishwakarma ||
+      Boolean(/^\d{6}$/.test(pincode) &&
+        district.trim() &&
+        stateName.trim() &&
+        maritalStatus &&
+        casteCategory.trim() &&
+        tradeWorkType &&
+        traditionalOccupationCommunity &&
+        migrantWorker &&
+        upResidentFamilyBenefit &&
+        termsAccepted));
 
   useEffect(() => {
     setRazorpayPayment(null);
   }, [payableAmountPaise]);
+
+  useEffect(() => {
+    if (!isPmVishwakarma) return;
+
+    if (!/^\d{6}$/.test(pincode)) {
+      setPincodeStatus("");
+      return;
+    }
+
+    const controller = new AbortController();
+    setPincodeStatus("Fetching city, district and state...");
+
+    fetch(`/api/pincode?pincode=${encodeURIComponent(pincode)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const result = (await response.json()) as PincodeLookupResponse;
+        if (!response.ok || !result.ok) throw new Error(result.message || "PIN code lookup failed.");
+        if (result.city) setApplicantCity(result.city);
+        if (result.district) setDistrict(result.district);
+        if (result.state) setStateName(result.state);
+        setPincodeStatus("Location auto-filled. You can edit it if needed.");
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPincodeStatus("Auto-fetch failed. Please enter city, district and state manually.");
+      });
+
+    return () => controller.abort();
+  }, [isPmVishwakarma, pincode]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -209,7 +330,21 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       address: String(formData.get("address") ?? ""),
       message: String(formData.get("message") ?? ""),
     });
-    const applicantValidationError = getApplicantValidationError(submittedDraft);
+    const pmVishwakarmaDetails: Record<string, string> = isPmVishwakarma
+      ? {
+          pincode: String(formData.get("pincode") ?? "").trim(),
+          district: String(formData.get("district") ?? "").trim(),
+          state: String(formData.get("state") ?? "").trim(),
+          maritalStatus: String(formData.get("maritalStatus") ?? "").trim(),
+          casteCategory: String(formData.get("casteCategory") ?? "").trim(),
+          tradeWorkType: String(formData.get("tradeWorkType") ?? "").trim(),
+          traditionalOccupationCommunity: String(formData.get("traditionalOccupationCommunity") ?? "").trim(),
+          migrantWorker: String(formData.get("migrantWorker") ?? "").trim(),
+          upResidentFamilyBenefit: String(formData.get("upResidentFamilyBenefit") ?? "").trim(),
+          termsAccepted: formData.get("termsAccepted") === "true" ? "true" : "",
+        }
+      : {};
+    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma });
 
     devInfo("[service-application-form] Applicant validation before submit", {
       hasName: Boolean(submittedDraft.customer.name),
@@ -225,6 +360,24 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     if (applicantValidationError) {
       toastError(applicantValidationError);
       return;
+    }
+
+    if (!/^\d{10}$/.test(submittedDraft.customer.mobile)) {
+      toastError("Enter a valid 10 digit Indian mobile number.");
+      return;
+    }
+
+    if (isPmVishwakarma) {
+      if (!/^\d{6}$/.test(pmVishwakarmaDetails.pincode)) {
+        toastError("Enter a valid 6 digit PIN code.");
+        return;
+      }
+
+      const missingPmField = Object.entries(pmVishwakarmaDetails).find(([, value]) => !value);
+      if (missingPmField) {
+        toastError("Please complete all required PM Vishwakarma fields.");
+        return;
+      }
     }
 
     for (const file of selectedDocuments) {
@@ -305,7 +458,11 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           serviceSlug: selectedServices[0]?.slug,
           serviceSlugs: selectedServices.map((item) => item.slug),
           customer: submittedDraft.customer,
-          details: submittedDraft.details,
+          details: {
+            ...submittedDraft.details,
+            ...pmVishwakarmaDetails,
+            address: submittedDraft.details.address,
+          },
           documents: uploadedDocuments,
           razorpayPayment,
           applicationIds: razorpayPayment?.application_ids,
@@ -380,24 +537,152 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
         <div className="mt-5">
           <p className="font-bold text-slate-950">Applicant Details</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
-          <Input
-            name="mobile"
-            placeholder="Mobile Number"
-            aria-label="Mobile Number"
-            inputMode="numeric"
-            pattern="[0-9]{10}"
-            required
-            className="h-12 text-sm"
-            value={applicantMobile}
-            onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
-          />
-          <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
-          <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" value={applicantCity} onChange={(event) => setApplicantCity(event.target.value)} />
-          <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" value={applicantAddress} onChange={(event) => setApplicantAddress(event.target.value)} />
-          <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" value={applicantMessage} onChange={(event) => setApplicantMessage(event.target.value)} />
-          </div>
+          {isPmVishwakarma ? (
+            <div className="mt-3 grid gap-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <FieldLabel>Full Name <RequiredMark /></FieldLabel>
+                  <Input name="name" placeholder="Enter full name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>Mobile Number <RequiredMark /></FieldLabel>
+                  <Input
+                    name="mobile"
+                    placeholder="10 digit mobile number"
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    required
+                    className="h-12 text-sm"
+                    value={applicantMobile}
+                    onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>Pin Code <RequiredMark /></FieldLabel>
+                  <Input
+                    name="pincode"
+                    placeholder="6 digit PIN code"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    required
+                    className="h-12 text-sm"
+                    value={pincode}
+                    onChange={(event) => setPincode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                  {pincodeStatus ? <p className="text-xs font-semibold text-blue-700">{pincodeStatus}</p> : null}
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>City <RequiredMark /></FieldLabel>
+                  <Input name="city" placeholder="City" required className="h-12 text-sm" value={applicantCity} onChange={(event) => setApplicantCity(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>District <RequiredMark /></FieldLabel>
+                  <Input name="district" placeholder="District" required className="h-12 text-sm" value={district} onChange={(event) => setDistrict(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>State <RequiredMark /></FieldLabel>
+                  <Input name="state" placeholder="State" required className="h-12 text-sm" value={stateName} onChange={(event) => setStateName(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>Marital Status <RequiredMark /></FieldLabel>
+                  <select name="maritalStatus" required value={maritalStatus} onChange={(event) => setMaritalStatus(event.target.value)} className="h-12 rounded-xl border border-[var(--border)] bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]">
+                    <option value="">Select marital status</option>
+                    <option value="Married">Married</option>
+                    <option value="Unmarried">Unmarried</option>
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>Caste / Category <RequiredMark /></FieldLabel>
+                  <Input name="casteCategory" placeholder="Caste / Category" required className="h-12 text-sm" value={casteCategory} onChange={(event) => setCasteCategory(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5 md:col-span-2">
+                  <FieldLabel>Trade / Work Type <RequiredMark /></FieldLabel>
+                  <select name="tradeWorkType" required value={tradeWorkType} onChange={(event) => setTradeWorkType(event.target.value)} className="h-12 rounded-xl border border-[var(--border)] bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]">
+                    <option value="">Select trade / work type</option>
+                    {pmVishwakarmaTrades.map((trade) => <option key={trade} value={trade}>{trade}</option>)}
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>Email</FieldLabel>
+                  <Input name="email" placeholder="Email (optional)" type="email" className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <FieldLabel>Address</FieldLabel>
+                  <Input name="address" placeholder="Address (optional)" className="h-12 text-sm" value={applicantAddress} onChange={(event) => setApplicantAddress(event.target.value)} />
+                </div>
+                <div className="grid gap-1.5 md:col-span-2">
+                  <FieldLabel>Note / Message</FieldLabel>
+                  <Textarea name="message" placeholder="Note / Message (optional)" className="min-h-24 text-sm" value={applicantMessage} onChange={(event) => setApplicantMessage(event.target.value)} />
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                {[
+                  {
+                    name: "traditionalOccupationCommunity",
+                    value: traditionalOccupationCommunity,
+                    setter: setTraditionalOccupationCommunity,
+                    label: "Are you from a caste/community related to a traditional occupation?",
+                  },
+                  {
+                    name: "migrantWorker",
+                    value: migrantWorker,
+                    setter: setMigrantWorker,
+                    label: "Are you a migrant worker/artisan?",
+                    helper: "Migrant means a worker from another state.",
+                  },
+                  {
+                    name: "upResidentFamilyBenefit",
+                    value: upResidentFamilyBenefit,
+                    setter: setUpResidentFamilyBenefit,
+                    label: "I am a permanent resident of Uttar Pradesh. No other person in my family has taken benefit under this scheme. Family means husband/wife only.",
+                  },
+                ].map((question) => (
+                  <fieldset key={question.name} className="rounded-xl bg-white p-3">
+                    <legend className="text-sm font-bold leading-6 text-slate-900">{question.label} <RequiredMark /></legend>
+                    {question.helper ? <p className="mt-1 text-xs font-semibold text-slate-500">{question.helper}</p> : null}
+                    <div className="mt-3 flex gap-4">
+                      {["Yes", "No"].map((option) => (
+                        <label key={option} className="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
+                          <input type="radio" name={question.name} value={option} required checked={question.value === option} onChange={() => question.setter(option)} />
+                          {option}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+
+              <label className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-4 text-sm leading-6 text-slate-700">
+                <input type="checkbox" name="termsAccepted" value="true" required checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-1" />
+                <span>
+                  <span className="font-bold text-slate-950">I accept the terms and conditions <RequiredMark /></span>
+                  <span className="mt-2 block">
+                    I confirm that all information provided is true and correct. I understand that approval and benefits depend on government eligibility, verification, and official scheme rules. I understand that DigiConnect Dukan is an assistance/service provider, not a government authority. I understand that service fee may be non-refundable after processing starts.
+                  </span>
+                </span>
+              </label>
+            </div>
+          ) : (
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
+              <Input
+                name="mobile"
+                placeholder="Mobile Number"
+                aria-label="Mobile Number"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                required
+                className="h-12 text-sm"
+                value={applicantMobile}
+                onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+              />
+              <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
+              <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" value={applicantCity} onChange={(event) => setApplicantCity(event.target.value)} />
+              <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" value={applicantAddress} onChange={(event) => setApplicantAddress(event.target.value)} />
+              <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" value={applicantMessage} onChange={(event) => setApplicantMessage(event.target.value)} />
+            </div>
+          )}
         </div>
 
         <div className="mt-5 rounded-2xl border border-dashed bg-blue-50/60 p-4 md:p-5">
@@ -500,7 +785,10 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                       email: normalizedApplicationDraft.customer.email,
                       mobile: normalizedApplicationDraft.customer.mobile,
                     }}
-                    applicationDraft={normalizedApplicationDraft}
+                    applicationDraft={{
+                      customer: normalizedApplicationDraft.customer,
+                      details: pmVishwakarmaDetailsForPayment,
+                    }}
                     description={selectedServices.map((item) => item.title).join(", ")}
                     disabled={!canStartPayment}
                     onVerified={(payment) => {
@@ -519,7 +807,9 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                 ) : null}
                 {!canStartPayment ? (
                   <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
-                    Fill name, 10 digit mobile, email, city, and upload documents before payment.
+                    {isPmVishwakarma
+                      ? "Fill all required PM Vishwakarma fields, accept terms, and upload documents before payment."
+                      : "Fill name, 10 digit mobile, email, city, and upload documents before payment."}
                   </p>
                 ) : null}
               </div>

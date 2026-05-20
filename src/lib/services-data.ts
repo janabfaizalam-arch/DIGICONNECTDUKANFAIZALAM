@@ -369,7 +369,7 @@ const rawServices: RawService[] = [
   { title: "PMEGP Loan", categorySlug: "finance-banking", shortDescription: "PMEGP subsidy loan guidance for new business projects.", priceLabel: "Enquiry Now", iconKey: "loan", badge: "Popular" },
   { title: "Mudra Loan", categorySlug: "finance-banking", shortDescription: "Mudra loan enquiry and document support for small businesses.", priceLabel: "Enquiry Now", iconKey: "loan", badge: "Popular" },
   { title: "Stand-Up India Loan", categorySlug: "finance-banking", shortDescription: "Stand-Up India loan assistance for eligible entrepreneurs.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "PM Vishwakarma Yojana", categorySlug: "finance-banking", shortDescription: "PM Vishwakarma scheme guidance for eligible artisans and workers.", oldPrice: "Rs 0", offerPrice: "Rs 0", priceLabel: "Login to Apply", iconKey: "loan", badge: "Popular" },
+  { title: "PM Vishwakarma Yojana", categorySlug: "finance-banking", shortDescription: "PM Vishwakarma scheme guidance for eligible artisans and workers.", oldPrice: "₹499", offerPrice: "₹250", priceLabel: "₹250", iconKey: "loan", badge: "Popular" },
   { title: "PM SVANidhi Loan", categorySlug: "finance-banking", shortDescription: "Street vendor loan support with document and eligibility guidance.", priceLabel: "Enquiry Now", iconKey: "loan" },
   { title: "Dairy Loan", categorySlug: "finance-banking", shortDescription: "Dairy business loan file and subsidy scheme document support.", priceLabel: "Enquiry Now", iconKey: "loan" },
   { title: "Poultry Farm Loan", categorySlug: "finance-banking", shortDescription: "Poultry farm project loan guidance and file preparation support.", priceLabel: "Enquiry Now", iconKey: "loan" },
