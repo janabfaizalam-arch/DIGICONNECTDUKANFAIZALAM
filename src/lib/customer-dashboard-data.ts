@@ -1,7 +1,41 @@
 import type { Application, ApplicationDocument, Invoice, NotificationItem, Payment, Rating } from "@/lib/portal-types";
 import { resolveDocumentUrls } from "@/lib/crm";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getWalletSnapshot } from "@/lib/wallet";
+import { getWalletSnapshot, type WalletSnapshot } from "@/lib/wallet";
+
+const emptyWalletSnapshot: WalletSnapshot = {
+  wallet: null,
+  transactions: [],
+  cashbackEarned: 0,
+  cashbackUsed: 0,
+  expiringSoonAmount: 0,
+  referralSummary: null,
+};
+
+function logDashboardApplicationError(step: string, userId: string, error: unknown) {
+  const supabaseError = error as { message?: string; code?: string; details?: string; hint?: string } | null;
+  console.error("CUSTOMER_DASHBOARD_APPLICATIONS_FETCH_FAILED", {
+    step,
+    userId,
+    errorMessage: error instanceof Error ? error.message : supabaseError?.message ?? String(error),
+    errorCode: supabaseError?.code ?? null,
+    errorDetails: supabaseError?.details ?? null,
+    errorHint: supabaseError?.hint ?? null,
+  });
+}
+
+async function safeWalletSnapshot(userId: string) {
+  try {
+    return await getWalletSnapshot(userId, 12);
+  } catch (error) {
+    console.error("CUSTOMER_DASHBOARD_LOAD_FAILED", {
+      step: "wallet_snapshot",
+      userId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    return emptyWalletSnapshot;
+  }
+}
 
 function groupByApplicationId<T extends { application_id: string }>(items: T[] = []) {
   return items.reduce<Record<string, T[]>>((grouped, item) => {
@@ -27,25 +61,48 @@ export async function getCustomerDashboardData(userId: string) {
   const supabase = await getSupabaseServerClient();
   let applications: Application[] = [];
   let notifications: NotificationItem[] = [];
-  const walletSnapshot = await getWalletSnapshot(userId, 12);
+  const walletSnapshot = await safeWalletSnapshot(userId);
 
   if (!supabase) {
     return { applications, notifications, walletSnapshot };
   }
 
-  const [{ data: applicationData }, { data: notificationData }] = await Promise.all([
-    supabase
-      .from("applications")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20),
+  const [applicationsResult, notificationsResult] = await Promise.allSettled([
+    supabase.from("applications").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
+
+  if (applicationsResult.status === "rejected") {
+    logDashboardApplicationError("applications_query_rejected", userId, applicationsResult.reason);
+  }
+
+  if (notificationsResult.status === "rejected") {
+    console.error("CUSTOMER_DASHBOARD_LOAD_FAILED", {
+      step: "notifications_query_rejected",
+      userId,
+      errorMessage: notificationsResult.reason instanceof Error ? notificationsResult.reason.message : String(notificationsResult.reason),
+    });
+  }
+
+  const applicationData = applicationsResult.status === "fulfilled" && !applicationsResult.value.error
+    ? applicationsResult.value.data
+    : [];
+  const notificationData = notificationsResult.status === "fulfilled" && !notificationsResult.value.error
+    ? notificationsResult.value.data
+    : [];
+
+  if (applicationsResult.status === "fulfilled" && applicationsResult.value.error) {
+    logDashboardApplicationError("applications_query", userId, applicationsResult.value.error);
+  }
+
+  if (notificationsResult.status === "fulfilled" && notificationsResult.value.error) {
+    console.error("CUSTOMER_DASHBOARD_LOAD_FAILED", {
+      step: "notifications_query",
+      userId,
+      errorMessage: notificationsResult.value.error.message,
+      errorCode: notificationsResult.value.error.code,
+    });
+  }
 
   const baseApplications = (applicationData ?? []) as Application[];
   const applicationIds = baseApplications.map((application) => application.id);
@@ -62,7 +119,7 @@ export async function getCustomerDashboardData(userId: string) {
   if (invoiceIds.length) invoiceFilters.push(`id.in.(${invoiceIds.join(",")})`);
   if (shortIds.length) invoiceFilters.push(`application_short_id.in.(${shortIds.join(",")})`);
 
-  const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.all([
+  const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.allSettled([
     supabase
       .from("application_documents")
       .select("id, application_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, metadata, uploaded_at, created_at")
@@ -78,17 +135,53 @@ export async function getCustomerDashboardData(userId: string) {
     supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").in("application_id", applicationIds),
   ]);
 
-  const documentsByApplicationId = groupByApplicationId(await resolveDocumentUrls((documentsResult.data ?? []) as ApplicationDocument[]));
-  const paymentsByApplicationId = groupByApplicationId((paymentsResult.data ?? []) as Payment[]);
-  let invoiceRows = (invoicesResult.data ?? []) as Invoice[];
-  if (invoicesResult.error) {
+  const documentRows =
+    documentsResult.status === "fulfilled" && !documentsResult.value.error
+      ? ((documentsResult.value.data ?? []) as ApplicationDocument[])
+      : [];
+  const paymentRows =
+    paymentsResult.status === "fulfilled" && !paymentsResult.value.error
+      ? ((paymentsResult.value.data ?? []) as Payment[])
+      : [];
+  let invoiceRows =
+    invoicesResult.status === "fulfilled" && !invoicesResult.value.error
+      ? ((invoicesResult.value.data ?? []) as Invoice[])
+      : [];
+  const ratingRows =
+    ratingsResult.status === "fulfilled" && !ratingsResult.value.error
+      ? ((ratingsResult.value.data ?? []) as Rating[])
+      : [];
+
+  if (documentsResult.status === "rejected") logDashboardApplicationError("documents_query_rejected", userId, documentsResult.reason);
+  if (paymentsResult.status === "rejected") logDashboardApplicationError("payments_query_rejected", userId, paymentsResult.reason);
+  if (invoicesResult.status === "rejected") logDashboardApplicationError("invoices_query_rejected", userId, invoicesResult.reason);
+  if (ratingsResult.status === "rejected") logDashboardApplicationError("ratings_query_rejected", userId, ratingsResult.reason);
+
+  if (documentsResult.status === "fulfilled" && documentsResult.value.error) logDashboardApplicationError("documents_query", userId, documentsResult.value.error);
+  if (paymentsResult.status === "fulfilled" && paymentsResult.value.error) logDashboardApplicationError("payments_query", userId, paymentsResult.value.error);
+  if (invoicesResult.status === "fulfilled" && invoicesResult.value.error) logDashboardApplicationError("invoices_query", userId, invoicesResult.value.error);
+  if (ratingsResult.status === "fulfilled" && ratingsResult.value.error) logDashboardApplicationError("ratings_query", userId, ratingsResult.value.error);
+
+  const resolvedDocuments = await resolveDocumentUrls(documentRows).catch((error) => {
+    logDashboardApplicationError("resolve_document_urls", userId, error);
+    return documentRows;
+  });
+
+  const documentsByApplicationId = groupByApplicationId(resolvedDocuments);
+  const paymentsByApplicationId = groupByApplicationId(paymentRows);
+
+  if (invoicesResult.status !== "fulfilled" || invoicesResult.value.error) {
     const fallbackFilters = [`application_id.in.(${applicationIds.join(",")})`];
     if (invoiceIds.length) fallbackFilters.push(`id.in.(${invoiceIds.join(",")})`);
-    const { data } = await supabase.from("invoices").select(invoiceBaseSelect).or(fallbackFilters.join(","));
-    invoiceRows = (data ?? []) as Invoice[];
+    const { data, error } = await supabase.from("invoices").select(invoiceBaseSelect).or(fallbackFilters.join(","));
+    if (error) {
+      logDashboardApplicationError("invoices_fallback_query", userId, error);
+    } else {
+      invoiceRows = (data ?? []) as Invoice[];
+    }
   }
   const invoicesByApplicationId = groupInvoicesByApplication(baseApplications, invoiceRows);
-  const ratingsByApplicationId = groupByApplicationId((ratingsResult.data ?? []) as Rating[]);
+  const ratingsByApplicationId = groupByApplicationId(ratingRows);
 
   applications = baseApplications.map((application) => ({
     ...application,
