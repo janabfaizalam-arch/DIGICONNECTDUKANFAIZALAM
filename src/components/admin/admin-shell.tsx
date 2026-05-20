@@ -53,6 +53,7 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/customers", label: "Customers", description: "Customer records", icon: UsersRound },
       { href: "/admin/customers/new", label: "Create Customer", description: "Customer signup", icon: UserPlus },
       { href: "/admin/agents", label: "Agents", description: "Agent IDs and commissions", icon: UserCheck },
+      { href: "/admin/agent-services", label: "Agent Services", description: "Visibility and payouts", icon: ListChecks },
       { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: CreditCard },
       { href: "/admin/offline-invoices", label: "Invoices", description: "Search and print", icon: ReceiptText },
       { href: "/admin/wallet", label: "Wallet & Rewards", description: "Ledger and rewards", icon: WalletCards },

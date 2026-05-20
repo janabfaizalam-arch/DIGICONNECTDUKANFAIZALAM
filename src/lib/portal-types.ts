@@ -243,6 +243,7 @@ export type Application = {
   created_by_agent_id?: string | null;
   assigned_agent_id?: string | null;
   service_id?: string | null;
+  agent_service_id?: string | null;
   source?: "online" | "offline" | "agent_pos";
   service_slug: string;
   service_name: string;
@@ -281,6 +282,9 @@ export type Application = {
   payment_screenshot_url?: string | null;
   payment_screenshot_path?: string | null;
   commission_amount?: number;
+  agent_payout_snapshot?: number | null;
+  agent_payout_type_snapshot?: string | null;
+  customer_fee_snapshot?: number | null;
   submitted_by_role?: string | null;
   customer_details?: Record<string, unknown> | null;
   service_snapshot?: Record<string, unknown> | null;
@@ -302,7 +306,11 @@ export type Commission = {
   application_id: string;
   agent_id: string;
   service_id: string | null;
+  agent_service_id?: string | null;
   amount: number;
+  payout_type_snapshot?: string | null;
+  payout_percentage_snapshot?: number | null;
+  customer_fee_snapshot?: number | null;
   status: "pending" | "approved" | "paid" | "hold" | "cancelled" | "rejected";
   approved_by: string | null;
   approved_at: string | null;

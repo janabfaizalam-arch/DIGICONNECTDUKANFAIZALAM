@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 
 import { createAdminNotifications } from "@/lib/admin-notifications";
+import { getVisibleAgentServices, payoutForAgentService } from "@/lib/agent-services";
 import { getCurrentUser, getCurrentUserRole, isActiveAgent } from "@/lib/auth";
-import { calculateCommission, cleanFileName, createInvoiceForApplication } from "@/lib/crm";
+import { cleanFileName, createInvoiceForApplication } from "@/lib/crm";
 import { createInvoiceNumber } from "@/lib/portal-data";
-import type { PortalUser, ServiceCatalogItem } from "@/lib/portal-types";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
@@ -125,6 +125,7 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const customerId = String(formData.get("customerId") ?? "").trim();
+    const agentServiceId = String(formData.get("agentServiceId") ?? "").trim();
     const serviceId = String(formData.get("serviceId") ?? "").trim();
     const customerName = String(formData.get("customerName") ?? "").trim();
     const mobile = String(formData.get("mobile") ?? "").trim();
@@ -139,7 +140,7 @@ export async function POST(request: Request) {
     const razorpayAmountPaise = Math.round(Number(formData.get("razorpay_amount_paise") ?? 0));
     const documentFiles = formData.getAll("documents").filter((value): value is File => value instanceof File && value.size > 0);
 
-    if (!serviceId) {
+    if (!agentServiceId) {
       return jsonError("Service is required.", 400);
     }
 
@@ -163,17 +164,14 @@ export async function POST(request: Request) {
       }
     }
 
-    const { data: service } = await supabase
-      .from("service_catalog")
-      .select("id, slug, name, description, amount, commission_amount, commission_rate, required_documents, active")
-      .eq("id", serviceId)
-      .single();
+    const visibleServices = await getVisibleAgentServices(user.id);
+    const service = visibleServices.find((item) => item.id === agentServiceId);
 
     if (!service) {
       return jsonError("Service not found.", 404);
     }
 
-    const expectedAmountPaise = Math.round(Number(service.amount ?? 0) * 100);
+    const expectedAmountPaise = Math.round(Number(service.customer_fee ?? 0) * 100);
 
     if (
       expectedAmountPaise > 0 &&
@@ -253,12 +251,7 @@ export async function POST(request: Request) {
       return jsonError("Customer not found.", 404);
     }
 
-    const { data: agent } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url, role, mobile, commission_rate, active")
-      .eq("id", user.id)
-      .maybeSingle();
-    const commissionAmount = calculateCommission(service as ServiceCatalogItem, agent as PortalUser | null);
+    const commissionAmount = payoutForAgentService(service);
     const invoiceNumber = createInvoiceNumber();
 
     const { data: application, error: applicationError } = await supabase
@@ -271,10 +264,27 @@ export async function POST(request: Request) {
         created_by_agent_id: user.id,
         customer_email: customer.email?.toLowerCase() ?? email.toLowerCase(),
         customer_mobile: customer.mobile.replace(/\D/g, ""),
-        service_id: service.id,
+        service_id: service.service_id || serviceId || null,
+        agent_service_id: service.id,
         service_slug: service.slug,
-        service_name: service.name,
-        amount: service.amount,
+        service_name: service.title,
+        amount: service.customer_fee,
+        total_amount: service.customer_fee,
+        customer_fee_snapshot: service.customer_fee,
+        agent_payout_snapshot: commissionAmount,
+        agent_payout_type_snapshot: service.payout_type,
+        service_snapshot: {
+          agent_service_id: service.id,
+          service_id: service.service_id,
+          slug: service.slug,
+          title: service.title,
+          customer_fee: service.customer_fee,
+          agent_payout: service.agent_payout,
+          payout_type: service.payout_type,
+          payout_percentage: service.payout_percentage,
+          required_documents: service.required_documents,
+          processing_time: service.processing_time,
+        },
         form_data: {
           name: customer.full_name,
           mobile: customer.mobile,
@@ -314,7 +324,7 @@ export async function POST(request: Request) {
     await supabase.from("payments").insert({
       application_id: application.id,
       user_id: user.id,
-      amount: service.amount,
+      amount: service.customer_fee,
       status: "verified",
       razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
       razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,
@@ -330,16 +340,20 @@ export async function POST(request: Request) {
       customerName: customer.full_name,
       customerEmail: customer.email,
       customerMobile: customer.mobile,
-      serviceName: service.name,
-      amount: service.amount,
+      serviceName: service.title,
+      amount: service.customer_fee,
       paymentStatus: "verified",
     });
 
     await supabase.from("commissions").insert({
       application_id: application.id,
       agent_id: user.id,
-      service_id: service.id,
+      service_id: service.service_id || serviceId || null,
+      agent_service_id: service.id,
       amount: commissionAmount,
+      payout_type_snapshot: service.payout_type,
+      payout_percentage_snapshot: service.payout_percentage,
+      customer_fee_snapshot: service.customer_fee,
       status: "pending",
     });
 
@@ -354,7 +368,7 @@ export async function POST(request: Request) {
       {
         type: "new_application",
         title: "New agent application",
-        message: `${customer.full_name} submitted ${service.name} through agent POS.`,
+        message: `${customer.full_name} submitted ${service.title} through agent POS.`,
         relatedType: "application",
         relatedId: application.id,
       },

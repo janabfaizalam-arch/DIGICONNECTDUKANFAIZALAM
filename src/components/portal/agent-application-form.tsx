@@ -12,8 +12,9 @@ import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trackApplicationSubmit } from "@/lib/google-analytics";
+import { payoutForAgentService, type AgentService } from "@/lib/agent-services";
 import { formatCurrency } from "@/lib/portal-data";
-import type { Customer, ServiceCatalogItem } from "@/lib/portal-types";
+import type { Customer } from "@/lib/portal-types";
 
 export function AgentApplicationForm({
   customers,
@@ -21,7 +22,7 @@ export function AgentApplicationForm({
   defaultCustomerId,
 }: {
   customers: Customer[];
-  services: ServiceCatalogItem[];
+  services: AgentService[];
   defaultCustomerId?: string;
 }) {
   const router = useRouter();
@@ -35,8 +36,9 @@ export function AgentApplicationForm({
     [customerId, customers],
   );
   const selectedService = services.find((service) => service.id === serviceId);
-  const payableAmountPaise = Math.round(Number(selectedService?.amount ?? 0) * 100);
+  const payableAmountPaise = Math.round(Number(selectedService?.customer_fee ?? 0) * 100);
   const paymentReceipt = useMemo(() => `agent-${selectedService?.slug ?? "service"}-${Date.now()}`, [selectedService?.slug]);
+  const selectedPayout = selectedService ? payoutForAgentService(selectedService) : 0;
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -58,7 +60,8 @@ export function AgentApplicationForm({
 
     const formData = new FormData(event.currentTarget);
     formData.set("customerId", customerId);
-    formData.set("serviceId", serviceId);
+    formData.set("agentServiceId", serviceId);
+    formData.set("serviceId", selectedService?.service_id ?? "");
     formData.set("razorpay_payment_id", razorpayPayment?.razorpay_payment_id ?? "");
     formData.set("razorpay_order_id", razorpayPayment?.razorpay_order_id ?? "");
     formData.set("razorpay_signature", razorpayPayment?.razorpay_signature ?? "");
@@ -135,11 +138,38 @@ export function AgentApplicationForm({
             <SelectContent>
               {services.map((service) => (
                 <SelectItem key={service.id} value={service.id}>
-                  {service.name} - {formatCurrency(service.amount)}
+                  {service.title} - {formatCurrency(service.customer_fee)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {selectedService ? (
+            <div className="grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-slate-700 md:grid-cols-3">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">Customer fee</p>
+                <p className="mt-1 text-lg font-bold text-slate-950">{formatCurrency(selectedService.customer_fee)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-emerald-700">Your payout</p>
+                <p className="mt-1 text-lg font-bold text-emerald-700">{formatCurrency(selectedPayout)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-700">Processing time</p>
+                <p className="mt-1 font-bold text-slate-950">{selectedService.processing_time || "As per service"}</p>
+              </div>
+              <div className="md:col-span-3">
+                <p className="font-bold text-slate-950">Documents required</p>
+                <p className="mt-1 whitespace-pre-line leading-6">{selectedService.required_documents || "Documents will be confirmed during processing."}</p>
+              </div>
+              {selectedService.instructions ? (
+                <div className="md:col-span-3">
+                  <p className="font-bold text-slate-950">Instructions</p>
+                  <p className="mt-1 whitespace-pre-line leading-6">{selectedService.instructions}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <Textarea name="message" placeholder="Application notes" className="min-h-24" />
 
@@ -166,7 +196,7 @@ export function AgentApplicationForm({
                   email: selectedCustomer?.email ?? undefined,
                   mobile: selectedCustomer?.mobile,
                 }}
-                description={selectedService?.name ?? "Agent POS application"}
+                description={selectedService?.title ?? "Agent POS application"}
                 disabled={isPending || !selectedService}
                 onVerified={(payment) =>
                   setRazorpayPayment({
@@ -189,17 +219,17 @@ export function AgentApplicationForm({
       <div className="space-y-4">
         <Card className="p-4 md:p-5">
           <p className="text-sm font-medium text-slate-500">Selected Service</p>
-          <p className="mt-2 text-xl font-bold text-slate-950">{selectedService?.name ?? "Select service"}</p>
+          <p className="mt-2 text-xl font-bold text-slate-950">{selectedService?.title ?? "Select service"}</p>
           <p className="mt-2 text-2xl font-bold text-[var(--primary)]">
-            {selectedService ? formatCurrency(selectedService.amount) : "-"}
+            {selectedService ? formatCurrency(selectedService.customer_fee) : "-"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Estimated commission: {selectedService ? formatCurrency(selectedService.commission_amount) : "-"}
+            Your payout: {selectedService ? formatCurrency(selectedPayout) : "-"}
           </p>
         </Card>
 
         <FormSubmitButton loading={isPending} disabled={!serviceId} loadingText="Submitting..." icon={<Send className="h-4 w-4" />} className="w-full">
-          Submit Application
+          Create Application
         </FormSubmitButton>
       </div>
       </fieldset>

@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AgentApplicationForm } from "@/components/portal/agent-application-form";
+import { getVisibleAgentServices } from "@/lib/agent-services";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
-import { getServiceCatalog } from "@/lib/crm";
 import type { Customer } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -27,7 +27,7 @@ export default async function NewAgentApplicationPage({
 
   const params = await searchParams;
   const supabase = getSupabaseAdmin();
-  const services = await getServiceCatalog();
+  const services = await getVisibleAgentServices(user.id);
   let customers = [] as Customer[];
 
   if (supabase) {
