@@ -146,6 +146,21 @@ function logCustomerSyncFailure(step: string, input: CustomerSyncInput, error: u
   });
 }
 
+function logCustomersUpsertFailed(step: string, input: CustomerSyncInput, error: unknown, payload: Record<string, unknown>) {
+  const debug = getSupabaseErrorDebug(error);
+  console.error("CUSTOMERS_UPSERT_FAILED", {
+    step,
+    email: input.email,
+    mobile: input.mobile,
+    userId: input.userId,
+    errorCode: debug.code,
+    errorMessage: debug.message,
+    errorDetails: debug.details,
+    errorHint: debug.hint,
+    payloadKeys: Object.keys(payload),
+  });
+}
+
 export async function assertCustomerIdentityAvailable(
   supabase: SupabaseAdminClient,
   input: CustomerIdentityInput,
@@ -208,95 +223,117 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
   const mobile = normalizeCustomerMobile(input.mobile);
   const customerName = input.fullName.trim() || "Customer";
 
-  const existingCustomerQueries = [
-    supabase.from("customers").select("id, user_id").eq("user_id", input.userId).maybeSingle(),
-    email ? supabase.from("customers").select("id, user_id").ilike("email", email).limit(1).maybeSingle() : null,
-    mobile ? supabase.from("customers").select("id, user_id").eq("mobile", mobile).limit(1).maybeSingle() : null,
-  ].filter(Boolean) as PromiseLike<{ data: { id: string; user_id: string | null } | null }>[];
-
-  const existingResults = await Promise.all(existingCustomerQueries);
-  let existingCustomer = existingResults
-    .map((result) => result.data as { id: string; user_id: string | null } | null)
-    .find((row) => row && (!row.user_id || row.user_id === input.userId));
-
-  const customerPayload = {
+  const minimalCustomerPayload = {
     user_id: input.userId,
-    full_name: customerName,
     email,
     mobile,
-    pincode: input.pincode ?? "",
-    city: input.city ?? "",
-    state: input.state ?? "",
-    address: input.address ?? "",
-    source: input.source ?? "online",
+    full_name: customerName,
+  };
+  const minimalCustomerUpdatePayload = {
+    ...minimalCustomerPayload,
     updated_at: now,
   };
 
+  const ownCustomerResult = await supabase.from("customers").select("id, user_id").eq("user_id", input.userId).limit(1).maybeSingle();
+
+  if (ownCustomerResult.error && !isMissingTableOrColumnError(ownCustomerResult.error)) {
+    logCustomersUpsertFailed("customers_lookup_by_user_id", input, ownCustomerResult.error, { user_id: input.userId });
+    throw ownCustomerResult.error;
+  }
+
+  let existingCustomer = ownCustomerResult.data as { id: string; user_id: string | null } | null;
+
+  if (!existingCustomer && email) {
+    const emailCustomerResult = await supabase.from("customers").select("id, user_id").ilike("email", email).limit(1).maybeSingle();
+
+    if (emailCustomerResult.error && !isMissingTableOrColumnError(emailCustomerResult.error)) {
+      logCustomersUpsertFailed("customers_lookup_by_email", input, emailCustomerResult.error, { email });
+      throw emailCustomerResult.error;
+    }
+
+    const row = emailCustomerResult.data as { id: string; user_id: string | null } | null;
+    if (row && (!row.user_id || row.user_id === input.userId)) {
+      existingCustomer = row;
+    }
+  }
+
+  if (!existingCustomer && mobile) {
+    const mobileCustomerResult = await supabase.from("customers").select("id, user_id").eq("mobile", mobile).limit(1).maybeSingle();
+
+    if (mobileCustomerResult.error && !isMissingTableOrColumnError(mobileCustomerResult.error)) {
+      logCustomersUpsertFailed("customers_lookup_by_mobile", input, mobileCustomerResult.error, { mobile });
+      throw mobileCustomerResult.error;
+    }
+
+    const row = mobileCustomerResult.data as { id: string; user_id: string | null } | null;
+    if (row && (!row.user_id || row.user_id === input.userId)) {
+      existingCustomer = row;
+    }
+  }
+
   if (existingCustomer?.id) {
-    const { error } = await supabase.from("customers").update(customerPayload).eq("id", existingCustomer.id);
+    const { error } = await supabase.from("customers").update(minimalCustomerUpdatePayload).eq("id", existingCustomer.id);
 
     if (error) {
-      logCustomerSyncFailure("customers_update_full", input, error);
+      logCustomersUpsertFailed("customers_update_minimal_with_updated_at", input, error, minimalCustomerUpdatePayload);
+      logCustomerSyncFailure("customers_update_minimal_with_updated_at", input, error);
 
       if (!isMissingTableOrColumnError(error)) {
         throw error;
       }
 
-      const { error: fallbackError } = await supabase
-        .from("customers")
-        .update({
-          user_id: input.userId,
-          full_name: customerName,
-          email,
-          mobile,
-          source: input.source ?? "online",
-          updated_at: now,
-        })
-        .eq("id", existingCustomer.id);
+      const { error: fallbackError } = await supabase.from("customers").update(minimalCustomerPayload).eq("id", existingCustomer.id);
 
       if (fallbackError) {
+        logCustomersUpsertFailed("customers_update_minimal", input, fallbackError, minimalCustomerPayload);
         logCustomerSyncFailure("customers_update_minimal", input, fallbackError);
         throw fallbackError;
       }
     }
   } else {
-    const { data, error } = await supabase
+    const upsertPayload = {
+      ...minimalCustomerUpdatePayload,
+      created_at: now,
+    };
+    const upsertResult = await supabase
       .from("customers")
-      .insert({
-        ...customerPayload,
-        created_by: input.createdBy ?? null,
-      })
+      .upsert(upsertPayload, { onConflict: "user_id" })
       .select("id")
       .maybeSingle();
 
-    if (error) {
-      logCustomerSyncFailure("customers_insert_full", input, error);
-
-      if (!isMissingTableOrColumnError(error)) {
-        throw error;
-      }
-
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from("customers")
-        .insert({
-          user_id: input.userId,
-          full_name: customerName,
-          email,
-          mobile,
-          source: input.source ?? "online",
-          created_by: input.createdBy ?? null,
-        })
-        .select("id")
-        .maybeSingle();
-
-      if (fallbackError) {
-        logCustomerSyncFailure("customers_insert_minimal", input, fallbackError);
-        throw fallbackError;
-      }
-
-      existingCustomer = fallbackData ? { id: fallbackData.id, user_id: input.userId } : null;
+    if (!upsertResult.error && upsertResult.data) {
+      existingCustomer = { id: upsertResult.data.id, user_id: input.userId };
     } else {
-      existingCustomer = data ? { id: data.id, user_id: input.userId } : null;
+      if (upsertResult.error) {
+        logCustomersUpsertFailed("customers_upsert_user_id_minimal", input, upsertResult.error, upsertPayload);
+        logCustomerSyncFailure("customers_upsert_user_id_minimal", input, upsertResult.error);
+      }
+
+      const insertResult = await supabase.from("customers").insert(minimalCustomerPayload).select("id").maybeSingle();
+
+      if (!insertResult.error && insertResult.data) {
+        existingCustomer = { id: insertResult.data.id, user_id: input.userId };
+      } else if (insertResult.error && isMissingTableOrColumnError(insertResult.error)) {
+        logCustomersUpsertFailed("customers_insert_minimal", input, insertResult.error, minimalCustomerPayload);
+        logCustomerSyncFailure("customers_insert_minimal", input, insertResult.error);
+
+        const insertWithTimestampsResult = await supabase.from("customers").insert(upsertPayload).select("id").maybeSingle();
+
+        if (insertWithTimestampsResult.error) {
+          logCustomersUpsertFailed("customers_insert_minimal_with_timestamps", input, insertWithTimestampsResult.error, upsertPayload);
+          logCustomerSyncFailure("customers_insert_minimal_with_timestamps", input, insertWithTimestampsResult.error);
+          throw insertWithTimestampsResult.error;
+        }
+
+        existingCustomer = insertWithTimestampsResult.data ? { id: insertWithTimestampsResult.data.id, user_id: input.userId } : null;
+      } else if (insertResult.error) {
+        logCustomersUpsertFailed("customers_insert_minimal", input, insertResult.error, minimalCustomerPayload);
+        logCustomerSyncFailure("customers_insert_minimal", input, insertResult.error);
+
+        if (upsertResult.error) {
+          throw insertResult.error;
+        }
+      }
     }
   }
 
