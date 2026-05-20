@@ -24,13 +24,15 @@ export async function POST(request: Request) {
 
   await syncUserProfile(user);
 
+  const verifiedEmail = String(user.email ?? "").trim();
   const verifiedMobile = String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").trim();
-  if (!verifiedMobile) {
-    console.info("CLAIM_SKIPPED_MISSING_MOBILE", {
+  if (!verifiedEmail || !verifiedMobile) {
+    console.info("CLAIM_SKIPPED_MISSING_IDENTITY", {
       userId: user.id,
-      email: user.email ?? null,
+      email: verifiedEmail || null,
+      hasMobile: Boolean(verifiedMobile),
     });
-    return NextResponse.json({ claimed: 0, skipped: "missing_mobile" });
+    return NextResponse.json({ claimed: 0, skipped: "missing_identity" });
   }
 
   const supabase = await getSupabaseRouteHandlerClient();
@@ -42,8 +44,13 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.rpc("claim_customer_applications");
 
   if (error) {
-    console.error("[customer-claim] Claim failed", error.message);
-    return NextResponse.json({ message: "Applications could not be claimed." }, { status: 400 });
+    console.warn("CUSTOMER_SYNC_WARNING", {
+      step: "claim_customer_applications_api",
+      userId: user.id,
+      errorMessage: error.message,
+      errorCode: error.code ?? null,
+    });
+    return NextResponse.json({ claimed: 0 });
   }
 
   return NextResponse.json({ claimed: Number(data ?? 0) });

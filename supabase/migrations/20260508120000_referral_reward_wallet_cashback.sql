@@ -605,38 +605,9 @@ begin
 end;
 $$;
 
-create or replace function public.prevent_reward_identity_tamper()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if current_role = 'service_role' or public.is_admin_role() then
-    return new;
-  end if;
-
-  if new.referral_code is distinct from old.referral_code
-    or new.referred_by is distinct from old.referred_by
-    or new.suspicious is distinct from old.suspicious then
-    raise exception 'Reward identity fields cannot be changed from the client.';
-  end if;
-
-  return new;
-end;
-$$;
-
 drop trigger if exists prevent_profiles_reward_identity_tamper on public.profiles;
-create trigger prevent_profiles_reward_identity_tamper
-before update on public.profiles
-for each row
-execute function public.prevent_reward_identity_tamper();
-
 drop trigger if exists prevent_customer_profiles_reward_identity_tamper on public.customer_profiles;
-create trigger prevent_customer_profiles_reward_identity_tamper
-before update on public.customer_profiles
-for each row
-execute function public.prevent_reward_identity_tamper();
+drop function if exists public.prevent_reward_identity_tamper() cascade;
 
 alter table public.reward_transactions enable row level security;
 alter table public.referrals enable row level security;
@@ -684,7 +655,6 @@ revoke execute on function public.ensure_customer_reward_profile(uuid, text, tex
 revoke execute on function public.issue_signup_bonus(uuid) from anon, authenticated;
 revoke execute on function public.complete_referral_reward(uuid, uuid, uuid) from anon, authenticated;
 revoke execute on function public.admin_adjust_reward_wallet(uuid, numeric, text, uuid, integer) from anon, authenticated;
-revoke execute on function public.prevent_reward_identity_tamper() from anon, authenticated;
 
 grant execute on function public.generate_referral_code(uuid) to service_role;
 grant execute on function public.refresh_reward_wallet_summary(uuid) to service_role;
@@ -695,4 +665,3 @@ grant execute on function public.ensure_customer_reward_profile(uuid, text, text
 grant execute on function public.issue_signup_bonus(uuid) to service_role;
 grant execute on function public.complete_referral_reward(uuid, uuid, uuid) to service_role;
 grant execute on function public.admin_adjust_reward_wallet(uuid, numeric, text, uuid, integer) to service_role;
-grant execute on function public.prevent_reward_identity_tamper() to service_role;

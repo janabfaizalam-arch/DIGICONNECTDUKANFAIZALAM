@@ -328,6 +328,14 @@ export async function syncUserProfile(user: User) {
       city,
       state,
       source: "online",
+    }).catch((error) => {
+      console.warn("CUSTOMER_SYNC_WARNING", {
+        step: "auth_sync_customer_identity",
+        userId: user.id,
+        email: emailValue,
+        mobile,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
     });
   }
 }

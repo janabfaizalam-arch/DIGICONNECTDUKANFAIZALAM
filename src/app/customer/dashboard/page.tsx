@@ -56,17 +56,18 @@ export default async function CustomerDashboardPage() {
   const metadataEmail = user.email ?? "";
 
   if (user.email_confirmed_at) {
-    if (!metadataMobile) {
-      console.info("CLAIM_SKIPPED_MISSING_MOBILE", {
+    if (!metadataEmail || !metadataMobile) {
+      console.info("CLAIM_SKIPPED_MISSING_IDENTITY", {
         userId: user.id,
         email: metadataEmail || null,
+        hasMobile: Boolean(metadataMobile),
       });
     } else {
       const supabase = await getSupabaseServerClient();
       if (supabase) {
         const { error } = await supabase.rpc("claim_customer_applications");
         if (error) {
-          console.error("CUSTOMER_DASHBOARD_APPLICATIONS_FETCH_FAILED", {
+          console.warn("CUSTOMER_SYNC_WARNING", {
             step: "claim_customer_applications",
             userId: user.id,
             errorMessage: error.message,

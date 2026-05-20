@@ -2,7 +2,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-export const CUSTOMER_EXISTS_MESSAGE = "Customer already exists with this email/mobile number.";
+export const CUSTOMER_EXISTS_MESSAGE = "This email is already registered. Please login.";
 export const INCOMPLETE_ACCOUNT_MESSAGE =
   "Account was created earlier but profile was incomplete. Please verify your email or contact admin.";
 
@@ -133,9 +133,9 @@ function isMissingTableOrColumnError(error: unknown) {
   );
 }
 
-function logCustomerSyncFailure(step: string, input: CustomerSyncInput, error: unknown) {
+function logCustomerSyncWarning(step: string, input: CustomerSyncInput, error: unknown, extra?: Record<string, unknown>) {
   const debug = getSupabaseErrorDebug(error);
-  console.error("SIGNUP_CUSTOMER_SYNC_FAILED", {
+  console.warn("CUSTOMER_SYNC_WARNING", {
     step,
     email: input.email,
     mobile: input.mobile,
@@ -144,12 +144,13 @@ function logCustomerSyncFailure(step: string, input: CustomerSyncInput, error: u
     errorMessage: debug.message,
     errorDetails: debug.details,
     errorHint: debug.hint,
+    ...(extra ?? {}),
   });
 }
 
 function logCustomersUpsertFailed(step: string, input: CustomerSyncInput, error: unknown, payload: Record<string, unknown>) {
   const debug = getSupabaseErrorDebug(error);
-  console.error("CUSTOMERS_UPSERT_FAILED", {
+  console.warn("CUSTOMER_SYNC_WARNING", {
     step,
     email: input.email,
     mobile: input.mobile,
@@ -261,9 +262,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
   const ownCustomerResult = await supabase.from("customers").select("id, user_id").eq("user_id", input.userId).limit(1).maybeSingle();
 
   if (ownCustomerResult.error && !isMissingTableOrColumnError(ownCustomerResult.error)) {
-    logIdentityStepFail("CUSTOMERS_SYNC", input, ownCustomerResult.error);
-    logCustomersUpsertFailed("customers_lookup_by_user_id", input, ownCustomerResult.error, { user_id: input.userId });
-    throw ownCustomerResult.error;
+    logCustomerSyncWarning("customers_lookup_by_user_id", input, ownCustomerResult.error, { user_id: input.userId });
   }
 
   let existingCustomer = ownCustomerResult.data as { id: string; user_id: string | null } | null;
@@ -272,9 +271,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
     const emailCustomerResult = await supabase.from("customers").select("id, user_id").ilike("email", email).limit(1).maybeSingle();
 
     if (emailCustomerResult.error && !isMissingTableOrColumnError(emailCustomerResult.error)) {
-      logIdentityStepFail("CUSTOMERS_SYNC", input, emailCustomerResult.error);
-      logCustomersUpsertFailed("customers_lookup_by_email", input, emailCustomerResult.error, { email });
-      throw emailCustomerResult.error;
+      logCustomerSyncWarning("customers_lookup_by_email", input, emailCustomerResult.error, { lookupEmail: email });
     }
 
     const row = emailCustomerResult.data as { id: string; user_id: string | null } | null;
@@ -287,9 +284,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
     const mobileCustomerResult = await supabase.from("customers").select("id, user_id").eq("mobile", mobile).limit(1).maybeSingle();
 
     if (mobileCustomerResult.error && !isMissingTableOrColumnError(mobileCustomerResult.error)) {
-      logIdentityStepFail("CUSTOMERS_SYNC", input, mobileCustomerResult.error);
-      logCustomersUpsertFailed("customers_lookup_by_mobile", input, mobileCustomerResult.error, { mobile });
-      throw mobileCustomerResult.error;
+      logCustomerSyncWarning("customers_lookup_by_mobile", input, mobileCustomerResult.error, { lookupMobile: mobile });
     }
 
     const row = mobileCustomerResult.data as { id: string; user_id: string | null } | null;
@@ -303,20 +298,18 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
 
     if (error) {
       logCustomersUpsertFailed("customers_update_minimal_with_updated_at", input, error, minimalCustomerUpdatePayload);
-      logCustomerSyncFailure("customers_update_minimal_with_updated_at", input, error);
+      logCustomerSyncWarning("customers_update_minimal_with_updated_at", input, error);
 
       if (!isMissingTableOrColumnError(error)) {
-        logIdentityStepFail("CUSTOMERS_SYNC", input, error);
-        throw error;
-      }
+        existingCustomer = null;
+      } else {
+        const { error: fallbackError } = await supabase.from("customers").update(minimalCustomerPayload).eq("id", existingCustomer.id);
 
-      const { error: fallbackError } = await supabase.from("customers").update(minimalCustomerPayload).eq("id", existingCustomer.id);
-
-      if (fallbackError) {
-        logCustomersUpsertFailed("customers_update_minimal", input, fallbackError, minimalCustomerPayload);
-        logCustomerSyncFailure("customers_update_minimal", input, fallbackError);
-        logIdentityStepFail("CUSTOMERS_SYNC", input, fallbackError);
-        throw fallbackError;
+        if (fallbackError) {
+          logCustomersUpsertFailed("customers_update_minimal", input, fallbackError, minimalCustomerPayload);
+          logCustomerSyncWarning("customers_update_minimal", input, fallbackError);
+          existingCustomer = null;
+        }
       }
     }
   } else {
@@ -335,7 +328,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
     } else {
       if (upsertResult.error) {
         logCustomersUpsertFailed("customers_upsert_user_id_minimal", input, upsertResult.error, upsertPayload);
-        logCustomerSyncFailure("customers_upsert_user_id_minimal", input, upsertResult.error);
+        logCustomerSyncWarning("customers_upsert_user_id_minimal", input, upsertResult.error);
       }
 
       const insertResult = await supabase.from("customers").insert(minimalCustomerPayload).select("id").maybeSingle();
@@ -344,26 +337,19 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
         existingCustomer = { id: insertResult.data.id, user_id: input.userId };
       } else if (insertResult.error && isMissingTableOrColumnError(insertResult.error)) {
         logCustomersUpsertFailed("customers_insert_minimal", input, insertResult.error, minimalCustomerPayload);
-        logCustomerSyncFailure("customers_insert_minimal", input, insertResult.error);
+        logCustomerSyncWarning("customers_insert_minimal", input, insertResult.error);
 
         const insertWithTimestampsResult = await supabase.from("customers").insert(upsertPayload).select("id").maybeSingle();
 
         if (insertWithTimestampsResult.error) {
           logCustomersUpsertFailed("customers_insert_minimal_with_timestamps", input, insertWithTimestampsResult.error, upsertPayload);
-          logCustomerSyncFailure("customers_insert_minimal_with_timestamps", input, insertWithTimestampsResult.error);
-          logIdentityStepFail("CUSTOMERS_SYNC", input, insertWithTimestampsResult.error);
-          throw insertWithTimestampsResult.error;
+          logCustomerSyncWarning("customers_insert_minimal_with_timestamps", input, insertWithTimestampsResult.error);
         }
 
         existingCustomer = insertWithTimestampsResult.data ? { id: insertWithTimestampsResult.data.id, user_id: input.userId } : null;
       } else if (insertResult.error) {
         logCustomersUpsertFailed("customers_insert_minimal", input, insertResult.error, minimalCustomerPayload);
-        logCustomerSyncFailure("customers_insert_minimal", input, insertResult.error);
-
-        if (upsertResult.error) {
-          logIdentityStepFail("CUSTOMERS_SYNC", input, insertResult.error);
-          throw insertResult.error;
-        }
+        logCustomerSyncWarning("customers_insert_minimal", input, insertResult.error);
       }
     }
   }
@@ -392,11 +378,10 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
   );
 
   if (customerProfileError) {
-    logCustomerSyncFailure("customer_profiles_upsert_full", input, customerProfileError);
+    logCustomerSyncWarning("customer_profiles_upsert_full", input, customerProfileError);
 
     if (!isMissingTableOrColumnError(customerProfileError)) {
-      logIdentityStepFail("CUSTOMER_PROFILES_SYNC", input, customerProfileError);
-      throw customerProfileError;
+      return existingCustomer?.id ?? null;
     }
 
     const { error: fallbackError } = await supabase.from("customer_profiles").upsert(
@@ -414,10 +399,10 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
     );
 
     if (fallbackError) {
-      logCustomerSyncFailure("customer_profiles_upsert_minimal", input, fallbackError);
+      logCustomerSyncWarning("customer_profiles_upsert_minimal", input, fallbackError);
 
       if (!isMissingTableOrColumnError(fallbackError)) {
-        throw fallbackError;
+        return existingCustomer?.id ?? null;
       }
 
       const { error: ultraMinimalError } = await supabase.from("customer_profiles").upsert(
@@ -431,9 +416,8 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
       );
 
       if (ultraMinimalError) {
-        logCustomerSyncFailure("customer_profiles_upsert_ultra_minimal", input, ultraMinimalError);
-        logIdentityStepFail("CUSTOMER_PROFILES_SYNC", input, ultraMinimalError);
-        throw ultraMinimalError;
+        logCustomerSyncWarning("customer_profiles_upsert_ultra_minimal", input, ultraMinimalError);
+        return existingCustomer?.id ?? null;
       }
     }
   }
@@ -526,11 +510,15 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
     );
 
     if (customerProfileError) {
-      logCustomerSyncFailure("customer_profiles_upsert_full_without_customers", input, customerProfileError);
+      logCustomerSyncWarning("customer_profiles_upsert_full_without_customers", input, customerProfileError);
 
       if (!isMissingTableOrColumnError(customerProfileError)) {
-        logIdentityStepFail("CUSTOMER_PROFILES_SYNC", input, customerProfileError);
-        throw customerProfileError;
+        console.info("CUSTOMER_PROFILES_SYNC_SKIPPED", {
+          email,
+          mobile,
+          userId: input.userId,
+        });
+        return customerId;
       }
 
       const { error: fallbackError } = await supabase.from("customer_profiles").upsert(
@@ -544,8 +532,7 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
       );
 
       if (fallbackError) {
-        logIdentityStepFail("CUSTOMER_PROFILES_SYNC", input, fallbackError);
-        throw fallbackError;
+        logCustomerSyncWarning("customer_profiles_upsert_minimal_without_customers", input, fallbackError);
       }
     }
 
@@ -583,9 +570,8 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
   );
 
   if (userError) {
-    logIdentityStepFail("USERS_SYNC", input, userError);
     const debug = getSupabaseErrorDebug(userError);
-    console.error("SIGNUP_CUSTOMER_SYNC_FAILED", {
+    console.warn("CUSTOMER_SYNC_WARNING", {
       step: "legacy_users_upsert_optional",
       email,
       mobile,
