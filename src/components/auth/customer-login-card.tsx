@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, Gift, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, Gift, LockKeyhole, Mail, MapPin, Phone, UserRound } from "lucide-react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { useToast } from "@/components/providers/toast-provider";
@@ -313,34 +313,26 @@ function CustomerLoginCardInner({
   }
 
   return (
-    <div className="glass-panel shadow-soft relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 p-5 text-center md:p-7">
+    <div className="w-full rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-[0_18px_45px_rgba(15,23,42,0.08)] sm:p-6">
       <Image
         src="/logo-navbar.png"
         alt="DigiConnect Dukan Logo"
         width={260}
         height={111}
         priority
-        className="mx-auto h-auto w-48 object-contain md:w-56"
+        className="mx-auto h-auto w-44 object-contain"
       />
-      <p className="mt-2 text-[0.68rem] font-bold uppercase leading-tight tracking-[0.14em] text-slate-500">
-        Powered By RNoS India Pvt Ltd
-      </p>
-      <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">Customer Access</p>
-      <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950">
-        {mode === "signup" ? "Create Your DigiConnect Account" : "Login to Your DigiConnect Dashboard"}
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-        Apply services, track applications and manage your documents securely.
-      </p>
+      <h1 className="mt-5 text-2xl font-semibold leading-tight text-slate-950">Welcome back</h1>
+      <p className="mt-1 text-sm text-slate-500">Sign in to continue</p>
 
       {!signupOnly ? (
-        <div className="mt-6 grid grid-cols-2 rounded-2xl bg-white/35 p-1">
+        <div className="mt-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
           {(["login", "signup"] as const).map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => switchMode(item)}
-              className={`h-11 rounded-xl text-sm font-bold transition ${
+              className={`h-10 rounded-lg text-sm font-semibold transition ${
                 mode === item ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-900"
               }`}
             >
@@ -350,13 +342,13 @@ function CustomerLoginCardInner({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-6 grid gap-3 text-left" aria-busy={isPending || isGooglePending}>
+      <form onSubmit={handleSubmit} className="mt-5 grid gap-3 text-left" aria-busy={isPending || isGooglePending}>
         {mode === "signup" ? (
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Full Name</span>
             <div className="relative">
               <UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input name="name" type="text" autoComplete="name" required placeholder="Enter your full name" disabled={isPending} className="h-[3.15rem] bg-white/74 pl-11 text-base" />
+              <Input name="name" type="text" autoComplete="name" required placeholder="Enter your full name" disabled={isPending} className="h-12 bg-white pl-11 text-base" />
             </div>
           </label>
         ) : null}
@@ -365,7 +357,7 @@ function CustomerLoginCardInner({
           <span className="text-sm font-semibold text-slate-700">Email</span>
           <div className="relative">
             <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input name="email" type="email" autoComplete="email" required placeholder="you@example.com" disabled={isPending} className="h-[3.15rem] bg-white/74 pl-11 text-base" />
+            <Input name="email" type="email" autoComplete="email" required placeholder="you@example.com" disabled={isPending} className="h-12 bg-white pl-11 text-base" />
           </div>
         </label>
 
@@ -381,7 +373,7 @@ function CustomerLoginCardInner({
               minLength={6}
               placeholder="Minimum 6 characters"
               disabled={isPending}
-              className="h-[3.15rem] bg-white/74 px-11 text-base"
+              className="h-12 bg-white px-11 text-base"
             />
             <button
               type="button"
@@ -412,7 +404,7 @@ function CustomerLoginCardInner({
                   value={mobile}
                   onChange={(event) => setMobile(normalizeMobile(event.target.value))}
                   disabled={isPending}
-                  className="h-[3.15rem] bg-white/74 pl-11 text-base"
+                  className="h-12 bg-white pl-11 text-base"
                 />
               </div>
             </label>
@@ -437,7 +429,7 @@ function CustomerLoginCardInner({
                     setPinMessage("");
                   }}
                   disabled={isPending}
-                  className="h-[3.15rem] bg-white/74 pl-11 text-base"
+                  className="h-12 bg-white pl-11 text-base"
                 />
               </div>
               {pinMessage ? (
@@ -450,11 +442,11 @@ function CustomerLoginCardInner({
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">City</span>
-                <Input name="city" value={city} onChange={(event) => setCity(event.target.value)} readOnly={!manualLocation && Boolean(city)} required placeholder="City" disabled={isPending} className="h-[3.15rem] bg-white/74 text-base" />
+                <Input name="city" value={city} onChange={(event) => setCity(event.target.value)} readOnly={!manualLocation && Boolean(city)} required placeholder="City" disabled={isPending} className="h-12 bg-white text-base" />
               </label>
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">State</span>
-                <Input name="state" value={state} onChange={(event) => setState(event.target.value)} readOnly={!manualLocation && Boolean(state)} required placeholder="State" disabled={isPending} className="h-[3.15rem] bg-white/74 text-base" />
+                <Input name="state" value={state} onChange={(event) => setState(event.target.value)} readOnly={!manualLocation && Boolean(state)} required placeholder="State" disabled={isPending} className="h-12 bg-white text-base" />
               </label>
             </div>
 
@@ -468,10 +460,9 @@ function CustomerLoginCardInner({
                   onChange={(event) => setReferralCode(event.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 10))}
                   placeholder="Invite code"
                   disabled={isPending}
-                  className="h-[3.15rem] bg-white/74 pl-11 font-mono text-base uppercase"
+                  className="h-12 bg-white pl-11 font-mono text-base uppercase"
                 />
               </div>
-              <span className="text-xs font-semibold text-slate-500">You get Rs 100 rewards if the code is valid.</span>
             </label>
           </>
         ) : null}
@@ -495,33 +486,16 @@ function CustomerLoginCardInner({
           disabled={isGooglePending}
           loadingText={mode === "signup" ? "Creating account..." : "Logging in..."}
           icon={<Mail className="h-4 w-4" />}
-          className="h-[3.15rem] w-full rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 text-base font-bold shadow-lg shadow-blue-600/20 transition active:scale-[0.98]"
+          className="h-12 w-full rounded-xl bg-blue-700 text-base font-semibold shadow-sm transition hover:bg-blue-800 active:scale-[0.99]"
         >
           {mode === "signup" ? "Create Account" : "Login with Email"}
         </FormSubmitButton>
       </form>
 
-      <Button type="button" variant="outline" disabled={isPending || isGooglePending} onClick={() => void handleGoogleLogin()} className="mt-3 h-[3.15rem] w-full rounded-2xl bg-white/70">
+      <Button type="button" variant="outline" disabled={isPending || isGooglePending} onClick={() => void handleGoogleLogin()} className="mt-3 h-12 w-full rounded-xl bg-white">
         {isGooglePending ? <ButtonSpinner className="text-blue-700" /> : <GoogleIcon />}
         {isGooglePending ? "Opening Google..." : "Continue with Google"}
       </Button>
-
-      <div className="mt-6 rounded-2xl border border-white/15 bg-white/25 p-3 text-center backdrop-blur-md">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Admin / agent access</p>
-        <div className="mt-3 flex flex-wrap justify-center gap-2">
-          <Link href="/login/agent" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
-            Agent Login
-          </Link>
-          <Link href="/admin-login" className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/35 px-4 text-sm font-bold text-blue-700 transition hover:bg-white/55">
-            Admin Login
-          </Link>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
-        <ShieldCheck className="h-4 w-4 text-emerald-600" />
-        Secure Supabase authentication
-      </div>
     </div>
   );
 }
