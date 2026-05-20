@@ -3,6 +3,8 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const CUSTOMER_EXISTS_MESSAGE = "Customer already exists with this email/mobile number.";
+export const INCOMPLETE_ACCOUNT_MESSAGE =
+  "Account was created earlier but profile was incomplete. Please verify your email or contact admin.";
 
 type SupabaseAdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
@@ -26,6 +28,10 @@ type CustomerSyncInput = {
   createdBy?: string | null;
 };
 
+type CompleteCustomerAccountInput = CustomerSyncInput & {
+  avatarUrl?: string;
+};
+
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
@@ -43,7 +49,7 @@ function hasDifferentCustomerId(row: { id?: string | null } | null, excludeCusto
   return Boolean(row?.id && excludeCustomerId && row.id !== excludeCustomerId);
 }
 
-async function findAuthUserByEmailOrMobile(
+export async function findAuthUserByEmailOrMobile(
   supabase: SupabaseAdminClient,
   email: string,
   mobile: string,
@@ -85,6 +91,21 @@ async function findAuthUserByEmailOrMobile(
   }
 
   return null;
+}
+
+function isMissingColumnError(error: { message?: string } | null | undefined) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return message.includes("could not find") || message.includes("does not exist");
+}
+
+export function isCustomerUniqueConstraintError(error: unknown) {
+  const message = String(error instanceof Error ? error.message : (error as { message?: string } | null)?.message ?? "").toLowerCase();
+  return (
+    message.includes("customer already exists") ||
+    message.includes("duplicate key") ||
+    message.includes("unique constraint") ||
+    message.includes("_unique_idx")
+  );
 }
 
 export async function assertCustomerIdentityAvailable(
@@ -192,7 +213,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
     existingCustomer = data ? { id: data.id, user_id: input.userId } : null;
   }
 
-  await supabase.from("customer_profiles").upsert(
+  const { error: customerProfileError } = await supabase.from("customer_profiles").upsert(
     {
       id: input.userId,
       user_id: input.userId,
@@ -207,5 +228,89 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
     { onConflict: "id" },
   );
 
+  if (customerProfileError) {
+    throw customerProfileError;
+  }
+
   return existingCustomer?.id ?? null;
+}
+
+export async function completeCustomerAccount(supabase: SupabaseAdminClient, input: CompleteCustomerAccountInput) {
+  const now = new Date().toISOString();
+  const email = normalizeEmail(input.email);
+  const mobile = normalizeCustomerMobile(input.mobile);
+  const fullName = input.fullName.trim() || "Customer";
+  const customerId = await syncCustomerIdentity(supabase, {
+    userId: input.userId,
+    fullName,
+    email,
+    mobile,
+    pincode: input.pincode,
+    city: input.city,
+    state: input.state,
+    address: input.address,
+    source: input.source,
+    createdBy: input.createdBy,
+  });
+
+  const profilePayload = {
+    id: input.userId,
+    full_name: fullName,
+    email,
+    mobile,
+    role: "customer",
+    pincode: input.pincode ?? "",
+    city: input.city ?? "",
+    state: input.state ?? "",
+    active: true,
+    is_active: true,
+    avatar_url: input.avatarUrl ?? "",
+    updated_at: now,
+  };
+
+  const { error: profileError } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
+
+  if (profileError) {
+    if (isMissingColumnError(profileError)) {
+      const { error: fallbackProfileError } = await supabase.from("profiles").upsert(
+        {
+          id: input.userId,
+          full_name: fullName,
+          email,
+          mobile,
+          role: "customer",
+          pincode: input.pincode ?? "",
+          city: input.city ?? "",
+          state: input.state ?? "",
+          avatar_url: input.avatarUrl ?? "",
+          updated_at: now,
+        },
+        { onConflict: "id" },
+      );
+
+      if (fallbackProfileError) {
+        throw fallbackProfileError;
+      }
+    } else {
+      throw profileError;
+    }
+  }
+
+  const { error: userError } = await supabase.from("users").upsert(
+    {
+      id: input.userId,
+      full_name: fullName,
+      email,
+      role: "customer",
+      avatar_url: input.avatarUrl ?? "",
+      updated_at: now,
+    },
+    { onConflict: "id" },
+  );
+
+  if (userError) {
+    throw userError;
+  }
+
+  return customerId;
 }

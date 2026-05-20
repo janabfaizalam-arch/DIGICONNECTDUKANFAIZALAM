@@ -3,9 +3,12 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import {
   assertCustomerIdentityAvailable,
+  completeCustomerAccount,
   CUSTOMER_EXISTS_MESSAGE,
+  findAuthUserByEmailOrMobile,
+  INCOMPLETE_ACCOUNT_MESSAGE,
+  isCustomerUniqueConstraintError,
   normalizeCustomerMobile,
-  syncCustomerIdentity,
 } from "@/lib/customer-identity";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -15,6 +18,32 @@ function jsonError(message: string, status: number) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function logAdminCustomerFailure({
+  step,
+  email,
+  mobile,
+  userId,
+  error,
+}: {
+  step: string;
+  email: string;
+  mobile: string;
+  userId?: string | null;
+  error: unknown;
+}) {
+  const supabaseError = error as { message?: string; code?: string; details?: string; hint?: string } | null;
+  console.error("[admin-customers] Step failed", {
+    step,
+    email,
+    mobile,
+    userId: userId ?? null,
+    errorMessage: error instanceof Error ? error.message : supabaseError?.message ?? String(error),
+    errorCode: supabaseError?.code ?? null,
+    errorDetails: supabaseError?.details ?? null,
+    errorHint: supabaseError?.hint ?? null,
+  });
 }
 
 export async function POST(request: Request) {
@@ -62,6 +91,82 @@ export async function POST(request: Request) {
     return jsonError("Customer creation is not available right now.", 500);
   }
 
+  const existingAuthUser = await findAuthUserByEmailOrMobile(supabase, email, mobile);
+
+  if (existingAuthUser) {
+    console.info("[admin-customers] Existing auth user found; attempting safe customer repair.", {
+      step: "existing_auth_lookup",
+      email,
+      mobile,
+      authUserId: existingAuthUser.id,
+    });
+
+    const duplicateCheck = await assertCustomerIdentityAvailable(supabase, {
+      email,
+      mobile,
+      excludeUserId: existingAuthUser.id,
+    });
+
+    if (duplicateCheck?.ok === false) {
+      return jsonError(duplicateCheck.message, 409);
+    }
+
+    try {
+      const { error: updateError } = await supabase.auth.admin.updateUserById(existingAuthUser.id, {
+        password,
+        email_confirm: true,
+        user_metadata: {
+          ...existingAuthUser.user_metadata,
+          full_name: fullName,
+          mobile,
+          phone: mobile,
+          pincode,
+          city,
+          state,
+          role: "customer",
+        },
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      const customerId = await completeCustomerAccount(supabase, {
+        userId: existingAuthUser.id,
+        fullName,
+        email,
+        mobile,
+        pincode,
+        city,
+        state,
+        address,
+        source: "offline",
+        createdBy: user.id,
+        avatarUrl: String(existingAuthUser.user_metadata.avatar_url ?? existingAuthUser.user_metadata.picture ?? ""),
+      });
+
+      return NextResponse.json({
+        message: INCOMPLETE_ACCOUNT_MESSAGE,
+        customerId,
+        userId: existingAuthUser.id,
+        customerName: fullName,
+        loginUrl: "/login/customer",
+      });
+    } catch (repairError) {
+      logAdminCustomerFailure({
+        step: "repair_existing_auth_user",
+        email,
+        mobile,
+        userId: existingAuthUser.id,
+        error: repairError,
+      });
+      return jsonError(
+        isCustomerUniqueConstraintError(repairError) ? CUSTOMER_EXISTS_MESSAGE : "Customer account repair failed.",
+        isCustomerUniqueConstraintError(repairError) ? 409 : 500,
+      );
+    }
+  }
+
   const duplicateCheck = await assertCustomerIdentityAvailable(supabase, { email, mobile });
 
   if (duplicateCheck?.ok === false) {
@@ -85,52 +190,12 @@ export async function POST(request: Request) {
 
   if (createError || !created.user) {
     const alreadyExists = createError?.message.toLowerCase().includes("already") ?? false;
-    console.error("[admin-customers] Supabase auth customer creation failed.", createError?.message);
+    logAdminCustomerFailure({ step: "auth_admin_create_user", email, mobile, error: createError ?? "Missing created user" });
     return jsonError(alreadyExists ? CUSTOMER_EXISTS_MESSAGE : "Customer user could not be created.", alreadyExists ? 409 : 500);
   }
 
-  const now = new Date().toISOString();
-
-  const [{ error: profileError }, { error: userError }] = await Promise.all([
-    supabase.from("profiles").upsert(
-      {
-        id: created.user.id,
-        full_name: fullName,
-        email,
-        mobile,
-        role: "customer",
-        pincode,
-        city,
-        state,
-        active: true,
-        is_active: true,
-        updated_at: now,
-      },
-      { onConflict: "id" },
-    ),
-    supabase.from("users").upsert(
-      {
-        id: created.user.id,
-        full_name: fullName,
-        email,
-        role: "customer",
-        avatar_url: "",
-        updated_at: now,
-      },
-      { onConflict: "id" },
-    ),
-  ]);
-
-  if (profileError || userError) {
-    console.error("[admin-customers] Customer profile save failed.", profileError?.message ?? userError?.message);
-    await supabase.auth.admin.deleteUser(created.user.id).catch((deleteError) => {
-      console.error("[admin-customers] Failed to clean up auth user after profile error.", deleteError.message);
-    });
-    return jsonError("Customer profile could not be saved.", 500);
-  }
-
   try {
-    const customerId = await syncCustomerIdentity(supabase, {
+    const customerId = await completeCustomerAccount(supabase, {
       userId: created.user.id,
       fullName,
       email,
@@ -151,10 +216,33 @@ export async function POST(request: Request) {
       loginUrl: "/login/customer",
     });
   } catch (error) {
-    console.error("[admin-customers] Customer identity sync failed.", error);
-    await supabase.auth.admin.deleteUser(created.user.id).catch((deleteError) => {
-      console.error("[admin-customers] Failed to clean up auth user after customer sync error.", deleteError.message);
+    logAdminCustomerFailure({
+      step: "sync_customer_records_after_auth_create",
+      email,
+      mobile,
+      userId: created.user.id,
+      error,
     });
-    return jsonError("Customer record could not be created.", 500);
+
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(created.user.id);
+
+    if (deleteError) {
+      logAdminCustomerFailure({
+        step: "rollback_auth_user_after_sync_failure",
+        email,
+        mobile,
+        userId: created.user.id,
+        error: deleteError,
+      });
+      return jsonError(
+        isCustomerUniqueConstraintError(error) ? CUSTOMER_EXISTS_MESSAGE : "Customer record could not be created. Auth cleanup also failed.",
+        isCustomerUniqueConstraintError(error) ? 409 : 500,
+      );
+    }
+
+    return jsonError(
+      isCustomerUniqueConstraintError(error) ? CUSTOMER_EXISTS_MESSAGE : "Customer record could not be created.",
+      isCustomerUniqueConstraintError(error) ? 409 : 500,
+    );
   }
 }
