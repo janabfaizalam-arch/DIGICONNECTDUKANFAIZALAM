@@ -7,6 +7,7 @@ import {
   completeCustomerAccount,
   CUSTOMER_EXISTS_MESSAGE,
   findAuthUserByEmailOrMobile,
+  getSupabaseErrorDebug,
   INCOMPLETE_ACCOUNT_MESSAGE,
   isCustomerUniqueConstraintError,
 } from "@/lib/customer-identity";
@@ -31,7 +32,7 @@ type SignupBody = {
 function jsonSignupError(
   message: string,
   status: number,
-  debug?: Record<string, boolean | string | null>,
+  debug?: Record<string, unknown>,
 ) {
   return NextResponse.json(
     {
@@ -110,6 +111,68 @@ function logSignupFailure({
     errorCode: supabaseError?.code ?? null,
     errorDetails: supabaseError?.details ?? null,
     errorHint: supabaseError?.hint ?? null,
+  });
+}
+
+function logSignupStepFailed({
+  label = "SIGNUP_STEP_FAILED",
+  step,
+  email,
+  mobile,
+  userId,
+  error,
+}: {
+  label?: "SIGNUP_STEP_FAILED" | "SIGNUP_AUTH_CREATE_FAILED" | "SIGNUP_CUSTOMER_SYNC_FAILED";
+  step: string;
+  email: string;
+  mobile: string;
+  userId?: string | null;
+  error: unknown;
+}) {
+  const debug = getSupabaseErrorDebug(error);
+  console.error(label, {
+    step,
+    email,
+    mobile,
+    userId: userId ?? null,
+    errorCode: debug.code,
+    errorMessage: debug.message,
+    errorDetails: debug.details,
+    errorHint: debug.hint,
+  });
+}
+
+function signupStepErrorResponse({
+  message,
+  status,
+  step,
+  email,
+  mobile,
+  userId,
+  error,
+  envDebug,
+}: {
+  message: string;
+  status: number;
+  step: string;
+  email: string;
+  mobile: string;
+  userId?: string | null;
+  error: unknown;
+  envDebug: Record<string, unknown>;
+}) {
+  const errorDebug = getSupabaseErrorDebug(error);
+
+  return jsonSignupError(message, status, {
+    ...envDebug,
+    step,
+    email,
+    mobile,
+    userId: userId ?? null,
+    supabaseErrorCode: errorDebug.code,
+    supabaseErrorMessage: errorDebug.message,
+    supabaseErrorDetails: errorDebug.details,
+    supabaseErrorHint: errorDebug.hint,
   });
 }
 
@@ -272,6 +335,14 @@ export async function POST(request: Request) {
           ...(process.env.NODE_ENV === "development" ? { debug: envDebug } : {}),
         });
       } catch (repairError) {
+        logSignupStepFailed({
+          label: "SIGNUP_CUSTOMER_SYNC_FAILED",
+          step: "repair_existing_auth_user",
+          email,
+          mobile,
+          userId: existingAuthUser.id,
+          error: repairError,
+        });
         logSignupFailure({
           step: "repair_existing_auth_user",
           email,
@@ -280,11 +351,16 @@ export async function POST(request: Request) {
           error: repairError,
         });
 
-        return jsonSignupError(
-          isCustomerUniqueConstraintError(repairError) ? CUSTOMER_EXISTS_MESSAGE : "Signup profile repair failed. Please contact admin.",
-          isCustomerUniqueConstraintError(repairError) ? 409 : 500,
+        return signupStepErrorResponse({
+          message: isCustomerUniqueConstraintError(repairError) ? CUSTOMER_EXISTS_MESSAGE : "Signup profile repair failed. Please contact admin.",
+          status: isCustomerUniqueConstraintError(repairError) ? 409 : 500,
+          step: "repair_existing_auth_user",
+          email,
+          mobile,
+          userId: existingAuthUser.id,
+          error: repairError,
           envDebug,
-        );
+        });
       }
     }
 
@@ -333,10 +409,16 @@ export async function POST(request: Request) {
 
     if (error) {
       const alreadyExists = error.message.toLowerCase().includes("already") || error.message.toLowerCase().includes("registered");
+      logSignupStepFailed({ label: "SIGNUP_AUTH_CREATE_FAILED", step: "auth_signup", email, mobile, error });
       logSignupFailure({ step: "auth_signup", email, mobile, error });
-      return jsonSignupError(alreadyExists ? CUSTOMER_EXISTS_MESSAGE : error.message, alreadyExists ? 409 : 400, {
-        ...envDebug,
-        supabaseErrorCode: error.code ?? null,
+      return signupStepErrorResponse({
+        message: alreadyExists ? CUSTOMER_EXISTS_MESSAGE : error.message,
+        status: alreadyExists ? 409 : 400,
+        step: "auth_signup",
+        email,
+        mobile,
+        error,
+        envDebug,
       });
     }
 
@@ -354,6 +436,14 @@ export async function POST(request: Request) {
           avatarUrl: String(data.user.user_metadata.avatar_url ?? data.user.user_metadata.picture ?? ""),
         });
       } catch (syncError) {
+        logSignupStepFailed({
+          label: "SIGNUP_CUSTOMER_SYNC_FAILED",
+          step: "sync_customer_records_after_auth_signup",
+          email,
+          mobile,
+          userId: data.user.id,
+          error: syncError,
+        });
         logSignupFailure({
           step: "sync_customer_records_after_auth_signup",
           email,
@@ -372,22 +462,32 @@ export async function POST(request: Request) {
             userId: data.user.id,
             error: deleteError,
           });
-          return jsonSignupError(
-            isCustomerUniqueConstraintError(syncError) ? CUSTOMER_EXISTS_MESSAGE : "Signup failed while completing your profile. Please contact admin.",
-            isCustomerUniqueConstraintError(syncError) ? 409 : 500,
+          return signupStepErrorResponse({
+            message: isCustomerUniqueConstraintError(syncError) ? CUSTOMER_EXISTS_MESSAGE : "Signup failed while completing your profile. Please contact admin.",
+            status: isCustomerUniqueConstraintError(syncError) ? 409 : 500,
+            step: "rollback_auth_user_after_sync_failure",
+            email,
+            mobile,
+            userId: data.user.id,
+            error: deleteError,
             envDebug,
-          );
+          });
         }
 
-        return jsonSignupError(
-          isCustomerUniqueConstraintError(syncError) ? CUSTOMER_EXISTS_MESSAGE : "Signup failed. Please try again.",
-          isCustomerUniqueConstraintError(syncError) ? 409 : 500,
+        return signupStepErrorResponse({
+          message: isCustomerUniqueConstraintError(syncError) ? CUSTOMER_EXISTS_MESSAGE : "Signup failed. Please try again.",
+          status: isCustomerUniqueConstraintError(syncError) ? 409 : 500,
+          step: "sync_customer_records_after_auth_signup",
+          email,
+          mobile,
+          userId: data.user.id,
+          error: syncError,
           envDebug,
-        );
+        });
       }
 
       await creditSignupBonus(data.user.id).catch((rewardError) => {
-        logSignupFailure({ step: "credit_signup_bonus", email, mobile, userId: data.user?.id, error: rewardError });
+        logSignupStepFailed({ step: "optional_credit_signup_bonus", email, mobile, userId: data.user?.id, error: rewardError });
       });
     }
 
@@ -395,7 +495,18 @@ export async function POST(request: Request) {
       try {
         await attachReferralOnSignup(data.user.id, referredBy, getClientIp(request), request.headers.get("user-agent"));
       } catch (rewardError) {
-        console.error("[auth/signup] Referral attachment failed", rewardError);
+        const debug = getSupabaseErrorDebug(rewardError);
+        console.warn("REFERRAL_SIGNUP_ATTACHMENT_FAILED", {
+          step: "optional_attach_referral_on_signup",
+          email,
+          mobile,
+          userId: data.user.id,
+          referralCode: referredBy,
+          errorCode: debug.code,
+          errorMessage: debug.message,
+          errorDetails: debug.details,
+          errorHint: debug.hint,
+        });
       }
     }
 
