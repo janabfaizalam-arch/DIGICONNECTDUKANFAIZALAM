@@ -6,7 +6,7 @@ import { getPublicCategoryBySlug, getPublicServicesByCategory } from "@/lib/serv
 
 export const metadata: Metadata = {
   title: "Gov ID & Form Submission | DigiConnect Dukan",
-  description: "PAN Card, Passport Assistance, Driving Licence, Voter ID, and Labour Card / e-Shram Card support.",
+  description: "Passport Assistance, Driving Licence, Voter ID, and Labour Card / e-Shram Card support.",
   alternates: { canonical: "/services/gov-id-form-submission" },
 };
 

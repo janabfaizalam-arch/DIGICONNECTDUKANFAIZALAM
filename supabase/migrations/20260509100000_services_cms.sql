@@ -67,7 +67,7 @@ values
   ('Tax & Business', 'tax-business', 'GST, ITR, MSME, FSSAI, trade license, and project report support for growing businesses.', 10, true),
   ('Insurance', 'insurance', 'Bike, car, commercial, renewal, and claim assistance in one place.', 20, true),
   ('Finance & Banking', 'finance-banking', 'Government subsidy schemes, business loans, credit cards, accounts, CIBIL, and loan file preparation.', 30, true),
-  ('Gov ID & Form Submission', 'gov-id-form-submission', 'PAN, passport, driving licence, voter ID, labour card, and e-Shram support.', 40, true)
+  ('Gov ID & Form Submission', 'gov-id-form-submission', 'Passport, driving licence, voter ID, labour card, and e-Shram support.', 40, true)
 on conflict (slug) do update set
   name = excluded.name,
   description = excluded.description,

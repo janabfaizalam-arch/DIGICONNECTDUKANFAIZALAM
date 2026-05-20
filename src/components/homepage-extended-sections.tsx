@@ -40,7 +40,7 @@ const categories = [
   },
   {
     title: "Gov ID & Form Submission",
-    description: "PAN, passport, driving licence, voter ID, labour card, and e-Shram support.",
+    description: "Passport, driving licence, voter ID, labour card, and e-Shram support.",
     href: "/services/gov-id-form-submission",
     icon: FileCheck2,
   },

@@ -33,6 +33,7 @@ export type AgentServiceInput = Omit<AgentService, "id" | "created_at" | "update
 };
 
 export type AgentServiceSource = Pick<ServiceCatalogItem, "id" | "slug" | "name" | "description" | "amount" | "commission_amount" | "commission_rate" | "required_documents" | "active">;
+const unavailableAgentServiceSlugs = new Set(["pan-card"]);
 
 function numberValue(value: unknown, fallback = 0) {
   const next = Number(value);
@@ -105,7 +106,7 @@ export async function getAgentServiceSourceCatalog() {
     return [] as AgentServiceSource[];
   }
 
-  return (data ?? []) as AgentServiceSource[];
+  return ((data ?? []) as AgentServiceSource[]).filter((service) => !unavailableAgentServiceSlugs.has(service.slug));
 }
 
 export async function getAdminAgentServices() {
@@ -159,7 +160,7 @@ export async function getVisibleAgentServices(agentId: string) {
 
   const byId = new Map<string, AgentService>();
   rows.map(normalizeAgentService).forEach((service) => {
-    if (service.is_active) byId.set(service.id, service);
+    if (service.is_active && !unavailableAgentServiceSlugs.has(service.slug)) byId.set(service.id, service);
   });
 
   return Array.from(byId.values()).sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || a.sort_order - b.sort_order || a.title.localeCompare(b.title));

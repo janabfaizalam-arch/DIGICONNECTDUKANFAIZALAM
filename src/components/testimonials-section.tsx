@@ -6,7 +6,7 @@ const testimonials = [
   {
     name: "Rahul Verma",
     location: "India",
-    quote: "The PAN card application process was fast and smooth.",
+    quote: "The driving licence application guidance was clear and smooth.",
   },
   {
     name: "Neha Gupta",

@@ -49,11 +49,6 @@ const businessFields: ServiceField[] = [
   { name: "panNumber", label: "PAN", required: false },
 ];
 
-const panFields: ServiceField[] = [
-  { name: "fullName", label: "Full Name", required: true },
-  { name: "fatherName", label: "Father's Name", required: false },
-];
-
 const vehicleFields: ServiceField[] = [
   { name: "vehicleNumber", label: "Vehicle Number", required: false },
   { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false },
@@ -67,10 +62,6 @@ const financeFields: ServiceField[] = [
 const noExtraFields: ServiceField[] = [];
 
 function getFields(service: (typeof servicesData)[number]): ServiceField[] {
-  if (service.slug === "pan-card") {
-    return panFields;
-  }
-
   if (service.categorySlug === "tax-business") {
     return businessFields;
   }

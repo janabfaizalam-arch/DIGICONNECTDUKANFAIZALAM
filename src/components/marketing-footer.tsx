@@ -15,8 +15,8 @@ const footerLinks = [
 ];
 
 const popularServices = [
-  { label: "PAN Card", href: "/services/pan-card" },
   { label: "GST Registration", href: "/services/gst-registration" },
+  { label: "Driving Licence", href: "/services/driving-licence" },
   { label: "Bike Insurance", href: "/services/bike-insurance" },
   { label: "PMEGP Loan", href: "/services/pmegp-loan" },
 ];

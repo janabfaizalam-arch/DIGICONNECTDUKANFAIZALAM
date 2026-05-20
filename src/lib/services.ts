@@ -193,18 +193,20 @@ function priceOverride(slug: string) {
   }
 
   if (slug === "driving-licence") {
-    return { oldPrice: 1999, offerPrice: 1099 };
+    return { oldPrice: 2499, offerPrice: 1499 };
   }
 
   return null;
 }
+
+const unavailablePublicServiceSlugs = new Set(["pan-card"]);
 
 function categorySlugFromService(service: DbService) {
   return service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
 }
 
 function activeServiceFilter(service: DbService) {
-  return (service.is_active ?? service.status === "published") && service.status === "published";
+  return !unavailablePublicServiceSlugs.has(service.slug) && (service.is_active ?? service.status === "published") && service.status === "published";
 }
 
 const serviceSelect =
@@ -281,7 +283,9 @@ async function fetchLegacyPublishedServiceRows() {
     .order("name", { ascending: true });
 
   if (!legacyResult.error) {
-    return (legacyResult.data ?? []).map((row) => normalizeServiceRow(row as Record<string, unknown>));
+    return (legacyResult.data ?? [])
+      .map((row) => normalizeServiceRow(row as Record<string, unknown>))
+      .filter((service) => !unavailablePublicServiceSlugs.has(service.slug));
   }
 
   if (!isSchemaMismatch(legacyResult.error)) {
@@ -299,7 +303,9 @@ async function fetchLegacyPublishedServiceRows() {
     return [];
   }
 
-  return (catalogResult.data ?? []).map((row) => normalizeServiceRow(row as Record<string, unknown>));
+  return (catalogResult.data ?? [])
+    .map((row) => normalizeServiceRow(row as Record<string, unknown>))
+    .filter((service) => !unavailablePublicServiceSlugs.has(service.slug));
 }
 
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
@@ -400,6 +406,18 @@ export function serviceFromDb(service: DbService): ServiceItem {
     };
   }
 
+  if (item.slug === "driving-licence") {
+    return {
+      ...item,
+      amount: 1499,
+      oldPrice: "₹2499",
+      offerPrice: "₹1499",
+      priceLabel: "₹1499",
+      badge: "Save ₹1000",
+      ctaType: "apply",
+    };
+  }
+
   return item;
 }
 
@@ -445,7 +463,7 @@ export async function hasDatabaseServices() {
 
 export async function getPublicServices() {
   const rows = await fetchPublishedServiceRows();
-  if (rows.length) return rows.map(serviceFromDb);
+  if (rows.length) return rows.filter(activeServiceFilter).map(serviceFromDb);
   return (await hasDatabaseServices()) ? [] : servicesData;
 }
 
@@ -456,6 +474,7 @@ export async function getPublicServiceBySlug(slug: string) {
     passport: "passport-assistance",
   };
   const normalizedSlug = aliases[slug] ?? slug;
+  if (unavailablePublicServiceSlugs.has(normalizedSlug)) return null;
   const supabase = getSupabaseAdmin();
 
   if (supabase) {
@@ -489,6 +508,7 @@ export async function getPublicServiceRowBySlug(slug: string) {
     passport: "passport-assistance",
   };
   const normalizedSlug = aliases[slug] ?? slug;
+  if (unavailablePublicServiceSlugs.has(normalizedSlug)) return null;
   const supabase = getSupabaseAdmin();
 
   if (!supabase) return null;
@@ -562,7 +582,7 @@ export async function getPublicServicesByCategory(slug: string) {
   if (!rows.length) return (await hasDatabaseServices()) ? [] : getFallbackServicesByCategory(slug);
 
   return rows
-    .filter((service) => categorySlugFromService(service) === slug && (service.service_categories?.is_active ?? true))
+    .filter((service) => activeServiceFilter(service) && categorySlugFromService(service) === slug && (service.service_categories?.is_active ?? true))
     .map(serviceFromDb);
 }
 
@@ -583,7 +603,7 @@ export async function getPublicFeaturedServices(categorySlug?: string) {
   }
 
   return rows
-    .filter((service) => service.slug !== "pan-card" && (service.is_featured ?? service.featured) && (!categorySlug || categorySlugFromService(service) === categorySlug))
+    .filter((service) => activeServiceFilter(service) && (service.is_featured ?? service.featured) && (!categorySlug || categorySlugFromService(service) === categorySlug))
     .map(serviceFromDb);
 }
 
@@ -595,7 +615,7 @@ export async function getPublicHomepageServices(limit = 6) {
   }
 
   return rows
-    .filter((service) => service.show_on_homepage || service.is_featured || service.featured)
+    .filter((service) => activeServiceFilter(service) && (service.show_on_homepage || service.is_featured || service.featured))
     .sort((a, b) => Number(b.is_featured ?? b.featured) - Number(a.is_featured ?? a.featured) || a.sort_order - b.sort_order || a.title.localeCompare(b.title))
     .slice(0, limit)
     .map(serviceFromDb);

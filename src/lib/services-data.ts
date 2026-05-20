@@ -162,7 +162,7 @@ export const serviceCategories: ServiceCategory[] = [
     title: "Gov ID & Form Submission",
     slug: "gov-id-form-submission",
     heading: "Gov ID & Form Submission",
-    description: "PAN, passport, driving licence, voter ID, and labour or e-Shram card application assistance.",
+    description: "Passport, driving licence, voter ID, and labour or e-Shram card application assistance.",
     icon: IdCard,
     featuredSlugs: ["passport-assistance", "driving-licence", "voter-id", "labour-card-e-shram-card"],
   },
@@ -387,9 +387,8 @@ const rawServices: RawService[] = [
   { title: "Loan File Preparation", categorySlug: "finance-banking", shortDescription: "Loan file, project details, and document arrangement support.", priceLabel: "Enquiry Now", iconKey: "dpr" },
   { title: "CIBIL / Credit Score Guidance", categorySlug: "finance-banking", shortDescription: "Credit score review guidance for better loan readiness.", priceLabel: "Enquiry Now", iconKey: "cibil" },
 
-  { title: "PAN Card", categorySlug: "gov-id-form-submission", shortDescription: "PAN card application, correction, and reprint assistance.", oldPrice: "₹399", offerPrice: "₹99", iconKey: "pan", badge: "Limited Offer" },
   { title: "Passport Assistance", categorySlug: "gov-id-form-submission", shortDescription: "Passport form, appointment, and document checklist support.", oldPrice: "₹6499", offerPrice: "₹2499", iconKey: "passport", badge: "Popular" },
-  { title: "Driving Licence", categorySlug: "gov-id-form-submission", shortDescription: "Driving licence application and renewal support.", oldPrice: "₹1999", offerPrice: "₹1099", iconKey: "licence", badge: "Limited Offer" },
+  { title: "Driving Licence", categorySlug: "gov-id-form-submission", shortDescription: "Driving licence application and renewal support.", oldPrice: "₹2499", offerPrice: "₹1499", iconKey: "licence", badge: "Save ₹1000" },
   { title: "Voter ID", categorySlug: "gov-id-form-submission", shortDescription: "Voter ID application and correction form assistance.", oldPrice: "₹349", offerPrice: "₹99", iconKey: "voter", badge: "Limited Offer" },
   { title: "Labour Card / e-Shram Card", categorySlug: "gov-id-form-submission", shortDescription: "Labour card and e-Shram card registration assistance.", oldPrice: "₹999", offerPrice: "₹399", iconKey: "labour", badge: "Popular" },
 ];
