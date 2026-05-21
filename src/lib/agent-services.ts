@@ -33,7 +33,7 @@ export type AgentServiceInput = Omit<AgentService, "id" | "created_at" | "update
 };
 
 export type AgentServiceSource = Pick<ServiceCatalogItem, "id" | "slug" | "name" | "description" | "amount" | "commission_amount" | "commission_rate" | "required_documents" | "active">;
-const unavailableAgentServiceSlugs = new Set(["pan-card"]);
+const unavailableAgentServiceSlugs = new Set(["pan-card", "cibil-credit-score-guidance"]);
 
 function numberValue(value: unknown, fallback = 0) {
   const next = Number(value);

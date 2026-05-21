@@ -385,7 +385,25 @@ const rawServices: RawService[] = [
   { title: "Current Account Opening", categorySlug: "finance-banking", shortDescription: "Current account opening support for shops and businesses.", priceLabel: "Enquiry Now", iconKey: "bank" },
   { title: "Savings Account Opening", categorySlug: "finance-banking", shortDescription: "Savings account guidance with basic KYC document support.", priceLabel: "Enquiry Now", iconKey: "savings" },
   { title: "Loan File Preparation", categorySlug: "finance-banking", shortDescription: "Loan file, project details, and document arrangement support.", priceLabel: "Enquiry Now", iconKey: "dpr" },
-  { title: "CIBIL / Credit Score Guidance", categorySlug: "finance-banking", shortDescription: "Credit score review guidance for better loan readiness.", priceLabel: "Enquiry Now", iconKey: "cibil" },
+  {
+    title: "CIBIL Report Analysis & Credit Health Consultation",
+    categorySlug: "finance-banking",
+    shortDescription: "6-month TransUnion CIBIL membership with expert one page credit health analysis.",
+    oldPrice: "₹3200",
+    offerPrice: "₹2600",
+    priceLabel: "₹2600",
+    iconKey: "cibil",
+    badge: "Credit Health",
+    documents: ["Aadhaar", "PAN", "Mobile", "Email"],
+    benefits: [
+      "6-month TransUnion CIBIL membership assistance",
+      "Expert one page credit report analysis",
+      "Loan readiness and score health review",
+      "Credit utilization and overdue detection",
+      "Wrong reporting and dispute guidance",
+      "Secure digital assistance with WhatsApp support",
+    ],
+  },
 
   { title: "Passport Assistance", categorySlug: "gov-id-form-submission", shortDescription: "Passport form, appointment, and document checklist support.", oldPrice: "₹6499", offerPrice: "₹2499", iconKey: "passport", badge: "Popular" },
   { title: "Driving Licence", categorySlug: "gov-id-form-submission", shortDescription: "Driving licence application and renewal support.", oldPrice: "₹2499", offerPrice: "₹1499", iconKey: "licence", badge: "Save ₹1000" },
@@ -400,6 +418,7 @@ export function getServiceBySlug(slug: string) {
     msme: "msme-certificate",
     "food-license": "food-license-fssai",
     passport: "passport-assistance",
+    "cibil-credit-score-guidance": "cibil-report-analysis-and-credit-health-consultation",
   };
 
   return servicesData.find((service) => service.slug === (aliases[slug] ?? slug));

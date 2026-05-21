@@ -196,10 +196,14 @@ function priceOverride(slug: string) {
     return { oldPrice: 2499, offerPrice: 1499 };
   }
 
+  if (slug === "cibil-report-analysis-and-credit-health-consultation" || slug === "cibil-credit-score-guidance") {
+    return { oldPrice: 3200, offerPrice: 2600 };
+  }
+
   return null;
 }
 
-const unavailablePublicServiceSlugs = new Set(["pan-card"]);
+const unavailablePublicServiceSlugs = new Set(["pan-card", "cibil-credit-score-guidance"]);
 
 function categorySlugFromService(service: DbService) {
   return service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
@@ -418,6 +422,25 @@ export function serviceFromDb(service: DbService): ServiceItem {
     };
   }
 
+  if (item.slug === "cibil-report-analysis-and-credit-health-consultation" || item.slug === "cibil-credit-score-guidance") {
+    return {
+      ...item,
+      title: "CIBIL Report Analysis & Credit Health Consultation",
+      slug: "cibil-report-analysis-and-credit-health-consultation",
+      shortDescription: "6-month TransUnion CIBIL membership with expert one page credit health analysis.",
+      amount: 2600,
+      oldPrice: "₹3200",
+      offerPrice: "₹2600",
+      priceLabel: "₹2600",
+      badge: "Credit Health",
+      ctaType: "apply",
+      documents: ["Aadhaar", "PAN", "Mobile", "Email"],
+      seoTitle: "CIBIL Report Analysis & Credit Health Consultation | DigiConnect Dukan",
+      seoDescription: "Get 6-month TransUnion CIBIL membership assistance with expert one page CIBIL report analysis, credit health review, dispute guidance, and loan readiness consultation.",
+      seoKeywords: ["CIBIL report analysis", "credit health consultation", "CIBIL membership", "credit score improvement", "loan readiness", "DigiConnect Dukan"],
+    };
+  }
+
   return item;
 }
 
@@ -472,6 +495,7 @@ export async function getPublicServiceBySlug(slug: string) {
     msme: "msme-certificate",
     "food-license": "food-license-fssai",
     passport: "passport-assistance",
+    "cibil-credit-score-guidance": "cibil-report-analysis-and-credit-health-consultation",
   };
   const normalizedSlug = aliases[slug] ?? slug;
   if (unavailablePublicServiceSlugs.has(normalizedSlug)) return null;
@@ -506,6 +530,7 @@ export async function getPublicServiceRowBySlug(slug: string) {
     msme: "msme-certificate",
     "food-license": "food-license-fssai",
     passport: "passport-assistance",
+    "cibil-credit-score-guidance": "cibil-report-analysis-and-credit-health-consultation",
   };
   const normalizedSlug = aliases[slug] ?? slug;
   if (unavailablePublicServiceSlugs.has(normalizedSlug)) return null;

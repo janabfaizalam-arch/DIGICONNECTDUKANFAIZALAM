@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
 import { DynamicServicePage } from "@/components/services/dynamic-service-page";
@@ -159,6 +159,11 @@ function rowFromFallback(service: ServiceItem): DbService {
 
 export default async function ServiceDetailPage({ params }: PageProps) {
   const { slug } = await params;
+
+  if (slug === "cibil-credit-score-guidance") {
+    redirect("/services/cibil-report-analysis-and-credit-health-consultation");
+  }
+
   const categoryPage = await getPublicCategoryBySlug(slug);
 
   if (categoryPage) {
