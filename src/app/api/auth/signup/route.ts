@@ -240,9 +240,9 @@ export async function POST(request: Request) {
       return jsonSignupError("Mobile number is required", 400, envDebug);
     }
 
-    if (!/^\d{10}$/.test(mobile)) {
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
       console.warn("[auth/signup] Validation failed", { field: "mobile", length: mobile.length });
-      return jsonSignupError("Enter a valid 10 digit mobile number.", 400, envDebug);
+      return jsonSignupError("Enter a valid Indian 10 digit mobile number.", 400, envDebug);
     }
 
     if (!isValidEmail(email)) {

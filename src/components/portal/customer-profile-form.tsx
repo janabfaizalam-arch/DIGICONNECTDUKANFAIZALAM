@@ -79,8 +79,12 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
         throw new Error("Mobile number is required");
       }
 
-      if (!/^\d{10}$/.test(nextProfile.mobile)) {
-        throw new Error("Enter a valid 10 digit mobile number.");
+      if (!/^[6-9]\d{9}$/.test(nextProfile.mobile)) {
+        throw new Error("Enter a valid Indian 10 digit mobile number.");
+      }
+
+      if (!/^\d{6}$/.test(nextProfile.pincode)) {
+        throw new Error("Enter a valid 6 digit PIN code.");
       }
 
       const supabase = createClient();
@@ -197,7 +201,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
               name="mobile"
               type="tel"
               inputMode="numeric"
-              pattern="[0-9]{10}"
+              pattern="[6-9][0-9]{9}"
               maxLength={10}
               value={profile.mobile}
               onChange={(event) => updateField("mobile", event.target.value.replace(/\D/g, "").slice(0, 10))}
@@ -230,7 +234,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">Pincode</span>
-            <Input name="pincode" inputMode="numeric" value={profile.pincode} onChange={(event) => updateField("pincode", event.target.value)} required className={fieldClassName} />
+            <Input name="pincode" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={profile.pincode} onChange={(event) => updateField("pincode", event.target.value.replace(/\D/g, "").slice(0, 6))} required className={fieldClassName} />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">City</span>

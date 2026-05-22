@@ -88,6 +88,7 @@ export default async function CustomerDashboardPage() {
         mobile: metadataMobile,
         pincode: textValue(user.user_metadata.pincode),
         city: textValue(user.user_metadata.city),
+        district: textValue(user.user_metadata.district),
         state: textValue(user.user_metadata.state),
         source: "online",
         avatarUrl: textValue(user.user_metadata.avatar_url) || textValue(user.user_metadata.picture),
@@ -105,6 +106,15 @@ export default async function CustomerDashboardPage() {
     });
     return null;
   });
+  const customerProfileLocation = supabaseAdmin
+    ? await supabaseAdmin.from("customer_profiles").select("pincode").eq("id", user.id).maybeSingle()
+    : null;
+  const dashboardMobile = textValue(customerProfile?.mobile) || metadataMobile;
+  const dashboardPincode = textValue(user.user_metadata.pincode) || textValue(customerProfileLocation?.data?.pincode);
+
+  if (!/^[6-9]\d{9}$/.test(dashboardMobile.replace(/\D/g, "")) || !/^\d{6}$/.test(dashboardPincode.replace(/\D/g, ""))) {
+    redirect("/customer/profile?complete=oauth");
+  }
 
   const { applications, notifications, walletSnapshot } = await getCustomerDashboardData(user.id).catch((error) => {
     logDashboardLoadFailed("dashboard_data_wrapper", user.id, error);

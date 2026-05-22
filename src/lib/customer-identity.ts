@@ -22,6 +22,7 @@ type CustomerSyncInput = {
   mobile: string;
   pincode?: string;
   city?: string;
+  district?: string;
   state?: string;
   address?: string;
   source?: "online" | "offline" | "agent_pos";
@@ -371,6 +372,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
       mobile,
       pincode: input.pincode ?? "",
       city: input.city ?? "",
+      district: input.district ?? "",
       state: input.state ?? "",
       updated_at: now,
     },
@@ -391,6 +393,7 @@ export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input:
         email,
         mobile,
         city: input.city ?? "",
+        district: input.district ?? "",
         state: input.state ?? "",
         pincode: input.pincode ?? "",
         updated_at: now,
@@ -445,6 +448,7 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
     role: "customer",
     pincode: input.pincode ?? "",
     city: input.city ?? "",
+    district: input.district ?? "",
     state: input.state ?? "",
     active: true,
     is_active: true,
@@ -503,6 +507,7 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
         mobile,
         pincode: input.pincode ?? "",
         city: input.city ?? "",
+        district: input.district ?? "",
         state: input.state ?? "",
         updated_at: now,
       },
@@ -549,6 +554,7 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
       mobile,
       pincode: input.pincode,
       city: input.city,
+      district: input.district,
       state: input.state,
       address: input.address,
       source: input.source,

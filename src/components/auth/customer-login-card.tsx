@@ -11,13 +11,19 @@ import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ButtonSpinner, FormSubmitButton } from "@/components/ui/loading";
+import {
+  indianMobilePattern,
+  indianPincodePattern,
+  type CustomerOAuthProvider,
+} from "@/lib/customer-oauth";
 import { trackLogin, trackSignup } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
 type AuthMode = "login" | "signup";
 type FormMessage = { type: "success" | "error"; text: string };
-type PinLookup = { ok: boolean; city?: string; state?: string; message?: string };
+type PinLookup = { ok: boolean; city?: string; district?: string; state?: string; message?: string };
 type AuthApiResponse = { message?: string; error?: string; hasSession?: boolean; destination?: string };
+type OAuthPreflightResponse = PinLookup & { ok: boolean };
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -101,12 +107,14 @@ function CustomerLoginCardInner({
   const [showPassword, setShowPassword] = useState(false);
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
+  const [district, setDistrict] = useState("");
   const [state, setState] = useState("");
   const [pinMessage, setPinMessage] = useState("");
   const [pinLookupPending, setPinLookupPending] = useState(false);
   const [manualLocation, setManualLocation] = useState(false);
   const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [mobile, setMobile] = useState("");
+  const [oauthProvider, setOAuthProvider] = useState<CustomerOAuthProvider | null>(null);
 
   useEffect(() => {
     if (initialMessage) setFormMessage({ type: "success", text: initialMessage });
@@ -128,13 +136,13 @@ function CustomerLoginCardInner({
   }, [initialReferralCode]);
 
   useEffect(() => {
-    if (mode !== "signup" || pincode.length !== 6) return;
+    if ((mode !== "signup" && !oauthProvider) || pincode.length !== 6) return;
 
     let active = true;
 
     async function lookupPin() {
       setPinLookupPending(true);
-      setPinMessage("Fetching city/state...");
+      setPinMessage("Fetching city, district and state...");
 
       try {
         const response = await fetch(`/api/pincode?pincode=${encodeURIComponent(pincode)}`, { cache: "no-store" });
@@ -142,20 +150,30 @@ function CustomerLoginCardInner({
 
         if (!active) return;
 
-        if (!response.ok || !result.ok || !result.city || !result.state) {
-          setManualLocation(true);
-          setPinMessage(result.message ?? "Could not auto fetch city/state. Please enter them manually.");
+        if (!response.ok || !result.ok || !result.city || !result.district || !result.state) {
+          setManualLocation(mode === "signup" && !oauthProvider);
+          setPinMessage(
+            result.message ??
+              (oauthProvider
+                ? "PIN lookup must succeed before social login can continue."
+                : "Could not auto fetch city/state. Please enter them manually."),
+          );
           return;
         }
 
         setCity(result.city);
+        setDistrict(result.district);
         setState(result.state);
         setManualLocation(false);
-        setPinMessage("City and state fetched from PIN code.");
+        setPinMessage("City, district and state fetched from PIN code.");
       } catch {
         if (active) {
-          setManualLocation(true);
-          setPinMessage("Could not auto fetch city/state. Please enter them manually.");
+          setManualLocation(mode === "signup" && !oauthProvider);
+          setPinMessage(
+            oauthProvider
+              ? "PIN lookup must succeed before social login can continue."
+              : "Could not auto fetch city/state. Please enter them manually.",
+          );
         }
       } finally {
         if (active) setPinLookupPending(false);
@@ -167,7 +185,7 @@ function CustomerLoginCardInner({
     return () => {
       active = false;
     };
-  }, [mode, pincode]);
+  }, [mode, oauthProvider, pincode]);
 
   function switchMode(nextMode: AuthMode) {
     if (isPending || isGooglePending || isFacebookPending) return;
@@ -179,10 +197,39 @@ function CustomerLoginCardInner({
   async function handleOAuthLogin(provider: "google" | "facebook") {
     if (isPending || isGooglePending || isFacebookPending) return;
     setFormMessage(null);
+    const formMobile = normalizeMobile(mobile);
+    const formPincode = normalizePincode(pincode);
+
+    if (
+      !indianMobilePattern.test(formMobile) ||
+      !indianPincodePattern.test(formPincode) ||
+      !city.trim() ||
+      !district.trim() ||
+      !state.trim()
+    ) {
+      setFormMessage({ type: "error", text: "Add a valid mobile number and verified PIN code before social login." });
+      return;
+    }
+
     if (provider === "google") setIsGooglePending(true);
     if (provider === "facebook") setIsFacebookPending(true);
 
     try {
+      const preflightResponse = await fetch("/api/auth/oauth/customer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, mobile: formMobile, pincode: formPincode }),
+      });
+      const preflight = (await preflightResponse.json()) as OAuthPreflightResponse;
+
+      if (!preflightResponse.ok || !preflight.ok || !preflight.city || !preflight.district || !preflight.state) {
+        throw new Error(preflight.message || "Social login details could not be validated.");
+      }
+
+      setCity(preflight.city);
+      setDistrict(preflight.district);
+      setState(preflight.state);
+
       const supabase = createClient();
       if (!supabase) throw new Error("Supabase environment variables are missing.");
 
@@ -213,6 +260,12 @@ function CustomerLoginCardInner({
       setIsFacebookPending(false);
     }
   }
+
+  const hasVerifiedOAuthDetails =
+    indianMobilePattern.test(normalizeMobile(mobile)) &&
+    indianPincodePattern.test(normalizePincode(pincode)) &&
+    Boolean(city.trim() && district.trim() && state.trim()) &&
+    !pinLookupPending;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -245,8 +298,8 @@ function CustomerLoginCardInner({
         return;
       }
 
-      if (!/^\d{10}$/.test(formMobile)) {
-        setFormMessage({ type: "error", text: "Enter a valid 10 digit mobile number." });
+      if (!indianMobilePattern.test(formMobile)) {
+        setFormMessage({ type: "error", text: "Enter a valid Indian 10 digit mobile number." });
         return;
       }
 
@@ -408,7 +461,7 @@ function CustomerLoginCardInner({
                   name="mobile"
                   type="tel"
                   inputMode="numeric"
-                  pattern="[0-9]{10}"
+                  pattern="[6-9][0-9]{9}"
                   maxLength={10}
                   required
                   placeholder="10 digit mobile number"
@@ -436,6 +489,7 @@ function CustomerLoginCardInner({
                   onChange={(event) => {
                     setPincode(normalizePincode(event.target.value));
                     setCity("");
+                    setDistrict("");
                     setState("");
                     setPinMessage("");
                   }}
@@ -454,6 +508,10 @@ function CustomerLoginCardInner({
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">City</span>
                 <Input name="city" value={city} onChange={(event) => setCity(event.target.value)} readOnly={!manualLocation && Boolean(city)} required placeholder="City" disabled={isPending} className="h-12 bg-white text-base" />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">District</span>
+                <Input name="district" value={district} onChange={(event) => setDistrict(event.target.value)} readOnly={!manualLocation && Boolean(district)} required placeholder="District" disabled={isPending} className="h-12 bg-white text-base" />
               </label>
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">State</span>
@@ -503,14 +561,115 @@ function CustomerLoginCardInner({
         </FormSubmitButton>
       </form>
 
-      <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => void handleOAuthLogin("google")} className="mt-3 h-12 w-full rounded-xl bg-white">
-        {isGooglePending ? <ButtonSpinner className="text-blue-700" /> : <GoogleIcon />}
-        {isGooglePending ? "Opening Google..." : "Continue with Google"}
-      </Button>
-      <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => void handleOAuthLogin("facebook")} className="mt-3 h-12 w-full rounded-xl bg-white">
-        {isFacebookPending ? <ButtonSpinner className="text-blue-700" /> : <FacebookIcon />}
-        {isFacebookPending ? "Opening Facebook..." : "Continue with Facebook"}
-      </Button>
+      {oauthProvider ? (
+        <section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/55 p-4 text-left">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase text-blue-700">Social Login Details</p>
+              <p className="mt-1 text-sm text-slate-600">Required before {oauthProvider === "facebook" ? "Facebook" : "Google"} opens.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOAuthProvider(null)}
+              disabled={isGooglePending || isFacebookPending}
+              className="text-sm font-semibold text-slate-500 transition hover:text-slate-900 disabled:opacity-50"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-700">Mobile Number</span>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  pattern="[6-9][0-9]{9}"
+                  value={mobile}
+                  onChange={(event) => setMobile(normalizeMobile(event.target.value))}
+                  placeholder="Indian 10 digit mobile number"
+                  disabled={isGooglePending || isFacebookPending}
+                  className="h-12 bg-white pl-11 text-base"
+                />
+              </div>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-slate-700">PIN Code</span>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  value={pincode}
+                  onChange={(event) => {
+                    setPincode(normalizePincode(event.target.value));
+                    setCity("");
+                    setDistrict("");
+                    setState("");
+                    setPinMessage("");
+                  }}
+                  placeholder="Enter 6 digit PIN code"
+                  disabled={isGooglePending || isFacebookPending}
+                  className="h-12 bg-white pl-11 text-base"
+                />
+              </div>
+              {pinMessage ? (
+                <span className={`text-xs font-bold ${city && district && state ? "text-emerald-700" : "text-orange-700"}`}>
+                  {pinLookupPending ? "Fetching city, district and state..." : pinMessage}
+                </span>
+              ) : null}
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">City</span>
+                <Input value={city} readOnly placeholder="Auto-filled" className="h-12 bg-white text-base" />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">District</span>
+                <Input value={district} readOnly placeholder="Auto-filled" className="h-12 bg-white text-base" />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">State</span>
+                <Input value={state} readOnly placeholder="Auto-filled" className="h-12 bg-white text-base" />
+              </label>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            disabled={!hasVerifiedOAuthDetails || isPending || isGooglePending || isFacebookPending}
+            onClick={() => void handleOAuthLogin(oauthProvider)}
+            className="mt-4 h-12 w-full rounded-xl bg-blue-700 text-base font-semibold text-white hover:bg-blue-800"
+          >
+            {oauthProvider === "google" && isGooglePending ? <ButtonSpinner /> : null}
+            {oauthProvider === "facebook" && isFacebookPending ? <ButtonSpinner /> : null}
+            {oauthProvider === "google" ? <GoogleIcon /> : <FacebookIcon />}
+            {isGooglePending || isFacebookPending
+              ? `Opening ${oauthProvider === "facebook" ? "Facebook" : "Google"}...`
+              : `Continue with ${oauthProvider === "facebook" ? "Facebook" : "Google"}`}
+          </Button>
+        </section>
+      ) : null}
+
+      {!oauthProvider ? (
+        <>
+          <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => setOAuthProvider("google")} className="mt-3 h-12 w-full rounded-xl bg-white">
+            {isGooglePending ? <ButtonSpinner className="text-blue-700" /> : <GoogleIcon />}
+            {isGooglePending ? "Opening Google..." : "Continue with Google"}
+          </Button>
+          <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => setOAuthProvider("facebook")} className="mt-3 h-12 w-full rounded-xl bg-white">
+            {isFacebookPending ? <ButtonSpinner className="text-blue-700" /> : <FacebookIcon />}
+            {isFacebookPending ? "Opening Facebook..." : "Continue with Facebook"}
+          </Button>
+        </>
+      ) : null}
     </div>
   );
 }

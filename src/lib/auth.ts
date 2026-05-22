@@ -6,6 +6,7 @@ import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { creditSignupBonus } from "@/lib/wallet-ledger";
 import { syncCustomerIdentity } from "@/lib/customer-identity";
+import type { PendingCustomerOAuthData } from "@/lib/customer-oauth";
 
 export async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
@@ -237,7 +238,7 @@ export function getCustomerHome() {
   return "/customer/dashboard";
 }
 
-export async function syncUserProfile(user: User) {
+export async function syncUserProfile(user: User, pendingCustomerOAuth?: PendingCustomerOAuthData | null) {
   const supabaseAdmin = getSupabaseAdmin();
 
   if (!supabaseAdmin) {
@@ -245,17 +246,39 @@ export async function syncUserProfile(user: User) {
   }
 
   const adminRole = isAdminUser(user) ? "admin" : null;
-  const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const { data: existingProfile } = await supabaseAdmin.from("profiles").select("role, mobile, pincode, city, district, state").eq("id", user.id).maybeSingle();
   const { data: existingUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
+  const { data: existingCustomerProfile } = await supabaseAdmin
+    .from("customer_profiles")
+    .select("mobile, pincode, city, district, state")
+    .eq("id", user.id)
+    .maybeSingle();
   const storedRole = String(existingProfile?.role ?? existingUser?.role ?? "customer").toLowerCase();
   const normalizedStoredRole = normalizeAppRole(storedRole) ?? "customer";
   const role = adminRole ?? normalizedStoredRole;
   const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim();
-  const mobile = String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? "").replace(/\D/g, "").trim();
-  const pincode = String(user.user_metadata.pincode ?? "").trim();
-  const city = String(user.user_metadata.city ?? "").trim();
-  const state = String(user.user_metadata.state ?? "").trim();
+  const mobile = String(pendingCustomerOAuth?.mobile ?? user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? existingProfile?.mobile ?? existingCustomerProfile?.mobile ?? "").replace(/\D/g, "").trim();
+  const pincode = String(pendingCustomerOAuth?.pincode ?? user.user_metadata.pincode ?? existingProfile?.pincode ?? existingCustomerProfile?.pincode ?? "").trim();
+  const city = String(pendingCustomerOAuth?.city ?? user.user_metadata.city ?? existingProfile?.city ?? existingCustomerProfile?.city ?? "").trim();
+  const district = String(pendingCustomerOAuth?.district ?? user.user_metadata.district ?? existingProfile?.district ?? existingCustomerProfile?.district ?? "").trim();
+  const state = String(pendingCustomerOAuth?.state ?? user.user_metadata.state ?? existingProfile?.state ?? existingCustomerProfile?.state ?? "").trim();
   const referralCode = String(user.user_metadata.referred_by ?? user.user_metadata.referral_code ?? user.user_metadata.ref ?? "").trim().toUpperCase();
+
+  if (pendingCustomerOAuth) {
+    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...user.user_metadata,
+        mobile,
+        phone: mobile,
+        pincode,
+        city,
+        district,
+        state,
+      },
+    }).catch((error) => {
+      console.warn("[auth] Pending OAuth metadata sync failed", { userId: user.id, error });
+    });
+  }
 
   await supabaseAdmin.from("profiles").upsert(
     {
@@ -267,6 +290,7 @@ export async function syncUserProfile(user: User) {
       role,
       pincode,
       city,
+      district,
       state,
       updated_at: new Date().toISOString(),
     },
@@ -326,6 +350,7 @@ export async function syncUserProfile(user: User) {
       mobile,
       pincode,
       city,
+      district,
       state,
       source: "online",
     }).catch((error) => {

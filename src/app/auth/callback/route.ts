@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 import { getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
+import { parsePendingCustomerOAuthData, pendingCustomerOAuthCookie } from "@/lib/customer-oauth";
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
 function getSafeNext(value: string | null) {
@@ -40,6 +43,23 @@ function redirectHashTokensToNext(next: string | null) {
   );
 }
 
+async function hasRequiredCustomerOAuthProfileData(userId: string) {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  if (!supabaseAdmin) {
+    return false;
+  }
+
+  const [profileResult, customerProfileResult] = await Promise.all([
+    supabaseAdmin.from("profiles").select("mobile, pincode").eq("id", userId).maybeSingle(),
+    supabaseAdmin.from("customer_profiles").select("mobile, pincode").eq("id", userId).maybeSingle(),
+  ]);
+  const mobile = String(profileResult.data?.mobile ?? customerProfileResult.data?.mobile ?? "").replace(/\D/g, "");
+  const pincode = String(profileResult.data?.pincode ?? customerProfileResult.data?.pincode ?? "").replace(/\D/g, "");
+
+  return /^[6-9]\d{9}$/.test(mobile) && /^\d{6}$/.test(pincode);
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -67,7 +87,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login/customer?error=oauth", requestUrl.origin));
   }
 
-  await syncUserProfile(data.user);
+  const cookieStore = await cookies();
+  const pendingCustomerOAuth = parsePendingCustomerOAuthData(cookieStore.get(pendingCustomerOAuthCookie)?.value);
+
+  await syncUserProfile(data.user, pendingCustomerOAuth);
 
   if (referralCode) {
     const validation = await validateReferralCode(referralCode, data.user.id).catch(() => ({ ok: false }));
@@ -85,7 +108,16 @@ export async function GET(request: Request) {
   }
 
   const role = await getCurrentUserRole(data.user);
-  const destination = next ? getSafeNext(next) : isCustomerRole(role) ? "/customer/dashboard" : getRoleHome(role);
+  const shouldCompleteCustomerProfile = isCustomerRole(role) && !(await hasRequiredCustomerOAuthProfileData(data.user.id));
+  const destination = shouldCompleteCustomerProfile
+    ? "/customer/profile?complete=oauth"
+    : next
+      ? getSafeNext(next)
+      : isCustomerRole(role)
+        ? "/customer/dashboard"
+        : getRoleHome(role);
 
-  return NextResponse.redirect(new URL(destination, requestUrl.origin));
+  const response = NextResponse.redirect(new URL(destination, requestUrl.origin));
+  response.cookies.delete({ name: pendingCustomerOAuthCookie, path: "/auth" });
+  return response;
 }
