@@ -5,8 +5,6 @@ import { CustomerDashboard } from "@/components/portal/customer-dashboard";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import { getCustomerDashboardProfile } from "@/lib/customer-profile";
 import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
-import { completeCustomerAccount } from "@/lib/customer-identity";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -77,27 +75,6 @@ export default async function CustomerDashboardPage() {
       }
     }
   }
-  const supabaseAdmin = getSupabaseAdmin();
-
-  if (supabaseAdmin) {
-    try {
-      await completeCustomerAccount(supabaseAdmin, {
-        userId: user.id,
-        fullName: metadataName || "Customer",
-        email: metadataEmail,
-        mobile: metadataMobile,
-        pincode: textValue(user.user_metadata.pincode),
-        city: textValue(user.user_metadata.city),
-        district: textValue(user.user_metadata.district),
-        state: textValue(user.user_metadata.state),
-        source: "online",
-        avatarUrl: textValue(user.user_metadata.avatar_url) || textValue(user.user_metadata.picture),
-      });
-    } catch (error) {
-      logDashboardLoadFailed("auto_repair_customer_account", user.id, error);
-    }
-  }
-
   const customerProfile = await getCustomerDashboardProfile(user.id).catch((error) => {
     console.error("CUSTOMER_DASHBOARD_PROFILE_FETCH_FAILED", {
       step: "dashboard_profile_wrapper",
@@ -106,18 +83,17 @@ export default async function CustomerDashboardPage() {
     });
     return null;
   });
-  const { applications, notifications, walletSnapshot } = await getCustomerDashboardData(user.id).catch((error) => {
+  const { applications, stats } = await getCustomerDashboardData(user.id).catch((error) => {
     logDashboardLoadFailed("dashboard_data_wrapper", user.id, error);
     return {
       applications: [],
-      notifications: [],
-      walletSnapshot: {
-        wallet: null,
-        transactions: [],
-        cashbackEarned: 0,
-        cashbackUsed: 0,
-        expiringSoonAmount: 0,
-        referralSummary: null,
+      stats: {
+        code: "",
+        link: "",
+        totalReferrals: 0,
+        todayEarning: 0,
+        lifetimeEarning: 0,
+        walletBalance: 0,
       },
     };
   });
@@ -129,19 +105,11 @@ export default async function CustomerDashboardPage() {
     textValue(customerProfile?.mobile) ||
     metadataMobile ||
     "Customer";
-  const email = textValue(customerProfile?.email) || metadataEmail;
-  const avatarUrl =
-    textValue(customerProfile?.photo_url) ||
-    textValue(customerProfile?.avatar_url) ||
-    textValue(user.user_metadata.avatar_url) ||
-    textValue(user.user_metadata.picture);
-
   return (
     <CustomerDashboard
       applications={applications}
-      notifications={notifications}
-      walletSnapshot={walletSnapshot}
-      profile={{ name, email, avatarUrl }}
+      stats={stats}
+      profile={{ name }}
     />
   );
 }

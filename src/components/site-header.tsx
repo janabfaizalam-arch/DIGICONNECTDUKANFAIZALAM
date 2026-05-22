@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { FileCheck2, LayoutDashboard, LogIn, MessageCircle, WalletCards } from "lucide-react";
+import { ChevronDown, FileCheck2, LayoutDashboard, LogIn, MessageCircle, UserRound, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -106,6 +106,36 @@ function getPanelConfig(role: AppRole | null) {
 
 function isAgentShellPath(pathname: string) {
   return pathname === "/agent/dashboard" || pathname.startsWith("/agent/");
+}
+
+function CustomerAccountMenu() {
+  return (
+    <details className="group relative z-50">
+      <summary className="inline-flex h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-all duration-200 md:hover:-translate-y-0.5 [&::-webkit-details-marker]:hidden">
+        <UserRound className="h-4 w-4" />
+        My Account
+        <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+      </summary>
+      <div className="absolute right-0 top-[3.25rem] z-[70] w-60 rounded-2xl border border-blue-100 bg-white/96 p-2 shadow-[0_18px_42px_rgba(15,23,42,0.16)]">
+        <nav className="grid text-sm font-bold text-slate-700">
+          {[
+            ["/customer/dashboard", "Dashboard"],
+            ["/customer/dashboard#applications", "My Applications"],
+            ["/customer/wallet", "Wallet"],
+            ["/customer/dashboard#refer-earn", "Refer & Earn"],
+            ["/customer/profile", "Profile"],
+          ].map(([href, label]) => (
+            <Link key={href} href={href} className="rounded-xl px-3 py-2.5 hover:bg-blue-50 hover:text-blue-700">
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-1 border-t border-slate-100 pt-2">
+          <LogoutButton className="h-10 w-full justify-center rounded-xl" />
+        </div>
+      </div>
+    </details>
+  );
 }
 
 export function SiteHeader() {
@@ -320,15 +350,19 @@ export function SiteHeader() {
                   Rs {walletBalance.toLocaleString("en-IN")}
                 </Link>
               ) : null}
-              <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-all duration-200 md:hover:-translate-y-0.5">
-                <LayoutDashboard className="h-4 w-4" />
-                {panelConfig.label}
-              </Link>
+              {role === "customer" ? (
+                <CustomerAccountMenu />
+              ) : (
+                <Link href={panelConfig.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white transition-all duration-200 md:hover:-translate-y-0.5">
+                  <LayoutDashboard className="h-4 w-4" />
+                  {panelConfig.label}
+                </Link>
+              )}
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-200 md:hover:-translate-y-0.5 md:hover:bg-white/60">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>
-              <LogoutButton className="h-11" />
+              {role === "customer" ? null : <LogoutButton className="h-11" />}
             </>
           ) : (
             <>

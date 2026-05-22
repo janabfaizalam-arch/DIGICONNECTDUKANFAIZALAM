@@ -68,22 +68,37 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
           ))}
         </nav>
         <div className="mt-3 grid gap-2 border-t pt-3">
-          {isLoggedIn && panelHref && panelLabel ? (
-            <>
-              {isCustomer ? (
-                <Link href="/services" onClick={closeMenu} className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15">
-                  <FileCheck2 className="h-4 w-4" />
-                  Apply Now
+              {isLoggedIn && panelHref && panelLabel ? (
+                <>
+                  {isCustomer ? (
+                    <>
+                      {[
+                        ["/customer/dashboard", "Dashboard"],
+                        ["/customer/dashboard#applications", "My Applications"],
+                        ["/customer/wallet", "Wallet"],
+                        ["/customer/dashboard#refer-earn", "Refer & Earn"],
+                        ["/customer/profile", "Profile"],
+                      ].map(([href, label]) => (
+                        <Link key={href} href={href} onClick={closeMenu} className="rounded-2xl border border-blue-100 bg-blue-50/55 px-4 py-2.5 text-sm font-bold text-blue-800">
+                          {label}
+                        </Link>
+                      ))}
+                      <Link href="/services" onClick={closeMenu} className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15">
+                        <FileCheck2 className="h-4 w-4" />
+                        Apply Now
+                      </Link>
+                    </>
+                  ) : null}
+              {!isCustomer ? (
+                <Link
+                  href={panelHref}
+                  onClick={closeMenu}
+                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  {panelLabel}
                 </Link>
               ) : null}
-              <Link
-                href={panelHref}
-                onClick={closeMenu}
-                className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                {panelLabel}
-              </Link>
               <a
                 href={whatsappUrl}
                 target="_blank"
