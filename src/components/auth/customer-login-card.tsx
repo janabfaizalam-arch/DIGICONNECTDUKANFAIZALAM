@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/browser";
 
 type AuthMode = "login" | "signup";
 type FormMessage = { type: "success" | "error"; text: string };
-type PinLookup = { ok: boolean; city?: string; district?: string; state?: string; message?: string };
+type PinLookup = { ok?: boolean; success?: boolean; pincode?: string; city?: string; district?: string; state?: string; message?: string };
 type AuthApiResponse = { message?: string; error?: string; hasSession?: boolean; destination?: string };
 type OAuthPreflightResponse = PinLookup & { ok: boolean };
 
@@ -136,7 +136,7 @@ function CustomerLoginCardInner({
   }, [initialReferralCode]);
 
   useEffect(() => {
-    if ((mode !== "signup" && !oauthProvider) || pincode.length !== 6) return;
+    if (mode !== "signup" || pincode.length !== 6) return;
 
     let active = true;
 
@@ -150,14 +150,9 @@ function CustomerLoginCardInner({
 
         if (!active) return;
 
-        if (!response.ok || !result.ok || !result.city || !result.district || !result.state) {
-          setManualLocation(mode === "signup" && !oauthProvider);
-          setPinMessage(
-            result.message ??
-              (oauthProvider
-                ? "PIN lookup must succeed before social login can continue."
-                : "Could not auto fetch city/state. Please enter them manually."),
-          );
+        if (!response.ok || !(result.success ?? result.ok) || !result.city || !result.district || !result.state) {
+          setManualLocation(true);
+          setPinMessage(result.message ?? "Could not auto fetch location. Enter city, district and state manually.");
           return;
         }
 
@@ -168,12 +163,8 @@ function CustomerLoginCardInner({
         setPinMessage("City, district and state fetched from PIN code.");
       } catch {
         if (active) {
-          setManualLocation(mode === "signup" && !oauthProvider);
-          setPinMessage(
-            oauthProvider
-              ? "PIN lookup must succeed before social login can continue."
-              : "Could not auto fetch city/state. Please enter them manually.",
-          );
+          setManualLocation(true);
+          setPinMessage("Could not auto fetch location. Enter city, district and state manually.");
         }
       } finally {
         if (active) setPinLookupPending(false);
@@ -194,20 +185,44 @@ function CustomerLoginCardInner({
     setShowPassword(false);
   }
 
-  async function handleOAuthLogin(provider: "google" | "facebook") {
+  async function openOAuthProvider(provider: CustomerOAuthProvider) {
+    const supabase = createClient();
+    if (!supabase) throw new Error("Supabase environment variables are missing.");
+
+    const redirectTo = `${getOAuthCallbackUrl()}?next=${encodeURIComponent(getCurrentCustomerRedirect())}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+
+    if (error) throw error;
+    const providerName = provider === "facebook" ? "Facebook" : "Google";
+    if (!data.url) throw new Error(`${providerName} login URL could not be generated. Please try again.`);
+
+    trackLogin(provider);
+    window.location.assign(data.url);
+  }
+
+  async function handleOAuthLogin(provider: CustomerOAuthProvider, requiresSignupDetails = false) {
     if (isPending || isGooglePending || isFacebookPending) return;
     setFormMessage(null);
     const formMobile = normalizeMobile(mobile);
     const formPincode = normalizePincode(pincode);
 
-    if (
+    if (requiresSignupDetails && (
       !indianMobilePattern.test(formMobile) ||
       !indianPincodePattern.test(formPincode) ||
       !city.trim() ||
       !district.trim() ||
       !state.trim()
-    ) {
-      setFormMessage({ type: "error", text: "Add a valid mobile number and verified PIN code before social login." });
+    )) {
+      setFormMessage({ type: "error", text: "Add a valid mobile number, PIN code, city, district and state before social signup." });
       return;
     }
 
@@ -215,42 +230,31 @@ function CustomerLoginCardInner({
     if (provider === "facebook") setIsFacebookPending(true);
 
     try {
-      const preflightResponse = await fetch("/api/auth/oauth/customer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, mobile: formMobile, pincode: formPincode }),
-      });
-      const preflight = (await preflightResponse.json()) as OAuthPreflightResponse;
+      if (requiresSignupDetails) {
+        const preflightResponse = await fetch("/api/auth/oauth/customer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider,
+            mobile: formMobile,
+            pincode: formPincode,
+            city,
+            district,
+            state,
+          }),
+        });
+        const preflight = (await preflightResponse.json()) as OAuthPreflightResponse;
 
-      if (!preflightResponse.ok || !preflight.ok || !preflight.city || !preflight.district || !preflight.state) {
-        throw new Error(preflight.message || "Social login details could not be validated.");
+        if (!preflightResponse.ok || !preflight.ok || !preflight.city || !preflight.district || !preflight.state) {
+          throw new Error(preflight.message || "Social signup details could not be validated.");
+        }
+
+        setCity(preflight.city);
+        setDistrict(preflight.district);
+        setState(preflight.state);
       }
 
-      setCity(preflight.city);
-      setDistrict(preflight.district);
-      setState(preflight.state);
-
-      const supabase = createClient();
-      if (!supabase) throw new Error("Supabase environment variables are missing.");
-
-      const redirectTo = `${getOAuthCallbackUrl()}?next=${encodeURIComponent(getCurrentCustomerRedirect())}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
-      });
-
-      if (error) throw error;
-      const providerName = provider === "facebook" ? "Facebook" : "Google";
-      if (!data.url) throw new Error(`${providerName} login URL could not be generated. Please try again.`);
-
-      trackLogin(provider);
-      window.location.assign(data.url);
+      await openOAuthProvider(provider);
     } catch (error) {
       const providerName = provider === "facebook" ? "Facebook" : "Google";
       const message = error instanceof Error ? error.message : `${providerName} login failed. Please try again.`;
@@ -342,7 +346,7 @@ function CustomerLoginCardInner({
         setFormMessage({ type: "success", text: result.message || "Account created successfully." });
 
         if (result.hasSession) {
-          window.location.assign(result.destination || "/customer/dashboard");
+          window.location.assign(getCurrentCustomerRedirect() || result.destination || "/customer/dashboard");
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Signup failed. Please try again.";
@@ -566,7 +570,7 @@ function CustomerLoginCardInner({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase text-blue-700">Social Login Details</p>
-              <p className="mt-1 text-sm text-slate-600">Required before {oauthProvider === "facebook" ? "Facebook" : "Google"} opens.</p>
+              <p className="mt-1 text-sm text-slate-600">Required for new {oauthProvider === "facebook" ? "Facebook" : "Google"} customer signup.</p>
             </div>
             <button
               type="button"
@@ -629,15 +633,15 @@ function CustomerLoginCardInner({
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">City</span>
-                <Input value={city} readOnly placeholder="Auto-filled" className="h-12 bg-white text-base" />
+                <Input value={city} onChange={(event) => setCity(event.target.value)} readOnly={!manualLocation && Boolean(city)} placeholder={manualLocation ? "Enter city" : "Auto-filled"} className="h-12 bg-white text-base" />
               </label>
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">District</span>
-                <Input value={district} readOnly placeholder="Auto-filled" className="h-12 bg-white text-base" />
+                <Input value={district} onChange={(event) => setDistrict(event.target.value)} readOnly={!manualLocation && Boolean(district)} placeholder={manualLocation ? "Enter district" : "Auto-filled"} className="h-12 bg-white text-base" />
               </label>
               <label className="grid gap-2">
                 <span className="text-sm font-semibold text-slate-700">State</span>
-                <Input value={state} readOnly placeholder="Auto-filled" className="h-12 bg-white text-base" />
+                <Input value={state} onChange={(event) => setState(event.target.value)} readOnly={!manualLocation && Boolean(state)} placeholder={manualLocation ? "Enter state" : "Auto-filled"} className="h-12 bg-white text-base" />
               </label>
             </div>
           </div>
@@ -645,7 +649,7 @@ function CustomerLoginCardInner({
           <Button
             type="button"
             disabled={!hasVerifiedOAuthDetails || isPending || isGooglePending || isFacebookPending}
-            onClick={() => void handleOAuthLogin(oauthProvider)}
+            onClick={() => void handleOAuthLogin(oauthProvider, true)}
             className="mt-4 h-12 w-full rounded-xl bg-blue-700 text-base font-semibold text-white hover:bg-blue-800"
           >
             {oauthProvider === "google" && isGooglePending ? <ButtonSpinner /> : null}
@@ -660,11 +664,11 @@ function CustomerLoginCardInner({
 
       {!oauthProvider ? (
         <>
-          <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => setOAuthProvider("google")} className="mt-3 h-12 w-full rounded-xl bg-white">
+          <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => mode === "signup" ? setOAuthProvider("google") : void handleOAuthLogin("google")} className="mt-3 h-12 w-full rounded-xl bg-white">
             {isGooglePending ? <ButtonSpinner className="text-blue-700" /> : <GoogleIcon />}
             {isGooglePending ? "Opening Google..." : "Continue with Google"}
           </Button>
-          <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => setOAuthProvider("facebook")} className="mt-3 h-12 w-full rounded-xl bg-white">
+          <Button type="button" variant="outline" disabled={isPending || isGooglePending || isFacebookPending} onClick={() => mode === "signup" ? setOAuthProvider("facebook") : void handleOAuthLogin("facebook")} className="mt-3 h-12 w-full rounded-xl bg-white">
             {isFacebookPending ? <ButtonSpinner className="text-blue-700" /> : <FacebookIcon />}
             {isFacebookPending ? "Opening Facebook..." : "Continue with Facebook"}
           </Button>

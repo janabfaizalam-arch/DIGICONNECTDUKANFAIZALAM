@@ -6,6 +6,7 @@ import { DynamicServicePage } from "@/components/services/dynamic-service-page";
 import { getPublicCategoryBySlug, getPublicServiceBySlug, getPublicServiceRowBySlug, getPublicServicesByCategory } from "@/lib/services";
 import { serviceFromDb, type DbService } from "@/lib/services";
 import { servicesData, type ServiceItem } from "@/lib/services-data";
+import { getCurrentUser } from "@/lib/auth";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -158,7 +159,7 @@ function rowFromFallback(service: ServiceItem): DbService {
 }
 
 export default async function ServiceDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+  const [{ slug }, user] = await Promise.all([params, getCurrentUser()]);
 
   if (slug === "cibil-credit-score-guidance") {
     redirect("/services/cibil-report-analysis-and-credit-health-consultation");
@@ -177,7 +178,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     const service = serviceFromDb(row);
     return (
       <>
-        <DynamicServicePage row={row} />
+        <DynamicServicePage row={row} isLoggedIn={Boolean(user)} />
         {buildSchemas(service).map((schema, index) => (
           <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
         ))}
@@ -191,7 +192,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   const fallbackRow = rowFromFallback(fallback);
   return (
     <>
-      <DynamicServicePage row={fallbackRow} />
+      <DynamicServicePage row={fallbackRow} isLoggedIn={Boolean(user)} />
       {buildSchemas(fallback).map((schema, index) => (
         <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       ))}

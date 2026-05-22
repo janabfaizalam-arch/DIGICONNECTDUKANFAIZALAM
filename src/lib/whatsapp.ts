@@ -18,9 +18,9 @@ function compactLines(lines: Array<string | null | undefined>) {
   return message || "I need support from DigiConnect Dukan. Please help me with service details and next steps.";
 }
 
-export function buildWhatsAppUrl(message: string) {
+export function buildWhatsAppUrl(message: string, number = WHATSAPP_NUMBER) {
   const safeMessage = clean(message) || "I need support from DigiConnect Dukan. Please help me with service details and next steps.";
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(safeMessage)}`;
+  return `https://wa.me/${number.replace(/\D/g, "")}?text=${encodeURIComponent(safeMessage)}`;
 }
 
 export function buildServiceWhatsAppMessage(params: {

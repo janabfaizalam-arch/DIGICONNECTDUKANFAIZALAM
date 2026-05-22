@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Sparkles } from "lucide-react";
 
-import { CategoryCard } from "@/components/service-card";
-import { getPublicCategoriesWithCounts } from "@/lib/services";
+import { CategoryCard, ServiceCard } from "@/components/service-card";
+import { getPublicCategoriesWithCounts, getPublicServices } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "Services | DigiConnect Dukan",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
-  const categories = await getPublicCategoriesWithCounts();
+  const [categories, services] = await Promise.all([getPublicCategoriesWithCounts(), getPublicServices()]);
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-8 md:py-12">
@@ -52,6 +52,18 @@ export default async function ServicesPage() {
               count={category.serviceCount}
             />
           ))}
+        </section>
+
+        <section className="mt-10">
+          <div className="max-w-3xl">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">All Services</p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">Active DigiConnect services</h2>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            {services.map((service) => (
+              <ServiceCard key={service.slug} service={service} />
+            ))}
+          </div>
         </section>
       </div>
     </main>

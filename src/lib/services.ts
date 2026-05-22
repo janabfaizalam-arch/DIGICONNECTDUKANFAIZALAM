@@ -506,8 +506,12 @@ export async function hasDatabaseServices() {
 
 export async function getPublicServices() {
   const rows = await fetchPublishedServiceRows();
-  if (rows.length) return rows.filter(activeServiceFilter).map(serviceFromDb);
-  return (await hasDatabaseServices()) ? [] : servicesData;
+  const dbServices = rows.filter(activeServiceFilter).map(serviceFromDb);
+  if (!dbServices.length) return servicesData;
+
+  const bySlug = new Map(servicesData.map((service) => [service.slug, service]));
+  dbServices.forEach((service) => bySlug.set(service.slug, service));
+  return Array.from(bySlug.values());
 }
 
 export async function getPublicServiceBySlug(slug: string) {
@@ -586,7 +590,6 @@ export async function getPublicServiceRowBySlug(slug: string) {
 export async function getPublicCategoriesWithCounts() {
   const rows = await fetchPublishedServiceRows();
   if (!rows.length) {
-    if (await hasDatabaseServices()) return [];
     return fallbackCategories.map((category) => ({
       ...category,
       serviceCount: getFallbackServicesByCategory(category.slug).length,
@@ -624,7 +627,7 @@ export async function getPublicCategoryBySlug(slug: string) {
 
 export async function getPublicServicesByCategory(slug: string) {
   const rows = await fetchPublishedServiceRows();
-  if (!rows.length) return (await hasDatabaseServices()) ? [] : getFallbackServicesByCategory(slug);
+  if (!rows.length) return getFallbackServicesByCategory(slug);
 
   return rows
     .filter((service) => activeServiceFilter(service) && categorySlugFromService(service) === slug && (service.service_categories?.is_active ?? true))
@@ -634,7 +637,6 @@ export async function getPublicServicesByCategory(slug: string) {
 export async function getPublicFeaturedServices(categorySlug?: string) {
   const rows = await fetchPublishedServiceRows();
   if (!rows.length) {
-    if (await hasDatabaseServices()) return [];
     if (categorySlug) {
       const fallbackCategory = getFallbackCategoryBySlug(categorySlug);
       return (fallbackCategory?.featuredSlugs ?? [])
@@ -642,7 +644,7 @@ export async function getPublicFeaturedServices(categorySlug?: string) {
         .filter((service): service is ServiceItem => Boolean(service));
     }
 
-    return ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"]
+    return ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "cibil-report-analysis-and-credit-health-consultation"]
       .map((slug) => getFallbackServiceBySlug(slug))
       .filter((service): service is ServiceItem => Boolean(service));
   }
@@ -655,15 +657,25 @@ export async function getPublicFeaturedServices(categorySlug?: string) {
 export async function getPublicHomepageServices(limit = 6) {
   const rows = await fetchPublishedServiceRows();
   if (!rows.length) {
-    if (await hasDatabaseServices()) return [];
-    return servicesData.slice(0, limit);
+    return ["gst-registration", "itr-filing", "msme-certificate", "passport-assistance", "mudra-loan", "cibil-report-analysis-and-credit-health-consultation"]
+      .map((slug) => getFallbackServiceBySlug(slug))
+      .filter((service): service is ServiceItem => Boolean(service))
+      .slice(0, limit);
   }
 
-  return rows
+  const homepageServices = rows
     .filter((service) => activeServiceFilter(service) && (service.show_on_homepage || service.is_featured || service.featured))
     .sort((a, b) => Number(b.is_featured ?? b.featured) - Number(a.is_featured ?? a.featured) || a.sort_order - b.sort_order || a.title.localeCompare(b.title))
-    .slice(0, limit)
     .map(serviceFromDb);
+  const cibil = rows.find((service) => service.slug === "cibil-report-analysis-and-credit-health-consultation");
+  const cibilService = cibil ? serviceFromDb(cibil) : getFallbackServiceBySlug("cibil-report-analysis-and-credit-health-consultation");
+  const nextServices = homepageServices.filter((service) => service.slug !== "cibil-report-analysis-and-credit-health-consultation");
+
+  if (cibilService) {
+    nextServices.unshift(cibilService);
+  }
+
+  return nextServices.slice(0, limit);
 }
 
 export async function getAdminServiceCategories() {
@@ -742,9 +754,9 @@ export function getServiceSeedRows() {
     badge: service.badge,
     icon: "FileText",
     status: "published" as const,
-    featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
-    is_featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
-    show_on_homepage: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "mudra-loan"].includes(service.slug),
+    featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "cibil-report-analysis-and-credit-health-consultation"].includes(service.slug),
+    is_featured: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "cibil-report-analysis-and-credit-health-consultation"].includes(service.slug),
+    show_on_homepage: ["gst-registration", "bike-insurance", "pmegp-loan", "passport-assistance", "cibil-report-analysis-and-credit-health-consultation"].includes(service.slug),
     is_active: true,
     sort_order: index + 1,
     seo_title: service.seoTitle,

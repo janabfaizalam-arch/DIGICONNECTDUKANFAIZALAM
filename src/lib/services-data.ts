@@ -156,7 +156,7 @@ export const serviceCategories: ServiceCategory[] = [
     heading: "Finance, Banking & Government Subsidy Loans",
     description: "Government subsidy schemes, business loans, credit cards, accounts, CIBIL, and loan file preparation.",
     icon: Landmark,
-    featuredSlugs: ["pmegp-loan", "mudra-loan", "pm-vishwakarma-yojana", "msme-business-loan"],
+    featuredSlugs: ["pmegp-loan", "mudra-loan", "pm-vishwakarma-yojana", "cibil-report-analysis-and-credit-health-consultation"],
   },
   {
     title: "Gov ID & Form Submission",

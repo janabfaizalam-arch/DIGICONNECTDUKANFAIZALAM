@@ -17,6 +17,18 @@ type IndiaPostResponse = {
   PostOffice?: IndiaPostOffice[] | null;
 };
 
+type PincodesInfoResult = {
+  office_name?: string;
+  taluk?: string | null;
+  district?: string;
+  state?: string;
+};
+
+type PincodesInfoResponse = {
+  success?: boolean;
+  results?: PincodesInfoResult[];
+};
+
 export type IndianPincodeLookupResult =
   | { ok: true; location: IndianPincodeLocation }
   | { ok: false; message: string; status: number };
@@ -26,13 +38,29 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
     return { ok: false, message: "A valid 6 digit PIN code is required.", status: 400 };
   }
 
-  const endpoints = [
-    `https://api.postalpincode.in/pincode/${pincode}`,
-    `https://www.postalpincode.in/api/pincode/${pincode}`,
-  ];
+  const pincodesInfoEndpoint = `https://pincodesinfo.in/api/pincode/${pincode}`;
+  const postalEndpoints = [`https://api.postalpincode.in/pincode/${pincode}`, `https://www.postalpincode.in/api/pincode/${pincode}`];
   let lastMessage = "PIN code lookup failed. Please try again.";
 
-  for (const endpoint of endpoints) {
+  try {
+    const response = await fetch(pincodesInfoEndpoint, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(6000),
+    });
+    const result = (await response.json()) as PincodesInfoResponse;
+    const office = result.results?.find((item) => item.district && item.state) ?? result.results?.[0];
+    const city = String(office?.taluk || office?.office_name || office?.district || "").trim();
+    const district = String(office?.district || "").trim();
+    const state = String(office?.state || "").trim();
+
+    if (response.ok && result.success && city && district && state) {
+      return { ok: true, location: { city, district, state } };
+    }
+  } catch {
+    // Fall back to the India Post shaped providers below.
+  }
+
+  for (const endpoint of postalEndpoints) {
     try {
       const response = await fetch(endpoint, {
         cache: "no-store",

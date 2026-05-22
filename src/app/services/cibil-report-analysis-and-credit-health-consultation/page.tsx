@@ -29,7 +29,7 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { contactDetails } from "@/lib/constants";
+import { getCurrentUser } from "@/lib/auth";
 import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const serviceSlug = "cibil-report-analysis-and-credit-health-consultation";
@@ -37,6 +37,7 @@ const serviceName = "CIBIL Report Analysis & Credit Health Consultation";
 const servicePrice = 2600;
 const heroImage = "/images/services/cibil/cibil-report-analysis.png";
 const applyHref = `/apply/${serviceSlug}`;
+const cibilExpertPhone = "9305086491";
 const whatsappHref = buildWhatsAppUrl(
   buildServiceWhatsAppMessage({
     serviceName,
@@ -44,7 +45,10 @@ const whatsappHref = buildWhatsAppUrl(
     action: "enquiry",
     page: `/services/${serviceSlug}`,
   }),
+  `91${cibilExpertPhone}`,
 );
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "CIBIL Report Analysis & Credit Health Consultation | DigiConnect Dukan",
@@ -221,14 +225,16 @@ function CheckItem({ children }: { children: string }) {
   );
 }
 
-export default function CibilCreditHealthPage() {
+export default async function CibilCreditHealthPage() {
+  const user = await getCurrentUser();
+  const applyLabel = user ? "Apply Now" : "Login to Apply";
   const schemas = [
     {
       "@context": "https://schema.org",
       "@type": "Service",
       name: serviceName,
       description: "6-month TransUnion CIBIL membership assistance with expert one page credit health analysis.",
-      provider: { "@type": "LocalBusiness", name: "DigiConnect Dukan", telephone: `+91${contactDetails.primaryPhone}` },
+      provider: { "@type": "LocalBusiness", name: "DigiConnect Dukan", telephone: `+91${cibilExpertPhone}` },
       serviceType: "Credit Health Consultation",
       areaServed: "India",
       offers: { "@type": "Offer", price: servicePrice, priceCurrency: "INR", availability: "https://schema.org/InStock" },
@@ -267,7 +273,7 @@ export default function CibilCreditHealthPage() {
             </div>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link href={applyHref} className={buttonVariants({ size: "lg" })}>
-                Login to Apply
+                {applyLabel}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
@@ -461,7 +467,7 @@ export default function CibilCreditHealthPage() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link href={applyHref} className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-extrabold text-blue-950">
-                Login to Apply
+                {applyLabel}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-6 text-sm font-extrabold text-white">

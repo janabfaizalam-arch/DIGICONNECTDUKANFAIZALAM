@@ -33,10 +33,19 @@ function legacySections(service: ReturnType<typeof serviceFromDb>): DbServiceSec
   ];
 }
 
-function ServiceHero({ row }: { row: DbService }) {
+const cibilExpertWhatsAppNumber = "919305086491";
+
+function serviceWhatsAppNumber(slug: string) {
+  return slug === "cibil-report-analysis-and-credit-health-consultation" ? cibilExpertWhatsAppNumber : undefined;
+}
+
+function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean }) {
   const service = serviceFromDb(row);
   const Icon = service.icon;
-  const whatsappHref = buildWhatsAppUrl(buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: service.ctaType === "apply" ? "apply" : "enquiry", page: `/services/${service.slug}` }));
+  const whatsappHref = buildWhatsAppUrl(
+    buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: service.ctaType === "apply" ? "apply" : "enquiry", page: `/services/${service.slug}` }),
+    serviceWhatsAppNumber(service.slug),
+  );
   const heroImage = row.hero_image_url;
 
   return (
@@ -57,7 +66,7 @@ function ServiceHero({ row }: { row: DbService }) {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           {service.ctaType === "apply" ? (
             <Link href={row.cta_primary_url || `/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
-              {row.cta_primary_label || "Apply Now"}
+              {isLoggedIn ? "Apply Now" : "Login to Apply"}
               <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
@@ -277,17 +286,20 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
   ) : null;
 }
 
-export function DynamicServicePage({ row }: { row: DbService }) {
+export function DynamicServicePage({ row, isLoggedIn = false }: { row: DbService; isLoggedIn?: boolean }) {
   const service = serviceFromDb(row);
   const sections = (row.service_sections?.length ? row.service_sections : legacySections(service))
     .filter((section) => section.is_active && section.section_type !== "hero")
     .sort((a, b) => a.sort_order - b.sort_order);
-  const whatsappHref = buildWhatsAppUrl(buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: "support", page: `/services/${service.slug}` }));
+  const whatsappHref = buildWhatsAppUrl(
+    buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: "support", page: `/services/${service.slug}` }),
+    serviceWhatsAppNumber(service.slug),
+  );
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl">
-        <ServiceHero row={row} />
+        <ServiceHero row={row} isLoggedIn={isLoggedIn} />
         <div className="mt-8 grid gap-6">
           {sections.map((section) => <RenderSection key={section.id} section={section} service={service} />)}
         </div>
@@ -300,7 +312,7 @@ export function DynamicServicePage({ row }: { row: DbService }) {
             <div className="flex flex-col gap-3 sm:flex-row">
               {service.ctaType === "apply" ? (
                 <Link href={`/apply/${service.slug}`} className="premium-button premium-button-white">
-                  Apply Now
+                  {isLoggedIn ? "Apply Now" : "Login to Apply"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : null}

@@ -28,6 +28,8 @@ const servicePath = `/services/${serviceSlug}`;
 const applyPath = `/apply/${serviceSlug}`;
 const heroImage = "/images/services/eshram/eshram-card-registration.png";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: `${serviceName} | DigiConnect Dukan`,
   description:

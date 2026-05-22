@@ -9,8 +9,8 @@ export async function GET(request: Request) {
   const lookup = await lookupIndianPincode(pincode);
 
   if (!lookup.ok) {
-    return NextResponse.json({ ok: false, message: lookup.message }, { status: lookup.status });
+    return NextResponse.json({ success: false, ok: false, pincode, message: lookup.message }, { status: lookup.status });
   }
 
-  return NextResponse.json({ ok: true, ...lookup.location });
+  return NextResponse.json({ success: true, ok: true, pincode, ...lookup.location });
 }

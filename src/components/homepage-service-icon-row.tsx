@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   BadgeIndianRupee,
   CarFront,
+  ChartNoAxesColumnIncreasing,
   Fingerprint,
   ReceiptText,
   Store,
@@ -17,6 +18,7 @@ const services = [
   { label: "DSC", href: "/services/tax-business", icon: BadgeCheck },
   { label: "Aadhaar", href: "/services/gov-id-form-submission", icon: Fingerprint },
   { label: "Driving Licence", href: "/services/driving-licence", icon: CarFront },
+  { label: "CIBIL", href: "/services/cibil-report-analysis-and-credit-health-consultation", icon: ChartNoAxesColumnIncreasing },
 ];
 
 export function HomepageServiceIconRow() {

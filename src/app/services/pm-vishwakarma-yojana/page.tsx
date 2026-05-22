@@ -29,6 +29,8 @@ const serviceSlug = "pm-vishwakarma-yojana";
 const servicePath = `/services/${serviceSlug}`;
 const applyPath = `/apply/${serviceSlug}`;
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "PM Vishwakarma Yojana Registration | DigiConnect Dukan",
   description:

@@ -113,7 +113,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
       setProfile(nextProfile);
       setMessage({
         type: "success",
-        text: profileCompleted ? "Profile saved successfully. Your customer profile is complete." : "Profile saved. Complete the highlighted details before using the dashboard.",
+        text: profileCompleted ? "Profile saved successfully. Your customer profile is complete." : "Profile saved. You can add the remaining details later.",
       });
       success("Profile saved successfully.");
     } catch (error) {
@@ -172,7 +172,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
             </Link>
           ) : (
             <p className="mt-4 rounded-2xl bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700">
-              Complete the required fields to access your customer dashboard.
+              Add the remaining details when they are available. Your dashboard stays accessible.
             </p>
           )}
         </div>

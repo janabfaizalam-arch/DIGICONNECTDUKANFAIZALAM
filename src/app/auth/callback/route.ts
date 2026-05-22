@@ -43,21 +43,21 @@ function redirectHashTokensToNext(next: string | null) {
   );
 }
 
-async function hasRequiredCustomerOAuthProfileData(userId: string) {
-  const supabaseAdmin = getSupabaseAdmin();
+function isFirstSocialCustomerSignIn(user: {
+  app_metadata?: { provider?: string };
+  created_at?: string;
+  last_sign_in_at?: string;
+}) {
+  const provider = String(user.app_metadata?.provider ?? "").toLowerCase();
+  const createdAt = Date.parse(String(user.created_at ?? ""));
+  const lastSignInAt = Date.parse(String(user.last_sign_in_at ?? ""));
 
-  if (!supabaseAdmin) {
-    return false;
-  }
-
-  const [profileResult, customerProfileResult] = await Promise.all([
-    supabaseAdmin.from("profiles").select("mobile, pincode").eq("id", userId).maybeSingle(),
-    supabaseAdmin.from("customer_profiles").select("mobile, pincode").eq("id", userId).maybeSingle(),
-  ]);
-  const mobile = String(profileResult.data?.mobile ?? customerProfileResult.data?.mobile ?? "").replace(/\D/g, "");
-  const pincode = String(profileResult.data?.pincode ?? customerProfileResult.data?.pincode ?? "").replace(/\D/g, "");
-
-  return /^[6-9]\d{9}$/.test(mobile) && /^\d{6}$/.test(pincode);
+  return (
+    (provider === "google" || provider === "facebook") &&
+    Number.isFinite(createdAt) &&
+    Number.isFinite(lastSignInAt) &&
+    Math.abs(lastSignInAt - createdAt) < 60_000
+  );
 }
 
 export async function GET(request: Request) {
@@ -90,6 +90,26 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const pendingCustomerOAuth = parsePendingCustomerOAuthData(cookieStore.get(pendingCustomerOAuthCookie)?.value);
 
+  if (!pendingCustomerOAuth && isFirstSocialCustomerSignIn(data.user)) {
+    await supabase.auth.signOut();
+    const supabaseAdmin = getSupabaseAdmin();
+    if (supabaseAdmin) {
+      await supabaseAdmin.auth.admin.deleteUser(data.user.id).catch((deleteError) => {
+        console.warn("[auth/callback] New OAuth user cleanup failed after missing signup details.", {
+          userId: data.user.id,
+          error: deleteError,
+        });
+      });
+    }
+
+    const loginUrl = new URL("/login/customer", requestUrl.origin);
+    loginUrl.searchParams.set("error", "oauth_signup_details");
+    if (next) {
+      loginUrl.searchParams.set("redirect", getSafeNext(next));
+    }
+    return NextResponse.redirect(loginUrl);
+  }
+
   await syncUserProfile(data.user, pendingCustomerOAuth);
 
   if (referralCode) {
@@ -108,14 +128,11 @@ export async function GET(request: Request) {
   }
 
   const role = await getCurrentUserRole(data.user);
-  const shouldCompleteCustomerProfile = isCustomerRole(role) && !(await hasRequiredCustomerOAuthProfileData(data.user.id));
-  const destination = shouldCompleteCustomerProfile
-    ? "/customer/profile?complete=oauth"
-    : next
-      ? getSafeNext(next)
-      : isCustomerRole(role)
-        ? "/customer/dashboard"
-        : getRoleHome(role);
+  const destination = next
+    ? getSafeNext(next)
+    : isCustomerRole(role)
+      ? "/customer/dashboard"
+      : getRoleHome(role);
 
   const response = NextResponse.redirect(new URL(destination, requestUrl.origin));
   response.cookies.delete({ name: pendingCustomerOAuthCookie, path: "/auth" });

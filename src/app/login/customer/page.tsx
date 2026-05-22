@@ -33,6 +33,8 @@ export default async function CustomerLoginPage({ searchParams }: { searchParams
   const initialMessage =
     query?.reset === "success"
       ? "Password updated successfully. Please login with your new password."
+      : query?.error === "oauth_signup_details"
+        ? "New Google or Facebook signup needs mobile number and PIN details. Switch to Sign Up and continue."
       : query?.error === "oauth"
         ? "Social login could not be completed. Please try again."
         : undefined;

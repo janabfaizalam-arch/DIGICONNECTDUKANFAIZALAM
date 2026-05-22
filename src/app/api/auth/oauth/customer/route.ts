@@ -15,6 +15,9 @@ type CustomerOAuthBody = {
   mobile?: string;
   pincode?: string;
   provider?: string;
+  city?: string;
+  district?: string;
+  state?: string;
 };
 
 function jsonError(message: string, status: number) {
@@ -26,6 +29,11 @@ export async function POST(request: Request) {
   const provider = body?.provider;
   const mobile = normalizeIndianMobile(String(body?.mobile ?? ""));
   const pincode = normalizeIndianPincode(String(body?.pincode ?? ""));
+  const manualLocation = {
+    city: String(body?.city ?? "").trim(),
+    district: String(body?.district ?? "").trim(),
+    state: String(body?.state ?? "").trim(),
+  };
 
   if (!isCustomerOAuthProvider(provider)) {
     return jsonError("Choose Google or Facebook to continue.", 400);
@@ -40,19 +48,24 @@ export async function POST(request: Request) {
   }
 
   const lookup = await lookupIndianPincode(pincode);
+  const location = lookup.ok
+    ? lookup.location
+    : manualLocation.city && manualLocation.district && manualLocation.state
+      ? manualLocation
+      : null;
 
-  if (!lookup.ok) {
-    return jsonError(lookup.message, lookup.status);
+  if (!location) {
+    return jsonError(lookup.ok ? "City, district and state are required." : `${lookup.message} Enter city, district and state manually to continue.`, lookup.ok ? 400 : lookup.status);
   }
 
-  const response = NextResponse.json({ ok: true, ...lookup.location });
+  const response = NextResponse.json({ ok: true, success: true, pincode, ...location });
   response.cookies.set({
     name: pendingCustomerOAuthCookie,
     value: serializePendingCustomerOAuthData({
       mobile,
       pincode,
       provider,
-      ...lookup.location,
+      ...location,
     }),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
