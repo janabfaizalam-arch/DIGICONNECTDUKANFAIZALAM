@@ -200,6 +200,10 @@ function priceOverride(slug: string) {
     return { oldPrice: 3200, offerPrice: 2600 };
   }
 
+  if (slug === "eshram-card-registration") {
+    return { oldPrice: 149, offerPrice: 149 };
+  }
+
   return null;
 }
 
@@ -438,6 +442,22 @@ export function serviceFromDb(service: DbService): ServiceItem {
       seoTitle: "CIBIL Report Analysis & Credit Health Consultation | DigiConnect Dukan",
       seoDescription: "Get 6-month TransUnion CIBIL membership assistance with expert one page CIBIL report analysis, credit health review, dispute guidance, and loan readiness consultation.",
       seoKeywords: ["CIBIL report analysis", "credit health consultation", "CIBIL membership", "credit score improvement", "loan readiness", "DigiConnect Dukan"],
+    };
+  }
+
+  if (item.slug === "eshram-card-registration") {
+    return {
+      ...item,
+      title: "e-Shram Card Registration Assistance",
+      amount: 149,
+      oldPrice: undefined,
+      offerPrice: "₹149",
+      priceLabel: "₹149",
+      badge: "Quick Registration",
+      ctaType: "apply",
+      seoTitle: "e-Shram Card Registration Assistance | DigiConnect Dukan",
+      seoDescription: "Get e-Shram registration assistance for eligibility check, document guidance, UAN generation, card download, and update support.",
+      seoKeywords: ["e-Shram card registration", "e-Shram UAN card", "unorganised workers", "e-Shram download", "DigiConnect Dukan"],
     };
   }
 

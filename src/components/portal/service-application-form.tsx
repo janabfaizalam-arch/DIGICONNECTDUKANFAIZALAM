@@ -6,6 +6,15 @@ import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, Trash2, Wa
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
+  buildEshramDetails,
+  createEshramInitialValues,
+  EshramApplicationFields,
+  getEshramValidationError,
+  isEshramComplete,
+  type EshramApplicationValues,
+  useEshramPincodeAutofill,
+} from "@/components/portal/eshram-application-fields";
+import {
   buildPmVishwakarmaDetails,
   createPmVishwakarmaInitialValues,
   getPmVishwakarmaValidationError,
@@ -146,6 +155,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const [applicantAddress, setApplicantAddress] = useState("");
   const [applicantMessage, setApplicantMessage] = useState("");
   const [pmVishwakarmaValues, setPmVishwakarmaValues] = useState(() => createPmVishwakarmaInitialValues());
+  const [eshramValues, setEshramValues] = useState(() => createEshramInitialValues());
   const [pincodeStatus, setPincodeStatus] = useState("");
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
@@ -161,6 +171,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     });
   }, [service, services]);
   const isPmVishwakarma = selectedServices.length === 1 && selectedServices[0]?.slug === "pm-vishwakarma-yojana";
+  const isEshram = selectedServices.length === 1 && selectedServices[0]?.slug === "eshram-card-registration";
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
   const totalAmount = isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
@@ -183,6 +194,14 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               address: pmVishwakarmaValues.address,
               message: pmVishwakarmaValues.message,
             }
+          : isEshram
+            ? {
+                name: eshramValues.name,
+                mobile: eshramValues.mobile,
+                email: eshramValues.email,
+                city: eshramValues.city,
+                message: eshramValues.message,
+              }
           : {
               name: applicantName,
               mobile: applicantMobile,
@@ -192,18 +211,24 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
               message: applicantMessage,
             },
       ),
-    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, isPmVishwakarma, pmVishwakarmaValues],
+    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues],
   );
-  const pmVishwakarmaDetailsForPayment = useMemo(
-    () => (isPmVishwakarma ? buildPmVishwakarmaDetails(pmVishwakarmaValues) : normalizedApplicationDraft.details),
-    [isPmVishwakarma, normalizedApplicationDraft.details, pmVishwakarmaValues],
+  const serviceDetailsForPayment = useMemo(
+    () =>
+      isPmVishwakarma
+        ? buildPmVishwakarmaDetails(pmVishwakarmaValues)
+        : isEshram
+          ? buildEshramDetails(eshramValues)
+          : normalizedApplicationDraft.details,
+    [eshramValues, isEshram, isPmVishwakarma, normalizedApplicationDraft.details, pmVishwakarmaValues],
   );
   const canStartPayment =
     !isSubmitting &&
-    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma }) &&
-    /^\d{10}$/.test(normalizedApplicationDraft.customer.mobile) &&
-    selectedDocuments.length > 0 &&
-    (!isPmVishwakarma || isPmVishwakarmaComplete(pmVishwakarmaValues));
+    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram }) &&
+    /^[6-9]\d{9}$/.test(normalizedApplicationDraft.customer.mobile) &&
+    (selectedDocuments.length > 0 || isEshram) &&
+    (!isPmVishwakarma || isPmVishwakarmaComplete(pmVishwakarmaValues)) &&
+    (!isEshram || isEshramComplete(eshramValues));
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -216,8 +241,19 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     setStatus: setPincodeStatus,
   });
 
+  useEshramPincodeAutofill({
+    enabled: isEshram,
+    values: eshramValues,
+    setValues: setEshramValues,
+    setStatus: setPincodeStatus,
+  });
+
   function updatePmVishwakarmaValue<Key extends keyof PmVishwakarmaApplicationValues>(key: Key, value: PmVishwakarmaApplicationValues[Key]) {
     setPmVishwakarmaValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateEshramValue<Key extends keyof EshramApplicationValues>(key: Key, value: EshramApplicationValues[Key]) {
+    setEshramValues((current) => ({ ...current, [key]: value }));
   }
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -235,7 +271,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       return;
     }
 
-    if (!selectedDocuments.length) {
+    if (!selectedDocuments.length && !isEshram) {
       toastError("Please upload Aadhaar / Documents.");
       return;
     }
@@ -266,8 +302,28 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       upResidentFamilyBenefit: String(formData.get("upResidentFamilyBenefit") ?? "").trim(),
       termsAccepted: formData.get("termsAccepted") === "true",
     });
+    const submittedEshramValues = createEshramInitialValues({
+      name: submittedDraft.customer.name,
+      mobile: submittedDraft.customer.mobile,
+      email: submittedDraft.customer.email,
+      city: submittedDraft.customer.city,
+      message: submittedDraft.customer.message,
+      pincode: String(formData.get("pincode") ?? "").trim(),
+      district: String(formData.get("district") ?? "").trim(),
+      state: String(formData.get("state") ?? "").trim(),
+      maritalStatus: String(formData.get("maritalStatus") ?? "").trim(),
+      workerCategory: String(formData.get("workerCategory") ?? "").trim(),
+      primaryOccupation: String(formData.get("primaryOccupation") ?? "").trim(),
+      monthlyIncomeRange: String(formData.get("monthlyIncomeRange") ?? "").trim(),
+      nomineeName: String(formData.get("nomineeName") ?? "").trim(),
+      nomineeRelation: String(formData.get("nomineeRelation") ?? "").trim(),
+      nomineeMobile: String(formData.get("nomineeMobile") ?? "").trim(),
+      serviceType: String(formData.get("serviceType") ?? "").trim(),
+      consentAccepted: formData.get("consentAccepted") === "true",
+    });
     const pmVishwakarmaDetails = isPmVishwakarma ? buildPmVishwakarmaDetails(submittedPmVishwakarmaValues) : {};
-    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma });
+    const eshramDetails = isEshram ? buildEshramDetails(submittedEshramValues) : {};
+    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma || isEshram });
 
     devInfo("[service-application-form] Applicant validation before submit", {
       hasName: Boolean(submittedDraft.customer.name),
@@ -285,7 +341,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       return;
     }
 
-    if (!/^\d{10}$/.test(submittedDraft.customer.mobile)) {
+    if (!/^[6-9]\d{9}$/.test(submittedDraft.customer.mobile)) {
       toastError("Enter a valid 10 digit Indian mobile number.");
       return;
     }
@@ -294,6 +350,14 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       const pmValidationError = getPmVishwakarmaValidationError(submittedPmVishwakarmaValues);
       if (pmValidationError) {
         toastError(pmValidationError);
+        return;
+      }
+    }
+
+    if (isEshram) {
+      const eshramValidationError = getEshramValidationError(submittedEshramValues);
+      if (eshramValidationError) {
+        toastError(eshramValidationError);
         return;
       }
     }
@@ -334,7 +398,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         throw new Error("Please login to apply.");
       }
 
-      setProgressText("Uploading Aadhaar / Documents...");
+      setProgressText(selectedDocuments.length ? "Uploading documents..." : "Saving application...");
 
       const uploadedDocuments = [];
 
@@ -379,6 +443,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           details: {
             ...submittedDraft.details,
             ...pmVishwakarmaDetails,
+            ...eshramDetails,
             address: submittedDraft.details.address,
           },
           documents: uploadedDocuments,
@@ -457,6 +522,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           <p className="font-bold text-slate-950">Applicant Details</p>
           {isPmVishwakarma ? (
             <PmVishwakarmaApplicationFields values={pmVishwakarmaValues} onChange={updatePmVishwakarmaValue} pincodeStatus={pincodeStatus} />
+          ) : isEshram ? (
+            <EshramApplicationFields values={eshramValues} onChange={updateEshramValue} pincodeStatus={pincodeStatus} />
           ) : (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
@@ -483,15 +550,15 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           <div className="flex items-start gap-3">
             <FileUp className="mt-1 h-5 w-5 text-[var(--primary)]" />
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-slate-950">Upload Aadhaar / Documents</p>
+              <p className="font-bold text-slate-950">{isEshram ? "Upload Supporting Documents optional" : "Upload Aadhaar / Documents"}</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                Aadhaar is required. Add more documents only if needed.
+                {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar is required. Add more documents only if needed."}
               </p>
               <Input
                 name="documents"
                 type="file"
                 multiple
-                required={!selectedDocuments.length}
+                required={!selectedDocuments.length && !isEshram}
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="mt-4"
                 disabled={isSubmitting}
@@ -581,7 +648,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                     }}
                     applicationDraft={{
                       customer: normalizedApplicationDraft.customer,
-                      details: pmVishwakarmaDetailsForPayment,
+                      details: serviceDetailsForPayment,
                     }}
                     description={selectedServices.map((item) => item.title).join(", ")}
                     disabled={!canStartPayment}
@@ -603,6 +670,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
                     {isPmVishwakarma
                       ? "Fill all required PM Vishwakarma fields, accept terms, and upload documents before payment."
+                      : isEshram
+                        ? "Fill required e-Shram fields and consent before payment. Document upload is optional."
                       : "Fill name, 10 digit mobile, email, city, and upload documents before payment."}
                   </p>
                 ) : null}

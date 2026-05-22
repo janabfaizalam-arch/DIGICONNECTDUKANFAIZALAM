@@ -291,6 +291,7 @@ India mein online services ka demand fast badh raha hai, lekin har customer ko p
 
 type RawService = {
   title: string;
+  slug?: string;
   categorySlug: ServiceCategorySlug;
   shortDescription: string;
   oldPrice?: string;
@@ -304,7 +305,7 @@ type RawService = {
 
 function createService(raw: RawService): ServiceItem {
   const category = categoryCopy[raw.categorySlug];
-  const slug = makeSlug(raw.title);
+  const slug = raw.slug ?? makeSlug(raw.title);
   const priceLabel = raw.priceLabel ?? raw.offerPrice ?? "Enquiry Now";
   const hasFixedPrice = Boolean(raw.offerPrice);
 
@@ -408,6 +409,25 @@ const rawServices: RawService[] = [
   { title: "Passport Assistance", categorySlug: "gov-id-form-submission", shortDescription: "Passport form, appointment, and document checklist support.", oldPrice: "₹6499", offerPrice: "₹2499", iconKey: "passport", badge: "Popular" },
   { title: "Driving Licence", categorySlug: "gov-id-form-submission", shortDescription: "Driving licence application and renewal support.", oldPrice: "₹2499", offerPrice: "₹1499", iconKey: "licence", badge: "Save ₹1000" },
   { title: "Voter ID", categorySlug: "gov-id-form-submission", shortDescription: "Voter ID application and correction form assistance.", oldPrice: "₹349", offerPrice: "₹99", iconKey: "voter", badge: "Limited Offer" },
+  {
+    title: "e-Shram Card Registration Assistance",
+    slug: "eshram-card-registration",
+    categorySlug: "gov-id-form-submission",
+    shortDescription: "Registration, UAN card, download, and update guidance for eligible unorganised workers.",
+    offerPrice: "₹149",
+    priceLabel: "₹149",
+    iconKey: "labour",
+    badge: "Quick Registration",
+    documents: ["Aadhaar Card", "Mobile Number", "Bank Details optional", "Occupation Details optional", "Nominee Details optional"],
+    benefits: [
+      "Eligibility check for e-Shram related service",
+      "Document verification and registration guidance",
+      "UAN and e-Shram card generation assistance",
+      "Card download and print support",
+      "Update or correction guidance",
+      "Secure Pan India assistance",
+    ],
+  },
   { title: "Labour Card / e-Shram Card", categorySlug: "gov-id-form-submission", shortDescription: "Labour card and e-Shram card registration assistance.", oldPrice: "₹999", offerPrice: "₹399", iconKey: "labour", badge: "Popular" },
 ];
 

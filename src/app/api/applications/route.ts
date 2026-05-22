@@ -80,6 +80,7 @@ function normalizeCustomer(customer: ApplicationPayload["customer"] = {}) {
 function getCustomerValidationError(customer: ReturnType<typeof normalizeCustomer>, options: { emailOptional?: boolean } = {}) {
   if (!required(customer.name)) return "Name is required.";
   if (!required(customer.mobile)) return "Mobile is required.";
+  if (!/^[6-9]\d{9}$/.test(customer.mobile.replace(/\D/g, ""))) return "Enter a valid Indian 10 digit mobile number.";
   if (!options.emailOptional && !required(customer.email)) return "Email is required.";
   if (!required(customer.city)) return "City is required.";
   return null;
@@ -206,8 +207,9 @@ export async function POST(request: Request) {
 
     const customer = normalizeCustomer(body.customer);
     const isPmVishwakarmaApplication = resolvedServices.some((service) => service.slug === "pm-vishwakarma-yojana");
+    const isEshramApplication = resolvedServices.some((service) => service.slug === "eshram-card-registration");
     const customerValidationError = getCustomerValidationError(customer, {
-      emailOptional: isPmVishwakarmaApplication,
+      emailOptional: isPmVishwakarmaApplication || isEshramApplication,
     });
 
     devInfo("[applications] Customer validation before application submit", {
@@ -248,12 +250,26 @@ export async function POST(request: Request) {
     }
 
     const details = body.details ?? {};
+    const documents = Array.isArray(body.documents) ? body.documents : [];
 
-    if (!Array.isArray(body.documents) || body.documents.length < 1) {
+    if (isEshramApplication) {
+      const requiredDetailKeys = ["pincode", "district", "state", "maritalStatus", "serviceType", "consentAccepted"];
+      const missingDetail = requiredDetailKeys.find((key) => !required(details[key]));
+
+      if (missingDetail) {
+        return jsonError("Please complete all required e-Shram fields.", 400);
+      }
+
+      if (!/^\d{6}$/.test(String(details.pincode ?? "").trim())) {
+        return jsonError("Enter a valid 6 digit PIN code.", 400);
+      }
+    }
+
+    if (!documents.length && !isEshramApplication) {
       return jsonError("Please upload Aadhaar / Documents.", 400);
     }
 
-    for (const document of body.documents) {
+    for (const document of documents) {
       if (!document.file_name || !document.file_url) {
         return jsonError("Uploaded document metadata is invalid.", 400);
       }
@@ -299,7 +315,7 @@ export async function POST(request: Request) {
         cashback_eligible_amount: realPaymentAmount,
       },
       ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
-      documents: body.documents,
+      documents,
     };
     const customerDetails = {
       name: customer.name,
@@ -407,7 +423,7 @@ export async function POST(request: Request) {
       await supabase.from("application_documents").delete().in("application_id", existingIds);
 
       const documentsToInsert = existingApplications.flatMap((application) =>
-        body.documents!.map((document) => ({
+        documents.map((document) => ({
           application_id: application.id,
           user_id: user.id,
           document_type: document.document_type,
@@ -425,15 +441,17 @@ export async function POST(request: Request) {
           },
         })),
       );
-      const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
+      if (documentsToInsert.length) {
+        const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
 
-      if (documentsError) {
-        console.error("[applications] Existing application documents save failed", {
-          userId: user.id,
-          existingIds,
-          error: documentsError,
-        });
-        return jsonError("Documents could not be saved.", 500);
+        if (documentsError) {
+          console.error("[applications] Existing application documents save failed", {
+            userId: user.id,
+            existingIds,
+            error: documentsError,
+          });
+          return jsonError("Documents could not be saved.", 500);
+        }
       }
 
       const serviceName = existingApplications.map((application) => application.service_name).join(", ");
@@ -468,22 +486,29 @@ export async function POST(request: Request) {
 
       await createAdminNotifications(
         supabase,
-        existingApplications.flatMap((application) => [
-          {
-            type: "new_application" as const,
-            title: "Paid application submitted",
-            message: `${customer.name} submitted ${application.service_name} after verified Razorpay payment.`,
-            relatedType: "application" as const,
-            relatedId: application.id,
-          },
-          {
-            type: "document_uploaded" as const,
-            title: "Documents uploaded",
-            message: `${customer.name} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
-            relatedType: "document" as const,
-            relatedId: application.id,
-          },
-        ]),
+        existingApplications.flatMap((application) => {
+          const notifications: CreateAdminNotificationInput[] = [
+            {
+              type: "new_application" as const,
+              title: "Paid application submitted",
+              message: `${customer.name} submitted ${application.service_name} after verified Razorpay payment.`,
+              relatedType: "application" as const,
+              relatedId: application.id,
+            },
+          ];
+
+          if (documents.length) {
+            notifications.push({
+              type: "document_uploaded" as const,
+              title: "Documents uploaded",
+              message: `${customer.name} uploaded ${documents.length} document(s) for ${application.service_name}.`,
+              relatedType: "document" as const,
+              relatedId: application.id,
+            });
+          }
+
+          return notifications;
+        }),
       );
 
       return NextResponse.json({
@@ -540,7 +565,7 @@ export async function POST(request: Request) {
     }
 
     const documentsToInsert = applications.flatMap((application) =>
-      body.documents!.map((document) => ({
+      documents.map((document) => ({
         application_id: application.id,
         user_id: user.id,
         document_type: document.document_type,
@@ -559,10 +584,12 @@ export async function POST(request: Request) {
       })),
     );
 
-    const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
+    if (documentsToInsert.length) {
+      const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
 
-    if (documentsError) {
-      return jsonError("Documents could not be saved.", 500);
+      if (documentsError) {
+        return jsonError("Documents could not be saved.", 500);
+      }
     }
 
     let remainingWalletToApply = walletRedeemAmount;
@@ -686,14 +713,17 @@ export async function POST(request: Request) {
             relatedType: "application" as const,
             relatedId: application.id,
           },
-          {
+        ];
+
+        if (documents.length) {
+          baseNotifications.push({
             type: "document_uploaded" as const,
             title: "Documents uploaded",
-            message: `${customer.name} uploaded ${body.documents!.length} document(s) for ${application.service_name}.`,
-            relatedType: "document" as const,
+            message: `${customer.name} uploaded ${documents.length} document(s) for ${application.service_name}.`,
+            relatedType: "document",
             relatedId: application.id,
-          },
-        ];
+          });
+        }
 
         if (!hasVerifiedRazorpayPayment) {
           baseNotifications.push({
