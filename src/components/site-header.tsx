@@ -16,7 +16,7 @@ import { buildAgentWhatsAppMessage, buildSupportWhatsAppMessage, buildWhatsAppUr
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
-  { href: "/#about", label: "About" },
+  { href: "/about", label: "About" },
   { href: "/#gallery", label: "Gallery" },
   { href: "/#support", label: "Support" },
 ];
@@ -263,7 +263,7 @@ export function SiteHeader() {
               className="h-full w-auto object-contain"
             />
           </span>
-          <span className={`hidden max-w-[8.5rem] text-[0.62rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500 ${appShell ? "lg:block" : "min-[390px]:block"}`}>
+          <span className={`hidden max-w-[8.5rem] text-[0.62rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500 ${appShell ? "lg:block" : "lg:block"}`}>
             Powered By RNoS India Pvt Ltd
           </span>
         </Link>

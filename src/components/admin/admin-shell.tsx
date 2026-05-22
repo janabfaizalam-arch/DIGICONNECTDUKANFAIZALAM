@@ -59,6 +59,8 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/wallet", label: "Wallet & Rewards", description: "Ledger and rewards", icon: WalletCards },
       { href: "/admin/commissions", label: "Commissions", description: "Agent payouts", icon: BadgePercent },
       { href: "/admin/documents", label: "Documents", description: "Uploads and final files", icon: FolderCheck },
+      { href: "/admin/homepage-offer-strip", label: "Homepage Offer Strip", description: "Thin homepage banners", icon: BadgePercent },
+      { href: "/admin/about-page-images", label: "About Page Images", description: "About gallery media", icon: GalleryHorizontalEnd },
       { href: "/admin/gallery", label: "Gallery", description: "Photos and proof", icon: GalleryHorizontalEnd },
       { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
       { href: "/admin/settings", label: "Settings", description: "Catalog and setup", icon: Settings },

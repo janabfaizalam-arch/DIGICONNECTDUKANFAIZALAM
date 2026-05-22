@@ -3,16 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const menuLinks = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
-  { href: "/#about", label: "About" },
+  { href: "/about", label: "About" },
   { href: "/#gallery", label: "Gallery" },
   { href: "/#support", label: "Support" },
 ];
@@ -25,8 +24,7 @@ type MobileMenuProps = {
 };
 
 export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLabel }: MobileMenuProps) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
   const pathname = usePathname();
   const whatsappUrl = buildWhatsAppUrl(
     buildSupportWhatsAppMessage({
@@ -36,119 +34,96 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
   );
 
   useEffect(() => {
-    setOpen(false);
+    if (menuRef.current) {
+      menuRef.current.open = false;
+    }
   }, [pathname]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+  function closeMenu() {
+    if (menuRef.current) {
+      menuRef.current.open = false;
     }
-
-    if (!open) {
-      return;
-    }
-
-    function onPointerDown(event: PointerEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  }
 
   return (
-    <div ref={menuRef} className="relative md:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
+    <details ref={menuRef} className="relative z-50 md:hidden">
+      <summary
         aria-controls="mobile-navigation"
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/62 text-blue-700 shadow-[0_4px_12px_rgba(15,23,42,0.06)]"
+        className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-white/40 bg-white/62 text-blue-700 shadow-[0_4px_12px_rgba(15,23,42,0.06)] [&::-webkit-details-marker]:hidden"
       >
         <Menu className="h-4.5 w-4.5" />
         <span className="sr-only">Open navigation menu</span>
-      </button>
-      {open ? (
-        <div id="mobile-navigation" className="absolute right-0 top-12 w-[min(18rem,calc(100vw-1.5rem))] rounded-[1.35rem] border border-white/15 bg-white/90 p-3 shadow-liquid">
-          <nav className="grid gap-1 text-sm font-medium text-slate-700">
-            {menuLinks.map((link) => (
+      </summary>
+      <div id="mobile-navigation" className="absolute right-0 top-12 z-[60] w-[min(18rem,calc(100vw-1.5rem))] rounded-[1.35rem] border border-white/15 bg-white/95 p-3 shadow-liquid">
+        <nav className="grid gap-1 text-sm font-medium text-slate-700">
+          {menuLinks.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              onClick={closeMenu}
+              className="rounded-2xl px-4 py-2.5 hover:bg-white/75 hover:text-blue-700"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-3 grid gap-2 border-t pt-3">
+          {isLoggedIn && panelHref && panelLabel ? (
+            <>
+              {isCustomer ? (
+                <Link href="/services" onClick={closeMenu} className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15">
+                  <FileCheck2 className="h-4 w-4" />
+                  Apply Now
+                </Link>
+              ) : null}
               <Link
-                key={link.label}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="rounded-2xl px-4 py-2.5 hover:bg-white/75 hover:text-blue-700"
+                href={panelHref}
+                onClick={closeMenu}
+                className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
               >
-                {link.label}
+                <LayoutDashboard className="h-4 w-4" />
+                {panelLabel}
               </Link>
-            ))}
-          </nav>
-          <div className="mt-3 grid gap-2 border-t pt-3">
-            {isLoggedIn && panelHref && panelLabel ? (
-              <>
-                {isCustomer ? (
-                  <ApplyServiceTrigger className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15">
-                    <FileCheck2 className="h-4 w-4" />
-                    Apply Now
-                  </ApplyServiceTrigger>
-                ) : null}
-                <Link
-                  href={panelHref}
-                  onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  {panelLabel}
-                </Link>
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </a>
-                <LogoutButton className="h-11 w-full" onLoggedOut={() => setOpen(false)} />
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login/customer"
-                  onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-4 text-sm font-bold text-white shadow-md shadow-blue-600/15"
-                >
-                  <LogIn className="h-4 w-4" />
-                  Login
-                </Link>
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </a>
-              </>
-            )}
-          </div>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={closeMenu}
+                className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
+              <LogoutButton className="h-11 w-full" onLoggedOut={closeMenu} />
+            </>
+          ) : (
+            <>
+              <Link href="/services" onClick={closeMenu} className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/15">
+                <FileCheck2 className="h-4 w-4" />
+                Apply Now
+              </Link>
+              <Link
+                href="/login/customer"
+                onClick={closeMenu}
+                className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-4 text-sm font-bold text-white shadow-md shadow-blue-600/15"
+              >
+                <LogIn className="h-4 w-4" />
+                Login
+              </Link>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={closeMenu}
+                className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/60 px-4 text-sm font-bold text-emerald-700 shadow-sm"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
+            </>
+          )}
         </div>
-      ) : null}
-    </div>
+      </div>
+    </details>
   );
 }

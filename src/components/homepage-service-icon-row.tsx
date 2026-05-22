@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   BadgeCheck,
   BadgeIndianRupee,
   CarFront,
@@ -25,7 +26,7 @@ export function HomepageServiceIconRow() {
   return (
     <section aria-label="Popular services" className="bg-white px-0 py-3 md:py-5">
       <div className="container-shell">
-        <div className="grid grid-cols-4 gap-2 md:grid-cols-8 md:gap-3">
+        <div className="grid grid-cols-4 gap-2 md:grid-cols-9 md:gap-3">
           {services.map(({ label, href, icon: Icon }) => (
             <Link
               key={label}
@@ -38,6 +39,15 @@ export function HomepageServiceIconRow() {
               <span className="max-w-full break-words text-[10px] font-extrabold leading-tight text-slate-700 md:text-xs">{label}</span>
             </Link>
           ))}
+          <Link
+            href="/services"
+            className="group flex min-h-[4.25rem] min-w-0 touch-manipulation flex-col items-center justify-center gap-1.5 rounded-2xl border border-orange-200 bg-[linear-gradient(135deg,rgba(255,247,237,0.98),rgba(239,246,255,0.98))] px-1 py-2 text-center shadow-[0_10px_22px_rgba(249,115,22,0.12)] transition-colors duration-200 active:scale-[0.99] md:min-h-[5rem] md:px-3 md:py-3 md:transition-all md:hover:-translate-y-0.5"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-orange-500 text-white md:h-10 md:w-10">
+              <ArrowRight className="h-4.5 w-4.5 md:h-5 md:w-5" />
+            </span>
+            <span className="max-w-full break-words text-[10px] font-extrabold leading-tight text-slate-900 md:text-xs">See All Services</span>
+          </Link>
         </div>
       </div>
     </section>

@@ -9,10 +9,12 @@ import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { HomepageDynamicSlider } from "@/components/homepage-dynamic-slider";
 import { HomepageOfferNoticeBar } from "@/components/homepage-offer-notice-bar";
 import { HomepageServiceIconRow } from "@/components/homepage-service-icon-row";
+import { HomepageOfferStrip } from "@/components/homepage-offer-strip";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
 import { ProcessSection } from "@/components/process-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
+import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
@@ -38,13 +40,41 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+function firstNameFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>) {
+  const name = String(user?.user_metadata.full_name ?? user?.user_metadata.name ?? user?.email?.split("@")[0] ?? "").trim();
+  return name.split(/\s+/)[0] || "there";
+}
+
 export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <>
       <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
-        <HomepageOfferNoticeBar />
         <HomepageDynamicSlider />
+        <section className="bg-white px-4 pt-3 md:px-8 md:pt-5">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-3 rounded-[1.35rem] border border-blue-100 bg-[linear-gradient(135deg,rgba(239,246,255,0.88),rgba(255,255,255,0.98),rgba(255,247,237,0.85))] px-4 py-3 shadow-[0_8px_24px_rgba(37,99,235,0.07)] sm:flex-row sm:items-center sm:justify-between md:px-5 md:py-4">
+              {user ? (
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">Account ready</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950 md:text-xl">Welcome, {firstNameFromUser(user)}</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">Digital services</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700 md:text-base">Choose a service and start with guided support.</p>
+                </div>
+              )}
+              <Link href="/services" className="inline-flex h-10 items-center justify-center rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white shadow-md shadow-blue-600/15">
+                {user ? "Browse Services" : "Apply Now"}
+              </Link>
+            </div>
+          </div>
+        </section>
         <HomepageServiceIconRow />
+        <HomepageOfferStrip />
+        <CreditCardOffersSection />
         <section className="mx-auto max-w-7xl px-4 py-8 md:px-8">
           <div className="glass-panel grid gap-5 rounded-[1.75rem] border border-white/15 p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7">
             <div>
@@ -66,7 +96,7 @@ export default async function Home() {
             </Link>
           </div>
         </section>
-        <CreditCardOffersSection />
+        <HomepageOfferNoticeBar />
         <WhyChooseUsSection />
         <ProcessSection />
         <HomepageExtendedSections />
