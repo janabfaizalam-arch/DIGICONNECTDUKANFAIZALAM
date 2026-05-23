@@ -687,23 +687,33 @@ export async function getAdminApplicationDetail(id: string) {
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     application.user_id ? supabase.from("profiles").select("referral_code_used, referred_by_user_id").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from("admin_crm_diagnostics").select("issue_type, severity, message").eq("application_id", id).limit(10),
-    supabase.from("application_documents").select(documentSelect).eq("application_id", id).order("uploaded_at", { ascending: false, nullsFirst: false }),
+    supabase.from("application_documents").select(documentSelect).eq("application_id", id).order("created_at", { ascending: false, nullsFirst: false }),
     application.user_id ? supabase.from("profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.user_id ? supabase.from("customer_profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.customer_id ? supabase.from("customers").select("id, user_id, full_name, email, mobile, address, city, state, pincode").eq("id", application.customer_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     Promise.all(possibleDocumentQueries),
   ]);
-  const directDocuments = await resolveDocumentUrls((directDocumentsResult.data ?? []) as ApplicationDocument[]);
-  const documents = directDocuments.length ? directDocuments : ((application.documents ?? []) as ApplicationDocument[]);
-  const possibleDocuments = documents.length
-    ? []
-    : await resolveDocumentUrls(
-        Array.from(
-          new Map(
-            possibleDocumentResults.flatMap((result) => (result.error ? [] : ((result.data ?? []) as ApplicationDocument[]))).map((document) => [document.id, document]),
-          ).values(),
-        ),
-      );
+  if (directDocumentsResult.error) {
+    console.error("[admin-crm] Application documents query failed", {
+      applicationId: id,
+      message: directDocumentsResult.error.message,
+      code: directDocumentsResult.error.code,
+    });
+  } else {
+    console.info("[admin-crm] Application documents fetched", {
+      applicationId: id,
+      count: directDocumentsResult.data?.length ?? 0,
+    });
+  }
+
+  const documents = await resolveDocumentUrls((directDocumentsResult.data ?? []) as ApplicationDocument[]);
+  const possibleDocuments = await resolveDocumentUrls(
+    Array.from(
+      new Map(
+        possibleDocumentResults.flatMap((result) => (result.error ? [] : ((result.data ?? []) as ApplicationDocument[]))).map((document) => [document.id, document]),
+      ).values(),
+    ),
+  );
 
   return {
     application,

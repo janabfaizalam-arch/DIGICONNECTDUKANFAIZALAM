@@ -139,7 +139,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-lg font-bold text-slate-950">Documents</h2>
+            <h2 className="text-lg font-bold text-slate-950">Customer Uploaded Documents</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {customerDocuments.length ? customerDocuments.map((document) => (
                 <div key={document.id} className="rounded-xl border bg-white p-4 text-sm">

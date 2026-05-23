@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 
 import { FormSubmitButton } from "@/components/ui/loading";
@@ -17,6 +18,7 @@ type ApiResponse = {
 };
 
 export function CustomerDocumentUpload({ applicationId }: CustomerDocumentUploadProps) {
+  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -57,6 +59,7 @@ export function CustomerDocumentUpload({ applicationId }: CustomerDocumentUpload
 
       setMessage(data.message || "Document uploaded successfully.");
       formRef.current?.reset();
+      router.refresh();
     } catch (uploadError) {
       console.error("[customer-document-upload] Upload failed", uploadError);
       setError("Document upload failed. Please try again.");

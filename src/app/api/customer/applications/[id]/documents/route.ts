@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser } from "@/lib/auth";
@@ -57,7 +58,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return jsonError("Document must be smaller than 5MB.", 400);
     }
 
+    const now = new Date().toISOString();
     const storagePath = `applications/${id}/customer-documents/${Date.now()}-${cleanFileName(file.name)}`;
+    console.info("[customer-documents] Upload received", {
+      applicationId: id,
+      fileName: file.name,
+      fileType: file.type,
+    });
+
     const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, {
       contentType: file.type,
       upsert: false,
@@ -85,15 +93,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         status: "pending",
         review_status: "pending",
         is_final: false,
-        uploaded_at: new Date().toISOString(),
+        uploaded_at: now,
+        created_at: now,
       })
       .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, uploaded_at, created_at")
       .single();
 
     if (insertError) {
       await supabase.storage.from("documents").remove([storagePath]);
+      console.error("[customer-documents] Insert failed", {
+        applicationId: id,
+        code: insertError.code,
+        message: insertError.message,
+      });
       return jsonError("Document could not be saved.", 500);
     }
+
+    console.info("[customer-documents] Document inserted", {
+      applicationId: id,
+      documentId: document.id,
+    });
 
     const applicationFormData = application.form_data as Record<string, unknown> | null;
     await createAdminNotification(supabase, {
@@ -103,6 +122,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       relatedType: "document",
       relatedId: id,
     });
+
+    revalidatePath(`/dashboard/applications/${id}`);
+    revalidatePath("/dashboard");
+    revalidatePath(`/admin/applications/${id}`);
+    revalidatePath("/admin/applications");
 
     return NextResponse.json({
       document,
