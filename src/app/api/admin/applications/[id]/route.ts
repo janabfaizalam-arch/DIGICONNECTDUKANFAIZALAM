@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { createAdminNotification } from "@/lib/admin-notifications";
+import { isApplicationStatus } from "@/lib/application-status";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { createInvoiceForApplication } from "@/lib/crm";
-import { applicationStatuses } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { creditCashbackForApplication } from "@/lib/wallet";
 
@@ -42,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const user = await getCurrentUser();
     const role = await getCurrentUserRole(user);
 
-    if (!isAdminRole(role)) {
+    if (!user || !isAdminRole(role)) {
       return NextResponse.json({ message: "Admin access required." }, { status: 403 });
     }
 
@@ -78,7 +79,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       cashback_amount: null,
     };
 
-    if (applicationStatuses.includes(status as never)) {
+    if (status) {
+      if (!isApplicationStatus(status)) {
+        return NextResponse.json({ message: "Invalid application status." }, { status: 400 });
+      }
+
       updates.status = status;
     }
 
@@ -88,7 +93,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (assignedAgentId) {
       updates.assigned_agent_id = assignedAgentId === "none" ? null : assignedAgentId;
-      updates.status = assignedAgentId === "none" ? updates.status ?? application.status : "assigned_to_agent";
     }
 
     if (internalNotes) {
@@ -265,7 +269,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    return NextResponse.json({ message: "Application updated successfully." });
+    revalidatePath(`/admin/applications/${id}`);
+    revalidatePath("/admin/applications");
+
+    return NextResponse.json({ message: updates.status ? `Application status saved as ${String(updates.status).replace(/_/g, " ")}.` : "Application updated successfully." });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Something went wrong. Please try again." },

@@ -31,7 +31,7 @@ export default async function AdminPage() {
         <Link href="/admin/applications?filter=today"><AdminStatCard title="Today Applications" value={stats.todayApplications} icon="calendarDays" tone="orange" /></Link>
         <Link href="/admin/payments"><AdminStatCard title="Verified Payments" value={stats.verifiedPayments} icon="receiptText" tone="green" /></Link>
         <Link href="/admin/applications?status=payment_pending"><AdminStatCard title="Pending Applications" value={stats.pendingApplications} icon="fileClock" tone="orange" /></Link>
-        <Link href="/admin/applications?status=in_process"><AdminStatCard title="Processing" value={stats.processingApplications} icon="listChecks" tone="blue" /></Link>
+        <Link href="/admin/applications?status=in_progress"><AdminStatCard title="Processing" value={stats.processingApplications} icon="listChecks" tone="blue" /></Link>
         <Link href="/admin/applications?status=completed"><AdminStatCard title="Completed" value={stats.completedApplications} icon="clipboardList" tone="green" /></Link>
         <Link href="/admin/documents"><AdminStatCard title="Missing Documents" value={stats.missingDocumentApplications} icon="inbox" tone="orange" /></Link>
         <Link href="/admin/payments"><AdminStatCard title="Paid Amount" value={safeCurrency(stats.totalPaidAmount)} icon="indianRupee" tone="green" /></Link>

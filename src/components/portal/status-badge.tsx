@@ -1,4 +1,5 @@
-import { paymentStatusLabels, statusLabels, type ApplicationStatus, type PaymentStatus } from "@/lib/portal-data";
+import { getApplicationStatusLabel, type ApplicationStatus } from "@/lib/application-status";
+import { paymentStatusLabels, type PaymentStatus } from "@/lib/portal-data";
 import { cn } from "@/lib/utils";
 
 const applicationClasses: Record<ApplicationStatus, string> = {
@@ -9,7 +10,6 @@ const applicationClasses: Record<ApplicationStatus, string> = {
   documents_required: "bg-rose-50 text-rose-700 ring-rose-100",
   documents_verified: "bg-amber-50 text-amber-700 ring-amber-100",
   assigned_to_agent: "bg-blue-50 text-blue-700 ring-blue-100",
-  in_process: "bg-indigo-50 text-indigo-700 ring-indigo-100",
   in_progress: "bg-indigo-50 text-indigo-700 ring-indigo-100",
   document_pending: "bg-amber-50 text-amber-700 ring-amber-100",
   objection: "bg-rose-50 text-rose-700 ring-rose-100",
@@ -31,10 +31,12 @@ const paymentClasses: Record<PaymentStatus, string> = {
   refunded: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
-export function StatusBadge({ status }: { status: ApplicationStatus }) {
+export function StatusBadge({ status }: { status: ApplicationStatus | string }) {
+  const safeStatus = (status === "in_process" ? "in_progress" : status) as ApplicationStatus;
+
   return (
-    <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1", applicationClasses[status])}>
-      {statusLabels[status]}
+    <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1", applicationClasses[safeStatus] ?? "bg-slate-100 text-slate-700 ring-slate-200")}>
+      {getApplicationStatusLabel(safeStatus)}
     </span>
   );
 }

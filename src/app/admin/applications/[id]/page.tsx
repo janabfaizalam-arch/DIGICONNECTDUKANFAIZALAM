@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Download, FileText, MessageCircle, ReceiptText } from "lucide-react";
+import { ArrowLeft, Download, FileText, ReceiptText } from "lucide-react";
 
 import { AdminDocumentReviewActions } from "@/components/admin/admin-document-review-actions";
 import { GenerateInvoiceButton } from "@/components/admin/generate-invoice-button";
@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/card";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -62,20 +61,11 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
   const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, agents, facts } = detail;
   const formData = asRecord(application.form_data);
-  const serviceSnapshot = asRecord(application.service_snapshot);
   const customerMobile = customer.mobile;
   const finalDocuments = documents.filter((document) => document.is_final || document.document_type === "final_document");
   const customerDocuments = documents.filter((document) => !(document.is_final || document.document_type === "final_document"));
-  const whatsapp = buildWhatsAppUrl(
-    buildApplicationWhatsAppMessage({
-      action: "admin_followup",
-      applicationId: application.id,
-      serviceName: application.service_name,
-      status: application.status,
-      customerName: customer.name,
-      mobile: customerMobile,
-    }),
-  );
+  const paymentProofUrl = payment?.screenshot_url || application.payment_screenshot_url || "";
+  const appFinalDocumentUrl = application.final_document_url || application.completed_document_url || "";
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -131,18 +121,6 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-lg font-bold text-slate-950">Service Details</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <DetailRow label="Service" value={application.service_name} />
-              <DetailRow label="Slug" value={application.service_slug} mono />
-              <DetailRow label="Category" value={text(serviceSnapshot.category)} />
-              <DetailRow label="Source" value={application.submitted_by_role || application.source || "website"} />
-              <DetailRow label="Customer Fee" value={safeCurrency(application.customer_fee_snapshot ?? application.amount ?? application.total_amount)} />
-              <DetailRow label="Agent Payout" value={application.agent_payout_snapshot != null ? safeCurrency(application.agent_payout_snapshot) : "-"} />
-            </div>
-          </Card>
-
-          <Card className="p-5">
             <h2 className="text-lg font-bold text-slate-950">Payment Details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <DetailRow label="Payment Status" value={application.payment_status ?? payment?.status ?? "pending"} />
@@ -152,28 +130,39 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               <DetailRow label="Razorpay Order" value={application.razorpay_order_id ?? payment?.razorpay_order_id} mono />
               <DetailRow label="Razorpay Payment" value={application.razorpay_payment_id ?? payment?.razorpay_payment_id} mono />
             </div>
+            {paymentProofUrl ? (
+              <a href={paymentProofUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex h-10 items-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
+                <Download className="h-4 w-4" />
+                View Payment Proof
+              </a>
+            ) : null}
           </Card>
 
           <Card className="p-5">
             <h2 className="text-lg font-bold text-slate-950">Documents</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {customerDocuments.length ? customerDocuments.map((document) => (
-                <div key={document.id} className="rounded-2xl border bg-white p-4 text-sm">
+                <div key={document.id} className="rounded-xl border bg-white p-4 text-sm">
                   <div className="flex items-center gap-2 font-bold text-slate-950">
                     <FileText className="h-4 w-4 text-blue-600" />
                     <span className="min-w-0 truncate">{document.document_name || document.document_type || document.file_name}</span>
                   </div>
+                  <p className="mt-1 text-xs font-semibold capitalize text-slate-500">{String(document.document_type ?? "document").replace(/_/g, " ")}</p>
                   <p className="mt-1 break-all font-mono text-xs text-slate-500">{document.file_name}</p>
-                  <p className="mt-1 text-xs font-bold capitalize text-slate-500">{String(document.review_status ?? document.status ?? "pending").replace(/_/g, " ")}</p>
+                  <p className="mt-1 text-xs text-slate-500">Uploaded {safeDateTime(document.uploaded_at ?? document.created_at)}</p>
+                  <p className="mt-1 text-xs font-bold capitalize text-slate-600">{String(document.review_status ?? document.status ?? "pending").replace(/_/g, " ")}</p>
                   {document.rejection_reason ? <p className="mt-1 text-xs text-orange-700">{document.rejection_reason}</p> : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {document.file_url ? (
-                      <a href={document.file_url} target="_blank" rel="noreferrer" className="rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white">Open</a>
+                      <a href={document.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-2 text-xs font-bold text-white">
+                        <Download className="h-3.5 w-3.5" />
+                        View / Download
+                      </a>
                     ) : null}
                     <AdminDocumentReviewActions documentId={document.id} />
                   </div>
                 </div>
-              )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No customer documents uploaded yet.</p>}
+              )) : <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No customer documents uploaded yet.</p>}
             </div>
 
             <h3 className="mt-5 text-sm font-bold uppercase text-slate-500">Final Document</h3>
@@ -186,7 +175,12 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                     <a href={document.file_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Open Final Document</a>
                   ) : null}
                 </div>
-              )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No final document uploaded yet.</p>}
+              )) : appFinalDocumentUrl ? (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="font-bold text-emerald-950">{application.final_document_name || "Final document"}</p>
+                  <a href={appFinalDocumentUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Open Final Document</a>
+                </div>
+              ) : <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600 md:col-span-2">No final document uploaded yet.</p>}
             </div>
           </Card>
 
@@ -247,42 +241,20 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 currentStatus={application.status}
                 currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
                 customerMobile={customerMobile}
+                customerName={customer.name}
                 serviceName={application.service_name}
+                invoiceHref={invoice ? `/invoice/${invoice.id}` : null}
                 agentOptions={agents}
                 assignedAgentId={application.assigned_agent_id ?? application.agent_id}
               />
             </div>
-          </Card>
-
-          <Card className="p-5">
-            <h2 className="text-lg font-bold text-slate-950">Customer</h2>
-            <div className="mt-4 grid gap-2">
-              {whatsapp ? (
-                <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp Customer
-                </a>
-              ) : (
-                <span className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-slate-100 px-4 text-sm font-bold text-slate-400" title="Customer mobile is missing">
-                  <MessageCircle className="h-4 w-4" />
-                  No customer mobile
-                </span>
-              )}
-              {invoice ? (
-                <Link href={`/invoice/${invoice.id}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
-                  <ReceiptText className="h-4 w-4" />
-                  Open Invoice
-                </Link>
-              ) : (
-                <GenerateInvoiceButton applicationId={application.id} />
-              )}
-              {application.final_document_url ? (
-                <a href={application.final_document_url} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
-                  <Download className="h-4 w-4" />
-                  Open Final Document
-                </a>
-              ) : null}
-            </div>
+            {!invoice ? <div className="mt-3"><GenerateInvoiceButton applicationId={application.id} /></div> : null}
+            {appFinalDocumentUrl ? (
+              <a href={appFinalDocumentUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900">
+                <Download className="h-4 w-4" />
+                Open Final Document
+              </a>
+            ) : null}
           </Card>
         </aside>
       </div>

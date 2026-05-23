@@ -12,16 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import type { AdminApplicationsCommandStats, AdminApplicationsFilterOptions } from "@/lib/admin-crm";
+import { APPLICATION_STATUS_OPTIONS } from "@/lib/application-status";
 import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
-import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { buildAdminCustomerWhatsAppMessage, buildCustomerWhatsAppUrl } from "@/lib/whatsapp";
 
 const statusFilters = [
   { value: "all", label: "All statuses" },
-  { value: "payment_pending", label: "Payment Pending" },
-  { value: "in_process", label: "In Progress" },
-  { value: "completed", label: "Completed" },
-  { value: "documents_required", label: "Documents Required" },
-  { value: "rejected", label: "Rejected" },
+  ...APPLICATION_STATUS_OPTIONS,
 ];
 
 const dateRanges = [
@@ -52,15 +49,14 @@ function invoiceHref(row: AdminApplicationRow) {
 }
 
 function whatsappHref(row: AdminApplicationRow) {
-  return buildWhatsAppUrl(
-    buildApplicationWhatsAppMessage({
-      action: "admin_followup",
+  return buildCustomerWhatsAppUrl(
+    buildAdminCustomerWhatsAppMessage({
       applicationId: row.application_id ?? row.id,
       serviceName: row.service,
-      status: row.application_status,
       customerName: row.customer_name,
-      mobile: row.mobile,
+      kind: "general",
     }),
+    row.mobile,
   );
 }
 
@@ -161,7 +157,7 @@ export function AdminApplications({
   const kpis = [
     { title: "Total Applications", value: stats.totalApplications, icon: "fileText" as const, tone: "blue" as const, status: "all" },
     { title: "Payment Pending", value: stats.paymentPending, icon: "receiptText" as const, tone: "orange" as const, status: "payment_pending" },
-    { title: "In Progress", value: stats.inProgress, icon: "repeat" as const, tone: "blue" as const, status: "in_process" },
+    { title: "In Progress", value: stats.inProgress, icon: "repeat" as const, tone: "blue" as const, status: "in_progress" },
     { title: "Completed", value: stats.completed, icon: "clipboardList" as const, tone: "green" as const, status: "completed" },
   ];
 

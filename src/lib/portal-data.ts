@@ -1,29 +1,17 @@
 import { IdCard } from "lucide-react";
 
+import {
+  APPLICATION_STATUS_LABELS,
+  APPLICATION_STATUS_VALUES,
+  type ApplicationStatus,
+} from "@/lib/application-status";
 import { getServiceBySlug as getRichServiceBySlug, servicesData } from "@/lib/services-data";
 
-export const applicationStatuses = [
-  "payment_pending",
-  "draft",
-  "payment_success",
-  "submitted",
-  "documents_required",
-  "documents_verified",
-  "assigned_to_agent",
-  "in_process",
-  "in_progress",
-  "document_pending",
-  "objection",
-  "completed",
-  "delivered",
-  "cancelled",
-  "rejected",
-  "refunded",
-] as const;
+export const applicationStatuses = APPLICATION_STATUS_VALUES;
 
 export const paymentStatuses = ["unpaid", "pending", "submitted", "verified", "paid", "rejected", "failed", "refunded"] as const;
 
-export type ApplicationStatus = (typeof applicationStatuses)[number];
+export type { ApplicationStatus };
 export type PaymentStatus = (typeof paymentStatuses)[number];
 
 export type ServiceField = {
@@ -117,24 +105,7 @@ export const featuredServices = featuredServiceSlugs
   .map((slug) => getServiceBySlug(slug))
   .filter((service): service is PortalService => Boolean(service));
 
-export const statusLabels: Record<ApplicationStatus, string> = {
-  draft: "Draft",
-  payment_pending: "Payment Pending",
-  payment_success: "Payment Success",
-  submitted: "Submitted",
-  documents_required: "Documents Required",
-  documents_verified: "Documents Verified",
-  assigned_to_agent: "Assigned to Agent",
-  in_process: "In Progress",
-  in_progress: "In Progress",
-  document_pending: "Document Pending",
-  objection: "Objection",
-  completed: "Completed",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-  rejected: "Rejected",
-  refunded: "Refunded",
-};
+export const statusLabels = APPLICATION_STATUS_LABELS;
 
 export const paymentStatusLabels: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",

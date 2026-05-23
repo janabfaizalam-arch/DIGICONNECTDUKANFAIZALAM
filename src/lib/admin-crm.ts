@@ -553,7 +553,7 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.or("submitted_by_role.eq.agent,source.eq.agent_pos,agent_id.not.is.null,assigned_agent_id.not.is.null");
   } else if (status === "paid_submitted") {
     query = query.eq("payment_status", "verified").eq("status", "submitted");
-  } else if (status === "in_process") {
+  } else if (status === "in_process" || status === "in_progress") {
     query = query.in("status", ["in_process", "in_progress"]);
   } else if (status === "completed") {
     query = query.eq("status", "completed");

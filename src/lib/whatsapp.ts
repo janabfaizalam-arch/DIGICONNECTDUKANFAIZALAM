@@ -23,6 +23,54 @@ export function buildWhatsAppUrl(message: string, number = WHATSAPP_NUMBER) {
   return `https://wa.me/${number.replace(/\D/g, "")}?text=${encodeURIComponent(safeMessage)}`;
 }
 
+export function cleanIndianCustomerWhatsAppNumber(value: unknown) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  const withoutCountry = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits;
+  const mobile = withoutCountry.slice(-10);
+
+  if (!/^[6-9]\d{9}$/.test(mobile)) return "";
+  return `91${mobile}`;
+}
+
+export function buildCustomerWhatsAppUrl(message: string, mobile: unknown) {
+  const number = cleanIndianCustomerWhatsAppNumber(mobile);
+  if (!number) return "";
+  return buildWhatsAppUrl(message, number);
+}
+
+export function buildAdminCustomerWhatsAppMessage(params: {
+  applicationId?: string | null;
+  serviceName?: string | null;
+  customerName?: string | null;
+  kind: "documents_required" | "payment_pending" | "in_progress" | "completed" | "objection" | "general";
+}) {
+  const serviceName = clean(params.serviceName) || "your service";
+  const greeting = params.customerName ? `Hello ${params.customerName},` : "Hello,";
+  const footer = params.applicationId ? `Application ID: ${params.applicationId}` : null;
+
+  if (params.kind === "documents_required") {
+    return compactLines([greeting, `Documents are required to continue your ${serviceName} application. Please share the pending documents.`, footer]);
+  }
+
+  if (params.kind === "payment_pending") {
+    return compactLines([greeting, `Payment is pending for your ${serviceName} application. Please complete payment so we can proceed.`, footer]);
+  }
+
+  if (params.kind === "in_progress") {
+    return compactLines([greeting, `Your ${serviceName} application is in progress. We will update you as soon as the next step is complete.`, footer]);
+  }
+
+  if (params.kind === "completed") {
+    return compactLines([greeting, `Your ${serviceName} application has been completed/delivered. Please check the final document or contact us if you need help.`, footer]);
+  }
+
+  if (params.kind === "objection") {
+    return compactLines([greeting, `An objection/reply is needed for your ${serviceName} application. Please contact us and share the required response/documents.`, footer]);
+  }
+
+  return compactLines([greeting, `We are contacting you about your ${serviceName} application.`, footer]);
+}
+
 export function buildServiceWhatsAppMessage(params: {
   serviceName?: string | null;
   category?: string | null;
