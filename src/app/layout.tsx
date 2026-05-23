@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
@@ -7,6 +7,7 @@ import { GoogleAnalytics } from "@/components/google-analytics";
 import { MetaPixelEvents } from "@/components/meta-pixel-events";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ToastProvider } from "@/components/providers/toast-provider";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
@@ -55,14 +56,33 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  manifest: "/manifest.json",
   icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
-    apple: "/icon.png",
+    icon: [
+      { url: "/icon.png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "DigiConnect",
+  },
+  applicationName: "DigiConnect Dukan",
   other: {
     "facebook-domain-verification": "c696v13fvc1hf31hgcidfcfney4tu8",
+    "mobile-web-app-capable": "yes",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B1F3A",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 const organizationSchema = {
@@ -123,6 +143,7 @@ export default function RootLayout({
           </Suspense>
           <SiteHeader />
           {children}
+          <PwaInstallPrompt />
           <Script id="organization-schema" type="application/ld+json">
             {JSON.stringify(organizationSchema)}
           </Script>
