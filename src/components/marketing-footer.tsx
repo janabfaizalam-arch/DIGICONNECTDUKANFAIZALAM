@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe, MessageCircle, Phone } from "lucide-react";
+import { Download, Globe, MessageCircle, Phone } from "lucide-react";
 
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
@@ -10,6 +10,7 @@ const footerLinks = [
   { label: "About", href: "/#about" },
   { label: "Gallery", href: "/#gallery" },
   { label: "Support", href: "/#support" },
+  { label: "Download App", href: "/download-app" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Terms & Conditions", href: "/terms-and-conditions" },
 ];
@@ -38,6 +39,10 @@ export function MarketingFooter() {
               <Link href="https://www.rnos.in" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-sky-200 hover:text-white">
                 <Globe className="h-4 w-4" />
                 Website: rnos.in
+              </Link>
+              <Link href="/download-app" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-orange-200 hover:text-white">
+                <Download className="h-4 w-4" />
+                Download Android App
               </Link>
             </div>
 

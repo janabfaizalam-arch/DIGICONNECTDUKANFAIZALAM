@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
+import { Download, FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -14,6 +14,7 @@ const menuLinks = [
   { href: "/about", label: "About" },
   { href: "/#gallery", label: "Gallery" },
   { href: "/#support", label: "Support" },
+  { href: "/download-app", label: "Download App", icon: Download },
 ];
 
 type MobileMenuProps = {
@@ -56,16 +57,21 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
       </summary>
       <div id="mobile-navigation" className="absolute right-0 top-12 z-[60] w-[min(18rem,calc(100vw-1.5rem))] rounded-[1.35rem] border border-white/15 bg-white/95 p-3 shadow-liquid">
         <nav className="grid gap-1 text-sm font-medium text-slate-700">
-          {menuLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              onClick={closeMenu}
-              className="rounded-2xl px-4 py-2.5 hover:bg-white/75 hover:text-blue-700"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {menuLinks.map((link) => {
+            const Icon = link.icon;
+
+            return (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={closeMenu}
+                className="flex items-center gap-2 rounded-2xl px-4 py-2.5 hover:bg-white/75 hover:text-blue-700"
+              >
+                {Icon ? <Icon className="h-4 w-4" /> : null}
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="mt-3 grid gap-2 border-t pt-3">
               {isLoggedIn && panelHref && panelLabel ? (
