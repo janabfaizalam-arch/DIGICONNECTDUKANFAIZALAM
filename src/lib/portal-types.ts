@@ -153,6 +153,7 @@ export type ApplicationDocument = {
   file_name: string;
   file_url: string;
   file_type: string | null;
+  file_size?: number | null;
   document_type: string;
   document_name?: string | null;
   storage_path?: string | null;

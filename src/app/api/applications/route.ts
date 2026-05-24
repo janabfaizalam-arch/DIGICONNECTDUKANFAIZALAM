@@ -18,6 +18,13 @@ type UploadedDocument = {
   file_url: string;
   file_type?: string;
   storage_path?: string;
+  file_size?: number;
+};
+
+type SubmissionFile = {
+  key: string;
+  file: File;
+  document_type: string;
 };
 
 type VerifiedRazorpayPayment = {
@@ -53,6 +60,8 @@ type RazorpayPaymentDetails = {
   method?: string;
   created_at?: number;
 };
+
+type ApplicationDocumentInsert = Record<string, unknown>;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -105,6 +114,168 @@ function secondaryWarning(task: string, details?: Record<string, unknown>) {
     task,
     ...(details ?? {}),
   });
+}
+
+function safeFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
+}
+
+function parseJsonField<T>(value: FormDataEntryValue | null, fallback: T): T {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+async function parseApplicationRequest(request: Request): Promise<{ body: ApplicationPayload; submissionFiles: SubmissionFile[] }> {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    const body = (await request.json()) as ApplicationPayload;
+    console.info("[applications] API_FORMDATA_FILE_KEYS", { keys: [] });
+    console.info("[applications] API_DOCUMENT_FILE_COUNT", { count: Array.isArray(body.documents) ? body.documents.length : 0, mode: "json_metadata" });
+    return { body, submissionFiles: [] };
+  }
+
+  const formData = await request.formData();
+  const payload = parseJsonField<ApplicationPayload>(formData.get("payload"), {});
+  const documentTypes = parseJsonField<string[]>(formData.get("documentTypes"), []);
+  const fileEntries = Array.from(formData.entries()).filter((entry): entry is [string, File] => entry[1] instanceof File && entry[1].size > 0);
+  const submissionFiles = fileEntries.map(([key, file], index) => ({
+    key,
+    file,
+    document_type: documentTypes[index] || (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"),
+  }));
+
+  const body: ApplicationPayload = {
+    ...payload,
+    serviceSlug: payload.serviceSlug ?? String(formData.get("serviceSlug") ?? ""),
+    serviceSlugs: payload.serviceSlugs ?? parseJsonField<string[]>(formData.get("serviceSlugs"), []),
+    applicationIds: payload.applicationIds ?? parseJsonField<string[]>(formData.get("applicationIds"), []),
+    customer: payload.customer ?? parseJsonField<ApplicationPayload["customer"]>(formData.get("customer"), {}),
+    details: payload.details ?? parseJsonField<Record<string, string>>(formData.get("details"), {}),
+    documents: payload.documents ?? [],
+    razorpayPayment: payload.razorpayPayment ?? parseJsonField<VerifiedRazorpayPayment | null>(formData.get("razorpayPayment"), null),
+    walletUseAmount: payload.walletUseAmount ?? Number(formData.get("walletUseAmount") ?? 0),
+  };
+
+  console.info("[applications] API_FORMDATA_FILE_KEYS", { keys: fileEntries.map(([key]) => key) });
+  console.info("[applications] API_DOCUMENT_FILE_COUNT", { count: submissionFiles.length, mode: "multipart_files" });
+
+  return { body, submissionFiles };
+}
+
+function getMissingColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : String(error ?? "");
+  return message.match(/'([^']+)' column/)?.[1] ?? message.match(/column "([^"]+)"/)?.[1] ?? null;
+}
+
+async function insertApplicationDocuments(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  rows: ApplicationDocumentInsert[],
+  context: Record<string, unknown>,
+) {
+  if (!supabase || !rows.length) {
+    return;
+  }
+
+  let nextRows = rows;
+  const strippedColumns = new Set<string>();
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const { error } = await supabase.from("application_documents").insert(nextRows);
+
+    if (!error) {
+      return;
+    }
+
+    const missingColumn = getMissingColumn(error);
+    if (!missingColumn || strippedColumns.has(missingColumn)) {
+      console.error("[applications] Document insert failed", {
+        ...context,
+        error,
+      });
+      throw error;
+    }
+
+    strippedColumns.add(missingColumn);
+    console.warn("[applications] SECONDARY_TASK_WARNING", {
+      task: "documents_schema_column_stripped",
+      missingColumn,
+      ...context,
+    });
+    nextRows = nextRows.map((row) => {
+      const clone = { ...row };
+      delete clone[missingColumn];
+      return clone;
+    });
+  }
+}
+
+async function buildUploadedFileDocumentRows({
+  supabase,
+  files,
+  applications,
+  userId,
+  customerId,
+}: {
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>;
+  files: SubmissionFile[];
+  applications: { id: string; customer_id?: string | null }[];
+  userId: string;
+  customerId?: string | null;
+}) {
+  const now = new Date().toISOString();
+  const rows: ApplicationDocumentInsert[] = [];
+
+  for (const application of applications) {
+    for (const [index, item] of files.entries()) {
+      const storagePath = `application-documents/${application.id}/${Date.now()}-${index}-${safeFileName(item.file.name)}`;
+      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, item.file, {
+        contentType: item.file.type || "application/octet-stream",
+        upsert: false,
+      });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(storagePath, 60 * 60);
+      rows.push({
+        application_id: application.id,
+        customer_id: customerId ?? application.customer_id ?? null,
+        user_id: userId,
+        uploaded_by: userId,
+        uploaded_by_role: "customer",
+        document_type: item.document_type,
+        document_name: item.document_type,
+        file_name: item.file.name,
+        file_type: item.file.type || null,
+        file_size: item.file.size,
+        storage_path: storagePath,
+        file_url: signedUrlData?.signedUrl ?? "",
+        status: "pending",
+        review_status: "pending",
+        created_at: now,
+        uploaded_at: now,
+        metadata: {
+          application_id: application.id,
+          source: "customer_api_file_upload",
+          form_key: item.key,
+        },
+      });
+    }
+  }
+
+  return rows;
 }
 
 function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undefined, expectedAmountPaise: number) {
@@ -167,11 +338,14 @@ export async function POST(request: Request) {
     }
 
     let body: ApplicationPayload;
+    let submissionFiles: SubmissionFile[] = [];
 
     try {
-      body = (await request.json()) as ApplicationPayload;
+      const parsed = await parseApplicationRequest(request);
+      body = parsed.body;
+      submissionFiles = parsed.submissionFiles;
     } catch {
-      return jsonError("Invalid JSON payload.", 400);
+      return jsonError("Invalid application payload.", 400);
     }
 
     const serviceSlugs = Array.from(new Set((Array.isArray(body.serviceSlugs) && body.serviceSlugs.length ? body.serviceSlugs : [body.serviceSlug]).map((slug) => String(slug ?? "").trim()).filter(Boolean)));
@@ -262,6 +436,7 @@ export async function POST(request: Request) {
 
     const details = body.details ?? {};
     const documents = Array.isArray(body.documents) ? body.documents : [];
+    const documentFileCount = documents.length + submissionFiles.length;
 
     if (isEshramApplication) {
       const requiredDetailKeys = ["pincode", "district", "state", "maritalStatus", "serviceType", "consentAccepted"];
@@ -276,7 +451,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!documents.length && !isEshramApplication) {
+    if (!documentFileCount && !isEshramApplication) {
       return jsonError("Please upload Aadhaar / Documents.", 400);
     }
 
@@ -457,7 +632,7 @@ export async function POST(request: Request) {
         mode: "already_verified",
       });
 
-      const documentsToInsert = existingApplications.flatMap((application) =>
+      const metadataDocumentRows = existingApplications.flatMap((application) =>
         documents.map((document) => ({
           application_id: application.id,
           user_id: user.id,
@@ -468,6 +643,7 @@ export async function POST(request: Request) {
           file_name: document.file_name,
           file_url: document.file_url,
           file_type: document.file_type ?? null,
+          file_size: document.file_size ?? null,
           storage_path: document.storage_path ?? null,
           customer_id: linkedCustomer?.id ?? application.customer_id ?? null,
           status: "pending",
@@ -480,6 +656,16 @@ export async function POST(request: Request) {
           },
         })),
       );
+      const uploadedFileRows = submissionFiles.length
+        ? await buildUploadedFileDocumentRows({
+            supabase,
+            files: submissionFiles,
+            applications: existingApplications,
+            userId: user.id,
+            customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+          })
+        : [];
+      const documentsToInsert = [...metadataDocumentRows, ...uploadedFileRows];
       if (documentsToInsert.length) {
         flowLog("DOCUMENT_UPLOAD_START", {
           userId: user.id,
@@ -492,16 +678,18 @@ export async function POST(request: Request) {
             throw deleteDocumentsError;
           }
 
-          const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
-
-          if (documentsError) {
-            throw documentsError;
-          }
-
-          flowLog("DOCUMENT_INSERT_OK", {
+          await insertApplicationDocuments(supabase, documentsToInsert, {
             userId: user.id,
             applicationIds: existingIds,
-            count: documentsToInsert.length,
+          });
+
+          documentsToInsert.forEach((document, index) => {
+            flowLog("DOCUMENT_INSERT_OK", {
+              userId: user.id,
+              applicationId: document.application_id,
+              fileName: document.file_name,
+              index,
+            });
           });
         } catch (documentsError) {
           secondaryWarning("documents", {
@@ -645,7 +833,7 @@ export async function POST(request: Request) {
     const { data: applications, error: applicationError } = await supabase
       .from("applications")
       .insert(applicationsToInsert)
-      .select("id, service_name, amount");
+      .select("id, service_name, amount, customer_id");
 
     if (applicationError || !applications?.length) {
       console.error("[applications] Application creation failed", {
@@ -664,7 +852,7 @@ export async function POST(request: Request) {
       applicationIds: applications.map((application) => application.id),
     });
 
-    const documentsToInsert = applications.flatMap((application) =>
+    const metadataDocumentRows = applications.flatMap((application) =>
       documents.map((document) => ({
         application_id: application.id,
         user_id: user.id,
@@ -675,6 +863,7 @@ export async function POST(request: Request) {
         file_name: document.file_name,
         file_url: document.file_url,
         file_type: document.file_type ?? null,
+        file_size: document.file_size ?? null,
         storage_path: document.storage_path ?? null,
         customer_id: linkedCustomer?.id ?? null,
         status: "pending",
@@ -687,6 +876,16 @@ export async function POST(request: Request) {
         },
       })),
     );
+    const uploadedFileRows = submissionFiles.length
+      ? await buildUploadedFileDocumentRows({
+          supabase,
+          files: submissionFiles,
+          applications,
+          userId: user.id,
+          customerId: linkedCustomer?.id ?? null,
+        })
+      : [];
+    const documentsToInsert = [...metadataDocumentRows, ...uploadedFileRows];
 
     if (documentsToInsert.length) {
       flowLog("DOCUMENT_UPLOAD_START", {
@@ -695,16 +894,18 @@ export async function POST(request: Request) {
         count: documentsToInsert.length,
       });
       try {
-        const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
-
-        if (documentsError) {
-          throw documentsError;
-        }
-
-        flowLog("DOCUMENT_INSERT_OK", {
+        await insertApplicationDocuments(supabase, documentsToInsert, {
           userId: user.id,
           applicationIds: applications.map((application) => application.id),
-          count: documentsToInsert.length,
+        });
+
+        documentsToInsert.forEach((document, index) => {
+          flowLog("DOCUMENT_INSERT_OK", {
+            userId: user.id,
+            applicationId: document.application_id,
+            fileName: document.file_name,
+            index,
+          });
         });
       } catch (documentsError) {
         secondaryWarning("documents", {

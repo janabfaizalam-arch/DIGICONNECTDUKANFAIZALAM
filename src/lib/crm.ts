@@ -102,7 +102,19 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
         if (!fallback.error && fallback.data?.signedUrl) {
           return { ...document, file_url: fallback.data.signedUrl };
         }
+        console.error("[crm] ADMIN_DOC_SIGNED_URL_ERROR", {
+          documentId: document.id,
+          applicationId: document.application_id,
+          storagePath: document.storage_path,
+          primaryError: error?.message,
+          fallbackError: fallback.error?.message,
+        });
       } catch {
+        console.error("[crm] ADMIN_DOC_SIGNED_URL_ERROR", {
+          documentId: document.id,
+          applicationId: document.application_id,
+          storagePath: document.storage_path,
+        });
         // Fall back to the stored URL below.
       }
 

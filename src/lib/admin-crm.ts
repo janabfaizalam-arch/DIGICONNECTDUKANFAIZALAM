@@ -656,14 +656,24 @@ export async function getAdminApplicationDetail(id: string) {
   if (amountMismatch) warnings.push("Payment amount does not match application fresh payable amount.");
   if (!application.service_slug) warnings.push("Service slug is missing.");
 
-  const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at";
+  const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, file_size, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at";
   const possibleDocumentQueries = [];
+  console.info("[admin-crm] ADMIN_DOC_QUERY_APPLICATION_ID", { applicationId: id });
   if (application.user_id) {
     possibleDocumentQueries.push(
       supabase
         .from("application_documents")
         .select(documentSelect)
         .eq("user_id", application.user_id)
+        .neq("application_id", id)
+        .order("uploaded_at", { ascending: false, nullsFirst: false })
+        .limit(10),
+    );
+    possibleDocumentQueries.push(
+      supabase
+        .from("application_documents")
+        .select(documentSelect)
+        .eq("uploaded_by", application.user_id)
         .neq("application_id", id)
         .order("uploaded_at", { ascending: false, nullsFirst: false })
         .limit(10),
@@ -680,6 +690,14 @@ export async function getAdminApplicationDetail(id: string) {
         .limit(10),
     );
   }
+  possibleDocumentQueries.push(
+    supabase
+      .from("application_documents")
+      .select(documentSelect)
+      .ilike("storage_path", `%${id}%`)
+      .order("uploaded_at", { ascending: false, nullsFirst: false })
+      .limit(20),
+  );
 
   const [notesResult, agentsResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, customerResult, possibleDocumentResults] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
@@ -694,25 +712,45 @@ export async function getAdminApplicationDetail(id: string) {
     Promise.all(possibleDocumentQueries),
   ]);
   if (directDocumentsResult.error) {
-    console.error("[admin-crm] Application documents query failed", {
+    console.error("[admin-crm] ADMIN_DOC_QUERY_ERROR", {
       applicationId: id,
       message: directDocumentsResult.error.message,
       code: directDocumentsResult.error.code,
     });
   } else {
-    console.info("[admin-crm] Application documents fetched", {
+    console.info("[admin-crm] ADMIN_DOC_QUERY_COUNT", {
       applicationId: id,
       count: directDocumentsResult.data?.length ?? 0,
     });
   }
 
-  const documents = await resolveDocumentUrls((directDocumentsResult.data ?? []) as ApplicationDocument[]);
+  const fallbackDocumentsRaw = possibleDocumentResults.flatMap((result) => {
+    if (result.error) {
+      console.error("[admin-crm] ADMIN_DOC_QUERY_ERROR", {
+        applicationId: id,
+        message: result.error.message,
+        code: result.error.code,
+        fallback: true,
+      });
+      return [];
+    }
+
+    return (result.data ?? []) as ApplicationDocument[];
+  });
+  const directDocumentsRaw = (directDocumentsResult.data ?? []) as ApplicationDocument[];
+  const allDocumentsRaw = Array.from(
+    new Map([...directDocumentsRaw, ...fallbackDocumentsRaw].map((document) => [document.id, document])).values(),
+  );
+  console.info("[admin-crm] ADMIN_DOC_QUERY_COUNT", {
+    applicationId: id,
+    directCount: directDocumentsRaw.length,
+    fallbackCount: fallbackDocumentsRaw.length,
+    totalCount: allDocumentsRaw.length,
+  });
+
+  const documents = await resolveDocumentUrls(allDocumentsRaw);
   const possibleDocuments = await resolveDocumentUrls(
-    Array.from(
-      new Map(
-        possibleDocumentResults.flatMap((result) => (result.error ? [] : ((result.data ?? []) as ApplicationDocument[]))).map((document) => [document.id, document]),
-      ).values(),
-    ),
+    Array.from(new Map(fallbackDocumentsRaw.map((document) => [document.id, document])).values()),
   );
 
   return {

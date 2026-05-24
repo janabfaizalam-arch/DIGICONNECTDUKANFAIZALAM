@@ -93,19 +93,6 @@ function validateFile(file: File, label: string) {
   return null;
 }
 
-function cleanFileName(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
-}
-
-function withTimeout<T>(promise: Promise<T>, message: string) {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(message)), requestTimeoutMs);
-  });
-
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
-}
-
 function buildNormalizedApplicationDraft(form: ApplicantFormValues): NormalizedApplicationDraft {
   const normalizedName = form.name?.trim() ?? "";
   const normalizedMobile = form.mobile?.trim() ?? "";
@@ -398,59 +385,44 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         throw new Error("Please login to apply.");
       }
 
-      setProgressText(selectedDocuments.length ? "Uploading documents..." : "Saving application...");
+      console.info("CLIENT_DOCUMENT_COUNT_BEFORE_SUBMIT", {
+        count: selectedDocuments.length,
+        fileNames: selectedDocuments.map((file) => file.name),
+      });
 
-      const uploadedDocuments = [];
+      setProgressText(selectedDocuments.length ? "Uploading documents and saving application..." : "Saving application...");
 
-      for (const [index, file] of selectedDocuments.entries()) {
-        const documentType = index === 0 ? "Aadhaar / Document Proof" : "Additional Document";
-        const path = `${user.id}/shared/documents/${Date.now()}-${index}-${cleanFileName(file.name)}`;
-        const { error: uploadError } = await withTimeout(
-          supabase.storage.from("documents").upload(path, file, {
-            contentType: file.type,
-            upsert: false,
-          }),
-          "Document upload is taking longer than 30 seconds. Please check the file size and try again.",
-        );
+      const payload = {
+        serviceSlug: selectedServices[0]?.slug,
+        serviceSlugs: selectedServices.map((item) => item.slug),
+        customer: submittedDraft.customer,
+        details: {
+          ...submittedDraft.details,
+          ...pmVishwakarmaDetails,
+          ...eshramDetails,
+          address: submittedDraft.details.address,
+        },
+        documents: [],
+        razorpayPayment,
+        applicationIds: razorpayPayment?.application_ids,
+        walletUseAmount: clampedWalletUseAmount,
+      };
+      const submitFormData = new FormData();
+      submitFormData.append("payload", JSON.stringify(payload));
+      submitFormData.append(
+        "documentTypes",
+        JSON.stringify(selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"))),
+      );
 
-        if (uploadError) {
-          throw new Error(uploadError.message);
-        }
-
-        const { data } = supabase.storage.from("documents").getPublicUrl(path);
-        uploadedDocuments.push({
-          document_type: documentType,
-          file_name: file.name,
-          file_url: data.publicUrl,
-          file_type: file.type,
-          storage_path: path,
-        });
+      for (const file of selectedDocuments) {
+        submitFormData.append("documents", file, file.name);
       }
-
-      setProgressText("Saving application...");
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
       const response = await fetch("/api/applications", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          serviceSlug: selectedServices[0]?.slug,
-          serviceSlugs: selectedServices.map((item) => item.slug),
-          customer: submittedDraft.customer,
-          details: {
-            ...submittedDraft.details,
-            ...pmVishwakarmaDetails,
-            ...eshramDetails,
-            address: submittedDraft.details.address,
-          },
-          documents: uploadedDocuments,
-          razorpayPayment,
-          applicationIds: razorpayPayment?.application_ids,
-          walletUseAmount: clampedWalletUseAmount,
-        }),
+        body: submitFormData,
         signal: controller.signal,
       }).finally(() => clearTimeout(timeoutId));
 
