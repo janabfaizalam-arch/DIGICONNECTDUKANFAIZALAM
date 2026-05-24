@@ -3,8 +3,6 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star } from "lucide-react";
 
 import { ServicePrice } from "@/components/service-card";
-import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import type { DbService, DbServiceSection } from "@/lib/services";
 import { serviceFromDb } from "@/lib/services";
 import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
@@ -41,7 +39,6 @@ function serviceWhatsAppNumber(slug: string) {
 
 function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean }) {
   const service = serviceFromDb(row);
-  const Icon = service.icon;
   const whatsappHref = buildWhatsAppUrl(
     buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: service.ctaType === "apply" ? "apply" : "enquiry", page: `/services/${service.slug}` }),
     serviceWhatsAppNumber(service.slug),
@@ -49,41 +46,43 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
   const heroImage = row.hero_image_url;
 
   return (
-    <section className="mt-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
-      <div className="glass-panel overflow-hidden rounded-2xl p-5 md:p-8">
-        <Link href={`/services/${service.categorySlug}`} className="inline-flex items-center gap-2 text-sm font-extrabold text-blue-700">
+    <section className="mt-4 grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-stretch">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white/78 p-6 shadow-[0_8px_30px_rgba(15,23,42,0.03)] backdrop-blur-sm md:p-9">
+        <Link href={`/services?category=${service.categorySlug}`} className="inline-flex items-center gap-2 text-xs font-extrabold text-blue-700">
           <ArrowLeft className="h-4 w-4" />
           Back to {service.category}
         </Link>
-        <p className="mt-5 inline-flex rounded-full bg-white/70 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">
-          {service.category}
-        </p>
-        <h1 className="mt-5 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">{service.title}</h1>
-        <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">{service.shortDescription}</p>
-        <div className="mt-5">
+        <div className="mt-4">
+          <span className="inline-flex rounded-full bg-orange-50 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-orange-700">
+            {service.category}
+          </span>
+        </div>
+        <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 md:text-4.5xl leading-tight">{service.title}</h1>
+        <p className="mt-4 text-sm font-semibold leading-relaxed text-slate-500 md:text-base">{service.shortDescription}</p>
+        <div className="mt-5 border-t border-slate-100 pt-4">
           <ServicePrice service={service} />
         </div>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
           {service.ctaType === "apply" ? (
-            <Link href={row.cta_primary_url || `/apply/${service.slug}`} className={buttonVariants({ size: "lg" })}>
+            <Link href={row.cta_primary_url || `/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
               {isLoggedIn ? "Apply Now" : "Login to Apply"}
               <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
-            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ size: "lg" })}>
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
               {row.cta_primary_label || "Enquiry Now"}
               <MessageCircle className="h-4 w-4" />
             </a>
           )}
-          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
-            <MessageCircle className="h-4 w-4" />
-            {row.cta_secondary_label || "WhatsApp"}
+          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 transition duration-150 active:scale-[0.98]">
+            <MessageCircle className="h-4 w-4 text-emerald-600" />
+            {row.cta_secondary_label || "WhatsApp Help"}
           </a>
         </div>
       </div>
 
       {heroImage ? (
-        <div className="relative min-h-[260px] overflow-hidden rounded-2xl border bg-white shadow-sm md:min-h-[420px]">
+        <div className="relative min-h-[260px] overflow-hidden rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.02)] md:min-h-[380px]">
           <Image
             src={heroImage}
             alt={service.title}
@@ -94,22 +93,24 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
           />
         </div>
       ) : (
-        <Card className="overflow-hidden rounded-2xl p-0">
-          <div className="bg-[linear-gradient(135deg,#2563eb_0%,#0b1f3a_58%,#f97316_140%)] p-7 text-white md:p-9">
-            <Icon className="h-12 w-12 text-orange-200" />
-            <p className="mt-8 text-sm font-semibold text-white/65">Price</p>
-            <p className="mt-2 text-4xl font-bold">{service.priceLabel}</p>
-            <p className="mt-4 text-sm leading-7 text-white/75">Apply online with guided document assistance and WhatsApp support.</p>
+        <div className="overflow-hidden rounded-3xl border border-slate-100 bg-slate-900 text-white p-6 md:p-8 flex flex-col justify-between">
+          <div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <h3 className="mt-6 text-lg font-extrabold text-white">Secure Professional Processing</h3>
+            <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-400">
+              Your data is secured using standard encryption, and submission is handled directly by RNoS certified professionals.
+            </p>
           </div>
-          <div className="grid gap-3 bg-white p-5 sm:grid-cols-3">
-            {["Online Apply", "Document Help", "WhatsApp Support"].map((item) => (
-              <div key={item} className="rounded-xl bg-blue-50/70 p-4">
-                <ShieldCheck className="h-5 w-5 text-blue-700" />
-                <p className="mt-3 text-sm font-bold text-slate-950">{item}</p>
+          <div className="mt-6 grid grid-cols-3 gap-2.5">
+            {["Online Apply", "Document Help", "Real Verification"].map((item) => (
+              <div key={item} className="rounded-xl bg-white/5 border border-white/5 p-3 text-center">
+                <p className="text-[10px] font-extrabold text-white">{item}</p>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
     </section>
   );
@@ -125,107 +126,107 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
     const text = typeof content.text === "string" ? content.text : "";
     if (!text) return null;
     return (
-      <Card className="rounded-2xl p-5 md:p-7">
-        {title ? <h2 className="text-2xl font-bold text-slate-950">{title}</h2> : null}
-        {subtitle ? <p className="mt-2 text-sm leading-6 text-slate-600">{subtitle}</p> : null}
-        <div className="mt-4 whitespace-pre-line text-base leading-8 text-slate-600">{text}</div>
-      </Card>
+      <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
+        {title ? <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title}</h2> : null}
+        {subtitle ? <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p> : null}
+        <div className="mt-4 whitespace-pre-line text-sm font-semibold leading-relaxed text-slate-600">{text}</div>
+      </div>
     );
   }
 
   if (section.section_type === "benefits" || section.section_type === "trust_badges") {
     return (
-      <Card className="rounded-2xl p-5 md:p-7">
-        <h2 className="text-2xl font-bold text-slate-950">{title || "Benefits"}</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
+        <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Key Benefits"}</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {items.map((item) => (
-            <div key={item} className="flex items-start gap-3 rounded-xl bg-blue-50/70 p-4">
+            <div key={item} className="flex items-start gap-3 rounded-2xl bg-blue-50/40 border border-blue-50/50 p-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
-              <p className="text-sm font-semibold leading-6 text-slate-700">{item}</p>
+              <p className="text-sm font-semibold leading-normal text-slate-700">{item}</p>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (section.section_type === "documents") {
     return (
-      <Card className="rounded-2xl p-5 md:p-7">
-        <h2 className="text-2xl font-bold text-slate-950">{title || "Documents Required"}</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
+        <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Documents Required"}</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <div key={item} className="flex items-center gap-3 rounded-xl border bg-white p-4">
+            <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.01)]">
               <FileCheck2 className="h-5 w-5 shrink-0 text-orange-600" />
-              <p className="text-sm font-bold text-slate-800">{item}</p>
+              <p className="text-sm font-extrabold text-slate-800">{item}</p>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (section.section_type === "process") {
     return (
-      <Card className="rounded-2xl p-5 md:p-7">
-        <h2 className="text-2xl font-bold text-slate-950">{title || "Process"}</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
+      <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
+        <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Step-by-step Process"}</h2>
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
           {items.map((item, index) => (
-            <div key={item} className="rounded-xl bg-slate-50 p-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">{index + 1}</div>
-              <h3 className="mt-4 font-bold text-slate-950">{item}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Our team guides you and shares updates through dashboard, call, or WhatsApp.</p>
+            <div key={item} className="rounded-2xl bg-slate-50 border border-slate-100/50 p-5 relative overflow-hidden">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-700 to-indigo-600 text-xs font-extrabold text-white shadow-md shadow-blue-500/15">{index + 1}</div>
+              <h3 className="mt-4 text-sm font-extrabold text-slate-950">{item}</h3>
+              <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">Our team handles submissions, filing, and follow-ups with instant status tracking.</p>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (section.section_type === "faq") {
     const faqs = Array.isArray(content.items) && content.items.length ? content.items : service.faqs;
     return (
-      <Card className="rounded-2xl p-5 md:p-7">
-        <h2 className="text-2xl font-bold text-slate-950">{title || "FAQ"}</h2>
-        <div className="mt-5 space-y-3">
+      <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
+        <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Frequently Asked Questions"}</h2>
+        <div className="mt-4 space-y-3">
           {faqs.map((faq) => {
             const item = typeof faq === "object" && faq ? (faq as { question?: string; answer?: string }) : { question: String(faq), answer: "" };
             return (
-              <div key={item.question} className="rounded-xl border bg-white p-5">
+              <div key={item.question} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,0.01)] transition duration-150 hover:border-slate-200">
                 <div className="flex gap-3">
                   <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
                   <div>
-                    <h3 className="font-bold text-slate-950">{item.question}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.answer}</p>
+                    <h3 className="text-sm font-extrabold text-slate-950">{item.question}</h3>
+                    <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">{item.answer}</p>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (section.section_type === "testimonials") {
     const reviews = service.reviews;
     return (
-      <Card className="rounded-2xl p-5 md:p-7">
+      <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold text-slate-950">{title || "Reviews"}</h2>
-          <div className="flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1.5 text-orange-600">
-            {[1, 2, 3, 4, 5].map((item) => <Star key={item} className="h-4 w-4 fill-orange-400 text-orange-400" />)}
+          <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Customer Reviews"}</h2>
+          <div className="flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-orange-600">
+            {[1, 2, 3, 4, 5].map((item) => <Star key={item} className="h-3.5 w-3.5 fill-orange-400 text-orange-400" />)}
           </div>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           {reviews.map((review) => (
-            <article key={`${review.name}-${review.text}`} className="rounded-xl bg-slate-50 p-5">
-              <p className="text-sm leading-6 text-slate-700">{review.text}</p>
-              <p className="mt-3 text-sm font-bold text-slate-950">{review.name}</p>
+            <article key={`${review.name}-${review.text}`} className="rounded-2xl bg-slate-50 border border-slate-100/50 p-5">
+              <p className="text-xs font-semibold leading-relaxed text-slate-500">&ldquo;{review.text}&rdquo;</p>
+              <p className="mt-3 text-xs font-extrabold text-slate-950">— {review.name}</p>
             </article>
           ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -233,10 +234,10 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
     const images = stringItems(content.images);
     return (
       <section>
-        {title ? <h2 className="text-2xl font-bold text-slate-950">{title}</h2> : null}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {title ? <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title}</h2> : null}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
-            <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-xl border bg-white">
+            <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-slate-100 bg-white">
               <Image
                 src={image}
                 alt={title || service.title}
@@ -253,35 +254,36 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
 
   if (section.section_type === "pricing") {
     return (
-      <Card className="rounded-2xl border-orange-100 p-5 md:p-7">
-        <h2 className="text-2xl font-bold text-slate-950">{title || "Pricing"}</h2>
-        <div className="mt-5 rounded-xl bg-orange-50 p-5">
+      <div className="rounded-3xl border border-orange-100 bg-orange-50/20 p-5 md:p-8">
+        <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Pricing Structure"}</h2>
+        <div className="mt-4 rounded-2xl bg-orange-50 border border-orange-100 p-4">
           <ServicePrice service={service} />
-          <p className="mt-3 text-sm font-semibold leading-6 text-blue-700">Rewards are credited after verified payment and service completion.</p>
+          <p className="mt-2 text-xs font-bold text-blue-700">Receive 20% cashback rewards in your wallet upon completion.</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (section.section_type === "custom_html") {
     const html = typeof content.html === "string" ? sanitizeHtml(content.html) : "";
-    return html ? <div className="rounded-2xl border bg-white p-5" dangerouslySetInnerHTML={{ __html: html }} /> : null;
+    return html ? <div className="rounded-3xl border border-slate-100 bg-white p-5 text-sm font-semibold text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} /> : null;
   }
 
   if (section.section_type === "video") {
     const url = typeof content.url === "string" ? content.url : "";
     return url ? (
-      <div className="overflow-hidden rounded-2xl border bg-black">
-        <iframe src={url} title={title || service.title} className="aspect-video w-full" loading="lazy" allowFullScreen />
+      <div className="overflow-hidden rounded-3xl border border-slate-950 bg-black shadow-lg">
+        <iframe src={url} title={title || service.title} className="aspect-video w-full border-0" loading="lazy" allowFullScreen />
       </div>
     ) : null;
   }
 
   const text = typeof content.text === "string" ? content.text : items.join("\n");
   return text ? (
-    <section className="rounded-2xl bg-[linear-gradient(135deg,#0b1f3a,#2563eb_68%,#f97316_135%)] p-6 text-white md:p-8">
-      {title ? <h2 className="text-2xl font-bold">{title}</h2> : null}
-      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-white/80">{text}</p>
+    <section className="rounded-3xl bg-slate-950 p-6 text-white md:p-8 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(37,99,235,0.14),transparent_35%)]" />
+      {title ? <h2 className="text-xl font-extrabold relative z-10">{title}</h2> : null}
+      <p className="mt-3 whitespace-pre-line text-xs font-semibold leading-relaxed text-slate-400 relative z-10">{text}</p>
     </section>
   ) : null;
 }
@@ -297,28 +299,33 @@ export function DynamicServicePage({ row, isLoggedIn = false }: { row: DbService
   );
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen px-3 py-6 md:px-8 md:py-10 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
+      <div className="mx-auto max-w-5xl">
         <ServiceHero row={row} isLoggedIn={isLoggedIn} />
         <div className="mt-8 grid gap-6">
           {sections.map((section) => <RenderSection key={section.id} section={section} service={service} />)}
         </div>
-        <section className="mt-8 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#0b1f3a,#2563eb_62%,#f97316_135%)] p-6 text-white md:p-9">
-          <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+        
+        {/* Streamlined Visual Footer Apply Card */}
+        <section className="mt-8 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white md:p-8 relative">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_80%,rgba(249,115,22,0.16),transparent_35%)]" />
+          <div className="relative z-10 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h2 className="text-3xl font-bold">Aaj hi apply karein</h2>
-              <p className="mt-3 text-sm leading-7 text-white/75">Documents, process, aur next step ke liye DigiConnect Dukan team se connect karein.</p>
+              <h2 className="text-2xl font-extrabold text-white">Apply for {service.title}</h2>
+              <p className="mt-2 text-xs font-semibold text-slate-400 leading-relaxed">
+                Connect with our dedicated support desk, submit details securely, and receive real-time updates.
+              </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-2.5 sm:flex-row">
               {service.ctaType === "apply" ? (
-                <Link href={`/apply/${service.slug}`} className="premium-button premium-button-white">
+                <Link href={`/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-extrabold text-slate-950 shadow-md transition duration-150 active:scale-[0.98]">
                   {isLoggedIn ? "Apply Now" : "Login to Apply"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : null}
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="premium-button premium-button-whatsapp">
-                WhatsApp
-                <MessageCircle className="h-4 w-4" />
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 text-sm font-extrabold text-white transition duration-150 hover:bg-white/15 active:scale-[0.98]">
+                WhatsApp Support
+                <MessageCircle className="h-4 w-4 text-emerald-400" />
               </a>
             </div>
           </div>

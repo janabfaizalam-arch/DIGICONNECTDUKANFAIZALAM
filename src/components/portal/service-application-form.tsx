@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgePercent, CheckCircle2, CreditCard, FileUp, IndianRupee, Trash2, WalletCards } from "lucide-react";
+import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
@@ -540,13 +540,13 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
           )}
         </div>
 
-        <div className="mt-5 rounded-2xl border border-dashed bg-blue-50/60 p-4 md:p-5">
+        <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/30 p-4 md:p-6 transition duration-200 hover:border-blue-300 hover:bg-blue-50/10">
           <div className="flex items-start gap-3">
-            <FileUp className="mt-1 h-5 w-5 text-[var(--primary)]" />
+            <FileUp className="mt-1 h-5 w-5 text-blue-600" />
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-slate-950">{isEshram ? "Upload Supporting Documents optional" : "Upload Aadhaar / Documents"}</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar is required. Add more documents only if needed."}
+              <p className="font-extrabold text-slate-950 text-sm md:text-base">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
               </p>
               <Input
                 name="documents"
@@ -554,13 +554,13 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                 multiple
                 required={!selectedDocuments.length && !isEshram}
                 accept=".pdf,.jpg,.jpeg,.png"
-                className="mt-4"
+                className="mt-4 text-xs font-bold"
                 disabled={isSubmitting}
                 onChange={(event) => {
                   const files = Array.from(event.target.files ?? []);
 
                   if (!files.length) {
-                    return;
+                     return;
                   }
 
                   const validFiles: File[] = [];
@@ -581,15 +581,18 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                 }}
               />
               {selectedDocuments.length ? (
-                <div className="mt-3 grid gap-2">
+                <div className="mt-4 grid gap-2">
                   {selectedDocuments.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm">
-                      <span className="min-w-0 truncate font-semibold text-slate-700">{file.name}</span>
+                    <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
+                      <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
+                        <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span className="truncate">{file.name}</span>
+                      </span>
                       <button
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-600"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-red-600 hover:bg-red-100 transition"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Remove
@@ -604,29 +607,30 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       </Card>
 
       <div className="space-y-4">
-        <Card className="rounded-2xl p-4 md:p-5">
+        {/* Dynamic Ledger Summary Card */}
+        <Card className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm backdrop-blur-sm md:p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
               <IndianRupee className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Order Total</p>
-              <p className="text-2xl font-bold text-slate-950">{formatCurrency(totalAmount)}</p>
-              {clampedWalletUseAmount > 0 ? <p className="mt-1 text-xs font-bold text-blue-700">Pay now: {formatCurrency(realPayableAmount)}</p> : null}
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Total</p>
+              <p className="text-2xl font-extrabold text-slate-950 leading-tight">{formatCurrency(totalAmount)}</p>
+              {clampedWalletUseAmount > 0 ? <p className="mt-1 text-xs font-bold text-blue-700">Net Payable: {formatCurrency(realPayableAmount)}</p> : null}
             </div>
           </div>
         </Card>
 
         {realPayableAmount > 0 ? (
-          <Card className="rounded-2xl border-orange-100 bg-white/95 p-4 md:p-5">
+          <Card className="rounded-3xl border border-orange-100 bg-orange-50/10 p-4 shadow-sm md:p-5">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
                 <CreditCard className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-slate-950">Razorpay Checkout</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Pay securely by card, UPI, net banking, or wallet. Payment status is verified directly by Razorpay.
+                <p className="font-extrabold text-slate-950 text-sm">Secure Razorpay Gateway</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                  Pay securely by card, UPI, net banking, or wallet. All transactions are monitored and verified directly by Razorpay.
                 </p>
                 <div className="mt-4">
                   <RazorpayCheckoutButton
@@ -655,18 +659,18 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                   />
                 </div>
                 {razorpayPayment ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
-                    <CheckCircle2 className="h-4 w-4" />
+                  <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3.5 py-2 text-xs font-extrabold text-emerald-700">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                     Payment verified: {razorpayPayment.razorpay_payment_id}
                   </div>
                 ) : null}
                 {!canStartPayment ? (
-                  <p className="mt-3 rounded-2xl bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">
+                  <p className="mt-3 rounded-2xl bg-orange-50 border border-orange-100/50 px-3 py-2.5 text-xs font-extrabold text-orange-700 leading-normal">
                     {isPmVishwakarma
                       ? "Fill all required PM Vishwakarma fields, accept terms, and upload documents before payment."
                       : isEshram
                         ? "Fill required e-Shram fields and consent before payment. Document upload is optional."
-                      : "Fill name, 10 digit mobile, email, city, and upload documents before payment."}
+                        : "Fill name, 10 digit mobile, email, city, and upload Aadhaar before payment."}
                   </p>
                 ) : null}
               </div>
@@ -675,31 +679,33 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         ) : null}
 
         <LoadingOverlay show={wallet.isLoading} label="Checking wallet balance...">
-        <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 md:p-5">
+        <Card className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm backdrop-blur-sm md:p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
               <WalletCards className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-slate-950">Use DigiWallet</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max redeem: {formatCurrency(wallet.maxUsable)}
+              <p className="font-extrabold text-slate-950 text-sm">Redeem Rewards</p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
               </p>
               {!wallet.isLoading && wallet.balance <= 0 ? (
                 <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No reward balance available.</p>
               ) : null}
-              <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-semibold leading-5 text-blue-800">
-                You can redeem up to 50% of your wallet balance, limited to 50% of service amount.
+              
+              {/* Wallet Cap Notice Box */}
+              <p className="mt-2.5 rounded-2xl bg-blue-50/50 border border-blue-50/80 px-3 py-2 text-xs font-extrabold leading-normal text-blue-700">
+                &bull; Wallet Cap Rule: You can redeem up to 50% of the service/order value using your reward wallet credits.
               </p>
-              <div className="mt-3 grid gap-2">
+              
+              <div className="mt-3.5 grid gap-2">
                 <button
                   type="button"
                   disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
                   onClick={() => setWalletUseAmount(wallet.maxUsable)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50/30 px-4 text-xs font-extrabold text-blue-700 transition hover:bg-blue-600 hover:text-white hover:border-blue-600 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
-                  <BadgePercent className="h-4 w-4" />
-                  Apply max wallet
+                  Apply Max Wallet Discount
                 </button>
                 <Input
                   type="number"
@@ -717,35 +723,38 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
                     setWalletUseAmount(nextValue);
                   }}
                   aria-label="DigiWallet amount to use"
-                  placeholder="Wallet amount"
+                  placeholder="Enter custom wallet credit"
+                  className="h-10 text-xs font-bold"
                 />
               </div>
               {clampedWalletUseAmount > 0 ? (
-                <p className="mt-2 text-xs font-bold text-emerald-700">
-                  {formatCurrency(clampedWalletUseAmount)} wallet credit applied. Remaining {formatCurrency(realPayableAmount)} must be paid.
+                <p className="mt-2 text-xs font-extrabold text-emerald-700">
+                  {formatCurrency(clampedWalletUseAmount)} reward deduction applied.
                 </p>
               ) : null}
-              <div className="mt-4 grid gap-2 rounded-2xl bg-slate-50 p-3 text-sm">
+              
+              {/* Modern Ledger breakdown */}
+              <div className="mt-4 grid gap-2.5 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs">
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-600">Total Amount</span>
-                  <span className="font-bold text-slate-950">{formatCurrency(totalAmount)}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-slate-600">Wallet Redeem</span>
-                  <span className="font-bold text-orange-700">-{formatCurrency(clampedWalletUseAmount)}</span>
+                  <span className="text-slate-500 font-semibold">Service Subtotal</span>
+                  <span className="font-extrabold text-slate-800">{formatCurrency(totalAmount)}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-600">Fresh Payable via Razorpay</span>
-                  <span className="font-bold text-blue-700">{formatCurrency(realPayableAmount)}</span>
+                  <span className="text-slate-500 font-semibold">Rewards Discount</span>
+                  <span className="font-extrabold text-orange-600">-{formatCurrency(clampedWalletUseAmount)}</span>
                 </div>
-                <div className="flex justify-between gap-3 border-t pt-2">
-                  <span className="text-slate-600">Expected Cashback</span>
-                  <span className="font-bold text-emerald-700">{formatCurrency(expectedCashback)}</span>
+                <div className="flex justify-between gap-3 border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-600 font-extrabold">Net Payable Amount</span>
+                  <span className="font-extrabold text-blue-700 text-sm">{formatCurrency(realPayableAmount)}</span>
                 </div>
-                <p className="text-xs font-semibold leading-5 text-slate-500">
+                <div className="flex justify-between gap-3 border-t border-dashed border-slate-200/60 pt-2">
+                  <span className="text-slate-500 font-semibold">Expected Wallet Cashback</span>
+                  <span className="font-extrabold text-emerald-600">{formatCurrency(expectedCashback)}</span>
+                </div>
+                <p className="text-[10px] font-bold leading-relaxed text-slate-400">
                   {hasFirstServiceCashback
-                    ? "Get 20% cashback on fresh paid amount after service completion."
-                    : "Eligible for 100% cashback after service completion if this is your first paid service."}
+                    ? "* Get 20% cashback credited to your reward wallet after completed service verification."
+                    : "* Get 100% cashback credited to your reward wallet after service verification (First paid service bonus)."}
                 </p>
               </div>
             </div>
@@ -753,7 +762,7 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
         </Card>
         </LoadingOverlay>
 
-        <FormSubmitButton type="submit" size="lg" loading={isSubmitting} loadingText={progressText || "Please wait..."} className="sticky bottom-3 mb-4 h-14 w-full rounded-2xl shadow-lg md:static md:mb-0">
+        <FormSubmitButton type="submit" size="lg" loading={isSubmitting} loadingText={progressText || "Please wait..."} className="sticky bottom-3 mb-4 h-13 w-full rounded-2xl shadow-lg md:static md:mb-0 bg-slate-950 font-extrabold hover:bg-slate-900">
           Submit Application
         </FormSubmitButton>
       </div>

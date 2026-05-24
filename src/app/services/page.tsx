@@ -62,8 +62,8 @@ export default async function ServicesPage({
           <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2">
             <Link
               href="/services"
-              className={`inline-flex h-12 shrink-0 items-center rounded-full px-5 text-sm font-extrabold shadow-sm ${
-                selectedSlug === "all" ? "bg-slate-950 text-white" : "border border-blue-100 bg-white/80 text-slate-700"
+              className={`inline-flex h-11 shrink-0 items-center rounded-full px-5 text-xs font-extrabold shadow-sm transition duration-150 ${
+                selectedSlug === "all" ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white" : "border border-slate-200 bg-white/70 text-slate-700 hover:bg-white hover:text-slate-950 hover:border-slate-300"
               }`}
             >
               All Services
@@ -72,12 +72,12 @@ export default async function ServicesPage({
               <Link
                 key={category.slug}
                 href={`/services?category=${category.slug}`}
-                className={`inline-flex h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-extrabold shadow-sm ${
-                  selectedSlug === category.slug ? "bg-blue-600 text-white" : "border border-blue-100 bg-white/80 text-slate-700"
+                className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-extrabold shadow-sm transition duration-150 ${
+                  selectedSlug === category.slug ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white" : "border border-slate-200 bg-white/70 text-slate-700 hover:bg-white hover:text-slate-950 hover:border-slate-300"
                 }`}
               >
                 {category.title}
-                <span className={`rounded-full px-2 py-0.5 text-[11px] ${selectedSlug === category.slug ? "bg-white/20" : "bg-blue-50 text-blue-700"}`}>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] ${selectedSlug === category.slug ? "bg-white/20" : "bg-blue-50 text-blue-700"}`}>
                   {category.serviceCount}
                 </span>
               </Link>

@@ -91,10 +91,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </div>
 
         <Card className="invoice-card overflow-hidden rounded-2xl bg-white p-0 shadow-sm md:rounded-[1.5rem] print:rounded-none print:border-0 print:shadow-none">
-          <div className="bg-slate-950 px-5 py-4 text-white md:px-10">
+          <div className="bg-slate-950 print:bg-white print:text-slate-950 print:border-b print:px-0 print:py-2 px-5 py-4 text-white md:px-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-200">Official Service Invoice</p>
-              <p className="text-sm font-semibold text-white/80">Powered By RNoS India Pvt Ltd</p>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-200 print:text-slate-700">Official Service Invoice</p>
+              <p className="text-sm font-semibold text-white/80 print:text-slate-500">Powered By RNoS India Pvt Ltd</p>
             </div>
           </div>
 
@@ -135,13 +135,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </div>
             <div className="rounded-2xl bg-orange-50 p-4">
               <p className="text-xs font-bold uppercase text-slate-500">Support</p>
-              <p className="mt-2 text-sm font-bold text-slate-950">+91 7007595931</p>
+              <p className="mt-2 text-sm font-bold text-slate-950">+91 7007595931, 9305086491</p>
               <p className="mt-1 text-sm text-slate-600">rnos.in</p>
             </div>
           </div>
 
           <div className="overflow-hidden border-b py-6">
-            <div className="grid grid-cols-[1fr_72px_110px] bg-slate-950 px-4 py-3 text-sm font-bold text-white">
+            <div className="grid grid-cols-[1fr_72px_110px] bg-slate-950 print:bg-slate-100 print:text-slate-900 print:border-y px-4 py-3 text-sm font-bold text-white">
               <p>Service Item</p>
               <p className="text-center">Qty</p>
               <p>Amount</p>

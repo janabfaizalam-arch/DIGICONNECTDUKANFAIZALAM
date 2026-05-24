@@ -4,7 +4,6 @@ import { ArrowLeft, Download, FileText, MessageCircle, RotateCcw } from "lucide-
 
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { RatingForm } from "@/components/portal/rating-form";
-import { Card } from "@/components/ui/card";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import { resolveDocumentUrls } from "@/lib/crm";
@@ -13,6 +12,25 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
+
+function formatFieldLabel(key: string): string {
+  const acronyms = ["itr", "gst", "msme", "pan", "dsc", "dob", "upi", "fssai", "cibil"];
+  const words = key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return words
+    .map((word) => {
+      const lower = word.toLowerCase();
+      if (acronyms.includes(lower)) {
+        return word.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
@@ -100,84 +118,88 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   );
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-6xl">
-        <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+    <main className="min-h-screen px-3 py-6 md:px-8 md:py-10 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
+      <div className="mx-auto max-w-5xl">
+        <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-xs font-extrabold text-blue-700">
           <ArrowLeft className="h-4 w-4" />
           Back to dashboard
         </Link>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-          <Card className="rounded-2xl p-5 md:p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Application</p>
-                <h1 className="mt-2 text-3xl font-bold text-slate-950">{application.service_name}</h1>
-                <p className="mt-2 font-mono text-xs text-slate-500">ID: {application.id}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge status={application.status} />
-                {payment ? <PaymentBadge status={payment.status} /> : null}
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              {Object.entries(formData).map(([key, value]) => (
-                <div key={key} className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase text-slate-500">{key.replace(/([A-Z])/g, " $1")}</p>
-                  <p className="mt-1 break-words text-sm font-bold text-slate-900">{displayValue(value)}</p>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+          <div className="space-y-5">
+            <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-7">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-700">Application File</p>
+                  <h1 className="mt-2 text-2xl font-extrabold text-slate-950 leading-tight">{application.service_name}</h1>
+                  <p className="mt-2 font-mono text-xs text-slate-400">ID: {application.id}</p>
                 </div>
-              ))}
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge status={application.status} />
+                  {payment ? <PaymentBadge status={payment.status} /> : null}
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {Object.entries(formData).map(([key, value]) => (
+                  <div key={key} className="rounded-2xl border border-slate-100/60 bg-slate-50/50 p-4">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{formatFieldLabel(key)}</p>
+                    <p className="mt-1 break-words text-sm font-extrabold text-slate-800 leading-normal">{displayValue(value)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="mt-6">
-              <h2 className="text-lg font-bold text-slate-950">Submitted Documents</h2>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-7">
+              <h2 className="text-lg font-extrabold text-slate-950">Submitted Documents</h2>
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                 {application.documents?.length ? (
                   application.documents.map((document) => (
-                    <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border bg-white p-4 text-sm font-bold text-slate-900">
-                      <FileText className="h-4 w-4 text-[var(--primary)]" />
-                      {document.file_name}
+                    <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3.5 text-xs font-bold text-slate-800 shadow-sm transition hover:border-blue-200">
+                      <FileText className="h-4 w-4 shrink-0 text-blue-600" />
+                      <span className="truncate">{document.file_name}</span>
                     </a>
                   ))
                 ) : (
-                  <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No documents uploaded.</p>
+                  <p className="rounded-2xl bg-slate-50 p-4 text-xs font-bold text-slate-500 col-span-2">No documents uploaded.</p>
                 )}
               </div>
             </div>
-          </Card>
+          </div>
 
           <div className="space-y-4">
-            <Card className="rounded-2xl p-5">
-              <p className="text-sm font-medium text-slate-500">Amount</p>
-              <p className="mt-1 text-2xl font-bold text-slate-950">{formatCurrency(application.amount)}</p>
-              <p className="mt-4 text-sm font-medium text-slate-500">Submitted</p>
-              <p className="mt-1 text-sm font-bold text-slate-900">{formatDate(application.created_at)}</p>
-            </Card>
+            <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Amount</p>
+              <p className="mt-1 text-2xl font-extrabold text-slate-950">{formatCurrency(application.amount)}</p>
+              <p className="mt-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Submitted Date</p>
+              <p className="mt-1 text-xs font-bold text-slate-700">{formatDate(application.created_at)}</p>
+            </div>
 
-            {invoice ? (
-              <Link href={`/invoice/${invoice.id}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
-                <Download className="h-4 w-4" />
-                Download Invoice
-              </Link>
-            ) : null}
+            <div className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm space-y-2.5">
+              {invoice ? (
+                <Link href={`/invoice/${invoice.id}`} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-blue-600 text-xs font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98]">
+                  <Download className="h-4 w-4" />
+                  Download Invoice
+                </Link>
+              ) : null}
 
-            {application.final_document_url ? (
-              <a href={application.final_document_url} target="_blank" rel="noreferrer" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
-                <Download className="h-4 w-4" />
-                Download Final Document
+              {application.final_document_url ? (
+                <a href={application.final_document_url} target="_blank" rel="noreferrer" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 text-xs font-extrabold text-white shadow-md shadow-emerald-500/10 transition duration-150 active:scale-[0.98]">
+                  <Download className="h-4 w-4" />
+                  Download Output Document
+                </a>
+              ) : null}
+
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/40 text-xs font-extrabold text-emerald-700 transition duration-150 hover:bg-emerald-600 hover:text-white hover:border-emerald-600">
+                <MessageCircle className="h-4 w-4 text-emerald-600 group-hover:text-white" />
+                WhatsApp Help Desk
               </a>
-            ) : null}
 
-            <Link href={`/services/${application.service_slug}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-sm font-bold text-white">
-              <RotateCcw className="h-4 w-4" />
-              Apply Again
-            </Link>
-
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp Support
-            </a>
+              <Link href={`/services/${application.service_slug}`} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white text-xs font-extrabold text-slate-700 transition duration-150 hover:bg-slate-50">
+                <RotateCcw className="h-4 w-4" />
+                Apply Service Again
+              </Link>
+            </div>
 
             {application.status === "completed" ? (
               <RatingForm applicationId={application.id} existingRating={rating?.rating} />
