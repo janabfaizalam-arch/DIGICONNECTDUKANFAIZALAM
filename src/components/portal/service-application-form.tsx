@@ -455,22 +455,22 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
       }).finally(() => clearTimeout(timeoutId));
 
       const text = await response.text();
-      let result: { message?: string; error?: string; applicationId?: string; applicationIds?: string[]; invoiceId?: string };
+      let result: { success?: boolean; message?: string; error?: string; applicationId?: string; applicationIds?: string[]; invoiceId?: string | null };
 
       try {
-        result = JSON.parse(text) as { message?: string; error?: string; applicationId?: string; applicationIds?: string[]; invoiceId?: string };
+        result = JSON.parse(text) as { success?: boolean; message?: string; error?: string; applicationId?: string; applicationIds?: string[]; invoiceId?: string | null };
       } catch {
         throw new Error(text || "The server did not return a valid response. Please try again.");
       }
 
-      if (!response.ok || !result.invoiceId) {
+      if (!response.ok || !result.success) {
         throw new Error(result.message ?? result.error ?? "Application submission failed.");
       }
 
-      success(result.message ?? "Application submitted successfully.");
+      success("Application submitted successfully.");
       trackSubmitApplication();
       trackApplicationSubmit();
-      router.push(`/invoice/${result.invoiceId}`);
+      router.push(result.invoiceId ? `/invoice/${result.invoiceId}` : result.applicationId ? `/dashboard/applications/${result.applicationId}` : "/customer/dashboard");
       router.refresh();
     } catch (error) {
       const message =

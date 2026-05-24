@@ -96,6 +96,17 @@ function devInfo(message: string, details?: Record<string, unknown>) {
   }
 }
 
+function flowLog(event: string, details?: Record<string, unknown>) {
+  console.info(`[applications] ${event}`, details ?? {});
+}
+
+function secondaryWarning(task: string, details?: Record<string, unknown>) {
+  console.warn("[applications] SECONDARY_TASK_WARNING", {
+    task,
+    ...(details ?? {}),
+  });
+}
+
 function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undefined, expectedAmountPaise: number) {
   const keySecret = getRazorpayKeySecret();
 
@@ -365,6 +376,11 @@ export async function POST(request: Request) {
     );
 
     if (existingApplicationIds.length) {
+      flowLog("APPLICATION_CREATE_START", {
+        userId: user.id,
+        applicationIds: existingApplicationIds,
+        mode: "finalize_existing",
+      });
       const { data: existingApplications, error: existingApplicationsError } = await supabase
         .from("applications")
         .select("id, user_id, service_name, service_slug, amount, payment_status, razorpay_order_id, razorpay_payment_id, customer_id")
@@ -417,15 +433,36 @@ export async function POST(request: Request) {
           existingIds,
           error: updateError,
         });
+        flowLog("APPLICATION_SUBMIT_FATAL", {
+          userId: user.id,
+          applicationIds: existingIds,
+          reason: "existing_application_update_failed",
+        });
         return jsonError("Application could not be finalized after payment. Please contact support.", 500);
       }
 
-      await supabase.from("application_documents").delete().in("application_id", existingIds);
+      flowLog("APPLICATION_CREATE_OK", {
+        userId: user.id,
+        applicationIds: existingIds,
+        mode: "finalize_existing",
+      });
+      flowLog("PAYMENT_SAVE_START", {
+        userId: user.id,
+        applicationIds: existingIds,
+        mode: "already_verified",
+      });
+      flowLog("PAYMENT_SAVE_OK", {
+        userId: user.id,
+        applicationIds: existingIds,
+        mode: "already_verified",
+      });
 
       const documentsToInsert = existingApplications.flatMap((application) =>
         documents.map((document) => ({
           application_id: application.id,
           user_id: user.id,
+          uploaded_by: user.id,
+          uploaded_by_role: "customer",
           document_type: document.document_type,
           document_name: document.document_type,
           file_name: document.file_name,
@@ -434,7 +471,9 @@ export async function POST(request: Request) {
           storage_path: document.storage_path ?? null,
           customer_id: linkedCustomer?.id ?? application.customer_id ?? null,
           status: "pending",
+          review_status: "pending",
           uploaded_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
           metadata: {
             application_id: application.id,
             source: "customer_finalize_existing_application",
@@ -442,87 +481,135 @@ export async function POST(request: Request) {
         })),
       );
       if (documentsToInsert.length) {
-        const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
+        flowLog("DOCUMENT_UPLOAD_START", {
+          userId: user.id,
+          applicationIds: existingIds,
+          count: documentsToInsert.length,
+        });
+        try {
+          const { error: deleteDocumentsError } = await supabase.from("application_documents").delete().in("application_id", existingIds);
+          if (deleteDocumentsError) {
+            throw deleteDocumentsError;
+          }
 
-        if (documentsError) {
-          console.error("[applications] Existing application documents save failed", {
+          const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
+
+          if (documentsError) {
+            throw documentsError;
+          }
+
+          flowLog("DOCUMENT_INSERT_OK", {
             userId: user.id,
-            existingIds,
+            applicationIds: existingIds,
+            count: documentsToInsert.length,
+          });
+        } catch (documentsError) {
+          secondaryWarning("documents", {
+            userId: user.id,
+            applicationIds: existingIds,
             error: documentsError,
           });
-          return jsonError("Documents could not be saved.", 500);
         }
       }
 
       const serviceName = existingApplications.map((application) => application.service_name).join(", ");
-      const invoice = await createInvoiceForApplication({
-        applicationId: existingApplications[0].id,
+      let invoice = null as Awaited<ReturnType<typeof createInvoiceForApplication>>;
+      flowLog("INVOICE_AUTO_CREATE_START", {
         userId: user.id,
-        customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
-        customerName: customer.name,
-        customerEmail: customer.email,
-        customerMobile: customer.mobile,
-        serviceName,
-        amount: orderAmount,
-        paymentStatus: "verified",
+        applicationId: existingApplications[0].id,
       });
+      try {
+        invoice = await createInvoiceForApplication({
+          applicationId: existingApplications[0].id,
+          userId: user.id,
+          customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+          customerName: customer.name,
+          customerEmail: customer.email,
+          customerMobile: customer.mobile,
+          serviceName,
+          amount: orderAmount,
+          paymentStatus: "verified",
+        });
 
-      if (!invoice) {
-        console.error("[applications] Existing application invoice creation failed", {
+        if (invoice?.id) {
+          flowLog("INVOICE_AUTO_CREATE_OK", {
+            userId: user.id,
+            applicationId: existingApplications[0].id,
+            invoiceId: invoice.id,
+          });
+        } else {
+          secondaryWarning("invoice", {
+            userId: user.id,
+            applicationId: existingApplications[0].id,
+          });
+        }
+      } catch (invoiceError) {
+        secondaryWarning("invoice", {
           userId: user.id,
           applicationId: existingApplications[0].id,
+          error: invoiceError,
         });
-        return jsonError("Invoice could not be generated.", 500);
       }
 
-      await supabase.from("notifications").insert(
-        existingApplications.map((application) => ({
-          user_id: user.id,
-          application_id: application.id,
-          title: "Payment received - application submitted",
-          message: `${application.service_name} payment has been received and your application was submitted.`,
-        })),
-      );
+      try {
+        await supabase.from("notifications").insert(
+          existingApplications.map((application) => ({
+            user_id: user.id,
+            application_id: application.id,
+            title: "Payment received - application submitted",
+            message: `${application.service_name} payment has been received and your application was submitted.`,
+          })),
+        );
 
-      await createAdminNotifications(
-        supabase,
-        existingApplications.flatMap((application) => {
-          const notifications: CreateAdminNotificationInput[] = [
-            {
-              type: "new_application" as const,
-              title: "Paid application submitted",
-              message: `${customer.name} submitted ${application.service_name} after verified Razorpay payment.`,
-              relatedType: "application" as const,
-              relatedId: application.id,
-            },
-          ];
+        await createAdminNotifications(
+          supabase,
+          existingApplications.flatMap((application) => {
+            const notifications: CreateAdminNotificationInput[] = [
+              {
+                type: "new_application" as const,
+                title: "Paid application submitted",
+                message: `${customer.name} submitted ${application.service_name} after verified Razorpay payment.`,
+                relatedType: "application" as const,
+                relatedId: application.id,
+              },
+            ];
 
-          if (documents.length) {
-            notifications.push({
-              type: "document_uploaded" as const,
-              title: "Documents uploaded",
-              message: `${customer.name} uploaded ${documents.length} document(s) for ${application.service_name}.`,
-              relatedType: "document" as const,
-              relatedId: application.id,
-            });
-          }
+            if (documents.length) {
+              notifications.push({
+                type: "document_uploaded" as const,
+                title: "Documents uploaded",
+                message: `${customer.name} uploaded ${documents.length} document(s) for ${application.service_name}.`,
+                relatedType: "document" as const,
+                relatedId: application.id,
+              });
+            }
 
-          return notifications;
-        }),
-      );
+            return notifications;
+          }),
+        );
+      } catch (notificationError) {
+        secondaryWarning("notifications", {
+          userId: user.id,
+          applicationIds: existingIds,
+          error: notificationError,
+        });
+      }
 
       return NextResponse.json({
-        message:
-          existingApplications.length > 1
-            ? "Applications submitted successfully. One combined invoice has been generated."
-            : "Payment received - application submitted. Track the status in your dashboard.",
+        success: true,
+        message: "Application submitted successfully.",
         applicationId: existingApplications[0].id,
         applicationIds: existingIds,
-        invoiceId: invoice.id,
+        invoiceId: invoice?.id ?? null,
       });
     }
 
     let remainingWalletForApplications = walletRedeemAmount;
+    flowLog("APPLICATION_CREATE_START", {
+      userId: user.id,
+      serviceSlugs: resolvedServices.map((service) => service.slug),
+      mode: "new_application",
+    });
     const applicationsToInsert = resolvedServices.map((service, index) => {
       const rowAmount = comboOrder ? (index === 0 ? orderAmount : 0) : Number(service.amount ?? 0);
       const rowWalletRedeem = Math.min(remainingWalletForApplications, rowAmount);
@@ -561,13 +648,28 @@ export async function POST(request: Request) {
       .select("id, service_name, amount");
 
     if (applicationError || !applications?.length) {
+      console.error("[applications] Application creation failed", {
+        userId: user.id,
+        error: applicationError,
+      });
+      flowLog("APPLICATION_SUBMIT_FATAL", {
+        userId: user.id,
+        reason: "application_insert_failed",
+      });
       return jsonError("Application submission failed.", 500);
     }
+
+    flowLog("APPLICATION_CREATE_OK", {
+      userId: user.id,
+      applicationIds: applications.map((application) => application.id),
+    });
 
     const documentsToInsert = applications.flatMap((application) =>
       documents.map((document) => ({
         application_id: application.id,
         user_id: user.id,
+        uploaded_by: user.id,
+        uploaded_by_role: "customer",
         document_type: document.document_type,
         document_name: document.document_type,
         file_name: document.file_name,
@@ -576,7 +678,9 @@ export async function POST(request: Request) {
         storage_path: document.storage_path ?? null,
         customer_id: linkedCustomer?.id ?? null,
         status: "pending",
+        review_status: "pending",
         uploaded_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         metadata: {
           application_id: application.id,
           source: "customer_new_application",
@@ -585,10 +689,29 @@ export async function POST(request: Request) {
     );
 
     if (documentsToInsert.length) {
-      const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
+      flowLog("DOCUMENT_UPLOAD_START", {
+        userId: user.id,
+        applicationIds: applications.map((application) => application.id),
+        count: documentsToInsert.length,
+      });
+      try {
+        const { error: documentsError } = await supabase.from("application_documents").insert(documentsToInsert);
 
-      if (documentsError) {
-        return jsonError("Documents could not be saved.", 500);
+        if (documentsError) {
+          throw documentsError;
+        }
+
+        flowLog("DOCUMENT_INSERT_OK", {
+          userId: user.id,
+          applicationIds: applications.map((application) => application.id),
+          count: documentsToInsert.length,
+        });
+      } catch (documentsError) {
+        secondaryWarning("documents", {
+          userId: user.id,
+          applicationIds: applications.map((application) => application.id),
+          error: documentsError,
+        });
       }
     }
 
@@ -614,11 +737,32 @@ export async function POST(request: Request) {
       };
     });
 
+    flowLog("PAYMENT_SAVE_START", {
+      userId: user.id,
+      applicationIds: applications.map((application) => application.id),
+    });
+
     const { data: insertedPayments, error: paymentError } = await supabase.from("payments").insert(paymentRows).select("id, application_id, wallet_used_amount, real_payment_amount");
 
     if (paymentError || !insertedPayments?.length) {
+      console.error("[applications] Payment save failed", {
+        userId: user.id,
+        applicationIds: applications.map((application) => application.id),
+        error: paymentError,
+      });
+      flowLog("APPLICATION_SUBMIT_FATAL", {
+        userId: user.id,
+        applicationIds: applications.map((application) => application.id),
+        reason: "payment_insert_failed",
+      });
       return jsonError("Payment details could not be saved.", 500);
     }
+
+    flowLog("PAYMENT_SAVE_OK", {
+      userId: user.id,
+      applicationIds: applications.map((application) => application.id),
+      paymentIds: insertedPayments.map((payment) => payment.id),
+    });
 
     let walletUsedAmount = 0;
 
@@ -668,22 +812,45 @@ export async function POST(request: Request) {
 
     const totalAmount = orderAmount;
     const serviceName = applications.map((application) => application.service_name).join(", ");
-    const invoice = await createInvoiceForApplication({
-      applicationId: applications[0].id,
+    let invoice = null as Awaited<ReturnType<typeof createInvoiceForApplication>>;
+    flowLog("INVOICE_AUTO_CREATE_START", {
       userId: user.id,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      customerMobile: customer.mobile,
-      serviceName,
-      amount: totalAmount,
-      paymentStatus: hasVerifiedRazorpayPayment ? "verified" : "pending",
+      applicationId: applications[0].id,
     });
+    try {
+      invoice = await createInvoiceForApplication({
+        applicationId: applications[0].id,
+        userId: user.id,
+        customerId: linkedCustomer?.id ?? null,
+        customerName: customer.name,
+        customerEmail: customer.email,
+        customerMobile: customer.mobile,
+        serviceName,
+        amount: totalAmount,
+        paymentStatus: hasVerifiedRazorpayPayment ? "verified" : "pending",
+      });
 
-    if (!invoice) {
-      return jsonError("Invoice could not be generated.", 500);
+      if (invoice?.id) {
+        flowLog("INVOICE_AUTO_CREATE_OK", {
+          userId: user.id,
+          applicationId: applications[0].id,
+          invoiceId: invoice.id,
+        });
+      } else {
+        secondaryWarning("invoice", {
+          userId: user.id,
+          applicationId: applications[0].id,
+        });
+      }
+    } catch (invoiceError) {
+      secondaryWarning("invoice", {
+        userId: user.id,
+        applicationId: applications[0].id,
+        error: invoiceError,
+      });
     }
 
-    if (walletUsedAmount > 0) {
+    if (walletUsedAmount > 0 && invoice?.id) {
       await supabase
         .from("invoices")
         .update({
@@ -693,80 +860,90 @@ export async function POST(request: Request) {
         .eq("id", invoice.id);
     }
 
-    await supabase.from("notifications").insert(
-      applications.map((application) => ({
-        user_id: user.id,
-        application_id: application.id,
-        title: "Application received",
-        message: `${application.service_name} request has been received. Our team will verify it shortly.`,
-      })),
-    );
+    try {
+      await supabase.from("notifications").insert(
+        applications.map((application) => ({
+          user_id: user.id,
+          application_id: application.id,
+          title: "Application received",
+          message: `${application.service_name} request has been received. Our team will verify it shortly.`,
+        })),
+      );
 
-    await createAdminNotifications(
-      supabase,
-      applications.flatMap((application) => {
-        const baseNotifications: CreateAdminNotificationInput[] = [
-          {
-            type: "new_application" as const,
-            title: "New application received",
-            message: `${customer.name} submitted ${application.service_name}.`,
-            relatedType: "application" as const,
-            relatedId: application.id,
-          },
-        ];
+      await createAdminNotifications(
+        supabase,
+        applications.flatMap((application) => {
+          const baseNotifications: CreateAdminNotificationInput[] = [
+            {
+              type: "new_application" as const,
+              title: "New application received",
+              message: `${customer.name} submitted ${application.service_name}.`,
+              relatedType: "application" as const,
+              relatedId: application.id,
+            },
+          ];
 
-        if (documents.length) {
-          baseNotifications.push({
-            type: "document_uploaded" as const,
-            title: "Documents uploaded",
-            message: `${customer.name} uploaded ${documents.length} document(s) for ${application.service_name}.`,
-            relatedType: "document",
-            relatedId: application.id,
-          });
-        }
+          if (documents.length) {
+            baseNotifications.push({
+              type: "document_uploaded" as const,
+              title: "Documents uploaded",
+              message: `${customer.name} uploaded ${documents.length} document(s) for ${application.service_name}.`,
+              relatedType: "document",
+              relatedId: application.id,
+            });
+          }
 
-        if (!hasVerifiedRazorpayPayment) {
-          baseNotifications.push({
-            type: "payment_pending",
-            title: "Payment pending",
-            message: `${customer.name} has a pending payment for ${application.service_name}.`,
-            relatedType: "payment",
-            relatedId: application.id,
-          });
-        }
+          if (!hasVerifiedRazorpayPayment) {
+            baseNotifications.push({
+              type: "payment_pending",
+              title: "Payment pending",
+              message: `${customer.name} has a pending payment for ${application.service_name}.`,
+              relatedType: "payment",
+              relatedId: application.id,
+            });
+          }
 
-        return baseNotifications;
-      }),
-    );
+          return baseNotifications;
+        }),
+      );
 
-    if (walletUsedAmount > 0) {
-      await supabase.from("notifications").insert({
-        user_id: user.id,
-        application_id: applications[0].id,
-        title: "DigiWallet used successfully",
-        message: `Rs ${walletUsedAmount.toLocaleString("en-IN")} DigiWallet credit was applied. Please pay Rs ${realPaymentAmount.toLocaleString("en-IN")} securely with Razorpay.`,
-      });
-    }
+      if (walletUsedAmount > 0) {
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          application_id: applications[0].id,
+          title: "DigiWallet used successfully",
+          message: `Rs ${walletUsedAmount.toLocaleString("en-IN")} DigiWallet credit was applied. Please pay Rs ${realPaymentAmount.toLocaleString("en-IN")} securely with Razorpay.`,
+        });
+      }
 
-    if (hasVerifiedRazorpayPayment && body.razorpayPayment?.razorpay_payment_id) {
-      await supabase.from("notifications").insert({
-        user_id: user.id,
-        application_id: applications[0].id,
-        title: "Payment verified",
-        message: `Razorpay payment ${body.razorpayPayment.razorpay_payment_id} has been verified successfully.`,
+      if (hasVerifiedRazorpayPayment && body.razorpayPayment?.razorpay_payment_id) {
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          application_id: applications[0].id,
+          title: "Payment verified",
+          message: `Razorpay payment ${body.razorpayPayment.razorpay_payment_id} has been verified successfully.`,
+        });
+      }
+    } catch (notificationError) {
+      secondaryWarning("notifications", {
+        userId: user.id,
+        applicationIds: applications.map((application) => application.id),
+        error: notificationError,
       });
     }
 
     return NextResponse.json({
-      message:
-        applications.length > 1
-          ? "Applications submitted successfully. One combined invoice has been generated."
-          : "Application submitted successfully. Track the status in your dashboard.",
+      success: true,
+      message: "Application submitted successfully.",
       applicationId: applications[0].id,
       applicationIds: applications.map((application) => application.id),
-      invoiceId: invoice.id,
+      invoiceId: invoice?.id ?? null,
     });
   } catch (error) {
+    console.error("[applications] APPLICATION_SUBMIT_FATAL", {
+      message: error instanceof Error ? error.message : "Unknown application submit error",
+      error,
+    });
     return jsonError(error instanceof Error ? error.message : "Something went wrong. Please try again.", 500);
   }
 }

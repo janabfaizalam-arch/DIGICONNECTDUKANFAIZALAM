@@ -232,14 +232,28 @@ export async function createInvoiceForApplication({
     return null;
   }
 
-  const { data: existing } = await supabase.from("invoices").select("id").eq("application_id", applicationId).maybeSingle();
+  const { data: existing, error: existingError } = await supabase
+    .from("invoices")
+    .select("id, application_id, user_id, customer_id, invoice_number, service_name, amount, payment_status, created_at")
+    .eq("application_id", applicationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error("[crm] Invoice lookup failed", {
+      applicationId,
+      message: existingError.message,
+      code: existingError.code,
+    });
+  }
 
   if (existing?.id) {
     await supabase.from("applications").update({ invoice_id: existing.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
     return existing as Invoice;
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("invoices")
     .insert({
       application_id: applicationId,
@@ -253,8 +267,19 @@ export async function createInvoiceForApplication({
       amount,
       payment_status: paymentStatus,
     })
-    .select("id")
+    .select("id, application_id, user_id, customer_id, invoice_number, service_name, amount, payment_status, created_at")
     .single();
+
+  if (error) {
+    console.error("[crm] Invoice insert failed", {
+      applicationId,
+      userId,
+      customerId,
+      message: error.message,
+      code: error.code,
+    });
+    return null;
+  }
 
   if (data?.id) {
     await supabase.from("applications").update({ invoice_id: data.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
