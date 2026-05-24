@@ -498,12 +498,21 @@ function CustomerLoginCardInner({
                     setPinMessage("");
                   }}
                   disabled={isPending}
-                  className="h-12 bg-white pl-11 text-base"
+                  className="h-12 bg-white pl-11 pr-12 text-base"
                 />
+                {pinLookupPending ? (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <ButtonSpinner className="h-4 w-4 text-blue-700" />
+                  </div>
+                ) : null}
               </div>
-              {pinMessage ? (
+              {pinLookupPending ? (
+                <span className="text-xs font-bold text-blue-700 motion-safe:animate-pulse">
+                  Fetching city and state from PIN code...
+                </span>
+              ) : pinMessage ? (
                 <span className={`text-xs font-bold ${manualLocation ? "text-orange-700" : "text-emerald-700"}`}>
-                  {pinLookupPending ? "Fetching city/state..." : pinMessage}
+                  {pinMessage}
                 </span>
               ) : null}
             </label>
@@ -620,12 +629,21 @@ function CustomerLoginCardInner({
                   }}
                   placeholder="Enter 6 digit PIN code"
                   disabled={isGooglePending || isFacebookPending}
-                  className="h-12 bg-white pl-11 text-base"
+                  className="h-12 bg-white pl-11 pr-12 text-base"
                 />
+                {pinLookupPending ? (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <ButtonSpinner className="h-4 w-4 text-blue-700" />
+                  </div>
+                ) : null}
               </div>
-              {pinMessage ? (
+              {pinLookupPending ? (
+                <span className="text-xs font-bold text-blue-700 motion-safe:animate-pulse">
+                  Fetching city and state from PIN code...
+                </span>
+              ) : pinMessage ? (
                 <span className={`text-xs font-bold ${city && district && state ? "text-emerald-700" : "text-orange-700"}`}>
-                  {pinLookupPending ? "Fetching city, district and state..." : pinMessage}
+                  {pinMessage}
                 </span>
               ) : null}
             </label>

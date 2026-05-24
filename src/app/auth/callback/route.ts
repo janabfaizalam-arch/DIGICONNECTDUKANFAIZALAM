@@ -43,22 +43,7 @@ function redirectHashTokensToNext(next: string | null) {
   );
 }
 
-function isFirstSocialCustomerSignIn(user: {
-  app_metadata?: { provider?: string };
-  created_at?: string;
-  last_sign_in_at?: string;
-}) {
-  const provider = String(user.app_metadata?.provider ?? "").toLowerCase();
-  const createdAt = Date.parse(String(user.created_at ?? ""));
-  const lastSignInAt = Date.parse(String(user.last_sign_in_at ?? ""));
 
-  return (
-    (provider === "google" || provider === "facebook") &&
-    Number.isFinite(createdAt) &&
-    Number.isFinite(lastSignInAt) &&
-    Math.abs(lastSignInAt - createdAt) < 60_000
-  );
-}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -90,26 +75,6 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const pendingCustomerOAuth = parsePendingCustomerOAuthData(cookieStore.get(pendingCustomerOAuthCookie)?.value);
 
-  if (!pendingCustomerOAuth && isFirstSocialCustomerSignIn(data.user)) {
-    await supabase.auth.signOut();
-    const supabaseAdmin = getSupabaseAdmin();
-    if (supabaseAdmin) {
-      await supabaseAdmin.auth.admin.deleteUser(data.user.id).catch((deleteError) => {
-        console.warn("[auth/callback] New OAuth user cleanup failed after missing signup details.", {
-          userId: data.user.id,
-          error: deleteError,
-        });
-      });
-    }
-
-    const loginUrl = new URL("/login/customer", requestUrl.origin);
-    loginUrl.searchParams.set("error", "oauth_signup_details");
-    if (next) {
-      loginUrl.searchParams.set("redirect", getSafeNext(next));
-    }
-    return NextResponse.redirect(loginUrl);
-  }
-
   await syncUserProfile(data.user, pendingCustomerOAuth);
 
   if (referralCode) {
@@ -128,11 +93,27 @@ export async function GET(request: Request) {
   }
 
   const role = await getCurrentUserRole(data.user);
-  const destination = next
+  let destination = next
     ? getSafeNext(next)
     : isCustomerRole(role)
       ? "/customer/dashboard"
       : getRoleHome(role);
+
+  // Secure Guard: If customer has incomplete onboarding fields, route them to onboarding completion first.
+  if (isCustomerRole(role)) {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (supabaseAdmin) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("mobile, pincode")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (!profile?.mobile || !profile?.pincode) {
+        destination = "/customer/onboarding";
+      }
+    }
+  }
 
   const response = NextResponse.redirect(new URL(destination, requestUrl.origin));
   response.cookies.delete({ name: pendingCustomerOAuthCookie, path: "/auth" });

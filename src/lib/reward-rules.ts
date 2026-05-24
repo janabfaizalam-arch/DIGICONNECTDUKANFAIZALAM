@@ -8,10 +8,10 @@ export const MAX_WALLET_REDEEM_PERCENT = 50;
 export function calculateMaxWalletRedeem(serviceAmount: number, walletBalance: number) {
   const amount = Math.max(0, Math.round(Number(serviceAmount ?? 0)));
   const balance = Math.max(0, Math.round(Number(walletBalance ?? 0)));
-  const walletHalf = Math.floor(balance * (MAX_WALLET_REDEEM_PERCENT / 100));
   const serviceHalf = Math.floor(amount * (MAX_WALLET_REDEEM_PERCENT / 100));
 
-  return Math.min(walletHalf, serviceHalf);
+  // Fix: Allow utilizing up to the entire wallet balance, capped only by 50% of the service amount.
+  return Math.min(balance, serviceHalf);
 }
 
 export function calculateWalletRedeemBreakdown({
@@ -26,22 +26,23 @@ export function calculateWalletRedeemBreakdown({
   const amount = Math.max(0, Math.round(Number(serviceAmount ?? 0)));
   const balance = Math.max(0, Math.round(Number(walletBalance ?? 0)));
   const requested = Math.max(0, Math.round(Number(requestedRedeem ?? 0)));
-  const walletHalf = Math.floor(balance * (MAX_WALLET_REDEEM_PERCENT / 100));
   const serviceHalf = Math.floor(amount * (MAX_WALLET_REDEEM_PERCENT / 100));
-  const maxRedeem = Math.min(walletHalf, serviceHalf);
+  
+  // Fix: Allow utilizing up to the entire wallet balance, capped only by 50% of the service amount.
+  const maxRedeem = Math.min(balance, serviceHalf);
   const walletRedeem = amount === 0 ? 0 : Math.min(requested, maxRedeem);
   const freshPayable = Math.max(0, amount - walletRedeem);
   const minimumFreshPayable = Math.ceil(amount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
 
   if (amount > 0 && freshPayable < minimumFreshPayable) {
-    throw new Error("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount");
+    throw new Error("Wallet redeem cannot exceed 50% of service amount");
   }
 
   return {
     serviceAmount: amount,
     walletBalance: balance,
     requestedRedeem: requested,
-    walletHalf,
+    walletHalf: balance, // Preserved in return schema as the full available balance
     serviceHalf,
     maxRedeem,
     walletRedeem,

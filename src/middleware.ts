@@ -17,6 +17,8 @@ type ProfileAuthShape = {
   kyc_status?: string | null;
   active?: boolean | null;
   is_active?: boolean | null;
+  mobile?: string | null;
+  pincode?: string | null;
 };
 
 function matchesRoute(pathname: string, route: string) {
@@ -150,9 +152,9 @@ export async function middleware(request: NextRequest) {
     if (adminEmails.includes(email)) {
       role = "admin";
     } else {
-      const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active").eq("id", user.id).maybeSingle();
+      const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active, mobile, pincode").eq("id", user.id).maybeSingle();
       if (profileResult.error) {
-        const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
+        const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status, mobile, pincode").eq("id", user.id).maybeSingle();
         profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
       } else {
         profile = (profileResult.data as ProfileAuthShape | null) ?? null;
@@ -165,6 +167,34 @@ export async function middleware(request: NextRequest) {
         const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
         role = normalizeAppRole(portalUser?.role) ?? "customer";
       }
+    }
+  }
+
+  if (user && role === "customer") {
+    if (!profile) {
+      const profileResult = await supabase
+        .from("profiles")
+        .select("role, kyc_status, active, is_active, mobile, pincode")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!profileResult.error) {
+        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
+      }
+    }
+
+    const isOnboardingPath = pathname === "/customer/onboarding";
+    const isIncomplete = !profile?.mobile || !profile?.pincode;
+
+    if (isIncomplete && !isOnboardingPath && isProtectedRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/customer/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (!isIncomplete && isOnboardingPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/customer/dashboard";
+      return NextResponse.redirect(url);
     }
   }
 
