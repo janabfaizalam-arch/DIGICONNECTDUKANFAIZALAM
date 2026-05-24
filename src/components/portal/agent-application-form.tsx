@@ -48,12 +48,17 @@ export function AgentApplicationForm({
   const selectedService = services.find((service) => service.id === serviceId);
   const isPmVishwakarma = selectedService?.slug === "pm-vishwakarma-yojana";
   const payableAmountPaise = Math.round(Number(selectedService?.customer_fee ?? 0) * 100);
-  const paymentReceipt = useMemo(() => `agent-${selectedService?.slug ?? "service"}-${Date.now()}`, [selectedService?.slug]);
+  const receiptPrefix = `agent-${selectedService?.slug ?? "service"}`;
+  const [paymentReceipt, setPaymentReceipt] = useState(receiptPrefix);
   const selectedPayout = selectedService ? payoutForAgentService(selectedService) : 0;
 
   useEffect(() => {
     setRazorpayPayment(null);
   }, [payableAmountPaise]);
+
+  useEffect(() => {
+    setPaymentReceipt(`${receiptPrefix}-${Date.now()}`);
+  }, [receiptPrefix]);
 
   useEffect(() => {
     if (!isPmVishwakarma || !selectedCustomer) return;

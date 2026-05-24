@@ -168,7 +168,8 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
   const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
   const expectedCashback = calculateCashbackForFreshPayment(realPayableAmount, !hasFirstServiceCashback);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
-  const paymentReceipt = useMemo(() => `digi-${selectedServices[0]?.slug ?? "service"}-${Date.now()}`, [selectedServices]);
+  const receiptPrefix = `digi-${selectedServices[0]?.slug ?? "service"}`;
+  const [paymentReceipt, setPaymentReceipt] = useState(receiptPrefix);
   const normalizedApplicationDraft = useMemo(
     () =>
       buildNormalizedApplicationDraft(
@@ -221,6 +222,19 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
     setRazorpayPayment(null);
   }, [payableAmountPaise]);
 
+  useEffect(() => {
+    console.info("FORM_COMPONENT_MOUNTED", {
+      serviceSlug: selectedServices[0]?.slug ?? service.slug,
+    });
+    console.info("SUBMIT_HANDLER_ATTACHED", {
+      serviceSlug: selectedServices[0]?.slug ?? service.slug,
+    });
+  }, [selectedServices, service.slug]);
+
+  useEffect(() => {
+    setPaymentReceipt(`${receiptPrefix}-${Date.now()}`);
+  }, [receiptPrefix]);
+
   usePmVishwakarmaPincodeAutofill({
     enabled: isPmVishwakarma,
     values: pmVishwakarmaValues,
@@ -245,6 +259,10 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.info("SUBMIT_CLICKED", {
+      selectedDocumentCount: selectedDocuments.length,
+      hasVerifiedPayment: Boolean(razorpayPayment),
+    });
     if (isSubmitting) {
       return;
     }
@@ -420,6 +438,10 @@ export function ServiceApplicationForm({ service, services }: { service: Applica
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+      console.info("BEFORE_API_APPLICATIONS_CALL", {
+        selectedDocumentCount: selectedDocuments.length,
+        hasVerifiedPayment: Boolean(razorpayPayment),
+      });
       const response = await fetch("/api/applications", {
         method: "POST",
         body: submitFormData,
