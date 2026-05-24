@@ -46,7 +46,7 @@ type AdminNavItem = {
 
 const navGroups: { title: string; items: AdminNavItem[] }[] = [
   {
-    title: "Admin",
+    title: "Core CRM",
     items: [
       { href: "/admin", label: "Dashboard", description: "KPIs and alerts", icon: LayoutDashboard },
       { href: "/admin/applications", label: "Applications", description: "Service workflow", icon: FileText },
@@ -54,14 +54,29 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/customers/new", label: "Create Customer", description: "Customer signup", icon: UserPlus },
       { href: "/admin/agents", label: "Agents", description: "Agent IDs and commissions", icon: UserCheck },
       { href: "/admin/agent-services", label: "Agent Services", description: "Visibility and payouts", icon: ListChecks },
+    ],
+  },
+  {
+    title: "Finance & Wallet",
+    items: [
       { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: CreditCard },
       { href: "/admin/offline-invoices", label: "Invoices", description: "Search and print", icon: ReceiptText },
       { href: "/admin/wallet", label: "Wallet & Rewards", description: "Ledger and rewards", icon: WalletCards },
       { href: "/admin/commissions", label: "Commissions", description: "Agent payouts", icon: BadgePercent },
+    ],
+  },
+  {
+    title: "Content & Media",
+    items: [
       { href: "/admin/documents", label: "Documents", description: "Uploads and final files", icon: FolderCheck },
       { href: "/admin/homepage-offer-strip", label: "Homepage Offer Strip", description: "Thin homepage banners", icon: BadgePercent },
       { href: "/admin/about-page-images", label: "About Page Images", description: "About gallery media", icon: GalleryHorizontalEnd },
       { href: "/admin/gallery", label: "Gallery", description: "Photos and proof", icon: GalleryHorizontalEnd },
+    ],
+  },
+  {
+    title: "System & Management",
+    items: [
       { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
       { href: "/admin/settings", label: "Settings", description: "Catalog and setup", icon: Settings },
     ],

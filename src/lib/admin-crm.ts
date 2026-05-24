@@ -248,20 +248,7 @@ function applicationToAdminRow(application: Application, agentById: Record<strin
   };
 }
 
-async function getAgentsById() {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return {};
 
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active")
-    .eq("role", "agent");
-
-  return ((data ?? []) as PortalUser[]).reduce<Record<string, PortalUser>>((grouped, agent) => {
-    grouped[agent.id] = agent;
-    return grouped;
-  }, {});
-}
 
 async function getUsersByRole(role: "agent") {
   const supabase = getSupabaseAdmin();
@@ -327,7 +314,8 @@ async function getApplicationCommandMeta(): Promise<{
   const [applicationsResult, documentsResult, walletsResult] = await Promise.all([
     supabase
       .from("applications")
-      .select("id, status, payment_status, service_name, source, submitted_by_role, agent_id, assigned_agent_id, created_at, updated_at, total_amount, amount, fresh_payable_amount, real_payment_amount, wallet_redeemed_amount, wallet_used_amount, cashback_amount, cashback_credited_at, razorpay_payment_id"),
+      .select("id, status, payment_status, service_name, source, submitted_by_role, agent_id, assigned_agent_id, created_at, updated_at, total_amount, amount, fresh_payable_amount, real_payment_amount, wallet_redeemed_amount, wallet_used_amount")
+      .limit(5000),
     supabase
       .from("application_documents")
       .select("application_id, status, review_status, is_final, document_type")
@@ -607,7 +595,15 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
     query = query.or(`id.ilike.%${escaped}%,service_name.ilike.%${escaped}%,service_slug.ilike.%${escaped}%,razorpay_payment_id.ilike.%${escaped}%,razorpay_order_id.ilike.%${escaped}%,form_data->>name.ilike.%${escaped}%,form_data->>mobile.ilike.%${escaped}%,form_data->>email.ilike.%${escaped}%`);
   }
 
-  const [applicationResult, agentById, agents, meta] = await Promise.all([query, getAgentsById(), getUsersByRole("agent"), getApplicationCommandMeta()]);
+  const [applicationResult, agents, meta] = await Promise.all([
+    query,
+    getUsersByRole("agent"),
+    getApplicationCommandMeta(),
+  ]);
+  const agentById = agents.reduce<Record<string, PortalUser>>((grouped, agent) => {
+    grouped[agent.id] = agent;
+    return grouped;
+  }, {});
   const baseApplications = (applicationResult.data ?? []) as Application[];
   let applications = baseApplications;
 
