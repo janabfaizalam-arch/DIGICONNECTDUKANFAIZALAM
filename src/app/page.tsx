@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gift, WalletCards } from "lucide-react";
+import { ArrowRight, Gift, WalletCards } from "lucide-react";
 
 import { ContactSection } from "@/components/contact-section";
 import { CreditCardOffersSection } from "@/components/credit-card-offers-section";
@@ -51,6 +51,37 @@ export default async function Home() {
   return (
     <>
       <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
+        {/* Premium Apple-Style Hero Header */}
+        <section className="bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.04),transparent_50%)] px-4 pt-10 pb-8 md:px-8 md:pt-16 md:pb-12 text-center relative overflow-hidden">
+          <div className="mx-auto max-w-4xl relative z-10">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">
+              <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+              RNoS Digital Assistance Platform
+            </p>
+            <h1 className="mt-5 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-5xl md:text-6xl lg:text-[4rem] leading-[1.08]">
+              Digital Services <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 bg-clip-text text-transparent">Made Simple</span>
+            </h1>
+            <p className="mt-5 mx-auto max-w-2xl text-sm font-semibold leading-relaxed text-slate-600 md:text-lg">
+              Apply for Tax & Business, Vehicle Insurance, Finance & Banking, and Gov ID form services online with guided support and verified updates.
+            </p>
+            <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
+              <Link href="/services" className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-extrabold text-white shadow-md transition duration-150 md:hover:-translate-y-0.5 active:scale-[0.99]">
+                Browse Services
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              {user ? (
+                <Link href="/customer/dashboard" className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-950 transition duration-150 md:hover:-translate-y-0.5 active:scale-[0.99]">
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link href="/signup" className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-950 transition duration-150 md:hover:-translate-y-0.5 active:scale-[0.99]">
+                  Register Wallet
+                </Link>
+              )}
+            </div>
+          </div>
+        </section>
+
         <HomepageDynamicSlider />
         <section className="bg-white px-4 pt-3 md:px-8 md:pt-5">
           <div className="mx-auto max-w-7xl">

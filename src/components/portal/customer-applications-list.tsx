@@ -38,6 +38,63 @@ function applicationAmount(application: CustomerDashboardApplication) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function getStatusStepIndex(status: string): number {
+  if (status === "completed" || status === "delivered") {
+    return 3;
+  }
+  if (status === "in_process" || status === "in_progress" || status === "assigned_to_agent") {
+    return 2;
+  }
+  if (status === "documents_verified" || status === "documents_required" || status === "document_pending") {
+    return 1;
+  }
+  return 0;
+}
+
+function ApplicationTimeline({ status }: { status: string }) {
+  const currentStep = getStatusStepIndex(status);
+  const steps = [
+    { label: "Submitted", index: 0 },
+    { label: "Docs Verified", index: 1 },
+    { label: "In Process", index: 2 },
+    { label: "Completed", index: 3 },
+  ];
+
+  const lineWidthPercent = `${(currentStep / 3) * 100}%`;
+
+  return (
+    <div className="mt-4 px-2 py-3 rounded-2xl bg-slate-50/55 border border-slate-100/50">
+      <div className="timeline-track">
+        <div className="timeline-line" />
+        <div className="timeline-line-active" style={{ width: lineWidthPercent }} />
+        
+        {steps.map((step) => {
+          const isCompleted = currentStep > step.index;
+          const isActive = currentStep === step.index;
+          
+          return (
+            <div key={step.index} className="timeline-node">
+              <div className={`timeline-node-circle ${isCompleted ? 'completed' : isActive ? 'active' : ''}`}>
+                {isCompleted && (
+                  <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {isActive && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                )}
+              </div>
+              <span className={`timeline-node-label ${isCompleted ? 'completed' : isActive ? 'active' : ''}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function CustomerApplicationsList({ applications }: { applications: CustomerDashboardApplication[] }) {
   const [filter, setFilter] = useState<ApplicationFilter>("all");
   const visibleApplications = useMemo(
@@ -95,8 +152,12 @@ export function CustomerApplicationsList({ applications }: { applications: Custo
                   <PaymentBadge status={application.payment_status ?? "pending"} />
                 </div>
               </div>
-              <div className="mt-3">
-                <Link href={`/dashboard/applications/${application.id}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 text-xs font-extrabold text-blue-700">
+              
+              {/* Dynamic Status Timeline Stepper */}
+              <ApplicationTimeline status={application.status} />
+
+              <div className="mt-4 flex items-center justify-between">
+                <Link href={`/dashboard/applications/${application.id}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3.5 text-xs font-extrabold text-blue-700 transition hover:bg-blue-100/50">
                   <FileText className="h-3.5 w-3.5" />
                   View Details
                 </Link>
