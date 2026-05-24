@@ -18,6 +18,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized access." }, { status: 401 });
     }
 
+    console.info("ONBOARDING_CURRENT_USER", {
+      userId: user.id,
+      email: user.email ?? null,
+      hasMetadataMobile: Boolean(user.user_metadata?.mobile),
+      hasMetadataPincode: Boolean(user.user_metadata?.pincode),
+      onboardingCompleted: Boolean(user.user_metadata?.onboarding_completed),
+    });
+
     const body = await request.json();
     const { mobile, pincode, city, district, state } = body;
 

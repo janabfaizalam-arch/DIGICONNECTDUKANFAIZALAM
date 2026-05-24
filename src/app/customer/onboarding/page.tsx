@@ -19,11 +19,21 @@ export default async function CustomerOnboardingPage() {
     redirect("/login/customer");
   }
 
-  // Ensure default syncing is complete
-  await syncUserProfile(user);
-
-  // Check if profile is already complete
+  // Ensure default syncing is complete only if profile does not already have mobile+pincode.
+  // This prevents syncUserProfile from overwriting a completed profile with empty metadata values
+  // on page refresh, which would cause a redirect loop back to onboarding.
   const supabaseAdmin = getSupabaseAdmin();
+
+  console.info("ONBOARDING_CURRENT_USER", {
+    userId: user.id,
+    email: user.email ?? null,
+    hasMetadataMobile: Boolean(user.user_metadata?.mobile),
+    hasMetadataPincode: Boolean(user.user_metadata?.pincode),
+    onboardingCompleted: Boolean(user.user_metadata?.onboarding_completed),
+  });
+
+  let profileComplete = false;
+
   if (supabaseAdmin) {
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -31,10 +41,20 @@ export default async function CustomerOnboardingPage() {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.mobile && profile?.pincode) {
+    profileComplete = Boolean(profile?.mobile && profile?.pincode);
+
+    if (profileComplete) {
+      // Profile is already complete — redirect to dashboard immediately without re-syncing.
       redirect("/customer/dashboard");
     }
   }
+
+  // Only call syncUserProfile for users who do not have a complete profile yet.
+  // This avoids overwriting mobile/pincode with empty strings for users whose metadata lacks them.
+  if (!profileComplete) {
+    await syncUserProfile(user);
+  }
+
 
   const userEmail = user.email ?? "";
   const userFullName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();

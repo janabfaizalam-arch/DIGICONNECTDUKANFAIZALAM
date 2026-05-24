@@ -185,6 +185,16 @@ export async function middleware(request: NextRequest) {
     const isOnboardingPath = pathname === "/customer/onboarding";
     const isIncomplete = !profile?.mobile || !profile?.pincode;
 
+    console.info("MIDDLEWARE_PROFILE_COMPLETION_CHECK", {
+      userId: user.id,
+      pathname,
+      isOnboardingPath,
+      isIncomplete,
+      hasMobile: Boolean(profile?.mobile),
+      hasPincode: Boolean(profile?.pincode),
+      isProtectedRoute,
+    });
+
     if (isIncomplete && !isOnboardingPath && isProtectedRoute) {
       const url = request.nextUrl.clone();
       url.pathname = "/customer/onboarding";

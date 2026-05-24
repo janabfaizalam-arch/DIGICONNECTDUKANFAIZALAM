@@ -61,6 +61,11 @@ export async function findAuthUserByEmailOrMobile(
   const targetMobile = normalizeCustomerMobile(mobile);
   let page = 1;
 
+  // When excludeUserId is provided (authenticated onboarding flow), skip email matching in auth.
+  // The current user's own email legitimately exists in auth — matching it is a false positive.
+  // Only check mobile uniqueness against OTHER users in auth.
+  const skipEmailMatch = Boolean(excludeUserId);
+
   while (page <= 20) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
 
@@ -78,7 +83,10 @@ export async function findAuthUserByEmailOrMobile(
         String(user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? ""),
       );
 
-      return Boolean((targetEmail && userEmail === targetEmail) || (targetMobile && userMobile === targetMobile));
+      const emailMatch = !skipEmailMatch && Boolean(targetEmail && userEmail === targetEmail);
+      const mobileMatch = Boolean(targetMobile && userMobile === targetMobile);
+
+      return emailMatch || mobileMatch;
     });
 
     if (duplicate) {
@@ -197,12 +205,28 @@ export async function assertCustomerIdentityAvailable(
     return;
   }
 
+  console.info("ONBOARDING_DUPLICATE_CHECK", {
+    email,
+    mobile,
+    excludeUserId: input.excludeUserId ?? null,
+    excludeCustomerId: input.excludeCustomerId ?? null,
+  });
+
   const authDuplicate = await findAuthUserByEmailOrMobile(supabase, email, mobile, input.excludeUserId);
 
   if (authDuplicate) {
+    console.warn("ONBOARDING_DUPLICATE_CHECK_AUTH_HIT", {
+      email,
+      mobile,
+      duplicateUserId: authDuplicate.id,
+      duplicateEmail: authDuplicate.email,
+      excludeUserId: input.excludeUserId ?? null,
+    });
     return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
   }
 
+  // For the profiles table, only id is selected (profiles.id = auth user UUID).
+  // hasDifferentUserId uses row?.user_id ?? row?.id so it correctly excludes the current user.
   const [profileEmail, profileMobile, customerEmail, customerMobile, customerProfileEmail, customerProfileMobile] =
     await Promise.all([
       supabase.from("profiles").select("id").ilike("email", email).limit(1).maybeSingle(),
@@ -225,6 +249,18 @@ export async function assertCustomerIdentityAvailable(
     throw lookupError;
   }
 
+  console.info("ONBOARDING_DUPLICATE_CHECK_DB", {
+    email,
+    mobile,
+    excludeUserId: input.excludeUserId ?? null,
+    profileEmailId: profileEmail.data?.id ?? null,
+    profileMobileId: profileMobile.data?.id ?? null,
+    customerEmailUserId: (customerEmail.data as { user_id?: string | null } | null)?.user_id ?? null,
+    customerMobileUserId: (customerMobile.data as { user_id?: string | null } | null)?.user_id ?? null,
+    customerProfileEmailUserId: (customerProfileEmail.data as { user_id?: string | null } | null)?.user_id ?? null,
+    customerProfileMobileUserId: (customerProfileMobile.data as { user_id?: string | null } | null)?.user_id ?? null,
+  });
+
   const publicDuplicate =
     hasDifferentUserId(profileEmail.data, input.excludeUserId) ||
     hasDifferentUserId(profileMobile.data, input.excludeUserId) ||
@@ -236,9 +272,17 @@ export async function assertCustomerIdentityAvailable(
     hasDifferentCustomerId(customerMobile.data, input.excludeCustomerId);
 
   if (publicDuplicate) {
+    console.warn("ONBOARDING_DUPLICATE_CHECK_DB_HIT", {
+      email,
+      mobile,
+      excludeUserId: input.excludeUserId ?? null,
+      profileEmailId: profileEmail.data?.id ?? null,
+      profileMobileId: profileMobile.data?.id ?? null,
+    });
     return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
   }
 
+  console.info("ONBOARDING_DUPLICATE_CHECK_CLEAR", { email, mobile });
   return { ok: true as const };
 }
 
@@ -455,6 +499,15 @@ export async function completeCustomerAccount(supabase: SupabaseAdminClient, inp
     avatar_url: input.avatarUrl ?? "",
     updated_at: now,
   };
+
+  console.info("ONBOARDING_PROFILE_UPDATE", {
+    userId: input.userId,
+    email,
+    mobile,
+    pincode: input.pincode ?? "",
+    city: input.city ?? "",
+    state: input.state ?? "",
+  });
 
   const { error: profileError } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
 
