@@ -98,11 +98,11 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
           : "application-documents";
         const { data, error } = await supabase.storage.from(bucket).createSignedUrl(document.storage_path, 60 * 60);
         if (!error && data?.signedUrl) {
-          return { ...document, file_url: data.signedUrl };
+          return { ...document, file_url: data.signedUrl, signed_url: data.signedUrl };
         }
         const fallback = await supabase.storage.from(bucket === "documents" ? "application-documents" : "documents").createSignedUrl(document.storage_path, 60 * 60);
         if (!fallback.error && fallback.data?.signedUrl) {
-          return { ...document, file_url: fallback.data.signedUrl };
+          return { ...document, file_url: fallback.data.signedUrl, signed_url: fallback.data.signedUrl };
         }
         console.error("[crm] ADMIN_DOC_SIGNED_URL_ERROR", {
           documentId: document.id,

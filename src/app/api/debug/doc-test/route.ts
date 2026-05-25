@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -49,15 +50,15 @@ export async function GET() {
 
     // Step 2: Upload test file to storage
     const testFileContent = new Blob(
-      ["This is a test document uploaded at " + new Date().toISOString()],
-      { type: "text/plain" }
+      ["%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\ntest-" + Date.now()],
+      { type: "application/pdf" }
     );
-    const storagePath = `applications/${testId}/customer-documents/${Date.now()}-0-test-document.txt`;
+    const storagePath = `applications/${testId}/customer-documents/${Date.now()}-0-test-document.pdf`;
 
     const { error: uploadError } = await supabase.storage
       .from("documents")
       .upload(storagePath, testFileContent, {
-        contentType: "text/plain",
+        contentType: "application/pdf",
         upsert: false,
       });
 
@@ -88,8 +89,8 @@ export async function GET() {
         application_id: testId,
         document_type: "customer_document",
         document_name: "Test Document",
-        file_name: "test-document.txt",
-        file_type: "text/plain",
+        file_name: "test-document.pdf",
+        file_type: "application/pdf",
         file_size: testFileContent.size,
         storage_path: storagePath,
         file_url: signedUrlData?.signedUrl ?? "",
@@ -144,11 +145,24 @@ export async function GET() {
           resolvedUrl: resolvedUrl?.signedUrl?.slice(0, 120) + "...",
         };
 
-    // Step 7: Cleanup test data
+    const adminDetail = await getAdminApplicationDetail(testId);
+    results.step7_admin_document_contract = {
+      success: Boolean(adminDetail?.documents?.length),
+      applicationId: testId,
+      documentCount: adminDetail?.documents?.length ?? 0,
+      documents: (adminDetail?.documents ?? []).map((document) => ({
+        file_name: document.file_name,
+        file_type: document.file_type,
+        storage_path: document.storage_path,
+        has_signed_url: Boolean(document.signed_url || document.file_url),
+        source: document.source,
+      })),
+    };
+
     await supabase.from("application_documents").delete().eq("application_id", testId);
     await supabase.storage.from("documents").remove([storagePath]);
     await supabase.from("applications").delete().eq("id", testId);
-    results.step7_cleanup = { success: true, message: "Test rows and file cleaned up" };
+    results.step8_cleanup = { success: true, message: "Test rows and file cleaned up" };
 
     results.verdict = "ALL_STEPS_PASSED";
 

@@ -168,13 +168,13 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 {document.rejection_reason ? <p className="mt-2 text-xs font-medium text-orange-700 bg-orange-50/50 rounded-xl px-3 py-2">{document.rejection_reason}</p> : null}
               </div>
               <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-slate-100">
-                {document.file_url ? (
-                  <a href={document.file_url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-full bg-blue-600 px-3 text-xs font-bold text-white shadow-sm">
+                {document.signed_url || document.file_url ? (
+                  <a href={document.signed_url || document.file_url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-full bg-blue-600 px-3 text-xs font-bold text-white shadow-sm">
                     <Download className="h-3.5 w-3.5" />
                     Download
                   </a>
                 ) : null}
-                <AdminDocumentReviewActions documentId={document.id} />
+                {document.source === "application_documents" ? <AdminDocumentReviewActions documentId={document.id} /> : null}
               </div>
             </div>
           )) : <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600 md:col-span-2 border border-dashed border-slate-200">No customer documents uploaded yet.</p>}
@@ -188,8 +188,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 <p className="font-bold text-emerald-950">{document.document_name || document.file_name}</p>
                 <p className="mt-1 text-xs text-emerald-800">{safeDateTime(document.uploaded_at ?? document.created_at)}</p>
               </div>
-              {document.file_url ? (
-                <a href={document.file_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm self-start">Open Final Document</a>
+              {document.signed_url || document.file_url ? (
+                <a href={document.signed_url || document.file_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm self-start">Open Final Document</a>
               ) : null}
             </div>
           )) : appFinalDocumentUrl ? (

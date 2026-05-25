@@ -152,6 +152,7 @@ export type ApplicationDocument = {
   customer_id?: string | null;
   file_name: string;
   file_url: string;
+  signed_url?: string | null;
   file_type: string | null;
   file_size?: number | null;
   document_type: string;
@@ -167,6 +168,7 @@ export type ApplicationDocument = {
   is_final?: boolean | null;
   metadata?: Record<string, unknown> | null;
   uploaded_at?: string | null;
+  source?: "application_documents" | "legacy_applications_documents" | "legacy_form_data_documents";
   created_at: string;
 };
 

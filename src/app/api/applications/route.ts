@@ -137,8 +137,8 @@ async function parseApplicationRequest(request: Request): Promise<{ body: Applic
 
   if (!contentType.toLowerCase().includes("multipart/form-data")) {
     const body = (await request.json()) as ApplicationPayload;
-    console.info("[applications] API_FORMDATA_FILE_KEYS", { keys: [] });
-    console.info("[applications] API_DOCUMENT_FILE_COUNT", { count: Array.isArray(body.documents) ? body.documents.length : 0, mode: "json_metadata" });
+    flowLog("APPLICATION_FORMDATA_KEYS", { keys: [], mode: "json" });
+    flowLog("APPLICATION_DOCUMENT_FILES_COUNT", { count: 0, metadataCount: Array.isArray(body.documents) ? body.documents.length : 0, mode: "json_metadata" });
     return { body, submissionFiles: [] };
   }
 
@@ -174,8 +174,8 @@ async function parseApplicationRequest(request: Request): Promise<{ body: Applic
     walletUseAmount: payload.walletUseAmount ?? Number(formData.get("walletUseAmount") ?? 0),
   };
 
-  console.info("[applications] API_FORMDATA_FILE_KEYS", { keys: fileEntries.map(([key]) => key) });
-  console.info("[applications] API_DOCUMENT_FILE_COUNT", { count: submissionFiles.length, mode: "multipart_files" });
+  flowLog("APPLICATION_FORMDATA_KEYS", { keys: Array.from(formData.keys()) });
+  flowLog("APPLICATION_DOCUMENT_FILES_COUNT", { count: submissionFiles.length, mode: "multipart_files" });
 
   return { body, submissionFiles };
 }
@@ -209,7 +209,7 @@ async function insertApplicationDocuments(
 
     const missingColumn = getMissingColumn(error);
     if (!missingColumn || strippedColumns.has(missingColumn)) {
-      console.error("[applications] Document insert failed", {
+      console.error("[applications] APPLICATION_DOCUMENT_DB_INSERT_ERROR", {
         ...context,
         error,
       });
@@ -228,6 +228,12 @@ async function insertApplicationDocuments(
       return clone;
     });
   }
+
+  console.error("[applications] APPLICATION_DOCUMENT_DB_INSERT_ERROR", {
+    ...context,
+    error: "Exceeded schema compatibility retry limit.",
+  });
+  throw new Error("Application document metadata could not be saved.");
 }
 
 async function buildUploadedFileDocumentRows({
@@ -249,6 +255,11 @@ async function buildUploadedFileDocumentRows({
   for (const application of applications) {
     for (const [index, item] of files.entries()) {
       const storagePath = `applications/${application.id}/customer-documents/${Date.now()}-${index}-${safeFileName(item.file.name)}`;
+      flowLog("APPLICATION_DOCUMENT_UPLOAD_START", {
+        applicationId: application.id,
+        fileName: item.file.name,
+        storagePath,
+      });
       const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, item.file, {
         contentType: item.file.type || "application/octet-stream",
         upsert: false,
@@ -717,11 +728,17 @@ export async function POST(request: Request) {
             });
           });
         } catch (documentsError) {
+          console.error("[applications] APPLICATION_DOCUMENT_DB_INSERT_ERROR", {
+            userId: user.id,
+            applicationIds: existingIds,
+            error: documentsError,
+          });
           secondaryWarning("documents", {
             userId: user.id,
             applicationIds: existingIds,
             error: documentsError,
           });
+          return jsonError("Documents could not be saved. Please try again.", 500);
         }
       }
 
@@ -944,11 +961,17 @@ export async function POST(request: Request) {
           });
         });
       } catch (documentsError) {
+        console.error("[applications] APPLICATION_DOCUMENT_DB_INSERT_ERROR", {
+          userId: user.id,
+          applicationIds: applications.map((application) => application.id),
+          error: documentsError,
+        });
         secondaryWarning("documents", {
           userId: user.id,
           applicationIds: applications.map((application) => application.id),
           error: documentsError,
         });
+        return jsonError("Documents could not be saved. Please try again.", 500);
       }
     }
 

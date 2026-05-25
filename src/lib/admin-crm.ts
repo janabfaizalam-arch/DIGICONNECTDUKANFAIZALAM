@@ -653,49 +653,10 @@ export async function getAdminApplicationDetail(id: string) {
   if (!application.service_slug) warnings.push("Service slug is missing.");
 
   const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, file_size, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at";
-  const possibleDocumentQueries = [];
-  console.info("[admin-crm] ADMIN_DOC_QUERY_APPLICATION_ID", { applicationId: id });
-  if (application.user_id) {
-    possibleDocumentQueries.push(
-      supabase
-        .from("application_documents")
-        .select(documentSelect)
-        .eq("user_id", application.user_id)
-        .neq("application_id", id)
-        .order("uploaded_at", { ascending: false, nullsFirst: false })
-        .limit(10),
-    );
-    possibleDocumentQueries.push(
-      supabase
-        .from("application_documents")
-        .select(documentSelect)
-        .eq("uploaded_by", application.user_id)
-        .neq("application_id", id)
-        .order("uploaded_at", { ascending: false, nullsFirst: false })
-        .limit(10),
-    );
-  }
-  if (application.customer_id) {
-    possibleDocumentQueries.push(
-      supabase
-        .from("application_documents")
-        .select(documentSelect)
-        .eq("customer_id", application.customer_id)
-        .neq("application_id", id)
-        .order("uploaded_at", { ascending: false, nullsFirst: false })
-        .limit(10),
-    );
-  }
-  possibleDocumentQueries.push(
-    supabase
-      .from("application_documents")
-      .select(documentSelect)
-      .ilike("storage_path", `%${id}%`)
-      .order("uploaded_at", { ascending: false, nullsFirst: false })
-      .limit(20),
-  );
+  const legacyDocumentSelect = "id, application_id, user_id, document_type, file_name, file_url, file_type, storage_path, created_at";
+  console.info("[admin-crm] ADMIN_APPLICATION_ID", { applicationId: id });
 
-  const [notesResult, agentsResult, statusLogsResult, referralResult, diagnosticsResult, directDocumentsResult, profileResult, customerProfileResult, customerResult, possibleDocumentResults] = await Promise.all([
+  const [notesResult, agentsResult, statusLogsResult, referralResult, diagnosticsResult, initialDocumentsResult, profileResult, customerProfileResult, customerResult] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "agent"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
@@ -705,57 +666,44 @@ export async function getAdminApplicationDetail(id: string) {
     application.user_id ? supabase.from("profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.user_id ? supabase.from("customer_profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.customer_id ? supabase.from("customers").select("id, user_id, full_name, email, mobile, address, city, state, pincode").eq("id", application.customer_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-    Promise.all(possibleDocumentQueries),
   ]);
-  if (directDocumentsResult.error) {
-    console.error("[admin-crm] ADMIN_DOCUMENTS_FETCH_ERROR", {
-      applicationId: id,
-      message: directDocumentsResult.error.message,
-      code: directDocumentsResult.error.code,
-    });
-  } else {
-    console.info("[admin-crm] ADMIN_DOCUMENTS_FETCH_COUNT", {
-      applicationId: id,
-      count: directDocumentsResult.data?.length ?? 0,
-    });
-  }
 
-  const fallbackDocumentsRaw = possibleDocumentResults.flatMap((result) => {
-    if (result.error) {
+  let directDocumentsRaw: ApplicationDocument[] = [];
+  if (initialDocumentsResult.error) {
+    console.warn("[admin-crm] ADMIN_DOCUMENTS_FETCH_ERROR", {
+      applicationId: id,
+      message: initialDocumentsResult.error.message,
+      code: initialDocumentsResult.error.code,
+      retry: "legacy_columns",
+    });
+    const legacyDocumentsResult = await supabase
+      .from("application_documents")
+      .select(legacyDocumentSelect)
+      .eq("application_id", id)
+      .order("created_at", { ascending: false, nullsFirst: false });
+    if (legacyDocumentsResult.error) {
       console.error("[admin-crm] ADMIN_DOCUMENTS_FETCH_ERROR", {
         applicationId: id,
-        message: result.error.message,
-        code: result.error.code,
-        fallback: true,
+        message: legacyDocumentsResult.error.message,
+        code: legacyDocumentsResult.error.code,
       });
-      return [];
+    } else {
+      directDocumentsRaw = (legacyDocumentsResult.data ?? []) as ApplicationDocument[];
     }
-
-    return (result.data ?? []) as ApplicationDocument[];
-  });
-  const directDocumentsRaw = (directDocumentsResult.data ?? []) as ApplicationDocument[];
-  const allDocumentsRaw = Array.from(
-    new Map([...directDocumentsRaw, ...fallbackDocumentsRaw].map((document) => [document.id, document])).values(),
-  );
+  } else {
+    directDocumentsRaw = (initialDocumentsResult.data ?? []) as ApplicationDocument[];
+  }
   console.info("[admin-crm] ADMIN_DOCUMENTS_FETCH_COUNT", {
     applicationId: id,
     directCount: directDocumentsRaw.length,
-    fallbackCount: fallbackDocumentsRaw.length,
-    totalCount: allDocumentsRaw.length,
+  });
+  console.info("[admin-crm] ADMIN_DOCUMENTS_RAW_ROWS", {
+    applicationId: id,
+    rows: directDocumentsRaw,
   });
 
-  // Trace ONE fresh test application end-to-end (Step 5 Log requirements)
-  console.error("ADMIN_APPLICATION_ID", id);
-  console.error("ADMIN_DOCUMENTS_RAW_ROWS", allDocumentsRaw);
-  console.error("ADMIN_DOCUMENTS_FETCH_COUNT", allDocumentsRaw.length);
-  if (directDocumentsResult.error) {
-    console.error("ADMIN_DOCUMENTS_FETCH_ERROR", directDocumentsResult.error);
-  }
-
-  const normalizedDocs: (ApplicationDocument & { source?: string })[] = [];
-
-  // Add application_documents table rows
-  allDocumentsRaw.forEach((doc) => {
+  const normalizedDocs: ApplicationDocument[] = [];
+  directDocumentsRaw.forEach((doc) => {
     normalizedDocs.push({
       id: doc.id,
       application_id: doc.application_id,
@@ -780,30 +728,40 @@ export async function getAdminApplicationDetail(id: string) {
     });
   });
 
-  // Extract from applications.form_data.documents legacy payload (Step 8 requirements)
-  const formDataDocs = Array.isArray(asRecord(application.form_data).documents)
-    ? (asRecord(application.form_data).documents as Record<string, unknown>[])
-    : [];
+  const applicationRecord = application as Application & { documents?: unknown };
+  const legacyDocumentSources = [
+    {
+      items: Array.isArray(applicationRecord.documents) ? applicationRecord.documents : [],
+      source: "legacy_applications_documents" as const,
+      prefix: "legacy-application",
+    },
+    {
+      items: Array.isArray(asRecord(application.form_data).documents) ? asRecord(application.form_data).documents as unknown[] : [],
+      source: "legacy_form_data_documents" as const,
+      prefix: "legacy-form-data",
+    },
+  ];
 
-  formDataDocs.forEach((doc, idx) => {
-    if (!doc || typeof doc !== "object") return;
-    const fileName = typeof doc.file_name === "string" ? doc.file_name : typeof doc.document_name === "string" ? doc.document_name : "Document";
-    const storagePath = typeof doc.storage_path === "string" ? doc.storage_path : null;
-    const exists = normalizedDocs.some(
-      (nd) => nd.file_name === fileName || (storagePath && nd.storage_path === storagePath)
-    );
-    if (!exists) {
+  legacyDocumentSources.forEach(({ items, source, prefix }) => {
+    items.forEach((item, idx) => {
+      const doc = asRecord(item);
+      if (!Object.keys(doc).length) return;
+      const fileName = firstText(doc.file_name, doc.name, doc.document_name, "Document");
+      const storagePath = firstText(doc.storage_path, doc.path) || null;
+      const exists = normalizedDocs.some((normalized) => normalized.file_name === fileName || Boolean(storagePath && normalized.storage_path === storagePath));
+      if (exists) return;
+
       normalizedDocs.push({
-        id: `legacy-form-data-${idx}`,
+        id: `${prefix}-${idx}`,
         application_id: id,
         customer_id: application.customer_id ?? null,
         uploaded_by: application.user_id ?? null,
         uploaded_by_role: "customer",
-        document_type: typeof doc.document_type === "string" ? doc.document_type : "customer_document",
-        document_name: typeof doc.document_name === "string" ? doc.document_name : typeof doc.document_type === "string" ? doc.document_type : fileName,
+        document_type: firstText(doc.document_type, "customer_document"),
+        document_name: firstText(doc.document_name, doc.document_type, fileName),
         file_name: fileName,
-        file_url: typeof doc.file_url === "string" ? doc.file_url : "",
-        file_type: typeof doc.file_type === "string" ? doc.file_type : null,
+        file_url: firstText(doc.file_url, doc.url),
+        file_type: firstText(doc.file_type, doc.type) || null,
         file_size: typeof doc.file_size === "number" ? doc.file_size : null,
         storage_path: storagePath,
         review_status: (typeof doc.review_status === "string" ? doc.review_status : typeof doc.status === "string" ? doc.status : "pending") as "pending" | "accepted" | "rejected" | "reupload_required",
@@ -813,18 +771,21 @@ export async function getAdminApplicationDetail(id: string) {
         metadata: doc.metadata && typeof doc.metadata === "object" ? (doc.metadata as Record<string, unknown>) : {},
         uploaded_at: typeof doc.uploaded_at === "string" ? doc.uploaded_at : application.created_at,
         created_at: typeof doc.created_at === "string" ? doc.created_at : application.created_at,
-        source: "legacy_payload",
+        source,
       });
-    }
+    });
   });
 
-  // Resolve signed URLs for the consolidated documents list
   const documents = await resolveDocumentUrls(normalizedDocs);
-  const possibleDocuments = await resolveDocumentUrls(
-    Array.from(new Map(fallbackDocumentsRaw.map((document) => [document.id, document])).values()),
-  );
-
-  console.error("ADMIN_DOCUMENTS_RESOLVED_URLS", documents);
+  console.info("[admin-crm] ADMIN_DOCUMENTS_RESOLVED_URLS", {
+    applicationId: id,
+    documents: documents.map((document) => ({
+      fileName: document.file_name,
+      storagePath: document.storage_path,
+      hasUrl: Boolean(document.signed_url || document.file_url),
+      source: document.source,
+    })),
+  });
 
   return {
     application,
@@ -840,7 +801,7 @@ export async function getAdminApplicationDetail(id: string) {
       pincode: firstText(profileResult.data?.pincode, customerProfileResult.data?.pincode, customerResult.data?.pincode),
     },
     documents,
-    possibleDocuments,
+    possibleDocuments: [] as ApplicationDocument[],
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
     notes: notesResult.error ? [] : notesResult.data ?? [],
