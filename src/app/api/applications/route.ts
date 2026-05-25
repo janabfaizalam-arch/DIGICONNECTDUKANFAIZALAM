@@ -238,7 +238,7 @@ async function buildUploadedFileDocumentRows({
 
   for (const application of applications) {
     for (const [index, item] of files.entries()) {
-      const storagePath = `application-documents/${application.id}/${Date.now()}-${index}-${safeFileName(item.file.name)}`;
+      const storagePath = `applications/${application.id}/customer-documents/${Date.now()}-${index}-${safeFileName(item.file.name)}`;
       const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, item.file, {
         contentType: item.file.type || "application/octet-stream",
         upsert: false,
@@ -247,6 +247,11 @@ async function buildUploadedFileDocumentRows({
       if (uploadError) {
         throw uploadError;
       }
+
+      console.info("[applications] APPLICATION_DOCUMENT_STORAGE_OK", {
+        applicationId: application.id,
+        storagePath,
+      });
 
       const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(storagePath, 60 * 60);
       rows.push({
@@ -616,6 +621,11 @@ export async function POST(request: Request) {
         return jsonError("Application could not be finalized after payment. Please contact support.", 500);
       }
 
+      flowLog("APPLICATION_CREATED", {
+        userId: user.id,
+        applicationIds: existingIds,
+        mode: "finalize_existing",
+      });
       flowLog("APPLICATION_CREATE_OK", {
         userId: user.id,
         applicationIds: existingIds,
@@ -667,7 +677,7 @@ export async function POST(request: Request) {
         : [];
       const documentsToInsert = [...metadataDocumentRows, ...uploadedFileRows];
       if (documentsToInsert.length) {
-        flowLog("DOCUMENT_UPLOAD_START", {
+        flowLog("APPLICATION_DOCUMENT_UPLOAD_START", {
           userId: user.id,
           applicationIds: existingIds,
           count: documentsToInsert.length,
@@ -689,6 +699,11 @@ export async function POST(request: Request) {
               applicationId: document.application_id,
               fileName: document.file_name,
               index,
+            });
+            console.info("[applications] APPLICATION_DOCUMENT_DB_INSERT_OK", {
+              userId: user.id,
+              applicationId: document.application_id,
+              fileName: document.file_name,
             });
           });
         } catch (documentsError) {
@@ -847,6 +862,12 @@ export async function POST(request: Request) {
       return jsonError("Application submission failed.", 500);
     }
 
+    flowLog("APPLICATION_CREATED", {
+      userId: user.id,
+      applicationIds: applications.map((application) => application.id),
+      mode: "new_application",
+    });
+
     flowLog("APPLICATION_CREATE_OK", {
       userId: user.id,
       applicationIds: applications.map((application) => application.id),
@@ -888,7 +909,7 @@ export async function POST(request: Request) {
     const documentsToInsert = [...metadataDocumentRows, ...uploadedFileRows];
 
     if (documentsToInsert.length) {
-      flowLog("DOCUMENT_UPLOAD_START", {
+      flowLog("APPLICATION_DOCUMENT_UPLOAD_START", {
         userId: user.id,
         applicationIds: applications.map((application) => application.id),
         count: documentsToInsert.length,
@@ -905,6 +926,11 @@ export async function POST(request: Request) {
             applicationId: document.application_id,
             fileName: document.file_name,
             index,
+          });
+          console.info("[applications] APPLICATION_DOCUMENT_DB_INSERT_OK", {
+            userId: user.id,
+            applicationId: document.application_id,
+            fileName: document.file_name,
           });
         });
       } catch (documentsError) {

@@ -708,13 +708,13 @@ export async function getAdminApplicationDetail(id: string) {
     Promise.all(possibleDocumentQueries),
   ]);
   if (directDocumentsResult.error) {
-    console.error("[admin-crm] ADMIN_DOC_QUERY_ERROR", {
+    console.error("[admin-crm] ADMIN_DOCUMENTS_FETCH_ERROR", {
       applicationId: id,
       message: directDocumentsResult.error.message,
       code: directDocumentsResult.error.code,
     });
   } else {
-    console.info("[admin-crm] ADMIN_DOC_QUERY_COUNT", {
+    console.info("[admin-crm] ADMIN_DOCUMENTS_FETCH_COUNT", {
       applicationId: id,
       count: directDocumentsResult.data?.length ?? 0,
     });
@@ -722,7 +722,7 @@ export async function getAdminApplicationDetail(id: string) {
 
   const fallbackDocumentsRaw = possibleDocumentResults.flatMap((result) => {
     if (result.error) {
-      console.error("[admin-crm] ADMIN_DOC_QUERY_ERROR", {
+      console.error("[admin-crm] ADMIN_DOCUMENTS_FETCH_ERROR", {
         applicationId: id,
         message: result.error.message,
         code: result.error.code,
@@ -737,7 +737,7 @@ export async function getAdminApplicationDetail(id: string) {
   const allDocumentsRaw = Array.from(
     new Map([...directDocumentsRaw, ...fallbackDocumentsRaw].map((document) => [document.id, document])).values(),
   );
-  console.info("[admin-crm] ADMIN_DOC_QUERY_COUNT", {
+  console.info("[admin-crm] ADMIN_DOCUMENTS_FETCH_COUNT", {
     applicationId: id,
     directCount: directDocumentsRaw.length,
     fallbackCount: fallbackDocumentsRaw.length,

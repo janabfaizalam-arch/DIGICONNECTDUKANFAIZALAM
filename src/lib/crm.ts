@@ -91,7 +91,9 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
       }
 
       try {
-        const bucket = document.storage_path.startsWith("applications/") || document.storage_path.startsWith("final-documents/")
+        const bucket = document.storage_path.startsWith("applications/") ||
+                       document.storage_path.startsWith("application-documents/") ||
+                       document.storage_path.startsWith("final-documents/")
           ? "documents"
           : "application-documents";
         const { data, error } = await supabase.storage.from(bucket).createSignedUrl(document.storage_path, 60 * 60);
