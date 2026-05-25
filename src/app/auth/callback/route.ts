@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import { parsePendingCustomerOAuthData, pendingCustomerOAuthCookie } from "@/lib/customer-oauth";
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
 function getSafeNext(value: string | null) {
@@ -93,27 +92,12 @@ export async function GET(request: Request) {
   }
 
   const role = await getCurrentUserRole(data.user);
-  let destination = next
+  const destination = next
     ? getSafeNext(next)
     : isCustomerRole(role)
       ? "/customer/dashboard"
       : getRoleHome(role);
 
-  // Secure Guard: If customer has incomplete onboarding fields, route them to onboarding completion first.
-  if (isCustomerRole(role)) {
-    const supabaseAdmin = getSupabaseAdmin();
-    if (supabaseAdmin) {
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("mobile, pincode")
-        .eq("id", data.user.id)
-        .maybeSingle();
-
-      if (!profile?.mobile || !profile?.pincode) {
-        destination = "/customer/onboarding";
-      }
-    }
-  }
 
   const response = NextResponse.redirect(new URL(destination, requestUrl.origin));
   response.cookies.delete({ name: pendingCustomerOAuthCookie, path: "/auth" });

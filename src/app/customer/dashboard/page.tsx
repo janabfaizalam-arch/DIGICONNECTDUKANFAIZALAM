@@ -5,6 +5,7 @@ import { CustomerDashboard } from "@/components/portal/customer-dashboard";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import { getCustomerDashboardProfile } from "@/lib/customer-profile";
 import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -105,11 +106,24 @@ export default async function CustomerDashboardPage() {
     textValue(customerProfile?.mobile) ||
     metadataMobile ||
     "Customer";
+  const supabaseAdmin = getSupabaseAdmin();
+  let userProfile = null;
+  if (supabaseAdmin) {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("mobile, pincode, city, state")
+      .eq("id", user.id)
+      .maybeSingle();
+    userProfile = data;
+  }
+  const isProfileIncomplete = !userProfile?.mobile || !userProfile?.pincode || !userProfile?.city || !userProfile?.state;
+
   return (
     <CustomerDashboard
       applications={applications}
       stats={stats}
       profile={{ name }}
+      isProfileIncomplete={isProfileIncomplete}
     />
   );
 }

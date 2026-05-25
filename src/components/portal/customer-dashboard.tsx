@@ -12,13 +12,14 @@ type CustomerDashboardProps = {
   profile: {
     name: string;
   };
+  isProfileIncomplete?: boolean;
 };
 
 function safeCurrency(value: number) {
   return formatCurrency(Number.isFinite(value) ? value : 0);
 }
 
-export function CustomerDashboard({ applications, stats, profile }: CustomerDashboardProps) {
+export function CustomerDashboard({ applications, stats, profile, isProfileIncomplete = false }: CustomerDashboardProps) {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fcfdfe_0%,#f4f8ff_100%)] px-3 py-4 md:px-8 md:py-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 md:gap-5">
@@ -114,6 +115,30 @@ export function CustomerDashboard({ applications, stats, profile }: CustomerDash
           </div>
 
         </section>
+
+        {isProfileIncomplete && (
+          <section className="relative overflow-hidden rounded-[1.5rem] border border-orange-100 bg-orange-50/20 p-5 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Your account profile is incomplete</h3>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Complete your profile details (mobile number, pincode, city, and state) to unlock all rewards and start applying for services.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/customer/profile"
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-orange-600 px-4 text-xs font-bold text-white shadow-md hover:bg-orange-700 transition"
+              >
+                Complete Profile
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* My Applications Section (Includes Timeline) */}
         <CustomerApplicationsList applications={applications} />

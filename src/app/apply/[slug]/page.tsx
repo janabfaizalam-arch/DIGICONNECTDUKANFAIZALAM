@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { portalServices, type ServiceField } from "@/lib/portal-data";
 import { getPublicServiceBySlug, getPublicServicesByCategory } from "@/lib/services";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 type PageProps = {
@@ -47,6 +48,18 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
     const servicesParam = query?.services ? `?services=${encodeURIComponent(query.services)}` : "";
     redirect(`/login/customer?redirect=${encodeURIComponent(`/apply/${slug}${servicesParam}`)}`);
   }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  let userProfile = null;
+  if (supabaseAdmin) {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("mobile, pincode, city, state")
+      .eq("id", user.id)
+      .maybeSingle();
+    userProfile = data;
+  }
+  const isProfileIncomplete = !userProfile?.mobile || !userProfile?.pincode || !userProfile?.city || !userProfile?.state;
 
   const selectedServices = Array.from(new Set([slug, ...(query?.services?.split(",") ?? [])]))
     .map((item) => item.trim())
@@ -121,6 +134,13 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
               documents: item.documents,
               fields: fieldsFor(item.categorySlug, item.slug),
             }))}
+            isProfileIncompleteInitial={isProfileIncomplete}
+            initialProfileFields={{
+              mobile: userProfile?.mobile ?? "",
+              pincode: userProfile?.pincode ?? "",
+              city: userProfile?.city ?? "",
+              state: userProfile?.state ?? "",
+            }}
           />
         </div>
       </div>

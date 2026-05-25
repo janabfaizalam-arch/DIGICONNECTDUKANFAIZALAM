@@ -170,43 +170,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (user && role === "customer") {
-    if (!profile) {
-      const profileResult = await supabase
-        .from("profiles")
-        .select("role, kyc_status, active, is_active, mobile, pincode")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!profileResult.error) {
-        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
-      }
-    }
-
-    const isOnboardingPath = pathname === "/customer/onboarding";
-    const isIncomplete = !profile?.mobile || !profile?.pincode;
-
-    console.info("MIDDLEWARE_PROFILE_COMPLETION_CHECK", {
-      userId: user.id,
-      pathname,
-      isOnboardingPath,
-      isIncomplete,
-      hasMobile: Boolean(profile?.mobile),
-      hasPincode: Boolean(profile?.pincode),
-      isProtectedRoute,
-    });
-
-    if (isIncomplete && !isOnboardingPath && isProtectedRoute) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/customer/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (!isIncomplete && isOnboardingPath) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/customer/dashboard";
-      return NextResponse.redirect(url);
-    }
-  }
 
   let isAgentActive = true;
 
