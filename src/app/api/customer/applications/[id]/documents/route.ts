@@ -46,28 +46,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const documentType = String(formData.get("documentType") ?? "Additional Document").trim();
     const file = formData.get("file");
 
-    if (!(file instanceof File) || file.size === 0) {
+    const isFileObj = file instanceof File || (
+      file !== null &&
+      typeof file === "object" &&
+      "size" in file &&
+      "name" in file
+    );
+
+    if (!isFileObj || (file as { size: number }).size === 0) {
       return jsonError("Please choose a document to upload.", 400);
     }
 
-    if (!allowedFileTypes.includes(file.type)) {
+    const fileObj = file as File;
+
+    if (!allowedFileTypes.includes(fileObj.type)) {
       return jsonError("Document must be PDF, JPG, PNG, or WebP.", 400);
     }
 
-    if (file.size > maxFileSize) {
+    if (fileObj.size > maxFileSize) {
       return jsonError("Document must be smaller than 5MB.", 400);
     }
 
     const now = new Date().toISOString();
-    const storagePath = `applications/${id}/customer-documents/${Date.now()}-${cleanFileName(file.name)}`;
+    const storagePath = `applications/${id}/customer-documents/${Date.now()}-${cleanFileName(fileObj.name)}`;
     console.info("[customer-documents] Upload received", {
       applicationId: id,
-      fileName: file.name,
-      fileType: file.type,
+      fileName: fileObj.name,
+      fileType: fileObj.type,
     });
 
-    const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, {
-      contentType: file.type,
+    const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, fileObj, {
+      contentType: fileObj.type,
       upsert: false,
     });
 
@@ -86,9 +95,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         uploaded_by_role: "customer",
         document_type: documentType || "Additional Document",
         document_name: documentType || "Additional Document",
-        file_name: file.name,
+        file_name: fileObj.name,
         file_url: signedUrlData?.signedUrl ?? "",
-        file_type: file.type,
+        file_type: fileObj.type,
         storage_path: storagePath,
         status: "pending",
         review_status: "pending",

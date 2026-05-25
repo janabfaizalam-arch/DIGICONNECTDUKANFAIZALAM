@@ -744,10 +744,87 @@ export async function getAdminApplicationDetail(id: string) {
     totalCount: allDocumentsRaw.length,
   });
 
-  const documents = await resolveDocumentUrls(allDocumentsRaw);
+  // Trace ONE fresh test application end-to-end (Step 5 Log requirements)
+  console.error("ADMIN_APPLICATION_ID", id);
+  console.error("ADMIN_DOCUMENTS_RAW_ROWS", allDocumentsRaw);
+  console.error("ADMIN_DOCUMENTS_FETCH_COUNT", allDocumentsRaw.length);
+  if (directDocumentsResult.error) {
+    console.error("ADMIN_DOCUMENTS_FETCH_ERROR", directDocumentsResult.error);
+  }
+
+  const normalizedDocs: (ApplicationDocument & { source?: string })[] = [];
+
+  // Add application_documents table rows
+  allDocumentsRaw.forEach((doc) => {
+    normalizedDocs.push({
+      id: doc.id,
+      application_id: doc.application_id,
+      customer_id: doc.customer_id ?? null,
+      uploaded_by: doc.uploaded_by ?? null,
+      uploaded_by_role: doc.uploaded_by_role ?? null,
+      document_type: doc.document_type || "customer_document",
+      document_name: doc.document_name || doc.document_type || doc.file_name,
+      file_name: doc.file_name,
+      file_url: doc.file_url || "",
+      file_type: doc.file_type || null,
+      file_size: doc.file_size || null,
+      storage_path: doc.storage_path || null,
+      review_status: doc.review_status ?? doc.status ?? "pending",
+      status: doc.status ?? doc.review_status ?? "pending",
+      is_final: doc.is_final ?? false,
+      rejection_reason: doc.rejection_reason ?? null,
+      metadata: doc.metadata ?? {},
+      uploaded_at: doc.uploaded_at ?? doc.created_at ?? new Date().toISOString(),
+      created_at: doc.created_at ?? doc.uploaded_at ?? new Date().toISOString(),
+      source: "application_documents",
+    });
+  });
+
+  // Extract from applications.form_data.documents legacy payload (Step 8 requirements)
+  const formDataDocs = Array.isArray(asRecord(application.form_data).documents)
+    ? (asRecord(application.form_data).documents as Record<string, unknown>[])
+    : [];
+
+  formDataDocs.forEach((doc, idx) => {
+    if (!doc || typeof doc !== "object") return;
+    const fileName = typeof doc.file_name === "string" ? doc.file_name : typeof doc.document_name === "string" ? doc.document_name : "Document";
+    const storagePath = typeof doc.storage_path === "string" ? doc.storage_path : null;
+    const exists = normalizedDocs.some(
+      (nd) => nd.file_name === fileName || (storagePath && nd.storage_path === storagePath)
+    );
+    if (!exists) {
+      normalizedDocs.push({
+        id: `legacy-form-data-${idx}`,
+        application_id: id,
+        customer_id: application.customer_id ?? null,
+        uploaded_by: application.user_id ?? null,
+        uploaded_by_role: "customer",
+        document_type: typeof doc.document_type === "string" ? doc.document_type : "customer_document",
+        document_name: typeof doc.document_name === "string" ? doc.document_name : typeof doc.document_type === "string" ? doc.document_type : fileName,
+        file_name: fileName,
+        file_url: typeof doc.file_url === "string" ? doc.file_url : "",
+        file_type: typeof doc.file_type === "string" ? doc.file_type : null,
+        file_size: typeof doc.file_size === "number" ? doc.file_size : null,
+        storage_path: storagePath,
+        review_status: (typeof doc.review_status === "string" ? doc.review_status : typeof doc.status === "string" ? doc.status : "pending") as "pending" | "accepted" | "rejected" | "reupload_required",
+        status: (typeof doc.status === "string" ? doc.status : typeof doc.review_status === "string" ? doc.review_status : "pending") as "pending" | "accepted" | "rejected" | "reupload_required",
+        is_final: typeof doc.is_final === "boolean" ? doc.is_final : false,
+        rejection_reason: typeof doc.rejection_reason === "string" ? doc.rejection_reason : null,
+        metadata: doc.metadata && typeof doc.metadata === "object" ? (doc.metadata as Record<string, unknown>) : {},
+        uploaded_at: typeof doc.uploaded_at === "string" ? doc.uploaded_at : application.created_at,
+        created_at: typeof doc.created_at === "string" ? doc.created_at : application.created_at,
+        source: "legacy_payload",
+      });
+    }
+  });
+
+  // Resolve signed URLs for the consolidated documents list
+  const documents = await resolveDocumentUrls(normalizedDocs);
   const possibleDocuments = await resolveDocumentUrls(
     Array.from(new Map(fallbackDocumentsRaw.map((document) => [document.id, document])).values()),
   );
+
+  console.error("ADMIN_DOCUMENTS_RESOLVED_URLS", documents);
 
   return {
     application,

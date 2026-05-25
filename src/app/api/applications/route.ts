@@ -145,7 +145,17 @@ async function parseApplicationRequest(request: Request): Promise<{ body: Applic
   const formData = await request.formData();
   const payload = parseJsonField<ApplicationPayload>(formData.get("payload"), {});
   const documentTypes = parseJsonField<string[]>(formData.get("documentTypes"), []);
-  const fileEntries = Array.from(formData.entries()).filter((entry): entry is [string, File] => entry[1] instanceof File && entry[1].size > 0);
+
+  const fileEntries = Array.from(formData.entries()).filter(
+    (entry): entry is [string, File] =>
+      entry[1] instanceof File || (
+        entry[1] !== null &&
+        typeof entry[1] === "object" &&
+        "size" in entry[1] &&
+        "name" in entry[1] &&
+        (entry[1] as { size: number }).size > 0
+      )
+  );
   const submissionFiles = fileEntries.map(([key, file], index) => ({
     key,
     file,
