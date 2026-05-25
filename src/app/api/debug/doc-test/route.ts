@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   const results: Record<string, unknown> = {};
-  const testId = `test-doc-verify-${Date.now()}`;
+  const testId = crypto.randomUUID();
 
   try {
     // Step 1: Create test application
