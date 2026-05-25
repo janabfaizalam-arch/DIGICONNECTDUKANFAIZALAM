@@ -483,7 +483,7 @@ export async function assertMobileAvailableForAuthenticatedUser(
       mobile: targetMobile,
       matchedRow: profileMobileResult.data,
     });
-    return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
+    return { ok: false as const, message: "This mobile number is already registered with another account." };
   }
 
   // 2. Check customers table
@@ -510,7 +510,7 @@ export async function assertMobileAvailableForAuthenticatedUser(
       mobile: targetMobile,
       matchedRow: customerMobileRow,
     });
-    return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
+    return { ok: false as const, message: "This mobile number is already registered with another account." };
   }
 
   // 3. Check customer_profiles table
@@ -537,7 +537,7 @@ export async function assertMobileAvailableForAuthenticatedUser(
       mobile: targetMobile,
       matchedRow: cpMobileRow,
     });
-    return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
+    return { ok: false as const, message: "This mobile number is already registered with another account." };
   }
 
   console.info("ASSERT_MOBILE_AVAILABLE_CLEAR", {
@@ -548,11 +548,121 @@ export async function assertMobileAvailableForAuthenticatedUser(
   return { ok: true as const };
 }
 
+export async function consolidateCustomerRows(
+  supabase: SupabaseAdminClient,
+  userId: string,
+  email: string,
+  mobile: string,
+) {
+  const targetEmail = normalizeEmail(email);
+  const targetMobile = normalizeCustomerMobile(mobile);
+
+  console.info("CONSOLIDATE_CUSTOMER_ROWS_START", { userId, email: targetEmail, mobile: targetMobile });
+
+  // 1. Find all matching rows in public.customers:
+  // - Rows owned by current userId
+  // - Legacy rows (user_id is NULL) matching email or mobile
+  const { data: rows, error } = await supabase
+    .from("customers")
+    .select("id, user_id, email, mobile")
+    .or(`user_id.eq.${userId},and(user_id.is.null,or(email.ilike.${targetEmail},mobile.eq.${targetMobile}))`);
+
+  if (error) {
+    console.warn("CONSOLIDATE_CUSTOMER_ROWS_QUERY_ERROR", error);
+    return;
+  }
+
+  if (rows && rows.length > 0) {
+    // 2. Identify the best row to keep as our primary row.
+    // Priority:
+    // P1: Has user_id = userId AND mobile = targetMobile
+    // P2: Has user_id = userId AND email = targetEmail
+    // P3: Has user_id = userId
+    // P4: Has mobile = targetMobile
+    // P5: Has email = targetEmail
+    // P6: Any first row
+    let primaryRow = rows.find(r => r.user_id === userId && normalizeCustomerMobile(r.mobile ?? "") === targetMobile);
+    if (!primaryRow) {
+      primaryRow = rows.find(r => r.user_id === userId && normalizeEmail(r.email ?? "") === targetEmail);
+    }
+    if (!primaryRow) {
+      primaryRow = rows.find(r => r.user_id === userId);
+    }
+    if (!primaryRow) {
+      primaryRow = rows.find(r => normalizeCustomerMobile(r.mobile ?? "") === targetMobile);
+    }
+    if (!primaryRow) {
+      primaryRow = rows.find(r => normalizeEmail(r.email ?? "") === targetEmail);
+    }
+    if (!primaryRow) {
+      primaryRow = rows[0];
+    }
+
+    console.info("CONSOLIDATE_CUSTOMER_ROWS_DECISION", {
+      totalRowsFound: rows.length,
+      primaryRowId: primaryRow.id,
+      primaryRowUserId: primaryRow.user_id,
+    });
+
+    // 3. For any other matching rows, delete them to avoid duplicates/conflicts.
+    const otherRowIds = rows.filter(r => r.id !== primaryRow.id).map(r => r.id);
+    if (otherRowIds.length > 0) {
+      console.info("CONSOLIDATE_CUSTOMER_ROWS_DELETING_DUPLICATES", { otherRowIds });
+      const { error: deleteError } = await supabase
+        .from("customers")
+        .delete()
+        .in("id", otherRowIds);
+      if (deleteError) {
+        console.warn("CONSOLIDATE_CUSTOMER_ROWS_DELETE_ERROR", deleteError);
+      }
+    }
+
+    // 4. Update/claim the primary row to be owned by userId and have correct email & mobile
+    const { error: updateError } = await supabase
+      .from("customers")
+      .update({
+        user_id: userId,
+        email: targetEmail,
+        mobile: targetMobile,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", primaryRow.id);
+
+    if (updateError) {
+      console.warn("CONSOLIDATE_CUSTOMER_ROWS_UPDATE_ERROR", updateError);
+    }
+  }
+
+  // Also clean up any legacy rows in customer_profiles (where user_id is NULL) matching email or mobile to avoid unique constraint issues there
+  const { data: cpRows, error: cpError } = await supabase
+    .from("customer_profiles")
+    .select("id")
+    .is("user_id", null)
+    .or(`email.ilike.${targetEmail},mobile.eq.${targetMobile}`);
+
+  if (!cpError && cpRows && cpRows.length > 0) {
+    const cpIdsToDelete = cpRows.map(r => r.id);
+    console.info("CONSOLIDATE_CUSTOMER_PROFILES_DELETING_LEGACY", { cpIdsToDelete });
+    const { error: cpDeleteError } = await supabase
+      .from("customer_profiles")
+      .delete()
+      .in("id", cpIdsToDelete);
+    if (cpDeleteError) {
+      console.warn("CONSOLIDATE_CUSTOMER_PROFILES_DELETE_ERROR", cpDeleteError);
+    }
+  }
+
+  console.info("CONSOLIDATE_CUSTOMER_ROWS_DONE");
+}
+
 export async function syncCustomerIdentity(supabase: SupabaseAdminClient, input: CustomerSyncInput) {
   logIdentityStepStart("CUSTOMERS_SYNC", input);
   const now = new Date().toISOString();
   const email = normalizeEmail(input.email);
   const mobile = normalizeCustomerMobile(input.mobile);
+
+  // Consolidate first to avoid unique constraint violations
+  await consolidateCustomerRows(supabase, input.userId, email, mobile);
   const customerName = input.fullName.trim() || "Customer";
 
   const minimalCustomerPayload = {
