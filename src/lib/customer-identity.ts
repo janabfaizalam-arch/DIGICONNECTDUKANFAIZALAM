@@ -237,6 +237,13 @@ export async function assertCustomerIdentityAvailable(
         ),
         excludeUserId: input.excludeUserId,
       });
+      console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+        source: "auth/profiles/customers/customer_profiles/users",
+        currentUserId: input.excludeUserId ?? null,
+        email,
+        mobile,
+        matchedRow: authDuplicate,
+      });
       return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
     }
 
@@ -257,6 +264,13 @@ export async function assertCustomerIdentityAvailable(
         DUPLICATE_MATCH_USER_ID: profileMobileResult.data.id,
         DUPLICATE_MATCH_MOBILE: mobile,
         excludeUserId: input.excludeUserId,
+      });
+      console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+        source: "auth/profiles/customers/customer_profiles/users",
+        currentUserId: input.excludeUserId ?? null,
+        email,
+        mobile,
+        matchedRow: profileMobileResult.data,
       });
       return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
     }
@@ -283,6 +297,13 @@ export async function assertCustomerIdentityAvailable(
         DUPLICATE_MATCH_MOBILE: mobile,
         excludeUserId: input.excludeUserId,
       });
+      console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+        source: "auth/profiles/customers/customer_profiles/users",
+        currentUserId: input.excludeUserId ?? null,
+        email,
+        mobile,
+        matchedRow: customerMobileRow,
+      });
       return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
     }
 
@@ -306,6 +327,13 @@ export async function assertCustomerIdentityAvailable(
         DUPLICATE_MATCH_USER_ID: cpMobileRow.user_id,
         DUPLICATE_MATCH_MOBILE: mobile,
         excludeUserId: input.excludeUserId,
+      });
+      console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+        source: "auth/profiles/customers/customer_profiles/users",
+        currentUserId: input.excludeUserId ?? null,
+        email,
+        mobile,
+        matchedRow: cpMobileRow,
       });
       return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
     }
@@ -336,6 +364,13 @@ export async function assertCustomerIdentityAvailable(
       DUPLICATE_MATCH_USER_ID: authDuplicate.id,
       DUPLICATE_MATCH_EMAIL: authDuplicate.email ?? null,
       excludeUserId: null,
+    });
+    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+      source: "auth/profiles/customers/customer_profiles/users",
+      currentUserId: null,
+      email,
+      mobile,
+      matchedRow: authDuplicate,
     });
     return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
   }
@@ -390,10 +425,126 @@ export async function assertCustomerIdentityAvailable(
       profileEmailId: profileEmail.data?.id ?? null,
       profileMobileId: profileMobile.data?.id ?? null,
     });
+    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+      source: "auth/profiles/customers/customer_profiles/users",
+      currentUserId: null,
+      email,
+      mobile,
+      matchedRow: {
+        profileEmail: profileEmail.data,
+        profileMobile: profileMobile.data,
+        customerEmail: customerEmail.data,
+        customerMobile: customerMobile.data,
+        customerProfileEmail: customerProfileEmail.data,
+        customerProfileMobile: customerProfileMobile.data,
+      },
+    });
     return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
   }
 
   console.info("ONBOARDING_DUPLICATE_CHECK_CLEAR", { email, mobile });
+  return { ok: true as const };
+}
+
+export async function assertMobileAvailableForAuthenticatedUser(
+  supabase: SupabaseAdminClient,
+  mobile: string,
+  currentUserId: string,
+) {
+  const targetMobile = normalizeCustomerMobile(mobile);
+
+  if (!targetMobile) {
+    return { ok: true as const };
+  }
+
+  console.info("ASSERT_MOBILE_AVAILABLE_START", {
+    mobile: targetMobile,
+    currentUserId,
+  });
+
+  // 1. Check profiles table (id is the auth UUID)
+  const profileMobileResult = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("mobile", targetMobile)
+    .neq("id", currentUserId)
+    .limit(1)
+    .maybeSingle();
+
+  if (profileMobileResult.error && !isMissingTableOrColumnError(profileMobileResult.error)) {
+    throw profileMobileResult.error;
+  }
+
+  if (profileMobileResult.data?.id) {
+    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+      source: "auth/profiles/customers/customer_profiles/users",
+      currentUserId,
+      email: null,
+      mobile: targetMobile,
+      matchedRow: profileMobileResult.data,
+    });
+    return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
+  }
+
+  // 2. Check customers table
+  const customerMobileResult = await supabase
+    .from("customers")
+    .select("id, user_id")
+    .eq("mobile", targetMobile)
+    .not("user_id", "is", null)
+    .neq("user_id", currentUserId)
+    .limit(1)
+    .maybeSingle();
+
+  if (customerMobileResult.error && !isMissingTableOrColumnError(customerMobileResult.error)) {
+    throw customerMobileResult.error;
+  }
+
+  const customerMobileRow = customerMobileResult.data as { id: string; user_id: string | null } | null;
+
+  if (customerMobileRow?.user_id) {
+    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+      source: "auth/profiles/customers/customer_profiles/users",
+      currentUserId,
+      email: null,
+      mobile: targetMobile,
+      matchedRow: customerMobileRow,
+    });
+    return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
+  }
+
+  // 3. Check customer_profiles table
+  const cpMobileResult = await supabase
+    .from("customer_profiles")
+    .select("id, user_id")
+    .eq("mobile", targetMobile)
+    .not("user_id", "is", null)
+    .neq("user_id", currentUserId)
+    .limit(1)
+    .maybeSingle();
+
+  if (cpMobileResult.error && !isMissingTableOrColumnError(cpMobileResult.error)) {
+    throw cpMobileResult.error;
+  }
+
+  const cpMobileRow = cpMobileResult.data as { id: string; user_id: string | null } | null;
+
+  if (cpMobileRow?.user_id) {
+    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
+      source: "auth/profiles/customers/customer_profiles/users",
+      currentUserId,
+      email: null,
+      mobile: targetMobile,
+      matchedRow: cpMobileRow,
+    });
+    return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
+  }
+
+  console.info("ASSERT_MOBILE_AVAILABLE_CLEAR", {
+    mobile: targetMobile,
+    currentUserId,
+  });
+
   return { ok: true as const };
 }
 

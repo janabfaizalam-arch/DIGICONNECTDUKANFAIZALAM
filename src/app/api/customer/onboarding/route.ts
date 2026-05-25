@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import {
-  assertCustomerIdentityAvailable,
+  assertMobileAvailableForAuthenticatedUser,
   completeCustomerAccount,
 } from "@/lib/customer-identity";
 import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
@@ -49,18 +49,123 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Server database connection failed." }, { status: 500 });
     }
 
-    // 1. Prevent duplicate customer profiles (email or mobile already in use by another user)
-    const check = await assertCustomerIdentityAvailable(supabaseAdmin, {
-      email: user.email!,
-      mobile: cleanMobile,
-      excludeUserId: user.id,
-    });
+    // 1. Prevent duplicate customer profiles (mobile already in use by another confirmed user)
+    // For authenticated onboarding, we use the mobile-only check and ignore the user's own email.
+    const check = await assertMobileAvailableForAuthenticatedUser(supabaseAdmin, cleanMobile, user.id);
 
     if (check && !check.ok) {
       return NextResponse.json({ error: check.message }, { status: 409 });
     }
 
-    // 2. Persist profile details across profiles, customer_profiles, customers, and users tables
+    // 2. Claim legacy unowned rows (one-time repair/claim step)
+    // Claim customers rows with same email/mobile and user_id null
+    const { data: legacyCustomers } = await supabaseAdmin
+      .from("customers")
+      .select("id, user_id, email, mobile")
+      .or(`email.ilike.${user.email},mobile.eq.${cleanMobile}`)
+      .is("user_id", null);
+
+    if (legacyCustomers && legacyCustomers.length > 0) {
+      console.info("ONBOARDING_CLAIM_LEGACY_CUSTOMERS", {
+        count: legacyCustomers.length,
+        userId: user.id,
+      });
+
+      // Update the first legacy row to point to the user ID
+      const firstLegacy = legacyCustomers[0];
+      const { error: updateError } = await supabaseAdmin
+        .from("customers")
+        .update({
+          user_id: user.id,
+          email: user.email!,
+          mobile: cleanMobile,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", firstLegacy.id);
+
+      if (updateError) {
+        console.error("ONBOARDING_CLAIM_LEGACY_CUSTOMER_FAILED", {
+          id: firstLegacy.id,
+          error: updateError,
+        });
+      } else {
+        console.info("ONBOARDING_CLAIM_LEGACY_CUSTOMER_SUCCESS", {
+          id: firstLegacy.id,
+          userId: user.id,
+        });
+
+        // Delete other legacy rows that match the same criteria to avoid duplicates
+        if (legacyCustomers.length > 1) {
+          const otherIds = legacyCustomers.slice(1).map((r) => r.id);
+          const { error: deleteError } = await supabaseAdmin
+            .from("customers")
+            .delete()
+            .in("id", otherIds);
+
+          if (deleteError) {
+            console.warn("ONBOARDING_CLEANUP_DUPLICATE_LEGACY_CUSTOMERS_FAILED", {
+              ids: otherIds,
+              error: deleteError,
+            });
+          }
+        }
+      }
+    }
+
+    // Claim customer_profiles rows with same email/mobile and user_id null
+    const { data: legacyCPs } = await supabaseAdmin
+      .from("customer_profiles")
+      .select("id, user_id, email, mobile")
+      .or(`email.ilike.${user.email},mobile.eq.${cleanMobile}`)
+      .is("user_id", null);
+
+    if (legacyCPs && legacyCPs.length > 0) {
+      console.info("ONBOARDING_CLAIM_LEGACY_CP", {
+        count: legacyCPs.length,
+        userId: user.id,
+      });
+
+      const firstLegacyCP = legacyCPs[0];
+      const { error: updateError } = await supabaseAdmin
+        .from("customer_profiles")
+        .update({
+          id: user.id,
+          user_id: user.id,
+          email: user.email!,
+          mobile: cleanMobile,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", firstLegacyCP.id);
+
+      if (updateError) {
+        console.error("ONBOARDING_CLAIM_LEGACY_CP_FAILED", {
+          id: firstLegacyCP.id,
+          error: updateError,
+        });
+      } else {
+        console.info("ONBOARDING_CLAIM_LEGACY_CP_SUCCESS", {
+          id: firstLegacyCP.id,
+          userId: user.id,
+        });
+
+        if (legacyCPs.length > 1) {
+          const otherIds = legacyCPs.slice(1).map((r) => r.id);
+          const { error: deleteError } = await supabaseAdmin
+            .from("customer_profiles")
+            .delete()
+            .in("id", otherIds);
+
+          if (deleteError) {
+            console.warn("ONBOARDING_CLEANUP_DUPLICATE_LEGACY_CP_FAILED", {
+              ids: otherIds,
+              error: deleteError,
+            });
+          }
+        }
+      }
+    }
+
+    // 3. Persist profile details across profiles, customer_profiles, customers, and users tables
     const avatarUrl = String(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? "");
     const fullName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Customer").trim();
 
