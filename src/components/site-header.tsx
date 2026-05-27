@@ -370,6 +370,10 @@ export function SiteHeader() {
                 <LogIn className="h-4 w-4" />
                 Login
               </Link>
+              <Link href="/ap/login" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-500 px-4 text-sm font-bold text-white shadow-md shadow-indigo-600/15 transition-all duration-200 md:hover:-translate-y-0.5">
+                <UserRound className="h-4 w-4" />
+                AP Login
+              </Link>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/45 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-200 md:hover:-translate-y-0.5 md:hover:bg-white/60">
                 <MessageCircle className="h-4 w-4" />
                 WhatsApp

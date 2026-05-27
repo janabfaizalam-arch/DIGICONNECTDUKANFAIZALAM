@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Download, FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
+import { Download, FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle, UserRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -130,6 +130,14 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
               >
                 <LogIn className="h-4 w-4" />
                 Login
+              </Link>
+              <Link
+                href="/ap/login"
+                onClick={closeMenu}
+                className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 px-4 text-sm font-bold text-white shadow-md shadow-indigo-600/15"
+              >
+                <UserRound className="h-4 w-4" />
+                AP Login
               </Link>
               <a
                 href={whatsappUrl}
