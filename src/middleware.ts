@@ -109,6 +109,11 @@ function applyCustomerRedirect(url: URL, pathname: string) {
 }
 
 function getLegacyAgentRedirect(pathname: string): string | null {
+  // Exclude new AP routes from legacy redirect logic
+  if (pathname.startsWith("/ap")) {
+    return null;
+  }
+
   // Exact match
   if (legacyAgentRedirects[pathname]) {
     return legacyAgentRedirects[pathname];
@@ -159,7 +164,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const isProtectedRoute = protectedRoutes.some((route) => matchesRoute(pathname, route));
+  const isProtectedRoute = protectedRoutes.some((route) => matchesRoute(pathname, route)) &&
+                           !authRoutes.some((route) => matchesRoute(pathname, route));
   const isAuthRoute = authRoutes.some((route) => matchesRoute(pathname, route));
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
