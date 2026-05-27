@@ -52,7 +52,7 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/applications", label: "Applications", description: "Service workflow", icon: FileText },
       { href: "/admin/customers", label: "Customers", description: "Customer records", icon: UsersRound },
       { href: "/admin/customers/new", label: "Create Customer", description: "Customer signup", icon: UserPlus },
-      { href: "/admin/agents", label: "Agents", description: "Agent IDs and commissions", icon: UserCheck },
+      { href: "/admin/agency-partners", label: "Agency Partners", description: "AP IDs and commissions", icon: UserCheck },
       { href: "/admin/agent-services", label: "Agent Services", description: "Visibility and payouts", icon: ListChecks },
     ],
   },

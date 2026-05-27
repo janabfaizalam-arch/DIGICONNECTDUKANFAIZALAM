@@ -3,14 +3,30 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseUrl } from "@/lib/supabase/config";
 
-const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/apply"];
-const authRoutes = ["/login", "/login/agent", "/login/customer", "/admin-login", "/agent-login", "/customer-login"];
+const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/ap", "/apply"];
+const authRoutes = ["/login", "/login/agent", "/login/customer", "/admin-login", "/agent-login", "/customer-login", "/ap/login", "/ap/forgot-password", "/ap/reset-password"];
 const removedRoleRoutes = ["/staff", "/team", "/employee", "/super-admin", "/super-admin-login", "/login/staff"];
 
-type AppRole = "admin" | "agent" | "customer";
+// Legacy agent routes that redirect to /ap/*
+const legacyAgentRedirects: Record<string, string> = {
+  "/agent/dashboard": "/ap/dashboard",
+  "/agent/applications/new": "/ap/applications/new",
+  "/agent/applications": "/ap/applications",
+  "/agent/assigned-work": "/ap/assigned-work",
+  "/agent/commissions": "/ap/commissions",
+  "/agent/payout-history": "/ap/wallet",
+  "/agent/profile": "/ap/profile",
+  "/agent/support": "/ap/support",
+  "/agent": "/ap/dashboard",
+  "/agent-login": "/ap/login",
+  "/login/agent": "/ap/login",
+};
 
-const appRoles: AppRole[] = ["admin", "agent", "customer"];
+type AppRole = "admin" | "agency_partner" | "customer";
+
+const appRoles: AppRole[] = ["admin", "agency_partner", "customer"];
 const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
+const apRoleAliases = new Set(["agent", "agency_partner"]);
 
 type ProfileAuthShape = {
   role?: string | null;
@@ -32,6 +48,10 @@ function normalizeAppRole(role: unknown): AppRole | null {
     return "admin";
   }
 
+  if (apRoleAliases.has(value)) {
+    return "agency_partner";
+  }
+
   return appRoles.includes(value as AppRole) ? (value as AppRole) : null;
 }
 
@@ -40,8 +60,8 @@ function getRoleHome(role: AppRole) {
     return "/admin";
   }
 
-  if (role === "agent") {
-    return "/agent/dashboard";
+  if (role === "agency_partner") {
+    return "/ap/dashboard";
   }
 
   return "/customer/dashboard";
@@ -52,8 +72,13 @@ function isAllowedForPath(pathname: string, role: AppRole) {
     return role === "admin";
   }
 
+  if (matchesRoute(pathname, "/ap")) {
+    return role === "agency_partner";
+  }
+
+  // Legacy agent routes — only AP role
   if (matchesRoute(pathname, "/agent")) {
-    return role === "agent";
+    return role === "agency_partner";
   }
 
   if (matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer")) {
@@ -64,8 +89,8 @@ function isAllowedForPath(pathname: string, role: AppRole) {
 }
 
 function getLoginPathForProtectedRoute(pathname: string) {
-  if (matchesRoute(pathname, "/agent")) {
-    return "/login/agent";
+  if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
+    return "/ap/login";
   }
 
   if (matchesRoute(pathname, "/customer") || matchesRoute(pathname, "/apply")) {
@@ -83,12 +108,50 @@ function applyCustomerRedirect(url: URL, pathname: string) {
   url.searchParams.set("redirect", `${pathname}${url.search}`);
 }
 
+function getLegacyAgentRedirect(pathname: string): string | null {
+  // Exact match
+  if (legacyAgentRedirects[pathname]) {
+    return legacyAgentRedirects[pathname];
+  }
+
+  // Dynamic routes like /agent/applications/[id]
+  if (pathname.startsWith("/agent/applications/") && pathname !== "/agent/applications/new") {
+    const id = pathname.replace("/agent/applications/", "");
+    return `/ap/applications/${id}`;
+  }
+
+  // Catch-all for /agent/*
+  if (matchesRoute(pathname, "/agent")) {
+    return "/ap/dashboard";
+  }
+
+  return null;
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request,
   });
 
   const { pathname } = request.nextUrl;
+
+  // Legacy agent route redirects (before auth check)
+  const legacyRedirect = getLegacyAgentRedirect(pathname);
+  if (legacyRedirect && !matchesRoute(pathname, "/agent-login")) {
+    // Only redirect actual agent routes, not the agent-login (handled separately)
+    const url = request.nextUrl.clone();
+    url.pathname = legacyRedirect;
+    return NextResponse.redirect(url);
+  }
+
+  // Agent-login redirect
+  if (pathname === "/agent-login" || matchesRoute(pathname, "/agent-login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/ap/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   if (removedRoleRoutes.some((route) => matchesRoute(pathname, route))) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin-login";
@@ -152,64 +215,78 @@ export async function middleware(request: NextRequest) {
     if (adminEmails.includes(email)) {
       role = "admin";
     } else {
-      const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active, mobile, pincode").eq("id", user.id).maybeSingle();
-      if (profileResult.error) {
-        const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status, mobile, pincode").eq("id", user.id).maybeSingle();
-        profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
+      // Check agency_partners table first
+      const apResult = await supabase.from("agency_partners").select("id, status").eq("user_id", user.id).maybeSingle();
+      if (apResult.data) {
+        role = "agency_partner";
       } else {
-        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
-      }
-      const profileRole = normalizeAppRole(profile?.role);
+        const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active, mobile, pincode").eq("id", user.id).maybeSingle();
+        if (profileResult.error) {
+          const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status, mobile, pincode").eq("id", user.id).maybeSingle();
+          profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
+        } else {
+          profile = (profileResult.data as ProfileAuthShape | null) ?? null;
+        }
+        const profileRole = normalizeAppRole(profile?.role);
 
-      if (profileRole) {
-        role = profileRole;
-      } else {
-        const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
-        role = normalizeAppRole(portalUser?.role) ?? "customer";
+        if (profileRole) {
+          role = profileRole;
+        } else {
+          const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
+          role = normalizeAppRole(portalUser?.role) ?? "customer";
+        }
       }
     }
   }
 
+  // AP active check
+  let isAPActive = true;
 
-  let isAgentActive = true;
+  if (user && role === "agency_partner") {
+    // Check new agency_partners table
+    const { data: apRecord } = await supabase
+      .from("agency_partners")
+      .select("id, status, kyc_status")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  if (user && role === "agent") {
-    if (!profile) {
-      const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active").eq("id", user.id).maybeSingle();
-      if (profileResult.error) {
-        const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
-        profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
-      } else {
-        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
-      }
-    }
-
-    if (!profile) {
-      console.error("[middleware:agent-auth] Agent profile missing.", { userId: user.id });
-      isAgentActive = false;
-    } else if (normalizeAppRole(profile.role) !== "agent") {
-      console.error("[middleware:agent-auth] Profile role is not agent.", { userId: user.id, role: profile.role });
-      isAgentActive = false;
-    } else if (String(profile.kyc_status ?? "").toLowerCase() !== "approved") {
-      console.error("[middleware:agent-auth] Agent KYC is not approved.", { userId: user.id, kycStatus: profile.kyc_status });
-      isAgentActive = false;
+    if (apRecord) {
+      const ap = apRecord as { id: string; status: string; kyc_status: string };
+      isAPActive = ap.status === "active" && ap.kyc_status === "approved";
     } else {
-      const activeChecks = [profile.active, profile.is_active].filter((value) => typeof value === "boolean");
-      isAgentActive = activeChecks.every((value) => value === true);
+      // Fallback: check legacy profiles
+      if (!profile) {
+        const profileResult = await supabase.from("profiles").select("role, kyc_status, active, is_active").eq("id", user.id).maybeSingle();
+        if (profileResult.error) {
+          const fallbackProfileResult = await supabase.from("profiles").select("role, kyc_status").eq("id", user.id).maybeSingle();
+          profile = (fallbackProfileResult.data as ProfileAuthShape | null) ?? null;
+        } else {
+          profile = (profileResult.data as ProfileAuthShape | null) ?? null;
+        }
+      }
 
-      if (!isAgentActive) {
-        console.error("[middleware:agent-auth] Agent profile inactive.", {
-          userId: user.id,
-          active: typeof profile.active === "boolean" ? profile.active : "missing",
-          is_active: typeof profile.is_active === "boolean" ? profile.is_active : "missing",
-        });
+      if (!profile) {
+        isAPActive = false;
+      } else if (String(profile.kyc_status ?? "").toLowerCase() !== "approved") {
+        isAPActive = false;
+      } else {
+        const activeChecks = [profile.active, profile.is_active].filter((value) => typeof value === "boolean");
+        isAPActive = activeChecks.length === 0 || activeChecks.every((value) => value === true);
       }
     }
   }
 
+  // AP login route
+  if (user && matchesRoute(pathname, "/ap/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = role === "agency_partner" && isAPActive ? "/ap/dashboard" : "/unauthorized";
+    return NextResponse.redirect(url);
+  }
+
+  // Legacy agent login route
   if (user && matchesRoute(pathname, "/login/agent")) {
     const url = request.nextUrl.clone();
-    url.pathname = role === "agent" && isAgentActive ? "/agent/dashboard" : "/unauthorized";
+    url.pathname = role === "agency_partner" && isAPActive ? "/ap/dashboard" : "/unauthorized";
     return NextResponse.redirect(url);
   }
 
@@ -235,11 +312,11 @@ export async function middleware(request: NextRequest) {
 
   if (user && isProtectedRoute && !isAllowedForPath(pathname, role)) {
     const url = request.nextUrl.clone();
-    url.pathname = matchesRoute(pathname, "/agent") ? "/unauthorized" : getRoleHome(role);
+    url.pathname = (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) ? "/unauthorized" : getRoleHome(role);
     return NextResponse.redirect(url);
   }
 
-  if (user && matchesRoute(pathname, "/agent") && !isAgentActive) {
+  if (user && matchesRoute(pathname, "/ap") && !isAPActive) {
     const url = request.nextUrl.clone();
     url.pathname = "/unauthorized";
     return NextResponse.redirect(url);

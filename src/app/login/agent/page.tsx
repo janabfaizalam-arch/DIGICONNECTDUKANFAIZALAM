@@ -20,7 +20,7 @@ export default async function AgentLoginPage() {
     }
 
     const role = await getCurrentUserRole(user);
-    if (role === "agent") {
+    if (role === "agency_partner") {
       redirect("/unauthorized");
     }
 

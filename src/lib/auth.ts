@@ -37,16 +37,21 @@ export function isAdminUser(user: User | null) {
   return role === "admin" || adminEmails.includes(email);
 }
 
-export type AppRole = "admin" | "agent" | "customer";
+export type AppRole = "admin" | "agency_partner" | "customer";
 
-const appRoles: AppRole[] = ["admin", "agent", "customer"];
+const appRoles: AppRole[] = ["admin", "agency_partner", "customer"];
 const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
+const apRoleAliases = new Set(["agent", "agency_partner"]);
 
 export function normalizeAppRole(role: unknown): AppRole | null {
   const value = String(role ?? "").toLowerCase();
 
   if (adminRoleAliases.has(value)) {
     return "admin";
+  }
+
+  if (apRoleAliases.has(value)) {
+    return "agency_partner";
   }
 
   return appRoles.includes(value as AppRole) ? (value as AppRole) : null;
@@ -58,16 +63,20 @@ export function isAdminRole(role: AppRole | string | null | undefined) {
 
 export function isAgentRole(role: AppRole | string | null | undefined) {
   const normalizedRole = normalizeAppRole(role);
-  return normalizedRole === "admin" || normalizedRole === "agent";
+  return normalizedRole === "admin" || normalizedRole === "agency_partner";
 }
 
 export function isOnlyAgentRole(role: AppRole | string | null | undefined) {
-  return normalizeAppRole(role) === "agent";
+  return normalizeAppRole(role) === "agency_partner";
+}
+
+export function isAgencyPartnerRole(role: AppRole | string | null | undefined) {
+  return normalizeAppRole(role) === "agency_partner";
 }
 
 export type AgentAccessResult =
-  | { ok: true; reason: "active_approved_agent" }
-  | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "kyc_not_approved" | "missing_server_config"; role?: AppRole | string | null };
+  | { ok: true; reason: "active_approved_agent" | "active_approved_ap" }
+  | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "kyc_not_approved" | "missing_server_config" | "ap_not_active"; role?: AppRole | string | null };
 
 type SupabaseAdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
@@ -115,8 +124,8 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
 
   const role = await getCurrentUserRole(user);
 
-  if (!isOnlyAgentRole(role)) {
-    console.error("[agent-auth] User is not an agent.", { userId: user.id, role });
+  if (!isOnlyAgentRole(role) && !isAgencyPartnerRole(role)) {
+    console.error("[agent-auth] User is not an agent/AP.", { userId: user.id, role });
     return { ok: false, reason: "wrong_role", role };
   }
 
@@ -127,6 +136,27 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
     return { ok: false, reason: "missing_server_config", role };
   }
 
+  // First check agency_partners table (new system)
+  const { data: apRecord } = await supabaseAdmin
+    .from("agency_partners")
+    .select("id, status, kyc_status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (apRecord) {
+    const ap = apRecord as { id: string; status: string; kyc_status: string };
+    if (ap.status !== "active") {
+      console.error("[ap-auth] AP is not active.", { userId: user.id, status: ap.status });
+      return { ok: false, reason: "ap_not_active", role };
+    }
+    if (ap.kyc_status !== "approved") {
+      console.error("[ap-auth] AP KYC is not approved.", { userId: user.id, kycStatus: ap.kyc_status });
+      return { ok: false, reason: "kyc_not_approved", role };
+    }
+    return { ok: true, reason: "active_approved_ap" };
+  }
+
+  // Fallback: check legacy profiles table
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
     .select("id, role, kyc_status")
@@ -145,8 +175,8 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
 
   const profileRole = String(profile.role ?? "").toLowerCase();
 
-  if (profileRole !== "agent") {
-    console.error("[agent-auth] Agent profile has wrong role.", { userId: user.id, profileRole });
+  if (profileRole !== "agent" && profileRole !== "agency_partner") {
+    console.error("[agent-auth] Profile has wrong role.", { userId: user.id, profileRole });
     return { ok: false, reason: "wrong_role", role: profileRole };
   }
 
@@ -227,8 +257,8 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
     return "/admin";
   }
 
-  if (normalizeAppRole(role) === "agent") {
-    return "/agent/dashboard";
+  if (normalizeAppRole(role) === "agency_partner") {
+    return "/ap/dashboard";
   }
 
   return getCustomerHome();

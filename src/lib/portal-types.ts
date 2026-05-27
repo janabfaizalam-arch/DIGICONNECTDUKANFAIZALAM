@@ -242,6 +242,10 @@ export type Application = {
   customer_email?: string | null;
   customer_mobile?: string | null;
   agent_id?: string | null;
+  agency_partner_id?: string | null;
+  application_code?: string | null;
+  customerName?: string | null;
+  customer_name?: string | null;
   created_by?: string | null;
   created_by_agent_id?: string | null;
   assigned_agent_id?: string | null;
