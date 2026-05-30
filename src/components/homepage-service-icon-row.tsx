@@ -5,6 +5,7 @@ import {
   BadgeIndianRupee,
   CarFront,
   ChartNoAxesColumnIncreasing,
+  CreditCard,
   Fingerprint,
   ReceiptText,
   Store,
@@ -20,13 +21,14 @@ const services = [
   { label: "Aadhaar", href: "/services/gov-id-form-submission", icon: Fingerprint, bg: "bg-purple-50 text-purple-700 md:group-hover:bg-purple-600 md:group-hover:text-white" },
   { label: "Driving Licence", href: "/services/driving-licence", icon: CarFront, bg: "bg-rose-50 text-rose-700 md:group-hover:bg-rose-600 md:group-hover:text-white" },
   { label: "CIBIL", href: "/services/cibil-report-analysis-and-credit-health-consultation", icon: ChartNoAxesColumnIncreasing, bg: "bg-orange-50 text-orange-700 md:group-hover:bg-orange-600 md:group-hover:text-white" },
+  { label: "PVC Card", href: "/services/pvc-card-printing", icon: CreditCard, bg: "bg-sky-50 text-sky-700 md:group-hover:bg-sky-600 md:group-hover:text-white" },
 ];
 
 export function HomepageServiceIconRow() {
   return (
     <section aria-label="Popular services" className="bg-white px-0 py-5 md:py-8">
       <div className="container-shell">
-        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-9 md:gap-3">
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-10 md:gap-3">
           {services.map(({ label, href, icon: Icon, bg }) => (
             <Link
               key={label}

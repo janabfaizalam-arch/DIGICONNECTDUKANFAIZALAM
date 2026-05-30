@@ -23,6 +23,15 @@ import {
   type PmVishwakarmaApplicationValues,
   usePmVishwakarmaPincodeAutofill,
 } from "@/components/portal/pm-vishwakarma-application-fields";
+import {
+  buildPvcCardDetails,
+  createPvcCardInitialValues,
+  getPvcCardValidationError,
+  isPvcCardComplete,
+  PvcCardApplicationFields,
+  type PvcCardApplicationValues,
+  usePvcCardPincodeAutofill,
+} from "@/components/portal/pvc-card-application-fields";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -166,6 +175,7 @@ export function ServiceApplicationForm({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [pmVishwakarmaValues, setPmVishwakarmaValues] = useState(() => createPmVishwakarmaInitialValues());
   const [eshramValues, setEshramValues] = useState(() => createEshramInitialValues());
+  const [pvcCardValues, setPvcCardValues] = useState(() => createPvcCardInitialValues());
   const [pincodeStatus, setPincodeStatus] = useState("");
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
@@ -182,6 +192,7 @@ export function ServiceApplicationForm({
   }, [service, services]);
   const isPmVishwakarma = selectedServices.length === 1 && selectedServices[0]?.slug === "pm-vishwakarma-yojana";
   const isEshram = selectedServices.length === 1 && selectedServices[0]?.slug === "eshram-card-registration";
+  const isPvcCard = selectedServices.length === 1 && selectedServices[0]?.slug === "pvc-card-printing";
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
   const totalAmount = isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
@@ -213,6 +224,15 @@ export function ServiceApplicationForm({
                 city: eshramValues.city,
                 message: eshramValues.message,
               }
+          : isPvcCard
+            ? {
+                name: pvcCardValues.name,
+                mobile: pvcCardValues.mobile,
+                email: pvcCardValues.email,
+                city: pvcCardValues.city,
+                address: pvcCardValues.deliveryAddress,
+                message: pvcCardValues.message,
+              }
           : {
               name: applicantName,
               mobile: applicantMobile,
@@ -222,7 +242,7 @@ export function ServiceApplicationForm({
               message: applicantMessage,
             },
       ),
-    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues],
+    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues, pvcCardValues, isPvcCard],
   );
   const serviceDetailsForPayment = useMemo(
     () =>
@@ -230,16 +250,19 @@ export function ServiceApplicationForm({
         ? buildPmVishwakarmaDetails(pmVishwakarmaValues)
         : isEshram
           ? buildEshramDetails(eshramValues)
-          : normalizedApplicationDraft.details,
-    [eshramValues, isEshram, isPmVishwakarma, normalizedApplicationDraft.details, pmVishwakarmaValues],
+          : isPvcCard
+            ? buildPvcCardDetails(pvcCardValues)
+            : normalizedApplicationDraft.details,
+    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, normalizedApplicationDraft.details, pmVishwakarmaValues],
   );
   const canStartPayment =
     !isSubmitting &&
-    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram }) &&
+    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard }) &&
     /^[6-9]\d{9}$/.test(normalizedApplicationDraft.customer.mobile) &&
     (selectedDocuments.length > 0 || isEshram) &&
     (!isPmVishwakarma || isPmVishwakarmaComplete(pmVishwakarmaValues)) &&
-    (!isEshram || isEshramComplete(eshramValues));
+    (!isEshram || isEshramComplete(eshramValues)) &&
+    (!isPvcCard || isPvcCardComplete(pvcCardValues, selectedDocuments));
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -272,12 +295,23 @@ export function ServiceApplicationForm({
     setStatus: setPincodeStatus,
   });
 
+  usePvcCardPincodeAutofill({
+    enabled: isPvcCard,
+    values: pvcCardValues,
+    setValues: setPvcCardValues,
+    setStatus: setPincodeStatus,
+  });
+
   function updatePmVishwakarmaValue<Key extends keyof PmVishwakarmaApplicationValues>(key: Key, value: PmVishwakarmaApplicationValues[Key]) {
     setPmVishwakarmaValues((current) => ({ ...current, [key]: value }));
   }
 
   function updateEshramValue<Key extends keyof EshramApplicationValues>(key: Key, value: EshramApplicationValues[Key]) {
     setEshramValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function updatePvcCardValue<Key extends keyof PvcCardApplicationValues>(key: Key, value: PvcCardApplicationValues[Key]) {
+    setPvcCardValues((current) => ({ ...current, [key]: value }));
   }
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -349,9 +383,24 @@ export function ServiceApplicationForm({
       serviceType: String(formData.get("serviceType") ?? "").trim(),
       consentAccepted: formData.get("consentAccepted") === "true",
     });
+    const submittedPvcCardValues = createPvcCardInitialValues({
+      name: submittedDraft.customer.name,
+      mobile: submittedDraft.customer.mobile,
+      email: submittedDraft.customer.email,
+      city: submittedDraft.customer.city,
+      deliveryAddress: submittedDraft.details.address,
+      message: submittedDraft.customer.message,
+      pincode: String(formData.get("pincode") ?? "").trim(),
+      district: String(formData.get("district") ?? "").trim(),
+      state: String(formData.get("state") ?? "").trim(),
+      cardType: String(formData.get("cardType") ?? "").trim(),
+      consentOwnership: formData.get("consentOwnership") === "true",
+      consentProcessing: formData.get("consentProcessing") === "true",
+    });
     const pmVishwakarmaDetails = isPmVishwakarma ? buildPmVishwakarmaDetails(submittedPmVishwakarmaValues) : {};
     const eshramDetails = isEshram ? buildEshramDetails(submittedEshramValues) : {};
-    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma || isEshram });
+    const pvcCardDetails = isPvcCard ? buildPvcCardDetails(submittedPvcCardValues) : {};
+    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard });
 
     devInfo("[service-application-form] Applicant validation before submit", {
       hasName: Boolean(submittedDraft.customer.name),
@@ -386,6 +435,14 @@ export function ServiceApplicationForm({
       const eshramValidationError = getEshramValidationError(submittedEshramValues);
       if (eshramValidationError) {
         toastError(eshramValidationError);
+        return;
+      }
+    }
+
+    if (isPvcCard) {
+      const pvcValidationError = getPvcCardValidationError(submittedPvcCardValues, selectedDocuments);
+      if (pvcValidationError) {
+        toastError(pvcValidationError);
         return;
       }
     }
@@ -441,6 +498,7 @@ export function ServiceApplicationForm({
           ...submittedDraft.details,
           ...pmVishwakarmaDetails,
           ...eshramDetails,
+          ...pvcCardDetails,
           address: submittedDraft.details.address,
         },
         documents: [],
@@ -452,7 +510,11 @@ export function ServiceApplicationForm({
       submitFormData.append("payload", JSON.stringify(payload));
       submitFormData.append(
         "documentTypes",
-        JSON.stringify(selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"))),
+        JSON.stringify(
+          isPvcCard
+            ? ["Front Side Image", "Back Side Image"].slice(0, selectedDocuments.length)
+            : selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"))
+        )
       );
 
       for (const file of selectedDocuments) {
@@ -667,6 +729,14 @@ export function ServiceApplicationForm({
             <PmVishwakarmaApplicationFields values={pmVishwakarmaValues} onChange={updatePmVishwakarmaValue} pincodeStatus={pincodeStatus} />
           ) : isEshram ? (
             <EshramApplicationFields values={eshramValues} onChange={updateEshramValue} pincodeStatus={pincodeStatus} />
+          ) : isPvcCard ? (
+            <PvcCardApplicationFields
+              values={pvcCardValues}
+              onChange={updatePvcCardValue}
+              pincodeStatus={pincodeStatus}
+              selectedFiles={selectedDocuments}
+              onFilesChange={setSelectedDocuments}
+            />
           ) : (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
@@ -689,70 +759,72 @@ export function ServiceApplicationForm({
           )}
         </div>
 
-        <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/30 p-4 md:p-6 transition duration-200 hover:border-blue-300 hover:bg-blue-50/10">
-          <div className="flex items-start gap-3">
-            <FileUp className="mt-1 h-5 w-5 text-blue-600" />
-            <div className="min-w-0 flex-1">
-              <p className="font-extrabold text-slate-950 text-sm md:text-base">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
-                {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
-              </p>
-              <Input
-                name="documents"
-                type="file"
-                multiple
-                required={!selectedDocuments.length && !isEshram}
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="mt-4 text-xs font-bold"
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  const files = Array.from(event.target.files ?? []);
+        {!isPvcCard ? (
+          <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/30 p-4 md:p-6 transition duration-200 hover:border-blue-300 hover:bg-blue-50/10">
+            <div className="flex items-start gap-3">
+              <FileUp className="mt-1 h-5 w-5 text-blue-600" />
+              <div className="min-w-0 flex-1">
+                <p className="font-extrabold text-slate-950 text-sm md:text-base">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                  {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
+                </p>
+                <Input
+                  name="documents"
+                  type="file"
+                  multiple
+                  required={!selectedDocuments.length && !isEshram}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="mt-4 text-xs font-bold"
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
 
-                  if (!files.length) {
-                     return;
-                  }
-
-                  const validFiles: File[] = [];
-
-                  for (const file of files) {
-                    const validationError = validateFile(file, file.name);
-
-                    if (validationError) {
-                      toastError(validationError);
-                      continue;
+                    if (!files.length) {
+                       return;
                     }
 
-                    validFiles.push(file);
-                  }
+                    const validFiles: File[] = [];
 
-                  setSelectedDocuments((current) => [...current, ...validFiles]);
-                  event.target.value = "";
-                }}
-              />
-              {selectedDocuments.length ? (
-                <div className="mt-4 grid gap-2">
-                  {selectedDocuments.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
-                      <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
-                        <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                        <span className="truncate">{file.name}</span>
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-red-600 hover:bg-red-100 transition"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+                    for (const file of files) {
+                      const validationError = validateFile(file, file.name);
+
+                      if (validationError) {
+                        toastError(validationError);
+                        continue;
+                      }
+
+                      validFiles.push(file);
+                    }
+
+                    setSelectedDocuments((current) => [...current, ...validFiles]);
+                    event.target.value = "";
+                  }}
+                />
+                {selectedDocuments.length ? (
+                  <div className="mt-4 grid gap-2">
+                    {selectedDocuments.map((file, index) => (
+                      <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
+                        <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
+                          <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                          <span className="truncate">{file.name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-red-600 hover:bg-red-100 transition"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </Card>
 
       <div className="space-y-4">
@@ -819,6 +891,8 @@ export function ServiceApplicationForm({
                       ? "Fill all required PM Vishwakarma fields, accept terms, and upload documents before payment."
                       : isEshram
                         ? "Fill required e-Shram fields and consent before payment. Document upload is optional."
+                      : isPvcCard
+                        ? "Fill all PVC Card fields, accept consents, and upload front & back images before payment."
                         : "Fill name, 10 digit mobile, email, city, and upload Aadhaar before payment."}
                   </p>
                 ) : null}

@@ -131,6 +131,20 @@ const categoryCopy: Record<ServiceCategorySlug, { category: string; keyword: str
       "Fast Service - Same Day Process Available for selected services",
     ],
   },
+  "digital-services": {
+    category: "Digital Services",
+    keyword: "pvc card printing",
+    audience: "citizens wanting durable smart identity cards in wallet size",
+    docs: ["Front Side Image", "Back Side Image", "Delivery Address"],
+    benefits: [
+      "Waterproof & Durable",
+      "Premium Smart Card Finish",
+      "Easy to Carry in Wallet",
+      "Long Lasting Print Quality",
+      "Professional Appearance",
+      "High Resolution Printing",
+    ],
+  },
 };
 
 export const serviceCategories: ServiceCategory[] = [
@@ -165,6 +179,14 @@ export const serviceCategories: ServiceCategory[] = [
     description: "Passport, driving licence, voter ID, and labour or e-Shram card application assistance.",
     icon: IdCard,
     featuredSlugs: ["passport-assistance", "driving-licence", "voter-id", "labour-card-e-shram-card"],
+  },
+  {
+    title: "Digital Services",
+    slug: "digital-services",
+    heading: "Digital Services",
+    description: "Premium PVC card printing for Aadhaar, PAN, Voter ID, Ayushman, ABHA, and Driving Licence cards.",
+    icon: CreditCard,
+    featuredSlugs: ["pvc-card-printing"],
   },
 ];
 
@@ -429,6 +451,26 @@ const rawServices: RawService[] = [
     ],
   },
   { title: "Labour Card / e-Shram Card", categorySlug: "gov-id-form-submission", shortDescription: "Labour card and e-Shram card registration assistance.", oldPrice: "₹999", offerPrice: "₹399", iconKey: "labour", badge: "Popular" },
+  {
+    title: "PVC Card Printing",
+    slug: "pvc-card-printing",
+    categorySlug: "digital-services",
+    shortDescription: "Convert Aadhaar, PAN, Voter, Ayushman or ABHA card into premium waterproof PVC smart card.",
+    oldPrice: "₹299",
+    offerPrice: "₹149",
+    priceLabel: "₹149",
+    iconKey: "card",
+    badge: "Premium PVC Print",
+    documents: ["Front Side Image", "Back Side Image", "Delivery Address with Pincode"],
+    benefits: [
+      "Waterproof & Durable",
+      "Premium Smart Card Finish",
+      "Easy to Carry in Wallet",
+      "Long Lasting Print Quality",
+      "Professional Appearance",
+      "High Resolution Printing",
+    ],
+  },
 ];
 
 export const servicesData = rawServices.map(createService);

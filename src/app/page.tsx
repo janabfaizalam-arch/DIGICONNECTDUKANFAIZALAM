@@ -6,6 +6,7 @@ import { ContactSection } from "@/components/contact-section";
 import { CreditCardOffersSection } from "@/components/credit-card-offers-section";
 import { HomepageExtendedSections } from "@/components/homepage-extended-sections";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
+import { HomepagePvcWidget } from "@/components/homepage-pvc-widget";
 import { HomepageDynamicSlider } from "@/components/homepage-dynamic-slider";
 import { HomepageOfferNoticeBar } from "@/components/homepage-offer-notice-bar";
 import { HomepageServiceIconRow } from "@/components/homepage-service-icon-row";
@@ -136,6 +137,7 @@ export default async function Home() {
       </main>
       <MarketingFooter />
       <HomepageContactActions />
+      <HomepagePvcWidget />
     </>
   );
 }

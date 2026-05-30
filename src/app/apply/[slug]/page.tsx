@@ -28,6 +28,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const service = await getPublicServiceBySlug(slug);
 
+  if (slug === "pvc-card-printing") {
+    return {
+      title: "PVC Card Print Order | DigiConnect Dukan",
+      description: "Order premium PVC card printing online. Convert Aadhaar, PAN, Voter ID, Ayushman, or ABHA card into durable, waterproof, premium PVC smart cards.",
+    };
+  }
+
   return {
     title: service ? `Apply for ${service.title} | DigiConnect Dukan` : "Apply | DigiConnect Dukan",
     description: service
@@ -100,7 +107,7 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
               Secure Application
             </p>
             <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">
-              Apply for {service.title}
+              {service.slug === "pvc-card-printing" ? "PVC Card Print Order" : `Apply for ${service.title}`}
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-slate-600">
               Fill in your details, upload documents, and pay securely with Razorpay. Our team will share updates through your dashboard, call, or WhatsApp.

@@ -5,6 +5,10 @@ import { formatCurrency } from "@/lib/portal-data";
 import { type ServiceItem } from "@/lib/services-data";
 
 export function ServicePrice({ service, className = "", compact = false }: { service: ServiceItem; className?: string; compact?: boolean }) {
+  if (service.slug === "pvc-card-printing") {
+    return null;
+  }
+
   if (!service.offerPrice) {
     return <p className={`${compact ? "text-xs" : "text-sm"} font-extrabold text-orange-600 ${className}`}>{service.priceLabel}</p>;
   }
