@@ -9,6 +9,7 @@ import { NavigationProgress } from "@/components/navigation-progress";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
+import { BottomNav } from "@/components/bottom-nav";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -143,6 +144,9 @@ export default function RootLayout({
           </Suspense>
           <SiteHeader />
           {children}
+          <Suspense fallback={null}>
+            <BottomNav />
+          </Suspense>
           <PwaInstallPrompt />
           <Script id="organization-schema" type="application/ld+json">
             {JSON.stringify(organizationSchema)}

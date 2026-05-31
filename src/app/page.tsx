@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowRight, Gift, WalletCards } from "lucide-react";
 
 import { ContactSection } from "@/components/contact-section";
 import { CreditCardOffersSection } from "@/components/credit-card-offers-section";
@@ -13,9 +11,8 @@ import { HomepageServiceIconRow } from "@/components/homepage-service-icon-row";
 import { HomepageOfferStrip } from "@/components/homepage-offer-strip";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { PhotoGallerySection } from "@/components/photo-gallery-section";
-import { ProcessSection } from "@/components/process-section";
+import { TestimonialsSection } from "@/components/testimonials-section";
 import { WhyChooseUsSection } from "@/components/why-choose-us-section";
-import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
@@ -41,96 +38,28 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-function firstNameFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>) {
-  const name = String(user?.user_metadata.full_name ?? user?.user_metadata.name ?? user?.email?.split("@")[0] ?? "").trim();
-  return name.split(/\s+/)[0] || "there";
-}
-
 export default async function Home() {
-  const user = await getCurrentUser();
-
   return (
     <>
       <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
+        {/* 1. Auto-scrolling offer strip — directly below header */}
         <HomepageOfferNoticeBar />
-        {/* Premium Apple-Style Hero Header */}
-        <section className="bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.04),transparent_50%)] px-4 pt-6 pb-8 md:px-8 md:pt-10 md:pb-12 text-center relative overflow-hidden">
-          <div className="mx-auto max-w-4xl relative z-10">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">
-              <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
-              RNoS Digital Assistance Platform
-            </p>
-            <h1 className="mt-5 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-5xl md:text-6xl lg:text-[4rem] leading-[1.08]">
-              Digital Services <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 bg-clip-text text-transparent">Made Simple</span>
-            </h1>
-            <p className="mt-5 mx-auto max-w-2xl text-sm font-semibold leading-relaxed text-slate-600 md:text-lg">
-              Apply for Tax & Business, Vehicle Insurance, Finance & Banking, and Gov ID form services online with guided support and verified updates.
-            </p>
-            <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
-              <Link href="/services" className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-extrabold text-white shadow-md transition duration-150 md:hover:-translate-y-0.5 active:scale-[0.99]">
-                Browse Services
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              {user ? (
-                <Link href="/customer/dashboard" className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-950 transition duration-150 md:hover:-translate-y-0.5 active:scale-[0.99]">
-                  Go to Dashboard
-                </Link>
-              ) : (
-                <Link href="/signup" className="inline-flex h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-950 transition duration-150 md:hover:-translate-y-0.5 active:scale-[0.99]">
-                  Register Wallet
-                </Link>
-              )}
-            </div>
-          </div>
-        </section>
 
+        {/* 2. Hero Slider — full-width, swipeable, compact */}
         <HomepageDynamicSlider />
-        <section className="bg-white px-4 pt-3 md:px-8 md:pt-5">
-          <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col gap-3 rounded-[1.35rem] border border-blue-100 bg-[linear-gradient(135deg,rgba(239,246,255,0.88),rgba(255,255,255,0.98),rgba(255,247,237,0.85))] px-4 py-3 shadow-[0_8px_24px_rgba(37,99,235,0.07)] sm:flex-row sm:items-center sm:justify-between md:px-5 md:py-4">
-              {user ? (
-                <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">Account ready</p>
-                  <p className="mt-1 text-lg font-bold text-slate-950 md:text-xl">Welcome, {firstNameFromUser(user)}</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">Digital services</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-700 md:text-base">Choose a service and start with guided support.</p>
-                </div>
-              )}
-              <Link href="/services" className="inline-flex h-10 items-center justify-center rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white shadow-md shadow-blue-600/15">
-                {user ? "Browse Services" : "Apply Now"}
-              </Link>
-            </div>
-          </div>
-        </section>
+
+        {/* 3. Service Icons Grid — 4×2, 8 icons */}
         <HomepageServiceIconRow />
+
+        {/* 4. Featured Offers Slider — horizontal swipeable cards */}
         <HomepageOfferStrip />
+
+        {/* 5. Credit Cards Section — carousel */}
         <CreditCardOffersSection />
-        <section className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-          <div className="glass-panel grid gap-5 rounded-[1.75rem] border border-white/15 p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-orange-600">
-                <Gift className="h-4 w-4" />
-                Refer & Earn Rewards
-              </div>
-              <h2 className="mt-4 text-2xl font-bold text-slate-950 md:text-3xl">Refer friends, earn DigiConnect Rewards</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
-                Invite a friend with your referral code. They get Rs 100 rewards on signup, and you earn Rs 100 after their first completed service. First service cashback and future rewards are credited to your DigiConnect Reward Wallet.
-              </p>
-              <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
-                DigiConnect Rewards are promotional credits. They can be used only for eligible services on DigiConnect Dukan and cannot be withdrawn, transferred, or converted to cash.
-              </p>
-            </div>
-            <Link href="/signup" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white shadow-md shadow-blue-600/15">
-              <WalletCards className="h-4 w-4" />
-              Open Reward Wallet
-            </Link>
-          </div>
-        </section>
+
+        {/* 6–10. Lower sections */}
+        <TestimonialsSection />
         <WhyChooseUsSection />
-        <ProcessSection />
         <HomepageExtendedSections />
         <PhotoGallerySection />
         <ContactSection />

@@ -104,13 +104,13 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
       onBlur={() => setIsPaused(false)}
       className="relative bg-white outline-none"
     >
-      <div className="relative overflow-hidden bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_46%,#fff7ed_100%)]">
+      <div className="relative overflow-hidden rounded-2xl mx-3 md:mx-0 md:rounded-none bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_46%,#fff7ed_100%)]">
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex touch-pan-y">
             {slides.map((slide, index) => {
               const clickLink = slide.cta_primary_url?.trim();
               const banner = (
-                <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100 md:flex md:h-[clamp(520px,46vw,650px)] md:aspect-auto md:items-center md:justify-center md:bg-[radial-gradient(circle_at_14%_12%,rgba(37,99,235,0.16),transparent_30%),radial-gradient(circle_at_88%_16%,rgba(249,115,22,0.14),transparent_28%),linear-gradient(135deg,#eff6ff_0%,#ffffff_48%,#fff7ed_100%)] md:p-4">
+                <div className="relative w-full overflow-hidden bg-slate-100 aspect-[16/9] max-h-[320px] md:max-h-[540px] md:aspect-[21/9]">
                   <Image
                     src={slide.mobile_image_url || slide.image_url}
                     alt={slide.title || "DigiConnect Dukan offer banner"}

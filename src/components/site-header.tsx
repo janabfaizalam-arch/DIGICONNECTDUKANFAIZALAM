@@ -274,17 +274,17 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-3 sm:top-4 z-40 w-full px-3 sm:px-6 print:hidden">
+    <header className="sticky top-0 z-40 w-full px-3 sm:px-6 pt-2 print:hidden">
       <div
-        className={`mx-auto max-w-7xl rounded-[24px] border border-white/60 bg-white/90 transition-all duration-300 ${
+        className={`mx-auto max-w-7xl rounded-[20px] border border-white/60 bg-white/90 transition-all duration-300 ${
           scrolled
             ? "shadow-[0_16px_36px_rgba(15,23,42,0.06)] bg-white/94 backdrop-blur-[6px]"
             : "shadow-[0_8px_20px_rgba(15,23,42,0.03)] backdrop-blur-[4px]"
         }`}
       >
-        <div className={`flex items-center justify-between gap-3 px-4 md:px-6 transition-all duration-300 ${scrolled ? "min-h-12 py-1.5 md:min-h-[3.5rem]" : "min-h-[3.25rem] py-2 md:min-h-[4.25rem]"}`}>
-          <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2.5 transition-transform duration-200 hover:scale-[1.01]" aria-label="DigiConnect Dukan home">
-            <span className="flex h-8 w-[8.35rem] items-center md:h-10 md:w-[9.75rem]">
+        <div className={`flex items-center justify-between gap-3 px-4 md:px-6 transition-all duration-300 ${scrolled ? "min-h-[3rem] py-1 md:min-h-[3.5rem]" : "min-h-[3.5rem] py-1.5 md:min-h-16"}`}>
+          <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2 transition-transform duration-200 hover:scale-[1.01]" aria-label="DigiConnect Dukan home">
+            <span className="flex h-7 w-[7rem] items-center md:h-10 md:w-[9.75rem]">
               <Image
                 src="/logo-navbar.png"
                 alt="DigiConnect Dukan Logo"
@@ -416,12 +416,11 @@ export function SiteHeader() {
               {user && !agentShell ? <LogoutButton showLabel={false} className="h-9 w-9 shrink-0 rounded-full p-0" /> : null}
             </div>
           ) : (
-            <div className="flex items-center gap-2 md:hidden">
-              <Link href={publicCtaConfig.href} className="inline-flex h-9 max-w-[9.5rem] items-center justify-center gap-1.5 truncate rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-3.5 text-xs font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-200 active:scale-[0.98]">
+            <div className="flex items-center md:hidden">
+              <Link href={publicCtaConfig.href} className="inline-flex h-9 items-center justify-center gap-1.5 truncate rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-4 text-xs font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-200 active:scale-[0.98]">
                 {panelConfig ? <LayoutDashboard className="h-3.5 w-3.5 shrink-0" /> : <LogIn className="h-3.5 w-3.5 shrink-0" />}
-                <span className="truncate">{user ? "Dashboard" : "Login / Dashboard"}</span>
+                <span className="truncate">{user ? "Dashboard" : "Login"}</span>
               </Link>
-              <MobileMenu isLoggedIn={Boolean(user)} isCustomer={role === "customer"} panelHref={panelConfig?.href ?? null} panelLabel={panelConfig?.label ?? null} />
             </div>
           )}
         </div>

@@ -53,6 +53,11 @@
   --input: rgba(37, 99, 235, 0.12);
   --ring: rgba(37, 99, 235, 0.35);
   --radius: 1.25rem;
+  /* New design system */
+  --navy: #071326;
+  --electric-blue: #2563EB;
+  --premium-orange: #FF8A00;
+  --bottom-nav-height: 56px;
 }
 
 * {
@@ -415,7 +420,7 @@ textarea {
 .whatsapp-floating-button {
   position: fixed;
   right: 1.25rem;
-  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--bottom-nav-height) + 0.75rem + env(safe-area-inset-bottom));
   z-index: 45;
   display: inline-flex;
   min-height: 2.85rem;
@@ -439,6 +444,7 @@ textarea {
     min-height: 3.25rem;
     width: 3.25rem;
   }
+
 
   .reveal-on-scroll {
     animation: reveal-in 420ms ease both;
@@ -537,6 +543,7 @@ textarea {
 
   .homepage-mobile-shell {
     overflow-x: clip;
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
   }
 
   .homepage-mobile-shell img,
@@ -703,5 +710,126 @@ textarea {
   .invoice-card {
     box-shadow: none !important;
     width: 100% !important;
+  }
+}
+
+/* ===== Bottom Navigation Bar ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  height: var(--bottom-nav-height);
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(1.4) blur(20px);
+  -webkit-backdrop-filter: saturate(1.4) blur(20px);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0 2px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--electric-blue);
+}
+
+.bottom-nav-item .nav-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.bottom-nav-item.active .nav-icon::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--electric-blue);
+}
+
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
+/* ===== Marquee Offer Strip ===== */
+@keyframes marquee-infinite {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-infinite 30s linear infinite;
+}
+
+.marquee-track:hover,
+.marquee-track:active {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* ===== Fade-up scroll reveal ===== */
+@keyframes fade-up-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up-in 0.5s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
