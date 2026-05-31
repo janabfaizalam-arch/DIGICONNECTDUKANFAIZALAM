@@ -4,30 +4,27 @@ import { ChevronRight } from "lucide-react";
 import { getActiveHomepageNotices, type HomepageNotice } from "@/lib/homepage-notices";
 import { cn } from "@/lib/utils";
 
-type NoticeMode = "marquee" | "chips" | "rotator";
-
 const themeClasses: Record<HomepageNotice["color_theme"], string> = {
-  "blue-orange": "border-orange-200/70 bg-white/85 text-slate-950 shadow-orange-500/10",
-  blue: "border-blue-200/75 bg-blue-50/90 text-blue-900 shadow-blue-600/10",
-  orange: "border-orange-200/80 bg-orange-50/95 text-orange-950 shadow-orange-500/10",
-  green: "border-emerald-200/80 bg-emerald-50/95 text-emerald-950 shadow-emerald-500/10",
-  slate: "border-slate-200 bg-slate-50 text-slate-900 shadow-slate-500/10",
+  "blue-orange": "border-orange-200/70 bg-white/90 text-slate-950 shadow-orange-500/5",
+  blue: "border-blue-200/75 bg-blue-50/95 text-blue-900 shadow-blue-600/5",
+  orange: "border-orange-200/80 bg-orange-50/98 text-orange-950 shadow-orange-500/5",
+  green: "border-emerald-200/80 bg-emerald-50/98 text-emerald-950 shadow-emerald-500/5",
+  slate: "border-slate-200 bg-slate-50 text-slate-900 shadow-slate-500/5",
 };
 
 function isExternalLink(link: string | null) {
   return Boolean(link && /^https?:\/\//i.test(link));
 }
 
-function NoticePill({ notice, compact = false }: { notice: HomepageNotice; compact?: boolean }) {
+function NoticePill({ notice }: { notice: HomepageNotice }) {
   const content = (
     <span
       className={cn(
-        "group inline-flex h-9 max-w-[82vw] shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold leading-none shadow-sm transition md:h-10 md:max-w-none md:px-4 md:text-sm md:hover:-translate-y-0.5 md:hover:shadow-md motion-reduce:transition-none",
-        compact ? "h-8 md:h-9" : "",
+        "group inline-flex h-8 shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-3.5 text-xs font-bold leading-none shadow-sm transition md:h-9 md:px-4 md:text-sm md:hover:-translate-y-0.5 md:hover:shadow-md motion-reduce:transition-none bg-white/95",
         themeClasses[notice.color_theme],
       )}
     >
-      {notice.emoji_icon ? <span className="text-base leading-none md:text-lg">{notice.emoji_icon}</span> : null}
+      {notice.emoji_icon ? <span className="text-sm leading-none md:text-base">{notice.emoji_icon}</span> : null}
       <span className="truncate">{notice.notice_text}</span>
       {notice.link_url ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-current opacity-65 transition group-hover:translate-x-0.5" /> : null}
     </span>
@@ -52,43 +49,7 @@ function NoticePill({ notice, compact = false }: { notice: HomepageNotice; compa
   );
 }
 
-function NoticeTrack({ notices, mode }: { notices: HomepageNotice[]; mode: NoticeMode }) {
-  if (mode === "chips") {
-    return (
-      <div className="no-scrollbar flex touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 py-1.5 md:justify-center md:px-6">
-        {notices.map((notice) => (
-          <NoticePill key={notice.id} notice={notice} compact />
-        ))}
-      </div>
-    );
-  }
-
-  if (mode === "rotator") {
-    return (
-      <div className="relative h-10 overflow-hidden md:h-12">
-        {notices.map((notice, index) => (
-          <div key={notice.id} className="homepage-notice-rotator absolute inset-0 flex items-center justify-center px-4" style={{ animationDelay: `${index * 3}s` }}>
-            <NoticePill notice={notice} compact />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  const marqueeNotices = notices.length > 1 ? [...notices, ...notices] : notices;
-
-  return (
-    <div className="homepage-notice-marquee-wrap overflow-hidden py-1.5">
-      <div className={cn("flex w-max items-center gap-2 px-4 md:gap-3 md:px-6", notices.length > 1 ? "homepage-notice-marquee" : "mx-auto")}>
-        {marqueeNotices.map((notice, index) => (
-          <NoticePill key={`${notice.id}-${index}`} notice={notice} compact />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export async function HomepageOfferNoticeBar({ mode = "marquee" }: { mode?: NoticeMode }) {
+export async function HomepageOfferNoticeBar() {
   const notices = await getActiveHomepageNotices();
 
   if (!notices.length) {
@@ -96,10 +57,13 @@ export async function HomepageOfferNoticeBar({ mode = "marquee" }: { mode?: Noti
   }
 
   return (
-    <section className="relative z-20 bg-white px-3 pb-2 pt-2 md:px-6 md:pb-3" aria-label="Homepage offers">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-2xl border border-blue-100/80 bg-[linear-gradient(135deg,rgba(239,246,255,0.94),rgba(255,247,237,0.9))] shadow-[0_10px_28px_rgba(37,99,235,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]">
-        <NoticeTrack notices={notices} mode={mode} />
+    <section className="relative z-20 mx-auto max-w-7xl px-3 sm:px-6 pt-3.5 pb-1 print:hidden" aria-label="Homepage offers">
+      <div className="no-scrollbar flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain py-2 px-4 rounded-[24px] border border-white/50 bg-white/40 shadow-[0_8px_20px_rgba(15,23,42,0.03)] backdrop-blur-[4px] md:flex-wrap md:justify-center md:overflow-x-visible">
+        {notices.map((notice) => (
+          <NoticePill key={notice.id} notice={notice} />
+        ))}
       </div>
     </section>
   );
 }
+

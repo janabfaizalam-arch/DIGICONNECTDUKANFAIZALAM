@@ -52,8 +52,9 @@ export default async function Home() {
   return (
     <>
       <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
+        <HomepageOfferNoticeBar />
         {/* Premium Apple-Style Hero Header */}
-        <section className="bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.04),transparent_50%)] px-4 pt-10 pb-8 md:px-8 md:pt-16 md:pb-12 text-center relative overflow-hidden">
+        <section className="bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.04),transparent_50%)] px-4 pt-6 pb-8 md:px-8 md:pt-10 md:pb-12 text-center relative overflow-hidden">
           <div className="mx-auto max-w-4xl relative z-10">
             <p className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">
               <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
@@ -128,7 +129,6 @@ export default async function Home() {
             </Link>
           </div>
         </section>
-        <HomepageOfferNoticeBar />
         <WhyChooseUsSection />
         <ProcessSection />
         <HomepageExtendedSections />

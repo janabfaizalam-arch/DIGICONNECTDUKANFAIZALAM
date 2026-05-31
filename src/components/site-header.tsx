@@ -276,10 +276,10 @@ export function SiteHeader() {
   return (
     <header className="sticky top-3 sm:top-4 z-40 w-full px-3 sm:px-6 print:hidden">
       <div
-        className={`mx-auto max-w-7xl rounded-[24px] border border-white/50 bg-white/72 transition-all duration-300 ${
+        className={`mx-auto max-w-7xl rounded-[24px] border border-white/60 bg-white/90 transition-all duration-300 ${
           scrolled
-            ? "shadow-[0_16px_36px_rgba(15,23,42,0.08)] bg-white/85 backdrop-blur-lg"
-            : "shadow-[0_8px_20px_rgba(15,23,42,0.04)] backdrop-blur-md"
+            ? "shadow-[0_16px_36px_rgba(15,23,42,0.06)] bg-white/94 backdrop-blur-[6px]"
+            : "shadow-[0_8px_20px_rgba(15,23,42,0.03)] backdrop-blur-[4px]"
         }`}
       >
         <div className={`flex items-center justify-between gap-3 px-4 md:px-6 transition-all duration-300 ${scrolled ? "min-h-12 py-1.5 md:min-h-[3.5rem]" : "min-h-[3.25rem] py-2 md:min-h-[4.25rem]"}`}>
