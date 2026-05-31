@@ -1,31 +1,101 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { CreditCardCard } from "@/components/credit-card-card";
-import { creditCards } from "@/lib/credit-cards";
+const featuredCards = [
+  {
+    bankName: "HDFC Bank",
+    subtitle: "Credit Card",
+    slug: "hdfc-bank-credit-card",
+    applyUrl: "https://wee.bnking.in/c/MDM5ZTBjN",
+    bgLogo: "bg-[#004c8f]",
+    textLogo: "H",
+    textColor: "text-[#004c8f]",
+  },
+  {
+    bankName: "SBI Card",
+    subtitle: "Credit Card",
+    slug: "sbi-simplyclick-credit-card",
+    applyUrl: "https://wee.bnking.in/c/NDRlNzc3Z",
+    bgLogo: "bg-[#00549c]",
+    textLogo: "S",
+    textColor: "text-[#00549c]",
+  },
+  {
+    bankName: "ICICI Bank",
+    subtitle: "Credit Card",
+    slug: "icici-bank-credit-card",
+    applyUrl: "https://wee.bnking.in/c/OTc5NTNhY",
+    bgLogo: "bg-[#f58220]",
+    textLogo: "I",
+    textColor: "text-[#f58220]",
+  },
+  {
+    bankName: "Axis Bank",
+    subtitle: "Credit Card",
+    slug: "axis-bank-credit-card-ck",
+    applyUrl: "https://wee.bnking.in/c/MTUwNTNiY",
+    bgLogo: "bg-[#97144d]",
+    textLogo: "A",
+    textColor: "text-[#97144d]",
+  },
+];
 
 export function CreditCardOffersSection() {
   return (
-    <section id="credit-card-offers" className="bg-white px-0 py-5 md:py-10">
+    <section id="credit-card-offers" className="bg-white px-3 py-4 md:px-6 md:py-6 animate-fade-in">
       <div className="container-shell">
-        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-[radial-gradient(circle_at_10%_0%,rgba(37,99,235,0.1),transparent_32%),radial-gradient(circle_at_88%_12%,rgba(249,115,22,0.1),transparent_30%),linear-gradient(180deg,#ffffff,#f8fbff)] p-3 shadow-[0_12px_32px_rgba(15,23,42,0.05)] md:rounded-3xl md:p-7">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Find the Right Credit Card</p>
-              <h2 className="mt-1.5 text-xl font-bold text-slate-950 md:text-3xl">Credit Card Offers</h2>
-              <p className="mt-1.5 text-xs font-semibold leading-5 text-slate-600 md:text-sm md:leading-6">
-                Compare popular cards and view details before applying.
-              </p>
-            </div>
-            <Link href="/credit-cards/hdfc-bank-credit-card" className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-extrabold text-white md:text-sm">
-              Explore
-              <ArrowRight className="h-4 w-4" />
+        <div className="overflow-hidden rounded-[24px] border border-blue-100/50 bg-[linear-gradient(135deg,rgba(255,255,255,0.75),rgba(255,255,255,0.45))] p-4 shadow-[0_8px_32px_rgba(7,19,38,0.04)] backdrop-blur-md">
+          {/* Header */}
+          <div className="mb-3.5 flex items-center justify-between px-1">
+            <h2 className="text-sm font-black tracking-tight text-[#071326] md:text-base">
+              Credit Card Offers
+            </h2>
+            <Link
+              href="/services"
+              className="inline-flex items-center gap-0.5 text-xs font-bold text-[#2563EB] hover:underline"
+            >
+              View All <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
-          <div className="mt-4 flex snap-x snap-mandatory touch-pan-x gap-3 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:gap-5 md:overflow-visible md:pb-0 xl:grid-cols-4">
-            {creditCards.map((card) => (
-              <CreditCardCard key={card.slug} card={card} />
+          {/* Carousel container */}
+          <div className="flex snap-x snap-mandatory touch-pan-x gap-3 overflow-x-auto overscroll-x-contain pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 md:grid-cols-4 sm:overflow-visible sm:pb-0">
+            {featuredCards.map((card) => (
+              <a
+                key={card.slug}
+                href={card.applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block w-[155px] min-w-[155px] sm:w-auto h-[96px] p-3 rounded-2xl bg-white border border-slate-100/70 shadow-[0_4px_12px_rgba(7,19,38,0.03)] hover:shadow-[0_6px_16px_rgba(7,19,38,0.05)] hover:border-blue-100/40 transition-all duration-200 active:scale-95 overflow-hidden snap-start select-none"
+              >
+                {/* Brand Logo Badge & Name */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full ${card.bgLogo} flex items-center justify-center font-black text-white text-xs shrink-0 shadow-inner`}>
+                    {card.textLogo}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-black text-[#071326] truncate leading-tight">
+                      {card.bankName}
+                    </h3>
+                    <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-none">
+                      {card.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Apply CTA at Bottom */}
+                <div className="absolute left-3 bottom-3">
+                  <span className={`text-[10px] font-black tracking-wide ${card.textColor}`}>
+                    Apply Now →
+                  </span>
+                </div>
+
+                {/* Decorative layered bottom-right waves */}
+                <div className="absolute right-0 bottom-0 w-8 h-8 bg-[#071326] rounded-tl-full opacity-[0.06] pointer-events-none transition-all duration-300 group-hover:scale-110" />
+                <div className="absolute right-0 bottom-0 w-5 h-5 bg-[#FF8A00] rounded-tl-full opacity-[0.08] pointer-events-none transition-all duration-300 group-hover:scale-110" />
+              </a>
             ))}
           </div>
         </div>
