@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, Sparkles } from "lucide-react";
+import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
@@ -139,7 +139,7 @@ function devInfo(message: string, details?: Record<string, unknown>) {
 export function ServiceApplicationForm({
   service,
   services,
-  isProfileIncompleteInitial = false,
+  isProfileIncompleteInitial: _isProfileIncompleteInitial = false,
   initialProfileFields = { mobile: "", pincode: "", city: "", state: "" },
 }: {
   service: ApplicationFormService;
@@ -166,13 +166,7 @@ export function ServiceApplicationForm({
   const [applicantAddress, setApplicantAddress] = useState("");
   const [applicantMessage, setApplicantMessage] = useState("");
 
-  const [isProfileIncomplete, setIsProfileIncomplete] = useState(isProfileIncompleteInitial);
-  const [completeMobile, setCompleteMobile] = useState(initialProfileFields.mobile || "");
-  const [completePincode, setCompletePincode] = useState(initialProfileFields.pincode || "");
-  const [completeCity, setCompleteCity] = useState(initialProfileFields.city || "");
-  const [completeState, setCompleteState] = useState(initialProfileFields.state || "");
-  const [completeDistrict, setCompleteDistrict] = useState("");
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  // Removed profile completeness form state declarations as profile completion is now optional and non-blocking
   const [pmVishwakarmaValues, setPmVishwakarmaValues] = useState(() => createPmVishwakarmaInitialValues());
   const [eshramValues, setEshramValues] = useState(() => createEshramInitialValues());
   const [pvcCardValues, setPvcCardValues] = useState(() => createPvcCardInitialValues());
@@ -565,131 +559,7 @@ export function ServiceApplicationForm({
     }
   };
 
-  if (isProfileIncomplete) {
-    return (
-      <Card className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm md:p-6 lg:col-span-2">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
-          <Sparkles className="h-6 w-6" />
-        </div>
-        <h2 className="mt-4 text-2xl font-bold text-slate-900">Complete your profile to continue</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Provide your mobile number and address details to continue with your application and secure your rewards.
-        </p>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-semibold text-slate-700">Mobile Number</span>
-            <Input
-              type="tel"
-              inputMode="numeric"
-              pattern="[6-9][0-9]{9}"
-              maxLength={10}
-              placeholder="10-digit mobile number"
-              value={completeMobile}
-              onChange={(e) => setCompleteMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              required
-              className="h-12 bg-white text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]"
-            />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-semibold text-slate-700">Pincode</span>
-            <Input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              placeholder="6-digit pincode"
-              value={completePincode}
-              onChange={(e) => setCompletePincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              required
-              className="h-12 bg-white text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]"
-            />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-semibold text-slate-700">City</span>
-            <Input
-              type="text"
-              placeholder="City Name"
-              value={completeCity}
-              onChange={(e) => setCompleteCity(e.target.value)}
-              required
-              className="h-12 bg-white text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]"
-            />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-semibold text-slate-700">State</span>
-            <Input
-              type="text"
-              placeholder="State Name"
-              value={completeState}
-              onChange={(e) => setCompleteState(e.target.value)}
-              required
-              className="h-12 bg-white text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]"
-            />
-          </label>
-          <label className="grid gap-2 sm:col-span-2">
-            <span className="text-sm font-semibold text-slate-700">District (Optional)</span>
-            <Input
-              type="text"
-              placeholder="District Name"
-              value={completeDistrict}
-              onChange={(e) => setCompleteDistrict(e.target.value)}
-              className="h-12 bg-white text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]"
-            />
-          </label>
-        </div>
-
-        <button
-          type="button"
-          disabled={isSavingProfile}
-          onClick={async () => {
-            if (!/^[6-9]\d{9}$/.test(completeMobile)) {
-              toastError("Enter a valid 10-digit Indian mobile number.");
-              return;
-            }
-            if (!/^\d{6}$/.test(completePincode)) {
-              toastError("Enter a valid 6-digit PIN code.");
-              return;
-            }
-            if (!completeCity.trim() || !completeState.trim()) {
-              toastError("City and state are mandatory fields.");
-              return;
-            }
-            setIsSavingProfile(true);
-            try {
-              const res = await fetch("/api/customer/complete-profile", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  mobile: completeMobile,
-                  pincode: completePincode,
-                  city: completeCity,
-                  state: completeState,
-                  district: completeDistrict,
-                }),
-              });
-              const data = await res.json();
-              if (!res.ok || !data.success) {
-                throw new Error(data.error || "Failed to update profile.");
-              }
-              success("Profile updated successfully! You can now complete your application.");
-              setIsProfileIncomplete(false);
-              setApplicantMobile(completeMobile);
-              setApplicantCity(completeCity);
-              setApplicantAddress(completeDistrict ? `${completeDistrict}, ${completeCity}` : completeCity);
-            } catch (err) {
-              toastError(err instanceof Error ? err.message : "Failed to update profile.");
-            } finally {
-              setIsSavingProfile(false);
-            }
-          }}
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 font-extrabold text-white hover:bg-slate-900 shadow-md transition"
-        >
-          {isSavingProfile ? "Saving Profile..." : "Save & Continue"}
-        </button>
-      </Card>
-    );
-  }
+  // Removed blocking card return block, profile completion is optional
 
   return (
     <>

@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Home, LayoutGrid, FileText, Wallet, UserRound } from "lucide-react";
+import { createClient } from "@/lib/supabase/browser";
 
 const tabs = [
   { href: "/", label: "Home", icon: Home },
@@ -29,6 +31,41 @@ function shouldHide(pathname: string) {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+
+  useEffect(() => {
+    if (shouldHide(pathname)) return;
+
+    const checkProfile = async () => {
+      try {
+        const supabase = createClient();
+        if (!supabase) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setIsProfileIncomplete(false);
+          return;
+        }
+
+        const { data } = await supabase
+          .from("profiles")
+          .select("mobile, pincode, city, state")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (data) {
+          const incomplete = !data.mobile || !data.pincode || !data.city || !data.state;
+          setIsProfileIncomplete(incomplete);
+        } else {
+          setIsProfileIncomplete(true);
+        }
+      } catch (error) {
+        console.warn("[bottom-nav] Profile status check failed:", error);
+      }
+    };
+
+    checkProfile();
+  }, [pathname]);
 
   if (shouldHide(pathname)) {
     return null;
@@ -49,7 +86,12 @@ export function BottomNav() {
             <span className="nav-icon">
               <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
             </span>
-            <span>{label}</span>
+            <span className="inline-flex items-center gap-1">
+              {label}
+              {label === "Profile" && isProfileIncomplete && (
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
+              )}
+            </span>
           </Link>
         );
       })}
