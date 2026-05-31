@@ -161,7 +161,7 @@ export function HomepagePvcWidget() {
           {/* Action CTA Button */}
           <div className="mt-4">
             <Link
-              href="/apply/pvc-card-printing"
+              href="/apply/pvc-card"
               className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 font-extrabold text-white text-xs shadow-lg shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition duration-150 active:scale-[0.98]"
             >
               Order Now

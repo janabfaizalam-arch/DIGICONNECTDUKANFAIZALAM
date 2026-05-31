@@ -191,8 +191,8 @@ export function ServiceApplicationForm({
     });
   }, [service, services]);
   const isPmVishwakarma = selectedServices.length === 1 && selectedServices[0]?.slug === "pm-vishwakarma-yojana";
-  const isEshram = selectedServices.length === 1 && selectedServices[0]?.slug === "eshram-card-registration";
-  const isPvcCard = selectedServices.length === 1 && selectedServices[0]?.slug === "pvc-card-printing";
+  const isEshram = selectedServices.length === 1 && (selectedServices[0]?.slug === "eshram-card" || selectedServices[0]?.slug === "eshram-card-registration");
+  const isPvcCard = selectedServices.length === 1 && (selectedServices[0]?.slug === "pvc-card" || selectedServices[0]?.slug === "pvc-card-printing");
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
   const totalAmount = isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);

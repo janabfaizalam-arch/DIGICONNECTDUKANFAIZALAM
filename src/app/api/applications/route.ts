@@ -418,7 +418,7 @@ export async function POST(request: Request) {
 
     const customer = normalizeCustomer(body.customer);
     const isPmVishwakarmaApplication = resolvedServices.some((service) => service.slug === "pm-vishwakarma-yojana");
-    const isEshramApplication = resolvedServices.some((service) => service.slug === "eshram-card-registration");
+    const isEshramApplication = resolvedServices.some((service) => service.slug === "eshram-card-registration" || service.slug === "eshram-card");
     const customerValidationError = getCustomerValidationError(customer, {
       emailOptional: isPmVishwakarmaApplication || isEshramApplication,
     });

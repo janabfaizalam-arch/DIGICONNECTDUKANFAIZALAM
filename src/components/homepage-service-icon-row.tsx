@@ -7,17 +7,15 @@ import {
   ReceiptText,
   ShieldCheck,
   Store,
-  Utensils,
 } from "lucide-react";
 
 const services = [
-  { label: "GST", href: "/services/gst-registration", icon: Store, gradient: "from-emerald-500 to-emerald-600" },
+  { label: "GST", href: "/services/gst-registration-filing", icon: Store, gradient: "from-emerald-500 to-emerald-600" },
   { label: "ITR", href: "/services/itr-filing", icon: ReceiptText, gradient: "from-blue-500 to-blue-600" },
-  { label: "Passport", href: "/services/passport-assistance", icon: Fingerprint, gradient: "from-purple-500 to-purple-600" },
-  { label: "Driving Licence", href: "/services/driving-licence", icon: CarFront, gradient: "from-rose-500 to-rose-600" },
-  { label: "Food License", href: "/services/food-license-fssai", icon: Utensils, gradient: "from-amber-500 to-amber-600" },
+  { label: "Passport", href: "/services/passport", icon: Fingerprint, gradient: "from-purple-500 to-purple-600" },
+  { label: "Driving Licence", href: "/services/learning-driving-license", icon: CarFront, gradient: "from-rose-500 to-rose-600" },
   { label: "Insurance", href: "/services/insurance", icon: ShieldCheck, gradient: "from-cyan-500 to-cyan-600" },
-  { label: "Credit Cards", href: "/credit-cards/hdfc-bank-credit-card", icon: CreditCard, gradient: "from-indigo-500 to-indigo-600" },
+  { label: "Credit Cards", href: "/services/credit-cards", icon: CreditCard, gradient: "from-indigo-500 to-indigo-600" },
 ];
 
 export function HomepageServiceIconRow() {
@@ -53,3 +51,4 @@ export function HomepageServiceIconRow() {
     </section>
   );
 }
+

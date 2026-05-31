@@ -1,16 +1,11 @@
 import {
   BadgeIndianRupee,
-  Banknote,
-  Bike,
   BriefcaseBusiness,
   Building2,
-  Bus,
   CarFront,
   ClipboardCheck,
   CreditCard,
-  FileBadge2,
   FileCheck2,
-  FileText,
   HandCoins,
   IdCard,
   Landmark,
@@ -18,8 +13,8 @@ import {
   ReceiptText,
   ShieldCheck,
   Store,
-  Tractor,
-  Truck,
+  Fingerprint,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,118 +70,149 @@ const companyName = "DigiConnect Dukan";
 const parentCompany = "RNOS India Pvt Ltd";
 
 const categoryCopy: Record<ServiceCategorySlug, { category: string; keyword: string; audience: string; docs: string[]; benefits: string[] }> = {
-  "tax-business": {
-    category: "Tax & Business",
-    keyword: "business registration",
-    audience: "shop owners, traders, online sellers, startups, contractors, and small business owners",
-    docs: ["Aadhaar Card", "PAN Card", "Photo", "Mobile Number", "Business Details", "Address Proof"],
+  cards: {
+    category: "Cards & PVC Printing",
+    keyword: "PVC card printing",
+    audience: "citizens wanting durable smart identity cards in wallet size",
+    docs: ["Aadhaar/Identity Card Copy", "Front & Back Photo", "Mobile Number"],
     benefits: [
-      "Business document checklist before submission",
-      "Online apply support with clear guidance",
-      "Proper review of personal and business details",
-      "WhatsApp support for document assistance",
-      "Useful for shops, firms, traders, and startups",
-      "Fast Service - Same Day Process Available for ready documents",
-    ],
+      "Waterproof & Durable PVC Smart Card",
+      "Premium credit card style gloss finish",
+      "Standard wallet-friendly sizing",
+      "Long-lasting high-resolution color print",
+      "Doorstep delivery across PAN India",
+    ]
+  },
+  loans: {
+    category: "Loans & Government Schemes",
+    keyword: "government subsidy loans",
+    audience: "entrepreneurs, artisans, and small business owners seeking funding",
+    docs: ["Aadhaar Card", "PAN Card", "Business details", "Bank Statement"],
+    benefits: [
+      "PMEGP and Mudra loan guided file preparation",
+      "PM Vishwakarma registration support",
+      "Subsidy schemes documentation check",
+      "Secure application with official assistance",
+    ]
+  },
+  banking: {
+    category: "Banking & Credit",
+    keyword: "finance service",
+    audience: "credit card applicants and bank account seekers",
+    docs: ["Aadhaar Card", "PAN Card", "Address proof", "Income details/KYC"],
+    benefits: [
+      "Credit card eligibility evaluation",
+      "Savings & Current account opening guidance",
+      "Expert CIBIL score health consultation",
+      "Fast processing with zero friction",
+    ]
+  },
+  licence: {
+    category: "Passport & Licence",
+    keyword: "government documentation services",
+    audience: "travelers and vehicle drivers needing permit documents",
+    docs: ["Aadhaar Card", "Address Proof", "Age/Education Proof", "Passport Size Photo"],
+    benefits: [
+      "Passport online form & appointment slot support",
+      "Learning Driving License application prep",
+      "Verified documentation checking",
+      "Dedicated WhatsApp assistance",
+    ]
+  },
+  tax: {
+    category: "Tax & GST",
+    keyword: "tax registration",
+    audience: "taxpayers, business owners, and partners needing compliance filing",
+    docs: ["Aadhaar Card", "PAN Card", "Business address proof", "Bank details"],
+    benefits: [
+      "GST registration and filing assistance",
+      "ITR income tax return expert guidance",
+      "Hassle-free online form submission",
+      "Error-free computations and reviews",
+    ]
+  },
+  company: {
+    category: "Company Registration & Compliance",
+    keyword: "business registration",
+    audience: "startups, partners, corporate entities, and small firms",
+    docs: ["Aadhaar Card", "PAN Card", "Utility bill of business space", "Specimen signature"],
+    benefits: [
+      "Private Limited & OPC incorporation help",
+      "MSME/Udyam certificate registration",
+      "Digital Signature Certificate (DSC) processing",
+      "ISO certification file support",
+    ]
   },
   insurance: {
     category: "Insurance",
     keyword: "insurance service",
-    audience: "vehicle owners, drivers, transport businesses, fleet operators, and policy holders",
-    docs: ["RC Copy", "Previous Policy", "Aadhaar Card", "PAN Card", "Mobile Number", "Vehicle Photo if required"],
+    audience: "vehicle owners, drivers, transport businesses, and fleet operators",
+    docs: ["Previous Policy Copy", "Registration Certificate (RC)", "Aadhaar Card", "PAN Card"],
     benefits: [
-      "Multiple vehicle insurance options in one place",
-      "Third party and comprehensive policy guidance",
-      "Renewal support before policy expiry",
-      "WhatsApp support for quote and document assistance",
-      "Claim guidance for accident or damage cases",
-      "Fast Service - Same Day Process Available for eligible cases",
-    ],
-  },
-  "finance-banking": {
-    category: "Finance & Banking",
-    keyword: "finance service",
-    audience: "entrepreneurs, self-employed workers, farmers, shopkeepers, startups, and banking customers",
-    docs: ["Aadhaar Card", "PAN Card", "Bank Statement", "Photo", "Business Proof", "Income or Project Details"],
-    benefits: [
-      "Government subsidy loan scheme guidance",
-      "Loan file and document assistance",
-      "Banking product support from enquiry to submission",
-      "Eligibility discussion before online apply",
-      "Business and self-employment planning support",
-      "Fast Service - Same Day Process Available for document-ready files",
-    ],
-  },
-  "gov-id-form-submission": {
-    category: "Gov ID & Form Submission",
-    keyword: "government services",
-    audience: "students, families, workers, drivers, travellers, and Indian citizens needing document support",
-    docs: ["Aadhaar Card", "PAN Card if available", "Photo", "Mobile Number", "Address Proof", "Supporting Document if required"],
-    benefits: [
-      "Simple form submission support",
-      "Clear document checklist before applying",
-      "Correction and new application guidance",
-      "Online apply assistance across India",
-      "WhatsApp updates and follow-up support",
-      "Fast Service - Same Day Process Available for selected services",
-    ],
-  },
-  "digital-services": {
-    category: "Digital Services",
-    keyword: "pvc card printing",
-    audience: "citizens wanting durable smart identity cards in wallet size",
-    docs: ["Front Side Image", "Back Side Image", "Delivery Address"],
-    benefits: [
-      "Waterproof & Durable",
-      "Premium Smart Card Finish",
-      "Easy to Carry in Wallet",
-      "Long Lasting Print Quality",
-      "Professional Appearance",
-      "High Resolution Printing",
-    ],
-  },
+      "Bike, Car, and Commercial vehicle insurance quotes",
+      "Quick renewal of running or expired policies",
+      "Third party and comprehensive options",
+      "Doorstep digital policy receipt",
+    ]
+  }
 };
 
 export const serviceCategories: ServiceCategory[] = [
   {
-    title: "Tax & Business",
-    slug: "tax-business",
-    heading: "Tax & Business Services",
-    description: "GST, ITR, MSME, FSSAI, trade license, and project report support for growing businesses.",
+    title: "Cards & PVC Printing",
+    slug: "cards",
+    heading: "Cards & PVC Printing",
+    description: "Premium waterproof PVC cards for Aadhaar, Voter ID, eShram, and Labour cards.",
+    icon: CreditCard,
+    featuredSlugs: ["pvc-card", "voter-id"],
+  },
+  {
+    title: "Loans & Government Schemes",
+    slug: "loans",
+    heading: "Loans & Government Schemes",
+    description: "Apply online for PMEGP, Mudra loans, PM Vishwakarma, and Startup India programs.",
+    icon: HandCoins,
+    featuredSlugs: ["pmegp-loan", "mudra-loan"],
+  },
+  {
+    title: "Banking & Credit",
+    slug: "banking",
+    heading: "Banking & Credit Services",
+    description: "Credit card applications, Savings & Current accounts, and CIBIL report consultation.",
+    icon: Landmark,
+    featuredSlugs: ["credit-cards", "cibil-report-increase"],
+  },
+  {
+    title: "Passport & Licence",
+    slug: "licence",
+    heading: "Passport & Licence Services",
+    description: "Guided assistance for online Passport applications and Learning Driving Licence filings.",
+    icon: CarFront,
+    featuredSlugs: ["passport", "learning-driving-license"],
+  },
+  {
+    title: "Tax & GST",
+    slug: "tax",
+    heading: "Tax & GST Registration",
+    description: "GST Registration, GST filing support, and ITR return filing with certified assistance.",
+    icon: ReceiptText,
+    featuredSlugs: ["gst-registration-filing", "itr-filing"],
+  },
+  {
+    title: "Company Registration & Compliance",
+    slug: "company",
+    heading: "Company Registration & Compliance",
+    description: "Private Limited, OPC, MSME, DSC, ISO certification and compliance filing services.",
     icon: Building2,
-    featuredSlugs: ["gst-registration", "itr-filing", "msme-certificate", "food-license-fssai"],
+    featuredSlugs: ["private-limited-registration", "msme-registration"],
   },
   {
     title: "Insurance",
     slug: "insurance",
-    heading: "All Vehicle Insurance",
-    description: "Premium cards for bike, car, commercial, third party, comprehensive, renewal, and claim assistance.",
+    heading: "All Insurance Services",
+    description: "Secure two-wheeler, car, and commercial vehicle insurance quotes and quick renewal support.",
     icon: ShieldCheck,
-    featuredSlugs: ["bike-insurance", "car-insurance", "commercial-vehicle-insurance", "insurance-renewal"],
-  },
-  {
-    title: "Finance & Banking",
-    slug: "finance-banking",
-    heading: "Finance, Banking & Government Subsidy Loans",
-    description: "Government subsidy schemes, business loans, credit cards, accounts, CIBIL, and loan file preparation.",
-    icon: Landmark,
-    featuredSlugs: ["pmegp-loan", "mudra-loan", "pm-vishwakarma-yojana", "cibil-report-analysis-and-credit-health-consultation"],
-  },
-  {
-    title: "Gov ID & Form Submission",
-    slug: "gov-id-form-submission",
-    heading: "Gov ID & Form Submission",
-    description: "Passport, driving licence, voter ID, and labour or e-Shram card application assistance.",
-    icon: IdCard,
-    featuredSlugs: ["passport-assistance", "driving-licence", "voter-id", "labour-card-e-shram-card"],
-  },
-  {
-    title: "Digital Services",
-    slug: "digital-services",
-    heading: "Digital Services",
-    description: "Premium PVC card printing for Aadhaar, PAN, Voter ID, Ayushman, ABHA, and Driving Licence cards.",
-    icon: CreditCard,
-    featuredSlugs: ["pvc-card-printing"],
+    featuredSlugs: ["insurance"],
   },
 ];
 
@@ -196,124 +222,77 @@ const fixedReviews: ServiceReview[] = [
   { name: "Rohit Verma", location: "Kanpur", text: "Good support on WhatsApp." },
 ];
 
-const fixedProcess = ["Apply", "Submit documents", "Verification", "Get service completed"];
+const fixedProcess = ["Apply Online", "Submit details & documents", "Verification by experts", "Get service completed"];
 
 const iconMap = {
-  gst: Building2,
-  itr: ReceiptText,
-  msme: Store,
-  food: FileBadge2,
-  trade: BriefcaseBusiness,
-  dpr: FileText,
-  bike: Bike,
-  car: CarFront,
-  commercial: Truck,
-  auto: CarFront,
-  tractor: Tractor,
-  truck: Truck,
-  erickshaw: Bike,
-  bus: Bus,
-  taxi: CarFront,
-  loading: Truck,
-  insurance: ShieldCheck,
-  loan: HandCoins,
-  bank: Landmark,
   card: CreditCard,
-  cibil: BadgeIndianRupee,
-  pan: FileCheck2,
-  passport: ShieldCheck,
-  licence: CarFront,
   voter: IdCard,
   labour: ClipboardCheck,
+  loan: HandCoins,
+  bank: Landmark,
   savings: PiggyBank,
-  account: Banknote,
+  cibil: BadgeIndianRupee,
+  passport: Fingerprint,
+  licence: CarFront,
+  gst: Store,
+  itr: ReceiptText,
+  company: Building2,
+  compliance: FileCheck2,
+  trade: BriefcaseBusiness,
+  dsc: BadgeCheck,
+  msme: Store,
+  insurance: ShieldCheck,
 } satisfies Record<string, LucideIcon>;
 
 export const serviceIconMap: Record<string, LucideIcon> = {
   ...iconMap,
-  BadgeIndianRupee,
-  Banknote,
-  Bike,
-  BriefcaseBusiness,
-  Building2,
-  Bus,
-  CarFront,
-  ClipboardCheck,
-  CreditCard,
-  FileBadge2,
-  FileCheck2,
-  FileText,
-  HandCoins,
-  IdCard,
-  Landmark,
-  PiggyBank,
-  ReceiptText,
-  ShieldCheck,
-  Store,
-  Tractor,
-  Truck,
 };
 
 function parseAmount(price?: string) {
   if (!price) {
     return 0;
   }
-
   const value = Number(price.replace(/[^\d]/g, ""));
   return Number.isFinite(value) ? value : 0;
 }
 
-function makeSlug(title: string) {
-  return title
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-}
-
 function buildFaqs(title: string, categorySlug: ServiceCategorySlug, priceLabel: string): ServiceFaq[] {
-  const { keyword } = categoryCopy[categorySlug];
-
   return [
     {
-      question: `${title} ke liye online apply kaise karein?`,
-      answer: `${companyName} par aap enquiry ya application start kar sakte hain. Team documents check karke next step batati hai.`,
+      question: `How do I apply online for ${title}?`,
+      answer: `You can initiate an application or submit an enquiry for ${title} through our DigiConnect Dukan portal. Our expert assistance team will review your details and guide you through the submission process.`,
     },
     {
-      question: `${title} ke liye kaunse documents chahiye?`,
-      answer: "Basic documents service ke hisaab se alag ho sakte hain. Page par document list di gayi hai aur WhatsApp par final checklist mil jati hai.",
+      question: `What documents are required for ${title}?`,
+      answer: "The required documents vary depending on the service. A basic list is shown on this page, and a finalized checklist will be shared with you on WhatsApp once our specialists begin processing your application.",
     },
     {
-      question: `${title} ka price kya hai?`,
-      answer: priceLabel === "Enquiry Now" ? "Is service ka price case, location, bank, department, ya policy details ke hisaab se confirm hota hai." : `${title} ka current offer price ${priceLabel} hai.`,
+      question: `What are the charges for ${title}?`,
+      answer: priceLabel === "Enquiry Now" ? "The final cost depends on the bank, government department guidelines, or specific case details. Our specialists will clarify charges beforehand." : `The current online support offer price for ${title} is ${priceLabel}.`,
     },
     {
-      question: "Kya same day process available hai?",
-      answer: "Fast Service - Same Day Process Available selected cases mein hoti hai jab documents ready aur details correct hoti hain.",
+      question: "Is fast same-day processing available?",
+      answer: "Yes, fast processing and same-day verification support are available for select services when your required identity proofs and document uploads are clear and accurate.",
     },
     {
-      question: `${parentCompany} ka role kya hai?`,
-      answer: `${companyName} is operated with professional support from ${parentCompany} for organized document assistance, ${keyword}, and customer follow-up across India.`,
+      question: `What is the role of ${parentCompany}?`,
+      answer: `${companyName} is powered by ${parentCompany} to deliver organized PAN India digital assistance, secure form submissions, document verification, and expert customer follow-ups.`,
     },
   ];
 }
 
 function buildBlogContent(title: string, categorySlug: ServiceCategorySlug) {
-  const { audience } = categoryCopy[categorySlug];
+  const audience = categoryCopy[categorySlug]?.audience || "Indian citizens needing documentation";
+  return `If you are looking for secure, reliable online application support for ${title}, DigiConnect Dukan offers structured PAN India assistance. Backed by professional processes from ${parentCompany}, we guide you through every step of business filings, government registrations, banking, and insurance services. 
 
-  return `${title} ke liye reliable online apply support chahiye to DigiConnect Dukan ek practical aur customer-friendly option hai. RNOS India Pvt Ltd ke professional process ke saath yahan par customers ko document assistance, form guidance, enquiry support, aur application follow-up ek organized flow mein milta hai. India mein government services, business registration, insurance service, aur finance service jaise kaam aksar documents, eligibility, portal details, aur verification steps ki wajah se confusing ho jate hain. Isi gap ko simple banane ke liye DigiConnect Dukan service page par clear overview, documents required, process, pricing, FAQ, aur WhatsApp CTA diya gaya hai.
+Navigating online portals can be challenging due to strict guidelines, complex document uploads, and validation steps. This service is designed specifically for ${audience} who need to get their filings done without delays. 
 
-${title} service un logon ke liye useful hai jo ${audience} hain aur apna kaam bina unnecessary delay ke complete karwana chahte hain. Customer ko pehle service ka purpose samjhaya jata hai, phir document checklist share hoti hai. Agar kisi document mein spelling mismatch, mobile number issue, old record, policy expiry, bank statement, project report, ya eligibility related doubt ho, to team pehle guidance deti hai. Isse online apply karte waqt galti ki possibility kam hoti hai aur customer ko baar-baar department, bank, ya agent ke chakkar nahi lagane padte.
-
-DigiConnect Dukan ka focus sirf form submit karna nahi hai. Yahan process ko trust aur conversion dono ke hisaab se design kiya gaya hai. Customer ko Apply Now, Enquiry Now, Call / WhatsApp Now, aur Fast Service - Same Day Process Available jaise clear action options milte hain. Fixed-price services mein old price aur offer price transparent dikhaya jata hai. Jahan service case-based hai, wahan Enquiry Now option diya gaya hai taaki team customer ke documents, location, vehicle details, bank requirement, ya scheme eligibility dekh kar exact guidance de sake.
-
-India mein online services ka demand fast badh raha hai, lekin har customer ko portal language, document size, upload format, secure payment, status tracking, aur final submission ka confidence nahi hota. Isi liye DigiConnect Dukan document assistance ko simple Hindi-English support ke saath provide karta hai. ${title} ke liye aap basic details submit kar sakte hain, documents share kar sakte hain, verification ke baad process start karwa sakte hain, aur completion update call ya WhatsApp par le sakte hain. Aaj hi apply karein, ya Call karein ya WhatsApp par message bhejein for quick help.`;
+When you apply via DigiConnect Dukan, our specialists verify your forms, double-check spellings, verify database credentials, and contact you via WhatsApp for immediate support. This cuts down on friction and reduces the risk of rejection from official departments or banks. Choose safe, structured digital assistance with direct support today.`;
 }
 
 type RawService = {
   title: string;
-  slug?: string;
+  slug: string;
   categorySlug: ServiceCategorySlug;
   shortDescription: string;
   oldPrice?: string;
@@ -327,17 +306,16 @@ type RawService = {
 
 function createService(raw: RawService): ServiceItem {
   const category = categoryCopy[raw.categorySlug];
-  const slug = raw.slug ?? makeSlug(raw.title);
   const priceLabel = raw.priceLabel ?? raw.offerPrice ?? "Enquiry Now";
   const hasFixedPrice = Boolean(raw.offerPrice);
 
   return {
     title: raw.title,
-    slug,
+    slug: raw.slug,
     category: category.category,
     categorySlug: raw.categorySlug,
     shortDescription: raw.shortDescription,
-    overview: `${raw.title} is a ${category.category} service from ${companyName} for customers who need guided online apply support, document assistance, and professional follow-up across India.`,
+    overview: `${raw.title} is a premier ${category.category} service from ${companyName} for customers needing guided online application assistance, verified document reviews, and professional follow-ups across India.`,
     benefits: raw.benefits ?? category.benefits,
     documents: raw.documents ?? category.docs,
     process: fixedProcess,
@@ -350,8 +328,8 @@ function createService(raw: RawService): ServiceItem {
     badge: raw.badge ?? (hasFixedPrice ? "Limited Offer" : "Enquiry"),
     faqs: buildFaqs(raw.title, raw.categorySlug, priceLabel),
     reviews: fixedReviews,
-    seoTitle: `${raw.title} Online Apply | ${companyName}`,
-    seoDescription: `${raw.title} service by ${companyName}. Get online apply support, document assistance, pricing, reviews, FAQ, and WhatsApp enquiry across India.`,
+    seoTitle: `${raw.title} Online Apply Support | ${companyName}`,
+    seoDescription: `${raw.title} application guidance from ${companyName}. Safe online apply support, list of required documents, expert reviews, and WhatsApp assistance.`,
     seoKeywords: [
       raw.title,
       `${raw.title} online apply`,
@@ -367,109 +345,241 @@ function createService(raw: RawService): ServiceItem {
 }
 
 const rawServices: RawService[] = [
-  { title: "GST Registration", categorySlug: "tax-business", shortDescription: "Start GST registration with document guidance for your business.", oldPrice: "₹6999", offerPrice: "₹2499", iconKey: "gst", badge: "Popular" },
-  { title: "ITR Filing", categorySlug: "tax-business", shortDescription: "Income tax return filing support with simple document collection.", oldPrice: "₹1499", offerPrice: "₹699", iconKey: "itr", badge: "Limited Offer" },
-  { title: "MSME Certificate", categorySlug: "tax-business", shortDescription: "Udyam/MSME certificate support for small business benefits.", oldPrice: "₹1499", offerPrice: "₹699", iconKey: "msme", badge: "Popular" },
-  { title: "Food License / FSSAI", categorySlug: "tax-business", shortDescription: "Food business registration assistance for FSSAI license.", oldPrice: "₹1499", offerPrice: "₹699", iconKey: "food", badge: "Limited Offer" },
-  { title: "Trade License", categorySlug: "tax-business", shortDescription: "Trade license and local business permission document support.", priceLabel: "Enquiry Now", iconKey: "trade" },
-  { title: "DPR Project Report", categorySlug: "tax-business", shortDescription: "Project report preparation support for loan and subsidy files.", priceLabel: "Enquiry Now", iconKey: "dpr" },
-
-  { title: "Bike Insurance", categorySlug: "insurance", shortDescription: "Two-wheeler insurance quote, renewal, and policy support.", priceLabel: "Enquiry Now", iconKey: "bike", badge: "Popular" },
-  { title: "Car Insurance", categorySlug: "insurance", shortDescription: "Private car insurance options with renewal and quote assistance.", priceLabel: "Enquiry Now", iconKey: "car", badge: "Popular" },
-  { title: "Commercial Vehicle Insurance", categorySlug: "insurance", shortDescription: "Commercial vehicle policy support for business and transport use.", priceLabel: "Enquiry Now", iconKey: "commercial" },
-  { title: "Auto Rickshaw Insurance", categorySlug: "insurance", shortDescription: "Auto rickshaw insurance renewal and third-party quote help.", priceLabel: "Enquiry Now", iconKey: "auto" },
-  { title: "Tractor Insurance", categorySlug: "insurance", shortDescription: "Tractor insurance support for agriculture and commercial needs.", priceLabel: "Enquiry Now", iconKey: "tractor" },
-  { title: "Truck Insurance", categorySlug: "insurance", shortDescription: "Truck insurance assistance for goods carriers and transport owners.", priceLabel: "Enquiry Now", iconKey: "truck" },
-  { title: "E-Rickshaw Insurance", categorySlug: "insurance", shortDescription: "E-rickshaw policy enquiry, renewal, and document assistance.", priceLabel: "Enquiry Now", iconKey: "erickshaw" },
-  { title: "Bus Insurance", categorySlug: "insurance", shortDescription: "Bus insurance quote support for passenger and commercial vehicles.", priceLabel: "Enquiry Now", iconKey: "bus" },
-  { title: "Taxi / Cab Insurance", categorySlug: "insurance", shortDescription: "Taxi and cab policy assistance for drivers and fleet owners.", priceLabel: "Enquiry Now", iconKey: "taxi" },
-  { title: "Loading Vehicle Insurance", categorySlug: "insurance", shortDescription: "Loading vehicle insurance support for goods and carrier vehicles.", priceLabel: "Enquiry Now", iconKey: "loading" },
-  { title: "Third Party Insurance", categorySlug: "insurance", shortDescription: "Mandatory third-party insurance enquiry and renewal support.", priceLabel: "Enquiry Now", iconKey: "insurance", badge: "Popular" },
-  { title: "Comprehensive Insurance", categorySlug: "insurance", shortDescription: "Own damage plus third-party policy guidance for vehicles.", priceLabel: "Enquiry Now", iconKey: "insurance" },
-  { title: "Insurance Renewal", categorySlug: "insurance", shortDescription: "Renew expired or running insurance with quick document assistance.", priceLabel: "Enquiry Now", iconKey: "insurance", badge: "Popular" },
-  { title: "Insurance Claim Assistance", categorySlug: "insurance", shortDescription: "Claim document guidance and support after accident or damage.", priceLabel: "Enquiry Now", iconKey: "insurance" },
-
-  { title: "PMEGP Loan", categorySlug: "finance-banking", shortDescription: "PMEGP subsidy loan guidance for new business projects.", priceLabel: "Enquiry Now", iconKey: "loan", badge: "Popular" },
-  { title: "Mudra Loan", categorySlug: "finance-banking", shortDescription: "Mudra loan enquiry and document support for small businesses.", priceLabel: "Enquiry Now", iconKey: "loan", badge: "Popular" },
-  { title: "Stand-Up India Loan", categorySlug: "finance-banking", shortDescription: "Stand-Up India loan assistance for eligible entrepreneurs.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "PM Vishwakarma Yojana", categorySlug: "finance-banking", shortDescription: "PM Vishwakarma scheme guidance for eligible artisans and workers.", oldPrice: "₹499", offerPrice: "₹250", priceLabel: "₹250", iconKey: "loan", badge: "Popular" },
-  { title: "PM SVANidhi Loan", categorySlug: "finance-banking", shortDescription: "Street vendor loan support with document and eligibility guidance.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "Dairy Loan", categorySlug: "finance-banking", shortDescription: "Dairy business loan file and subsidy scheme document support.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "Poultry Farm Loan", categorySlug: "finance-banking", shortDescription: "Poultry farm project loan guidance and file preparation support.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "Goat Farming Loan", categorySlug: "finance-banking", shortDescription: "Goat farming loan scheme guidance and project document support.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "Agriculture Loan", categorySlug: "finance-banking", shortDescription: "Agriculture loan support for farmers and agri-business needs.", priceLabel: "Enquiry Now", iconKey: "tractor" },
-  { title: "KCC - Kisan Credit Card", categorySlug: "finance-banking", shortDescription: "Kisan Credit Card guidance for farmers and agriculture finance.", priceLabel: "Enquiry Now", iconKey: "card" },
-  { title: "MSME Business Loan", categorySlug: "finance-banking", shortDescription: "MSME business loan enquiry and file preparation assistance.", priceLabel: "Enquiry Now", iconKey: "loan", badge: "Popular" },
-  { title: "Startup India Assistance", categorySlug: "finance-banking", shortDescription: "Startup India registration and funding document guidance.", priceLabel: "Enquiry Now", iconKey: "bank" },
-  { title: "CGTMSE Loan", categorySlug: "finance-banking", shortDescription: "Collateral-free business loan guidance under CGTMSE options.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "Self Employment Loan", categorySlug: "finance-banking", shortDescription: "Self-employment loan support for new and existing ventures.", priceLabel: "Enquiry Now", iconKey: "loan" },
-  { title: "Credit Cards - All Banks", categorySlug: "finance-banking", shortDescription: "Credit card enquiry and guidance for multiple bank options.", priceLabel: "Enquiry Now", iconKey: "card" },
-  { title: "Bank Account Opening", categorySlug: "finance-banking", shortDescription: "Bank account opening assistance with document checklist support.", priceLabel: "Enquiry Now", iconKey: "account" },
-  { title: "Current Account Opening", categorySlug: "finance-banking", shortDescription: "Current account opening support for shops and businesses.", priceLabel: "Enquiry Now", iconKey: "bank" },
-  { title: "Savings Account Opening", categorySlug: "finance-banking", shortDescription: "Savings account guidance with basic KYC document support.", priceLabel: "Enquiry Now", iconKey: "savings" },
-  { title: "Loan File Preparation", categorySlug: "finance-banking", shortDescription: "Loan file, project details, and document arrangement support.", priceLabel: "Enquiry Now", iconKey: "dpr" },
+  // Cards & PVC Printing
   {
-    title: "CIBIL Report Analysis & Credit Health Consultation",
-    categorySlug: "finance-banking",
-    shortDescription: "6-month TransUnion CIBIL membership with expert one page credit health analysis.",
-    oldPrice: "₹3200",
-    offerPrice: "₹2600",
-    priceLabel: "₹2600",
-    iconKey: "cibil",
-    badge: "Credit Health",
-    documents: ["Aadhaar", "PAN", "Mobile", "Email"],
-    benefits: [
-      "6-month TransUnion CIBIL membership assistance",
-      "Expert one page credit report analysis",
-      "Loan readiness and score health review",
-      "Credit utilization and overdue detection",
-      "Wrong reporting and dispute guidance",
-      "Secure digital assistance with WhatsApp support",
-    ],
-  },
-
-  { title: "Passport Assistance", categorySlug: "gov-id-form-submission", shortDescription: "Passport form, appointment, and document checklist support.", oldPrice: "₹6499", offerPrice: "₹2499", iconKey: "passport", badge: "Popular" },
-  { title: "Driving Licence", categorySlug: "gov-id-form-submission", shortDescription: "Driving licence application and renewal support.", oldPrice: "₹2499", offerPrice: "₹1499", iconKey: "licence", badge: "Save ₹1000" },
-  { title: "Voter ID", categorySlug: "gov-id-form-submission", shortDescription: "Voter ID application and correction form assistance.", oldPrice: "₹349", offerPrice: "₹99", iconKey: "voter", badge: "Limited Offer" },
-  {
-    title: "e-Shram Card Registration Assistance",
-    slug: "eshram-card-registration",
-    categorySlug: "gov-id-form-submission",
-    shortDescription: "Registration, UAN card, download, and update guidance for eligible unorganised workers.",
-    offerPrice: "₹149",
-    priceLabel: "₹149",
-    iconKey: "labour",
-    badge: "Quick Registration",
-    documents: ["Aadhaar Card", "Mobile Number", "Bank Details optional", "Occupation Details optional", "Nominee Details optional"],
-    benefits: [
-      "Eligibility check for e-Shram related service",
-      "Document verification and registration guidance",
-      "UAN and e-Shram card generation assistance",
-      "Card download and print support",
-      "Update or correction guidance",
-      "Secure Pan India assistance",
-    ],
-  },
-  { title: "Labour Card / e-Shram Card", categorySlug: "gov-id-form-submission", shortDescription: "Labour card and e-Shram card registration assistance.", oldPrice: "₹999", offerPrice: "₹399", iconKey: "labour", badge: "Popular" },
-  {
-    title: "PVC Card Printing",
-    slug: "pvc-card-printing",
-    categorySlug: "digital-services",
-    shortDescription: "Convert Aadhaar, PAN, Voter, Ayushman or ABHA card into premium waterproof PVC smart card.",
+    title: "PVC Card",
+    slug: "pvc-card",
+    categorySlug: "cards",
+    shortDescription: "Get your digital Aadhaar, PAN, Voter or DL printed on premium waterproof PVC smart cards.",
     oldPrice: "₹299",
     offerPrice: "₹149",
-    priceLabel: "₹149",
     iconKey: "card",
-    badge: "Premium PVC Print",
+    badge: "Popular",
     documents: ["Front Side Image", "Back Side Image", "Delivery Address with Pincode"],
-    benefits: [
-      "Waterproof & Durable",
-      "Premium Smart Card Finish",
-      "Easy to Carry in Wallet",
-      "Long Lasting Print Quality",
-      "Professional Appearance",
-      "High Resolution Printing",
-    ],
+    benefits: ["Waterproof Polymer Core", "Premium Glossy Card Finish", "Fits Standard Wallet", "Doorstep Delivery"],
+  },
+  {
+    title: "Voter ID",
+    slug: "voter-id",
+    categorySlug: "cards",
+    shortDescription: "New Voter ID registration, details correction, and duplicate smart card printing assistance.",
+    oldPrice: "₹349",
+    offerPrice: "₹99",
+    iconKey: "voter",
+    badge: "New",
+  },
+  {
+    title: "eShram Card",
+    slug: "eshram-card",
+    categorySlug: "cards",
+    shortDescription: "UAN eShram registration assistance, worker profiling, and digital card print guidance.",
+    oldPrice: "₹299",
+    offerPrice: "₹149",
+    iconKey: "labour",
+    badge: "Quick Apply",
+    documents: ["Aadhaar Card", "Mobile Number Linked to Aadhaar", "Bank Details"],
+  },
+  {
+    title: "Labour Card",
+    slug: "labour-card",
+    categorySlug: "cards",
+    shortDescription: "Labour Department registration support, renewal help, and state benefit schemes documentation.",
+    oldPrice: "₹999",
+    offerPrice: "₹399",
+    iconKey: "labour",
+    badge: "Popular",
+  },
+
+  // Loans & Government Schemes
+  {
+    title: "PMEGP Loan",
+    slug: "pmegp-loan",
+    categorySlug: "loans",
+    shortDescription: "PMEGP subsidy business loans file preparation, project reporting, and online application support.",
+    priceLabel: "Enquiry Now",
+    iconKey: "loan",
+    badge: "Popular",
+  },
+  {
+    title: "Mudra Loan",
+    slug: "mudra-loan",
+    categorySlug: "loans",
+    shortDescription: "Secure Mudra Business Loan documentation guidance for Shishu, Kishor, or Tarun categories.",
+    priceLabel: "Enquiry Now",
+    iconKey: "loan",
+    badge: "Popular",
+  },
+  {
+    title: "PM Vishwakarma Yojana",
+    slug: "pm-vishwakarma-yojana",
+    categorySlug: "loans",
+    shortDescription: "PM Vishwakarma scheme registration assistance for eligible traditional artisans and craftsmen.",
+    oldPrice: "₹499",
+    offerPrice: "₹250",
+    iconKey: "loan",
+    badge: "Government",
+    documents: ["Aadhaar Card", "Bank Account Details", "Ration Card or Family Proof", "Skill Category Name"],
+  },
+  {
+    title: "Startup India Assistance",
+    slug: "startup-india-assistance",
+    categorySlug: "loans",
+    shortDescription: "DPIIT startup registration support, tax exemptions advice, and business pitching deck checklist.",
+    priceLabel: "Enquiry Now",
+    iconKey: "bank",
+    badge: "Business",
+  },
+
+  // Banking & Credit
+  {
+    title: "Credit Cards",
+    slug: "credit-cards",
+    categorySlug: "banking",
+    shortDescription: "Apply for top credit cards from leading banks with guided eligibility and documentation support.",
+    priceLabel: "Enquiry Now",
+    iconKey: "card",
+    badge: "Popular",
+  },
+  {
+    title: "Saving Account Opening",
+    slug: "saving-account-opening",
+    categorySlug: "banking",
+    shortDescription: "Zero balance or premium savings account opening assistance with full KYC guidance.",
+    priceLabel: "Enquiry Now",
+    iconKey: "savings",
+    badge: "Instant",
+  },
+  {
+    title: "Current Account Opening",
+    slug: "current-account-opening",
+    categorySlug: "banking",
+    shortDescription: "Open a business current account in top banks with trade certificate validation.",
+    priceLabel: "Enquiry Now",
+    iconKey: "bank",
+    badge: "Business",
+  },
+  {
+    title: "CIBIL Report & Increase",
+    slug: "cibil-report-increase",
+    categorySlug: "banking",
+    shortDescription: "TransUnion CIBIL membership, comprehensive score analysis, and negative remarks disputing guide.",
+    oldPrice: "₹3200",
+    offerPrice: "₹2600",
+    iconKey: "cibil",
+    badge: "Credit Score",
+    documents: ["Aadhaar Card", "PAN Card", "Mobile Number", "Email ID"],
+  },
+
+  // Passport & Licence
+  {
+    title: "Passport",
+    slug: "passport",
+    categorySlug: "licence",
+    shortDescription: "Online Fresh/Reissue Passport application, slot scheduling, and document checks assistance.",
+    oldPrice: "₹6499",
+    offerPrice: "₹2499",
+    iconKey: "passport",
+    badge: "Popular",
+  },
+  {
+    title: "Learning Driving License",
+    slug: "learning-driving-license",
+    categorySlug: "licence",
+    shortDescription: "Apply online for your learner driving license, scheduling exam slot, and fee processing.",
+    oldPrice: "₹2499",
+    offerPrice: "₹1499",
+    iconKey: "licence",
+    badge: "Instant",
+  },
+
+  // Tax & GST
+  {
+    title: "GST Registration & Filing",
+    slug: "gst-registration-filing",
+    categorySlug: "tax",
+    shortDescription: "Secure GST registration certificate and get timely assistance for GSTR filings.",
+    oldPrice: "₹6999",
+    offerPrice: "₹2499",
+    iconKey: "gst",
+    badge: "Popular",
+  },
+  {
+    title: "ITR Filing",
+    slug: "itr-filing",
+    categorySlug: "tax",
+    shortDescription: "Income tax return filing support for salary, business, and self-employment earnings.",
+    oldPrice: "₹1499",
+    offerPrice: "₹699",
+    iconKey: "itr",
+    badge: "Popular",
+  },
+
+  // Company Registration & Compliance
+  {
+    title: "Private Limited Registration",
+    slug: "private-limited-registration",
+    categorySlug: "company",
+    shortDescription: "Incorporate a Private Limited company with SPICe+ form filings and ROC documentation.",
+    priceLabel: "Enquiry Now",
+    iconKey: "company",
+    badge: "Corporate",
+  },
+  {
+    title: "Private Limited Compliance",
+    slug: "private-limited-compliance",
+    categorySlug: "company",
+    shortDescription: "Manage annual ROC compliance, DIR-3 KYC, and income tax audit checklist.",
+    priceLabel: "Enquiry Now",
+    iconKey: "compliance",
+    badge: "Compliance",
+  },
+  {
+    title: "OPC Registration",
+    slug: "opc-registration",
+    categorySlug: "company",
+    shortDescription: "Register a One Person Company (OPC) with single-owner shares and directorship guide.",
+    priceLabel: "Enquiry Now",
+    iconKey: "trade",
+    badge: "Startups",
+  },
+  {
+    title: "DSC",
+    slug: "dsc",
+    categorySlug: "company",
+    shortDescription: "Secure Class-3 Digital Signature Certificate (DSC) for secure online government e-filings.",
+    priceLabel: "Enquiry Now",
+    iconKey: "dsc",
+    badge: "Secure",
+  },
+  {
+    title: "MSME Registration",
+    slug: "msme-registration",
+    categorySlug: "company",
+    shortDescription: "Register under MSME/Udyam to gain priority lending rates and government subsidies.",
+    oldPrice: "₹1499",
+    offerPrice: "₹699",
+    iconKey: "msme",
+    badge: "Popular",
+  },
+  {
+    title: "ISO Certification",
+    slug: "iso-certification",
+    categorySlug: "company",
+    shortDescription: "Acquire ISO 9001, 14001, 27001 standard certification documents for audits.",
+    priceLabel: "Enquiry Now",
+    iconKey: "insurance",
+    badge: "Verified",
+  },
+
+  // Insurance
+  {
+    title: "Insurance",
+    slug: "insurance",
+    categorySlug: "insurance",
+    shortDescription: "Get the best comprehensive or third-party insurance renewals for bike, car, or trucks.",
+    priceLabel: "Enquiry Now",
+    iconKey: "insurance",
+    badge: "Secure",
   },
 ];
 
@@ -477,13 +587,32 @@ export const servicesData = rawServices.map(createService);
 
 export function getServiceBySlug(slug: string) {
   const aliases: Record<string, string> = {
-    msme: "msme-certificate",
-    "food-license": "food-license-fssai",
-    passport: "passport-assistance",
-    "cibil-credit-score-guidance": "cibil-report-analysis-and-credit-health-consultation",
+    msme: "msme-registration",
+    "msme-certificate": "msme-registration",
+    "food-license": "insurance",
+    "food-license-fssai": "insurance",
+    passport: "passport",
+    "passport-assistance": "passport",
+    "pvc-card-printing": "pvc-card",
+    "eshram-card-registration": "eshram-card",
+    "labour-card-e-shram-card": "labour-card",
+    "driving-licence": "learning-driving-license",
+    "gst-registration": "gst-registration-filing",
+    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
+    "cibil-credit-score-guidance": "cibil-report-increase",
+    "credit-cards-all-banks": "credit-cards",
+    "credit-cards---all-banks": "credit-cards",
+    "savings-account-opening": "saving-account-opening",
+    "savings-account": "saving-account-opening",
+    "saving-account": "saving-account-opening",
+    "bike-insurance": "insurance",
+    "car-insurance": "insurance",
+    "commercial-vehicle-insurance": "insurance",
+    "insurance-renewal": "insurance",
   };
 
-  return servicesData.find((service) => service.slug === (aliases[slug] ?? slug));
+  const normalizedSlug = aliases[slug] ?? slug;
+  return servicesData.find((service) => service.slug === normalizedSlug);
 }
 
 export function getServicesByCategory(categorySlug: ServiceCategorySlug) {
@@ -491,12 +620,18 @@ export function getServicesByCategory(categorySlug: ServiceCategorySlug) {
 }
 
 export function getCategoryBySlug(slug: string) {
-  return serviceCategories.find((category) => category.slug === slug);
+  const aliases: Record<string, string> = {
+    "tax-business": "tax",
+    "finance-banking": "banking",
+    "gov-id-form-submission": "licence",
+    "digital-services": "cards",
+  };
+  const normalizedSlug = aliases[slug] ?? slug;
+  return serviceCategories.find((category) => category.slug === normalizedSlug);
 }
 
 export function getFeaturedServices(categorySlug: ServiceCategorySlug) {
   const category = getCategoryBySlug(categorySlug);
-
   return (category?.featuredSlugs ?? [])
     .map((slug) => getServiceBySlug(slug))
     .filter((service): service is ServiceItem => Boolean(service));

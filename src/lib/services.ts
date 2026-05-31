@@ -188,33 +188,89 @@ function iconByName(name?: string | null): LucideIcon {
 }
 
 function priceOverride(slug: string) {
-  if (slug === "passport-assistance") {
+  if (slug === "passport" || slug === "passport-assistance") {
     return { oldPrice: 6499, offerPrice: 2499 };
   }
 
-  if (slug === "driving-licence") {
+  if (slug === "learning-driving-license" || slug === "driving-licence") {
     return { oldPrice: 2499, offerPrice: 1499 };
   }
 
-  if (slug === "cibil-report-analysis-and-credit-health-consultation" || slug === "cibil-credit-score-guidance") {
+  if (slug === "cibil-report-increase" || slug === "cibil-report-analysis-and-credit-health-consultation" || slug === "cibil-credit-score-guidance") {
     return { oldPrice: 3200, offerPrice: 2600 };
   }
 
-  if (slug === "eshram-card-registration") {
+  if (slug === "eshram-card" || slug === "eshram-card-registration") {
     return { oldPrice: 149, offerPrice: 149 };
   }
 
   return null;
 }
 
-const unavailablePublicServiceSlugs = new Set(["pan-card", "cibil-credit-score-guidance"]);
+export const allowedPublicServiceSlugs = new Set([
+  "pvc-card",
+  "pmegp-loan",
+  "mudra-loan",
+  "pm-vishwakarma-yojana",
+  "startup-india-assistance",
+  "credit-cards",
+  "saving-account-opening",
+  "current-account-opening",
+  "cibil-report-increase",
+  "passport",
+  "learning-driving-license",
+  "voter-id",
+  "eshram-card",
+  "labour-card",
+  "gst-registration-filing",
+  "itr-filing",
+  "private-limited-registration",
+  "private-limited-compliance",
+  "opc-registration",
+  "dsc",
+  "msme-registration",
+  "iso-certification",
+  "insurance"
+]);
 
 function categorySlugFromService(service: DbService) {
-  return service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
+  const rawCat = service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
+  const catAliases: Record<string, string> = {
+    "tax-business": "tax",
+    "finance-banking": "banking",
+    "gov-id-form-submission": "licence",
+    "digital-services": "cards",
+  };
+  return catAliases[rawCat] ?? rawCat;
 }
 
 function activeServiceFilter(service: DbService) {
-  return !unavailablePublicServiceSlugs.has(service.slug) && (service.is_active ?? service.status === "published") && service.status === "published";
+  const aliases: Record<string, string> = {
+    msme: "msme-registration",
+    "msme-certificate": "msme-registration",
+    "food-license": "insurance",
+    "food-license-fssai": "insurance",
+    passport: "passport",
+    "passport-assistance": "passport",
+    "pvc-card-printing": "pvc-card",
+    "eshram-card-registration": "eshram-card",
+    "labour-card-e-shram-card": "labour-card",
+    "driving-licence": "learning-driving-license",
+    "gst-registration": "gst-registration-filing",
+    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
+    "cibil-credit-score-guidance": "cibil-report-increase",
+    "credit-cards-all-banks": "credit-cards",
+    "credit-cards---all-banks": "credit-cards",
+    "savings-account-opening": "saving-account-opening",
+    "savings-account": "saving-account-opening",
+    "saving-account": "saving-account-opening",
+    "bike-insurance": "insurance",
+    "car-insurance": "insurance",
+    "commercial-vehicle-insurance": "insurance",
+    "insurance-renewal": "insurance",
+  };
+  const normalizedSlug = aliases[service.slug] ?? service.slug;
+  return allowedPublicServiceSlugs.has(normalizedSlug) && (service.is_active ?? service.status === "published") && service.status === "published";
 }
 
 const serviceSelect =
@@ -293,7 +349,7 @@ async function fetchLegacyPublishedServiceRows() {
   if (!legacyResult.error) {
     return (legacyResult.data ?? [])
       .map((row) => normalizeServiceRow(row as Record<string, unknown>))
-      .filter((service) => !unavailablePublicServiceSlugs.has(service.slug));
+      .filter((service) => allowedPublicServiceSlugs.has(service.slug));
   }
 
   if (!isSchemaMismatch(legacyResult.error)) {
@@ -313,7 +369,7 @@ async function fetchLegacyPublishedServiceRows() {
 
   return (catalogResult.data ?? [])
     .map((row) => normalizeServiceRow(row as Record<string, unknown>))
-    .filter((service) => !unavailablePublicServiceSlugs.has(service.slug));
+    .filter((service) => allowedPublicServiceSlugs.has(service.slug));
 }
 
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
@@ -507,22 +563,41 @@ export async function hasDatabaseServices() {
 export async function getPublicServices() {
   const rows = await fetchPublishedServiceRows();
   const dbServices = rows.filter(activeServiceFilter).map(serviceFromDb);
-  if (!dbServices.length) return servicesData;
+  const allowedFallbackServices = servicesData.filter((service) => allowedPublicServiceSlugs.has(service.slug));
+  if (!dbServices.length) return allowedFallbackServices;
 
-  const bySlug = new Map(servicesData.map((service) => [service.slug, service]));
+  const bySlug = new Map(allowedFallbackServices.map((service) => [service.slug, service]));
   dbServices.forEach((service) => bySlug.set(service.slug, service));
   return Array.from(bySlug.values());
 }
 
 export async function getPublicServiceBySlug(slug: string) {
   const aliases: Record<string, string> = {
-    msme: "msme-certificate",
-    "food-license": "food-license-fssai",
-    passport: "passport-assistance",
-    "cibil-credit-score-guidance": "cibil-report-analysis-and-credit-health-consultation",
+    msme: "msme-registration",
+    "msme-certificate": "msme-registration",
+    "food-license": "insurance",
+    "food-license-fssai": "insurance",
+    passport: "passport",
+    "passport-assistance": "passport",
+    "pvc-card-printing": "pvc-card",
+    "eshram-card-registration": "eshram-card",
+    "labour-card-e-shram-card": "labour-card",
+    "driving-licence": "learning-driving-license",
+    "gst-registration": "gst-registration-filing",
+    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
+    "cibil-credit-score-guidance": "cibil-report-increase",
+    "credit-cards-all-banks": "credit-cards",
+    "credit-cards---all-banks": "credit-cards",
+    "savings-account-opening": "saving-account-opening",
+    "savings-account": "saving-account-opening",
+    "saving-account": "saving-account-opening",
+    "bike-insurance": "insurance",
+    "car-insurance": "insurance",
+    "commercial-vehicle-insurance": "insurance",
+    "insurance-renewal": "insurance",
   };
   const normalizedSlug = aliases[slug] ?? slug;
-  if (unavailablePublicServiceSlugs.has(normalizedSlug)) return null;
+  if (!allowedPublicServiceSlugs.has(normalizedSlug)) return null;
   const supabase = getSupabaseAdmin();
 
   if (supabase) {
@@ -551,13 +626,31 @@ export async function getPublicServiceBySlug(slug: string) {
 
 export async function getPublicServiceRowBySlug(slug: string) {
   const aliases: Record<string, string> = {
-    msme: "msme-certificate",
-    "food-license": "food-license-fssai",
-    passport: "passport-assistance",
-    "cibil-credit-score-guidance": "cibil-report-analysis-and-credit-health-consultation",
+    msme: "msme-registration",
+    "msme-certificate": "msme-registration",
+    "food-license": "insurance",
+    "food-license-fssai": "insurance",
+    passport: "passport",
+    "passport-assistance": "passport",
+    "pvc-card-printing": "pvc-card",
+    "eshram-card-registration": "eshram-card",
+    "labour-card-e-shram-card": "labour-card",
+    "driving-licence": "learning-driving-license",
+    "gst-registration": "gst-registration-filing",
+    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
+    "cibil-credit-score-guidance": "cibil-report-increase",
+    "credit-cards-all-banks": "credit-cards",
+    "credit-cards---all-banks": "credit-cards",
+    "savings-account-opening": "saving-account-opening",
+    "savings-account": "saving-account-opening",
+    "saving-account": "saving-account-opening",
+    "bike-insurance": "insurance",
+    "car-insurance": "insurance",
+    "commercial-vehicle-insurance": "insurance",
+    "insurance-renewal": "insurance",
   };
   const normalizedSlug = aliases[slug] ?? slug;
-  if (unavailablePublicServiceSlugs.has(normalizedSlug)) return null;
+  if (!allowedPublicServiceSlugs.has(normalizedSlug)) return null;
   const supabase = getSupabaseAdmin();
 
   if (!supabase) return null;
