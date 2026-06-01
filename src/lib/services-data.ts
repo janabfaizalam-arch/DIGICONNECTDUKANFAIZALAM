@@ -432,6 +432,31 @@ const rawServices: RawService[] = [
 
   // Banking & Credit
   {
+    title: "CM YUVA Entrepreneur Loan Assistance",
+    slug: "cm-yuva-entrepreneur-loan-assistance",
+    categorySlug: "banking",
+    shortDescription: "Professional assistance for project reports, MSME registration, documentation support, and business loan applications.",
+    priceLabel: "Enquiry Now",
+    iconKey: "loan",
+    badge: "Popular",
+    documents: [
+      "PAN Card",
+      "Aadhaar Card",
+      "Bank Passbook / Cancelled Cheque",
+      "Educational Certificate",
+      "Passport Size Photograph",
+      "Business Details",
+      "Business Address Proof"
+    ],
+    benefits: [
+      "Comprehensive Project Report (DPR) preparation support",
+      "MSME / Udyam registration certificate assistance",
+      "Direct guidance for government interest subsidy schemes",
+      "Step-by-step documentation review to minimize rejection risk",
+      "Liaisoning and secure portal upload support"
+    ]
+  },
+  {
     title: "Credit Cards",
     slug: "credit-cards",
     categorySlug: "banking",

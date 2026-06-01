@@ -213,6 +213,7 @@ export const allowedPublicServiceSlugs = new Set([
   "mudra-loan",
   "pm-vishwakarma-yojana",
   "startup-india-assistance",
+  "cm-yuva-entrepreneur-loan-assistance",
   "credit-cards",
   "saving-account-opening",
   "current-account-opening",
