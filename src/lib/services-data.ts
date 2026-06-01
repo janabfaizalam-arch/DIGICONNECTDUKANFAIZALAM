@@ -436,17 +436,16 @@ const rawServices: RawService[] = [
     slug: "cm-yuva-entrepreneur-loan-assistance",
     categorySlug: "banking",
     shortDescription: "Professional assistance for project reports, MSME registration, documentation support, and business loan applications.",
-    priceLabel: "Enquiry Now",
+    oldPrice: "₹39,999",
+    offerPrice: "₹13,499",
+    priceLabel: "₹13,499",
     iconKey: "loan",
     badge: "Popular",
     documents: [
       "PAN Card",
       "Aadhaar Card",
-      "Bank Passbook / Cancelled Cheque",
-      "Educational Certificate",
-      "Passport Size Photograph",
-      "Business Details",
-      "Business Address Proof"
+      "Bank Passbook",
+      "Class 8 Marksheet or Above"
     ],
     benefits: [
       "Comprehensive Project Report (DPR) preparation support",

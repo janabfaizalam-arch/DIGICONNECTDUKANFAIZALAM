@@ -32,6 +32,15 @@ import {
   type PvcCardApplicationValues,
   usePvcCardPincodeAutofill,
 } from "@/components/portal/pvc-card-application-fields";
+import {
+  buildCmYuvaDetails,
+  createCmYuvaInitialValues,
+  getCmYuvaValidationError,
+  isCmYuvaComplete,
+  CmYuvaApplicationFields,
+  type CmYuvaApplicationValues,
+  useCmYuvaPincodeAutofill,
+} from "@/components/portal/cm-yuva-application-fields";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -170,6 +179,19 @@ export function ServiceApplicationForm({
   const [pmVishwakarmaValues, setPmVishwakarmaValues] = useState(() => createPmVishwakarmaInitialValues());
   const [eshramValues, setEshramValues] = useState(() => createEshramInitialValues());
   const [pvcCardValues, setPvcCardValues] = useState(() => createPvcCardInitialValues());
+  const [cmYuvaValues, setCmYuvaValues] = useState(() => createCmYuvaInitialValues());
+  const [cmYuvaStep, setCmYuvaStep] = useState(1);
+  const [cmYuvaFiles, setCmYuvaFiles] = useState<{
+    pan: File | null;
+    aadhaar: File | null;
+    bankPassbook: File | null;
+    marksheet: File | null;
+  }>({
+    pan: null,
+    aadhaar: null,
+    bankPassbook: null,
+    marksheet: null,
+  });
   const [pincodeStatus, setPincodeStatus] = useState("");
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
@@ -187,10 +209,12 @@ export function ServiceApplicationForm({
   const isPmVishwakarma = selectedServices.length === 1 && selectedServices[0]?.slug === "pm-vishwakarma-yojana";
   const isEshram = selectedServices.length === 1 && (selectedServices[0]?.slug === "eshram-card" || selectedServices[0]?.slug === "eshram-card-registration");
   const isPvcCard = selectedServices.length === 1 && (selectedServices[0]?.slug === "pvc-card" || selectedServices[0]?.slug === "pvc-card-printing");
+  const isCmYuva = selectedServices.length === 1 && selectedServices[0]?.slug === "cm-yuva-entrepreneur-loan-assistance";
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
-  const totalAmount = isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
+  const totalAmount = isCmYuva ? 8499 : isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
-  const clampedWalletUseAmount = Math.min(walletUseAmount, wallet.maxUsable);
+  const cmYuvaWalletRedeem = isCmYuva && wallet.balance > 0 ? Math.min(wallet.balance, 4249.5) : 0;
+  const clampedWalletUseAmount = isCmYuva ? cmYuvaWalletRedeem : Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
   const walletLimitMessage = "You can redeem up to 50% of your wallet balance, limited to 50% of service amount.";
   const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
@@ -227,6 +251,15 @@ export function ServiceApplicationForm({
                 address: pvcCardValues.deliveryAddress,
                 message: pvcCardValues.message,
               }
+          : isCmYuva
+            ? {
+                name: cmYuvaValues.name,
+                mobile: cmYuvaValues.mobile,
+                email: cmYuvaValues.email,
+                city: cmYuvaValues.city,
+                address: cmYuvaValues.businessAddress,
+                message: cmYuvaValues.message,
+              }
           : {
               name: applicantName,
               mobile: applicantMobile,
@@ -236,7 +269,7 @@ export function ServiceApplicationForm({
               message: applicantMessage,
             },
       ),
-    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues, pvcCardValues, isPvcCard],
+    [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues, pvcCardValues, isPvcCard, isCmYuva, cmYuvaValues],
   );
   const serviceDetailsForPayment = useMemo(
     () =>
@@ -246,17 +279,20 @@ export function ServiceApplicationForm({
           ? buildEshramDetails(eshramValues)
           : isPvcCard
             ? buildPvcCardDetails(pvcCardValues)
-            : normalizedApplicationDraft.details,
-    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, normalizedApplicationDraft.details, pmVishwakarmaValues],
+            : isCmYuva
+              ? buildCmYuvaDetails(cmYuvaValues)
+              : normalizedApplicationDraft.details,
+    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues],
   );
   const canStartPayment =
     !isSubmitting &&
-    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard }) &&
+    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard || isCmYuva }) &&
     /^[6-9]\d{9}$/.test(normalizedApplicationDraft.customer.mobile) &&
-    (selectedDocuments.length > 0 || isEshram) &&
+    (selectedDocuments.length > 0 || isEshram || isCmYuva) &&
     (!isPmVishwakarma || isPmVishwakarmaComplete(pmVishwakarmaValues)) &&
     (!isEshram || isEshramComplete(eshramValues)) &&
-    (!isPvcCard || isPvcCardComplete(pvcCardValues, selectedDocuments));
+    (!isPvcCard || isPvcCardComplete(pvcCardValues, selectedDocuments)) &&
+    (!isCmYuva || isCmYuvaComplete(cmYuvaValues, cmYuvaFiles));
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -296,6 +332,25 @@ export function ServiceApplicationForm({
     setStatus: setPincodeStatus,
   });
 
+  useCmYuvaPincodeAutofill({
+    enabled: isCmYuva,
+    values: cmYuvaValues,
+    setValues: setCmYuvaValues,
+    setStatus: setPincodeStatus,
+  });
+
+  // Listen for CM YUVA validation errors from the step navigation
+  useEffect(() => {
+    function handleCmYuvaError(event: Event) {
+      const customEvent = event as CustomEvent<string>;
+      if (customEvent.detail) {
+        toastError(customEvent.detail);
+      }
+    }
+    window.addEventListener("cm-yuva-validation-error", handleCmYuvaError);
+    return () => window.removeEventListener("cm-yuva-validation-error", handleCmYuvaError);
+  }, [toastError]);
+
   function updatePmVishwakarmaValue<Key extends keyof PmVishwakarmaApplicationValues>(key: Key, value: PmVishwakarmaApplicationValues[Key]) {
     setPmVishwakarmaValues((current) => ({ ...current, [key]: value }));
   }
@@ -306,6 +361,10 @@ export function ServiceApplicationForm({
 
   function updatePvcCardValue<Key extends keyof PvcCardApplicationValues>(key: Key, value: PvcCardApplicationValues[Key]) {
     setPvcCardValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateCmYuvaValue<Key extends keyof CmYuvaApplicationValues>(key: Key, value: CmYuvaApplicationValues[Key]) {
+    setCmYuvaValues((current) => ({ ...current, [key]: value }));
   }
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -327,7 +386,7 @@ export function ServiceApplicationForm({
       return;
     }
 
-    if (!selectedDocuments.length && !isEshram) {
+    if (!selectedDocuments.length && !isEshram && !isCmYuva) {
       toastError("Please upload Aadhaar / Documents.");
       return;
     }
@@ -394,7 +453,8 @@ export function ServiceApplicationForm({
     const pmVishwakarmaDetails = isPmVishwakarma ? buildPmVishwakarmaDetails(submittedPmVishwakarmaValues) : {};
     const eshramDetails = isEshram ? buildEshramDetails(submittedEshramValues) : {};
     const pvcCardDetails = isPvcCard ? buildPvcCardDetails(submittedPvcCardValues) : {};
-    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard });
+    const cmYuvaDetails = isCmYuva ? buildCmYuvaDetails(cmYuvaValues) : {};
+    const applicantValidationError = getApplicantValidationError(submittedDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard || isCmYuva });
 
     devInfo("[service-application-form] Applicant validation before submit", {
       hasName: Boolean(submittedDraft.customer.name),
@@ -441,7 +501,19 @@ export function ServiceApplicationForm({
       }
     }
 
-    for (const file of selectedDocuments) {
+    if (isCmYuva) {
+      const cmYuvaValidationError = getCmYuvaValidationError(cmYuvaValues, undefined, cmYuvaFiles);
+      if (cmYuvaValidationError) {
+        toastError(cmYuvaValidationError);
+        return;
+      }
+    }
+
+    const filesToValidate = isCmYuva
+      ? ([cmYuvaFiles.pan, cmYuvaFiles.aadhaar, cmYuvaFiles.bankPassbook, cmYuvaFiles.marksheet].filter(Boolean) as File[])
+      : selectedDocuments;
+
+    for (const file of filesToValidate) {
       const validationError = validateFile(file, file.name);
 
       if (validationError) {
@@ -477,12 +549,28 @@ export function ServiceApplicationForm({
         throw new Error("Please login to apply.");
       }
 
+      const cmYuvaDocList = isCmYuva
+        ? [
+            { file: cmYuvaFiles.pan, type: "PAN Card" },
+            { file: cmYuvaFiles.aadhaar, type: "Aadhaar Card" },
+            { file: cmYuvaFiles.bankPassbook, type: "Bank Passbook" },
+            { file: cmYuvaFiles.marksheet, type: "Class 8 Marksheet or Above" },
+          ].filter((item): item is { file: File; type: string } => item.file !== null)
+        : [];
+
+      const uploadFiles = isCmYuva ? cmYuvaDocList.map((item) => item.file) : selectedDocuments;
+      const documentTypes = isCmYuva
+        ? cmYuvaDocList.map((item) => item.type)
+        : isPvcCard
+          ? ["Front Side Image", "Back Side Image"].slice(0, selectedDocuments.length)
+          : selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"));
+
       console.info("CLIENT_DOCUMENT_COUNT_BEFORE_SUBMIT", {
-        count: selectedDocuments.length,
-        fileNames: selectedDocuments.map((file) => file.name),
+        count: uploadFiles.length,
+        fileNames: uploadFiles.map((file) => file.name),
       });
 
-      setProgressText(selectedDocuments.length ? "Uploading documents and saving application..." : "Saving application...");
+      setProgressText(uploadFiles.length ? "Uploading documents and saving application..." : "Saving application...");
 
       const payload = {
         serviceSlug: selectedServices[0]?.slug,
@@ -493,25 +581,30 @@ export function ServiceApplicationForm({
           ...pmVishwakarmaDetails,
           ...eshramDetails,
           ...pvcCardDetails,
+          ...cmYuvaDetails,
           address: submittedDraft.details.address,
         },
         documents: [],
         razorpayPayment,
         applicationIds: razorpayPayment?.application_ids,
         walletUseAmount: clampedWalletUseAmount,
+        ...(isCmYuva
+          ? {
+              originalPrice: 39999,
+              discountedPrice: 13499,
+              couponCode: "DGCNT5K",
+              couponDiscount: 5000,
+              walletUsed: clampedWalletUseAmount,
+              freshAmount: realPayableAmount,
+              finalAmount: 8499,
+            }
+          : {}),
       };
       const submitFormData = new FormData();
       submitFormData.append("payload", JSON.stringify(payload));
-      submitFormData.append(
-        "documentTypes",
-        JSON.stringify(
-          isPvcCard
-            ? ["Front Side Image", "Back Side Image"].slice(0, selectedDocuments.length)
-            : selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"))
-        )
-      );
+      submitFormData.append("documentTypes", JSON.stringify(documentTypes));
 
-      for (const file of selectedDocuments) {
+      for (const file of uploadFiles) {
         submitFormData.append("documents", file, file.name);
       }
 
@@ -560,6 +653,88 @@ export function ServiceApplicationForm({
   };
 
   // Removed blocking card return block, profile completion is optional
+
+  if (isCmYuva) {
+    return (
+      <form onSubmit={onSubmit} className="mx-auto max-w-3xl w-full pb-10" aria-busy={isSubmitting}>
+        <fieldset disabled={isSubmitting} className="contents">
+          <Card className="rounded-2xl border border-blue-100 bg-white/95 p-4 shadow-sm md:p-6">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Premium Assistance</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">
+                {service.title}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 font-semibold">
+                Complete the official 6-step form to register and prepare your CM YUVA business loan documentation.
+              </p>
+            </div>
+
+            <CmYuvaApplicationFields
+              values={cmYuvaValues}
+              onChange={updateCmYuvaValue}
+              pincodeStatus={pincodeStatus}
+              currentStep={cmYuvaStep}
+              onStepChange={setCmYuvaStep}
+              filesState={cmYuvaFiles}
+              onFileChange={(key, file) => {
+                setCmYuvaFiles((prev) => ({ ...prev, [key]: file }));
+              }}
+              walletBalance={wallet.balance}
+              paymentVerified={Boolean(razorpayPayment)}
+              razorpayButton={
+                realPayableAmount > 0 ? (
+                  <RazorpayCheckoutButton
+                    amountPaise={payableAmountPaise}
+                    receipt={paymentReceipt}
+                    serviceSlug={selectedServices[0]?.slug}
+                    serviceSlugs={selectedServices.map((item) => item.slug)}
+                    walletUseAmount={clampedWalletUseAmount}
+                    customer={{
+                      name: normalizedApplicationDraft.customer.name,
+                      email: normalizedApplicationDraft.customer.email,
+                      mobile: normalizedApplicationDraft.customer.mobile,
+                    }}
+                    applicationDraft={{
+                      customer: normalizedApplicationDraft.customer,
+                      details: serviceDetailsForPayment,
+                    }}
+                    description={selectedServices.map((item) => item.title).join(", ")}
+                    disabled={!canStartPayment}
+                    onVerified={(payment) => {
+                      setRazorpayPayment({
+                        ...payment,
+                        amount_paise: payableAmountPaise,
+                      });
+                    }}
+                  />
+                ) : (
+                  <div className="rounded-xl bg-emerald-50 px-3.5 py-3 text-xs font-extrabold text-emerald-800 border border-emerald-100">
+                    🎉 100% Wallet discount applied! Zero fresh payment required.
+                  </div>
+                )
+              }
+            />
+
+            {/* Custom submit button for Step 6 if payment verified or amount is 0 */}
+            {cmYuvaStep === 6 && (
+              <div className="mt-6 pt-4 border-t border-slate-100">
+                <FormSubmitButton
+                  type="submit"
+                  size="lg"
+                  loading={isSubmitting}
+                  loadingText={progressText || "Please wait..."}
+                  disabled={!canStartPayment || (realPayableAmount > 0 && !razorpayPayment)}
+                  className="w-full h-12 rounded-xl bg-slate-950 text-sm font-extrabold hover:bg-slate-900 shadow-md shadow-slate-950/10"
+                >
+                  Submit Application
+                </FormSubmitButton>
+              </div>
+            )}
+          </Card>
+        </fieldset>
+      </form>
+    );
+  }
 
   return (
     <>
@@ -629,7 +804,7 @@ export function ServiceApplicationForm({
           )}
         </div>
 
-        {!isPvcCard ? (
+        {!isPvcCard && !isCmYuva ? (
           <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/30 p-4 md:p-6 transition duration-200 hover:border-blue-300 hover:bg-blue-50/10">
             <div className="flex items-start gap-3">
               <FileUp className="mt-1 h-5 w-5 text-blue-600" />
@@ -763,6 +938,8 @@ export function ServiceApplicationForm({
                         ? "Fill required e-Shram fields and consent before payment. Document upload is optional."
                       : isPvcCard
                         ? "Fill all PVC Card fields, accept consents, and upload front & back images before payment."
+                      : isCmYuva
+                        ? "Complete all 4 steps, accept terms, and select a package before payment."
                         : "Fill name, 10 digit mobile, email, city, and upload Aadhaar before payment."}
                   </p>
                 ) : null}

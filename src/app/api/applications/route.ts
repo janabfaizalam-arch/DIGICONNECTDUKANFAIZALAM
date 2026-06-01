@@ -50,6 +50,13 @@ type ApplicationPayload = {
   documents?: UploadedDocument[];
   razorpayPayment?: VerifiedRazorpayPayment | null;
   walletUseAmount?: number;
+  originalPrice?: number;
+  discountedPrice?: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  walletUsed?: number;
+  freshAmount?: number;
+  finalAmount?: number;
 };
 
 type RazorpayPaymentDetails = {
@@ -563,6 +570,17 @@ export async function POST(request: Request) {
       },
       razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? null,
       razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? null,
+      ...(body.originalPrice !== undefined
+        ? {
+            originalPrice: body.originalPrice,
+            discountedPrice: body.discountedPrice,
+            couponCode: body.couponCode,
+            couponDiscount: body.couponDiscount,
+            walletUsed: body.walletUsed,
+            freshAmount: body.freshAmount,
+            finalAmount: body.finalAmount,
+          }
+        : {}),
     };
     const { data: linkedCustomer } = await supabase
       .from("customers")
