@@ -84,6 +84,7 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
 
   function fieldsFor(categorySlug: string, serviceSlug: string): ServiceField[] {
     if (serviceSlug === "pm-vishwakarma-yojana") return [];
+    if (serviceSlug === "cm-yuva-entrepreneur-loan-assistance") return [];
     if (categorySlug === "tax-business") return [{ name: "businessName", label: "Business Name", required: false }, { name: "panNumber", label: "PAN", required: false }];
     if (categorySlug === "insurance") return [{ name: "vehicleNumber", label: "Vehicle Number", required: false }, { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false }];
     if (categorySlug === "finance-banking") return [{ name: "loanPurpose", label: "Loan / Banking Requirement", type: "textarea", required: false }, { name: "monthlyIncome", label: "Monthly Income / Turnover", required: false }];
@@ -98,31 +99,75 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
           Back to service
         </Link>
 
-        <div className="mt-5 grid gap-6 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
-          <Card className="rounded-2xl p-5 md:p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">
-              Secure Application
-            </p>
-            <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">
-              {service.slug === "pvc-card-printing" ? "PVC Card Print Order" : `Apply for ${service.title}`}
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              Fill in your details, upload documents, and pay securely with Razorpay. Our team will share updates through your dashboard, call, or WhatsApp.
-            </p>
-            <div className="mt-6 space-y-3 text-sm font-medium text-slate-700">
-              <p>1. Fill in your details</p>
-              <p>2. Upload required documents</p>
-              <p>3. Pay securely with Razorpay</p>
-              <p>4. Receive invoice and updates</p>
-            </div>
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
-              <MessageCircle className="h-4 w-4" />
-              Get WhatsApp Help
-            </a>
-          </Card>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+          {service.slug === "cm-yuva-entrepreneur-loan-assistance" ? (
+            <Card className="rounded-2xl p-4 lg:p-5 shadow-sm border border-blue-50/50 bg-white/90 backdrop-blur-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[var(--primary)] shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-blue-600">Secure Submission</p>
+                  <h1 className="text-base lg:text-lg font-black text-slate-950 mt-0.5">
+                    Apply for CM YUVA Assistance
+                  </h1>
+                </div>
+              </div>
+              
+              <p className="mt-3 text-xs leading-relaxed text-slate-500 font-semibold">
+                Fill details, upload documents, and complete secure payment.
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
+                  <span>Fill applicant details</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
+                  <span>Upload 4 documents</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
+                  <span>Pay securely</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
+                  <span>Track updates</span>
+                </div>
+              </div>
+              
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition">
+                <MessageCircle className="h-3.5 w-3.5" />
+                Get WhatsApp Help
+              </a>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl p-5 md:p-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">
+                Secure Application
+              </p>
+              <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">
+                {service.slug === "pvc-card-printing" ? "PVC Card Print Order" : `Apply for ${service.title}`}
+              </h1>
+              <p className="mt-4 text-sm leading-relaxed text-slate-600">
+                Fill in your details, upload documents, and pay securely with Razorpay. Our team will share updates through your dashboard, call, or WhatsApp.
+              </p>
+              <div className="mt-6 space-y-3 text-sm font-medium text-slate-700">
+                <p>1. Fill in your details</p>
+                <p>2. Upload required documents</p>
+                <p>3. Pay securely with Razorpay</p>
+                <p>4. Receive invoice and updates</p>
+              </div>
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
+                <MessageCircle className="h-4 w-4" />
+                Get WhatsApp Help
+              </a>
+            </Card>
+          )}
 
           <ServiceApplicationForm
             service={{

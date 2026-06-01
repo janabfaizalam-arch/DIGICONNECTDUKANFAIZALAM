@@ -3,6 +3,7 @@ import crypto from "crypto";
 
 import { createAdminNotifications, type CreateAdminNotificationInput } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
+import { validateCoupon } from "@/lib/coupons";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
@@ -389,14 +390,32 @@ export async function POST(request: Request) {
     }
 
     const resolvedServices = services.filter((service): service is NonNullable<typeof service> => Boolean(service));
+    const couponCode = String(body.couponCode ?? "").trim();
+    let couponDiscount = 0;
+    if (couponCode) {
+      const validation = validateCoupon({
+        couponCode,
+        serviceSlug: serviceSlugs[0],
+        amount: orderAmount,
+        userId: user.id,
+      });
+      if (validation.valid) {
+        couponDiscount = validation.discountAmount;
+      } else {
+        return jsonError(`Invalid coupon: ${validation.message}`, 400);
+      }
+    }
+
+    const finalAmountBeforeWallet = orderAmount - couponDiscount;
+
     const comboOrder = isItrMsmeCombo(resolvedServices.map((service) => service.slug));
-    const orderAmount = comboOrder ? 699 : resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
+    const orderAmountAdjusted = finalAmountBeforeWallet;
     const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
     const rewardRule = await getRewardRuleForOrder(resolvedServices.map((service) => service.slug));
     void rewardRule;
     const wallet = await createWalletIfMissing(user.id);
     const redeem = calculateWalletRedeemBreakdown({
-      serviceAmount: orderAmount,
+      serviceAmount: orderAmountAdjusted,
       walletBalance: Number(wallet.balance ?? 0),
       requestedRedeem: requestedWalletAmount,
     });
@@ -419,7 +438,7 @@ export async function POST(request: Request) {
       freshPayable: redeem.freshPayable,
     });
 
-    if (orderAmount > 0 && realPaymentAmount < redeem.minimumFreshPayable) {
+    if (orderAmountAdjusted > 0 && realPaymentAmount < redeem.minimumFreshPayable) {
       return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
     }
 

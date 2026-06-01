@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { validateCoupon } from "@/lib/coupons";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
@@ -15,6 +16,7 @@ type CreateOrderBody = {
   serviceSlug?: string;
   serviceSlugs?: string[];
   walletUseAmount?: number;
+  couponCode?: string;
   applicationDraft?: {
     customer?: {
       name?: string;
@@ -138,10 +140,29 @@ export async function POST(request: Request) {
       const serviceAmount = isItrMsmeCombo
         ? 699
         : services.reduce((total, service) => total + Number(service?.amount ?? 0), 0);
+
+      const couponCode = String(body?.couponCode ?? "").trim();
+      let couponDiscount = 0;
+      if (couponCode) {
+        const validation = validateCoupon({
+          couponCode,
+          serviceSlug: serviceSlugs[0],
+          amount: serviceAmount,
+          userId: user.id,
+        });
+        if (validation.valid) {
+          couponDiscount = validation.discountAmount;
+        } else {
+          return jsonError(`Invalid coupon: ${validation.message}`, 400);
+        }
+      }
+
+      const finalAmountBeforeWallet = serviceAmount - couponDiscount;
+
       const requestedWalletAmount = Math.max(0, Math.round(Number(body?.walletUseAmount ?? 0)));
       const wallet = await createWalletIfMissing(user.id);
       const redeem = calculateWalletRedeemBreakdown({
-        serviceAmount,
+        serviceAmount: finalAmountBeforeWallet,
         walletBalance: Number(wallet.balance ?? 0),
         requestedRedeem: requestedWalletAmount,
       });
@@ -154,10 +175,10 @@ export async function POST(request: Request) {
       }
 
       if (amount !== expectedAmount) {
-        return jsonError("Razorpay amount does not match the server-side payable amount.", 400);
+        return jsonError(`Razorpay amount does not match the server-side payable amount. Client: ${amount}, Expected: ${expectedAmount}`, 400);
       }
 
-      if (serviceAmount > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
+      if (finalAmountBeforeWallet > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
         return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
       }
 
@@ -195,7 +216,7 @@ export async function POST(request: Request) {
 
         const customer = normalizeCustomer(body.applicationDraft.customer);
         const customerValidationError = getCustomerValidationError(customer, {
-          emailOptional: serviceSlugs.includes("pm-vishwakarma-yojana"),
+          emailOptional: serviceSlugs.includes("pm-vishwakarma-yojana") || serviceSlugs.includes("cm-yuva-entrepreneur-loan-assistance"),
         });
 
         devInfo("[razorpay/create-order] Customer validation before payment", {
@@ -218,6 +239,8 @@ export async function POST(request: Request) {
           userId: user.id,
           serviceSlugs,
           serviceAmount,
+          couponDiscount,
+          finalAmountBeforeWallet,
           walletRedeemAmount,
           freshPayableAmount,
         });
@@ -237,6 +260,8 @@ export async function POST(request: Request) {
           service_slugs: serviceSlugs,
           payment: {
             total_amount: serviceAmount,
+            coupon_discount: couponDiscount,
+            final_amount: finalAmountBeforeWallet,
             wallet_redeemed_amount: walletRedeemAmount,
             fresh_payable_amount: freshPayableAmount,
             cashback_eligible_amount: freshPayableAmount,
@@ -269,8 +294,13 @@ export async function POST(request: Request) {
         };
         const metadata = {
           source: "razorpay_pending_application",
+          coupon_code: couponCode || null,
+          coupon_discount: couponDiscount,
+          original_price: serviceAmount,
           payment: {
             total_amount: serviceAmount,
+            coupon_discount: couponDiscount,
+            final_amount: finalAmountBeforeWallet,
             wallet_redeemed_amount: walletRedeemAmount,
             fresh_payable_amount: freshPayableAmount,
             cashback_eligible_amount: freshPayableAmount,
@@ -278,7 +308,10 @@ export async function POST(request: Request) {
         };
         let remainingWalletToAllocate = walletRedeemAmount;
         const applicationsToInsert = services.filter(Boolean).map((service, index) => {
-          const serviceAmountForRow = isItrMsmeCombo ? (index === 0 ? serviceAmount : 0) : Number(service?.amount ?? 0);
+          let serviceAmountForRow = isItrMsmeCombo ? (index === 0 ? serviceAmount : 0) : Number(service?.amount ?? 0);
+          if (service!.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
+            serviceAmountForRow = serviceAmountForRow - couponDiscount;
+          }
           const walletAmountForRow = isItrMsmeCombo ? (index === 0 ? walletRedeemAmount : 0) : Math.min(remainingWalletToAllocate, serviceAmountForRow);
           remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
           const freshAmountForRow = Math.max(0, serviceAmountForRow - walletAmountForRow);

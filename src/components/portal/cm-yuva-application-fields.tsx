@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FileUp, Trash2, CheckCircle2, Ticket, Wallet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -366,6 +366,12 @@ export function CmYuvaApplicationFields({
   walletBalance = 0,
   razorpayButton,
   paymentVerified,
+  appliedCouponCode = "",
+  appliedCouponDiscount = 0,
+  onApplyCouponCode,
+  onRemoveCouponCode,
+  couponError = null,
+  couponApplying = false,
 }: {
   values: CmYuvaApplicationValues;
   onChange: <Key extends keyof CmYuvaApplicationValues>(
@@ -385,16 +391,23 @@ export function CmYuvaApplicationFields({
   walletBalance?: number;
   razorpayButton?: React.ReactNode;
   paymentVerified?: boolean;
+  appliedCouponCode?: string;
+  appliedCouponDiscount?: number;
+  onApplyCouponCode?: (code: string) => Promise<boolean>;
+  onRemoveCouponCode?: () => void;
+  couponError?: string | null;
+  couponApplying?: boolean;
 }) {
   const totalSteps = 6;
+  const [couponInput, setCouponInput] = useState(appliedCouponCode || "");
 
   // Pricing calculations
   const originalPrice = 39999;
   const offerPrice = 13499;
-  const savings = 26500;
-  const couponDiscount = 5000;
-  const finalPayableBeforeWallet = 8499;
-  const walletUsed = walletBalance > 0 ? Math.min(walletBalance, 4249.5) : 0;
+  const savings = originalPrice - offerPrice;
+  const couponDiscount = appliedCouponDiscount;
+  const finalPayableBeforeWallet = offerPrice - couponDiscount;
+  const walletUsed = walletBalance > 0 ? Math.min(walletBalance, finalPayableBeforeWallet * 0.5) : 0;
   const freshPayableAmount = finalPayableBeforeWallet - walletUsed;
 
   function handleNext() {
@@ -750,8 +763,12 @@ export function CmYuvaApplicationFields({
                   onChange("state", "");
                 }}
               />
-              {pincodeStatus ? (
-                <p className="text-xs font-semibold text-blue-700">
+              {values.city && values.district && values.state ? (
+                <p className="text-xs font-semibold text-emerald-600 mt-1">
+                  Auto-filled from PIN code. You can edit if needed.
+                </p>
+              ) : pincodeStatus ? (
+                <p className="text-xs font-semibold text-blue-700 mt-1">
                   {pincodeStatus}
                 </p>
               ) : null}
@@ -763,10 +780,10 @@ export function CmYuvaApplicationFields({
               <Input
                 name="city"
                 required
-                readOnly
-                placeholder="Auto-filled from PIN code"
-                className="h-12 text-sm bg-slate-50 cursor-not-allowed rounded-xl"
+                placeholder="Enter city"
+                className="h-12 text-sm rounded-xl"
                 value={values.city}
+                onChange={(event) => onChange("city", event.target.value)}
               />
             </div>
             <div className="grid gap-1.5">
@@ -776,10 +793,10 @@ export function CmYuvaApplicationFields({
               <Input
                 name="district"
                 required
-                readOnly
-                placeholder="Auto-filled from PIN code"
-                className="h-12 text-sm bg-slate-50 cursor-not-allowed rounded-xl"
+                placeholder="Enter district"
+                className="h-12 text-sm rounded-xl"
                 value={values.district}
+                onChange={(event) => onChange("district", event.target.value)}
               />
             </div>
             <div className="grid gap-1.5">
@@ -789,10 +806,10 @@ export function CmYuvaApplicationFields({
               <Input
                 name="state"
                 required
-                readOnly
-                placeholder="Auto-filled from PIN code"
-                className="h-12 text-sm bg-slate-50 cursor-not-allowed rounded-xl"
+                placeholder="Enter state"
+                className="h-12 text-sm rounded-xl"
                 value={values.state}
+                onChange={(event) => onChange("state", event.target.value)}
               />
             </div>
             <div className="grid gap-1.5 md:col-span-2">
@@ -936,26 +953,63 @@ export function CmYuvaApplicationFields({
                 </div>
               </div>
 
-              {/* Coupon Row */}
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-emerald-50/50 border border-emerald-100/50 p-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                    <Ticket className="h-4.5 w-4.5 animate-pulse" />
+              {/* Coupon Row or Coupon Input */}
+              {couponDiscount > 0 ? (
+                <div className="flex items-center justify-between gap-4 rounded-xl bg-emerald-50/50 border border-emerald-100/50 p-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                      <Ticket className="h-4.5 w-4.5 animate-pulse" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-emerald-800">Coupon Code Applied</p>
+                      <p className="text-[10px] font-bold text-emerald-600">Code: {appliedCouponCode}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-extrabold text-emerald-800">Coupon Code Applied</p>
-                    <p className="text-[10px] font-bold text-emerald-600">Code: {couponDiscount > 0 ? "DGCNT5K" : "-"}</p>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="text-xs font-extrabold text-emerald-700 block">
+                      Coupon Applied Successfully
+                    </span>
+                    <span className="text-xs font-extrabold text-emerald-600 block mt-0.5">
+                      -&#x20B9;{couponDiscount.toLocaleString("en-IN")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCouponInput("");
+                        onRemoveCouponCode?.();
+                      }}
+                      className="mt-1 text-[10px] font-extrabold text-rose-600 hover:underline"
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-extrabold text-emerald-700 block">
-                    Coupon Applied Successfully
-                  </span>
-                  <span className="text-xs font-extrabold text-emerald-600 block mt-0.5">
-                    -&#x20B9;{couponDiscount.toLocaleString("en-IN")}
-                  </span>
+              ) : (
+                <div className="rounded-xl bg-slate-50 border border-slate-200/60 p-3">
+                  <p className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                    <Ticket className="h-4 w-4 text-slate-500" /> Have a Coupon Code?
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter coupon code (e.g. DGCNT5K)"
+                      className="h-10 text-sm rounded-xl font-mono uppercase bg-white border border-slate-200"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    />
+                    <button
+                      type="button"
+                      disabled={couponApplying || !couponInput.trim()}
+                      onClick={() => onApplyCouponCode?.(couponInput)}
+                      className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-xs font-bold text-white hover:bg-slate-900 transition disabled:opacity-55 shrink-0"
+                    >
+                      {couponApplying ? "Applying..." : "Apply"}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <p className="mt-1.5 text-[11px] font-bold text-red-600">{couponError}</p>
+                  )}
                 </div>
-              </div>
+              )}
 
               {/* Wallet Integration */}
               <div className="flex items-center justify-between gap-4 rounded-xl bg-blue-50/30 border border-blue-100/30 p-3">

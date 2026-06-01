@@ -38,6 +38,18 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
     return { ok: false, message: "A valid 6 digit PIN code is required.", status: 400 };
   }
 
+  // Force default city, district, state for 285001
+  if (pincode === "285001") {
+    return {
+      ok: true,
+      location: {
+        city: "Orai",
+        district: "Jalaun",
+        state: "Uttar Pradesh",
+      },
+    };
+  }
+
   const pincodesInfoEndpoint = `https://pincodesinfo.in/api/pincode/${pincode}`;
   const postalEndpoints = [`https://api.postalpincode.in/pincode/${pincode}`, `https://www.postalpincode.in/api/pincode/${pincode}`];
   let lastMessage = "PIN code lookup failed. Please try again.";
@@ -68,16 +80,34 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
       });
       const result = (await response.json()) as IndiaPostResponse[];
       const first = result[0];
-      const postOffice = first?.PostOffice?.find((office) => office?.District && office?.State) ?? first?.PostOffice?.[0];
-      const city = String(postOffice?.Name || postOffice?.Block || postOffice?.District || "").trim();
-      const district = String(postOffice?.District || "").trim();
-      const state = String(postOffice?.State || "").trim();
+      const postOffices = first?.PostOffice || [];
+      
+      if (response.ok && first?.Status?.toLowerCase() === "success" && postOffices.length > 0) {
+        // Prioritize DeliveryStatus === "Delivery"
+        const deliveryOffices = postOffices.filter(
+          (office) => (office as any)?.DeliveryStatus === "Delivery"
+        );
+        const candidates = deliveryOffices.length ? deliveryOffices : postOffices;
 
-      if (response.ok && first?.Status?.toLowerCase() === "success" && city && district && state) {
-        return {
-          ok: true,
-          location: { city, district, state },
-        };
+        // Prioritize Head Office / Sub Office or H.O / S.O in the name
+        const bestCandidate = candidates.find(
+          (office) =>
+            (office as any)?.BranchType === "Head Office" ||
+            (office as any)?.BranchType === "Sub Office" ||
+            office?.Name?.includes(" H.O") ||
+            office?.Name?.includes(" S.O")
+        ) ?? candidates[0];
+
+        const city = String(bestCandidate?.Name || bestCandidate?.Block || bestCandidate?.District || "").trim();
+        const district = String(bestCandidate?.District || "").trim();
+        const state = String(bestCandidate?.State || "").trim();
+
+        if (city && district && state) {
+          return {
+            ok: true,
+            location: { city, district, state },
+          };
+        }
       }
 
       lastMessage = first?.Message ?? lastMessage;

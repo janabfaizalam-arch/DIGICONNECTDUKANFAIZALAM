@@ -197,13 +197,13 @@ export function CmYuvaClientPage() {
   };
 
   return (
-    <div className="relative min-h-screen pb-36 pt-4 bg-slate-50 overflow-x-hidden">
+    <div className="relative min-h-screen pb-48 pt-4 bg-slate-50 overflow-x-hidden">
       {/* Dynamic Sheen elements */}
       <div className="pointer-events-none absolute -top-40 left-1/4 h-[600px] w-[600px] rounded-full bg-blue-400/10 blur-[130px]" />
       <div className="pointer-events-none absolute top-1/2 right-10 h-[500px] w-[500px] rounded-full bg-orange-400/10 blur-[110px]" />
 
       {/* COMPACT BOTTOM STICKY CTA BAR - MOBILE OVERLAP SPARED */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white/95 py-2.5 shadow-[0_-8px_30px_rgba(7,19,38,0.06)] backdrop-blur-md print:hidden pb-safe">
+      <div className="fixed bottom-[72px] sm:bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white/95 py-2.5 shadow-[0_-8px_30px_rgba(7,19,38,0.06)] backdrop-blur-md print:hidden pb-safe">
         <div className="container-shell flex items-center justify-between gap-3 flex-row max-w-5xl">
           <div className="flex items-center gap-2.5">
             <div className="relative w-9 h-9 overflow-hidden bg-slate-900 rounded-lg shrink-0 flex items-center justify-center">

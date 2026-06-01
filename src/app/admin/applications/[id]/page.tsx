@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Download, FileText, ReceiptText } from "lucide-react";
 
+import { GeneratePaymentLink } from "@/components/admin/generate-payment-link";
 import { AdminApplicationTabs } from "@/components/admin/admin-application-tabs";
 import { AdminDocumentReviewActions } from "@/components/admin/admin-document-review-actions";
 import { GenerateInvoiceButton } from "@/components/admin/generate-invoice-button";

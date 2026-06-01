@@ -193,6 +193,49 @@ export function ServiceApplicationForm({
     marksheet: null,
   });
   const [pincodeStatus, setPincodeStatus] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
+  const [appliedCouponDiscount, setAppliedCouponDiscount] = useState(0);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponApplying, setCouponApplying] = useState(false);
+
+  const handleApplyCoupon = async (code: string) => {
+    setCouponError(null);
+    setCouponApplying(true);
+    try {
+      const response = await fetch(`/api/coupons/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          couponCode: code,
+          serviceSlug: "cm-yuva-entrepreneur-loan-assistance",
+          amount: 13499,
+        }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success && result.valid) {
+        setAppliedCouponCode(code.trim().toUpperCase());
+        setAppliedCouponDiscount(Number(result.discountAmount ?? 0));
+        success("Coupon applied successfully!");
+        return true;
+      } else {
+        setCouponError(result.message || "Invalid coupon code.");
+        return false;
+      }
+    } catch {
+      setCouponError("Failed to validate coupon with server.");
+      return false;
+    } finally {
+      setCouponApplying(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCouponCode("");
+    setAppliedCouponDiscount(0);
+    setCouponError(null);
+    success("Coupon removed successfully.");
+  };
+
   const selectedServices = useMemo(() => {
     const nextServices = services?.length ? services : [service];
     const seen = new Set<string>();
@@ -211,9 +254,9 @@ export function ServiceApplicationForm({
   const isPvcCard = selectedServices.length === 1 && (selectedServices[0]?.slug === "pvc-card" || selectedServices[0]?.slug === "pvc-card-printing");
   const isCmYuva = selectedServices.length === 1 && selectedServices[0]?.slug === "cm-yuva-entrepreneur-loan-assistance";
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
-  const totalAmount = isCmYuva ? 8499 : isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
+  const totalAmount = isCmYuva ? (13499 - appliedCouponDiscount) : isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
-  const cmYuvaWalletRedeem = isCmYuva && wallet.balance > 0 ? Math.min(wallet.balance, 4249.5) : 0;
+  const cmYuvaWalletRedeem = isCmYuva && wallet.balance > 0 ? Math.min(wallet.balance, totalAmount * 0.5) : 0;
   const clampedWalletUseAmount = isCmYuva ? cmYuvaWalletRedeem : Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
   const walletLimitMessage = "You can redeem up to 50% of your wallet balance, limited to 50% of service amount.";
@@ -592,11 +635,11 @@ export function ServiceApplicationForm({
           ? {
               originalPrice: 39999,
               discountedPrice: 13499,
-              couponCode: "DGCNT5K",
-              couponDiscount: 5000,
+              couponCode: appliedCouponCode,
+              couponDiscount: appliedCouponDiscount,
               walletUsed: clampedWalletUseAmount,
               freshAmount: realPayableAmount,
-              finalAmount: 8499,
+              finalAmount: totalAmount,
             }
           : {}),
       };
@@ -681,6 +724,12 @@ export function ServiceApplicationForm({
               }}
               walletBalance={wallet.balance}
               paymentVerified={Boolean(razorpayPayment)}
+              appliedCouponCode={appliedCouponCode}
+              appliedCouponDiscount={appliedCouponDiscount}
+              onApplyCouponCode={handleApplyCoupon}
+              onRemoveCouponCode={handleRemoveCoupon}
+              couponError={couponError}
+              couponApplying={couponApplying}
               razorpayButton={
                 realPayableAmount > 0 ? (
                   <RazorpayCheckoutButton
@@ -689,6 +738,7 @@ export function ServiceApplicationForm({
                     serviceSlug={selectedServices[0]?.slug}
                     serviceSlugs={selectedServices.map((item) => item.slug)}
                     walletUseAmount={clampedWalletUseAmount}
+                    couponCode={appliedCouponCode}
                     customer={{
                       name: normalizedApplicationDraft.customer.name,
                       email: normalizedApplicationDraft.customer.email,
