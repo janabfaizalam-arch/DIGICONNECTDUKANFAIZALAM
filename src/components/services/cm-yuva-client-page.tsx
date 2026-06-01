@@ -12,57 +12,141 @@ import {
   ArrowRight,
   MessageCircle,
   FileCheck,
-  UploadCloud,
-  FileCheck2,
-  Trash2,
   ChevronRight,
   ChevronDown,
-  Store,
   TrendingUp,
   Award,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Layers,
+  Settings,
+  Activity,
+  ThumbsUp,
+  BookOpen,
+  Briefcase,
+  FileSignature,
+  Coins
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// 20 Curated high quality Unsplash images for CM YUVA business themes
-const IMAGES = {
-  youngEntrepreneur: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&h=600&q=80",
-  smallRetail: "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=800&h=600&q=80",
-  tailoring: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&h=600&q=80",
-  mobileRepair: "https://images.unsplash.com/photo-1597740985671-2a8a3b80502e?auto=format&fit=crop&w=800&h=600&q=80",
-  dairy: "https://images.unsplash.com/photo-1527018601619-a508a2be00cd?auto=format&fit=crop&w=800&h=600&q=80",
-  printing: "https://images.unsplash.com/photo-1616400619175-5ebd3009007f?auto=format&fit=crop&w=800&h=600&q=80",
-  computerCenter: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=800&h=600&q=80",
-  manufacturing: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&h=600&q=80",
-  planningMeeting: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&h=600&q=80",
-  reportPrep: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&h=600&q=80",
-  msmeSupport: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=800&h=600&q=80",
-  verification: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&h=600&q=80",
-  successStories: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&h=600&q=80",
-  growthVisual: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&h=600&q=80",
-  approvalConcept: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&h=600&q=80",
-  startupTeam: "https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?auto=format&fit=crop&w=800&h=600&q=80",
-  womenEntrepreneur: "https://images.unsplash.com/photo-1580894732444-8fecef2271ff?auto=format&fit=crop&w=800&h=600&q=80",
-  ruralEntrepreneur: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&h=600&q=80",
-  digitalBusiness: "https://images.unsplash.com/photo-1468436139062-f60a71c5c892?auto=format&fit=crop&w=800&h=600&q=80",
-  expansion: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=800&h=600&q=80"
+// Custom type declaration to avoid typescript explicit 'any' lint issues
+type winExtension = typeof window & {
+  gtag?: (event: string, action: string, data: Record<string, unknown>) => void;
+  fbq?: (event: string, action: string, data: Record<string, unknown>) => void;
 };
 
-// 12 Business categories image cards data
-const CATEGORIES = [
-  { title: "Retail Store", desc: "Supermarkets, grocery shops, and retail outlets.", img: IMAGES.smallRetail, icon: Store },
-  { title: "Tailoring Unit", desc: "Custom boutique, garments stitching, and alterations.", img: IMAGES.tailoring, icon: Store },
-  { title: "Gift Shop", desc: "Novelties, cards, and fancy items boutique.", img: IMAGES.planningMeeting, icon: Store },
-  { title: "Mobile Shop", desc: "Mobile retail accessories and service units.", img: IMAGES.mobileRepair, icon: Store },
-  { title: "Computer Center", desc: "Cyber cafes, training institutes, and DTP.", img: IMAGES.computerCenter, icon: Store },
-  { title: "Printing Press", desc: "Offset printers, flex, and digital printing.", img: IMAGES.printing, icon: Store },
-  { title: "Dairy Business", desc: "Milk supply centers, dairy processing plants.", img: IMAGES.dairy, icon: Store },
-  { title: "Food Business", desc: "Bakeries, sweet shops, cafes, and catering.", img: IMAGES.successStories, icon: Store },
-  { title: "Salon", desc: "Premium beauty parlours and hair-dressers.", img: IMAGES.womenEntrepreneur, icon: Store },
-  { title: "Repair Center", desc: "Electrical and electronic home appliance repair.", img: IMAGES.digitalBusiness, icon: Store },
-  { title: "Manufacturing Unit", desc: "Sacks, garments, packaging, or soap works.", img: IMAGES.manufacturing, icon: Store },
-  { title: "E-Commerce", desc: "Online shipping hubs and home deliveries.", img: IMAGES.expansion, icon: Store }
+// Researched CM YUVA Eligible Sectors
+const ELIGIBLE_SECTORS = [
+  { title: "Manufacturing Units", desc: "Setting up small mills, processing, packaging, plastics, or textile manufacturing factories.", icon: Settings },
+  { title: "Service Sector Businesses", desc: "Startups in diagnostic labs, design houses, tailoring hubs, and corporate setups.", icon: Layers },
+  { title: "Food Processing", desc: "Flour mills, oil extraction, bakeries, spices processing, and cold storages.", icon: Coins },
+  { title: "Engineering Workshops", desc: "Lathe machining, sheet metal welding, auto-garage systems, and fabrication shops.", icon: Settings },
+  { title: "Repair & Maintenance Services", desc: "Automobile repair centers, consumer appliance servicing, and device check desks.", icon: Activity },
+  { title: "Technical Services", desc: "HVAC plant setups, plumbing installations, architectural mapping, and civil designs.", icon: Shield },
+  { title: "Digital & IT Services", desc: "Software development labs, animation studios, SEO consultancies, and cyber setups.", icon: UserCheck },
+  { title: "Healthcare Related Services", desc: "Physiotherapy clinics, pharmacies, pathology dockets, and nursing consultancies.", icon: Activity },
+  { title: "Educational & Skill Services", desc: "Coaching classes, animation training schools, physical training, and gym setups.", icon: Award },
+  { title: "Agro Processing Activities", desc: "Bio-fertilizers, solar dryers, animal feed plants, and nursery setups.", icon: Coins },
+  { title: "Small Industrial Units", desc: "Soap packaging, fly-ash brick kilns, paper bag makers, and box creators.", icon: Settings },
+  { title: "Professional Service Enterprises", desc: "Chartered accounting hubs, legal advisory desks, and credit consultancy portals.", icon: UserCheck }
+];
+
+// 10 Documents & Reports We Prepare
+const PREPARED_DOCUMENTS = [
+  { title: "CA Certified Project Report", desc: "Financial balance sheet and cash flow projections compiled and signed by an active Chartered Accountant.", icon: FileSignature },
+  { title: "Government Sectional Letter Assistance", desc: "Drafting the formal representation letter required by specific government departments for loan authorization.", icon: FileText },
+  { title: "Detailed Project Report (DPR)", desc: "Exhaustive project plan indicating working capital, fixed asset purchases, and projected profitability ratios.", icon: FileCheck },
+  { title: "Affidavit Preparation", desc: "Formulation of standard legal declaration affidavits required to confirm compliance with state rules.", icon: FileSignature },
+  { title: "Machinery & Project Information Report", desc: "Technical specifications dossier outlining the operational machinery and quotes validation.", icon: Settings },
+  { title: "District Industry Centre Letter Assistance", desc: "Official request correspondence designed to expedite the file forwarding process at District levels.", icon: FileText },
+  { title: "MSME Registration Certificate", desc: "Immediate online registration for Udyam micro-certificate to qualify for priority lending rates.", icon: UserCheck },
+  { title: "Caste Certificate Assistance", desc: "Helping verify and structure applications for cast concessions to claim state interest subventions.", icon: Award },
+  { title: "Domicile Certificate Assistance", desc: "Support in obtaining domicile credentials proving permanent residency in Uttar Pradesh.", icon: Award },
+  { title: "CM YUVA EDP Certificate Assistance", desc: "Guidance on registering and successfully completing the Entrepreneurship Development Program training.", icon: Clock }
+];
+
+// 20 Comprehensive FAQs for CM YUVA
+const FAQS = [
+  {
+    q: "What is the CM YUVA Entrepreneur Loan Scheme?",
+    a: "The Chief Minister's Youth Self-Employment Scheme (CM YUVA - Mukhyamantri Yuva Udyami Vikas Abhiyan) is a flagship initiative of the Uttar Pradesh government designed to empower young entrepreneurs to establish micro-ventures. The scheme offers subsidized, collateral-free credit facilities alongside professional advisory support, MSME registration certificate processing, and CA-certified Detailed Project Report (DPR) formulation, enabling young business minds to bootstrap their operations seamlessly."
+  },
+  {
+    q: "What are the exact eligibility criteria for applying?",
+    a: "To qualify for CM YUVA support, candidates must satisfy the following credentials: 1) Be a permanent resident of Uttar Pradesh. 2) Aged between 18 and 40 years at the time of filing. 3) Have successfully completed at least Class 8th education (higher qualifications like Class 10th, 12th, or Graduates are highly preferred). 4) Must not be a defaulter with any financial institution. 5) Must not have availed subventions under prime minister's employment schemes or other state-sponsored funding pipelines."
+  },
+  {
+    q: "What is the maximum loan limit for manufacturing and service sectors?",
+    a: "Under the officially updated scheme, eligible candidates can secure financial assistance depending on the sector: A) Industrial Manufacturing Units can apply for project loans up to ₹10 Lakhs. B) Service Sector Units and Small Scale Retail operations can secure funding assistance up to ₹5 Lakhs. These caps are strictly allocated to cover both capital asset expenditure (machinery, tools) and working capital needs."
+  },
+  {
+    q: "Is it true that CM YUVA offers a 0% interest-free business loan?",
+    a: "Yes! The core highlight of the CM YUVA scheme is the interest-free subvention structure. Under the rules, the state government provides interest support (subvention) which effectively reduces the interest liability of the entrepreneur to 0%. The borrower is expected to repay the baseline principal installments, and the state finance department credits the interest subventions directly back to the linked bank account upon prompt monthly repayment."
+  },
+  {
+    q: "What is the ₹50,000 subsidy (Margin Money Support)?",
+    a: "In addition to interest subvention, the scheme provides a direct Margin Money Subsidy of 10% of the total project cost, capped at a maximum of ₹50,000. This margin money is credited directly to the entrepreneur's loan account as upfront government grant. This significantly reduces the total principal liability that the business owner needs to repay to the commercial bank branch."
+  },
+  {
+    q: "Why is a Detailed Project Report (DPR) mandatory, and how does DigiConnect help?",
+    a: "A Detailed Project Report (DPR) is the most critical document reviewed by bank credit managers and District Industry Centre panels. It lists fixed capital costs, machinery quotes, projected balance sheets, operational cash-flows, and break-even ratios. A generic template is immediately rejected. DigiConnect employs experienced financial analysts who prepare customized, bank-compliant DPRs signed by certified Chartered Accountants (CAs) to ensure maximum approval speed."
+  },
+  {
+    q: "What documents are required for filing a CM YUVA application?",
+    a: "The standard checklist comprises: 1) Aadhaar Card linked to active mobile, 2) PAN Card, 3) UP Domicile Certificate, 4) Educational Marksheet (Class 8th minimum), 5) Caste Certificate (if claiming subvention benefits), 6) Proposed business layout address proof, 7) Detailed machinery quotation from an authorized dealer, 8) Project cost summary report (DPR), 9) Non-defaulting affidavit stamped by notary, and 10) EDP training certificate (if completed)."
+  },
+  {
+    q: "What are the common reasons for application rejection?",
+    a: "The three most common failure points are: A) Spelling discrepancies where name characters on Aadhaar, PAN, or marksheets do not match exactly. B) Classifying a pure retail trading shop as a service enterprise, as standard retail trading is not eligible. C) Inaccurate machinery quotes or non-compliant project reports that do not conform to banking credit assessment standards."
+  },
+  {
+    q: "Can women entrepreneurs apply, and are there special benefits?",
+    a: "Absolutely! The Uttar Pradesh government actively promotes women's entrepreneurship. Women candidates enjoy priority routing channels, faster file processing, and dedicated liaison dockets at the District Industry Centre (DIC). Our advisors specialize in structuring applications to ensure female-led startups receive these benefits without administrative delay."
+  },
+  {
+    q: "How does the end-to-end application support timeline work?",
+    a: "The timeline comprises six key milestones: 1) DigiConnect experts run eligibility tests and gather your scans. 2) Our analysts prepare your custom DPR and CA certified reports. 3) We complete your MSME/Udyam filings. 4) We upload the complete compiled dossier to the official UP self-employment portal. 5) We assist in tracking DUDA, NIC, and DIC approvals. 6) The DIC recommends the recommended file to the designated bank branch for credit disbursal."
+  },
+  {
+    q: "Is an Entrepreneurship Development Program (EDP) certificate mandatory?",
+    a: "Completing EDP training is a vital element for final loan disbursal. While you can submit the initial file without it, banks and DIC require the EDP certificate to execute the final credit agreement. DigiConnect helps candidates register for official online EDP modules to ensure they secure their training credentials on time."
+  },
+  {
+    q: "Does DigiConnect guarantee that the bank will approve the loan?",
+    a: "No professional organization can guarantee credit approval, as loan sanctioning is the sole statutory discretion of the financing bank branch based on credit scores (CIBIL) and overall project viability. However, DigiConnect guarantees premium consulting support, correct document structuring, compliant DPRs, and DIC liaisoning assistance to maximize your approval probability."
+  },
+  {
+    q: "How does the interest subvention reimbursement work?",
+    a: "It follows a quarterly reimbursement loop: A) The entrepreneur promptly pays the standard monthly EMI. B) The bank branch logs the prompt payment logs. C) The District Industry Centre (DIC) files a subvention claim with the state treasury. D) The state finance department directly credits the interest amount back to the entrepreneur's savings/current account, effectively rendering the loan interest-free."
+  },
+  {
+    q: "What type of businesses are eligible under the manufacturing category?",
+    a: "The manufacturing category covers small scale industrial setups like flour mills, spice grinding plants, oil mills, paper box manufacturing, textile weaving, garments packaging, soap making, building block factories, fly-ash brick kilns, bio-fertilizer plants, and generic agro-processing operations."
+  },
+  {
+    q: "What business operations qualify under the service sector category?",
+    a: "Eligible service operations include diagnostic laboratories, software development centers, cyber cafes, digital IT consulting labs, auto repair garages, mobile servicing centers, consumer appliance repair desks, plumbing/HVAC consulting offices, coaching institutes, wellness gyms, and professional services offices like chartered accounting or legal advisory desks."
+  },
+  {
+    q: "Is CIBIL score checked for CM YUVA loans?",
+    a: "Yes. Banks strictly pull CIBIL reports of the applicant. Any active default, write-off, or settlement history with other lenders triggers immediate credit rejection. Candidates must maintain a clean repayment record to successfully pass the bank's credit evaluation checks."
+  },
+  {
+    q: "How is DigiConnect Dukan connected with RNoS India?",
+    a: "DigiConnect Dukan is a premium national digital services and finance marketplace powered by **RNoS India Pvt Ltd**. We leverage our extensive network of certified credit analysts, legal associates, and chartered accountants to deliver premium corporate-grade consulting services for government schemes."
+  },
+  {
+    q: "Can I apply if I currently have another active business loan?",
+    a: "Generally, candidates with active commercial loans are disqualified from claiming CM YUVA subventions, as the scheme is designed to help fresh start-ups. However, if the existing credit is fully repaid and closed with a clear No-Objection Certificate (NOC), you are eligible to file a fresh application."
+  },
+  {
+    q: "How does the WhatsApp status tracking integration work?",
+    a: "DigiConnect incorporates a stateful CRM. The moment your file is registered, a dedicated lead tracking profile is activated. Any update—such as DPR preparation, portal upload, municipal verification, or DIC forwarding—triggers automated notification alerts sent directly to your verified WhatsApp mobile number, keeping you updated in real-time."
+  },
+  {
+    q: "How do I get started with my CM YUVA application on DigiConnect?",
+    a: "Starting is extremely simple: 1) Run the interactive Eligibility Checker Wizard on this page to confirm your basic profile qualifications. 2) Click the 'Apply Online Now' CTA to access our digital registration form. 3) Or click the green 'WhatsApp Help' button to connect directly with a certified loan advisor who will guide you step-by-step."
+  }
 ];
 
 export function CmYuvaClientPage() {
@@ -74,6 +158,7 @@ export function CmYuvaClientPage() {
     businessCategory: ""
   });
   const [eligibilityResult, setEligibilityResult] = useState<string | null>(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Counters state
   const [counters, setCounters] = useState({
@@ -113,7 +198,6 @@ export function CmYuvaClientPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Eligibility evaluation
   const handleCheckEligibility = () => {
     const ageVal = parseInt(eligibilityData.age);
     if (isNaN(ageVal) || ageVal < 18 || ageVal > 40) {
@@ -128,61 +212,15 @@ export function CmYuvaClientPage() {
       setEligibilityResult("not_eligible_education");
       return;
     }
-    
-    // Eligible
     setEligibilityResult(eligibilityData.businessCategory === "manufacturing" ? "eligible_industrial" : "eligible_service");
-  };
-
-  // Uploader state
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [leadCreated, setLeadCreated] = useState(false);
-  const [currentTrackerStep, setCurrentTrackerStep] = useState(1);
-
-  // Simulated Document Upload
-  const handleFileUpload = (files: File[]) => {
-    const valid = files.filter(f => f.size <= 5 * 1024 * 1024 && ["application/pdf", "image/jpeg", "image/png"].includes(f.type));
-    if (valid.length !== files.length) {
-      alert("Only PDF, JPG, and PNG files under 5MB are allowed.");
-    }
-    setSelectedFiles(prev => [...prev, ...valid]);
-  };
-
-  const handleStartSimulatedUpload = () => {
-    if (selectedFiles.length === 0) return;
-    setIsUploading(true);
-    setUploadProgress(10);
-    
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setIsUploading(false);
-            setLeadCreated(true);
-            setCurrentTrackerStep(3); // Advance to Documents Received in visual tracker
-            // Trigger conversion tracking events
-            triggerAnalyticsEvent("document_upload_success", { count: selectedFiles.length });
-          }, 500);
-          return 100;
-        }
-        return prev + 15;
-      });
-    }, 200);
   };
 
   const triggerAnalyticsEvent = (name: string, payload: Record<string, unknown> = {}) => {
     if (typeof window !== "undefined") {
-      const win = window as typeof window & {
-        gtag?: (event: string, action: string, data: Record<string, unknown>) => void;
-        fbq?: (event: string, action: string, data: Record<string, unknown>) => void;
-      };
-      // Safe Google Analytics
+      const win = window as winExtension;
       if (typeof win.gtag === "function") {
         win.gtag("event", name, payload);
       }
-      // Safe Meta Pixel
       if (typeof win.fbq === "function") {
         win.fbq("trackCustom", name, payload);
       }
@@ -190,161 +228,479 @@ export function CmYuvaClientPage() {
     }
   };
 
-  // FAQ Accordions State
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-
-  const FAQS = [
-    { q: "What is the CM YUVA Entrepreneur Loan Scheme?", a: "The Chief Minister's Youth Self-Employment Scheme (CM YUVA) is a government initiative of Uttar Pradesh designed to help young entrepreneurs start their own businesses with interest subventions, project report preparations, and digital documentation assistance." },
-    { q: "Who is eligible to apply for this scheme?", a: "UP residents aged 18 to 40, who have cleared at least Class 8th or higher, are eligible. The candidate should not be a defaulter with any financial institution." },
-    { q: "What is the maximum loan amount under CM YUVA?", a: "Under this loan assistance program, eligible candidates can secure business loans of up to ₹5 Lakhs for service/retail operations and up to ₹10 Lakhs for industrial manufacturing setups." },
-    { q: "What is the rate of interest and subsidy?", a: "The scheme offers premium interest subsidies under state government rules. Our digital portal helps prepare your loan docket to maximize subsidy approval probability." },
-    { q: "Is a project report (DPR) mandatory?", a: "Yes, a Detailed Project Report (DPR) outlining the business costs, projected revenues, and working capital is mandatory. Our certified professionals prepare this report for you as part of our service." },
-    { q: "How does DigiConnect Dukan assist with MSME Registration?", a: "We handle the complete MSME/Udyam Registration filing process online. We ensure your certificate is generated accurately to link priority business banking lending rates." },
-    { q: "Do you guarantee loan approval?", a: "No, loan approval is the sole discretion of the bank. We offer professional file preparation support, correct documentation filings, and project reports to maximize approval rates." },
-    { q: "What documents do I need to get started?", a: "Aadhaar Card, PAN Card, Bank Passbook, Educational Certificate (Class 8/10/12/Degree), Passport Photo, and Proof of Business Address are required." },
-    { q: "How is the CRM integrated into my application?", a: "Our enterprise CRM generates a stateful tracker immediately after you upload documents. It logs the activity timeline (Lead Created, Report Prepared, Submitted) and sends auto-status updates directly to your WhatsApp." },
-    { q: "Are there any hidden charges?", a: "No. All documentation and project file creation consulting charges are specified transparently before payment checkout. No unexpected fees will be requested." },
-    { q: "Can I apply for multiple business categories?", a: "Yes. Our expert advisors will suggest the best classification (Manufacturing, Service, or Retail) to maximize loan eligibility limits based on your background." },
-    { q: "How can I check my application status?", a: "You can track your live CRM milestones directly through the dynamic Application Tracker widget on this landing page or log into your client portal dashboard." },
-    { q: "Can rural entrepreneurs apply for the CM YUVA scheme?", a: "Yes. Rural entrepreneurs are highly encouraged to apply. The UP government offers exclusive priority subventions for rural micro-enterprises." },
-    { q: "How is my digital data secured?", a: "All uploaded documents are stored in secure cloud systems using bank-grade AES-256 encryption. We strictly restrict access to certified credit processing professionals." },
-    { q: "How long does the document checking process take?", a: "Our standard verification turnaround is 24 to 48 working hours. Once verified, we schedule your file compilation and DPR formulation." },
-    { q: "What education proof is accepted?", a: "A copy of your school marksheet (Class 8th minimum), passing certificate, intermediate certificate, or college degree qualifies as valid education proof." },
-    { q: "Can women entrepreneurs apply?", a: "Yes! There are dedicated concessions and faster file routing channels for women entrepreneurs applying under this state scheme." },
-    { q: "Do I get a GST registration under this scheme?", a: "Yes, if required. We offer bundled GST registration alongside CM YUVA file preparations under our corporate business filings package." },
-    { q: "Is the project report prepared as per bank standards?", a: "Absolutely. Our financial analysts compile professional Detailed Project Reports (DPRs) that strictly adhere to public sector and commercial bank lending standards." },
-    { q: "How do I start the process?", a: "Simply use the dynamic uploader on this page, run the eligibility checker, or click the WhatsApp button to connect directly with a dedicated loan assistant." }
-  ];
-
   return (
-    <div className="relative min-h-screen pb-16 pt-4 bg-slate-50 overflow-x-hidden">
-      {/* Liquid Sheen Elements */}
-      <div className="pointer-events-none absolute -top-40 left-1/4 h-[500px] w-[500px] rounded-full bg-blue-400/10 blur-[120px]" />
-      <div className="pointer-events-none absolute top-1/2 right-10 h-[400px] w-[400px] rounded-full bg-orange-400/10 blur-[100px]" />
+    <div className="relative min-h-screen pb-24 pt-4 bg-slate-50 overflow-x-hidden">
+      {/* Dynamic Sheen elements */}
+      <div className="pointer-events-none absolute -top-40 left-1/4 h-[600px] w-[600px] rounded-full bg-blue-400/10 blur-[130px]" />
+      <div className="pointer-events-none absolute top-1/2 right-10 h-[500px] w-[500px] rounded-full bg-orange-400/10 blur-[110px]" />
 
-      <div className="container-shell space-y-16">
-        
-        {/* ================= HERO SECTION ================= */}
-        <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-xs font-bold text-blue-700 shadow-sm">
-              <Award className="h-4 w-4" />
-              Fintech-Grade Entrepreneurship Support
+      {/* STICKY CTA BAR FOR CONVERSION - RESPONSIVE MOBILE OPTIMIZED */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white/90 py-3 shadow-[0_-8px_30px_rgba(7,19,38,0.06)] backdrop-blur-md print:hidden">
+        <div className="container-shell flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <div className="flex items-center gap-2.5">
+            <Image
+              src="/images/services/yuva/cm-yuva-logo.png"
+              alt="CM YUVA Logo"
+              width={50}
+              height={22}
+              className="object-contain"
+            />
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase leading-none tracking-wider">UP Government Scheme</p>
+              <h4 className="text-xs font-black text-slate-950 mt-1">CM YUVA Assistance</h4>
             </div>
-            
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl md:text-6xl">
-              Start Your Business Journey with <span className="bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">CM YUVA</span> Support
-            </h1>
-            
-            <p className="text-base font-medium leading-relaxed text-slate-600 sm:text-lg">
-              Professional assistance for detailed project reports (DPR), MSME registration, document verification, and business loan application preparation under UP Government guidelines.
-            </p>
+          </div>
+          <div className="flex w-full gap-2.5 sm:w-auto">
+            <Link
+              href="/apply/cm-yuva-entrepreneur-loan-assistance"
+              onClick={() => triggerAnalyticsEvent("sticky_apply_now")}
+              className="flex-1 sm:flex-initial inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-700 to-indigo-600 px-6 text-xs font-black text-white transition hover:-translate-y-0.5 shadow-sm shadow-blue-500/10"
+            >
+              Apply Now
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <a
+              href="https://wa.me/917007595931?text=Hello,%20I%20am%20interested%20in%20CM%20YUVA%20Entrepreneur%20Loan%20Assistance."
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => triggerAnalyticsEvent("whatsapp_consultation_click", { location: "sticky_bar" })}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-5 text-xs font-black text-white transition hover:bg-[#20ba56]"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
 
-            {/* Trust Badges */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
+      <div className="container-shell space-y-20">
+        
+        {/* ================= HERO SECTION (FULL WIDTH REDESIGN WITH SCROLL ANIMATION) ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative overflow-hidden rounded-[2.5rem] border border-blue-100/50 bg-slate-900 text-white p-6 md:p-12 shadow-[0_20px_50px_rgba(7,19,38,0.12)]"
+        >
+          {/* fintech background glow */}
+          <div className="pointer-events-none absolute -left-20 -top-20 h-[350px] w-[350px] rounded-full bg-blue-500/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -right-20 -bottom-20 h-[350px] w-[350px] rounded-full bg-orange-500/10 blur-[80px]" />
+          
+          <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-3">
+                <Image
+                  src="/images/services/yuva/cm-yuva-logo.png"
+                  alt="CM YUVA Logo"
+                  width={110}
+                  height={50}
+                  className="object-contain filter brightness-110 drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)]"
+                />
+                <div className="h-6 w-px bg-white/20" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-blue-400">
+                  <Award className="h-3 w-3" /> UP Govt Subsidized
+                </span>
+              </div>
+
+              {/* Title with CM YUVA Logo next to it */}
+              <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl md:text-5.5xl lg:text-6.5xl flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>Start Your Business with</span>
+                <span className="flex items-center gap-2 bg-gradient-to-r from-blue-400 via-indigo-400 to-orange-400 bg-clip-text text-transparent">
+                  CM YUVA
+                  <Image
+                    src="/images/services/yuva/cm-yuva-logo.png"
+                    alt="CM YUVA"
+                    width={85}
+                    height={38}
+                    className="object-contain inline filter brightness-110 drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)]"
+                  />
+                </span>
+                <span>Support</span>
+              </h1>
+
+              <p className="text-sm font-medium leading-relaxed text-slate-300 sm:text-base max-w-2xl">
+                Professional online assistance for project reports (DPR), MSME registration, affidavit preparation, and business loan applications under Uttar Pradesh Chief Minister Youth Self-Employment Initiative.
+              </p>
+
+              {/* Floating trust badges inside glass panels */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {[
+                  "Government Supported",
+                  "0% Interest Support",
+                  "Up To ₹5 Lakh",
+                  "₹50,000 Subsidy"
+                ].map((badge, idx) => (
+                  <div key={idx} className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/5 px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-sm">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    <span className="text-xs font-bold text-slate-200">{badge}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row pt-4">
+                <Link
+                  href="/apply/cm-yuva-entrepreneur-loan-assistance"
+                  onClick={() => triggerAnalyticsEvent("hero_apply_click")}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition hover:-translate-y-0.5"
+                >
+                  Apply Online Now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a
+                  href="#eligible-sectors"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-6 text-sm font-extrabold text-white transition hover:bg-white/10"
+                >
+                  Explore Sectors
+                </a>
+              </div>
+            </div>
+
+            {/* Supplied Hero Poster */}
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-[420px] aspect-[4/3] sm:aspect-square overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-3 shadow-2xl backdrop-blur-sm animate-float-icon-1">
+                <Image
+                  src="/images/services/yuva/hero-banner.jpg"
+                  alt="CM YUVA Scheme ₹5 Lakh Interest-Free Business Loan"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 38vw, 100vw"
+                  className="object-cover rounded-[1.75rem]"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ================= DUAL STORYTELLING POSTERS SECTION ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-8"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Visual Storytelling</p>
+            <h2 className="text-3xl font-black text-slate-950 sm:text-4xl">Government Support & Subvention Overview</h2>
+            <p className="mt-2 text-sm text-slate-500">DigiConnect Dukan maps your dockets directly against these two primary state government loan benefits.</p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Poster 1 */}
+            <div className="glass-panel rounded-[2rem] p-5 flex flex-col justify-between">
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.5rem] bg-slate-100">
+                <Image
+                  src="/images/services/yuva/interest-free-poster.png"
+                  alt="0% Interest-Free Business Loan Poster"
+                  fill
+                  loading="lazy"
+                  sizes="(min-width: 768px) 45vw, 95vw"
+                  className="object-cover transition-transform duration-300 hover:scale-[1.01]"
+                />
+              </div>
+              <div className="mt-5 space-y-3">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-extrabold text-blue-700">
+                  <TrendingUp className="h-3 w-3" /> 0% Interest-Free Business Loan
+                </div>
+                <h3 className="text-lg font-black text-slate-950">Interest-Free Financial Assistance</h3>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Under UP Chief Minister Youth Self Employment policies, eligible candidates are assisted to secure interest-free subventions. This financial support helps bootstrap micro-ventures without the heavy burden of commercial bank interest rates.
+                </p>
+              </div>
+            </div>
+
+            {/* Poster 2 */}
+            <div className="glass-panel rounded-[2rem] p-5 flex flex-col justify-between">
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.5rem] bg-slate-100">
+                <Image
+                  src="/images/services/yuva/subsidy-poster.png"
+                  alt="₹50,000 Subsidy Support Poster"
+                  fill
+                  loading="lazy"
+                  sizes="(min-width: 768px) 45vw, 95vw"
+                  className="object-cover transition-transform duration-300 hover:scale-[1.01]"
+                />
+              </div>
+              <div className="mt-5 space-y-3">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-[10px] font-extrabold text-[#FF8A00]">
+                  <Coins className="h-3 w-3" /> Up to ₹50,000 Subsidy
+                </div>
+                <h3 className="text-lg font-black text-slate-950">Direct Government Margin Money Subsidy</h3>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Qualifying startups are supported to receive direct margin money subvention grants up to ₹50,000 from the state government repository. DigiConnect handles the District Industry Centre documentation pipeline to ensure your grant files verify without errors.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ================= DEDICATED BENEFITS GRID SECTION ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Exclusive Advantages</p>
+            <h2 className="text-3xl font-black text-slate-950 sm:text-4xl">Key Benefits of CM YUVA Scheme</h2>
+            <p className="mt-2 text-sm text-slate-500">Every eligibility detail is optimized to deliver direct fiscal advantages to your venture.</p>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { title: "Up To ₹5 Lakh Loan", desc: "Access standard credit lines for service/retail startups, or up to ₹10 Lakhs for industrial units.", icon: Coins },
+              { title: "0% Interest Support", desc: "Full state government interest subvention credits reimburse interest costs completely.", icon: TrendingUp },
+              { title: "₹50,000 Subsidy", desc: "Receive upfront 10% Margin Money Subsidy to lower the net principal loan repayment amount.", icon: Award },
+              { title: "Project Report Support", desc: "Expert advisory teams prepare compliant Detailed Project Reports (DPR) to satisfy bank panels.", icon: FileText },
+              { title: "MSME Registration", desc: "Immediate online Udyam filing secures priority banking loan approvals and interest rates.", icon: UserCheck },
+              { title: "End-to-End Assistance", desc: "Direct liaisoning at District Industry Centre (DIC) guides your application from creation to disbursal.", icon: Shield }
+            ].map((benefit, idx) => {
+              const IconComp = benefit.icon;
+              return (
+                <div key={idx} className="group relative overflow-hidden rounded-[2rem] border border-blue-50 bg-white p-6 shadow-sm hover:border-blue-200 transition duration-200">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 transition duration-200 group-hover:bg-blue-600 group-hover:text-white">
+                    <IconComp className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-base font-extrabold text-slate-950">{benefit.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{benefit.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+
+        {/* ================= WHY CHOOSE DIGICONNECT SECTION ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Our Specialization</p>
+            <h2 className="text-3xl font-black text-slate-950 sm:text-4xl">Why Choose DigiConnect</h2>
+            <p className="mt-2 text-sm text-slate-500">We replace standard bureaucratic liaisoning with transparent startup-grade speed and reliability.</p>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { title: "Expert Documentation Team", desc: "Experienced credit processing analysts ensure every scan passes system validations seamlessly.", icon: UserCheck },
+              { title: "CA Project Report Preparation", desc: "In-house Chartered Accountants formulate and sign highly-compliant project reports (DPR).", icon: FileText },
+              { title: "Application Tracking", desc: "Real-time stateful CRM milestone logging delivers auto-notifications directly to your WhatsApp.", icon: Activity },
+              { title: "Government Process Guidance", desc: "Liaisoning experts map and navigate DUDA, NIC, MSME, and DIC verification gates cleanly.", icon: Shield },
+              { title: "Fast Support", desc: "Dedicated corporate finance advisors address files and resolve query tickets within 24 hours.", icon: Clock },
+              { title: "Secure Documentation", desc: "Bank-grade AES-256 cloud encryption guarantees your personal credentials remain safe and private.", icon: Shield }
+            ].map((item, idx) => {
+              const IconComp = item.icon;
+              return (
+                <div key={idx} className="flex gap-4 rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-[#FF8A00]">
+                    <IconComp className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950">{item.title}</h3>
+                    <p className="mt-1 text-xs leading-normal text-slate-500">{item.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+
+        {/* ================= COMPARISON TABLE ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Application Strategy</p>
+            <h2 className="text-3xl font-black text-slate-950 sm:text-4xl">Self-Application vs DigiConnect</h2>
+            <p className="mt-2 text-sm text-slate-500">See how expert financial formulation cuts down processing times and prevents rejection.</p>
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/55">
+                    <th className="p-4 text-xs font-extrabold text-slate-950 uppercase tracking-wider">Feature</th>
+                    <th className="p-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Self Application</th>
+                    <th className="p-4 text-xs font-extrabold text-blue-700 uppercase tracking-wider bg-blue-50/30">DigiConnect Assistance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {[
+                    { f: "DPR Project Report", s: "Generic, self-made templates prone to bank rejections", d: "CA-Formulated, bank-compliant Detailed Project Report signed by a CA" },
+                    { f: "MSME/Udyam Registration", s: "Manual filing with risks of incorrect code allocation", d: "Expert filing with exact industrial code alignment" },
+                    { f: "District Liaison Support", s: "Applicant has to follow up manually at DIC panels", d: "Liaisoning team guides file through DUDA/NIC/DIC gates" },
+                    { f: "Spelling & Scan Verification", s: "Discrepancies trigger system rejection immediately", d: "Multi-layered audit checklist guarantees error-free scans" },
+                    { f: "Application Tracking", s: "No tracking available until bank recommends or rejects", d: "Stateful CRM logging sends updates to WhatsApp" },
+                    { f: "EDP Training Setup", s: "Manual search for available state training schedules", d: "Advisors arrange and coordinate rapid EDP certification" }
+                  ].map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/30">
+                      <td className="p-4 font-extrabold text-slate-950">{row.f}</td>
+                      <td className="p-4 text-slate-500">{row.s}</td>
+                      <td className="p-4 text-slate-700 font-medium bg-blue-50/15">{row.d}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ================= PREMIUM STATISTICS METRIC SECTION WITH COUNTERS ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="relative overflow-hidden rounded-[2.5rem] border border-blue-500/20 bg-slate-950 text-white p-8 md:p-12 shadow-[0_20px_50px_rgba(7,19,38,0.15)] text-center"
+        >
+          <div className="pointer-events-none absolute -left-20 -top-20 h-[300px] w-[300px] rounded-full bg-blue-500/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -right-20 -bottom-20 h-[300px] w-[300px] rounded-full bg-orange-500/10 blur-[80px]" />
+          
+          <div className="relative z-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2 animate-fade-in">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#FF8A00]">Success Metric</p>
+              <div className="text-3xl font-black text-white">99.8%</div>
+              <p className="text-xs font-bold text-slate-400">Customer Satisfaction</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">Applications Assisted</p>
+              <div className="text-4.5xl font-black text-white">
+                {counters.assisted.toLocaleString()}+
+              </div>
+              <p className="text-xs font-bold text-slate-400">Active Files Handled</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">DPRs Prepared</p>
+              <div className="text-4.5xl font-black text-white">
+                {counters.reports.toLocaleString()}+
+              </div>
+              <p className="text-xs font-bold text-slate-400">Project Reports Prepared</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">MSME Registrations</p>
+              <div className="text-4.5xl font-black text-white">
+                {counters.msme.toLocaleString()}+
+              </div>
+              <p className="text-xs font-bold text-slate-400">MSME Registrations Done</p>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ================= ELIGIBLE SECTOR BUSINESS CATEGORIES (REDESIGNED) ================= */}
+        <motion.section 
+          id="eligible-sectors" 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6 scroll-mt-6"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Eligible Sectors</p>
+            <h2 className="text-3xl font-black text-slate-950">Researched Industry & Service Sectors</h2>
+            <p className="mt-2 text-sm text-slate-500">Official eligible operations supported under Chief Minister YUVA subvention criteria.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {ELIGIBLE_SECTORS.map((sector, idx) => {
+              const CardIcon = sector.icon;
+              return (
+                <div key={idx} className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:border-blue-200 transition duration-200">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition duration-200 group-hover:bg-blue-600 group-hover:text-white">
+                    <CardIcon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-sm font-extrabold text-slate-950">{sector.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-3">{sector.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+
+        {/* ================= DOCUMENTS WE PREPARE (REDESIGNED LUXURY CARDS) ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Dockets Formulation</p>
+            <h2 className="text-3xl font-black text-slate-950">Documents & Reports We Prepare For You</h2>
+            <p className="mt-2 text-sm text-slate-500">Exhaustive financial dossier formulation matching standard credit review criteria.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {PREPARED_DOCUMENTS.map((doc, idx) => {
+              const DocIcon = doc.icon;
+              return (
+                <div key={idx} className="flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                    <DocIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900">{doc.title}</h3>
+                    <p className="mt-1 text-xs leading-normal text-slate-500">{doc.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+
+        {/* ================= TIMELINE: COMPLETE APPLICATION SUPPORT ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-8"
+        >
+          <div className="text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">End-to-End Assistance</p>
+            <h2 className="text-3xl font-black text-slate-950">Complete Application Support Process</h2>
+            <p className="mt-2 text-sm text-slate-500">Our certified professionals assist you to navigate every verification layer smoothly.</p>
+          </div>
+
+          <div className="mx-auto max-w-4xl rounded-[2rem] border border-slate-100 bg-white p-6 md:p-8 shadow-sm">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                "✓ Documentation Assistance",
-                "✓ MSME Registration Support",
-                "✓ Project Report Preparation",
-                "✓ Application Guidance"
-              ].map((badge, idx) => (
-                <div key={idx} className="flex items-center gap-2 rounded-xl bg-white border border-slate-100 p-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                  <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <span className="text-xs font-extrabold text-slate-800">{badge.substring(2)}</span>
+                { step: "Verification 1", title: "DUDA Approval", desc: "Assistance to satisfy Urban Development authorities checking rules." },
+                { step: "Verification 2", title: "NIC Approval", desc: "Technical system credentials validation on state portals." },
+                { step: "Verification 3", title: "Udyam Approval", desc: "Expedited processing of Udyam registration credentials." },
+                { step: "Verification 4", title: "DIC Approval", desc: "Final District Industry Centre representations dockets review." }
+              ].map((item, idx) => (
+                <div key={idx} className="relative rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                  <span className="absolute top-2.5 right-2.5 text-[9px] font-black text-blue-600/30 uppercase">{item.step}</span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-700">{idx + 1}</div>
+                  <h3 className="mt-4 text-xs font-extrabold text-slate-950">{item.title}</h3>
+                  <p className="mt-1.5 text-[10px] leading-normal text-slate-500">{item.desc}</p>
                 </div>
               ))}
             </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col gap-3 sm:flex-row pt-4">
-              <a
-                href="#uploader"
-                onClick={() => triggerAnalyticsEvent("hero_apply_click")}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
-              >
-                Apply Online
-                <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href="#checker"
-                onClick={() => triggerAnalyticsEvent("hero_checker_click")}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50 active:scale-95"
-              >
-                Check Eligibility
-              </a>
-              <a
-                href="https://wa.me/917007595931?text=Hello,%20I%20am%20interested%20in%20CM%20YUVA%20Entrepreneur%20Loan%20Assistance."
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => triggerAnalyticsEvent("whatsapp_consultation_click", { location: "hero" })}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-extrabold text-white transition-all hover:bg-[#20ba56] hover:scale-105"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp Assistance
-              </a>
-            </div>
           </div>
+        </motion.section>
 
-          {/* Right side Illustration */}
-          <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[420px] aspect-[4/3] sm:aspect-square overflow-hidden rounded-[2.5rem] border border-white/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.3))] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.04)] backdrop-blur-sm animate-float-icon-1">
-              <Image
-                src={IMAGES.youngEntrepreneur}
-                alt="Young Entrepreneur Running Business"
-                fill
-                priority
-                sizes="(min-width: 1024px) 40vw, 100vw"
-                className="object-cover rounded-[2rem] shadow-inner"
-              />
-              
-              {/* Floating element 1 */}
-              <div className="absolute -top-3 -right-3 rounded-2xl border border-white/80 bg-white/90 px-4 py-2 text-center shadow-lg backdrop-blur-md">
-                <TrendingUp className="mx-auto h-5 w-5 text-orange-500" />
-                <p className="mt-1 text-[10px] font-black text-slate-900">Up to ₹10L</p>
-              </div>
-
-              {/* Floating element 2 */}
-              <div className="absolute -bottom-3 -left-3 rounded-2xl border border-white/80 bg-white/90 px-4 py-2.5 shadow-lg backdrop-blur-md">
-                <p className="text-[10px] font-black text-blue-700">✓ Govt Subsidized</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ================= TRUST & STATISTICS SECTION ================= */}
-        <section className="liquid-card rounded-[2.25rem] border border-blue-50/70 p-6 md:p-10 text-center">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-[#FF8A00]">Satisfaction</p>
-              <div className="text-3xl font-black text-slate-900">★★★★★</div>
-              <p className="text-xs font-bold text-slate-500">Customer Reviews</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-blue-600">Assisted</p>
-              <div className="text-4xl font-black text-slate-900">
-                {counters.assisted.toLocaleString()}+
-              </div>
-              <p className="text-xs font-bold text-slate-500">Applications Handled</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-blue-600">Formulated</p>
-              <div className="text-4xl font-black text-slate-900">
-                {counters.reports.toLocaleString()}+
-              </div>
-              <p className="text-xs font-bold text-slate-500">Project Reports Prepared</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-extrabold uppercase tracking-[0.15em] text-blue-600">Completed</p>
-              <div className="text-4xl font-black text-slate-900">
-                {counters.msme.toLocaleString()}+
-              </div>
-              <p className="text-xs font-bold text-slate-500">MSME Registrations Done</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ================= ELIGIBILITY CHECKER WIZARD ================= */}
-        <section id="checker" className="scroll-mt-6">
+        {/* ================= INTERACTIVE ELIGIBILITY CHECKER WIZARD ================= */}
+        <motion.section 
+          id="checker" 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="scroll-mt-6"
+        >
           <div className="mx-auto max-w-3xl glass-panel rounded-[2rem] p-6 md:p-8">
             <div className="text-center">
               <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Interactive Check</p>
@@ -443,7 +799,7 @@ export function CmYuvaClientPage() {
                     {[
                       { label: "Industrial / Manufacturing Setup", value: "manufacturing" },
                       { label: "Service Industry Unit", value: "service" },
-                      { label: "Small Scale Retail / Business Store", value: "retail" }
+                      { label: "Small Scale Agro / Food Processing", value: "retail" }
                     ].map(cat => (
                       <button
                         key={cat.value}
@@ -505,398 +861,302 @@ export function CmYuvaClientPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-6"
+                  className="mt-6 overflow-hidden rounded-2xl"
                 >
-                  {eligibilityResult.startsWith("eligible") ? (
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5 text-emerald-800">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600" />
-                        <div>
-                          <p className="font-extrabold text-sm sm:text-base">🎉 Excellent! You are Eligible!</p>
-                          <p className="mt-1 text-xs sm:text-sm leading-relaxed text-emerald-700">
-                            Based on your inputs, you qualify for loan assistance up to{" "}
-                            <strong>
-                              {eligibilityResult === "eligible_industrial" ? "₹10 Lakhs (Manufacturing)" : "₹5 Lakhs (Service/Retail)"}
-                            </strong>{" "}
-                            with government interest subventions. Click below to begin compilation immediately!
-                          </p>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <a
-                              href="#uploader"
-                              onClick={() => triggerAnalyticsEvent("eligibility_success_apply_now")}
-                              className="inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 text-xs font-bold text-white shadow hover:bg-emerald-700"
-                            >
-                              Apply Now
-                            </a>
-                            <a
-                              href="https://wa.me/917007595931?text=Hello,%20I%20am%20eligible%20for%20CM%20YUVA%20scheme.%20Please%20guide%20me%20further."
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-white px-4 text-xs font-bold text-emerald-700 hover:bg-emerald-50"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              WhatsApp Advisors
-                            </a>
-                          </div>
-                        </div>
+                  {eligibilityResult === "eligible_industrial" && (
+                    <div className="border border-emerald-100 bg-emerald-50/50 p-5 text-xs text-slate-700 space-y-3">
+                      <p className="font-extrabold text-emerald-800 text-sm">✓ Congratulations! You are eligible for up to ₹10 Lakhs!</p>
+                      <p>Your educational qualifications and residency profile satisfy the criteria for setting up small-scale **Manufacturing & Industrial units** with margin subventions.</p>
+                      <div className="pt-2">
+                        <Link href="/apply/cm-yuva-entrepreneur-loan-assistance" className="inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 font-black text-white hover:bg-emerald-700 transition">
+                          Initiate Document Verification
+                        </Link>
                       </div>
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-5 text-rose-800">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="mt-1 h-5 w-5 shrink-0 text-rose-600" />
-                        <div>
-                          <p className="font-extrabold text-sm sm:text-base">Not Eligible for State Subsidy</p>
-                          <p className="mt-1 text-xs sm:text-sm leading-relaxed text-rose-700">
-                            {eligibilityResult === "not_eligible_age" && "CM YUVA guidelines require applicants to be aged between 18 and 40 years."}
-                            {eligibilityResult === "not_eligible_resident" && "Permanent residency of Uttar Pradesh is mandatory to access this local state funding."}
-                            {eligibilityResult === "not_eligible_education" && "The state program requires candidates to have completed at least Class 8th school examination."}
-                          </p>
-                          <p className="mt-2 text-xs text-rose-600">
-                            Don&apos;t worry! Connect with our credit officers via WhatsApp to explore other national programs like PM Mudra or PMEGP.
-                          </p>
-                          <div className="mt-4">
-                            <a
-                              href="https://wa.me/917007595931?text=Hello,%20I%20don't%20qualify%20for%20CM%20YUVA.%20Please%20explore%20other%20subsidy%20loans."
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-rose-600 px-4 text-xs font-bold text-white hover:bg-rose-700"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              Find Alternative Loans
-                            </a>
-                          </div>
-                        </div>
+                  )}
+
+                  {eligibilityResult === "eligible_service" && (
+                    <div className="border border-emerald-100 bg-emerald-50/50 p-5 text-xs text-slate-700 space-y-3">
+                      <p className="font-extrabold text-emerald-800 text-sm">✓ Congratulations! You are eligible for up to ₹5 Lakhs!</p>
+                      <p>Your educational credentials and business category satisfy the criteria for setting up **Service Sector & Retail units** with direct 0% interest support.</p>
+                      <div className="pt-2">
+                        <Link href="/apply/cm-yuva-entrepreneur-loan-assistance" className="inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 font-black text-white hover:bg-emerald-700 transition">
+                          Initiate Document Verification
+                        </Link>
                       </div>
+                    </div>
+                  )}
+
+                  {eligibilityResult === "not_eligible_age" && (
+                    <div className="border border-red-100 bg-red-50/50 p-5 text-xs text-slate-700 space-y-1.5">
+                      <p className="font-black text-red-800 text-sm flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        Age Limit Exclusion
+                      </p>
+                      <p>The CM YUVA scheme strictly targets young entrepreneurs aged **between 18 and 40 years**. Since your age inputs reside outside this spectrum, you do not qualify for this government funding.</p>
+                    </div>
+                  )}
+
+                  {eligibilityResult === "not_eligible_resident" && (
+                    <div className="border border-red-100 bg-red-50/50 p-5 text-xs text-slate-700 space-y-1.5">
+                      <p className="font-black text-red-800 text-sm flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        State Residency Exclusion
+                      </p>
+                      <p>This subvention scheme is strictly funded by the state treasury of **Uttar Pradesh**. Only permanent residents holding domiciles in UP are authorized to claim benefits.</p>
+                    </div>
+                  )}
+
+                  {eligibilityResult === "not_eligible_education" && (
+                    <div className="border border-red-100 bg-red-50/50 p-5 text-xs text-slate-700 space-y-1.5">
+                      <p className="font-black text-red-800 text-sm flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        Minimum Education Exclusion
+                      </p>
+                      <p>To ensure micro-business viability, the state policy specifies a **minimum of Class 8th pass** as academic qualification to execute legal loan subvention contracts.</p>
                     </div>
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </section>
+        </motion.section>
 
-        {/* ================= BUSINESS CATEGORIES SECTION ================= */}
-        <section className="space-y-6">
+        {/* ================= COMPREHENSIVE DETAILED GUIDES (TEXT EXPANSION OVER 3500 WORDS) ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mx-auto max-w-4xl space-y-12"
+        >
           <div className="text-center">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Scope</p>
-            <h2 className="text-3xl font-black text-slate-950">Supported Business Categories</h2>
-            <p className="mt-2 text-sm text-slate-500">We assist in preparing project reports and dockets for all eligible operations under the scheme.</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Educational Repository</p>
+            <h2 className="text-3xl font-black text-slate-950 sm:text-4xl">Ultimate CM YUVA Scheme Guide</h2>
+            <p className="mt-2 text-sm text-slate-500">Exhaustive operational analysis designed to help young entrepreneurs succeed.</p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {CATEGORIES.map((cat, idx) => {
-              const CardIcon = cat.icon;
-              return (
-                <div key={idx} className="group relative overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white p-3 shadow-sm hover:shadow-md transition duration-200">
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-slate-100">
-                    <Image
-                      src={cat.img}
-                      alt={cat.title}
-                      fill
-                      loading="lazy"
-                      sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 29vw, (min-width: 640px) 45vw, 95vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/60 text-white backdrop-blur-sm">
-                      <CardIcon className="h-4 w-4" />
-                    </div>
-                  </div>
-                  <h3 className="mt-3.5 px-1 text-sm font-extrabold text-slate-950">{cat.title}</h3>
-                  <p className="mt-1 px-1 text-xs text-slate-500 leading-normal line-clamp-2">{cat.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ================= REQUIRED DOCUMENTS SECTION ================= */}
-        <section className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
-          <div className="space-y-4">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Verifications</p>
-            <h2 className="text-3xl font-black text-slate-950 leading-tight">Required Document Checklist</h2>
-            <p className="text-sm font-medium leading-relaxed text-slate-600">
-              Please gather these clear scan copies before uploading. Proper, clear documentation ensures your Detailed Project Report (DPR) meets public banking standards.
+          {/* Eligibility Criteria */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <UserCheck className="h-6 w-6 text-blue-600" />
+              1. Deep Dive: Eligibility Criteria Rules
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              The Chief Minister Youth Self-Employment Scheme (CM YUVA) has established rigorous criteria parameters to filter applicants. Satisfying these points completely before beginning document compilation is mandatory for credit approvals:
             </p>
-            <div className="rounded-2xl border border-blue-50 bg-blue-50/30 p-4">
-              <p className="text-xs leading-relaxed text-blue-700">
-                💡 <strong>Important Checklist Rule:</strong> High-resolution digital scans from cellphones or scanners significantly speed up the processing review pipeline.
-              </p>
+            <ul className="list-disc pl-5 text-xs text-slate-600 space-y-2">
+              <li>
+                <strong>UP Permanent Domicile:</strong> The applicant must hold a valid permanent residency credential (domicile certificate) in Uttar Pradesh. Standard rent deeds or temporal company letterheads do not suffice. Authorized Tehsildar seals are mandatory on domicile documents.
+              </li>
+              <li>
+                <strong>Strict Age Window:</strong> The scheme rules require candidates to have attained a minimum of <strong>18 years</strong> and must not exceed <strong>40 years</strong> at the time of online portal registration. Age limits are verified against Class 10th marksheet records or formal municipal birth papers.
+              </li>
+              <li>
+                <strong>Academic Floor Limit:</strong> Candidates must have successfully cleared at least <strong>Class 8th examinations</strong>. Higher educational degrees (Class 10th, Intermediate, ITI diplomas, engineering degrees, and management doctorates) are actively preferred, as they provide higher credit rating coefficients during bank appraisals.
+              </li>
+              <li>
+                <strong>Zero Financial Default History:</strong> The candidate must possess a clean credit record. Active settlements, write-offs, or banking default records logged inside CIBIL report datasets will trigger immediate credit rejection at bank gates.
+              </li>
+            </ul>
+          </article>
+
+          {/* Benefits Explained */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Award className="h-6 w-6 text-blue-600" />
+              2. Fiscal Benefits & Incentives Breakdown
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              The primary driver behind the CM YUVA initiative is the massive state subsidy pipeline configured to eliminate credit burdens for young businesses. Here is how the financial incentives are structured to maximize operational profitability:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-slate-600 space-y-2">
+              <li>
+                <strong>Interest Rate Subvention support:</strong> The state government reimburses the baseline bank lending rate on your working capital and asset term loans, reducing your net interest output to 0%. This ensures that your business capital is effectively interest-free.
+              </li>
+              <li>
+                <strong>Margin Money Grant:</strong> Startups receive direct margin money subvention credits up to 10% of total project capital requirements (capped at a maximum of ₹50,000). This margin money operates as an upfront government grant that directly offsets your loan principal balance.
+              </li>
+              <li>
+                <strong>Collateral Security Exemptions:</strong> Sanctioned credit lines up to ₹10 Lakhs are covered under the Credit Guarantee Fund Trust for Micro and Small Enterprises (CGTMSE). This legally protects you from having to pledge personal land, gold, or houses as security to banks.
+              </li>
+            </ul>
+          </article>
+
+          {/* Sectors and Limits */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Settings className="h-6 w-6 text-blue-600" />
+              3. Industry Limits & Sector Classification
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Business classifications are split into two prominent categories, each featuring distinct financial limits and subvention caps:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-slate-600 space-y-2">
+              <li>
+                <strong>Industrial Manufacturing Sector:</strong> Setting up processing units, small textile weaving mills, plastic packaging plants, bio-fertilizer factories, and metal workshops qualify for project loans up to <strong>₹10 Lakhs</strong>.
+              </li>
+              <li>
+                <strong>Service Sector:</strong> Businesses establishing technical software setups, diagnostic centers, repair facilities, or clinical consultancies qualify for loans up to <strong>₹5 Lakhs</strong>.
+              </li>
+            </ul>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Under both sectors, the state government provides a <strong>10% margin money subsidy</strong> (maximum ₹50,000) as direct funding. This margin subsidy resides directly inside the loan account as an upfront grant, significantly decreasing the principal repayment amount.
+            </p>
+          </article>
+
+          {/* Subsidy & Interest Pipeline */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Coins className="h-6 w-6 text-blue-600" />
+              4. Subsidy & Interest Support Reimbursement Pipeline
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Unlike traditional loans, the interest subvention under CM YUVA is disbursed in a structured pipeline:
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <h4 className="text-xs font-black text-slate-900">Step A: Prompt Repayment</h4>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  The entrepreneur repays the monthly bank installment (EMI) regularly as per standard bank schedules.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <h4 className="text-xs font-black text-slate-900">Step B: Subvention Claim</h4>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  The District Industry Centre (DIC) files the quarterly subvention request with the state finance department.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <h4 className="text-xs font-black text-slate-900">Step C: Subsidy Credit</h4>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  The interest portion is directly reimbursed back into the entrepreneur&apos;s linked bank account, keeping the capital effectively interest-free.
+                </p>
+              </div>
             </div>
-          </div>
+          </article>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { title: "PAN Card", desc: "For verifying financial tax status.", icon: FileCheck2 },
-              { title: "Aadhaar Card", desc: "UP address and age authentication.", icon: FileCheck2 },
-              { title: "Bank Passbook", desc: "For linking loan funding disbursement.", icon: FileCheck2 },
-              { title: "Educational Marksheet", desc: "Proof of Class 8th or higher status.", icon: FileCheck2 },
-              { title: "Passport Photo", desc: "Recent color print photograph scan.", icon: FileCheck2 },
-              { title: "Business Concept", desc: "Basic details of your proposed startup.", icon: FileCheck2 },
-              { title: "Business Space Address", desc: "Electricity bill or space rent agreement.", icon: FileCheck2 }
-            ].map((doc, idx) => {
-              const DocIcon = doc.icon;
-              return (
-                <div key={idx} className="flex gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                    <DocIcon className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-extrabold text-slate-900">{doc.title}</h3>
-                    <p className="mt-0.5 text-[11px] leading-normal text-slate-500">{doc.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ================= INCLUDED SERVICES COMPARISON ================= */}
-        <section className="space-y-6">
-          <div className="text-center">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Features</p>
-            <h2 className="text-3xl font-black text-slate-950">Included Services & Benefits</h2>
-            <p className="mt-2 text-sm text-slate-500">What you get when you apply for loan file formulation through our digital services portal.</p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { title: "Detailed Project Report (DPR)", desc: "Professionally formulated project cost sheets, cash-flow projections, and working capital dockets matching commercial bank formats.", icon: FileText },
-              { title: "MSME/Udyam Registration", desc: "Complete filing of your micro-enterprise Udyam certificate to qualify you for priority sector banking lending rates.", icon: UserCheck },
-              { title: "Interest Subsidy Mapping", desc: "Direct eligibility mapping and advisory check to leverage UP state government's interest subventions.", icon: Clock },
-              { title: "Certified Document Reviews", desc: "Our document verification officers check spellings, database entries, and signatures to avoid portal reject risks.", icon: Shield },
-              { title: "Enterprise CRM Tracker", desc: "Follow every milestone in real-time. Dynamic timeline tracking, transaction logs, and auto status reminders via WhatsApp.", icon: CheckCircle },
-              { title: "Bank Submission Files", desc: "Get highly organized PDF files of your complete loan application docket to present to public or local commercial banks.", icon: FileCheck }
-            ].map((srv, idx) => {
-              const SrvIcon = srv.icon;
-              return (
-                <div key={idx} className="rounded-2xl border border-white/50 bg-white/70 p-5 shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                    <SrvIcon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-4 text-sm font-extrabold text-slate-950">{srv.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{srv.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ================= APPLICATION JOURNEY TIMELINE ================= */}
-        <section className="space-y-8">
-          <div className="text-center">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Workflow</p>
-            <h2 className="text-3xl font-black text-slate-950">Your Application Journey</h2>
-            <p className="mt-2 text-sm text-slate-500">8 streamlined visual steps from online file submission to final bank representation support.</p>
-          </div>
-
-          <div className="relative mx-auto max-w-5xl rounded-[2rem] border border-slate-100 bg-white p-6 md:p-8 shadow-sm">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Documents A-Z Checklist */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <FileCheck className="h-6 w-6 text-blue-600" />
+              5. Comprehensive A-Z Required Documentation
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Gathering correct documents prevents application rejection at the District Industry Centre (DIC). Ensure you have scanned copies of:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { step: "Step 1", title: "Document Upload", desc: "Select required scanned cards and proofs on our portal." },
-                { step: "Step 2", title: "CRM Lead Created", desc: "Dedicated assistant gets mapped to compile your file." },
-                { step: "Step 3", title: "Data Verification", desc: "Certified officer reviews scan files and business classifications." },
-                { step: "Step 4", title: "DPR Formulation", desc: "Certified analysts draft the Detailed Project Report (DPR)." },
-                { step: "Step 5", title: "MSME Registration", desc: "Udyam registration is completed on the national portal." },
-                { step: "Step 6", title: "Docket Review", desc: "Final validation of your compiled loan subvention application." },
-                { step: "Step 7", title: "Official Submission", desc: "Complete docket uploaded to government scheme portals." },
-                { step: "Step 8", title: "Bank Presentation", desc: "Assistance to present your prepared file at commercial banks." }
-              ].map((item, idx) => (
-                <div key={idx} className="relative rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                  <span className="absolute top-2.5 right-2.5 text-[10px] font-black text-blue-600/30 uppercase">{item.step}</span>
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-700">{idx + 1}</div>
-                  <h3 className="mt-4 text-xs font-extrabold text-slate-950">{item.title}</h3>
-                  <p className="mt-1.5 text-[10px] leading-normal text-slate-500">{item.desc}</p>
+                "1. Aadhaar Card (Must be linked to active mobile number)",
+                "2. PAN Card (Individual tax identifier mandatory)",
+                "3. UP Domicile Certificate (Issued by authorized Tehsildar)",
+                "4. Caste Certificate (For claiming category concessions if applicable)",
+                "5. Educational Marksheet (Class 8th minimum proof)",
+                "6. Business Space Land Proof (Rent agreement / Electricity bill)",
+                "7. Machinery Quotation (Authorized dealer quote sheet)",
+                "8. Project Cost Summary (DPR indicating financial structures)",
+                "9. Non-Defaulter Affidavit (Standard legal stamp check)",
+                "10. EDP Training Certificate (If training completed)"
+              ].map(docItem => (
+                <div key={docItem} className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <CheckCircle className="h-4 w-4 shrink-0 text-blue-600" />
+                  <span>{docItem}</span>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </article>
 
-        {/* ================= DOCUMENT UPLOAD MODULE & CRM INTEGRATION ================= */}
-        <section id="uploader" className="scroll-mt-6">
-          <div className="mx-auto max-w-4xl grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-stretch">
-            
-            {/* Drag & Drop Upload Panel */}
-            <div className="glass-panel rounded-[2rem] p-6 md:p-8 flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Portal Uploader</p>
-                <h2 className="mt-2 text-xl font-black text-slate-950">Document Upload Module</h2>
-                <p className="mt-1 text-xs leading-normal text-slate-500">Securely submit scanning copies to initiate dockets formulation on the enterprise CRM.</p>
-
-                {/* Drag and Drop Zone */}
-                <div
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => {
-                    e.preventDefault();
-                    if (e.dataTransfer.files) {
-                      handleFileUpload(Array.from(e.dataTransfer.files));
-                    }
-                  }}
-                  className="mt-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center hover:bg-blue-50/10 hover:border-blue-400 transition"
-                >
-                  <UploadCloud className="h-10 w-10 text-blue-600" />
-                  <p className="mt-3 text-xs font-extrabold text-slate-800">Drag & Drop Scans Here</p>
-                  <p className="mt-1 text-[10px] text-slate-500">PDF, JPG, or PNG up to 5MB size</p>
-                  <label className="mt-4 inline-flex h-8 items-center justify-center rounded-full bg-blue-600 px-4 text-xs font-bold text-white shadow hover:bg-blue-700 cursor-pointer transition">
-                    Browse Files
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="hidden"
-                      onChange={e => {
-                        if (e.target.files) {
-                          handleFileUpload(Array.from(e.target.files));
-                        }
-                      }}
-                    />
-                  </label>
+          {/* Timeline Process & Workflow */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Activity className="h-6 w-6 text-blue-600" />
+              6. Application Process & Approval Workflow
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              The verification of a CM YUVA application involves multiple state and municipal validation gates. Knowing this workflow helps set correct timeline expectations:
+            </p>
+            <div className="space-y-3">
+              {[
+                { phase: "Stage 1: File Formulation", detail: "DigiConnect experts verify scans, prepare the Detailed Project Report (DPR), and complete MSME registration filings." },
+                { phase: "Stage 2: Official Portal Upload", detail: "Your compiled loan dossier is officially submitted on the UP Government Youth Self Employment portal." },
+                { phase: "Stage 3: DUDA / NIC Review", detail: "Municipal bodies and system developers run digital credential checks on your applications." },
+                { phase: "Stage 4: DIC Panel Interview", detail: "District Industry Centre officers conduct a baseline interview to assess business project viability." },
+                { phase: "Stage 5: Bank File Forwarding", detail: "DIC officially forwards the recommended file to the designated public sector or commercial bank branch." },
+                { phase: "Stage 6: Bank Disbursal", detail: "The branch processes credit sanctions under CGTMSE rules and credit is disbursed to your current account." }
+              ].map(step => (
+                <div key={step.phase} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <h4 className="text-xs font-black text-slate-900">{step.phase}</h4>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{step.detail}</p>
                 </div>
-
-                {/* Selected File list */}
-                {selectedFiles.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Selected Documents</p>
-                    {selectedFiles.map((file, idx) => (
-                      <div key={idx} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-2 text-xs shadow-sm">
-                        <span className="flex items-center gap-2 font-bold text-slate-700 truncate">
-                          <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                          <span className="truncate">{file.name}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-red-50 text-red-600 hover:bg-red-100"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Progress and submit buttons */}
-              {selectedFiles.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  {isUploading ? (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-extrabold text-blue-700">
-                        <span>Uploading scans and creating CRM record...</span>
-                        <span>{uploadProgress}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full bg-blue-600 transition-all duration-200"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : leadCreated ? (
-                    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3.5 text-center text-xs font-extrabold text-emerald-800">
-                      ✅ CRM Lead & Document Records Saved Successfully!
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleStartSimulatedUpload}
-                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 to-indigo-600 text-xs font-extrabold text-white shadow hover:scale-[1.01] transition"
-                    >
-                      Start Secure Document Verification
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              )}
+              ))}
             </div>
+          </article>
 
-            {/* STATEFUL CRM TRACKER WIDGET */}
-            <div className="liquid-card rounded-[2rem] border border-blue-50/70 p-6 md:p-8 flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Enterprise CRM</p>
-                <h2 className="mt-2 text-xl font-black text-slate-950">Application Status Tracker</h2>
-                <p className="mt-1 text-xs leading-normal text-slate-500">Interactive live status monitor linked with database events.</p>
-
-                {/* Status Timeline */}
-                <div className="mt-6 space-y-4">
-                  {[
-                    { step: 1, label: "Lead Created", desc: "CRM system registered candidate details." },
-                    { step: 2, label: "Documents Pending", desc: "Scanned credentials uploads required." },
-                    { step: 3, label: "Documents Received", desc: "Files logged inside secure data storage." },
-                    { step: 4, label: "Project Report Prepared", desc: "DPR drafted by expert credit officer." },
-                    { step: 5, label: "Submitted", desc: "Complete docket uploaded to UP Scheme portals." },
-                    { step: 6, label: "Under Review", desc: "Awaiting bank processing subvention checks." },
-                    { step: 7, label: "Completed", desc: "Subsidized business credit successfully mapped!" }
-                  ].map(milestone => {
-                    const isCompleted = currentTrackerStep >= milestone.step;
-                    const isActive = currentTrackerStep === milestone.step;
-                    return (
-                      <div key={milestone.step} className="flex gap-3">
-                        <div className="flex flex-col items-center">
-                          <div
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black transition ${
-                              isCompleted
-                                ? "bg-emerald-500 text-white"
-                                : "bg-slate-100 text-slate-400 border border-slate-200"
-                            }`}
-                          >
-                            {isCompleted ? "✓" : milestone.step}
-                          </div>
-                          {milestone.step < 7 && (
-                            <div
-                              className={`h-6 w-0.5 transition ${
-                                isCompleted ? "bg-emerald-500" : "bg-slate-200"
-                              }`}
-                            />
-                          )}
-                        </div>
-                        <div className="-mt-0.5">
-                          <h4
-                            className={`text-xs font-extrabold transition ${
-                              isActive ? "text-blue-700" : isCompleted ? "text-slate-900" : "text-slate-400"
-                            }`}
-                          >
-                            {milestone.label}
-                          </h4>
-                          {isActive && (
-                            <p className="mt-0.5 text-[10px] leading-normal text-slate-500">
-                              {milestone.desc}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Status advancement simulator (strictly for user presentation) */}
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Interactive Demo</span>
-                <div className="flex gap-1.5">
-                  <button
-                    disabled={currentTrackerStep === 1}
-                    onClick={() => setCurrentTrackerStep(prev => Math.max(1, prev - 1))}
-                    className="inline-flex h-7 w-12 items-center justify-center rounded bg-slate-100 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    disabled={currentTrackerStep === 7}
-                    onClick={() => setCurrentTrackerStep(prev => Math.min(7, prev + 1))}
-                    className="inline-flex h-7 w-12 items-center justify-center rounded bg-blue-50 text-[10px] font-bold text-blue-700 hover:bg-blue-100 transition"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+          {/* Common Mistakes */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <AlertCircle className="h-6 w-6 text-blue-600" />
+              7. Common Mistakes to Avoid
+            </h3>
+            <div className="rounded-2xl border border-orange-100 bg-orange-50/20 p-5 text-xs leading-relaxed text-slate-700 space-y-2">
+              <p>
+                🚨 <strong>1. Spelling Mismatches in Certificates:</strong> Make sure names on Aadhaar, PAN, and school marksheets match exactly. Spelling variations trigger immediate system rejection.
+              </p>
+              <p>
+                🚨 <strong>2. Incorrect Business Classification:</strong> Availing service sector funding for pure trading operations is disallowed. Trading activities are not supported under CM YUVA.
+              </p>
+              <p>
+                🚨 <strong>3. Non-Compliant Project Reports:</strong> Standard generic bank project files fail to highlight UP scheme specific margin money subventions, triggering delay queries.
+              </p>
             </div>
+          </article>
 
-          </div>
-        </section>
+          {/* Success Guidance */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <ThumbsUp className="h-6 w-6 text-blue-600" />
+              8. Success Guidance for Bank Presentations
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Bank managers assess creditworthiness based on preparation. We advise candidates to follow these protocols:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-slate-600 space-y-2">
+              <li>
+                Carry the complete compiled binder prepared by DigiConnect, including the CA-signed Project Report.
+              </li>
+              <li>
+                Be ready to present basic business operational ratios, cash-flow timelines, and machinery layout details.
+              </li>
+              <li>
+                Show absolute compliance with CGTMSE rules to highlight collateral security exemptions.
+              </li>
+            </ul>
+          </article>
 
-        {/* ================= CUSTOMER REVIEWS TESTIMONIAL CAROUSEL ================= */}
-        <section className="space-y-6">
+          {/* Why Choose DigiConnect */}
+          <article className="space-y-4">
+            <h3 className="text-2xl font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Briefcase className="h-6 w-6 text-blue-600" />
+              9. Why Choose DigiConnect Dukan (Powered by RNOS)
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              DigiConnect Dukan is a premier national digital services platform powered by **RNoS India Pvt Ltd**. We leverage experienced credit analysts and financial planners to formulation compliant Detailed Project Reports (DPRs).
+            </p>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Our direct tracking timeline, secure document storage systems, and persistent WhatsApp consultancy dockets cut down on typical government liaisoning friction, giving you startup funding-grade speed and reliability.
+            </p>
+          </article>
+
+        </motion.section>
+
+        {/* ================= TESTIMONIAL CAROUSEL (GRADIENT AVATARS INSTEAD OF STOCK IMAGES) ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
           <div className="text-center">
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Testimonials</p>
             <h2 className="text-3xl font-black text-slate-950">Customer Success Stories</h2>
@@ -909,22 +1169,19 @@ export function CmYuvaClientPage() {
                 name: "Preeti Singh",
                 loc: "Gorakhpur",
                 role: "Boutique Owner",
-                text: "I was extremely confused about how to formulate a Detailed Project Report (DPR) for my garments boutique. DigiConnect Dukan's advisors prepared a flawless cost sheet which got my CM YUVA file checked and approved within weeks!",
-                img: IMAGES.successStories
+                text: "I was extremely confused about how to formulate a Detailed Project Report (DPR) for my garments boutique. DigiConnect Dukan's advisors prepared a flawless cost sheet which got my CM YUVA file checked and approved within weeks!"
               },
               {
                 name: "Rahul Vishwakarma",
                 loc: "Varanasi",
                 role: "Furniture Workshop",
-                text: "MSME registration support and document filings were handled cleanly. The CRM timeline tracker sent status updates directly to my WhatsApp, letting me track bank submission dates instantly. Excellent digital support!",
-                img: IMAGES.msmeSupport
+                text: "MSME registration support and document filings were handled cleanly. The CRM timeline tracker sent status updates directly to my WhatsApp, letting me track bank submission dates instantly. Excellent digital support!"
               },
               {
                 name: "Anas Ahmed",
                 loc: "Aligarh",
                 role: "Mobile Retail Outlet",
-                text: "Secured my retail loan subvention docket support smoothly. The step-by-step eligibility checker wizard evaluated my background instantly. Absolute enterprise-grade professional consulting services.",
-                img: IMAGES.computerCenter
+                text: "Secured my retail loan subvention docket support smoothly. The step-by-step eligibility checker wizard evaluated my background instantly. Absolute enterprise-grade professional consulting services."
               }
             ].map((review, idx) => (
               <article key={idx} className="liquid-card rounded-3xl border border-slate-100 p-5 md:p-6 flex flex-col justify-between">
@@ -939,14 +1196,9 @@ export function CmYuvaClientPage() {
                   </p>
                 </div>
                 <div className="mt-6 flex items-center gap-3 border-t border-slate-100 pt-4">
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
-                    <Image
-                      src={review.img}
-                      alt={review.name}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
+                  {/* Premium vector avatar placeholder with nice gradient initials */}
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-xs font-black text-white shadow-md uppercase">
+                    {review.name.split(" ").map(n => n[0]).join("")}
                   </div>
                   <div>
                     <h4 className="text-xs font-extrabold text-slate-900">{review.name}</h4>
@@ -956,10 +1208,16 @@ export function CmYuvaClientPage() {
               </article>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        {/* ================= FAQ SECTION accordion ================= */}
-        <section className="space-y-6">
+        {/* ================= FAQ SECTION ACCORDION ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
           <div className="text-center">
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FF8A00]">Common Doubts</p>
             <h2 className="text-3xl font-black text-slate-950">Frequently Asked Questions</h2>
@@ -1004,10 +1262,16 @@ export function CmYuvaClientPage() {
               );
             })}
           </div>
-        </section>
+        </motion.section>
 
         {/* ================= RELATED SERVICES SECTION ================= */}
-        <section className="space-y-6">
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-6"
+        >
           <div className="text-center">
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Cross-filings</p>
             <h2 className="text-3xl font-black text-slate-950">Related Financial Services</h2>
@@ -1036,27 +1300,36 @@ export function CmYuvaClientPage() {
               </Link>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        {/* ================= FINAL CTA CONVERSION BANNER ================= */}
-        <section className="overflow-hidden rounded-[2.5rem] bg-slate-950 p-6 md:p-12 text-white relative text-center">
+        {/* ================= FINAL CTA CONVERSION BANNER (ENHANCED BEFORE FOOTER) ================= */}
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="overflow-hidden rounded-[2.5rem] bg-slate-950 p-6 md:p-12 text-white relative text-center"
+        >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_40%)]" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(249,115,22,0.18),transparent_40%)]" />
           
           <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">Ready to Start Your Business Journey?</h2>
-            <p className="text-xs font-semibold leading-relaxed text-slate-400 sm:text-sm">
-              Don&apos;t let complex dockets hold back your enterprise dreams. Access expert documentation reviews, certified project reports, and seamless CRM application subventions today.
+            <h2 className="text-3xl font-black text-white sm:text-4xl">Ready to Start Your Business?</h2>
+            <p className="text-xs font-semibold leading-relaxed text-slate-400 sm:text-lg">
+              Apply for CM YUVA Assistance Today
+            </p>
+            <p className="text-xs font-semibold leading-relaxed text-slate-500 sm:text-sm">
+              Don&apos;t let complex dockets hold back your enterprise dreams. Access expert documentation reviews, CA certified project reports, and seamless CRM application subventions today.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row justify-center pt-2">
-              <a
-                href="#uploader"
+              <Link
+                href="/apply/cm-yuva-entrepreneur-loan-assistance"
                 onClick={() => triggerAnalyticsEvent("final_cta_apply_now")}
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-xs font-extrabold text-slate-950 shadow-md hover:bg-slate-100 transition"
               >
                 Apply Online Now
                 <ArrowRight className="h-3.5 w-3.5 text-slate-950" />
-              </a>
+              </Link>
               <a
                 href="https://wa.me/917007595931?text=Hello,%20I%20am%20ready%20to%20apply%20for%20CM%20YUVA%20loan%20assistance."
                 target="_blank"
@@ -1069,7 +1342,7 @@ export function CmYuvaClientPage() {
               </a>
             </div>
           </div>
-        </section>
+        </motion.section>
 
       </div>
     </div>
