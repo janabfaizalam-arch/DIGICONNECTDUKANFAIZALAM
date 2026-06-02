@@ -63,6 +63,7 @@ const navGroups: { title: string; items: AdminNavItem[] }[] = [
       { href: "/admin/offline-invoices", label: "Invoices", description: "Search and print", icon: ReceiptText },
       { href: "/admin/wallet", label: "Wallet & Rewards", description: "Ledger and rewards", icon: WalletCards },
       { href: "/admin/commissions", label: "Commissions", description: "Agent payouts", icon: BadgePercent },
+      { href: "/admin/coupons", label: "Coupons", description: "Manage promo codes", icon: Gift },
     ],
   },
   {
