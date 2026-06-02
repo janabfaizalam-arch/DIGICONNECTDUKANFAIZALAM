@@ -9,6 +9,8 @@ type IndiaPostOffice = {
   District?: string;
   State?: string;
   Block?: string;
+  DeliveryStatus?: string;
+  BranchType?: string;
 };
 
 type IndiaPostResponse = {
@@ -85,17 +87,17 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
       if (response.ok && first?.Status?.toLowerCase() === "success" && postOffices.length > 0) {
         // Prioritize DeliveryStatus === "Delivery"
         const deliveryOffices = postOffices.filter(
-          (office) => (office as any)?.DeliveryStatus === "Delivery"
+          (office) => office.DeliveryStatus === "Delivery"
         );
         const candidates = deliveryOffices.length ? deliveryOffices : postOffices;
 
         // Prioritize Head Office / Sub Office or H.O / S.O in the name
         const bestCandidate = candidates.find(
           (office) =>
-            (office as any)?.BranchType === "Head Office" ||
-            (office as any)?.BranchType === "Sub Office" ||
-            office?.Name?.includes(" H.O") ||
-            office?.Name?.includes(" S.O")
+            office.BranchType === "Head Office" ||
+            office.BranchType === "Sub Office" ||
+            office.Name?.includes(" H.O") ||
+            office.Name?.includes(" S.O")
         ) ?? candidates[0];
 
         const city = String(bestCandidate?.Name || bestCandidate?.Block || bestCandidate?.District || "").trim();

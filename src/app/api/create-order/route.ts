@@ -17,6 +17,7 @@ type CreateOrderBody = {
   serviceSlugs?: string[];
   walletUseAmount?: number;
   couponCode?: string;
+  applicationId?: string;
   applicationDraft?: {
     customer?: {
       name?: string;
@@ -354,6 +355,56 @@ export async function POST(request: Request) {
 
         applicationIds = applications.map((application) => application.id);
       }
+    } else if (body?.applicationId) {
+      const user = await getCurrentUser();
+
+      if (!user) {
+        return jsonError("Please login to create a Razorpay order.", 401);
+      }
+
+      const supabase = getSupabaseAdmin();
+
+      if (!supabase) {
+        return jsonError("Database connection failed.", 500);
+      }
+
+      const { data: application, error: appError } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("id", body.applicationId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (appError || !application) {
+        return jsonError("Application not found.", 404);
+      }
+
+      if (application.payment_status === "verified") {
+        return jsonError("This application has already been paid.", 400);
+      }
+
+      const freshPayableAmount = Number(application.fresh_payable_amount ?? application.real_payment_amount ?? application.amount ?? 0);
+      const expectedAmount = Math.round(freshPayableAmount * 100);
+
+      if (body?.amount && Math.round(body.amount) !== expectedAmount) {
+        return jsonError(`Razorpay amount does not match the server-side payable amount. Client: ${body.amount}, Expected: ${expectedAmount}`, 400);
+      }
+
+      if (expectedAmount === 0) {
+        return NextResponse.json({
+          order_id: null,
+          amount: 0,
+          currency,
+          application_id: application.id,
+          application_ids: [application.id],
+          message: "No payment is required for this application.",
+        });
+      }
+
+      amount = expectedAmount;
+      applicationIds = [application.id];
+      orderUserId = user.id;
+      walletRedeemAmount = Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0);
     }
 
     if (!Number.isFinite(amount) || amount < 100) {

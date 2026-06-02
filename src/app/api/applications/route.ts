@@ -390,6 +390,9 @@ export async function POST(request: Request) {
     }
 
     const resolvedServices = services.filter((service): service is NonNullable<typeof service> => Boolean(service));
+    const orderAmount = isItrMsmeCombo(resolvedServices.map((service) => service.slug))
+      ? 699
+      : resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
     const couponCode = String(body.couponCode ?? "").trim();
     let couponDiscount = 0;
     if (couponCode) {

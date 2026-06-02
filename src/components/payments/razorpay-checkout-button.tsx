@@ -74,6 +74,7 @@ type CreateOrderRequestBody = {
   serviceSlugs?: string[];
   walletUseAmount?: number;
   couponCode?: string;
+  applicationId?: string;
   applicationDraft?: RazorpayCheckoutButtonProps["applicationDraft"];
 };
 
@@ -100,6 +101,7 @@ type RazorpayCheckoutButtonProps = {
   serviceSlugs?: string[];
   walletUseAmount?: number;
   couponCode?: string;
+  applicationId?: string;
   customer?: {
     name?: string;
     email?: string;
@@ -138,6 +140,7 @@ export function RazorpayCheckoutButton({
   serviceSlugs,
   walletUseAmount,
   couponCode,
+  applicationId,
   customer,
   applicationDraft,
   description = "DigiConnect Dukan service payment",
@@ -181,6 +184,7 @@ export function RazorpayCheckoutButton({
         serviceSlugs,
         walletUseAmount,
         couponCode,
+        applicationId,
         applicationDraft,
       };
 

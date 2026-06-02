@@ -298,6 +298,17 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 assignedAgentId={application.assigned_agent_id ?? application.agent_id}
               />
             </div>
+            {(application.payment_status ?? payment?.status ?? "pending") === "pending" && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <GeneratePaymentLink
+                  applicationId={application.id}
+                  payableAmount={application.fresh_payable_amount ?? application.amount}
+                  customerMobile={customerMobile || text(formData.mobile)}
+                  customerName={customer.name || text(formData.name)}
+                  serviceName={application.service_name}
+                />
+              </div>
+            )}
             {!invoice ? <div className="mt-3"><GenerateInvoiceButton applicationId={application.id} /></div> : null}
             {appFinalDocumentUrl ? (
               <a href={appFinalDocumentUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border bg-white px-4 text-sm font-bold text-slate-900 shadow-sm">
