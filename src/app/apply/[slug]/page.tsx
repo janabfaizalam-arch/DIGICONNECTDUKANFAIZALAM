@@ -13,7 +13,7 @@ import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsap
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ services?: string }>;
+  searchParams?: Promise<{ services?: string; plan?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -75,6 +75,34 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
   const selectedPublicServices = selectedServices
     .map((item) => [service, ...relatedServices].find((candidate) => candidate.slug === item))
     .filter((item): item is typeof service => Boolean(item));
+
+  const selectedPublicServicesOverridden = selectedPublicServices.map((item) => {
+    if (item.slug === "cibil-report-analysis-and-credit-health-consultation") {
+      const isBasic = query?.plan === "basic";
+      return {
+        ...item,
+        title: isBasic ? "Basic CIBIL One Pager Report" : "Premium CIBIL Analysis & Consultation",
+        amount: isBasic ? 518 : 2599,
+        shortDescription: isBasic
+          ? "Latest TransUnion CIBIL Report & One Page Financial History Summary"
+          : "Complete CIBIL Report Analysis, score improvement plan, and expert consultation.",
+      };
+    }
+    return item;
+  });
+
+  let serviceTitle = service.slug === "pm-vishwakarma-yojana" ? "PM Vishwakarma Yojana Registration" : service.title;
+  let serviceAmount = service.amount;
+  let serviceDescription = service.shortDescription;
+
+  if (slug === "cibil-report-analysis-and-credit-health-consultation") {
+    const isBasic = query?.plan === "basic";
+    serviceTitle = isBasic ? "Basic CIBIL One Pager Report" : "Premium CIBIL Analysis & Consultation";
+    serviceAmount = isBasic ? 518 : 2599;
+    serviceDescription = isBasic
+      ? "Latest TransUnion CIBIL Report & One Page Financial History Summary"
+      : "Complete CIBIL Report Analysis, score improvement plan, and expert consultation.";
+  }
   const whatsappUrl = buildWhatsAppUrl(
     buildApplicationWhatsAppMessage({
       action: "apply_help",
@@ -171,14 +199,14 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
 
           <ServiceApplicationForm
             service={{
-              title: service.slug === "pm-vishwakarma-yojana" ? "PM Vishwakarma Yojana Registration" : service.title,
+              title: serviceTitle,
               slug: service.slug,
-              amount: service.amount,
-              description: service.shortDescription,
+              amount: serviceAmount,
+              description: serviceDescription,
               documents: service.documents,
               fields: fieldsFor(service.categorySlug, service.slug),
             }}
-            services={selectedPublicServices.map((item) => ({
+            services={selectedPublicServicesOverridden.map((item) => ({
               title: item.title,
               slug: item.slug,
               amount: item.amount,

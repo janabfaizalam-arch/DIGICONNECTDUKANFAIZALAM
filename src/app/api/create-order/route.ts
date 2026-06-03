@@ -140,7 +140,27 @@ export async function POST(request: Request) {
       const isItrMsmeCombo = serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
       const serviceAmount = isItrMsmeCombo
         ? 699
-        : services.reduce((total, service) => total + Number(service?.amount ?? 0), 0);
+        : services.reduce((total, service) => {
+            let itemAmount = Number(service?.amount ?? 0);
+            if (service?.slug === "cibil-report-analysis-and-credit-health-consultation") {
+              const plan = body?.applicationDraft?.details?.selectedPlan;
+              if (plan && (plan === "Basic CIBIL One Pager Report" || String(plan).toLowerCase().includes("basic"))) {
+                itemAmount = 518;
+              } else if (plan && (plan === "Premium CIBIL Analysis & Consultation" || String(plan).toLowerCase().includes("premium"))) {
+                itemAmount = 2599;
+              } else {
+                // If it is the legacy flow, the client might send 2600 (original price).
+                // Let's support both 2599 and 2600 to prevent any payment mismatch!
+                const clientAmountPaise = Math.round(Number(body?.amount ?? 0));
+                if (clientAmountPaise === 260000 || clientAmountPaise === 2600) {
+                  itemAmount = 2600;
+                } else {
+                  itemAmount = 2599;
+                }
+              }
+            }
+            return total + itemAmount;
+          }, 0);
 
       const couponCode = String(body?.couponCode ?? "").trim();
       let couponDiscount = 0;

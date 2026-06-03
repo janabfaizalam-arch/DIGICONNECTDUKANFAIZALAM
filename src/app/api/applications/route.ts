@@ -392,7 +392,26 @@ export async function POST(request: Request) {
     const resolvedServices = services.filter((service): service is NonNullable<typeof service> => Boolean(service));
     const orderAmount = isItrMsmeCombo(resolvedServices.map((service) => service.slug))
       ? 699
-      : resolvedServices.reduce((total, service) => total + Number(service.amount ?? 0), 0);
+      : resolvedServices.reduce((total, service) => {
+          let itemAmount = Number(service.amount ?? 0);
+          if (service.slug === "cibil-report-analysis-and-credit-health-consultation") {
+            const plan = body.details?.selectedPlan;
+            if (plan && (plan === "Basic CIBIL One Pager Report" || String(plan).toLowerCase().includes("basic"))) {
+              itemAmount = 518;
+            } else if (plan && (plan === "Premium CIBIL Analysis & Consultation" || String(plan).toLowerCase().includes("premium"))) {
+              itemAmount = 2599;
+            } else {
+              // Backward compatibility check for legacy flows
+              const clientAmountPaise = Math.round(Number(body.razorpayPayment?.amount_paise ?? 0));
+              if (clientAmountPaise === 260000) {
+                itemAmount = 2600;
+              } else {
+                itemAmount = 2599;
+              }
+            }
+          }
+          return total + itemAmount;
+        }, 0);
     const couponCode = String(body.couponCode ?? "").trim();
     let couponDiscount = 0;
     if (couponCode) {

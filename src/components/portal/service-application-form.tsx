@@ -254,6 +254,7 @@ export function ServiceApplicationForm({
   const isPvcCard = selectedServices.length === 1 && (selectedServices[0]?.slug === "pvc-card" || selectedServices[0]?.slug === "pvc-card-printing");
   const isCmYuva = selectedServices.length === 1 && selectedServices[0]?.slug === "cm-yuva-entrepreneur-loan-assistance";
   const isItrMsmeCombo = selectedServices.length >= 2 && [...comboServiceSlugs].every((slug) => selectedServices.some((item) => item.slug === slug));
+  const isCibil = selectedServices.length === 1 && selectedServices[0]?.slug === "cibil-report-analysis-and-credit-health-consultation";
   const totalAmount = isCmYuva ? (13499 - appliedCouponDiscount) : isItrMsmeCombo ? 699 : selectedServices.reduce((total, item) => total + item.amount, 0);
   const wallet = useWallet(totalAmount);
   const cmYuvaWalletRedeem = isCmYuva && wallet.balance > 0 ? Math.min(wallet.balance, totalAmount * 0.5) : 0;
@@ -315,8 +316,8 @@ export function ServiceApplicationForm({
     [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues, pvcCardValues, isPvcCard, isCmYuva, cmYuvaValues],
   );
   const serviceDetailsForPayment = useMemo(
-    () =>
-      isPmVishwakarma
+    () => {
+      const baseDetails = isPmVishwakarma
         ? buildPmVishwakarmaDetails(pmVishwakarmaValues)
         : isEshram
           ? buildEshramDetails(eshramValues)
@@ -324,8 +325,18 @@ export function ServiceApplicationForm({
             ? buildPvcCardDetails(pvcCardValues)
             : isCmYuva
               ? buildCmYuvaDetails(cmYuvaValues)
-              : normalizedApplicationDraft.details,
-    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues],
+              : normalizedApplicationDraft.details;
+
+      if (isCibil) {
+        return {
+          ...baseDetails,
+          selectedPlan: selectedServices[0]?.title || "Premium CIBIL Analysis & Consultation",
+          planPrice: formatCurrency(totalAmount),
+        };
+      }
+      return baseDetails;
+    },
+    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues, isCibil, selectedServices, totalAmount],
   );
   const canStartPayment =
     !isSubmitting &&
@@ -626,6 +637,10 @@ export function ServiceApplicationForm({
           ...pvcCardDetails,
           ...cmYuvaDetails,
           address: submittedDraft.details.address,
+          ...(isCibil ? {
+            selectedPlan: selectedServices[0]?.title || "Premium CIBIL Analysis & Consultation",
+            planPrice: formatCurrency(totalAmount),
+          } : {})
         },
         documents: [],
         razorpayPayment,

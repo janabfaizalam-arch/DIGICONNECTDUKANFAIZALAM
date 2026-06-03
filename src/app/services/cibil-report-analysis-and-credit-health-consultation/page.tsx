@@ -1,43 +1,38 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Activity,
   AlertTriangle,
   ArrowRight,
   BadgeCheck,
-  BarChart3,
-  Bell,
-  CheckCircle2,
-  CreditCard,
+  Check,
+  ChevronRight,
+  Clock,
   FileSearch,
-  Gauge,
-  History,
-  Landmark,
-  LineChart,
+  HelpCircle,
+  Lock,
   LockKeyhole,
-  Mail,
   MessageCircle,
   MonitorCheck,
-  Phone,
   ShieldCheck,
   Sparkles,
+  Star,
   TrendingUp,
   UserCheck,
   WalletCards,
+  X,
+  Zap,
 } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const serviceSlug = "cibil-report-analysis-and-credit-health-consultation";
 const serviceName = "CIBIL Report Analysis & Credit Health Consultation";
-const servicePrice = 2600;
 const heroImage = "/images/services/cibil/cibil-report-analysis.png";
-const applyHref = `/apply/${serviceSlug}`;
 const cibilExpertPhone = "9305086491";
+
 const whatsappHref = buildWhatsAppUrl(
   buildServiceWhatsAppMessage({
     serviceName,
@@ -53,7 +48,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "CIBIL Report Analysis & Credit Health Consultation | DigiConnect Dukan",
   description:
-    "Get 6-month TransUnion CIBIL membership assistance with expert one page CIBIL report analysis, credit health review, dispute guidance, and loan readiness consultation.",
+    "Get your TransUnion CIBIL Report, one-page financial analysis, loan details, overdue amount, score improvement plan and expert consultation with DigiConnect Dukan.",
   keywords: [
     "CIBIL Report Analysis",
     "Credit Health Consultation",
@@ -67,7 +62,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "CIBIL Report Analysis & Credit Health Consultation",
-    description: "6-month TransUnion CIBIL membership plus expert one page credit health analysis.",
+    description: "Get TransUnion CIBIL membership, credit score improvement plan and expert consultation.",
     type: "article",
     url: `/services/${serviceSlug}`,
     images: [{ url: heroImage, alt: serviceName }],
@@ -75,169 +70,129 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "CIBIL Report Analysis & Credit Health Consultation",
-    description: "Understand your credit before applying for loans or credit cards.",
+    description: "Understand your credit health before applying for loans.",
     images: [heroImage],
   },
 };
 
 const trustItems = [
-  { label: "Fast Processing", icon: Activity },
-  { label: "Expert Analysis", icon: FileSearch },
-  { label: "Pan India Support", icon: MonitorCheck },
-  { label: "Secure Assistance", icon: LockKeyhole },
+  { label: "Fast Delivery", text: "Report in 2 Hours", icon: Clock },
+  { label: "100% Secure", text: "Encrypted Data", icon: Lock },
+  { label: "Expert Guidance", text: "Certified Analysts", icon: UserCheck },
+  { label: "Full Confidentiality", text: "Private & Safe", icon: ShieldCheck },
 ];
 
-const membershipItems = [
-  { title: "6-Month CIBIL Membership Access", icon: BadgeCheck },
-  { title: "Unlimited Score Access", icon: Gauge },
-  { title: "Full Credit Report Access", icon: FileSearch },
-  { title: "Score History", icon: History },
-  { title: "Real-Time Alerts", icon: Bell },
-  { title: "Credit Monitoring", icon: MonitorCheck },
-  { title: "Score Simulator", icon: LineChart },
-  { title: "Account Change Monitoring", icon: Activity },
+const basicFeatures = [
+  "Latest TransUnion CIBIL Report",
+  "One Page Financial History Summary",
+  "Running/Closed Accounts Details",
+  "Pending/Overdue Amount Details",
+  "Total Loan Liability",
+  "Delay/DPD Details",
+  "Delivery within 2 hours",
+  "Free basic consultation",
 ];
 
-const analysisItems = [
-  "Current Score Review",
-  "Score Health Status",
-  "Low Score Reason Analysis",
-  "Active Loan Review",
-  "Closed Account Review",
-  "Credit Card Review",
-  "Outstanding Analysis",
-  "Due / Overdue Analysis",
-  "Payment Delay Detection",
-  "Hard Enquiry Analysis",
-  "Credit Utilization Review",
-  "Settlement / Write-off Detection",
-  "Duplicate Entry Detection",
-  "Wrong Reporting Detection",
-  "Loan Readiness Status",
+const premiumFeatures = [
+  "Complete CIBIL Report Analysis",
+  "Loan & Credit Card Breakdown",
+  "Credit Utilization Analysis",
+  "Score Improvement Plan",
+  "Future Loan Approval Guidance",
+  "Expert Consultation (Live Session)",
+  "Personalized Action Plan",
+  "Follow-up Support",
+  "6 Month Monitoring Membership",
+  "Report updates every 15 days",
+  "Priority Support (Call/WhatsApp)",
 ];
 
-const guidanceItems = [
-  "What to remove",
-  "What to update",
-  "Which dues to clear",
-  "Mistakes harming score",
-  "Improvement roadmap",
-  "Loan readiness strategy",
-];
-
-const disputeItems = [
-  "Wrong loan entries",
-  "Unknown enquiries",
-  "Closed loan still active",
-  "Wrong overdue",
-  "Settlement errors",
-  "Duplicate accounts",
-  "Fraud account suspicion",
-];
-
-const loanReadyBenefits = [
-  { title: "Better Loan Approval Chances", text: "Know weak points before applying and avoid avoidable rejection triggers.", icon: TrendingUp },
-  { title: "Better Profile Understanding", text: "Understand loans, cards, enquiries, overdue signals, and utilization in simple language.", icon: BarChart3 },
-  { title: "Lower Risk Decisions", text: "Apply with clarity instead of guessing what lenders may see in your report.", icon: ShieldCheck },
-  { title: "Financial Clarity", text: "Get a concise summary of what is healthy, risky, delayed, or incorrectly reported.", icon: WalletCards },
-  { title: "Pre-Loan Readiness", text: "Plan corrections, dues, and timing before starting loan or credit-card applications.", icon: Landmark },
+const comparisonTable = [
+  { feature: "TransUnion CIBIL Report", basic: true, premium: true },
+  { feature: "One-Page Summary Report", basic: true, premium: true },
+  { feature: "Active & Closed Loan Details", basic: true, premium: true },
+  { feature: "Pending Dues & Overdue Detection", basic: true, premium: true },
+  { feature: "Delay/DPD Details Check", basic: true, premium: true },
+  { feature: "Delivery Speed", basic: "2 Hours", premium: "Same Day (Consultation scheduled)" },
+  { feature: "Expert Line-by-Line Analysis", basic: false, premium: true },
+  { feature: "Score Improvement Roadmap", basic: false, premium: true },
+  { feature: "Wrong Entries/Dispute Guidance", basic: false, premium: true },
+  { feature: "6-Month Monitoring Membership", basic: false, premium: true },
+  { feature: "Bureau Report Updates", basic: "One-time", premium: "Every 15 Days" },
+  { feature: "Expert Consultation Session", basic: "Basic Chat", premium: "1-on-1 Call Session" },
+  { feature: "Priority Support & Follow-up", basic: false, premium: true },
 ];
 
 const processSteps = [
-  "Submit request",
-  "Verification",
-  "Credit report retrieval",
-  "Expert analysis",
-  "One page summary",
-  "Consultation",
+  { title: "Select Plan & Apply", desc: "Choose Basic or Premium and fill basic details online.", icon: Zap },
+  { title: "Secure Verification", desc: "Authenticate with Aadhaar/PAN details safely.", icon: Lock },
+  { title: "Bureau Report Retrieval", desc: "We fetch your latest TransUnion credit profile.", icon: FileSearch },
+  { title: "Expert Analysis", desc: "Our financial analysts check for errors, DPDs & dues.", icon: Activity },
+  { title: "One Page summary", desc: "Get a clear, easy-to-read custom PDF report.", icon: BadgeCheck },
+  { title: "Expert Support", desc: "Review roadmap & resolve disputes via WhatsApp/Call.", icon: MessageCircle },
 ];
 
-const documents = [
-  { title: "Aadhaar", icon: UserCheck },
-  { title: "PAN", icon: CreditCard },
-  { title: "Mobile", icon: Phone },
-  { title: "Email", icon: Mail },
-];
-
-const whyChoose = [
-  "Expert Human Analysis",
-  "Fast Support",
-  "Secure Process",
-  "Pan India Service",
-  "Trusted Digital Partner",
-  "Credit Guidance",
+const testimonials = [
+  {
+    name: "Rajesh Kumar",
+    location: "New Delhi",
+    text: "CIBIL report down hone ki wajah samajh nahi aa rahi thi. DigiConnect expert ne line-by-line check karke overdue details clear kiye aur 6 months me score improve hua!",
+    rating: 5,
+  },
+  {
+    name: "Priya Sharma",
+    location: "Mumbai",
+    text: "Basic report only ₹518 me mil gayi within 1 hour. Summary was very clean and easy to understand compared to raw bureau sheets.",
+    rating: 5,
+  },
+  {
+    name: "Amit Patel",
+    location: "Ahmedabad",
+    text: "Excellent dispute support! Wrong loan entries show ho rahi thi profile pe. Expert ne step-by-step documentation help kiya aur details clear ho gayi.",
+    rating: 5,
+  },
 ];
 
 const faqs = [
   {
-    question: "What is included in this CIBIL service?",
-    answer: "It includes assistance for a 6-month TransUnion CIBIL membership and an expert one page analysis of your credit report.",
+    question: "Basic and Premium plans me kya difference hai?",
+    answer: "Basic plan (₹518) me aapko latest TransUnion CIBIL report aur ek concise One-Page summary sheet milti hai (outstanding loans, due amount, closed/active accounts summaries ke sath). Premium plan (₹2599) me complete analytical review, score badhane ka roadmap, dispute guidance, 1-on-1 call par expert consultation, and 6 months ke liye monitoring membership milti hai (updates every 15 days).",
   },
   {
-    question: "Is this only a credit score check?",
-    answer: "No. The focus is understanding your full credit health, report entries, dues, enquiries, utilization, and loan readiness.",
+    question: "Kya mera score sach me improve hoga?",
+    answer: "Score improvement aapke repayment behavior aur report entries ke documentation par depend karta hai. DigiConnect Dukan aapko precise analysis, negative accounts detect karne me, aur bureau records me updates ke liye guidelines deta hai taaki aapka profile loan-ready ban sake.",
   },
   {
-    question: "Will DigiConnect guarantee score improvement?",
-    answer: "No. Score improvement depends on report accuracy, repayment behavior, lender reporting, and bureau rules. We provide guidance and analysis.",
+    question: "CIBIL dispute clearance me kitna time lagta hai?",
+    answer: "Jab hum kisi wrong entry ya unknown enquiry ko detect karte hain, toh dispute guidelines ke through bureau ko report kiya jata hai. Official guidelines ke mutabik TransUnion bureau disputes ko verify aur resolve karne me 30 to 45 days ka time leta hai.",
   },
   {
-    question: "Can you help identify wrong entries?",
-    answer: "Yes. The analysis can highlight suspected wrong reporting, duplicate entries, unknown enquiries, or closed loans still showing active.",
+    question: "Is this process secure for my PAN and Aadhaar details?",
+    answer: "Absolutely. DigiConnect Dukan follows strict data security policies. Aapki critical customer files aur personal information end-to-end encrypted rehti hain aur unhe direct bureau request verification ke alawa kisi third party ke sath share nahi kiya jata.",
   },
   {
-    question: "Is loan approval guaranteed after this consultation?",
-    answer: "No. Loan approval depends on bank eligibility, income, documents, credit policy, verification, and other lender rules.",
-  },
-  {
-    question: "What documents are required?",
-    answer: "Basic KYC and contact details are required: Aadhaar, PAN, mobile number, and email.",
-  },
-  {
-    question: "How will I receive the analysis?",
-    answer: "The team will prepare a concise one page summary and provide consultation support through the normal DigiConnect service workflow.",
-  },
-  {
-    question: "Is my information secure?",
-    answer: "DigiConnect follows a secure assistance process and does not expose sensitive keys or credentials on the client side.",
+    question: "Delivery me kitna time lagta hai?",
+    answer: "Basic report and summary apply karne ke within 2 hours aapke WhatsApp/Dashboard par deliver ho jati hai. Premium analysis and consultation call apply karne ke same day ke andar schedule ho jati hai.",
   },
 ];
-
-function SectionHeading({ eyebrow, title, text }: { eyebrow: string; title: string; text?: string }) {
-  return (
-    <div className="mx-auto max-w-3xl text-center">
-      <p className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-orange-700">
-        <Sparkles className="h-3.5 w-3.5" />
-        {eyebrow}
-      </p>
-      <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 md:text-5xl">{title}</h2>
-      {text ? <p className="mt-4 text-base leading-8 text-slate-600">{text}</p> : null}
-    </div>
-  );
-}
-
-function CheckItem({ children }: { children: string }) {
-  return (
-    <li className="flex gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-sm font-bold text-slate-800 shadow-sm">
-      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-      <span>{children}</span>
-    </li>
-  );
-}
 
 export default async function CibilCreditHealthPage() {
   const user = await getCurrentUser();
   const applyLabel = user ? "Apply Now" : "Login to Apply";
+
   const schemas = [
     {
       "@context": "https://schema.org",
       "@type": "Service",
       name: serviceName,
-      description: "6-month TransUnion CIBIL membership assistance with expert one page credit health analysis.",
+      description: "Get your TransUnion CIBIL Report, one-page financial analysis, loan details, overdue amount, score improvement plan and expert consultation with DigiConnect Dukan.",
       provider: { "@type": "LocalBusiness", name: "DigiConnect Dukan", telephone: `+91${cibilExpertPhone}` },
       serviceType: "Credit Health Consultation",
       areaServed: "India",
-      offers: { "@type": "Offer", price: servicePrice, priceCurrency: "INR", availability: "https://schema.org/InStock" },
+      offers: [
+        { "@type": "Offer", price: 518, priceCurrency: "INR", name: "Basic CIBIL One Pager Report" },
+        { "@type": "Offer", price: 2599, priceCurrency: "INR", name: "Premium CIBIL Analysis & Consultation" }
+      ],
     },
     {
       "@context": "https://schema.org",
@@ -251,234 +206,482 @@ export default async function CibilCreditHealthPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_36%,#f7f9fc_100%)] text-slate-950">
-      <section className="relative overflow-hidden px-4 pb-12 pt-8 md:px-8 md:pb-20 md:pt-12">
-        <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_18%_8%,rgba(37,99,235,0.16),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(249,115,22,0.14),transparent_30%)]" />
-        <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-blue-700 shadow-sm">
-              DigiConnect Dukan Finance Desk
-            </p>
-            <h1 className="mt-6 text-4xl font-bold tracking-tight text-slate-950 md:text-6xl">
-              CIBIL Report Analysis & Credit Health Consultation
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
-              Understand your credit before applying. Get 6-month TransUnion CIBIL membership assistance plus a human expert one page analysis for loan readiness, errors, dues, utilization, and improvement priorities.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <span className="rounded-full bg-blue-950 px-5 py-3 text-sm font-extrabold text-white">₹2,600</span>
-              <span className="rounded-full border border-orange-200 bg-orange-50 px-5 py-3 text-sm font-extrabold text-orange-700">
-                6-Month TransUnion CIBIL Membership + Expert One Page Analysis
-              </span>
+    <main className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
+      {/* Dynamic Animated Styles for Score Needle */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes swingNeedle {
+          0% { transform: rotate(-90deg); }
+          100% { transform: rotate(57deg); }
+        }
+        .animate-needle {
+          transform-origin: 100px 100px;
+          animation: swingNeedle 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+      `}} />
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-blue-950 via-slate-900 to-blue-950 text-white px-4 py-16 md:px-8 md:py-24">
+        {/* Glow Effects */}
+        <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-cyan-600/10 blur-[100px] pointer-events-none" />
+
+        <div className="relative mx-auto max-w-7xl grid gap-12 lg:grid-cols-2 lg:items-center">
+          <div className="space-y-6 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-400">
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+              RBI Compliant & Bureau Connected
             </div>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href={applyHref} className={buttonVariants({ size: "lg" })}>
-                {applyLabel}
+            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.1]">
+              Credit Score Safe Hai Ya Risk Pe?<br />
+              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                Know Your CIBIL Health
+              </span>
+            </h1>
+            <p className="max-w-2xl mx-auto lg:mx-0 text-slate-300 text-base leading-relaxed md:text-lg">
+              Loans ya Credit Cards reject hone se pehle check karein. Get your TransUnion CIBIL report, one-page financial history summary, overdue details, and live credit health expert advice.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+              <a href="#pricing-section" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-8 text-sm font-extrabold text-white shadow-lg shadow-blue-500/25 transition-transform hover:scale-105 active:scale-[0.98]">
+                Check CIBIL Now
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "secondary", size: "lg" })}>
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp Consultation
+              </a>
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 text-sm font-extrabold text-white hover:bg-white/10 transition-colors">
+                <MessageCircle className="h-4 w-4 text-emerald-400" />
+                WhatsApp Enquiry
               </a>
             </div>
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {trustItems.map(({ label, icon: Icon }) => (
-                <div key={label} className="rounded-2xl border border-white bg-white/80 p-3 shadow-sm">
-                  <Icon className="h-5 w-5 text-blue-700" />
-                  <p className="mt-2 text-xs font-extrabold leading-5 text-slate-700">{label}</p>
-                </div>
-              ))}
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/10">
+              <div>
+                <p className="text-2xl font-black text-white">4.8★</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">User Rating</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-white">10K+</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">Reports Analyzed</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-white">2 Hrs</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">Avg. Delivery</p>
+              </div>
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute -inset-3 rounded-[2rem] bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(249,115,22,0.18))] blur-2xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-white bg-white shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
-              <Image
-                src={heroImage}
-                alt="CIBIL report analysis and credit health consultation visual"
-                width={1254}
-                height={1254}
-                priority
-                sizes="(min-width: 1024px) 48vw, 100vw"
-                className="h-auto w-full"
-              />
+          {/* Interactive SVG Gauge Panel */}
+          <div className="relative flex justify-center items-center">
+            {/* Glass Card Container */}
+            <div className="relative w-full max-w-md p-8 rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-md shadow-[0_24px_80px_rgba(0,0,0,0.4)]">
+              <div className="text-center mb-6">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400">Bureau Score Simulator</p>
+                <h3 className="text-xl font-bold mt-1 text-white">Excellent Score Profile</h3>
+              </div>
+              
+              <div className="relative flex justify-center items-center h-48">
+                {/* SVG Gauge */}
+                <svg className="w-56 h-56" viewBox="0 0 200 200">
+                  {/* Gauge Arc Background */}
+                  <path d="M40 140 A 70 70 0 1 1 160 140" fill="none" stroke="#1e293b" strokeWidth="12" strokeLinecap="round" />
+                  {/* Red segment (Poor: 300-550) */}
+                  <path d="M40 140 A 70 70 0 0 1 70 65" fill="none" stroke="#ef4444" strokeWidth="12" />
+                  {/* Yellow/Orange segment (Average: 550-700) */}
+                  <path d="M70 65 A 70 70 0 0 1 130 65" fill="none" stroke="#f97316" strokeWidth="12" />
+                  {/* Green segment (Excellent: 700-900) */}
+                  <path d="M130 65 A 70 70 0 0 1 160 140" fill="none" stroke="#10b981" strokeWidth="12" strokeLinecap="round" />
+                  
+                  {/* Inner text score display */}
+                  <text x="100" y="125" textAnchor="middle" className="text-3xl font-black fill-white">785</text>
+                  <text x="100" y="145" textAnchor="middle" className="text-[10px] font-bold tracking-wider fill-emerald-400 uppercase">Excellent</text>
+                  
+                  {/* Needle pointer */}
+                  <g className="animate-needle">
+                    <line x1="100" y1="100" x2="100" y2="40" stroke="#f8fafc" strokeWidth="4" strokeLinecap="round" />
+                    <circle cx="100" cy="100" r="8" fill="#f8fafc" />
+                    <circle cx="100" cy="100" r="3" fill="#0f172a" />
+                  </g>
+                </svg>
+              </div>
+
+              {/* Status breakdown tags */}
+              <div className="grid grid-cols-3 gap-2 mt-4 text-[10px] text-center font-bold text-slate-300">
+                <div className="bg-red-500/10 border border-red-500/20 py-2 rounded-xl">
+                  <span className="block text-red-500">Poor</span>
+                  <span>300 - 549</span>
+                </div>
+                <div className="bg-orange-500/10 border border-orange-500/20 py-2 rounded-xl">
+                  <span className="block text-orange-400">Average</span>
+                  <span>550 - 700</span>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl">
+                  <span className="block text-emerald-400">Excellent</span>
+                  <span>701 - 900</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-3">
-          {[
-            "A credit score alone does not show why banks may hesitate.",
-            "Your report can contain overdue signals, high utilization, duplicate accounts, or wrong reporting.",
-            "Expert review converts complex bureau data into clear next steps before you apply.",
-          ].map((text) => (
-            <Card key={text} className="rounded-2xl border-blue-100 bg-white p-5 shadow-sm">
-              <ShieldCheck className="h-6 w-6 text-blue-700" />
-              <p className="mt-4 text-base font-bold leading-7 text-slate-900">{text}</p>
+      {/* Trust Badges */}
+      <section className="bg-white border-y border-slate-100 py-8">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {trustItems.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div key={idx} className="flex items-center gap-3 p-2 rounded-2xl transition duration-200 hover:bg-slate-50">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                    <Icon className="h-5.5 w-5.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900 leading-tight">{item.label}</h4>
+                    <p className="text-xs font-semibold text-slate-500 mt-0.5">{item.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Section */}
+      <section className="px-4 py-16 md:px-8 md:py-24 bg-gradient-to-b from-white to-slate-50">
+        <div className="mx-auto max-w-5xl text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-widest text-blue-700">
+            <Sparkles className="h-3.5 w-3.5" />
+            Why DigiConnect Dukan
+          </span>
+          <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+            Sahi Financial Health Analysis, No Placeholders
+          </h2>
+          <p className="mt-4 max-w-2xl mx-auto text-base font-semibold leading-relaxed text-slate-500">
+            Automated algorithms can download a PDF, but they cannot tell you *why* a bank rejected you. DigiConnect is your complete personal financial credit assistance partner.
+          </p>
+
+          <div className="grid gap-6 mt-12 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                title: "Expert Human Analysis",
+                desc: "Verified financial analysts review active loans, payment timings, and DPD triggers by hand.",
+                icon: FileSearch,
+              },
+              {
+                title: "Dispute Support Signals",
+                desc: "Wrong reporting, duplicate loans, and unrecognized enquiries are flagged step-by-step.",
+                icon: AlertTriangle,
+              },
+              {
+                title: "Future Loan Guidance",
+                desc: "Detailed checklist of what to remove, clear, or update to enhance your bank approvals.",
+                icon: TrendingUp,
+              },
+              {
+                title: "100% Privacy Enforced",
+                desc: "All personal KYC credentials and database entries are processed through safe, encrypted keys.",
+                icon: LockKeyhole,
+              },
+              {
+                title: "DigiWallet Benefits",
+                desc: "Get 100% reward cashback on your first paid service, reusable up to 50% on future services.",
+                icon: WalletCards,
+              },
+              {
+                title: "Real-Time Tracking",
+                desc: "Secure document uploads, invoices, and progress notes are saved in your customer account.",
+                icon: MonitorCheck,
+              },
+            ].map((box, idx) => {
+              const Icon = box.icon;
+              return (
+                <Card key={idx} className="p-6 border border-slate-100 bg-white rounded-2xl shadow-sm transition hover:shadow-md hover:-translate-y-0.5 duration-200 text-left">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-950 mt-4">{box.title}</h3>
+                  <p className="text-xs leading-relaxed text-slate-500 font-semibold mt-2">{box.desc}</p>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Cards Section */}
+      <section id="pricing-section" className="px-4 py-16 md:px-8 md:py-24 bg-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-widest text-cyan-700">
+              <Zap className="h-3.5 w-3.5" />
+              Choose Your Plan
+            </span>
+            <h2 className="mt-4 text-3xl font-black text-slate-950 sm:text-5xl">Transparent Pricing Variants</h2>
+            <p className="mt-3 text-sm font-semibold text-slate-500">Apne requirement ke mutabik sahi option choose karein aur 2 hours me results payein.</p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto items-stretch">
+            {/* Basic Card */}
+            <Card className="relative p-8 rounded-3xl border border-slate-200 bg-white flex flex-col justify-between transition-transform hover:-translate-y-1 hover:shadow-lg duration-200">
+              <div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-extrabold text-slate-950">Basic CIBIL Report</h3>
+                    <p className="text-xs font-semibold text-slate-400 mt-1">One Pager History Summary</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-600 uppercase">Self Check</span>
+                </div>
+                
+                <div className="mt-6 flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-slate-950">₹518</span>
+                  <span className="text-xs font-bold text-slate-400">/ One-time fee</span>
+                </div>
+
+                <div className="mt-4 text-xs font-semibold bg-emerald-50 text-emerald-800 p-2.5 rounded-xl border border-emerald-100/50">
+                  🎉 Expected Wallet Cashback: <span className="font-extrabold">₹104</span> (20%)
+                </div>
+
+                <ul className="mt-6 space-y-3.5 text-xs font-bold text-slate-700">
+                  {basicFeatures.map((feat, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5">
+                      <Check className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-8 space-y-3">
+                <Link
+                  href={`/apply/${serviceSlug}?plan=basic`}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-slate-950 text-xs font-extrabold text-white transition hover:bg-slate-900"
+                >
+                  {applyLabel} - ₹518
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white text-xs font-extrabold text-slate-700 transition hover:bg-slate-50">
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  WhatsApp Consult
+                </a>
+              </div>
             </Card>
-          ))}
-        </div>
-      </section>
 
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto max-w-7xl">
-          <SectionHeading eyebrow="What You Get" title="Membership access plus credit intelligence" text="A premium consultation designed for people who want clarity before loans, cards, refinancing, or dispute correction." />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {membershipItems.map(({ title, icon: Icon }) => (
-              <Card key={title} className="group rounded-2xl p-5 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 group-hover:bg-orange-50 group-hover:text-orange-600">
-                  <Icon className="h-5 w-5" />
+            {/* Premium Card */}
+            <Card className="relative p-8 rounded-3xl border-2 border-blue-600 bg-slate-950 text-white flex flex-col justify-between shadow-xl shadow-blue-900/10 transition-transform hover:-translate-y-1 duration-200">
+              <div className="absolute top-0 right-8 -translate-y-1/2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-3.5 py-1 text-[9px] font-extrabold uppercase tracking-widest text-white shadow-md">
+                Recommended Plan
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-extrabold">Premium Analysis</h3>
+                    <p className="text-xs font-semibold text-slate-400 mt-1">Credit Health Consultation</p>
+                  </div>
+                  <span className="rounded-full bg-blue-500/20 px-3 py-1 text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Expert Assisted</span>
                 </div>
-                <p className="mt-5 text-base font-bold leading-6 text-slate-950">{title}</p>
-              </Card>
-            ))}
+                
+                <div className="mt-6 flex items-baseline gap-1">
+                  <span className="text-3xl font-black">₹2599</span>
+                  <span className="text-xs font-bold text-slate-400">/ 6 Months Access</span>
+                </div>
+
+                <div className="mt-4 text-xs font-semibold bg-cyan-500/10 text-cyan-400 p-2.5 rounded-xl border border-cyan-500/20">
+                  🔥 Expected Wallet Cashback: <span className="font-extrabold">₹520</span> (20% reward)
+                </div>
+
+                <ul className="mt-6 space-y-3.5 text-xs font-bold text-slate-200">
+                  {premiumFeatures.map((feat, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5">
+                      <Check className="h-4 w-4 shrink-0 text-cyan-400 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-8 space-y-3">
+                <Link
+                  href={`/apply/${serviceSlug}?plan=premium`}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 text-xs font-extrabold text-slate-950 transition hover:brightness-110 shadow-lg shadow-blue-500/20"
+                >
+                  {applyLabel} - ₹2599
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 text-xs font-extrabold text-white hover:bg-white/10">
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-400" />
+                  WhatsApp Live Help
+                </a>
+              </div>
+            </Card>
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto grid max-w-7xl gap-8 rounded-[2rem] bg-blue-950 p-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)] md:p-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-300">Expert One Page Analysis</p>
-            <h2 className="mt-4 text-3xl font-bold md:text-5xl">One clear page. Every important credit signal.</h2>
-            <p className="mt-5 text-base leading-8 text-blue-100">
-              We summarize your report into practical insights so you know what is helping, what is hurting, and what needs attention before applying.
-            </p>
-          </div>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {analysisItems.map((item) => (
-              <li key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/8 p-3 text-sm font-bold text-white">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-orange-300" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-2">
-          <Card className="rounded-[2rem] p-6 md:p-8">
-            <h2 className="text-3xl font-bold text-slate-950">Credit Improvement Guidance</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">After expert review, you learn the practical actions that may help you build a cleaner credit profile over time.</p>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-              {guidanceItems.map((item) => <CheckItem key={item}>{item}</CheckItem>)}
-            </ul>
-          </Card>
-          <Card className="rounded-[2rem] border-orange-100 bg-orange-50/60 p-6 md:p-8">
-            <h2 className="text-3xl font-bold text-slate-950">Dispute Support Signals</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">We help identify report items that may need correction or dispute attention. Final correction depends on bureau/lender verification.</p>
-            <ul className="mt-6 grid gap-3">
-              {disputeItems.map((item) => (
-                <li key={item} className="flex gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-slate-800">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto max-w-7xl">
-          <SectionHeading eyebrow="Loan Ready Benefits" title="Prepare before you apply" />
-          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {loanReadyBenefits.map(({ title, text, icon: Icon }) => (
-              <Card key={title} className="rounded-2xl p-5">
-                <Icon className="h-6 w-6 text-blue-700" />
-                <h3 className="mt-4 text-base font-bold text-slate-950">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto max-w-7xl">
-          <SectionHeading eyebrow="Process" title="A secure six-step workflow" />
-          <ol className="mt-10 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {processSteps.map((step, index) => (
-              <li key={step} className="rounded-2xl border bg-white p-5 shadow-sm">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-950 text-sm font-extrabold text-white">{index + 1}</span>
-                <p className="mt-5 text-sm font-extrabold text-slate-950">{step}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-950 md:text-5xl">Documents Required</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">Keep your basic identity and contact details ready for a smooth verification and report access workflow.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-4">
-            {documents.map(({ title, icon: Icon }) => (
-              <Card key={title} className="rounded-2xl p-5 text-center">
-                <Icon className="mx-auto h-7 w-7 text-orange-600" />
-                <p className="mt-4 text-sm font-extrabold text-slate-950">{title}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 md:px-8 md:py-16">
-        <div className="mx-auto max-w-7xl rounded-[2rem] border bg-white p-6 shadow-sm md:p-8">
-          <SectionHeading eyebrow="Why DigiConnect" title="Professional credit guidance with secure assistance" />
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {whyChoose.map((item) => <CheckItem key={item}>{item}</CheckItem>)}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 md:px-8 md:py-16">
+      {/* Comparison Table */}
+      <section className="px-4 py-16 md:px-8 md:py-24 bg-slate-50">
         <div className="mx-auto max-w-4xl">
-          <SectionHeading eyebrow="FAQ" title="Common questions" />
-          <div className="mt-10 grid gap-3">
-            {faqs.map((faq) => (
-              <details key={faq.question} className="group rounded-2xl border bg-white p-5 shadow-sm">
-                <summary className="cursor-pointer list-none text-base font-bold text-slate-950">
-                  <span className="flex items-center justify-between gap-4">
-                    {faq.question}
-                    <ArrowRight className="h-4 w-4 shrink-0 text-blue-700 transition group-open:rotate-90" />
-                  </span>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-black text-slate-950">Plan Comparison</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-500">Dono packages ki features details ko side-by-side analyze karein.</p>
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100/50 border-b border-slate-200 text-xs font-extrabold uppercase text-slate-500 tracking-wider">
+                  <th className="p-4 sm:p-5">Feature Benefits</th>
+                  <th className="p-4 text-center">Basic Plan (₹518)</th>
+                  <th className="p-4 text-center">Premium Plan (₹2599)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs sm:text-sm font-bold text-slate-700">
+                {comparisonTable.map((row, idx) => (
+                  <tr key={idx} className="transition hover:bg-slate-50/50">
+                    <td className="p-4 sm:p-5 font-semibold text-slate-900">{row.feature}</td>
+                    <td className="p-4 text-center">
+                      {typeof row.basic === "boolean" ? (
+                        row.basic ? (
+                          <Check className="h-5 w-5 text-emerald-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 stroke-[2.5] text-slate-300 mx-auto" />
+                        )
+                      ) : (
+                        <span className="text-slate-600">{row.basic}</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      {typeof row.premium === "boolean" ? (
+                        row.premium ? (
+                          <Check className="h-5 w-5 text-blue-600 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 stroke-[2.5] text-slate-300 mx-auto" />
+                        )
+                      ) : (
+                        <span className="text-slate-900 font-extrabold">{row.premium}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Six Step Stepper Section */}
+      <section className="px-4 py-16 md:px-8 md:py-24 bg-white">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-widest text-blue-700">
+              <Activity className="h-3.5 w-3.5" />
+              Workflow Process
+            </span>
+            <h2 className="mt-4 text-3xl font-black text-slate-950 sm:text-5xl">Secure 6-Step Delivery</h2>
+            <p className="mt-3 text-sm font-semibold text-slate-500">Apply se lekar final support tak, hum aapke sath har step par khade hain.</p>
+          </div>
+
+          <div className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {processSteps.map((step, idx) => {
+              const Icon = step.icon;
+              return (
+                <div key={idx} className="relative group p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-md transition duration-200 text-left">
+                  <div className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-900 text-xs font-black text-white">
+                    0{idx + 1}
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 mt-4">{step.title}</h3>
+                  <p className="text-xs leading-relaxed text-slate-500 font-semibold mt-2">{step.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial Section */}
+      <section className="px-4 py-16 md:px-8 md:py-24 bg-slate-50">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-black text-slate-950 sm:text-5xl">Success Stories</h2>
+            <p className="mt-3 text-sm font-semibold text-slate-500">Dekhiye humare clients ne DigiConnect se help lekar kaise loan approvals hasil kiye.</p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {testimonials.map((test, idx) => (
+              <Card key={idx} className="p-6 border border-slate-100 bg-white rounded-2xl shadow-sm flex flex-col justify-between text-left">
+                <div className="space-y-4">
+                  <div className="flex gap-1">
+                    {Array.from({ length: test.rating }).map((_, i) => (
+                      <Star key={i} className="h-4.5 w-4.5 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600 font-semibold italic">&ldquo;{test.text}&rdquo;</p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100">
+                  <p className="text-sm font-extrabold text-slate-900">{test.name}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{test.location}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="px-4 py-16 md:px-8 md:py-24 bg-white">
+        <div className="mx-auto max-w-3xl">
+          <div className="text-center mb-16">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-widest text-blue-700">
+              <HelpCircle className="h-3.5 w-3.5" />
+              FAQs
+            </span>
+            <h2 className="mt-4 text-3xl font-black text-slate-950 sm:text-5xl">Frequently Asked Questions</h2>
+            <p className="mt-3 text-sm font-semibold text-slate-500">CIBIL report aur credit health ke common sawalon ke jawab.</p>
+          </div>
+
+          <div className="space-y-4">
+            {faqs.map((faq, idx) => (
+              <details key={idx} className="group rounded-2xl border border-slate-200 bg-slate-50/20 p-5 shadow-sm transition hover:border-slate-300">
+                <summary className="cursor-pointer list-none text-sm sm:text-base font-extrabold text-slate-950 flex items-center justify-between gap-4">
+                  <span>{faq.question}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-blue-600 transition group-open:rotate-90" />
                 </summary>
-                <p className="mt-4 text-sm leading-7 text-slate-600">{faq.answer}</p>
+                <p className="mt-3 text-xs sm:text-sm leading-relaxed text-slate-600 font-semibold border-t border-slate-100 pt-3">{faq.answer}</p>
               </details>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="px-4 pb-16 pt-8 md:px-8 md:pb-24">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#08214a,#0f3b78_58%,#f97316_140%)] p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.2)] md:p-10">
-          <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-200">Final CTA</p>
-              <h2 className="mt-3 text-3xl font-bold md:text-5xl">Understand Your Credit Before Applying</h2>
-              <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50">Get clarity on score health, dues, utilization, report errors, and loan readiness with secure DigiConnect assistance.</p>
+      {/* Final Call to Action */}
+      <section className="px-4 pb-20 pt-10 md:px-8 md:pb-28">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 p-8 text-white shadow-2xl shadow-blue-950/20 md:p-14 text-center lg:text-left relative">
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-80 h-80 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+          <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="space-y-4">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-400">Get Credit Confident</span>
+              <h2 className="text-3xl font-extrabold md:text-5xl leading-tight">Start Improving Your CIBIL Score Today</h2>
+              <p className="max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-300 font-semibold">
+                Apni required basic details and KYC upload karein, secure payment complete karein aur payein line-by-line experts ki analysis report jo bank reject nahi hone degi.
+              </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href={applyHref} className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-extrabold text-blue-950">
-                {applyLabel}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a href="#pricing-section" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-8 text-sm font-extrabold text-slate-950 hover:bg-slate-50 transition shadow-lg">
+                View Plans
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-6 text-sm font-extrabold text-white">
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp Now
+              </a>
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 text-sm font-extrabold text-white hover:bg-white/10 transition">
+                <MessageCircle className="h-4 w-4 text-emerald-400" />
+                WhatsApp Live support
               </a>
             </div>
           </div>
         </div>
       </section>
 
+      {/* JSON-LD Schemas */}
       {schemas.map((schema, index) => (
         <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       ))}
