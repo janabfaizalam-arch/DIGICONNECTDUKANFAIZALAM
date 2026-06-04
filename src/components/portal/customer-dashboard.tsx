@@ -916,11 +916,11 @@ export function CustomerDashboard({
       <aside className="hidden md:flex md:flex-col md:w-64 bg-slate-950/80 backdrop-blur-xl border-r border-white/5 shrink-0 fixed h-full top-0 left-0 z-30 justify-between p-6">
         <div className="space-y-8">
           <div className="flex items-center gap-2 px-1">
-            <Link href="/" className="flex h-8 w-[8.25rem]" aria-label="DigiConnect Home">
+            <Link href="/" className="flex h-8 w-48" aria-label="DigiConnect Home">
               <Image
                 src="/logo-navbar.png"
                 alt="DigiConnect Logo"
-                width={132}
+                width={192}
                 height={32}
                 priority
                 className="h-full w-auto object-contain"
@@ -998,9 +998,9 @@ export function CustomerDashboard({
       <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
         
         {/* 2. TOP STICKY GLASS HEADER */}
-        <header className="sticky top-0 z-20 w-full px-4 md:px-8 py-3 bg-[#070d1e]/85 backdrop-blur-2xl border-b border-white/5 flex items-center justify-between min-h-[64px] shadow-[0_8px_32px_rgba(3,5,12,0.5)] before:absolute before:inset-x-0 before:-bottom-px before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-500/20 before:to-transparent">
+        <header className="sticky top-0 z-20 w-full px-4 md:px-8 py-3 bg-[#070d1e]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between min-h-[64px] shadow-[0_8px_32px_rgba(3,5,12,0.4)] before:absolute before:inset-x-0 before:-bottom-px before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-500/20 before:to-transparent">
           {/* Left: Mobile Menu Toggle */}
-          <div className="flex items-center w-12 md:hidden">
+          <div className="flex items-center w-10 md:hidden">
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition active:scale-95"
@@ -1011,25 +1011,24 @@ export function CustomerDashboard({
           </div>
 
           {/* Center: Branding Logo */}
-          <div className="flex items-center justify-center flex-1 md:flex-initial">
-            <Link href="/" className="flex items-center h-8 md:h-[34px]" aria-label="DigiConnect Home">
+          <div className="flex items-center justify-center flex-1 md:flex-initial px-2">
+            <Link href="/" className="flex items-center h-[28px] min-[360px]:h-[30px] min-[390px]:h-[32px] md:h-[34px]" aria-label="DigiConnect Home">
               <Image
                 src="/logo-navbar.png"
                 alt="DigiConnect Logo"
-                width={120}
-                height={32}
+                width={204}
+                height={34}
                 priority
-                className="h-7 md:h-8 w-auto object-contain"
+                className="h-full w-auto object-contain"
               />
             </Link>
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center justify-end gap-2 md:gap-3 shrink-0">
+          <div className="flex items-center justify-end gap-1 min-[360px]:gap-2 md:gap-3 shrink-0">
             {/* Verified Shield Badge */}
             <div 
-              className="flex h-[28px] w-[28px] items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)] shrink-0 group relative cursor-help"
-              title="Verified Account"
+              className="flex h-[28px] w-[28px] items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] hover:bg-emerald-500/20 transition-all duration-300 shrink-0 group relative cursor-help"
             >
               <ShieldCheck className="h-4 w-4 text-emerald-400 drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
               {/* Tooltip */}
@@ -1099,11 +1098,11 @@ export function CustomerDashboard({
             {/* Premium Apply Button */}
             <button
               onClick={() => setServiceModalOpen(true)}
-              className="inline-flex h-[40px] md:h-[42px] items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-500 hover:to-indigo-500 px-3 md:px-4 text-xs font-extrabold text-white border border-blue-400/20 shadow-[0_4px_20px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_24px_rgba(37,99,235,0.4)] backdrop-blur-md relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:scale-95 cursor-pointer group shrink-0"
+              className="inline-flex h-[40px] md:h-[42px] w-10 min-[360px]:w-auto items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600/80 via-blue-500/85 to-indigo-600/90 hover:from-blue-500 hover:to-indigo-500 px-0 min-[360px]:px-3.5 md:px-4 text-xs font-extrabold text-white border border-blue-400/30 shadow-[inset_0_1.5px_0_rgba(255,255,255,0.35),0_4px_15px_rgba(37,99,235,0.25)] hover:shadow-[inset_0_1.5px_0_rgba(255,255,255,0.45),0_8px_20px_rgba(37,99,235,0.4)] backdrop-blur-md relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:scale-95 cursor-pointer group shrink-0"
             >
               <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
               <Plus className="h-4 w-4 text-white/90 group-hover:rotate-90 transition-transform duration-300" />
-              <span>Apply</span>
+              <span className="hidden min-[360px]:inline">Apply</span>
             </button>
           </div>
         </header>
@@ -1116,11 +1115,11 @@ export function CustomerDashboard({
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Link href="/" className="flex h-8 w-[7.5rem]" aria-label="DigiConnect Home">
+                    <Link href="/" className="flex h-8 w-48" aria-label="DigiConnect Home">
                       <Image
                         src="/logo-navbar.png"
                         alt="DigiConnect Logo"
-                        width={120}
+                        width={192}
                         height={32}
                         priority
                         className="h-full w-auto object-contain"
