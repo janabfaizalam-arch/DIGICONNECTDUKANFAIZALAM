@@ -58,11 +58,11 @@ export default async function Home() {
         {/* 1. Hero Section (Dynamic Admin Slider) */}
         <HeroSearchSection />
 
-        {/* 2. AI Service Finder (Fuzzy Search & Suggestions) */}
-        <AiServiceFinder />
-
-        {/* 3. Quick Service Grid (Premium 3D Glass Icons) */}
+        {/* 2. Quick Service Grid (Premium 3D Glass Icons) */}
         <QuickServiceGrid />
+
+        {/* 3. AI Service Finder (Fuzzy Search & Suggestions) */}
+        <AiServiceFinder />
 
         {/* 4. Trust Strip (Animated Stats counters) */}
         <TrustStrip />
