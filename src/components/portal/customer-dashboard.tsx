@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -914,13 +915,17 @@ export function CustomerDashboard({
       {/* 1. SIDEBAR (DESKTOP) */}
       <aside className="hidden md:flex md:flex-col md:w-64 bg-slate-950/80 backdrop-blur-xl border-r border-white/5 shrink-0 fixed h-full top-0 left-0 z-30 justify-between p-6">
         <div className="space-y-8">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Sparkles className="h-4.5 w-4.5 text-white animate-pulse" />
-            </div>
-            <span className="font-heading text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              DigiPortal
-            </span>
+          <div className="flex items-center gap-2 px-1">
+            <Link href="/" className="flex h-8 w-[8.25rem]" aria-label="DigiConnect Home">
+              <Image
+                src="/logo-navbar.png"
+                alt="DigiConnect Logo"
+                width={132}
+                height={32}
+                priority
+                className="h-full w-auto object-contain"
+              />
+            </Link>
           </div>
 
           <nav className="space-y-1.5" aria-label="Desktop sidebar navigation">
@@ -993,46 +998,56 @@ export function CustomerDashboard({
       <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
         
         {/* 2. TOP STICKY GLASS HEADER */}
-        <header className="sticky top-0 z-20 w-full px-4 py-3 bg-[#070d1e]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between min-h-[56px]">
+        <header className="sticky top-0 z-20 w-full px-4 md:px-8 py-3 bg-[#070d1e]/85 backdrop-blur-2xl border-b border-white/5 flex items-center justify-between min-h-[64px] shadow-[0_8px_32px_rgba(3,5,12,0.5)] before:absolute before:inset-x-0 before:-bottom-px before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-500/20 before:to-transparent">
           {/* Left: Mobile Menu Toggle */}
-          <div className="flex items-center w-12 md:w-auto">
+          <div className="flex items-center w-12 md:hidden">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition active:scale-95"
+              className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition active:scale-95"
               aria-label="Toggle Mobile Menu"
             >
               <Menu className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Center: Branding Title */}
+          {/* Center: Branding Logo */}
           <div className="flex items-center justify-center flex-1 md:flex-initial">
-            <div className="flex items-center gap-1.5">
-              <span className="font-heading font-black text-sm tracking-widest bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent sm:hidden">DC</span>
-              <span className="font-heading font-black text-sm md:text-base tracking-widest bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent hidden sm:inline-block">DIGICONNECT</span>
-              <span className="hidden sm:inline-block h-3 w-px bg-white/10" />
-              <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider text-slate-400">Portal</span>
-            </div>
+            <Link href="/" className="flex items-center h-8 md:h-[34px]" aria-label="DigiConnect Home">
+              <Image
+                src="/logo-navbar.png"
+                alt="DigiConnect Logo"
+                width={120}
+                height={32}
+                priority
+                className="h-7 md:h-8 w-auto object-contain"
+              />
+            </Link>
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center justify-end gap-1.5 md:gap-2.5 shrink-0">
-            {/* Verified Badge Pill */}
-            <span className="inline-flex h-7 items-center gap-1 px-1.5 sm:px-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] sm:text-[11px] font-black tracking-wide shadow-[0_2px_10px_rgba(16,185,129,0.05)] shrink-0">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Verified</span>
-            </span>
+          <div className="flex items-center justify-end gap-2 md:gap-3 shrink-0">
+            {/* Verified Shield Badge */}
+            <div 
+              className="flex h-[28px] w-[28px] items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)] shrink-0 group relative cursor-help"
+              title="Verified Account"
+            >
+              <ShieldCheck className="h-4 w-4 text-emerald-400 drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
+              {/* Tooltip */}
+              <span className="absolute top-9 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 transition-all duration-150 rounded-lg bg-slate-900 border border-white/10 px-2 py-1 text-[10px] font-bold text-white whitespace-nowrap shadow-xl z-50">
+                Verified Account
+              </span>
+            </div>
 
-            {/* Notification Bell with Dropdown (Desktop only) */}
+            {/* Notification Bell */}
             <div className="relative notif-container">
               <button
                 onClick={() => setShowNotifPopover(!showNotifPopover)}
-                className="p-1.5 rounded-full bg-white/5 border border-white/5 text-slate-400 hover:text-white transition duration-200 relative cursor-pointer h-7 w-7 md:h-8 md:w-8 flex items-center justify-center"
+                className="flex h-[28px] w-[28px] items-center justify-center rounded-full bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-slate-400 hover:text-white transition duration-200 relative cursor-pointer"
                 title="View Alerts"
               >
                 <Bell className="h-4 w-4" />
                 {unreadNotifCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 md:h-4 md:w-4 bg-rose-500 text-white font-black text-[8px] flex items-center justify-center rounded-full ring-2 ring-[#070d1e]">
+                  <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-rose-500 text-white font-black text-[8px] flex items-center justify-center rounded-full ring-2 ring-[#070d1e]">
                     {unreadNotifCount}
                   </span>
                 )}
@@ -1081,12 +1096,14 @@ export function CustomerDashboard({
               )}
             </div>
 
+            {/* Premium Apply Button */}
             <button
               onClick={() => setServiceModalOpen(true)}
-              className="inline-flex h-7 md:h-8 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 md:px-3.5 text-[10px] md:text-xs font-black text-white shadow-md hover:shadow-blue-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
+              className="inline-flex h-[40px] md:h-[42px] items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-500 hover:to-indigo-500 px-3 md:px-4 text-xs font-extrabold text-white border border-blue-400/20 shadow-[0_4px_20px_rgba(37,99,235,0.25)] hover:shadow-[0_4px_24px_rgba(37,99,235,0.4)] backdrop-blur-md relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:scale-95 cursor-pointer group shrink-0"
             >
-              <Plus className="h-3 w-3" />
-              Apply
+              <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
+              <Plus className="h-4 w-4 text-white/90 group-hover:rotate-90 transition-transform duration-300" />
+              <span>Apply</span>
             </button>
           </div>
         </header>
@@ -1098,11 +1115,17 @@ export function CustomerDashboard({
             <div className="relative w-64 bg-slate-950 border-r border-white/5 p-6 flex flex-col justify-between h-full z-10 animate-in slide-in-from-left duration-250">
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center">
-                      <Sparkles className="h-4.5 w-4.5 text-white animate-pulse" />
-                    </div>
-                    <span className="font-heading text-lg font-bold text-white">DigiPortal</span>
+                  <div className="flex items-center gap-2">
+                    <Link href="/" className="flex h-8 w-[7.5rem]" aria-label="DigiConnect Home">
+                      <Image
+                        src="/logo-navbar.png"
+                        alt="DigiConnect Logo"
+                        width={120}
+                        height={32}
+                        priority
+                        className="h-full w-auto object-contain"
+                      />
+                    </Link>
                   </div>
                   <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 text-slate-400 hover:text-white">
                     <X className="h-5 w-5" />
