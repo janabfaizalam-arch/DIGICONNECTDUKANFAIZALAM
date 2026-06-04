@@ -5,13 +5,19 @@ export const FIRST_SERVICE_CASHBACK_PERCENT = 100;
 export const REPEAT_CASHBACK_PERCENT = 20;
 export const MAX_WALLET_REDEEM_PERCENT = 50;
 
+/**
+ * Calculate max wallet redeem with dual 50% cap:
+ *   maxRedeemByService = floor(serviceAmount * 50%)
+ *   maxRedeemByWallet  = floor(walletBalance * 50%)
+ *   maxRedeem           = min(maxRedeemByService, maxRedeemByWallet)
+ */
 export function calculateMaxWalletRedeem(serviceAmount: number, walletBalance: number) {
   const amount = Math.max(0, Math.round(Number(serviceAmount ?? 0)));
   const balance = Math.max(0, Math.round(Number(walletBalance ?? 0)));
-  const serviceHalf = Math.floor(amount * (MAX_WALLET_REDEEM_PERCENT / 100));
+  const maxRedeemByService = Math.floor(amount * (MAX_WALLET_REDEEM_PERCENT / 100));
+  const maxRedeemByWallet = Math.floor(balance * (MAX_WALLET_REDEEM_PERCENT / 100));
 
-  // Fix: Allow utilizing up to the entire wallet balance, capped only by 50% of the service amount.
-  return Math.min(balance, serviceHalf);
+  return Math.min(maxRedeemByService, maxRedeemByWallet);
 }
 
 export function calculateWalletRedeemBreakdown({
@@ -23,26 +29,25 @@ export function calculateWalletRedeemBreakdown({
   walletBalance: number;
   requestedRedeem: number;
 }) {
-  const amount = Math.max(0, Number(serviceAmount ?? 0));
-  const balance = Math.max(0, Number(walletBalance ?? 0));
-  const requested = Math.max(0, Number(requestedRedeem ?? 0));
-  const serviceHalf = amount * (MAX_WALLET_REDEEM_PERCENT / 100);
-  
-  // Fix: Allow utilizing up to the entire wallet balance, capped only by 50% of the service amount.
-  const maxRedeem = Math.min(balance, serviceHalf);
+  const amount = Math.max(0, Math.floor(Number(serviceAmount ?? 0)));
+  const balance = Math.max(0, Math.floor(Number(walletBalance ?? 0)));
+  const requested = Math.max(0, Math.floor(Number(requestedRedeem ?? 0)));
+  const serviceHalf = Math.floor(amount * (MAX_WALLET_REDEEM_PERCENT / 100));
+  const walletHalf = Math.floor(balance * (MAX_WALLET_REDEEM_PERCENT / 100));
+  const maxRedeem = Math.min(serviceHalf, walletHalf);
   const walletRedeem = amount === 0 ? 0 : Math.min(requested, maxRedeem);
   const freshPayable = Math.max(0, amount - walletRedeem);
-  const minimumFreshPayable = amount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100);
+  const minimumFreshPayable = Math.ceil(amount * ((100 - MAX_WALLET_REDEEM_PERCENT) / 100));
 
   if (amount > 0 && freshPayable < minimumFreshPayable - 0.01) {
-    throw new Error("Wallet redeem cannot exceed 50% of service amount");
+    throw new Error("Wallet redeem cannot exceed 50% of service amount and 50% of wallet balance");
   }
 
   return {
     serviceAmount: amount,
     walletBalance: balance,
     requestedRedeem: requested,
-    walletHalf: balance, // Preserved in return schema as the full available balance
+    walletHalf,
     serviceHalf,
     maxRedeem,
     walletRedeem,
@@ -57,5 +62,5 @@ export function calculateCashbackForFreshPayment(freshPaidAmount: number, isFirs
   const amount = Math.max(0, Number(freshPaidAmount ?? 0));
   const percent = isFirstService ? FIRST_SERVICE_CASHBACK_PERCENT : REPEAT_CASHBACK_PERCENT;
 
-  return Math.round(amount * (percent / 100));
+  return Math.floor(amount * (percent / 100));
 }

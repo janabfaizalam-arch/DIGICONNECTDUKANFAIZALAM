@@ -15,6 +15,7 @@ type IndiaPostOffice = {
   District?: string;
   State?: string;
   Block?: string;
+  Taluk?: string;
   DeliveryStatus?: string;
   BranchType?: string;
 };
@@ -89,7 +90,22 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
           deliveryStatus: String(o.DeliveryStatus || "").trim()
         }));
 
-        // Filter by priorities
+        // Suffix cleanup helper
+        const cleanName = (name: string) => {
+          return name
+            .replace(/\s+(H\.O|S\.O|B\.O|Head Office|Sub Office|Branch Office)$/i, "")
+            .trim();
+        };
+
+        // Titlecase helper
+        const toTitleCase = (str: string) => {
+          return str
+            .toLowerCase()
+            .split(" ")
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+        };
+
         const headOffices = postOffices.filter(
           (o) => o.BranchType === "Head Office" || o.Name?.includes(" H.O")
         );
@@ -102,28 +118,41 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
 
         const bestOffice = headOffices[0] || subOffices[0] || branchOffices[0] || postOffices[0];
 
-        // For city field:
-        // Use Head Office name if available, Else Sub Office name, Else District name.
-        // Do NOT auto-fill random village/branch office when Head Office or Sub Office exists.
         let city = "";
-        if (headOffices.length > 0 && headOffices[0].Name) {
-          city = headOffices[0].Name;
-        } else if (subOffices.length > 0 && subOffices[0].Name) {
-          city = subOffices[0].Name;
+        
+        // 1. If best office is Head or Sub office, try Taluk/Block first
+        if (bestOffice && bestOffice.BranchType !== "Branch Office") {
+          const taluk = String(bestOffice.Taluk || bestOffice.Block || "").trim();
+          if (taluk && taluk.toUpperCase() !== "NA") {
+            city = taluk;
+          } else {
+            city = cleanName(bestOffice.Name || "");
+          }
         } else {
-          city = bestOffice?.District || "";
+          // 2. If only Branch offices exist, try Taluk/Block of the first one, then fallback to District
+          const taluk = String(bestOffice?.Taluk || "").trim();
+          const block = String(bestOffice?.Block || "").trim();
+          const district = String(bestOffice?.District || "").trim();
+          if (taluk && taluk.toUpperCase() !== "NA") {
+            city = taluk;
+          } else if (block && block.toUpperCase() !== "NA") {
+            city = block;
+          } else {
+            city = district;
+          }
         }
 
-        const district = String(bestOffice?.District || "").trim();
-        const state = String(bestOffice?.State || "").trim();
+        const formattedCity = toTitleCase(city);
+        const formattedDistrict = toTitleCase(String(bestOffice?.District || "").trim());
+        const formattedState = toTitleCase(String(bestOffice?.State || "").trim());
 
-        if (city && district && state) {
+        if (formattedCity && formattedDistrict && formattedState) {
           return {
             ok: true,
             location: {
-              city: city.trim(),
-              district: district.trim(),
-              state: state.trim(),
+              city: formattedCity,
+              district: formattedDistrict,
+              state: formattedState,
               postOffices: officesList,
               defaultOffice: bestOffice?.Name || ""
             },
@@ -145,18 +174,40 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
     });
     const result = (await response.json()) as PincodesInfoResponse;
     const office = result.results?.find((item) => item.district && item.state) ?? result.results?.[0];
-    const city = String(office?.taluk || office?.office_name || office?.district || "").trim();
-    const district = String(office?.district || "").trim();
-    const state = String(office?.state || "").trim();
+    
+    // Suffix cleanup helper for fallback
+    const cleanName = (name: string) => {
+      return name
+        .replace(/\s+(H\.O|S\.O|B\.O|Head Office|Sub Office|Branch Office)$/i, "")
+        .trim();
+    };
 
-    if (response.ok && result.success && city && district && state) {
+    // Titlecase helper for fallback
+    const toTitleCase = (str: string) => {
+      return str
+        .toLowerCase()
+        .split(" ")
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    };
+
+    let city = String(office?.taluk || "").trim();
+    if (!city || city.toUpperCase() === "NA") {
+      city = cleanName(String(office?.office_name || office?.district || ""));
+    }
+
+    const formattedCity = toTitleCase(city);
+    const formattedDistrict = toTitleCase(String(office?.district || "").trim());
+    const formattedState = toTitleCase(String(office?.state || "").trim());
+
+    if (response.ok && result.success && formattedCity && formattedDistrict && formattedState) {
       const mockOfficeName = office?.office_name || city;
       return {
         ok: true,
         location: {
-          city,
-          district,
-          state,
+          city: formattedCity,
+          district: formattedDistrict,
+          state: formattedState,
           postOffices: [{ name: mockOfficeName, type: "Sub Office", deliveryStatus: "Delivery" }],
           defaultOffice: mockOfficeName
         }

@@ -148,7 +148,6 @@ function devInfo(message: string, details?: Record<string, unknown>) {
 export function ServiceApplicationForm({
   service,
   services,
-  isProfileIncompleteInitial: _isProfileIncompleteInitial = false,
   initialProfileFields = { mobile: "", pincode: "", city: "", state: "" },
 }: {
   service: ApplicationFormService;
@@ -260,7 +259,7 @@ export function ServiceApplicationForm({
   const cmYuvaWalletRedeem = isCmYuva && wallet.balance > 0 ? Math.min(wallet.balance, totalAmount * 0.5) : 0;
   const clampedWalletUseAmount = isCmYuva ? cmYuvaWalletRedeem : Math.min(walletUseAmount, wallet.maxUsable);
   const realPayableAmount = getRealPayableAmount(totalAmount, clampedWalletUseAmount);
-  const walletLimitMessage = "You can redeem up to 50% of your wallet balance, limited to 50% of service amount.";
+  const walletLimitMessage = "You can redeem up to 50% of service price and 50% of wallet balance.";
   const hasFirstServiceCashback = wallet.transactions.some((transaction) => transaction.type === "first_service_cashback");
   const expectedCashback = calculateCashbackForFreshPayment(realPayableAmount, !hasFirstServiceCashback);
   const payableAmountPaise = Math.round(realPayableAmount * 100);
@@ -584,6 +583,44 @@ export function ServiceApplicationForm({
     if (walletUseAmount > wallet.maxUsable) {
       toastError(walletLimitMessage);
       return;
+    }
+
+    // Zero-payment wallet-only flow: submit directly to create-order which handles wallet debit server-side
+    if (realPayableAmount === 0 && clampedWalletUseAmount > 0 && !razorpayPayment) {
+      // Simulate a zero-payment order via create-order API
+      try {
+        const zeroPayResponse = await fetch("/api/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: 0,
+            serviceSlug: selectedServices[0]?.slug,
+            serviceSlugs: selectedServices.map((item) => item.slug),
+            walletUseAmount: clampedWalletUseAmount,
+            applicationDraft: {
+              customer: normalizedApplicationDraft.customer,
+              details: serviceDetailsForPayment,
+            },
+          }),
+        });
+        const zeroPayResult = await zeroPayResponse.json() as { order_id: string | null; application_id?: string; application_ids?: string[]; wallet_only?: boolean; message?: string; error?: string };
+        if (!zeroPayResponse.ok) {
+          throw new Error(zeroPayResult.error || zeroPayResult.message || "Wallet payment failed.");
+        }
+        if (zeroPayResult.wallet_only && zeroPayResult.application_ids?.length) {
+          setRazorpayPayment({
+            razorpay_payment_id: "wallet_only",
+            razorpay_order_id: "wallet_only",
+            razorpay_signature: "wallet_only",
+            application_id: zeroPayResult.application_id ?? zeroPayResult.application_ids[0],
+            application_ids: zeroPayResult.application_ids,
+            amount_paise: 0,
+          });
+        }
+      } catch (zeroPayError) {
+        toastError(zeroPayError instanceof Error ? zeroPayError.message : "Wallet payment failed.");
+        return;
+      }
     }
 
     if (razorpayPayment && razorpayPayment.amount_paise !== payableAmountPaise) {
@@ -1011,6 +1048,23 @@ export function ServiceApplicationForm({
               </div>
             </div>
           </Card>
+        ) : realPayableAmount === 0 && clampedWalletUseAmount > 0 ? (
+          <Card className="rounded-3xl border border-emerald-100 bg-emerald-50/30 p-4 shadow-sm md:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                <WalletCards className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-extrabold text-slate-950 text-sm">100% Wallet Payment</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                  Your wallet balance covers the entire service amount. No Razorpay payment needed.
+                </p>
+                <div className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-3 text-xs font-extrabold text-emerald-800 border border-emerald-100">
+                  🎉 {formatCurrency(clampedWalletUseAmount)} will be deducted from your DigiWallet.
+                </div>
+              </div>
+            </div>
+          </Card>
         ) : null}
 
         <LoadingOverlay show={wallet.isLoading} label="Checking wallet balance...">
@@ -1030,7 +1084,7 @@ export function ServiceApplicationForm({
               
               {/* Wallet Cap Notice Box */}
               <p className="mt-2.5 rounded-2xl bg-blue-50/50 border border-blue-50/80 px-3 py-2 text-xs font-extrabold leading-normal text-blue-700">
-                &bull; Wallet Cap Rule: You can redeem up to 50% of the service/order value using your reward wallet credits.
+                &bull; Wallet Cap Rule: You can redeem up to 50% of service price and 50% of your wallet balance — whichever is lower.
               </p>
               
               <div className="mt-3.5 grid gap-2">
@@ -1088,8 +1142,8 @@ export function ServiceApplicationForm({
                 </div>
                 <p className="text-[10px] font-bold leading-relaxed text-slate-400">
                   {hasFirstServiceCashback
-                    ? "* Get 20% cashback credited to your reward wallet after completed service verification."
-                    : "* Get 100% cashback credited to your reward wallet after service verification (First paid service bonus)."}
+                    ? "* Get 20% cashback credited to your reward wallet after successful payment."
+                    : "* Get 100% cashback credited to your reward wallet after successful payment (First paid service bonus)."}
                 </p>
               </div>
             </div>

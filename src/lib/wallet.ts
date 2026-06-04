@@ -127,7 +127,9 @@ function toNumber(value: unknown) {
 
 export function getWalletMaxUsable(orderAmount: number, walletBalance: number, maxPercent = walletMaxRedemptionPercent) {
   const percent = Math.min(Math.max(maxPercent, 0), walletMaxRedemptionPercent);
-  return Math.max(0, Math.min(walletBalance, Math.floor(orderAmount * (percent / 100))));
+  const maxByService = Math.floor(Math.max(0, orderAmount) * (percent / 100));
+  const maxByWallet = Math.floor(Math.max(0, walletBalance) * (percent / 100));
+  return Math.min(maxByService, maxByWallet);
 }
 
 export function getRealPayableAmount(orderAmount: number, walletAmount: number) {
@@ -349,7 +351,7 @@ export async function getRewardRuleForOrder(serviceSlugs: string[]) {
 }
 
 export function calculateCashbackAmount(orderAmount: number) {
-  return Math.round(Math.max(0, orderAmount) * (REPEAT_CASHBACK_PERCENT / 100));
+  return Math.floor(Math.max(0, orderAmount) * (REPEAT_CASHBACK_PERCENT / 100));
 }
 
 export async function creditCashbackForApplication({

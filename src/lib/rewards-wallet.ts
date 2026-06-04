@@ -237,3 +237,37 @@ export async function reverseWalletTransaction(transactionId: string, reason: st
 
   return data as WalletLedgerTransaction;
 }
+
+/**
+ * Process cashback and referral rewards immediately after Razorpay payment verification.
+ * This calls the same process_rewards_on_application_completed RPC but the migration
+ * will update it to also accept 'submitted' status (which is set during verify-payment).
+ *
+ * Returns cashback info if processed, or already_processed if idempotent replay.
+ */
+export async function processRewardsOnPaymentVerified(applicationId: string, createdBy?: string | null) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    throw new Error("Supabase service role key is missing.");
+  }
+
+  const { data, error } = await supabase.rpc("process_rewards_on_payment_verified", {
+    p_application_id: applicationId,
+    p_created_by: createdBy ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as {
+    processed?: boolean;
+    already_processed?: boolean;
+    first_service?: boolean;
+    cashback_amount?: number;
+    cashback_transaction_id?: string | null;
+    referrer_transaction_id?: string | null;
+    reason?: string;
+  };
+}

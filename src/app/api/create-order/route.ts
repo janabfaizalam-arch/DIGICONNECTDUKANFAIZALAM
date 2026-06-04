@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { validateCoupon } from "@/lib/coupons";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
-import { createWalletIfMissing } from "@/lib/rewards-wallet";
+import { createWalletIfMissing, redeemWalletForApplication as redeemRewardWalletDirect, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -222,6 +222,183 @@ export async function POST(request: Request) {
           application_id: undefined,
           application_ids: [],
           message: "No payment is required for this free service.",
+        });
+      }
+
+      // Zero-payment wallet-only flow: wallet covers entire service price
+      if (freshPayableAmount === 0 && walletRedeemAmount > 0 && body?.applicationDraft) {
+        const supabase = getSupabaseAdmin();
+
+        if (!supabase) {
+          return jsonError("Application could not be prepared for wallet payment.", 500);
+        }
+
+        const customer = normalizeCustomer(body.applicationDraft.customer);
+        const customerValidationError = getCustomerValidationError(customer, {
+          emailOptional: serviceSlugs.includes("pm-vishwakarma-yojana") || serviceSlugs.includes("cm-yuva-entrepreneur-loan-assistance"),
+        });
+
+        if (customerValidationError) {
+          return jsonCustomerValidationError(customerValidationError, customer);
+        }
+
+        const { data: linkedCustomer } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const formData = {
+          service: services.filter(Boolean).map((s) => s?.title).join(", "),
+          name: customer.name,
+          mobile: customer.mobile,
+          email: customer.email.toLowerCase(),
+          city: customer.city,
+          message: customer.message,
+          service_slugs: serviceSlugs,
+          payment: {
+            total_amount: serviceAmount,
+            coupon_discount: couponDiscount,
+            final_amount: finalAmountBeforeWallet,
+            wallet_redeemed_amount: walletRedeemAmount,
+            fresh_payable_amount: 0,
+            cashback_eligible_amount: 0,
+          },
+          ...(body.applicationDraft.details ?? {}),
+        };
+
+        const paidAt = new Date().toISOString();
+        const customerDetails = {
+          name: customer.name,
+          mobile: customer.mobile,
+          email: customer.email,
+          city: customer.city,
+          address: String(body.applicationDraft.details?.address ?? "").trim(),
+          notes: customer.message,
+        };
+        const serviceSnapshot = {
+          title: services.filter(Boolean).map((service) => service?.title).join(", "),
+          slug: serviceSlugs.join(","),
+          slugs: serviceSlugs,
+          category: services.filter(Boolean).map((service) => service?.category).filter(Boolean).join(", "),
+          category_slug: services.filter(Boolean).map((service) => service?.categorySlug).filter(Boolean).join(", "),
+          price: serviceAmount,
+          services: services.filter(Boolean).map((service) => ({
+            title: service!.title,
+            slug: service!.slug,
+            category: service!.category,
+            categorySlug: service!.categorySlug,
+            amount: service!.amount,
+            documents: service!.documents,
+          })),
+        };
+        const metadata = {
+          source: "wallet_only_payment",
+          coupon_code: couponCode || null,
+          coupon_discount: couponDiscount,
+          original_price: serviceAmount,
+          payment: {
+            total_amount: serviceAmount,
+            coupon_discount: couponDiscount,
+            final_amount: finalAmountBeforeWallet,
+            wallet_redeemed_amount: walletRedeemAmount,
+            fresh_payable_amount: 0,
+            cashback_eligible_amount: 0,
+          },
+        };
+
+        let remainingWalletToAllocate = walletRedeemAmount;
+        const applicationsToInsert = services.filter(Boolean).map((service, index) => {
+          let serviceAmountForRow = isItrMsmeCombo ? (index === 0 ? serviceAmount : 0) : Number(service?.amount ?? 0);
+          if (service!.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
+            serviceAmountForRow = serviceAmountForRow - couponDiscount;
+          }
+          const walletAmountForRow = isItrMsmeCombo ? (index === 0 ? walletRedeemAmount : 0) : Math.min(remainingWalletToAllocate, serviceAmountForRow);
+          remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
+
+          return {
+            user_id: user.id,
+            customer_id: linkedCustomer?.id ?? null,
+            customer_email: customer.email.toLowerCase(),
+            customer_mobile: customer.mobile.replace(/\D/g, ""),
+            service_slug: service!.slug,
+            service_name: service!.title,
+            amount: serviceAmountForRow,
+            total_amount: serviceAmountForRow,
+            wallet_used_amount: walletAmountForRow,
+            wallet_redeemed_amount: walletAmountForRow,
+            real_payment_amount: 0,
+            fresh_payable_amount: 0,
+            cashback_eligible_amount: 0,
+            form_data: formData,
+            customer_details: customerDetails,
+            service_snapshot: serviceSnapshot,
+            metadata,
+            status: "submitted",
+            payment_status: "verified",
+            paid_at: paidAt,
+            submitted_at: paidAt,
+            created_by: user.id,
+            source: "online",
+            submitted_by_role: "customer",
+          };
+        });
+
+        const { data: applications, error: appError } = await supabase
+          .from("applications")
+          .insert(applicationsToInsert)
+          .select("id");
+
+        if (appError || !applications?.length) {
+          console.error("[razorpay/create-order] Wallet-only application creation failed", appError);
+          return jsonError("Application could not be created with wallet payment.", 500);
+        }
+
+        const walletAppIds = applications.map((a) => a.id);
+        const primaryAppId = walletAppIds[0];
+
+        // Debit wallet server-side
+        try {
+          await redeemRewardWalletDirect({
+            userId: user.id,
+            applicationId: primaryAppId,
+            applicationAmount: finalAmountBeforeWallet,
+            requestedAmount: walletRedeemAmount,
+            createdBy: user.id,
+          });
+        } catch (walletError) {
+          console.error("[razorpay/create-order] Wallet debit failed for wallet-only order", walletError);
+          // Rollback: delete the applications
+          await supabase.from("applications").delete().in("id", walletAppIds);
+          return jsonError("Wallet debit failed. Please try again.", 500);
+        }
+
+        // Create payment record
+        await supabase.from("payments").insert({
+          application_id: primaryAppId,
+          user_id: user.id,
+          amount: 0,
+          wallet_used_amount: walletRedeemAmount,
+          real_payment_amount: 0,
+          status: "verified",
+          paid_at: paidAt,
+        });
+
+        // Process cashback (will be ₹0 since fresh amount is 0)
+        try {
+          await processRewardsOnPaymentVerified(primaryAppId, user.id);
+        } catch (cashbackError) {
+          console.error("[razorpay/create-order] Cashback processing failed for wallet-only order (non-blocking)", cashbackError);
+        }
+
+        return NextResponse.json({
+          order_id: null,
+          amount: 0,
+          currency,
+          application_id: primaryAppId,
+          application_ids: walletAppIds,
+          wallet_only: true,
+          message: "Service paid using DigiWallet. No Razorpay payment required.",
         });
       }
 

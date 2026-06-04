@@ -6,7 +6,7 @@ import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
-import { createWalletIfMissing } from "@/lib/rewards-wallet";
+import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 type VerifyPaymentBody = {
@@ -266,6 +266,26 @@ export async function POST(request: Request) {
       }
     }
 
+    // Credit cashback and referral rewards immediately after payment verification
+    let cashbackResult: { processed?: boolean; cashback_amount?: number; first_service?: boolean; cashback_transaction_id?: string | null; referrer_transaction_id?: string | null } | null = null;
+    try {
+      cashbackResult = await processRewardsOnPaymentVerified(primaryApplication.id, user.id);
+      devInfo("[razorpay/verify-payment] Cashback processed", {
+        orderId,
+        paymentId,
+        applicationId: primaryApplication.id,
+        cashbackResult,
+      });
+    } catch (cashbackError) {
+      // Log but don't fail the payment — cashback can be retried
+      console.error("[razorpay/verify-payment] Cashback credit failed (non-blocking)", {
+        orderId,
+        paymentId,
+        applicationId: primaryApplication.id,
+        error: cashbackError,
+      });
+    }
+
     devInfo("[razorpay/verify-payment] Payment verified and application updated", {
       orderId,
       paymentId,
@@ -279,6 +299,11 @@ export async function POST(request: Request) {
       order_id: orderId,
       application_id: primaryApplication.id,
       application_ids: applications.map((application) => application.id),
+      cashback: cashbackResult ? {
+        processed: cashbackResult.processed,
+        amount: cashbackResult.cashback_amount ?? 0,
+        first_service: cashbackResult.first_service ?? false,
+      } : null,
     });
   } catch (error) {
     console.error("[razorpay/verify-payment] Verification failed", error);

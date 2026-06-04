@@ -286,13 +286,13 @@ export async function syncUserProfile(user: User, pendingCustomerOAuth?: Pending
   const storedRole = String(existingProfile?.role ?? existingUser?.role ?? "customer").toLowerCase();
   const normalizedStoredRole = normalizeAppRole(storedRole) ?? "customer";
   const role = adminRole ?? normalizedStoredRole;
-  const fullName = String(user.user_metadata.full_name ?? user.user_metadata.name ?? "").trim();
-  const mobile = String(pendingCustomerOAuth?.mobile ?? user.phone ?? user.user_metadata.mobile ?? user.user_metadata.phone ?? existingProfile?.mobile ?? existingCustomerProfile?.mobile ?? "").replace(/\D/g, "").trim();
-  const pincode = String(pendingCustomerOAuth?.pincode ?? user.user_metadata.pincode ?? existingProfile?.pincode ?? existingCustomerProfile?.pincode ?? "").trim();
-  const city = String(pendingCustomerOAuth?.city ?? user.user_metadata.city ?? existingProfile?.city ?? existingCustomerProfile?.city ?? "").trim();
-  const district = String(pendingCustomerOAuth?.district ?? user.user_metadata.district ?? existingProfile?.district ?? existingCustomerProfile?.district ?? "").trim();
-  const state = String(pendingCustomerOAuth?.state ?? user.user_metadata.state ?? existingProfile?.state ?? existingCustomerProfile?.state ?? "").trim();
-  const referralCode = String(user.user_metadata.referred_by ?? user.user_metadata.referral_code ?? user.user_metadata.ref ?? "").trim().toUpperCase();
+  const fullName = String(user.user_metadata.full_name || user.user_metadata.name || "").trim();
+  const mobile = String(pendingCustomerOAuth?.mobile || user.phone || user.user_metadata.mobile || user.user_metadata.phone || existingProfile?.mobile || existingCustomerProfile?.mobile || "").replace(/\D/g, "").trim();
+  const pincode = String(pendingCustomerOAuth?.pincode || user.user_metadata.pincode || existingProfile?.pincode || existingCustomerProfile?.pincode || "").trim();
+  const city = String(pendingCustomerOAuth?.city || user.user_metadata.city || existingProfile?.city || existingCustomerProfile?.city || "").trim();
+  const district = String(pendingCustomerOAuth?.district || user.user_metadata.district || existingProfile?.district || existingCustomerProfile?.district || "").trim();
+  const state = String(pendingCustomerOAuth?.state || user.user_metadata.state || existingProfile?.state || existingCustomerProfile?.state || "").trim();
+  const referralCode = String(user.user_metadata.referred_by || user.user_metadata.referral_code || user.user_metadata.ref || "").trim().toUpperCase();
 
   if (pendingCustomerOAuth) {
     await supabaseAdmin.auth.admin.updateUserById(user.id, {

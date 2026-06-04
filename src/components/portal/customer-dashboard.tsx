@@ -275,7 +275,20 @@ export function CustomerDashboard({
   };
 
   // Profile Form States
-  const dbProfile = profileStatus?.profile || {};
+  const [localProfile, setLocalProfile] = useState<NonNullable<ProfileStatusData["profile"]>>(profileStatus?.profile || {});
+  const dbProfile = localProfile;
+
+  // Reactively sync props if profileStatus changes
+  useEffect(() => {
+    if (profileStatus?.profile) {
+      setLocalProfile(profileStatus.profile);
+    }
+  }, [profileStatus]);
+
+  const getCustomerMobile = (prof: NonNullable<ProfileStatusData["profile"]> | null | undefined, usr: SupabaseUser | null | undefined) => {
+    return prof?.mobile || usr?.phone || usr?.user_metadata?.mobile || usr?.user_metadata?.phone || "";
+  };
+
   const [formFullName, setFormFullName] = useState("");
   const [formMobile, setFormMobile] = useState("");
   const [formPincode, setFormPincode] = useState("");
@@ -287,9 +300,9 @@ export function CustomerDashboard({
   const [formDob, setFormDob] = useState("");
   
   // Smart Pincode state
-  const [postOfficesList, setPostOfficesList] = useState<{ name: string; type: string; deliveryStatus: string; }[]>([]);
-  const [selectedPostOffice, setSelectedPostOffice] = useState("");
   const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+  const [pincodeFetched, setPincodeFetched] = useState(false);
+  const lastFetchedPincodeRef = useRef("");
 
   // Preference states (WhatsApp support, Language, Notification)
   const [prefWhatsapp, setPrefWhatsapp] = useState(true);
@@ -300,7 +313,7 @@ export function CustomerDashboard({
   // Populate form values from props/dbProfile
   useEffect(() => {
     setFormFullName(dbProfile.full_name || profile.name || "");
-    setFormMobile(dbProfile.mobile || user.phone || "");
+    setFormMobile(getCustomerMobile(dbProfile, user));
     setFormPincode(dbProfile.pincode || "");
     setFormCity(dbProfile.city || "");
     setFormDistrict(dbProfile.district || "");
@@ -308,6 +321,7 @@ export function CustomerDashboard({
     setFormAddress(dbProfile.address || "");
     setFormGender(dbProfile.gender || "");
     setFormDob(dbProfile.dob || "");
+    lastFetchedPincodeRef.current = dbProfile.pincode || "";
 
     // Retrieve preferences from metadata or localStorage
     if (typeof window !== "undefined") {
@@ -318,7 +332,6 @@ export function CustomerDashboard({
           setPrefWhatsapp(parsed.whatsapp ?? true);
           setPrefLanguage(parsed.language ?? "Hindi");
           setPrefNotifications(parsed.notifications ?? true);
-          setSelectedPostOffice(parsed.post_office_name ?? "");
         } catch {
           // Ignored
         }
@@ -326,47 +339,40 @@ export function CustomerDashboard({
         setPrefWhatsapp(Boolean(user.user_metadata.whatsapp_support ?? true));
         setPrefLanguage(String(user.user_metadata.language_preference ?? "Hindi"));
         setPrefNotifications(Boolean(user.user_metadata.notification_preference ?? true));
-        setSelectedPostOffice(String(user.user_metadata.post_office_name ?? ""));
       }
     }
   }, [dbProfile, profile.name, user]);
 
   // Trigger smart pincode lookup when pincode has exactly 6 digits
   useEffect(() => {
-    if (formPincode.length === 6 && /^\d{6}$/.test(formPincode)) {
+    if (formPincode.length === 6 && /^\d{6}$/.test(formPincode) && formPincode !== lastFetchedPincodeRef.current) {
       const fetchPincodeDetails = async () => {
         setIsPincodeLoading(true);
+        setPincodeFetched(false);
         try {
           const res = await fetch(`/api/pincode?pincode=${formPincode}`);
           const data = await res.json();
           if (data.success && data.ok) {
+            setFormCity(data.city || "");
             setFormDistrict(data.district || "");
             setFormState(data.state || "");
-            if (data.postOffices && data.postOffices.length > 0) {
-              setPostOfficesList(data.postOffices);
-              // Priority auto-select Head Office or Sub Office
-              const defaultOffice = data.defaultOffice || data.postOffices[0].name;
-              setSelectedPostOffice(defaultOffice);
-              setFormCity(defaultOffice);
-            } else {
-              setPostOfficesList([]);
-              setFormCity(data.city || "");
-            }
+            setPincodeFetched(true);
+            lastFetchedPincodeRef.current = formPincode;
             toastSuccess("Location autofilled successfully.");
           } else {
-            setPostOfficesList([]);
             toastError("PIN code details not found. Please enter manually.");
           }
         } catch {
-          setPostOfficesList([]);
           toastError("Failed to fetch location details.");
         } finally {
           setIsPincodeLoading(false);
         }
       };
       void fetchPincodeDetails();
+    } else if (formPincode.length === 6 && formPincode === lastFetchedPincodeRef.current) {
+      setPincodeFetched(true);
     } else {
-      setPostOfficesList([]);
+      setPincodeFetched(false);
     }
   }, [formPincode]);
 
@@ -421,23 +427,63 @@ export function CustomerDashboard({
 
       if (profileError) throw profileError;
 
-      // Save preferences to metadata & localStorage
+      // Save to profiles (double-table upsert)
+      const { error: legacyProfileError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
+          full_name: formFullName.trim(),
+          mobile: formMobile.trim(),
+          email: user.email || "",
+          pincode: formPincode.trim(),
+          city: formCity.trim(),
+          district: formDistrict.trim(),
+          state: formState.trim(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (legacyProfileError) throw legacyProfileError;
+
+      // Save preferences to localStorage
       const prefs = {
         whatsapp: prefWhatsapp,
         language: prefLanguage,
-        notifications: prefNotifications,
-        post_office_name: selectedPostOffice
+        notifications: prefNotifications
       };
       localStorage.setItem(`customer_prefs_${user.id}`, JSON.stringify(prefs));
 
+      // Sync variables to Supabase auth user metadata
       await supabase.auth.updateUser({
         data: {
           whatsapp_support: prefWhatsapp,
           language_preference: prefLanguage,
           notification_preference: prefNotifications,
-          post_office_name: selectedPostOffice
+          mobile: formMobile.trim(),
+          phone: formMobile.trim(),
+          pincode: formPincode.trim(),
+          city: formCity.trim(),
+          district: formDistrict.trim(),
+          state: formState.trim(),
+          full_name: formFullName.trim()
         }
       });
+
+      // Update local state instantly for real-time reactivity
+      const updatedProfile = {
+        ...localProfile,
+        full_name: formFullName.trim(),
+        mobile: formMobile.trim(),
+        pincode: formPincode.trim(),
+        city: formCity.trim(),
+        district: formDistrict.trim(),
+        state: formState.trim(),
+        address: formAddress.trim(),
+        gender: formGender || null,
+        dob: formDob || null,
+        profile_completed: isComplete,
+        updated_at: new Date().toISOString()
+      };
+      setLocalProfile(updatedProfile);
 
       toastSuccess("Profile settings saved successfully.");
       router.refresh();
@@ -472,12 +518,13 @@ export function CustomerDashboard({
 
   // Safe string initials helper
   const initials = useMemo(() => {
-    const parts = profile.name.split(" ");
+    const displayName = dbProfile.full_name || profile.name || "";
+    const parts = displayName.split(" ");
     if (parts.length >= 2) {
       return `${parts[0]?.charAt(0)}${parts[1]?.charAt(0)}`.toUpperCase();
     }
-    return profile.name.slice(0, 2).toUpperCase();
-  }, [profile.name]);
+    return displayName.slice(0, 2).toUpperCase();
+  }, [dbProfile.full_name, profile.name]);
 
   // Statistics counters
   const counters = useMemo(() => {
@@ -927,7 +974,7 @@ export function CustomerDashboard({
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-200 truncate">{profile.name}</p>
+              <p className="text-xs font-bold text-slate-200 truncate">{dbProfile.full_name || profile.name}</p>
               <p className="text-[10px] font-medium text-slate-400 truncate">Customer</p>
             </div>
           </div>
@@ -948,7 +995,7 @@ export function CustomerDashboard({
         {/* 2. TOP STICKY GLASS HEADER */}
         <header className="sticky top-0 z-20 w-full px-4 py-3 bg-[#070d1e]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between min-h-[56px]">
           {/* Left: Mobile Menu Toggle */}
-          <div className="flex items-center w-1/4 md:w-auto">
+          <div className="flex items-center w-12 md:w-auto">
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition active:scale-95"
@@ -961,16 +1008,17 @@ export function CustomerDashboard({
           {/* Center: Branding Title */}
           <div className="flex items-center justify-center flex-1 md:flex-initial">
             <div className="flex items-center gap-1.5">
-              <span className="font-heading font-black text-sm md:text-base tracking-widest bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">DIGICONNECT</span>
+              <span className="font-heading font-black text-sm tracking-widest bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent sm:hidden">DC</span>
+              <span className="font-heading font-black text-sm md:text-base tracking-widest bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent hidden sm:inline-block">DIGICONNECT</span>
               <span className="hidden sm:inline-block h-3 w-px bg-white/10" />
               <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider text-slate-400">Portal</span>
             </div>
           </div>
 
-          {/* Right: Actions (Verified, Notification, Apply) */}
-          <div className="flex items-center justify-end gap-2.5 w-1/4 md:w-auto shrink-0">
+          {/* Right: Actions */}
+          <div className="flex items-center justify-end gap-1.5 md:gap-2.5 shrink-0">
             {/* Verified Badge Pill */}
-            <span className="inline-flex h-8 items-center gap-1.5 px-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-black tracking-wide shadow-[0_2px_10px_rgba(16,185,129,0.05)]">
+            <span className="inline-flex h-7 items-center gap-1 px-1.5 sm:px-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] sm:text-[11px] font-black tracking-wide shadow-[0_2px_10px_rgba(16,185,129,0.05)] shrink-0">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Verified</span>
             </span>
@@ -979,12 +1027,12 @@ export function CustomerDashboard({
             <div className="relative notif-container">
               <button
                 onClick={() => setShowNotifPopover(!showNotifPopover)}
-                className="p-2 rounded-full bg-white/5 border border-white/5 text-slate-400 hover:text-white transition duration-200 relative cursor-pointer h-8 w-8 flex items-center justify-center"
+                className="p-1.5 rounded-full bg-white/5 border border-white/5 text-slate-400 hover:text-white transition duration-200 relative cursor-pointer h-7 w-7 md:h-8 md:w-8 flex items-center justify-center"
                 title="View Alerts"
               >
                 <Bell className="h-4 w-4" />
                 {unreadNotifCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-rose-500 text-white font-black text-[8px] flex items-center justify-center rounded-full ring-2 ring-[#070d1e]">
+                  <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 md:h-4 md:w-4 bg-rose-500 text-white font-black text-[8px] flex items-center justify-center rounded-full ring-2 ring-[#070d1e]">
                     {unreadNotifCount}
                   </span>
                 )}
@@ -1035,7 +1083,7 @@ export function CustomerDashboard({
 
             <button
               onClick={() => setServiceModalOpen(true)}
-              className="inline-flex h-8 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 text-xs font-black text-white shadow-md hover:shadow-blue-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
+              className="inline-flex h-7 md:h-8 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 md:px-3.5 text-[10px] md:text-xs font-black text-white shadow-md hover:shadow-blue-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
             >
               <Plus className="h-3 w-3" />
               Apply
@@ -1114,7 +1162,7 @@ export function CustomerDashboard({
           {(() => {
             const fullName = formFullName || dbProfile.full_name || profile.name || "";
             const email = user.email || "";
-            const mobile = formMobile || dbProfile.mobile || user.phone || "";
+            const mobile = formMobile || getCustomerMobile(dbProfile, user);
             const pincode = formPincode || dbProfile.pincode || "";
             const city = formCity || dbProfile.city || "";
             const district = formDistrict || dbProfile.district || "";
@@ -1188,7 +1236,7 @@ export function CustomerDashboard({
                       {getTimeGreeting()}
                     </span>
                     <h2 className="text-xl md:text-2xl font-black text-white leading-tight">
-                      {profile.name}
+                      {dbProfile.full_name || profile.name}
                     </h2>
                     {activeApplications.length > 0 ? (
                       <p className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -2299,28 +2347,13 @@ export function CustomerDashboard({
                           <span className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
                         )}
                       </div>
+                      {isPincodeLoading && (
+                        <p className="text-[10px] text-blue-400 font-bold mt-0.5">Fetching location...</p>
+                      )}
+                      {!isPincodeLoading && pincodeFetched && (
+                        <p className="text-[10px] text-emerald-400 font-bold mt-0.5">Location found</p>
+                      )}
                     </label>
-
-                    {/* Nearest Post Office Dropdown */}
-                    {postOfficesList.length > 0 && (
-                      <label className="grid gap-2 animate-in fade-in duration-200">
-                        <span className="text-xs font-bold text-slate-400">Nearest Post Office</span>
-                        <select
-                          value={selectedPostOffice}
-                          onChange={(e) => {
-                            setSelectedPostOffice(e.target.value);
-                            setFormCity(e.target.value);
-                          }}
-                          className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
-                        >
-                          {postOfficesList.map((po) => (
-                            <option key={po.name} value={po.name} className="bg-slate-950">
-                              {po.name} ({po.type})
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
 
                     <label className="grid gap-2">
                       <span className="text-xs font-bold text-slate-400">City / Main Post Office</span>
