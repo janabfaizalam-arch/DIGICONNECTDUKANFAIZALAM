@@ -287,11 +287,26 @@ export async function syncUserProfile(user: User, pendingCustomerOAuth?: Pending
   const normalizedStoredRole = normalizeAppRole(storedRole) ?? "customer";
   const role = adminRole ?? normalizedStoredRole;
   const fullName = String(user.user_metadata.full_name || user.user_metadata.name || "").trim();
-  const mobile = String(pendingCustomerOAuth?.mobile || user.phone || user.user_metadata.mobile || user.user_metadata.phone || existingProfile?.mobile || existingCustomerProfile?.mobile || "").replace(/\D/g, "").trim();
-  const pincode = String(pendingCustomerOAuth?.pincode || user.user_metadata.pincode || existingProfile?.pincode || existingCustomerProfile?.pincode || "").trim();
-  const city = String(pendingCustomerOAuth?.city || user.user_metadata.city || existingProfile?.city || existingCustomerProfile?.city || "").trim();
-  const district = String(pendingCustomerOAuth?.district || user.user_metadata.district || existingProfile?.district || existingCustomerProfile?.district || "").trim();
-  const state = String(pendingCustomerOAuth?.state || user.user_metadata.state || existingProfile?.state || existingCustomerProfile?.state || "").trim();
+  let mobile = String(pendingCustomerOAuth?.mobile || user.phone || user.user_metadata.mobile || user.user_metadata.phone || "").replace(/\D/g, "").trim();
+  if (!mobile) {
+    mobile = String(existingProfile?.mobile || existingCustomerProfile?.mobile || "").replace(/\D/g, "").trim();
+  }
+  let pincode = String(pendingCustomerOAuth?.pincode || user.user_metadata.pincode || "").trim();
+  if (!pincode) {
+    pincode = String(existingProfile?.pincode || existingCustomerProfile?.pincode || "").trim();
+  }
+  let city = String(pendingCustomerOAuth?.city || user.user_metadata.city || "").trim();
+  if (!city) {
+    city = String(existingProfile?.city || existingCustomerProfile?.city || "").trim();
+  }
+  let district = String(pendingCustomerOAuth?.district || user.user_metadata.district || "").trim();
+  if (!district) {
+    district = String(existingProfile?.district || existingCustomerProfile?.district || "").trim();
+  }
+  let state = String(pendingCustomerOAuth?.state || user.user_metadata.state || "").trim();
+  if (!state) {
+    state = String(existingProfile?.state || existingCustomerProfile?.state || "").trim();
+  }
   const referralCode = String(user.user_metadata.referred_by || user.user_metadata.referral_code || user.user_metadata.ref || "").trim().toUpperCase();
 
   if (pendingCustomerOAuth) {

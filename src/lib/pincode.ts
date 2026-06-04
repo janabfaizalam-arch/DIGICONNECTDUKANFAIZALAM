@@ -47,7 +47,7 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
     return { ok: false, message: "A valid 6 digit PIN code is required.", status: 400 };
   }
 
-  // Force default city, district, state for 285001
+  // Force default overrides for specified pincodes
   if (pincode === "285001") {
     return {
       ok: true,
@@ -56,10 +56,39 @@ export async function lookupIndianPincode(pincode: string): Promise<IndianPincod
         district: "Jalaun",
         state: "Uttar Pradesh",
         postOffices: [
-          { name: "Orai H.O", type: "Head Office", deliveryStatus: "Delivery" },
-          { name: "Orai Kutchery Sub Office", type: "Sub Office", deliveryStatus: "Delivery" }
+          { name: "Orai H.O", type: "Head Office", deliveryStatus: "Delivery" }
         ],
         defaultOffice: "Orai H.O"
+      },
+    };
+  }
+
+  if (pincode === "285123") {
+    return {
+      ok: true,
+      location: {
+        city: "Jalaun",
+        district: "Jalaun",
+        state: "Uttar Pradesh",
+        postOffices: [
+          { name: "Jalaun S.O", type: "Sub Office", deliveryStatus: "Delivery" }
+        ],
+        defaultOffice: "Jalaun S.O"
+      },
+    };
+  }
+
+  if (pincode === "208001") {
+    return {
+      ok: true,
+      location: {
+        city: "Kanpur",
+        district: "Kanpur Nagar",
+        state: "Uttar Pradesh",
+        postOffices: [
+          { name: "Kanpur H.O", type: "Head Office", deliveryStatus: "Delivery" }
+        ],
+        defaultOffice: "Kanpur H.O"
       },
     };
   }
