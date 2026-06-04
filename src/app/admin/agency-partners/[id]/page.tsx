@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ClipboardList, Inbox, IndianRupee, ShieldCheck, Landmark } from "lucide-react";
+import { ArrowLeft, ClipboardList, Landmark } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { AgentPasswordResetForm } from "@/components/portal/agent-password-reset-form";

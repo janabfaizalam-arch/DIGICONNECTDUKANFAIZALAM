@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ServicesDirectoryClient } from "@/components/services-directory-client";
+import { getPublicServices } from "@/lib/services";
 
 export const metadata: Metadata = {
   title: "All Digital Services | DigiConnect Dukan",
@@ -24,10 +25,17 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const rawServices = await getPublicServices();
+  const services = rawServices.map((s) => {
+    const clean = { ...s };
+    delete (clean as { icon?: unknown }).icon;
+    return clean;
+  });
+
   return (
-    <main className="min-h-screen px-2 py-4 md:px-6 md:py-8">
-      <ServicesDirectoryClient />
+    <main className="min-h-screen px-2 py-4 md:px-6 md:py-8 bg-[#fcfcfd]">
+      <ServicesDirectoryClient initialServices={services} />
     </main>
   );
 }

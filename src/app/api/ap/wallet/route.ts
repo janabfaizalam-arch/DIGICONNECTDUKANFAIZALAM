@@ -10,7 +10,7 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ message }, { status });
 }
 
-export async function GET(_request: Request) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user || !(await isActiveAgent(user))) {

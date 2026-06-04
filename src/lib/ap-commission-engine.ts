@@ -6,8 +6,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CommissionRule, CommissionType, TieredCommissionBracket } from "@/lib/ap-types";
 
-type SupabaseAdmin = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
-
 export type CommissionCalculation = {
   amount: number;
   ruleUsed: CommissionRule | null;

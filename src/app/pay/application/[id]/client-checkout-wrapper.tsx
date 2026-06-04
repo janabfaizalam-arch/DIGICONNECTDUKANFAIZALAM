@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { RazorpayCheckoutButton, VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
+import { RazorpayCheckoutButton } from "@/components/payments/razorpay-checkout-button";
 import { useToast } from "@/components/providers/toast-provider";
 
 export function ClientCheckoutWrapper({
@@ -23,10 +22,9 @@ export function ClientCheckoutWrapper({
   walletUseAmount: number;
   couponCode?: string;
 }) {
-  const router = useRouter();
   const { success } = useToast();
 
-  const handleVerified = (payment: VerifiedRazorpayPayment) => {
+  const handleVerified = () => {
     success("Payment completed successfully! Redirecting...");
     setTimeout(() => {
       window.location.href = `/dashboard/applications/${applicationId}`;

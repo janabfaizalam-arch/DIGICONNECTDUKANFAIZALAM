@@ -38,10 +38,6 @@ export async function checkAPFraud(params: {
   const pan = (params.panNumber ?? "").toUpperCase().trim();
   const email = (params.email ?? "").toLowerCase().trim();
 
-  const excludeFilter = params.excludePartnerId
-    ? `.neq.id.${params.excludePartnerId}`
-    : "";
-
   // Check duplicate mobile
   if (mobile && mobile.length === 10) {
     let query = supabase

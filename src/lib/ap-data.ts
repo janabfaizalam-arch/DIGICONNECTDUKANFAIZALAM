@@ -17,8 +17,6 @@ import type {
   PartnerAnnouncement,
 } from "@/lib/ap-types";
 
-type SupabaseAdmin = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
-
 function safeNumber(value: unknown, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;

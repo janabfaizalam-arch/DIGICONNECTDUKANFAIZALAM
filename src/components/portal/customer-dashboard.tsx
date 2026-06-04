@@ -176,7 +176,6 @@ export function CustomerDashboard({
   applications,
   stats,
   profile,
-  isProfileIncomplete = false,
   walletSnapshot = null,
   profileStatus = null,
   documents = [],
@@ -375,7 +374,7 @@ export function CustomerDashboard({
     } else {
       setPincodeFetched(false);
     }
-  }, [formPincode]);
+  }, [formPincode, toastSuccess, toastError]);
 
   const handleSaveProfile = async (e: FormEvent) => {
     e.preventDefault();

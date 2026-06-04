@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Gift, Copy, Check, Share2, Users, Award, MessageCircle, Send, MessageSquare, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { Gift, Copy, Check, Share2, MessageCircle, Send, MessageSquare, ShieldCheck, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 
 export function ReferEarn() {
@@ -130,35 +130,25 @@ export function ReferEarn() {
 
   // Level Milestones
   const totalInvites = stats.invitesSent;
-  let level = 1;
   let levelName = "Bronze Level (0-10)";
   let nextLevelName = "Level 2 (10-25)";
-  let nextGoal = 10;
   let progressPercent = 0;
 
   if (totalInvites < 10) {
-    level = 1;
     levelName = "Level 1: Bronze Referrer";
     nextLevelName = "Level 2: Silver Referrer (10 Invites)";
-    nextGoal = 10;
     progressPercent = Math.min((totalInvites / 10) * 100, 100);
   } else if (totalInvites < 25) {
-    level = 2;
     levelName = "Level 2: Silver Referrer";
     nextLevelName = "Level 3: Gold Referrer (25 Invites)";
-    nextGoal = 25;
     progressPercent = Math.min(((totalInvites - 10) / 15) * 100, 100);
   } else if (totalInvites < 50) {
-    level = 3;
     levelName = "Level 3: Gold Referrer";
     nextLevelName = "Level 4: Platinum Referrer (50 Invites)";
-    nextGoal = 50;
     progressPercent = Math.min(((totalInvites - 25) / 25) * 100, 100);
   } else {
-    level = 4;
     levelName = "Level 4: Platinum Referrer";
     nextLevelName = "Max Level Reached!";
-    nextGoal = totalInvites;
     progressPercent = 100;
   }
 

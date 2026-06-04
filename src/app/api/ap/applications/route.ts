@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 import { createAdminNotifications } from "@/lib/admin-notifications";
 import { getVisibleAgentServices, payoutForAgentService } from "@/lib/agent-services";
-import { getCurrentUser, getCurrentUserRole, isActiveAgent } from "@/lib/auth";
+import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { cleanFileName, createInvoiceForApplication } from "@/lib/crm";
 import { createInvoiceNumber } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";

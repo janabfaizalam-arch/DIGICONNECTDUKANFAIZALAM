@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Gift, Plus, Search, Tag, Ticket, ToggleLeft, ToggleRight, X, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Plus, Search, Tag, Ticket, ToggleLeft, ToggleRight, X, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
 import type { Coupon } from "@/lib/coupons";
@@ -30,7 +29,7 @@ export default function AdminCouponsPage() {
   const [active, setActive] = useState(true);
 
   // Fetch coupons
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/admin/coupons");
@@ -40,16 +39,16 @@ export default function AdminCouponsPage() {
       } else {
         toastError(result.message || "Failed to load coupons.");
       }
-    } catch (error) {
+    } catch {
       toastError("Failed to fetch coupons from server.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toastError]);
 
   useEffect(() => {
     fetchCoupons();
-  }, []);
+  }, [fetchCoupons]);
 
   // Handle status toggle
   const handleToggleActive = async (couponCode: string, currentStatus: boolean) => {
