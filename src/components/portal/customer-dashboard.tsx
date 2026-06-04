@@ -36,7 +36,11 @@ import {
   ChevronRight,
   AlertCircle,
   CheckSquare,
-  Clock
+  Clock,
+  Globe,
+  Save,
+  Shield,
+  Search
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -45,6 +49,7 @@ import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { StatusBadge, PaymentBadge } from "@/components/portal/status-badge";
 import type { CustomerDashboardApplication, CustomerDashboardStats } from "@/lib/customer-dashboard-data";
 import { useToast } from "@/components/providers/toast-provider";
+import { servicesData } from "@/lib/services-data";
 
 export interface ApplicationDocument {
   id: string;
@@ -125,12 +130,14 @@ export interface ProfileStatusData {
     gender?: string | null;
     address?: string | null;
     city?: string | null;
+    district?: string | null;
     state?: string | null;
     pincode?: string | null;
     photo_url?: string | null;
     full_name?: string | null;
     mobile?: string | null;
     email?: string | null;
+    updated_at?: string | null;
   } | null;
   complete: boolean;
   completion: {
@@ -191,6 +198,255 @@ export function CustomerDashboard({
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
+
+  // Unified SPA Tab Routing from query param
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam && ["dashboard", "applications", "wallet", "referral", "documents", "support", "profile"].includes(tabParam)) {
+        setActiveTab(tabParam as Tab);
+      }
+    }
+  }, []);
+
+  // Notifications Popover & List state
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [localNotifications, setLocalNotifications] = useState<CustomerNotification[]>([]);
+
+  useEffect(() => {
+    setLocalNotifications(notifications);
+    setUnreadNotifCount(notifications.filter(n => !n.read_at).length);
+  }, [notifications]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      const supabase = createClient();
+      if (!supabase) return;
+      
+      // Update locally first for instant feedback
+      setLocalNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+      setUnreadNotifCount(0);
+      toastSuccess("All notifications marked as read.");
+      
+      const unreadIds = localNotifications.filter(n => !n.read_at).map(n => n.id);
+      if (unreadIds.length === 0) return;
+
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .in("id", unreadIds);
+
+      if (error) {
+        console.warn("Failed to mark notifications read in DB:", error);
+      }
+    } catch {
+      // Ignored for UX
+    }
+  };
+
+  // Custom Service Selector Modal state
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+  const [serviceCategory, setServiceCategory] = useState("All");
+
+  // Profile Warning Banner & dismissal state
+  const [warningDismissed, setWarningDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const dismissedUntil = localStorage.getItem("profile_warning_dismissed_until");
+      if (dismissedUntil) {
+        if (new Date().getTime() < Number(dismissedUntil)) {
+          setWarningDismissed(true);
+        } else {
+          localStorage.removeItem("profile_warning_dismissed_until");
+        }
+      }
+    }
+  }, []);
+
+  const handleDismissWarning = () => {
+    if (typeof window !== "undefined") {
+      const sevenDaysFromNow = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
+      localStorage.setItem("profile_warning_dismissed_until", String(sevenDaysFromNow));
+      setWarningDismissed(true);
+    }
+  };
+
+  // Profile Form States
+  const dbProfile = profileStatus?.profile || {};
+  const [formFullName, setFormFullName] = useState("");
+  const [formMobile, setFormMobile] = useState("");
+  const [formPincode, setFormPincode] = useState("");
+  const [formCity, setFormCity] = useState("");
+  const [formDistrict, setFormDistrict] = useState("");
+  const [formState, setFormState] = useState("");
+  const [formAddress, setFormAddress] = useState("");
+  const [formGender, setFormGender] = useState("");
+  const [formDob, setFormDob] = useState("");
+  
+  // Smart Pincode state
+  const [postOfficesList, setPostOfficesList] = useState<{ name: string; type: string; deliveryStatus: string; }[]>([]);
+  const [selectedPostOffice, setSelectedPostOffice] = useState("");
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+
+  // Preference states (WhatsApp support, Language, Notification)
+  const [prefWhatsapp, setPrefWhatsapp] = useState(true);
+  const [prefLanguage, setPrefLanguage] = useState("Hindi");
+  const [prefNotifications, setPrefNotifications] = useState(true);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Populate form values from props/dbProfile
+  useEffect(() => {
+    setFormFullName(dbProfile.full_name || profile.name || "");
+    setFormMobile(dbProfile.mobile || user.phone || "");
+    setFormPincode(dbProfile.pincode || "");
+    setFormCity(dbProfile.city || "");
+    setFormDistrict(dbProfile.district || "");
+    setFormState(dbProfile.state || "");
+    setFormAddress(dbProfile.address || "");
+    setFormGender(dbProfile.gender || "");
+    setFormDob(dbProfile.dob || "");
+
+    // Retrieve preferences from metadata or localStorage
+    if (typeof window !== "undefined") {
+      const storedPrefs = localStorage.getItem(`customer_prefs_${user.id}`);
+      if (storedPrefs) {
+        try {
+          const parsed = JSON.parse(storedPrefs);
+          setPrefWhatsapp(parsed.whatsapp ?? true);
+          setPrefLanguage(parsed.language ?? "Hindi");
+          setPrefNotifications(parsed.notifications ?? true);
+          setSelectedPostOffice(parsed.post_office_name ?? "");
+        } catch {
+          // Ignored
+        }
+      } else {
+        setPrefWhatsapp(Boolean(user.user_metadata.whatsapp_support ?? true));
+        setPrefLanguage(String(user.user_metadata.language_preference ?? "Hindi"));
+        setPrefNotifications(Boolean(user.user_metadata.notification_preference ?? true));
+        setSelectedPostOffice(String(user.user_metadata.post_office_name ?? ""));
+      }
+    }
+  }, [dbProfile, profile.name, user]);
+
+  // Trigger smart pincode lookup when pincode has exactly 6 digits
+  useEffect(() => {
+    if (formPincode.length === 6 && /^\d{6}$/.test(formPincode)) {
+      const fetchPincodeDetails = async () => {
+        setIsPincodeLoading(true);
+        try {
+          const res = await fetch(`/api/pincode?pincode=${formPincode}`);
+          const data = await res.json();
+          if (data.success && data.ok) {
+            setFormDistrict(data.district || "");
+            setFormState(data.state || "");
+            if (data.postOffices && data.postOffices.length > 0) {
+              setPostOfficesList(data.postOffices);
+              // Priority auto-select Head Office or Sub Office
+              const defaultOffice = data.defaultOffice || data.postOffices[0].name;
+              setSelectedPostOffice(defaultOffice);
+              setFormCity(defaultOffice);
+            } else {
+              setPostOfficesList([]);
+              setFormCity(data.city || "");
+            }
+            toastSuccess("Location autofilled successfully.");
+          } else {
+            setPostOfficesList([]);
+            toastError("PIN code details not found. Please enter manually.");
+          }
+        } catch {
+          setPostOfficesList([]);
+          toastError("Failed to fetch location details.");
+        } finally {
+          setIsPincodeLoading(false);
+        }
+      };
+      void fetchPincodeDetails();
+    } else {
+      setPostOfficesList([]);
+    }
+  }, [formPincode]);
+
+  const handleSaveProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+
+    try {
+      if (!formFullName.trim()) throw new Error("Full Name is required.");
+      if (!formMobile.trim()) throw new Error("Mobile Number is required.");
+      if (!/^[6-9]\d{9}$/.test(formMobile)) throw new Error("Enter a valid Indian 10-digit mobile number.");
+      if (!/^\d{6}$/.test(formPincode)) throw new Error("Enter a valid 6-digit PIN code.");
+      if (!formCity.trim()) throw new Error("City / Main Post Office is required.");
+      if (!formDistrict.trim()) throw new Error("District is required.");
+      if (!formState.trim()) throw new Error("State is required.");
+
+      const supabase = createClient();
+      if (!supabase) throw new Error("Supabase client not initialized.");
+
+      // Calculate profile completeness (7/7 check)
+      const valuesToCheck = {
+        full_name: formFullName.trim(),
+        email: user.email || "",
+        mobile: formMobile.trim(),
+        pincode: formPincode.trim(),
+        city: formCity.trim(),
+        district: formDistrict.trim(),
+        state: formState.trim()
+      };
+      
+      const isComplete = Object.values(valuesToCheck).every(v => String(v).trim().length > 0);
+
+      // Save to customer_profiles
+      const { error: profileError } = await supabase
+        .from("customer_profiles")
+        .upsert({
+          id: user.id,
+          full_name: formFullName.trim(),
+          mobile: formMobile.trim(),
+          email: user.email || "",
+          pincode: formPincode.trim(),
+          city: formCity.trim(),
+          district: formDistrict.trim(),
+          state: formState.trim(),
+          address: formAddress.trim(),
+          gender: formGender || null,
+          dob: formDob || null,
+          profile_completed: isComplete,
+          updated_at: new Date().toISOString()
+        });
+
+      if (profileError) throw profileError;
+
+      // Save preferences to metadata & localStorage
+      const prefs = {
+        whatsapp: prefWhatsapp,
+        language: prefLanguage,
+        notifications: prefNotifications,
+        post_office_name: selectedPostOffice
+      };
+      localStorage.setItem(`customer_prefs_${user.id}`, JSON.stringify(prefs));
+
+      await supabase.auth.updateUser({
+        data: {
+          whatsapp_support: prefWhatsapp,
+          language_preference: prefLanguage,
+          notification_preference: prefNotifications,
+          post_office_name: selectedPostOffice
+        }
+      });
+
+      toastSuccess("Profile settings saved successfully.");
+      router.refresh();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to save profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Time based greeting
   const getTimeGreeting = () => {
@@ -279,11 +535,6 @@ export function CustomerDashboard({
     const progress = Math.min((invitesCount / nextGoal) * 100, 100);
     return { currentLevel, nextGoal, levelName, progress };
   }, [invitesCount]);
-
-  // Smart Notifications unread filter
-  const unreadNotifCount = useMemo(() => {
-    return notifications.filter((n) => !n.read_at).length;
-  }, [notifications]);
 
   // Priority notification badge style mapping
   const getNotifPriorityBadge = (notif: CustomerNotification) => {
@@ -660,10 +911,13 @@ export function CustomerDashboard({
               );
             })}
             
-            <ApplyServiceTrigger className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:bg-white/5 hover:text-slate-100 transition-all duration-200 text-left">
+            <button
+              onClick={() => setServiceModalOpen(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:bg-white/5 hover:text-slate-100 transition-all duration-200 text-left cursor-pointer active:scale-95"
+            >
               <Plus className="h-4.5 w-4.5" />
               New Application
-            </ApplyServiceTrigger>
+            </button>
           </nav>
         </div>
 
@@ -692,67 +946,84 @@ export function CustomerDashboard({
       <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
         
         {/* 2. TOP STICKY GLASS HEADER */}
-        <header className="sticky top-0 z-20 w-full px-4 py-3 bg-[#070d1e]/70 backdrop-blur-md border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-20 w-full px-4 py-3 bg-[#070d1e]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between min-h-[56px]">
+          {/* Left: Mobile Menu Toggle */}
+          <div className="flex items-center w-1/4 md:w-auto">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2 text-slate-400 hover:text-white"
+              className="md:hidden p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition active:scale-95"
               aria-label="Toggle Mobile Menu"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-xs font-semibold">{getTimeGreeting()},</span>
-                <span className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
-                  <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                  Verified Account
-                </span>
-              </div>
-              <h1 className="text-sm font-bold text-white truncate max-w-[160px] sm:max-w-xs">{profile.name}</h1>
+          </div>
+
+          {/* Center: Branding Title */}
+          <div className="flex items-center justify-center flex-1 md:flex-initial">
+            <div className="flex items-center gap-1.5">
+              <span className="font-heading font-black text-sm md:text-base tracking-widest bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">DIGICONNECT</span>
+              <span className="hidden sm:inline-block h-3 w-px bg-white/10" />
+              <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider text-slate-400">Portal</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Notification Bell with unread counter */}
+          {/* Right: Actions (Verified, Notification, Apply) */}
+          <div className="flex items-center justify-end gap-2.5 w-1/4 md:w-auto shrink-0">
+            {/* Verified Badge Pill */}
+            <span className="inline-flex h-8 items-center gap-1.5 px-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-black tracking-wide shadow-[0_2px_10px_rgba(16,185,129,0.05)]">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Verified</span>
+            </span>
+
+            {/* Notification Bell with Dropdown (Desktop only) */}
             <div className="relative notif-container">
               <button
                 onClick={() => setShowNotifPopover(!showNotifPopover)}
-                className="p-2.5 rounded-full bg-white/5 border border-white/5 text-slate-400 hover:text-white transition duration-200 relative cursor-pointer"
+                className="p-2 rounded-full bg-white/5 border border-white/5 text-slate-400 hover:text-white transition duration-200 relative cursor-pointer h-8 w-8 flex items-center justify-center"
                 title="View Alerts"
               >
-                <Bell className="h-4.5 w-4.5" />
+                <Bell className="h-4 w-4" />
                 {unreadNotifCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4.5 w-4.5 bg-rose-500 text-white font-black text-[9px] flex items-center justify-center rounded-full ring-2 ring-[#070d1e]">
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-rose-500 text-white font-black text-[8px] flex items-center justify-center rounded-full ring-2 ring-[#070d1e]">
                     {unreadNotifCount}
                   </span>
                 )}
               </button>
               
               {showNotifPopover && (
-                <div className="absolute right-0 top-12 z-50 w-76 sm:w-80 rounded-[20px] border border-white/10 bg-slate-950 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
-                    <p className="text-xs font-black uppercase tracking-wider text-slate-300 font-heading">Smart Alerts</p>
-                    <span className="text-[10px] font-bold text-slate-500">{unreadNotifCount} Unread</span>
+                <div className="hidden md:block absolute right-0 top-10 z-50 w-80 rounded-[20px] border border-white/10 bg-slate-950/95 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl flex flex-col max-h-[480px]">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5 shrink-0">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wider text-slate-300 font-heading">Smart Alerts</p>
+                      <p className="text-[9px] text-slate-500 font-bold mt-0.5">{unreadNotifCount} Unread</p>
+                    </div>
+                    {unreadNotifCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] font-black text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar">
-                    {notifications.length === 0 ? (
-                      <p className="text-xs text-slate-500 text-center py-4">No recent alerts.</p>
+                  <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[380px] scrollbar-thin">
+                    {localNotifications.length === 0 ? (
+                      <p className="text-xs text-slate-500 text-center py-4 font-bold">No recent alerts.</p>
                     ) : (
-                      notifications.map((notif) => {
+                      localNotifications.map((notif) => {
                         const badge = getNotifPriorityBadge(notif);
                         return (
-                          <div key={notif.id} className="p-2.5 rounded-xl bg-white/5 hover:bg-white/8 transition duration-150 text-xs space-y-1">
+                          <div key={notif.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 transition duration-150 text-xs space-y-1">
                             <div className="flex justify-between items-start gap-2">
                               <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase border ${badge.bg}`}>
                                 {badge.label}
                               </span>
-                              <span className="text-[9px] text-slate-600">
+                              <span className="text-[9px] text-slate-500">
                                 {new Date(notif.created_at).toLocaleDateString("en-IN", { dateStyle: "short" })}
                               </span>
                             </div>
-                            <p className="font-bold text-slate-200">{notif.title}</p>
-                            <p className="text-slate-400 leading-normal">{notif.message}</p>
+                            <p className="font-extrabold text-slate-200">{notif.title}</p>
+                            <p className="text-slate-400 leading-normal text-[11px]">{notif.message}</p>
                           </div>
                         );
                       })
@@ -762,10 +1033,13 @@ export function CustomerDashboard({
               )}
             </div>
 
-            <ApplyServiceTrigger className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-4 text-xs font-extrabold text-white shadow-lg shadow-blue-600/20 active:scale-95 transition-all duration-200">
-              <Plus className="h-3.5 w-3.5" />
+            <button
+              onClick={() => setServiceModalOpen(true)}
+              className="inline-flex h-8 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 text-xs font-black text-white shadow-md hover:shadow-blue-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
+            >
+              <Plus className="h-3 w-3" />
               Apply
-            </ApplyServiceTrigger>
+            </button>
           </div>
         </header>
 
@@ -834,31 +1108,70 @@ export function CustomerDashboard({
         )}
 
         {/* MAIN PANEL CONTENT VIEW */}
-        <main className="flex-1 p-4 md:p-8 space-y-6 max-w-6xl w-full mx-auto pb-24 md:pb-8">
+        <main className="flex-1 p-4 md:p-8 space-y-6 max-w-6xl w-full mx-auto pb-32 md:pb-8">
           
           {/* PROFILE INCOMPLETE BANNER */}
-          {isProfileIncomplete && (
-            <div className="relative overflow-hidden rounded-[20px] border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent p-4 shadow-lg backdrop-blur-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%,rgba(249,115,22,0.1),transparent_35%)]" />
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-orange-500/20 text-orange-400">
-                  <ShieldAlert className="h-5 w-5" />
+          {(() => {
+            const fullName = formFullName || dbProfile.full_name || profile.name || "";
+            const email = user.email || "";
+            const mobile = formMobile || dbProfile.mobile || user.phone || "";
+            const pincode = formPincode || dbProfile.pincode || "";
+            const city = formCity || dbProfile.city || "";
+            const district = formDistrict || dbProfile.district || "";
+            const state = formState || dbProfile.state || "";
+
+            const requiredKeys = ["full_name", "email", "mobile", "pincode", "city", "district", "state"];
+            const completedCount = requiredKeys.filter(f => {
+              if (f === "full_name") return fullName.trim().length > 0;
+              if (f === "email") return email.trim().length > 0;
+              if (f === "mobile") return mobile.trim().length > 0;
+              if (f === "pincode") return pincode.trim().length > 0;
+              if (f === "city") return city.trim().length > 0;
+              if (f === "district") return district.trim().length > 0;
+              if (f === "state") return state.trim().length > 0;
+              return false;
+            }).length;
+
+            const isComplete = completedCount === requiredKeys.length;
+
+            let msg = "Update your profile details to access all features.";
+            if (!mobile.trim()) {
+              msg = "Add mobile number to receive service updates.";
+            } else if (!pincode.trim() || !city.trim() || !district.trim() || !state.trim()) {
+              msg = "Complete location details for faster service processing.";
+            }
+
+            if (isComplete || warningDismissed) return null;
+
+            return (
+              <div className="relative overflow-hidden rounded-[20px] border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent p-4 shadow-lg backdrop-blur-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%,rgba(249,115,22,0.1),transparent_35%)]" />
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-orange-500/20 text-orange-400">
+                    <ShieldAlert className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-bold text-orange-300">Complete Account Profile</p>
+                    <p className="text-xs text-slate-400 leading-normal">{msg}</p>
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  <p className="text-sm font-bold text-orange-300">Complete Account Profile</p>
-                  <p className="text-xs text-slate-400 leading-normal">
-                    Update your mobile, PIN code, and location data to request new premium digital services without friction.
-                  </p>
+                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                  <button
+                    onClick={handleDismissWarning}
+                    className="h-9 px-4 rounded-full border border-white/10 hover:bg-white/5 text-xs font-bold text-slate-300 transition-all active:scale-95 cursor-pointer"
+                  >
+                    Remind me later
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("profile")}
+                    className="h-9 px-4 rounded-full bg-orange-500 text-slate-950 hover:bg-orange-400 text-xs font-extrabold transition-all active:scale-95 shadow-md cursor-pointer"
+                  >
+                    Complete Now
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => setActiveTab("profile")}
-                className="h-9 px-4 rounded-full bg-orange-500 text-slate-950 hover:bg-orange-400 text-xs font-extrabold transition-all shrink-0 active:scale-95 shadow-md"
-              >
-                Complete Now
-              </button>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 1: DASHBOARD (OVERVIEW HUB) */}
           {activeTab === "dashboard" && (
@@ -914,9 +1227,12 @@ export function CustomerDashboard({
                     <span>Completed: <strong className="text-emerald-400">{counters.completed}</strong></span>
                   </div>
                   
-                  <ApplyServiceTrigger className="h-9 px-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-black text-white hover:shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all">
+                  <button
+                    onClick={() => setServiceModalOpen(true)}
+                    className="h-9 px-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-black text-white hover:shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+                  >
                     Apply New Service
-                  </ApplyServiceTrigger>
+                  </button>
                 </div>
               </div>
 
@@ -944,9 +1260,13 @@ export function CustomerDashboard({
 
                   if (isApply) {
                     return (
-                      <ApplyServiceTrigger key={act.id} className="cursor-pointer block text-left">
+                      <button
+                        key={act.id}
+                        onClick={() => setServiceModalOpen(true)}
+                        className="cursor-pointer block text-left w-full active:scale-98 transition-all"
+                      >
                         {CardBody}
-                      </ApplyServiceTrigger>
+                      </button>
                     );
                   }
 
@@ -977,9 +1297,12 @@ export function CustomerDashboard({
                   {applications.length === 0 ? (
                     <div className="p-8 text-center bg-slate-950/40 rounded-3xl border border-white/5 space-y-4">
                       <p className="text-sm font-bold text-slate-400">No active applications found.</p>
-                      <ApplyServiceTrigger className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-4 text-xs font-bold text-white">
+                      <button
+                        onClick={() => setServiceModalOpen(true)}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-4 text-xs font-bold text-white cursor-pointer active:scale-95 transition-all"
+                      >
                         Apply Now
-                      </ApplyServiceTrigger>
+                      </button>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1211,18 +1534,24 @@ export function CustomerDashboard({
                   <h2 className="text-xl font-extrabold text-white">Track Applications</h2>
                   <p className="text-xs text-slate-400 mt-0.5">Filter and review your service submissions ledger.</p>
                 </div>
-                <ApplyServiceTrigger className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white transition active:scale-95">
+                <button
+                  onClick={() => setServiceModalOpen(true)}
+                  className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white transition active:scale-95 cursor-pointer"
+                >
                   Apply Service
-                </ApplyServiceTrigger>
+                </button>
               </div>
-
+ 
               {applications.length === 0 ? (
                 <div className="p-12 text-center bg-slate-950/40 rounded-3xl border border-white/5 space-y-4">
                   <p className="text-sm font-bold text-slate-400">You haven&apos;t filed any applications yet.</p>
                   <p className="text-xs text-slate-500">Apply for a tax, insurance, or Gov ID service to get started.</p>
-                  <ApplyServiceTrigger className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white">
+                  <button
+                    onClick={() => setServiceModalOpen(true)}
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white cursor-pointer active:scale-95 transition-all"
+                  >
                     Apply New Service
-                  </ApplyServiceTrigger>
+                  </button>
                 </div>
               ) : (
                 <div className="grid gap-4">
@@ -1814,68 +2143,347 @@ export function CustomerDashboard({
 
           {/* TAB 7: PROFILE SETTINGS */}
           {activeTab === "profile" && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-extrabold text-white">Profile Details</h2>
+            <div className="space-y-6 pb-32">
+              <h2 className="text-xl font-extrabold text-white">Profile Settings</h2>
 
-              <div className="p-6 rounded-3xl bg-slate-950/60 border border-white/5 space-y-5">
+              {/* Customer Card (Top) */}
+              <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/80 p-5 md:p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 animate-in fade-in duration-200">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.15),transparent_35%)]" />
+                
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white shadow-md">
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-xl font-black text-white shadow-md uppercase shrink-0">
                     {initials}
                   </div>
-                  <div>
-                    <h3 className="text-base font-extrabold text-white">{profile.name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">{user.email}</p>
-                    <p className="text-[10px] text-slate-500 mt-1 font-mono">UID: {user.id}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-extrabold text-white truncate">{formFullName || profile.name}</h3>
+                      <span className="inline-flex h-5 items-center gap-0.5 px-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-wider shrink-0">
+                        <ShieldCheck className="h-3 w-3" />
+                        Verified
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">{user.email}</p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 p-4 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="flex justify-between text-xs font-bold text-slate-300">
-                    <span>Profile Completeness</span>
-                    <span>{profileStatus?.completion?.percent ?? 40}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
-                      style={{ width: `${profileStatus?.completion?.percent ?? 40}%` }}
-                    />
-                  </div>
-                </div>
+                <div className="flex flex-col gap-2 min-w-[200px]">
+                  {(() => {
+                    const fullNameVal = formFullName.trim();
+                    const emailVal = user.email || "";
+                    const mobileVal = formMobile.trim();
+                    const pincodeVal = formPincode.trim();
+                    const cityVal = formCity.trim();
+                    const districtVal = formDistrict.trim();
+                    const stateVal = formState.trim();
+                    
+                    const count = ["full_name", "email", "mobile", "pincode", "city", "district", "state"].filter(f => {
+                      if (f === "full_name") return fullNameVal.length > 0;
+                      if (f === "email") return emailVal.length > 0;
+                      if (f === "mobile") return mobileVal.length > 0;
+                      if (f === "pincode") return pincodeVal.length > 0;
+                      if (f === "city") return cityVal.length > 0;
+                      if (f === "district") return districtVal.length > 0;
+                      if (f === "state") return stateVal.length > 0;
+                      return false;
+                    }).length;
+                    const pct = Math.round((count / 7) * 100);
 
-                <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-bold">Full Name</p>
-                    <p className="font-extrabold text-slate-200 mt-1">{profileStatus?.profile?.full_name || profile.name}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-bold">Mobile Number</p>
-                    <p className="font-extrabold text-slate-200 mt-1">{profileStatus?.profile?.mobile || user.phone || "Not Set"}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-bold">City / Location</p>
-                    <p className="font-extrabold text-slate-200 mt-1">{profileStatus?.profile?.city || "Not Set"}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-bold">PIN Code</p>
-                    <p className="font-extrabold text-slate-200 mt-1">{profileStatus?.profile?.pincode || "Not Set"}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-3 border-t border-white/5">
-                  <Link
-                    href="/customer/profile"
-                    className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white flex items-center justify-center gap-1.5 transition active:scale-95"
-                  >
-                    Edit Contact Profile
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="h-10 px-5 rounded-xl border border-rose-500/20 text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition active:scale-95"
-                  >
-                    Logout Account
-                  </button>
+                    return (
+                      <>
+                        <div className="flex justify-between text-xs font-bold text-slate-300">
+                          <span>Profile Completeness</span>
+                          <span className={pct === 100 ? "text-emerald-400" : "text-orange-400"}>
+                            {pct === 100 ? "Profile Complete" : `${pct}%`}
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
+
+              {/* Form Layout */}
+              <form onSubmit={handleSaveProfile} className="space-y-6">
+                
+                {/* Section 1: Personal Details */}
+                <div className="p-6 rounded-[24px] bg-slate-950/60 border border-white/5 space-y-4 shadow-md">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <UserRound className="h-4.5 w-4.5 text-blue-400" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">Personal Details</h3>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">Full Name</span>
+                      <input
+                        type="text"
+                        value={formFullName}
+                        onChange={(e) => setFormFullName(e.target.value)}
+                        required
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">Mobile Number</span>
+                      <input
+                        type="tel"
+                        pattern="[6-9][0-9]{9}"
+                        maxLength={10}
+                        value={formMobile}
+                        onChange={(e) => setFormMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        required
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="grid gap-2 md:col-span-2">
+                      <span className="text-xs font-bold text-slate-400">Email Address (Readonly)</span>
+                      <input
+                        type="email"
+                        value={user.email || ""}
+                        readOnly
+                        disabled
+                        className="h-11 rounded-xl border border-white/5 bg-slate-900/40 px-4 text-xs font-medium text-slate-500 outline-none cursor-not-allowed"
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">Date of Birth (Optional)</span>
+                      <input
+                        type="date"
+                        value={formDob}
+                        onChange={(e) => setFormDob(e.target.value)}
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">Gender (Optional)</span>
+                      <select
+                        value={formGender}
+                        onChange={(e) => setFormGender(e.target.value)}
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="" className="bg-slate-950">Select gender</option>
+                        <option value="female" className="bg-slate-950">Female</option>
+                        <option value="male" className="bg-slate-950">Male</option>
+                        <option value="other" className="bg-slate-950">Other</option>
+                        <option value="prefer_not_to_say" className="bg-slate-950">Prefer not to say</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Section 2: Smart Address Details */}
+                <div className="p-6 rounded-[24px] bg-slate-950/60 border border-white/5 space-y-4 shadow-md">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Compass className="h-4.5 w-4.5 text-blue-400" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">Address & Location</h3>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2 relative">
+                      <span className="text-xs font-bold text-slate-400">PIN Code</span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={formPincode}
+                          onChange={(e) => setFormPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          required
+                          className="h-11 w-full rounded-xl border border-white/10 bg-slate-900 pl-4 pr-10 text-xs font-medium text-white outline-none focus:border-blue-500"
+                          placeholder="6-digit PIN code"
+                        />
+                        {isPincodeLoading && (
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                        )}
+                      </div>
+                    </label>
+
+                    {/* Nearest Post Office Dropdown */}
+                    {postOfficesList.length > 0 && (
+                      <label className="grid gap-2 animate-in fade-in duration-200">
+                        <span className="text-xs font-bold text-slate-400">Nearest Post Office</span>
+                        <select
+                          value={selectedPostOffice}
+                          onChange={(e) => {
+                            setSelectedPostOffice(e.target.value);
+                            setFormCity(e.target.value);
+                          }}
+                          className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                        >
+                          {postOfficesList.map((po) => (
+                            <option key={po.name} value={po.name} className="bg-slate-950">
+                              {po.name} ({po.type})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">City / Main Post Office</span>
+                      <input
+                        type="text"
+                        value={formCity}
+                        onChange={(e) => setFormCity(e.target.value)}
+                        required
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">District</span>
+                      <input
+                        type="text"
+                        value={formDistrict}
+                        onChange={(e) => setFormDistrict(e.target.value)}
+                        required
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">State</span>
+                      <input
+                        type="text"
+                        value={formState}
+                        onChange={(e) => setFormState(e.target.value)}
+                        required
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="grid gap-2 md:col-span-2">
+                      <span className="text-xs font-bold text-slate-400">Street Address / Landmark</span>
+                      <textarea
+                        value={formAddress}
+                        onChange={(e) => setFormAddress(e.target.value)}
+                        required
+                        className="h-20 py-2.5 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500 resize-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Section 3: Service Preferences */}
+                <div className="p-6 rounded-[24px] bg-slate-950/60 border border-white/5 space-y-4 shadow-md">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Globe className="h-4.5 w-4.5 text-blue-400" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">Service Preferences</h3>
+                  </div>
+                  <div className="space-y-4 text-xs">
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/5">
+                      <div>
+                        <p className="font-extrabold text-slate-200">WhatsApp Notifications</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Receive dynamic progress updates directly in chat.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={prefWhatsapp}
+                        onChange={(e) => setPrefWhatsapp(e.target.checked)}
+                        className="h-5 w-5 rounded bg-slate-900 border-white/10 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/5">
+                      <div>
+                        <p className="font-extrabold text-slate-200">SMS / Email Notifications</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Receive invoices, updates, and policy documents.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={prefNotifications}
+                        onChange={(e) => setPrefNotifications(e.target.checked)}
+                        className="h-5 w-5 rounded bg-slate-900 border-white/10 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <label className="grid gap-2">
+                      <span className="text-xs font-bold text-slate-400">Preferred Portal Language</span>
+                      <select
+                        value={prefLanguage}
+                        onChange={(e) => setPrefLanguage(e.target.value)}
+                        className="h-11 rounded-xl border border-white/10 bg-slate-900 px-4 text-xs font-medium text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="Hindi" className="bg-slate-950">Hindi</option>
+                        <option value="English" className="bg-slate-950">English</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Section 4: Security */}
+                <div className="p-6 rounded-[24px] bg-slate-950/60 border border-white/5 space-y-4 shadow-md text-xs">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                    <Shield className="h-4.5 w-4.5 text-blue-400" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">Security & Status</h3>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                      <p className="text-slate-500 font-bold">Account Status</p>
+                      <p className="font-extrabold text-emerald-400 mt-1 flex items-center gap-1">
+                        <ShieldCheck className="h-4 w-4" /> Active
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                      <p className="text-slate-500 font-bold">Email Verified</p>
+                      <p className="font-extrabold text-emerald-400 mt-1 flex items-center gap-1">
+                        <Check className="h-4 w-4" /> Yes
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                      <p className="text-slate-500 font-bold">Last Updated</p>
+                      <p className="font-extrabold text-slate-300 mt-1">
+                        {dbProfile.updated_at
+                          ? new Date(dbProfile.updated_at).toLocaleDateString("en-IN", { dateStyle: "medium" })
+                          : "Never"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop Save Button (Sticky bottom sheet handles mobile) */}
+                <div className="hidden md:flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="h-11 px-8 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-black text-white shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingProfile ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Saving...
+                      </span>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Profile Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Mobile Sticky Save Button (Sits above the mobile dock) */}
+                <div className="md:hidden fixed bottom-20 left-4 right-4 z-40 animate-in slide-in-from-bottom duration-200">
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-xs font-black text-white shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingProfile ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Saving...
+                      </span>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Profile Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </form>
             </div>
           )}
 
@@ -1912,6 +2520,249 @@ export function CustomerDashboard({
             );
           })}
         </nav>
+
+        {/* MOBILE NOTIFICATION BOTTOM SHEET */}
+        {showNotifPopover && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="md:hidden fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40" 
+              onClick={() => setShowNotifPopover(false)} 
+            />
+            {/* Bottom Sheet */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-[32px] bg-[#0c142c] border-t border-white/10 p-5 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom duration-200">
+              <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4 shrink-0" />
+              <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-3 shrink-0">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-wider text-slate-300 font-heading">Smart Alerts</p>
+                  <p className="text-[10px] text-slate-500 font-bold mt-0.5">{unreadNotifCount} Unread</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {unreadNotifCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs font-black text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowNotifPopover(false)}
+                    className="p-1.5 rounded-full bg-white/5 text-slate-400 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="space-y-3 overflow-y-auto pr-1 flex-1 scrollbar-thin pb-6">
+                {localNotifications.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-8 font-bold">No recent alerts.</p>
+                ) : (
+                  localNotifications.map((notif) => {
+                    const badge = getNotifPriorityBadge(notif);
+                    return (
+                      <div key={notif.id} className="p-3.5 rounded-xl bg-white/5 border border-white/5 text-xs space-y-1.5">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase border ${badge.bg}`}>
+                            {badge.label}
+                          </span>
+                          <span className="text-[9px] text-slate-500">
+                            {new Date(notif.created_at).toLocaleDateString("en-IN", { dateStyle: "short" })}
+                          </span>
+                        </div>
+                        <p className="font-extrabold text-slate-200">{notif.title}</p>
+                        <p className="text-slate-400 leading-normal text-[11px]">{notif.message}</p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* CUSTOM DASHBOARD-SAFE APPLY MODAL */}
+        {serviceModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center p-0 md:p-6">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" 
+              onClick={() => setServiceModalOpen(false)} 
+            />
+            
+            {/* Modal Box */}
+            <div className="relative z-10 flex max-h-[85vh] md:max-h-[80vh] w-full md:max-w-2xl flex-col overflow-hidden rounded-t-[32px] md:rounded-[28px] border border-white/10 bg-[#0c142c]/95 shadow-[0_24px_64px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-in slide-in-from-bottom md:zoom-in-95 duration-200">
+              {/* Drag Handle (Mobile) */}
+              <div className="md:hidden w-12 h-1.5 bg-white/20 rounded-full mx-auto my-3 shrink-0" />
+              
+              {/* Header */}
+              <header className="flex shrink-0 items-start justify-between gap-4 border-b border-white/5 p-5 md:p-6">
+                <div>
+                  <h2 className="text-lg font-black text-white font-heading">Apply for a New Service</h2>
+                  <p className="mt-1 text-xs text-slate-400">Select an essential service to start your digital application instantly.</p>
+                </div>
+                <button 
+                  onClick={() => setServiceModalOpen(false)} 
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </header>
+
+              {/* Search Bar & Category Filter */}
+              <div className="shrink-0 p-5 md:p-6 space-y-4 border-b border-white/5">
+                <label className="relative block">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    value={serviceSearchQuery}
+                    onChange={(e) => setServiceSearchQuery(e.target.value)}
+                    placeholder="Search documents, schemes, registrations..."
+                    className="h-11 w-full rounded-xl border border-white/10 bg-slate-900/60 pl-11 pr-4 text-xs font-semibold text-white outline-none focus:border-blue-500/50 focus:bg-slate-900 transition"
+                  />
+                </label>
+                
+                {/* Categories Row */}
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {["All", "Popular", "Recent", "Tax & Business", "Cards & IDs", "Loans & Banking"].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setServiceCategory(cat)}
+                      className={`h-8 shrink-0 rounded-full px-3.5 text-xs font-extrabold transition ${
+                        serviceCategory === cat 
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/10" 
+                          : "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Services List */}
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6 space-y-5 scrollbar-thin">
+                {/* Recent Applied Services (derived from applications) */}
+                {(serviceCategory === "All" || serviceCategory === "Recent") && (
+                  <div className="space-y-2.5">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500">Recently Applied</h3>
+                    {applications.length === 0 ? (
+                      <p className="text-[11px] text-slate-500 italic px-2">No recently applied services.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {(() => {
+                          const uniqueRecentSlugs = Array.from(new Set(applications.map(a => {
+                            const name = a.service_name.toLowerCase();
+                            if (name.includes("gst")) return "gst-registration-filing";
+                            if (name.includes("itr") || name.includes("tax")) return "itr-filing";
+                            if (name.includes("cibil") || name.includes("credit")) return "cibil-report-increase";
+                            if (name.includes("pvc") || name.includes("card")) return "pvc-card";
+                            if (name.includes("eshram") || name.includes("shram")) return "eshram-card";
+                            if (name.includes("driving") || name.includes("license")) return "learning-driving-license";
+                            if (name.includes("passport")) return "passport";
+                            if (name.includes("msme")) return "msme-registration";
+                            if (name.includes("yojana") || name.includes("vishwakarma")) return "pm-vishwakarma-yojana";
+                            if (name.includes("insurance")) return "insurance";
+                            if (name.includes("mudra")) return "mudra-loan";
+                            if (name.includes("pmegp")) return "pmegp-loan";
+                            if (name.includes("voter")) return "voter-id";
+                            if (name.includes("labour")) return "labour-card";
+                            return "";
+                          }).filter(Boolean)));
+
+                          const recentServices = servicesData.filter(s => (uniqueRecentSlugs as string[]).includes(s.slug));
+
+                          if (recentServices.length === 0) {
+                            return <p className="text-[11px] text-slate-500 italic px-2">No recently applied services.</p>;
+                          }
+
+                          return recentServices.map((service) => {
+                            const Icon = service.icon || Compass;
+                            return (
+                              <Link
+                                key={`recent-${service.slug}`}
+                                href={`/apply/${service.slug}`}
+                                onClick={() => setServiceModalOpen(false)}
+                                className="flex items-center gap-3 p-3 rounded-2xl border border-white/5 bg-slate-900/40 hover:bg-slate-900 hover:border-blue-500/30 transition text-left cursor-pointer group"
+                              >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-105 transition">
+                                  <Icon className="h-5 w-5" />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-xs font-bold text-slate-200 group-hover:text-white">{service.title}</span>
+                                  <span className="block truncate text-[10px] text-slate-400 mt-0.5">{service.shortDescription}</span>
+                                </span>
+                              </Link>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* All / Popular / Category-filtered list */}
+                <div className="space-y-2.5">
+                  <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    {serviceCategory === "All" ? "All Services" : `${serviceCategory} Services`}
+                  </h3>
+                  
+                  {(() => {
+                    const filtered = servicesData.filter(service => {
+                      const queryMatch = !serviceSearchQuery.trim() || 
+                        service.title.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                        service.shortDescription.toLowerCase().includes(serviceSearchQuery.toLowerCase());
+                      
+                      if (!queryMatch) return false;
+
+                      if (serviceCategory === "All") return true;
+                      if (serviceCategory === "Popular") return ["cibil-report-increase", "eshram-card", "pvc-card", "gst-registration-filing", "itr-filing", "pm-vishwakarma-yojana"].includes(service.slug);
+                      if (serviceCategory === "Recent") return false; // Handled above
+                      if (serviceCategory === "Tax & Business") return service.categorySlug === "tax" || service.categorySlug === "company";
+                      if (serviceCategory === "Cards & IDs") return service.categorySlug === "cards" || service.categorySlug === "licence";
+                      if (serviceCategory === "Loans & Banking") return service.categorySlug === "loans" || service.categorySlug === "banking" || service.categorySlug === "insurance";
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return <p className="text-xs text-slate-500 text-center py-6">No matching services found.</p>;
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {filtered.map((service) => {
+                          const Icon = service.icon || Compass;
+                          return (
+                            <Link
+                              key={`list-${service.slug}`}
+                              href={`/apply/${service.slug}`}
+                              onClick={() => setServiceModalOpen(false)}
+                              className="flex items-center gap-3 p-3 rounded-2xl border border-white/5 bg-slate-900/40 hover:bg-slate-900 hover:border-blue-500/30 transition text-left cursor-pointer group"
+                            >
+                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-105 transition">
+                                <Icon className="h-5 w-5" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-xs font-bold text-slate-200 group-hover:text-white">{service.title}</span>
+                                <span className="block truncate text-[10px] text-slate-400 mt-0.5">{service.shortDescription}</span>
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              
+              {/* Footer info */}
+              <div className="shrink-0 p-4 border-t border-white/5 bg-slate-950/40 flex justify-between items-center text-[10px] text-slate-500 px-6">
+                <span>Instant application creation</span>
+                <span>Secure fintech channels</span>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

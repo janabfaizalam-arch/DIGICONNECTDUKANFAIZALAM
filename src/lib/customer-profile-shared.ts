@@ -7,6 +7,7 @@ export type CustomerProfile = {
   gender: string | null;
   address: string | null;
   city: string | null;
+  district: string | null;
   state: string | null;
   pincode: string | null;
   photo_url: string | null;
@@ -23,12 +24,13 @@ export type CustomerProfileFormValues = {
   gender: string;
   address: string;
   city: string;
+  district: string;
   state: string;
   pincode: string;
   photo_url: string;
 };
 
-const requiredCustomerProfileFields = ["full_name", "mobile", "email", "address", "city", "state", "pincode"] as const;
+const requiredCustomerProfileFields = ["full_name", "email", "mobile", "pincode", "city", "district", "state"] as const;
 
 export function isCustomerProfileComplete(profile: Partial<CustomerProfile> | null | undefined) {
   if (!profile) {

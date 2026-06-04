@@ -41,6 +41,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
     gender: savedProfile?.gender ?? initialProfile.gender,
     address: savedProfile?.address ?? initialProfile.address,
     city: savedProfile?.city ?? initialProfile.city,
+    district: savedProfile?.district ?? initialProfile.district,
     state: savedProfile?.state ?? initialProfile.state,
     pincode: savedProfile?.pincode ?? initialProfile.pincode,
     photo_url: savedProfile?.photo_url ?? initialProfile.photo_url,
@@ -68,6 +69,7 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
       gender: normalizeFormValue(formData, "gender"),
       address: normalizeFormValue(formData, "address"),
       city: normalizeFormValue(formData, "city"),
+      district: normalizeFormValue(formData, "district"),
       state: normalizeFormValue(formData, "state"),
       pincode: normalizeFormValue(formData, "pincode"),
       photo_url: normalizeFormValue(formData, "photo_url"),
@@ -239,6 +241,10 @@ export function CustomerProfileForm({ userId, initialProfile, savedProfile }: Cu
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">City</span>
             <Input name="city" value={profile.city} onChange={(event) => updateField("city", event.target.value)} required className={fieldClassName} />
+          </label>
+          <label className="grid gap-2">
+            <span className="text-sm font-semibold text-slate-700">District</span>
+            <Input name="district" value={profile.district} onChange={(event) => updateField("district", event.target.value)} required className={fieldClassName} />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-slate-700">State</span>

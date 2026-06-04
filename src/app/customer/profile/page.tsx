@@ -1,16 +1,7 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-
-import { CustomerProfileForm } from "@/components/portal/customer-profile-form";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
-import { getCustomerProfile, getInitialCustomerProfile } from "@/lib/customer-profile";
 
 export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = {
-  title: "My Profile | DigiConnect Dukan",
-  description: "Manage your DigiConnect Dukan customer profile and service details.",
-};
 
 export default async function CustomerProfilePage() {
   const user = await getCurrentUser();
@@ -19,21 +10,18 @@ export default async function CustomerProfilePage() {
     redirect("/login/customer");
   }
 
-  await syncUserProfile(user);
+  try {
+    await syncUserProfile(user);
+  } catch {
+    // Sync fail ignored for redirect
+  }
+
   const role = await getCurrentUserRole(user);
 
   if (!isCustomerRole(role)) {
     redirect(getRoleHome(role));
   }
 
-  const savedProfile = await getCustomerProfile(user.id);
-
-  return (
-    <main className="relative isolate min-h-screen overflow-hidden px-4 py-6 md:px-8 md:py-10">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_14%_0%,rgba(37,99,235,0.14),transparent_24rem),radial-gradient(circle_at_90%_8%,rgba(249,115,22,0.1),transparent_20rem),linear-gradient(180deg,#fbfdff_0%,#eef6ff_52%,#f8fbff_100%)]" />
-      <div className="mx-auto max-w-6xl">
-        <CustomerProfileForm userId={user.id} initialProfile={getInitialCustomerProfile(user)} savedProfile={savedProfile} />
-      </div>
-    </main>
-  );
+  // Redirect customer directly to dashboard with profile tab active
+  redirect("/customer/dashboard?tab=profile");
 }

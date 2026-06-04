@@ -12,7 +12,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const customerProfileColumns =
-  "id, full_name, mobile, email, dob, gender, address, city, state, pincode, photo_url, profile_completed, created_at, updated_at";
+  "id, full_name, mobile, email, dob, gender, address, city, district, state, pincode, photo_url, profile_completed, created_at, updated_at";
 
 export type CustomerDashboardProfile = {
   full_name?: string | null;
@@ -43,6 +43,7 @@ export function getInitialCustomerProfile(user: User): CustomerProfileFormValues
     gender: "",
     address: "",
     city: "",
+    district: "",
     state: "",
     pincode: "",
     photo_url: String(user.user_metadata.avatar_url ?? user.user_metadata.picture ?? "").trim(),
