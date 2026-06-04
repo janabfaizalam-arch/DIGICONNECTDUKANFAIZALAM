@@ -31,7 +31,7 @@ import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 const serviceSlug = "cibil-report-analysis-and-credit-health-consultation";
 const serviceName = "CIBIL Report Analysis & Credit Health Consultation";
 const heroImage = "/images/services/cibil/cibil-report-analysis.png";
-const cibilExpertPhone = "9305086491";
+const cibilExpertPhone = "8287002983";
 
 const whatsappHref = buildWhatsAppUrl(
   buildServiceWhatsAppMessage({

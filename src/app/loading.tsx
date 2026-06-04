@@ -1,19 +1,42 @@
+import React from "react";
+import { Sparkles } from "lucide-react";
+
 export default function RootLoading() {
   return (
-    <main className="min-h-[42vh] px-4 py-8 md:px-8" role="status" aria-label="Loading page">
-      <div className="container-shell">
-        <div className="h-1 w-full overflow-hidden rounded-full bg-blue-100">
-          <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-blue-700 to-orange-500 motion-safe:animate-[loading-slide_1.15s_ease-in-out_infinite]" />
+    <main className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-12 md:px-8" role="status" aria-label="Loading page">
+      <div className="w-full max-w-lg p-6 rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md shadow-[0_8px_32px_rgba(31,38,135,0.03)] text-center relative overflow-hidden">
+        {/* Shimmer overlay effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+        
+        {/* Spinner Ring */}
+        <div className="relative flex justify-center items-center mb-6">
+          <div className="h-14 w-14 rounded-full border-[3px] border-slate-100 border-t-blue-600 animate-spin" />
+          <div className="absolute flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-650">
+            <Sparkles className="h-4.5 w-4.5 animate-pulse" />
+          </div>
         </div>
-        <div className="mt-7 grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border bg-white/80 p-5 shadow-sm">
-            <div className="h-5 w-28 rounded-full bg-slate-100 motion-safe:animate-pulse" />
-            <div className="mt-4 h-8 w-3/4 rounded-xl bg-slate-100 motion-safe:animate-pulse" />
-            <div className="mt-3 h-4 w-full rounded-full bg-slate-100 motion-safe:animate-pulse" />
+
+        {/* Brand Header */}
+        <h3 className="text-lg font-black tracking-tight text-slate-800 animate-pulse">
+          DigiConnect Dukan
+        </h3>
+        <p className="text-xs font-semibold text-slate-450 mt-1 uppercase tracking-widest">
+          Secure Verification Desk
+        </p>
+
+        {/* Premium skeleton blocks */}
+        <div className="mt-8 space-y-4">
+          <div className="h-4.5 w-1/3 mx-auto rounded-full bg-slate-200/80 animate-pulse" />
+          <div className="space-y-2.5">
+            <div className="h-3.5 w-full rounded-full bg-slate-200/50 animate-pulse" />
+            <div className="h-3.5 w-5/6 mx-auto rounded-full bg-slate-200/50 animate-pulse" />
+            <div className="h-3.5 w-4/6 mx-auto rounded-full bg-slate-200/50 animate-pulse" />
           </div>
-          <div className="rounded-2xl border bg-white/65 p-5 shadow-sm">
-            <div className="h-24 rounded-2xl bg-slate-100 motion-safe:animate-pulse" />
-          </div>
+        </div>
+
+        {/* Micro footer branding */}
+        <div className="mt-8 border-t border-slate-150/40 pt-4 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+          Powered By RNoS India Pvt Ltd
         </div>
       </div>
     </main>

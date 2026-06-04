@@ -1,11 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star, UserCheck } from "lucide-react";
 
 import { ServicePrice } from "@/components/service-card";
 import type { DbService, DbServiceSection } from "@/lib/services";
 import { serviceFromDb } from "@/lib/services";
-import { buildServiceWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { buildServiceWhatsAppMessage, buildWhatsAppUrl, isCibilOrFinanceService } from "@/lib/whatsapp";
 
 function stringItems(value: unknown) {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
@@ -31,17 +31,18 @@ function legacySections(service: ReturnType<typeof serviceFromDb>): DbServiceSec
   ];
 }
 
-const cibilExpertWhatsAppNumber = "919305086491";
+const cibilExpertWhatsAppNumber = "918287002983";
 
-function serviceWhatsAppNumber(slug: string) {
-  return slug === "cibil-report-analysis-and-credit-health-consultation" ? cibilExpertWhatsAppNumber : undefined;
+function serviceWhatsAppNumber(slug: string, title?: string) {
+  return isCibilOrFinanceService(slug, title) ? cibilExpertWhatsAppNumber : undefined;
 }
 
 function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean }) {
   const service = serviceFromDb(row);
+  const isCibilOrFinance = isCibilOrFinanceService(service.slug, service.title);
   const whatsappHref = buildWhatsAppUrl(
     buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: service.ctaType === "apply" ? "apply" : "enquiry", page: `/services/${service.slug}` }),
-    serviceWhatsAppNumber(service.slug),
+    serviceWhatsAppNumber(service.slug, service.title),
   );
   const heroImage = row.hero_image_url;
 
@@ -62,6 +63,19 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
         <div className="mt-5 border-t border-slate-100 pt-4">
           <ServicePrice service={service} />
         </div>
+        {isCibilOrFinance && (
+          <div className="mt-5 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-50/70 to-amber-50/60 border border-orange-100/50 p-3 shadow-sm max-w-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm shadow-orange-500/20">
+              <UserCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-orange-600/80">Assigned Consultant</p>
+              <p className="text-xs font-black text-slate-800">
+                CIBIL & Finance Expert: <a href="tel:+918287002983" className="text-orange-600 hover:underline">+91 8287002983</a>
+              </p>
+            </div>
+          </div>
+        )}
         <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
           {service.ctaType === "apply" ? (
             <Link href={row.cta_primary_url || `/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
@@ -295,7 +309,7 @@ export function DynamicServicePage({ row, isLoggedIn = false }: { row: DbService
     .sort((a, b) => a.sort_order - b.sort_order);
   const whatsappHref = buildWhatsAppUrl(
     buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: "support", page: `/services/${service.slug}` }),
-    serviceWhatsAppNumber(service.slug),
+    serviceWhatsAppNumber(service.slug, service.title),
   );
 
   return (

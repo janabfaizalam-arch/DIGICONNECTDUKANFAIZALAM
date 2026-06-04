@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronDown, FileCheck2, LayoutDashboard, LogIn, MessageCircle, UserRound, WalletCards } from "lucide-react";
+import { Bell, ChevronDown, FileCheck2, LayoutDashboard, LogIn, MessageCircle, Search, UserRound, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -10,7 +10,6 @@ import type { User } from "@supabase/supabase-js";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { createClient } from "@/lib/supabase/browser";
-import { MobileMenu } from "@/components/mobile-menu";
 import { buildAgentWhatsAppMessage, buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const navLinks = [
@@ -274,12 +273,12 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full px-3 sm:px-6 pt-2 print:hidden">
+    <header className="sticky top-0 z-40 w-full px-3 sm:px-6 pt-2.5 print:hidden">
       <div
-        className={`mx-auto max-w-7xl rounded-[20px] border border-white/60 bg-white/90 transition-all duration-300 ${
+        className={`mx-auto max-w-7xl rounded-[24px] border border-white/40 bg-white/60 backdrop-blur-md transition-all duration-300 ${
           scrolled
-            ? "shadow-[0_16px_36px_rgba(15,23,42,0.06)] bg-white/94 backdrop-blur-[6px]"
-            : "shadow-[0_8px_20px_rgba(15,23,42,0.03)] backdrop-blur-[4px]"
+            ? "shadow-[0_16px_36px_rgba(15,23,42,0.08)] bg-white/80 border-slate-200/20 scale-[0.99] py-0.5"
+            : "shadow-[0_8px_20px_rgba(15,23,42,0.02)] scale-100 py-1.5"
         }`}
       >
         <div className={`flex items-center justify-between gap-3 px-4 md:px-6 transition-all duration-300 ${scrolled ? "min-h-[3rem] py-1 md:min-h-[3.5rem]" : "min-h-[3.5rem] py-1.5 md:min-h-16"}`}>
@@ -357,6 +356,33 @@ export function SiteHeader() {
             </nav>
           )}
           <div className="hidden items-center gap-2.5 md:flex">
+            {/* Search shortcut */}
+            <Link href="/services" title="Search Services" className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/50 bg-white/50 text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-700 active:scale-95">
+              <Search className="h-4.5 w-4.5" />
+            </Link>
+
+            {/* Notifications Shortcut */}
+            <div className="relative group/nav-notif">
+              <button title="Notifications" className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/50 bg-white/50 text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-700 active:scale-95 cursor-pointer">
+                <Bell className="h-4.5 w-4.5" />
+                <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-orange-500 ring-2 ring-white animate-pulse" />
+              </button>
+              {/* Micro-translucent popover */}
+              <div className="absolute right-0 top-[2.75rem] z-50 w-64 rounded-2xl border border-slate-100 bg-white/96 p-3 shadow-lg opacity-0 invisible translate-y-1 group-hover/nav-notif:opacity-100 group-hover/nav-notif:visible group-hover/nav-notif:translate-y-0 transition-all duration-200">
+                <p className="text-[10px] font-black text-slate-900 border-b border-slate-100 pb-1.5 uppercase tracking-wider">Latest Notifications</p>
+                <div className="mt-2 space-y-2 text-[11px] font-semibold text-slate-500 leading-normal">
+                  <div className="p-1.5 rounded-lg hover:bg-blue-50/30 transition">
+                    <p className="font-bold text-slate-800">20% Cashback active</p>
+                    <p className="text-[10px] text-slate-450 mt-0.5">Applied automatically on paid applications.</p>
+                  </div>
+                  <div className="p-1.5 rounded-lg hover:bg-blue-50/30 transition">
+                    <p className="font-bold text-slate-800">PVC card service live</p>
+                    <p className="text-[10px] text-slate-450 mt-0.5">Order premium waterproof polymer smart card print.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {appShell ? (
               <>
                 <Link href={appShellHref} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-5 text-sm font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-300 hover:shadow-orange-600/25 hover:-translate-y-0.5 active:scale-[0.98]">

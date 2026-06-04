@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Home, LayoutGrid, FileText, Wallet, UserRound } from "lucide-react";
+import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/browser";
 
 const tabs = [
@@ -83,8 +84,15 @@ export function BottomNav() {
             className={`bottom-nav-item${active ? " active" : ""}`}
             aria-current={active ? "page" : undefined}
           >
-            <span className="nav-icon">
+            <span className="nav-icon relative">
               <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
+              {active && (
+                <motion.div
+                  layoutId="activeTabGlow"
+                  className="absolute -inset-1.5 -z-10 rounded-xl bg-white/10 opacity-90"
+                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                />
+              )}
             </span>
             <span className="inline-flex items-center gap-1">
               {label}

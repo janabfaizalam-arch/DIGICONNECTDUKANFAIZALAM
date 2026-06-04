@@ -26,7 +26,7 @@ export function MarketingFooter() {
   const whatsappUrl = buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "footer", topic: "Website footer service enquiry" }));
 
   return (
-    <footer className="px-0 pb-6 pt-2">
+    <footer className="px-0 pb-6 pt-2 pb-safe-bottom">
       <div className="container-shell">
         <div className="rounded-[1.75rem] border border-white/15 bg-[linear-gradient(135deg,#061226,#0d2a52_58%,#0b4a7a)] p-5 text-white shadow-[0_14px_42px_rgba(15,23,42,0.16)] md:rounded-[2rem] md:p-8">
           <div className="grid gap-7 lg:grid-cols-[1.05fr_0.85fr_0.85fr_0.8fr]">
@@ -69,15 +69,23 @@ export function MarketingFooter() {
             </div>
 
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-white/50">Contact/WhatsApp</p>
-              <div className="mt-4 grid gap-3">
-                <a href={`tel:+91${contactDetails.primaryPhone}`} className="inline-flex items-center gap-2 text-sm font-bold text-white">
-                  <Phone className="h-4 w-4 text-orange-300" />
-                  +91 {contactDetails.primaryPhone}
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-white/50">Contact Support</p>
+              <div className="mt-4 grid gap-2.5 text-xs text-white/80">
+                <a href={`tel:+91${contactDetails.primaryPhone}`} className="inline-flex items-center gap-2 font-bold text-white hover:text-sky-200 transition">
+                  <Phone className="h-3.5 w-3.5 text-sky-300" />
+                  Primary: +91 {contactDetails.primaryPhone}
                 </a>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white transition-colors hover:bg-white/15">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
+                <a href={`tel:+91${contactDetails.officeSupportPhone}`} className="inline-flex items-center gap-2 font-bold text-white hover:text-sky-200 transition">
+                  <Phone className="h-3.5 w-3.5 text-orange-300" />
+                  Office: +91 {contactDetails.officeSupportPhone}
+                </a>
+                <a href={`tel:+91${contactDetails.cibilExpertPhone}`} className="inline-flex items-center gap-2 font-bold text-white hover:text-sky-200 transition">
+                  <Phone className="h-3.5 w-3.5 text-amber-300" />
+                  CIBIL & Finance: +91 {contactDetails.cibilExpertPhone}
+                </a>
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex h-9 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 font-extrabold text-white hover:bg-white/10 active:scale-95 transition">
+                  <MessageCircle className="h-4 w-4 text-emerald-400" />
+                  General WhatsApp
                 </a>
               </div>
             </div>

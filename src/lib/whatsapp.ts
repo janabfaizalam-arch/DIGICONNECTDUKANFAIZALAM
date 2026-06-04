@@ -1,4 +1,30 @@
 export const WHATSAPP_NUMBER = "917007595931";
+export const CIBIL_EXPERT_WHATSAPP = "918287002983";
+
+export function isCibilOrFinanceService(slug: string, title?: string): boolean {
+  const s = String(slug || "").toLowerCase();
+  const t = String(title || "").toLowerCase();
+  return (
+    s.includes("cibil") ||
+    s.includes("credit") ||
+    s.includes("loan") ||
+    s.includes("finance") ||
+    s.includes("mudra") ||
+    s.includes("pmegp") ||
+    s.includes("yuva") ||
+    s.includes("vishwakarma") ||
+    s.includes("startup") ||
+    t.includes("cibil") ||
+    t.includes("credit") ||
+    t.includes("loan") ||
+    t.includes("finance") ||
+    t.includes("mudra") ||
+    t.includes("pmegp") ||
+    t.includes("yuva") ||
+    t.includes("vishwakarma") ||
+    t.includes("startup")
+  );
+}
 
 function clean(value: unknown) {
   return String(value ?? "").trim();
