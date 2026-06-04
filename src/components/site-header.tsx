@@ -268,7 +268,12 @@ export function SiteHeader() {
     };
   }, []);
 
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+  if (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/customer/dashboard" ||
+    pathname.startsWith("/customer/dashboard")
+  ) {
     return null;
   }
 

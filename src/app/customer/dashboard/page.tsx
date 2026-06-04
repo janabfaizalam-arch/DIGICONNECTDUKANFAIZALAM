@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 
 import { CustomerDashboard } from "@/components/portal/customer-dashboard";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
-import { getCustomerDashboardProfile } from "@/lib/customer-profile";
+import { getCustomerDashboardProfile, getCustomerProfileStatus } from "@/lib/customer-profile";
 import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
+import { getWalletSnapshot } from "@/lib/wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -29,6 +30,33 @@ function logDashboardLoadFailed(step: string, userId: string | null, error: unkn
     errorDetails: supabaseError?.details ?? null,
     errorHint: supabaseError?.hint ?? null,
   });
+}
+
+export interface ApplicationDocument {
+  id: string;
+  application_id: string;
+  document_type: string;
+  document_name?: string | null;
+  file_name: string;
+  file_url: string;
+  file_type?: string | null;
+  storage_path?: string | null;
+  status?: string | null;
+  review_status?: string | null;
+  uploaded_by_role?: string | null;
+  is_final?: boolean | null;
+  uploaded_at?: string | null;
+  created_at: string;
+}
+
+export interface CustomerNotification {
+  id: string;
+  user_id: string;
+  application_id?: string | null;
+  title: string;
+  message: string;
+  read_at?: string | null;
+  created_at: string;
 }
 
 export default async function CustomerDashboardPage() {
@@ -118,12 +146,57 @@ export default async function CustomerDashboardPage() {
   }
   const isProfileIncomplete = !userProfile?.mobile || !userProfile?.pincode || !userProfile?.city || !userProfile?.state;
 
+  // Fetch Wallet Snapshot (credits, debits, referral summary, transactions)
+  const walletSnapshot = await getWalletSnapshot(user.id).catch((error) => {
+    logDashboardLoadFailed("wallet_snapshot", user.id, error);
+    return null;
+  });
+
+  // Fetch detailed Profile status (pincode, address completion stats)
+  const profileStatus = await getCustomerProfileStatus(user.id).catch((error) => {
+    logDashboardLoadFailed("profile_status", user.id, error);
+    return null;
+  });
+
+  // Fetch all documents related to the user's active applications
+  let documents: ApplicationDocument[] = [];
+  const appIds = applications.map((a) => a.id);
+  if (appIds.length > 0 && supabaseAdmin) {
+    const { data: docsData } = await supabaseAdmin
+      .from("application_documents")
+      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, uploaded_at, created_at")
+      .in("application_id", appIds)
+      .order("created_at", { ascending: false });
+    if (docsData) {
+      documents = docsData as unknown as ApplicationDocument[];
+    }
+  }
+
+  // Fetch user-specific notifications
+  let notifications: CustomerNotification[] = [];
+  if (supabaseAdmin) {
+    const { data: notifData } = await supabaseAdmin
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(15);
+    if (notifData) {
+      notifications = notifData as unknown as CustomerNotification[];
+    }
+  }
+
   return (
     <CustomerDashboard
       applications={applications}
       stats={stats}
       profile={{ name }}
       isProfileIncomplete={isProfileIncomplete}
+      walletSnapshot={walletSnapshot}
+      profileStatus={profileStatus}
+      documents={documents}
+      notifications={notifications}
+      user={user}
     />
   );
 }
