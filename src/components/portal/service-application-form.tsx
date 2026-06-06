@@ -2,7 +2,8 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards } from "lucide-react";
+import useSWR from "swr";
+import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, AlertCircle, UploadCloud, Shield } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
@@ -162,6 +163,22 @@ export function ServiceApplicationForm({
 }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
+
+  const selectedServices = useMemo(() => {
+    const nextServices = services?.length ? services : [service];
+    const seen = new Set<string>();
+
+    return nextServices.filter((item) => {
+      if (seen.has(item.slug)) {
+        return false;
+      }
+
+      seen.add(item.slug);
+      return true;
+    });
+  }, [service, services]);
+  const isGst = selectedServices.length === 1 && (selectedServices[0]?.slug === "gst-registration" || selectedServices[0]?.slug === "gst-return-filing");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
@@ -196,6 +213,105 @@ export function ServiceApplicationForm({
   const [appliedCouponDiscount, setAppliedCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponApplying, setCouponApplying] = useState(false);
+
+  // GST Redesigned Multi-Step Wizard States
+  const [gstStep, setGstStep] = useState(1);
+  const [gstBusinessName, setGstBusinessName] = useState("");
+  const [gstPanNumber, setGstPanNumber] = useState("");
+  const [gstBusinessType, setGstBusinessType] = useState("individual");
+  const [gstSchemeType, setGstSchemeType] = useState("regular");
+  const [gstPincode, setGstPincode] = useState("");
+  const [gstState, setGstState] = useState("");
+  const [gstFiles, setGstFiles] = useState<{
+    pan: File | null;
+    aadhaar: File | null;
+    addressProof: File | null;
+    noc: File | null;
+    photo: File | null;
+  }>({
+    pan: null,
+    aadhaar: null,
+    addressProof: null,
+    noc: null,
+    photo: null,
+  });
+
+  // Save/load draft from localStorage for GST Registration auto-save and draft recovery
+  useEffect(() => {
+    if (!isGst) return;
+    const saved = localStorage.getItem("gst_apply_draft");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.name) setApplicantName(parsed.name);
+        if (parsed.mobile) setApplicantMobile(parsed.mobile);
+        if (parsed.email) setApplicantEmail(parsed.email);
+        if (parsed.city) setApplicantCity(parsed.city);
+        if (parsed.address) setApplicantAddress(parsed.address);
+        if (parsed.message) setApplicantMessage(parsed.message);
+        if (parsed.businessName) setGstBusinessName(parsed.businessName);
+        if (parsed.panNumber) setGstPanNumber(parsed.panNumber);
+        if (parsed.businessType) setGstBusinessType(parsed.businessType);
+        if (parsed.schemeType) setGstSchemeType(parsed.schemeType);
+        if (parsed.pincode) setGstPincode(parsed.pincode);
+        if (parsed.state) setGstState(parsed.state);
+      } catch (e) {
+        console.error("Failed to parse GST draft", e);
+      }
+    }
+  }, [isGst]);
+
+  useEffect(() => {
+    if (!isGst) return;
+    const dataToSave = {
+      name: applicantName,
+      mobile: applicantMobile,
+      email: applicantEmail,
+      city: applicantCity,
+      address: applicantAddress,
+      message: applicantMessage,
+      businessName: gstBusinessName,
+      panNumber: gstPanNumber,
+      businessType: gstBusinessType,
+      schemeType: gstSchemeType,
+      pincode: gstPincode,
+      state: gstState,
+    };
+    localStorage.setItem("gst_apply_draft", JSON.stringify(dataToSave));
+  }, [isGst, applicantName, applicantMobile, applicantEmail, applicantCity, applicantAddress, applicantMessage, gstBusinessName, gstPanNumber, gstBusinessType, gstSchemeType, gstPincode, gstState]);
+
+  // Pincode lookup for GST
+  useEffect(() => {
+    if (!isGst || gstPincode.length !== 6) return;
+    setPincodeStatus("Verifying pincode...");
+    const controller = new AbortController();
+    fetch(`/api/pincode?pincode=${encodeURIComponent(gstPincode)}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.city && data.state) {
+          setApplicantCity(data.city);
+          setGstState(data.state);
+          setPincodeStatus("");
+        } else {
+          setPincodeStatus("Invalid pincode.");
+        }
+      })
+      .catch(() => {
+        setPincodeStatus("");
+      });
+    return () => controller.abort();
+  }, [isGst, gstPincode]);
+
+  const handleGstFileChange = (slot: keyof typeof gstFiles, file: File | null) => {
+    if (file) {
+      const err = validateFile(file, file.name);
+      if (err) {
+        toastError(err);
+        return;
+      }
+    }
+    setGstFiles((current) => ({ ...current, [slot]: file }));
+  };
 
   const handleApplyCoupon = async (code: string) => {
     setCouponError(null);
@@ -235,19 +351,6 @@ export function ServiceApplicationForm({
     success("Coupon removed successfully.");
   };
 
-  const selectedServices = useMemo(() => {
-    const nextServices = services?.length ? services : [service];
-    const seen = new Set<string>();
-
-    return nextServices.filter((item) => {
-      if (seen.has(item.slug)) {
-        return false;
-      }
-
-      seen.add(item.slug);
-      return true;
-    });
-  }, [service, services]);
   const isPmVishwakarma = selectedServices.length === 1 && selectedServices[0]?.slug === "pm-vishwakarma-yojana";
   const isEshram = selectedServices.length === 1 && (selectedServices[0]?.slug === "eshram-card" || selectedServices[0]?.slug === "eshram-card-registration");
   const isPvcCard = selectedServices.length === 1 && (selectedServices[0]?.slug === "pvc-card" || selectedServices[0]?.slug === "pvc-card-printing");
@@ -324,7 +427,16 @@ export function ServiceApplicationForm({
             ? buildPvcCardDetails(pvcCardValues)
             : isCmYuva
               ? buildCmYuvaDetails(cmYuvaValues)
-              : normalizedApplicationDraft.details;
+              : isGst
+                ? {
+                    businessName: gstBusinessName,
+                    panNumber: gstPanNumber,
+                    businessType: gstBusinessType,
+                    schemeType: gstSchemeType,
+                    pincode: gstPincode,
+                    state: gstState,
+                  }
+                : normalizedApplicationDraft.details;
 
       if (isCibil) {
         return {
@@ -335,17 +447,18 @@ export function ServiceApplicationForm({
       }
       return baseDetails;
     },
-    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues, isCibil, selectedServices, totalAmount],
+    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues, isCibil, selectedServices, totalAmount, isGst, gstBusinessName, gstPanNumber, gstBusinessType, gstSchemeType, gstPincode, gstState],
   );
   const canStartPayment =
     !isSubmitting &&
-    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard || isCmYuva }) &&
+    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard || isCmYuva || isGst }) &&
     /^[6-9]\d{9}$/.test(normalizedApplicationDraft.customer.mobile) &&
-    (selectedDocuments.length > 0 || isEshram || isCmYuva) &&
+    (selectedDocuments.length > 0 || isEshram || isCmYuva || isGst) &&
     (!isPmVishwakarma || isPmVishwakarmaComplete(pmVishwakarmaValues)) &&
     (!isEshram || isEshramComplete(eshramValues)) &&
     (!isPvcCard || isPvcCardComplete(pvcCardValues, selectedDocuments)) &&
-    (!isCmYuva || isCmYuvaComplete(cmYuvaValues, cmYuvaFiles));
+    (!isCmYuva || isCmYuvaComplete(cmYuvaValues, cmYuvaFiles)) &&
+    (!isGst || (gstFiles.pan !== null && gstFiles.aadhaar !== null));
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -439,18 +552,23 @@ export function ServiceApplicationForm({
       return;
     }
 
-    if (!selectedDocuments.length && !isEshram && !isCmYuva) {
+    if (!selectedDocuments.length && !isEshram && !isCmYuva && !isGst) {
       toastError("Please upload Aadhaar / Documents.");
       return;
     }
 
+    if (isGst && (!gstFiles.pan || !gstFiles.aadhaar)) {
+      toastError("Please upload both PAN and Aadhaar cards.");
+      return;
+    }
+
     const submittedDraft = buildNormalizedApplicationDraft({
-      name: String(formData.get("name") ?? ""),
-      mobile: String(formData.get("mobile") ?? ""),
-      email: String(formData.get("email") ?? ""),
-      city: String(formData.get("city") ?? ""),
-      address: String(formData.get("address") ?? ""),
-      message: String(formData.get("message") ?? ""),
+      name: isGst ? applicantName : String(formData.get("name") ?? ""),
+      mobile: isGst ? applicantMobile : String(formData.get("mobile") ?? ""),
+      email: isGst ? applicantEmail : String(formData.get("email") ?? ""),
+      city: isGst ? applicantCity : String(formData.get("city") ?? ""),
+      address: isGst ? applicantAddress : String(formData.get("address") ?? ""),
+      message: isGst ? applicantMessage : String(formData.get("message") ?? ""),
     });
     const submittedPmVishwakarmaValues = createPmVishwakarmaInitialValues({
       name: submittedDraft.customer.name,
@@ -649,9 +767,25 @@ export function ServiceApplicationForm({
           ].filter((item): item is { file: File; type: string } => item.file !== null)
         : [];
 
-      const uploadFiles = isCmYuva ? cmYuvaDocList.map((item) => item.file) : selectedDocuments;
+      const gstDocList = isGst
+        ? [
+            { file: gstFiles.pan, type: "PAN Card" },
+            { file: gstFiles.aadhaar, type: "Aadhaar Card" },
+            { file: gstFiles.addressProof, type: "Premises Address Proof" },
+            { file: gstFiles.noc, type: "Consent Letter/NOC" },
+            { file: gstFiles.photo, type: "Passport Photograph" },
+          ].filter((item): item is { file: File; type: string } => item.file !== null)
+        : [];
+
+      const uploadFiles = isCmYuva
+        ? cmYuvaDocList.map((item) => item.file)
+        : isGst
+        ? gstDocList.map((item) => item.file)
+        : selectedDocuments;
       const documentTypes = isCmYuva
         ? cmYuvaDocList.map((item) => item.type)
+        : isGst
+        ? gstDocList.map((item) => item.type)
         : isPvcCard
           ? ["Front Side Image", "Back Side Image"].slice(0, selectedDocuments.length)
           : selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"));
@@ -674,6 +808,14 @@ export function ServiceApplicationForm({
           ...pvcCardDetails,
           ...cmYuvaDetails,
           address: submittedDraft.details.address,
+          ...(isGst ? {
+            businessName: gstBusinessName,
+            panNumber: gstPanNumber,
+            businessType: gstBusinessType,
+            schemeType: gstSchemeType,
+            pincode: gstPincode,
+            state: gstState,
+          } : {}),
           ...(isCibil ? {
             selectedPlan: selectedServices[0]?.title || "Premium CIBIL Analysis & Consultation",
             planPrice: formatCurrency(totalAmount),
@@ -747,7 +889,541 @@ export function ServiceApplicationForm({
     }
   };
 
-  // Removed blocking card return block, profile completion is optional
+  if (isGst) {
+    const handleGstNext = () => {
+      if (gstStep === 1) {
+        if (!applicantName.trim()) {
+          toastError("Please enter your name.");
+          return;
+        }
+        if (!applicantMobile.trim() || !/^[6-9]\d{9}$/.test(applicantMobile)) {
+          toastError("Please enter a valid 10-digit mobile number.");
+          return;
+        }
+        if (!applicantEmail.trim() || !applicantEmail.includes("@")) {
+          toastError("Please enter a valid email address.");
+          return;
+        }
+        if (!applicantCity.trim()) {
+          toastError("Please enter your city.");
+          return;
+        }
+      } else if (gstStep === 2) {
+        if (!gstBusinessName.trim()) {
+          toastError("Please enter your business name.");
+          return;
+        }
+      } else if (gstStep === 3) {
+        if (!applicantAddress.trim()) {
+          toastError("Please enter business address details.");
+          return;
+        }
+        if (!gstPincode.trim() || gstPincode.length !== 6) {
+          toastError("Please enter a valid 6-digit business pincode.");
+          return;
+        }
+      } else if (gstStep === 4) {
+        if (!gstFiles.pan) {
+          toastError("Please upload your PAN card document.");
+          return;
+        }
+        if (!gstFiles.aadhaar) {
+          toastError("Please upload your Aadhaar card document.");
+          return;
+        }
+      }
+      setGstStep((s) => s + 1);
+    };
+
+    return (
+      <form onSubmit={onSubmit} className="grid gap-6 pb-6 lg:grid-cols-[1fr_340px] w-full" aria-busy={isSubmitting}>
+        <fieldset disabled={isSubmitting} className="contents">
+          
+          {/* Hidden inputs to feed standard FormData */}
+          <input type="hidden" name="name" value={applicantName} />
+          <input type="hidden" name="mobile" value={applicantMobile} />
+          <input type="hidden" name="email" value={applicantEmail} />
+          <input type="hidden" name="city" value={applicantCity} />
+          <input type="hidden" name="address" value={applicantAddress} />
+          <input type="hidden" name="message" value={applicantMessage} />
+          <input type="hidden" name="pincode" value={gstPincode} />
+          <input type="hidden" name="state" value={gstState} />
+          <input type="hidden" name="businessName" value={gstBusinessName} />
+          <input type="hidden" name="panNumber" value={gstPanNumber} />
+          <input type="hidden" name="businessType" value={gstBusinessType} />
+          <input type="hidden" name="schemeType" value={gstSchemeType} />
+
+          <Card className="rounded-3xl border border-blue-150/60 bg-white/95 p-6 shadow-xl relative overflow-hidden backdrop-blur-md">
+            
+            {/* Header: Title and step bar */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">DigiConnect Fintech Checkout</p>
+                <h2 className="text-xl font-black text-slate-900 mt-1">
+                  {selectedServices.map((item) => item.title).join(", ")}
+                </h2>
+                <p className="text-xs text-slate-400 font-semibold mt-1">
+                  Step {gstStep} of 5: {
+                    gstStep === 1 ? "Personal Details" :
+                    gstStep === 2 ? "Business Profile" :
+                    gstStep === 3 ? "Office Location" :
+                    gstStep === 4 ? "Documents Verification" :
+                    "Review & Payment"
+                  }
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+                  style={{ width: `${gstStep * 20}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Step Content */}
+            <div className="mt-8">
+              {gstStep === 1 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Personal Information</h3>
+                  <p className="text-xs text-slate-400 font-medium">Verify your profile details for communication purposes.</p>
+                  
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Full Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={applicantName}
+                        onChange={(e) => setApplicantName(e.target.value)}
+                        placeholder="e.g. Rahul Sharma"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Mobile Number</label>
+                      <input 
+                        type="tel" 
+                        required
+                        pattern="[0-9]{10}"
+                        value={applicantMobile}
+                        onChange={(e) => setApplicantMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="e.g. 9876543210"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Email Address</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={applicantEmail}
+                        onChange={(e) => setApplicantEmail(e.target.value)}
+                        placeholder="e.g. rahul@example.com"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">City</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={applicantCity}
+                        onChange={(e) => setApplicantCity(e.target.value)}
+                        placeholder="e.g. Lucknow"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {gstStep === 2 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Business Details</h3>
+                  <p className="text-xs text-slate-400 font-medium">Add parameters describing your business entity.</p>
+
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div className="sm:col-span-2">
+                      <label className="text-[9px] font-black uppercase text-slate-400">Trade Name / Business Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={gstBusinessName}
+                        onChange={(e) => setGstBusinessName(e.target.value)}
+                        placeholder="e.g. Sharma Retails Private Limited"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">PAN Number (Optional)</label>
+                      <input 
+                        type="text" 
+                        value={gstPanNumber}
+                        onChange={(e) => setGstPanNumber(e.target.value.toUpperCase())}
+                        placeholder="e.g. ABCDE1234F"
+                        className="mt-1 block w-full rounded-xl border border-slate-255 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Business Structure</label>
+                      <select 
+                        value={gstBusinessType}
+                        onChange={(e) => setGstBusinessType(e.target.value)}
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      >
+                        <option value="individual">Individual</option>
+                        <option value="proprietorship">Proprietorship</option>
+                        <option value="partnership">Partnership Firm</option>
+                        <option value="llp">LLP (Limited Liability Partnership)</option>
+                        <option value="private">Private Limited Company</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">GST Registration Scheme</label>
+                      <select 
+                        value={gstSchemeType}
+                        onChange={(e) => setGstSchemeType(e.target.value)}
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      >
+                        <option value="regular">Regular Taxpayer Scheme</option>
+                        <option value="composition">Composition Taxpayer Scheme</option>
+                        <option value="casual">Casual Taxable Trader</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {gstStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Office Location Address</h3>
+                  <p className="text-xs text-slate-400 font-medium">Verify the premises address proof matching documents.</p>
+
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div className="sm:col-span-2">
+                      <label className="text-[9px] font-black uppercase text-slate-400">Full Business Address Details</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={applicantAddress}
+                        onChange={(e) => setApplicantAddress(e.target.value)}
+                        placeholder="e.g. Shop No. 12, Ground Floor, Sharma Complex"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Office Pincode</label>
+                      <input 
+                        type="text" 
+                        required
+                        maxLength={6}
+                        value={gstPincode}
+                        onChange={(e) => setGstPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="e.g. 226001"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                      {pincodeStatus && (
+                        <p className="text-[10px] text-blue-600 font-bold mt-1">{pincodeStatus}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">State</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={gstState}
+                        onChange={(e) => setGstState(e.target.value)}
+                        placeholder="e.g. Uttar Pradesh"
+                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {gstStep === 4 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Upload Identity Documents</h3>
+                  <p className="text-xs text-slate-400 font-medium">Provide clear scanned PDF / JPG copies of required proofs (Max 5MB each).</p>
+
+                  <div className="space-y-4 pt-2">
+                    {/* PAN slot */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-black text-slate-800">Owner PAN Card *</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {gstFiles.pan ? `✓ Uploaded: ${gstFiles.pan.name}` : "No file selected."}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleGstFileChange("pan", e.target.files?.[0] || null)}
+                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                      />
+                    </div>
+
+                    {/* Aadhaar slot */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-black text-slate-800">Owner Aadhaar Card (Front & Back) *</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {gstFiles.aadhaar ? `✓ Uploaded: ${gstFiles.aadhaar.name}` : "No file selected."}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleGstFileChange("aadhaar", e.target.files?.[0] || null)}
+                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                      />
+                    </div>
+
+                    {/* Premises Address Proof */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-black text-slate-850">Premises Address Proof (Electricity bill)</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {gstFiles.addressProof ? `✓ Uploaded: ${gstFiles.addressProof.name}` : "Optional file."}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleGstFileChange("addressProof", e.target.files?.[0] || null)}
+                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                      />
+                    </div>
+
+                    {/* Rent Agreement/NOC */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-black text-slate-855">Consent Letter / Owner NOC</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {gstFiles.noc ? `✓ Uploaded: ${gstFiles.noc.name}` : "Optional file."}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleGstFileChange("noc", e.target.files?.[0] || null)}
+                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                      />
+                    </div>
+
+                    {/* Passport Photo */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-black text-slate-850">Owner Passport Photograph</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {gstFiles.photo ? `✓ Uploaded: ${gstFiles.photo.name}` : "Optional file."}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleGstFileChange("photo", e.target.files?.[0] || null)}
+                        className="text-[10px] font-bold text-blue-650 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {gstStep === 5 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Review & Payment</h3>
+                  <p className="text-xs text-slate-400 font-medium">Verify your application ledger and initiate secure payment.</p>
+
+                  <div className="p-4 rounded-3xl border border-slate-100 bg-slate-50/50 space-y-4">
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">Applicant:</span>
+                      <span className="font-black text-slate-900">{applicantName}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">Business Name:</span>
+                      <span className="font-black text-slate-900">{gstBusinessName}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">Address:</span>
+                      <span className="font-black text-slate-900 truncate max-w-[180px]">{applicantAddress}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold border-t border-slate-200/50 pt-3">
+                      <span className="text-slate-500">Documents Attached:</span>
+                      <span className="font-black text-blue-700">
+                        {[gstFiles.pan, gstFiles.aadhaar, gstFiles.addressProof, gstFiles.noc, gstFiles.photo].filter(Boolean).length} Files
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Razorpay Trigger integration */}
+                  <div className="mt-4 pt-2">
+                    {realPayableAmount > 0 ? (
+                      <RazorpayCheckoutButton
+                        amountPaise={payableAmountPaise}
+                        receipt={paymentReceipt}
+                        serviceSlug={selectedServices[0]?.slug}
+                        serviceSlugs={selectedServices.map((item) => item.slug)}
+                        walletUseAmount={clampedWalletUseAmount}
+                        couponCode={appliedCouponCode}
+                        customer={{
+                          name: normalizedApplicationDraft.customer.name,
+                          email: normalizedApplicationDraft.customer.email,
+                          mobile: normalizedApplicationDraft.customer.mobile,
+                        }}
+                        applicationDraft={{
+                          customer: normalizedApplicationDraft.customer,
+                          details: serviceDetailsForPayment,
+                        }}
+                        description={selectedServices.map((item) => item.title).join(", ")}
+                        disabled={!canStartPayment}
+                        onVerified={(payment) => {
+                          setRazorpayPayment({
+                            ...payment,
+                            amount_paise: payableAmountPaise,
+                          });
+                        }}
+                      />
+                    ) : (
+                      <div className="rounded-2xl bg-emerald-50 px-4 py-3.5 text-xs font-black text-emerald-800 border border-emerald-100 text-center">
+                        🎉 Wallet balance covers 100% of order. Click submit below.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between items-center mt-10 pt-6 border-t border-slate-100/80">
+              <button
+                type="button"
+                disabled={gstStep === 1 || isSubmitting}
+                onClick={() => setGstStep((s) => s - 1)}
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              {gstStep < 5 ? (
+                <button
+                  type="button"
+                  onClick={handleGstNext}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full bg-blue-600 px-6 text-xs font-bold text-white shadow hover:bg-blue-700 transition active:scale-95"
+                >
+                  Next Step
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <FormSubmitButton 
+                  type="submit" 
+                  size="lg" 
+                  loading={isSubmitting} 
+                  loadingText={progressText || "Please wait..."}
+                  disabled={!canStartPayment || (realPayableAmount > 0 && !razorpayPayment)}
+                  className="h-10 rounded-full bg-slate-950 font-black hover:bg-slate-900 text-xs px-6 shadow"
+                >
+                  Submit GST Application
+                </FormSubmitButton>
+              )}
+            </div>
+
+          </Card>
+
+          {/* Right Summary Column */}
+          <div className="space-y-4">
+            
+            {/* Wallet Deductions Card */}
+            <Card className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
+                  <IndianRupee className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pricing Summary</p>
+                  <p className="text-2xl font-black text-slate-900 mt-0.5">{formatCurrency(totalAmount)}</p>
+                  {clampedWalletUseAmount > 0 && (
+                    <p className="text-[10px] font-bold text-blue-700 mt-0.5">Net Payable: {formatCurrency(realPayableAmount)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Wallet Redeem Input (if balance exists) */}
+              {wallet.balance > 0 && (
+                <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-2.5">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-slate-500">Available Wallet Balance</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(wallet.balance)}</span>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400">Redeem Credits (Max: {formatCurrency(wallet.maxUsable)})</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={wallet.maxUsable}
+                      value={walletUseAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.round(Number(e.target.value || 0)));
+                        if (val > wallet.maxUsable) {
+                          setWalletUseAmount(wallet.maxUsable);
+                          toastError(walletLimitMessage);
+                          return;
+                        }
+                        setWalletUseAmount(val);
+                      }}
+                      className="mt-1 block w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold outline-none focus:border-blue-500 transition"
+                      placeholder="Redemption sum"
+                    />
+                  </div>
+                  {clampedWalletUseAmount > 0 && (
+                    <p className="text-[10px] font-black text-emerald-700">{formatCurrency(clampedWalletUseAmount)} deduction applied.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Ledger Breakdown details */}
+              <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-2 text-xs font-semibold text-slate-700">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Service Fee</span>
+                  <span>{formatCurrency(totalAmount)}</span>
+                </div>
+                {clampedWalletUseAmount > 0 && (
+                  <div className="flex justify-between text-orange-600">
+                    <span>Credits Redeemed</span>
+                    <span>-{formatCurrency(clampedWalletUseAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-slate-100 pt-2 font-black text-slate-900 text-xs">
+                  <span>Net Payable</span>
+                  <span className="text-blue-700">{formatCurrency(realPayableAmount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-dashed border-slate-100 pt-2 text-[10px] text-slate-400 font-bold">
+                  <span>Expected Cashback</span>
+                  <span className="text-emerald-600">{formatCurrency(expectedCashback)}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Trust badge */}
+            <Card className="rounded-3xl border border-blue-50/50 bg-blue-50/10 p-5 shadow-sm space-y-3.5">
+              <div className="flex items-center gap-2.5">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <h4 className="text-xs font-black text-slate-900">CA Audit Protection</h4>
+              </div>
+              <p className="text-[10px] leading-relaxed text-slate-500 font-medium">
+                Our network of certified corporate Chartered Accountants will review your paperwork beforehand to guarantee a query-free submission.
+              </p>
+            </Card>
+
+          </div>
+
+        </fieldset>
+      </form>
+    );
+  }
 
   if (isCmYuva) {
     return (

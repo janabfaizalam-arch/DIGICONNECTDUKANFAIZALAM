@@ -88,6 +88,77 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
           : "Complete CIBIL Report Analysis, score improvement plan, and expert consultation.",
       };
     }
+    if (item.slug === "gst-registration") {
+      const plan = query?.plan || "basic";
+      if (plan === "msme") {
+        return {
+          ...item,
+          title: "GST Registration + MSME",
+          amount: 2999,
+          shortDescription: "GST Registration, MSME Registration, and Udyam Certificate.",
+        };
+      } else if (plan === "starter") {
+        return {
+          ...item,
+          title: "GST Business Starter Pack",
+          amount: 3999,
+          shortDescription: "GST Registration, MSME, Business Consultation, and Compliance Guide.",
+        };
+      } else if (plan === "premium") {
+        return {
+          ...item,
+          title: "GST Premium",
+          amount: 4999,
+          shortDescription: "GST Registration, MSME, Compliance Setup, and Dedicated Advisor.",
+        };
+      } else {
+        return {
+          ...item,
+          title: "Basic GST Registration",
+          amount: 2499,
+          shortDescription: "GST Registration, ARN Tracking, and Certificate Download.",
+        };
+      }
+    }
+    if (item.slug === "gst-return-filing") {
+      const plan = query?.plan || "monthly_starter";
+      if (plan === "monthly_business") {
+        return {
+          ...item,
+          title: "Business Monthly GST Filing",
+          amount: 499,
+          shortDescription: "Monthly GSTR-1 & GSTR-3B filings support (Business).",
+        };
+      } else if (plan === "monthly_premium") {
+        return {
+          ...item,
+          title: "Premium Monthly GST Filing",
+          amount: 999,
+          shortDescription: "Monthly GSTR-1 & GSTR-3B filings support (Premium).",
+        };
+      } else if (plan === "quarterly_qrmp") {
+        return {
+          ...item,
+          title: "Quarterly GST QRMP Plan",
+          amount: 1499,
+          shortDescription: "Quarterly QRMP GSTR compliance and filing package.",
+        };
+      } else if (plan === "annual") {
+        return {
+          ...item,
+          title: "Annual GST Filing Package",
+          amount: 4999,
+          shortDescription: "Annual GSTR compliance, audits, and consolidated GSTR-9 filings.",
+        };
+      } else {
+        return {
+          ...item,
+          title: "Starter Monthly GST Filing",
+          amount: 299,
+          shortDescription: "Monthly GSTR-1 & GSTR-3B filings support (Starter).",
+        };
+      }
+    }
     return item;
   });
 
@@ -102,6 +173,50 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
     serviceDescription = isBasic
       ? "Latest TransUnion CIBIL Report & One Page Financial History Summary"
       : "Complete CIBIL Report Analysis, score improvement plan, and expert consultation.";
+  }
+  if (slug === "gst-registration") {
+    const plan = query?.plan || "basic";
+    if (plan === "msme") {
+      serviceTitle = "GST Registration + MSME";
+      serviceAmount = 2999;
+      serviceDescription = "GST Registration, MSME Registration, and Udyam Certificate.";
+    } else if (plan === "starter") {
+      serviceTitle = "GST Business Starter Pack";
+      serviceAmount = 3999;
+      serviceDescription = "GST Registration, MSME, Business Consultation, and Compliance Guide.";
+    } else if (plan === "premium") {
+      serviceTitle = "GST Premium";
+      serviceAmount = 4999;
+      serviceDescription = "GST Registration, MSME, Compliance Setup, and Dedicated Advisor.";
+    } else {
+      serviceTitle = "Basic GST Registration";
+      serviceAmount = 2499;
+      serviceDescription = "GST Registration, ARN Tracking, and Certificate Download.";
+    }
+  }
+  if (slug === "gst-return-filing") {
+    const plan = query?.plan || "monthly_starter";
+    if (plan === "monthly_business") {
+      serviceTitle = "Business Monthly GST Filing";
+      serviceAmount = 499;
+      serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Business).";
+    } else if (plan === "monthly_premium") {
+      serviceTitle = "Premium Monthly GST Filing";
+      serviceAmount = 999;
+      serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Premium).";
+    } else if (plan === "quarterly_qrmp") {
+      serviceTitle = "Quarterly GST QRMP Plan";
+      serviceAmount = 1499;
+      serviceDescription = "Quarterly QRMP GSTR compliance and filing package.";
+    } else if (plan === "annual") {
+      serviceTitle = "Annual GST Filing Package";
+      serviceAmount = 4999;
+      serviceDescription = "Annual GSTR compliance, audits, and consolidated GSTR-9 filings.";
+    } else {
+      serviceTitle = "Starter Monthly GST Filing";
+      serviceAmount = 299;
+      serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Starter).";
+    }
   }
   const whatsappUrl = buildWhatsAppUrl(
     buildApplicationWhatsAppMessage({
