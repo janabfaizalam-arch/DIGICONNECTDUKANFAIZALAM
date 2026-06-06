@@ -2707,7 +2707,7 @@ export function CustomerDashboard({
                         {(() => {
                           const uniqueRecentSlugs = Array.from(new Set(applications.map(a => {
                             const name = a.service_name.toLowerCase();
-                            if (name.includes("gst")) return "gst-registration-filing";
+                            if (name.includes("gst")) return "gst-registration";
                             if (name.includes("itr") || name.includes("tax")) return "itr-filing";
                             if (name.includes("cibil") || name.includes("credit")) return "cibil-report-increase";
                             if (name.includes("pvc") || name.includes("card")) return "pvc-card";
@@ -2770,7 +2770,7 @@ export function CustomerDashboard({
                       if (!queryMatch) return false;
 
                       if (serviceCategory === "All") return true;
-                      if (serviceCategory === "Popular") return ["cibil-report-increase", "eshram-card", "pvc-card", "gst-registration-filing", "itr-filing", "pm-vishwakarma-yojana"].includes(service.slug);
+                      if (serviceCategory === "Popular") return ["cibil-report-increase", "eshram-card", "pvc-card", "gst-registration", "gst-return-filing", "itr-filing", "pm-vishwakarma-yojana"].includes(service.slug);
                       if (serviceCategory === "Recent") return false; // Handled above
                       if (serviceCategory === "Tax & Business") return service.categorySlug === "tax" || service.categorySlug === "company";
                       if (serviceCategory === "Cards & IDs") return service.categorySlug === "cards" || service.categorySlug === "licence";

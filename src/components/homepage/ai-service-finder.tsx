@@ -8,7 +8,8 @@ import { servicesData } from "@/lib/services-data";
 
 // Custom mappings for abbreviation & synonym matching
 const synonymMap: Record<string, string[]> = {
-  "gst-registration-filing": ["gst", "g s t", "gst reg", "gstr", "gst registration", "gst filing", "tax", "gstr1", "gstr3b"],
+  "gst-registration": ["gst", "g s t", "gst reg", "gstr", "gst registration", "tax"],
+  "gst-return-filing": ["gst filing", "gstr", "gstr1", "gstr3b", "gst returns", "return filing"],
   "itr-filing": ["itr", "i t r", "tax", "income tax", "tax return", "tax filing", "return filing"],
   "passport": ["passport", "pass port", "pass-port", "pp", "p.p.", "visa", "abroad", "travel"],
   "learning-driving-license": ["driving licence", "driving license", "dl", "d l", "license", "licence", "rto", "vehicle driving", "learner"],
@@ -63,7 +64,7 @@ const popularSearches = [
 const recommendedServices = servicesData.filter(s => 
   s.slug === "cibil-report-analysis-and-credit-health-consultation" || 
   s.slug === "pvc-card" || 
-  s.slug === "gst-registration-filing"
+  s.slug === "gst-registration"
 );
 
 export function AiServiceFinder() {

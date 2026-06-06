@@ -27,7 +27,7 @@ const fallbackBanners = [
     cta: "Apply GSTIN",
     gradient: "from-[#047857] via-[#059669] to-[#10b981]",
     accent: "bg-[#f59e0b]",
-    href: "/services/gst-registration-filing",
+    href: "/services/gst-registration",
     icon: "📋"
   },
   {

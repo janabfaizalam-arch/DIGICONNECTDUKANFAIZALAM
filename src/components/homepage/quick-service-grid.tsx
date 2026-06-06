@@ -31,7 +31,7 @@ export function QuickServiceGrid() {
           <div className="grid grid-cols-3 gap-y-6 gap-x-2.5 sm:grid-cols-4 md:grid-cols-8 md:gap-x-4">
             
             {/* 1. GST */}
-            <Link href="/services/gst-registration-filing" className="group flex flex-col items-center text-center transition-all duration-200 hover:-translate-y-0.5 active:scale-95">
+            <Link href="/services/gst-registration" className="group flex flex-col items-center text-center transition-all duration-200 hover:-translate-y-0.5 active:scale-95">
               <div className="w-[68px] h-[68px] md:w-[76px] md:h-[76px] rounded-2xl flex items-center justify-center border border-white/60 bg-gradient-to-tr from-emerald-500/10 to-teal-500/5 shadow-[0_6px_20px_rgba(16,185,129,0.06)] group-hover:scale-108 group-hover:shadow-[0_8px_24px_rgba(16,185,129,0.14)] transition-all duration-250">
                 <svg width="38" height="38" viewBox="0 0 64 64" fill="none">
                   <rect x="16" y="12" width="32" height="40" rx="4" fill="#a7f3d0" opacity="0.8" stroke="#10b981" strokeWidth="2" />

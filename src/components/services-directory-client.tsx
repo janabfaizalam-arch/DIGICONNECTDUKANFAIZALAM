@@ -52,7 +52,8 @@ const serviceDetailsExtra: Record<string, { processingTime: string; rating: numb
   "cibil-report-increase": { processingTime: "5-7 Days", rating: 4.9, reviewsCount: 754, popularityScore: 98, isTrending: true, isNew: false, eligibility: "Anyone seeking credit bureau score tracking and disputing" },
   "passport": { processingTime: "15-30 Days", rating: 4.9, reviewsCount: 310, popularityScore: 93, isTrending: true, isNew: false, eligibility: "Indian citizens with address & identity proofs" },
   "learning-driving-license": { processingTime: "3-5 Days", rating: 4.8, reviewsCount: 420, popularityScore: 94, isTrending: true, isNew: false, eligibility: "Indian residents aged 16+ (gearless) or 18+ (with gear)" },
-  "gst-registration-filing": { processingTime: "3-5 Days", rating: 4.9, reviewsCount: 523, popularityScore: 99, isTrending: true, isNew: false, eligibility: "Indian businesses crossing tax thresholds or voluntarily registering" },
+  "gst-registration": { processingTime: "3-5 Days", rating: 4.9, reviewsCount: 523, popularityScore: 99, isTrending: true, isNew: false, eligibility: "Indian businesses crossing tax thresholds or voluntarily registering" },
+  "gst-return-filing": { processingTime: "1-2 Days", rating: 4.8, reviewsCount: 340, popularityScore: 95, isTrending: true, isNew: true, eligibility: "Existing GST registration certificate holders" },
   "itr-filing": { processingTime: "1-2 Days", rating: 4.9, reviewsCount: 890, popularityScore: 99, isTrending: true, isNew: false, eligibility: "Indian taxpayers with taxable income or filing mandates" },
   "private-limited-registration": { processingTime: "7-10 Days", rating: 4.9, reviewsCount: 145, popularityScore: 91, isTrending: false, isNew: false, eligibility: "Minimum 2 directors and 2 shareholders" },
   "private-limited-compliance": { processingTime: "5-7 Days", rating: 4.8, reviewsCount: 98, popularityScore: 83, isTrending: false, isNew: false, eligibility: "Registered Private Limited companies in India" },
@@ -81,7 +82,7 @@ function getCategoryForService(service: ServiceItem): string {
   if (["pvc-card", "voter-id", "eshram-card", "labour-card"].includes(slug)) return "identity-documents";
   if (["pmegp-loan", "mudra-loan", "pm-vishwakarma-yojana", "startup-india-assistance"].includes(slug)) return "government-schemes";
   if (["learning-driving-license"].includes(slug)) return "licenses-registrations";
-  if (["gst-registration-filing", "itr-filing", "private-limited-registration", "private-limited-compliance", "opc-registration", "dsc", "msme-registration", "iso-certification"].includes(slug)) return "tax-business";
+  if (["gst-registration-filing", "gst-registration", "gst-return-filing", "itr-filing", "private-limited-registration", "private-limited-compliance", "opc-registration", "dsc", "msme-registration", "iso-certification"].includes(slug)) return "tax-business";
   if (["credit-cards", "saving-account-opening", "current-account-opening", "cibil-report-increase", "cm-yuva-entrepreneur-loan-assistance"].includes(slug)) return "finance-banking";
   if (slug === "insurance") return "insurance";
   return "tax-business";
@@ -285,7 +286,7 @@ export function ServicesDirectoryClient({ initialServices }: ServicesDirectoryCl
   // Featured services list (8 items)
   const featuredServicesList = useMemo(() => {
     const featuredSlugs = [
-      "gst-registration-filing",
+      "gst-registration",
       "itr-filing",
       "learning-driving-license",
       "passport",

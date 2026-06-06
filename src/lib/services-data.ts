@@ -196,7 +196,7 @@ export const serviceCategories: ServiceCategory[] = [
     heading: "Tax & GST Registration",
     description: "GST Registration, GST filing support, and ITR return filing with certified assistance.",
     icon: ReceiptText,
-    featuredSlugs: ["gst-registration-filing", "itr-filing"],
+    featuredSlugs: ["gst-registration", "itr-filing"],
   },
   {
     title: "Company Registration & Compliance",
@@ -518,14 +518,49 @@ const rawServices: RawService[] = [
 
   // Tax & GST
   {
-    title: "GST Registration & Filing",
-    slug: "gst-registration-filing",
+    title: "GST Registration",
+    slug: "gst-registration",
     categorySlug: "tax",
-    shortDescription: "Secure GST registration certificate and get timely assistance for GSTR filings.",
+    shortDescription: "Get your GST registration completed online with expert support and document assistance.",
     oldPrice: "₹6999",
     offerPrice: "₹2499",
     iconKey: "gst",
     badge: "Popular",
+    documents: [
+      "PAN Card of Business / Applicant",
+      "Aadhaar Card of Applicant",
+      "Business Address Proof (Utility Bill / Rent Agreement)",
+      "Bank Account Proof (Cancel Cheque / Passbook)"
+    ],
+    benefits: [
+      "Legitimize your business & sell online",
+      "Claim Input Tax Credit (ITC)",
+      "Bid for Government Tenders",
+      "Hassle-free interstate trade",
+      "Expert CA-assisted document validation"
+    ]
+  },
+  {
+    title: "GST Return Filing",
+    slug: "gst-return-filing",
+    categorySlug: "tax",
+    shortDescription: "Timely GSTR-1 & GSTR-3B filings with expert review to avoid penalties and late fees.",
+    oldPrice: "₹2999",
+    offerPrice: "₹999",
+    iconKey: "gst",
+    badge: "Assisted",
+    documents: [
+      "GSTIN Credentials",
+      "Purchase Register / Bills",
+      "Sales Register / Invoices",
+      "Bank Statement for Period"
+    ],
+    benefits: [
+      "100% accurate compliance checks",
+      "Avoid GSTR late fees and penalties",
+      "Reconcile input tax credit correctly",
+      "Fast online portal processing"
+    ]
   },
   {
     title: "ITR Filing",
@@ -621,7 +656,7 @@ export function getServiceBySlug(slug: string) {
     "eshram-card-registration": "eshram-card",
     "labour-card-e-shram-card": "labour-card",
     "driving-licence": "learning-driving-license",
-    "gst-registration": "gst-registration-filing",
+    "gst-registration-filing": "gst-registration",
     "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
     "cibil-credit-score-guidance": "cibil-report-increase",
     "credit-cards-all-banks": "credit-cards",

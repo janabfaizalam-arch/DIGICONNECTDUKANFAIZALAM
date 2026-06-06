@@ -51,7 +51,7 @@ export function HomepageServiceIconRow() {
           <div className="grid grid-cols-3 gap-y-5 gap-x-2 md:grid-cols-9 md:gap-x-4 md:py-2">
             
             {/* 1. GST (3D Government Document) */}
-            <Link href="/services/gst-registration-filing" className="group flex flex-col items-center text-center transition-all duration-200 active:scale-90 animate-float-icon-1">
+            <Link href="/services/gst-registration" className="group flex flex-col items-center text-center transition-all duration-200 active:scale-90 animate-float-icon-1">
               <div className="w-[72px] h-[72px] md:w-20 md:h-20 rounded-full flex items-center justify-center border border-white/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.3))] shadow-[0_4px_16px_rgba(7,19,38,0.04)] backdrop-blur-sm group-hover:scale-105 group-hover:shadow-[0_6px_22px_rgba(37,99,235,0.12)] transition duration-300">
                 <svg width="44" height="44" viewBox="0 0 64 64" fill="none" className="drop-shadow-[0_3px_6px_rgba(5,150,105,0.15)]">
                   <defs>
