@@ -159,6 +159,52 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
         };
       }
     }
+    if (item.slug === "itr-filing") {
+      const plan = query?.plan || "itr1";
+      if (plan === "itr2") {
+        return {
+          ...item,
+          title: "ITR-2 Filing (Capital Gains & Multiple Houses)",
+          amount: 999,
+          shortDescription: "File ITR-2 online with expert CA verification, secure documents, and tax-saving optimization.",
+        };
+      } else if (plan === "itr3") {
+        return {
+          ...item,
+          title: "ITR-3 Filing (Business / Professional)",
+          amount: 1499,
+          shortDescription: "Assisted ITR-3 business tax return filing with custom balance sheet checks & audit prep.",
+        };
+      } else if (plan === "itr4") {
+        return {
+          ...item,
+          title: "ITR-4 Filing (Presumptive Business)",
+          amount: 999,
+          shortDescription: "File presumptive tax returns under Sec 44AD/44ADA quickly with professional review.",
+        };
+      } else if (plan === "nri") {
+        return {
+          ...item,
+          title: "NRI ITR Filing Assistance",
+          amount: 2499,
+          shortDescription: "Specialized non-resident taxation, foreign assets disclosures, and DTAA relief mapping.",
+        };
+      } else if (plan === "capgain") {
+        return {
+          ...item,
+          title: "Capital Gains ITR Filing Assistance",
+          amount: 2999,
+          shortDescription: "Consolidated capital gains computation for equity, mutual funds, real estate & crypto.",
+        };
+      } else {
+        return {
+          ...item,
+          title: "ITR-1 (Salaried) Filing Assistance",
+          amount: 699,
+          shortDescription: "File your salaried tax return (Form 16/AIS) with expert coordinator assistance.",
+        };
+      }
+    }
     return item;
   });
 
@@ -218,6 +264,34 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
       serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Starter).";
     }
   }
+  if (slug === "itr-filing") {
+    const plan = query?.plan || "itr1";
+    if (plan === "itr2") {
+      serviceTitle = "ITR-2 Filing (Capital Gains & Multiple Houses)";
+      serviceAmount = 999;
+      serviceDescription = "File ITR-2 online with expert CA verification, secure documents, and tax-saving optimization.";
+    } else if (plan === "itr3") {
+      serviceTitle = "ITR-3 Filing (Business / Professional)";
+      serviceAmount = 1499;
+      serviceDescription = "Assisted ITR-3 business tax return filing with custom balance sheet checks & audit prep.";
+    } else if (plan === "itr4") {
+      serviceTitle = "ITR-4 Filing (Presumptive Business)";
+      serviceAmount = 999;
+      serviceDescription = "File presumptive tax returns under Sec 44AD/44ADA quickly with professional review.";
+    } else if (plan === "nri") {
+      serviceTitle = "NRI ITR Filing Assistance";
+      serviceAmount = 2499;
+      serviceDescription = "Specialized non-resident taxation, foreign assets disclosures, and DTAA relief mapping.";
+    } else if (plan === "capgain") {
+      serviceTitle = "Capital Gains ITR Filing Assistance";
+      serviceAmount = 2999;
+      serviceDescription = "Consolidated capital gains computation for equity, mutual funds, real estate & crypto.";
+    } else {
+      serviceTitle = "ITR-1 (Salaried) Filing Assistance";
+      serviceAmount = 699;
+      serviceDescription = "File your salaried tax return (Form 16/AIS) with expert coordinator assistance.";
+    }
+  }
   const whatsappUrl = buildWhatsAppUrl(
     buildApplicationWhatsAppMessage({
       action: "apply_help",
@@ -228,6 +302,7 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
   function fieldsFor(categorySlug: string, serviceSlug: string): ServiceField[] {
     if (serviceSlug === "pm-vishwakarma-yojana") return [];
     if (serviceSlug === "cm-yuva-entrepreneur-loan-assistance") return [];
+    if (serviceSlug === "itr-filing") return [];
     if (categorySlug === "tax-business") return [{ name: "businessName", label: "Business Name", required: false }, { name: "panNumber", label: "PAN", required: false }];
     if (categorySlug === "insurance") return [{ name: "vehicleNumber", label: "Vehicle Number", required: false }, { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false }];
     if (categorySlug === "finance-banking") return [{ name: "loanPurpose", label: "Loan / Banking Requirement", type: "textarea", required: false }, { name: "monthlyIncome", label: "Monthly Income / Turnover", required: false }];

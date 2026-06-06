@@ -74,7 +74,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                         if (typeof parsed.score === "number") crmScore = parsed.score;
                         if (Array.isArray(parsed.events)) crmEvents = parsed.events;
                       }
-                    } catch (e) {}
+                    } catch {}
 
                     const getScoreBadge = (score: number) => {
                       if (score >= 100) return "bg-emerald-600 text-white font-extrabold";
@@ -152,7 +152,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                     const parsed = JSON.parse(lead.notes);
                     if (typeof parsed.score === "number") crmScore = parsed.score;
                   }
-                } catch (e) {}
+                } catch {}
                 return (
                   <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">
                     Score: {crmScore}

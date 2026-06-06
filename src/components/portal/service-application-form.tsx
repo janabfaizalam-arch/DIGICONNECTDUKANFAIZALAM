@@ -2,8 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import useSWR from "swr";
-import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, AlertCircle, UploadCloud, Shield, Check, Lock } from "lucide-react";
+import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, UploadCloud, Shield, Check, Lock } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
@@ -178,6 +177,7 @@ export function ServiceApplicationForm({
     });
   }, [service, services]);
   const isGst = selectedServices.length === 1 && (selectedServices[0]?.slug === "gst-registration" || selectedServices[0]?.slug === "gst-return-filing");
+  const isItr = selectedServices.length === 1 && selectedServices[0]?.slug === "itr-filing";
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressText, setProgressText] = useState("");
@@ -242,6 +242,37 @@ export function ServiceApplicationForm({
     photo: null,
   });
 
+  // ITR Redesigned Multi-Step Wizard States
+  const [itrStep, setItrStep] = useState(1);
+  const [itrPanNumber, setItrPanNumber] = useState("");
+  const [itrAadhaarNumber, setItrAadhaarNumber] = useState("");
+  const [itrSalaryIncome, setItrSalaryIncome] = useState("");
+  const [itrBusinessIncome, setItrBusinessIncome] = useState("");
+  const [itrCapGains, setItrCapGains] = useState("");
+  const [itrRentIncome, setItrRentIncome] = useState("");
+  const [itrOtherIncome, setItrOtherIncome] = useState("");
+  const [itr80C, setItr80C] = useState("");
+  const [itr80D, setItr80D] = useState("");
+  const [itrHra, setItrHra] = useState("");
+  const [itrOtherDeductions, setItrOtherDeductions] = useState("");
+  const [itrFiles, setItrFiles] = useState<{
+    form16: File | null;
+    ais: File | null;
+    form26as: File | null;
+    bankStatements: File | null;
+    capGains: File | null;
+    businessBooks: File | null;
+    interestCert: File | null;
+  }>({
+    form16: null,
+    ais: null,
+    form26as: null,
+    bankStatements: null,
+    capGains: null,
+    businessBooks: null,
+    interestCert: null,
+  });
+
   // Save/load draft from localStorage for GST Registration auto-save and draft recovery
   useEffect(() => {
     if (!isGst) return;
@@ -290,6 +321,94 @@ export function ServiceApplicationForm({
     };
     localStorage.setItem("gst_apply_draft", JSON.stringify(dataToSave));
   }, [isGst, applicantName, applicantMobile, applicantEmail, applicantCity, applicantAddress, applicantMessage, gstBusinessName, gstPanNumber, gstBusinessType, gstSchemeType, gstPincode, gstState]);
+
+  // Save/load draft from localStorage for ITR auto-save and draft recovery
+  useEffect(() => {
+    if (!isItr) return;
+    const saved = localStorage.getItem("itr_apply_draft");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        let loadedAny = false;
+        if (parsed.name) { setApplicantName(parsed.name); loadedAny = true; }
+        if (parsed.mobile) setApplicantMobile(parsed.mobile);
+        if (parsed.email) setApplicantEmail(parsed.email);
+        if (parsed.city) setApplicantCity(parsed.city);
+        if (parsed.address) setApplicantAddress(parsed.address);
+        if (parsed.message) setApplicantMessage(parsed.message);
+        if (parsed.panNumber) setItrPanNumber(parsed.panNumber);
+        if (parsed.aadhaarNumber) setItrAadhaarNumber(parsed.aadhaarNumber);
+        if (parsed.salaryIncome) setItrSalaryIncome(parsed.salaryIncome);
+        if (parsed.businessIncome) setItrBusinessIncome(parsed.businessIncome);
+        if (parsed.capGains) setItrCapGains(parsed.capGains);
+        if (parsed.rentIncome) setItrRentIncome(parsed.rentIncome);
+        if (parsed.otherIncome) setItrOtherIncome(parsed.otherIncome);
+        if (parsed.deductions80C) setItr80C(parsed.deductions80C);
+        if (parsed.deductions80D) setItr80D(parsed.deductions80D);
+        if (parsed.hraExempt) setItrHra(parsed.hraExempt);
+        if (parsed.otherDeductions) setItrOtherDeductions(parsed.otherDeductions);
+        
+        if (loadedAny) {
+          setShowResumeAlert(true);
+        }
+      } catch (e) {
+        console.error("Failed to parse ITR draft", e);
+      }
+    }
+  }, [isItr]);
+
+  useEffect(() => {
+    if (!isItr) return;
+    const dataToSave = {
+      name: applicantName,
+      mobile: applicantMobile,
+      email: applicantEmail,
+      city: applicantCity,
+      address: applicantAddress,
+      message: applicantMessage,
+      panNumber: itrPanNumber,
+      aadhaarNumber: itrAadhaarNumber,
+      salaryIncome: itrSalaryIncome,
+      businessIncome: itrBusinessIncome,
+      capGains: itrCapGains,
+      rentIncome: itrRentIncome,
+      otherIncome: itrOtherIncome,
+      deductions80C: itr80C,
+      deductions80D: itr80D,
+      hraExempt: itrHra,
+      otherDeductions: itrOtherDeductions,
+    };
+    localStorage.setItem("itr_apply_draft", JSON.stringify(dataToSave));
+  }, [isItr, applicantName, applicantMobile, applicantEmail, applicantCity, applicantAddress, applicantMessage, itrPanNumber, itrAadhaarNumber, itrSalaryIncome, itrBusinessIncome, itrCapGains, itrRentIncome, itrOtherIncome, itr80C, itr80D, itrHra, itrOtherDeductions]);
+
+  // File upload change handler for ITR
+  const handleItrFileChange = (slot: keyof typeof itrFiles, file: File | null) => {
+    if (file) {
+      const err = validateFile(file, file.name);
+      if (err) {
+        toastError(err);
+        return;
+      }
+
+      setUploadProgress(prev => ({ ...prev, [slot]: 0 }));
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        setUploadProgress(prev => ({ ...prev, [slot]: progress }));
+        if (progress >= 100) {
+          clearInterval(interval);
+          setItrFiles((current) => ({ ...current, [slot]: file }));
+        }
+      }, 80);
+    } else {
+      setItrFiles((current) => ({ ...current, [slot]: null }));
+      setUploadProgress(prev => {
+        const next = { ...prev };
+        delete next[slot];
+        return next;
+      });
+    }
+  };
 
   // Pincode lookup for GST
   useEffect(() => {
@@ -446,9 +565,9 @@ export function ServiceApplicationForm({
       ),
     [applicantAddress, applicantCity, applicantEmail, applicantMessage, applicantMobile, applicantName, eshramValues, isEshram, isPmVishwakarma, pmVishwakarmaValues, pvcCardValues, isPvcCard, isCmYuva, cmYuvaValues],
   );
-  const serviceDetailsForPayment = useMemo(
+  const serviceDetailsForPayment: Record<string, string> = useMemo(
     () => {
-      const baseDetails = isPmVishwakarma
+      const baseDetails: Record<string, string> = isPmVishwakarma
         ? buildPmVishwakarmaDetails(pmVishwakarmaValues)
         : isEshram
           ? buildEshramDetails(eshramValues)
@@ -465,7 +584,21 @@ export function ServiceApplicationForm({
                     pincode: gstPincode,
                     state: gstState,
                   }
-                : normalizedApplicationDraft.details;
+                : isItr
+                  ? {
+                      panNumber: itrPanNumber,
+                      aadhaarNumber: itrAadhaarNumber,
+                      salaryIncome: itrSalaryIncome,
+                      businessIncome: itrBusinessIncome,
+                      capitalGains: itrCapGains,
+                      rentIncome: itrRentIncome,
+                      otherIncome: itrOtherIncome,
+                      deductions80C: itr80C,
+                      deductions80D: itr80D,
+                      hraExempt: itrHra,
+                      otherDeductions: itrOtherDeductions,
+                    }
+                  : (normalizedApplicationDraft.details || {});
 
       if (isCibil) {
         return {
@@ -476,18 +609,19 @@ export function ServiceApplicationForm({
       }
       return baseDetails;
     },
-    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues, isCibil, selectedServices, totalAmount, isGst, gstBusinessName, gstPanNumber, gstBusinessType, gstSchemeType, gstPincode, gstState],
+    [eshramValues, isEshram, isPmVishwakarma, isPvcCard, pvcCardValues, isCmYuva, cmYuvaValues, normalizedApplicationDraft.details, pmVishwakarmaValues, isCibil, selectedServices, totalAmount, isGst, gstBusinessName, gstPanNumber, gstBusinessType, gstSchemeType, gstPincode, gstState, isItr, itrPanNumber, itrAadhaarNumber, itrSalaryIncome, itrBusinessIncome, itrCapGains, itrRentIncome, itrOtherIncome, itr80C, itr80D, itrHra, itrOtherDeductions],
   );
   const canStartPayment =
     !isSubmitting &&
-    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard || isCmYuva || isGst }) &&
+    !getApplicantValidationError(normalizedApplicationDraft, { emailOptional: isPmVishwakarma || isEshram || isPvcCard || isCmYuva || isGst || isItr }) &&
     /^[6-9]\d{9}$/.test(normalizedApplicationDraft.customer.mobile) &&
-    (selectedDocuments.length > 0 || isEshram || isCmYuva || isGst) &&
+    (selectedDocuments.length > 0 || isEshram || isCmYuva || isGst || isItr) &&
     (!isPmVishwakarma || isPmVishwakarmaComplete(pmVishwakarmaValues)) &&
     (!isEshram || isEshramComplete(eshramValues)) &&
     (!isPvcCard || isPvcCardComplete(pvcCardValues, selectedDocuments)) &&
     (!isCmYuva || isCmYuvaComplete(cmYuvaValues, cmYuvaFiles)) &&
-    (!isGst || (gstFiles.pan !== null && gstFiles.aadhaar !== null));
+    (!isGst || (gstFiles.pan !== null && gstFiles.aadhaar !== null)) &&
+    (!isItr || (itrPanNumber.length === 10 && itrAadhaarNumber.length === 12));
 
   useEffect(() => {
     setRazorpayPayment(null);
@@ -581,7 +715,7 @@ export function ServiceApplicationForm({
       return;
     }
 
-    if (!selectedDocuments.length && !isEshram && !isCmYuva && !isGst) {
+    if (!selectedDocuments.length && !isEshram && !isCmYuva && !isGst && !isItr) {
       toastError("Please upload Aadhaar / Documents.");
       return;
     }
@@ -591,13 +725,23 @@ export function ServiceApplicationForm({
       return;
     }
 
+    if (isItr && (!itrPanNumber || !itrAadhaarNumber)) {
+      toastError("Please enter both PAN and Aadhaar card numbers.");
+      return;
+    }
+
+    if (isItr && Object.values(itrFiles).filter(Boolean).length === 0) {
+      toastError("Please upload at least one tax document (Form 16, AIS, or Bank Statement).");
+      return;
+    }
+
     const submittedDraft = buildNormalizedApplicationDraft({
-      name: isGst ? applicantName : String(formData.get("name") ?? ""),
-      mobile: isGst ? applicantMobile : String(formData.get("mobile") ?? ""),
-      email: isGst ? applicantEmail : String(formData.get("email") ?? ""),
-      city: isGst ? applicantCity : String(formData.get("city") ?? ""),
-      address: isGst ? applicantAddress : String(formData.get("address") ?? ""),
-      message: isGst ? applicantMessage : String(formData.get("message") ?? ""),
+      name: (isGst || isItr) ? applicantName : String(formData.get("name") ?? ""),
+      mobile: (isGst || isItr) ? applicantMobile : String(formData.get("mobile") ?? ""),
+      email: (isGst || isItr) ? applicantEmail : String(formData.get("email") ?? ""),
+      city: (isGst || isItr) ? applicantCity : String(formData.get("city") ?? ""),
+      address: (isGst || isItr) ? applicantAddress : String(formData.get("address") ?? ""),
+      message: (isGst || isItr) ? applicantMessage : String(formData.get("message") ?? ""),
     });
     const submittedPmVishwakarmaValues = createPmVishwakarmaInitialValues({
       name: submittedDraft.customer.name,
@@ -711,6 +855,8 @@ export function ServiceApplicationForm({
 
     const filesToValidate = isCmYuva
       ? ([cmYuvaFiles.pan, cmYuvaFiles.aadhaar, cmYuvaFiles.bankPassbook, cmYuvaFiles.marksheet].filter(Boolean) as File[])
+      : isItr
+      ? (Object.values(itrFiles).filter(Boolean) as File[])
       : selectedDocuments;
 
     for (const file of filesToValidate) {
@@ -806,15 +952,31 @@ export function ServiceApplicationForm({
           ].filter((item): item is { file: File; type: string } => item.file !== null)
         : [];
 
+      const itrDocList = isItr
+        ? [
+            { file: itrFiles.form16, type: "Form 16" },
+            { file: itrFiles.ais, type: "AIS Statement" },
+            { file: itrFiles.form26as, type: "26AS statement" },
+            { file: itrFiles.bankStatements, type: "Bank Statements" },
+            { file: itrFiles.capGains, type: "Capital Gain Reports" },
+            { file: itrFiles.businessBooks, type: "Business Books" },
+            { file: itrFiles.interestCert, type: "Interest Certificates" },
+          ].filter((item): item is { file: File; type: string } => item.file !== null)
+        : [];
+
       const uploadFiles = isCmYuva
         ? cmYuvaDocList.map((item) => item.file)
         : isGst
         ? gstDocList.map((item) => item.file)
+        : isItr
+        ? itrDocList.map((item) => item.file)
         : selectedDocuments;
       const documentTypes = isCmYuva
         ? cmYuvaDocList.map((item) => item.type)
         : isGst
         ? gstDocList.map((item) => item.type)
+        : isItr
+        ? itrDocList.map((item) => item.type)
         : isPvcCard
           ? ["Front Side Image", "Back Side Image"].slice(0, selectedDocuments.length)
           : selectedDocuments.map((_, index) => (index === 0 ? "Aadhaar / Document Proof" : "Additional Document"));
@@ -844,6 +1006,19 @@ export function ServiceApplicationForm({
             schemeType: gstSchemeType,
             pincode: gstPincode,
             state: gstState,
+          } : {}),
+          ...(isItr ? {
+            panNumber: itrPanNumber,
+            aadhaarNumber: itrAadhaarNumber,
+            salaryIncome: itrSalaryIncome,
+            businessIncome: itrBusinessIncome,
+            capitalGains: itrCapGains,
+            rentIncome: itrRentIncome,
+            otherIncome: itrOtherIncome,
+            deductions80C: itr80C,
+            deductions80D: itr80D,
+            hraExempt: itrHra,
+            otherDeductions: itrOtherDeductions,
           } : {}),
           ...(isCibil ? {
             selectedPlan: selectedServices[0]?.title || "Premium CIBIL Analysis & Consultation",
@@ -1598,6 +1773,713 @@ export function ServiceApplicationForm({
               </div>
               <p className="text-[10px] leading-relaxed text-slate-500 font-medium">
                 Our network of certified corporate Chartered Accountants will review your paperwork beforehand to guarantee a query-free submission.
+              </p>
+            </Card>
+
+          </div>
+
+        </fieldset>
+      </form>
+    );
+  }
+
+  if (isItr) {
+    const handleItrNext = () => {
+      if (itrStep === 1) {
+        if (!applicantName.trim()) {
+          toastError("Please enter your name.");
+          return;
+        }
+        if (!applicantMobile.trim() || !/^[6-9]\d{9}$/.test(applicantMobile)) {
+          toastError("Please enter a valid 10-digit mobile number.");
+          return;
+        }
+        if (!applicantEmail.trim() || !applicantEmail.includes("@")) {
+          toastError("Please enter a valid email address.");
+          return;
+        }
+        if (!applicantCity.trim()) {
+          toastError("Please enter your city.");
+          return;
+        }
+        if (!itrPanNumber.trim() || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(itrPanNumber.toUpperCase())) {
+          toastError("Please enter a valid 10-digit PAN number.");
+          return;
+        }
+        if (!itrAadhaarNumber.trim() || !/^[0-9]{12}$/.test(itrAadhaarNumber)) {
+          toastError("Please enter a valid 12-digit Aadhaar number.");
+          return;
+        }
+      } else if (itrStep === 4) {
+        if (Object.values(itrFiles).filter(Boolean).length === 0) {
+          toastError("Please upload at least one tax document (Form 16, AIS, or Bank Statement) to proceed.");
+          return;
+        }
+      }
+      setItrStep((s) => s + 1);
+    };
+
+    return (
+      <form onSubmit={onSubmit} className="grid gap-6 pb-6 lg:grid-cols-[1fr_340px] w-full" aria-busy={isSubmitting}>
+        <fieldset disabled={isSubmitting} className="contents">
+          
+          {/* Hidden inputs to feed standard FormData */}
+          <input type="hidden" name="name" value={applicantName} />
+          <input type="hidden" name="mobile" value={applicantMobile} />
+          <input type="hidden" name="email" value={applicantEmail} />
+          <input type="hidden" name="city" value={applicantCity} />
+          <input type="hidden" name="address" value={applicantAddress} />
+          <input type="hidden" name="message" value={applicantMessage} />
+          <input type="hidden" name="panNumber" value={itrPanNumber} />
+          <input type="hidden" name="aadhaarNumber" value={itrAadhaarNumber} />
+
+          <Card className="rounded-[36px] border border-blue-150/60 bg-white/95 p-6 md:p-8 shadow-xl relative overflow-hidden backdrop-blur-md">
+            
+            {showResumeAlert && (
+              <div className="mb-6 p-4 rounded-2xl bg-blue-50/50 border border-blue-150/50 flex items-center justify-between text-xs font-semibold text-blue-800 animate-[fadeIn_0.3s_ease-out]">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-black">✓</span>
+                  <span>Resumed tax filing draft from last session. All progress restored.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowResumeAlert(false)}
+                  className="text-blue-700 hover:text-blue-950 font-black text-xs px-2 py-1 bg-white border border-slate-100 rounded-full shadow-sm"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            
+            {/* Stepper Timeline */}
+            <div className="mb-8 border-b border-slate-100 pb-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-4">Assisted ITR Filing Wizard</p>
+              
+              <div className="relative flex items-center justify-between max-w-2xl mx-auto px-2">
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
+                <div 
+                  className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 -translate-y-1/2 z-0 transition-all duration-300" 
+                  style={{ width: `${((itrStep - 1) / 5) * 100}%` }}
+                />
+
+                {[
+                  { step: 1, label: "Personal" },
+                  { step: 2, label: "Income" },
+                  { step: 3, label: "Deductions" },
+                  { step: 4, label: "Documents" },
+                  { step: 5, label: "Review" },
+                  { step: 6, label: "Payment" }
+                ].map((s) => {
+                  const isCompleted = s.step < itrStep;
+                  const isActive = s.step === itrStep;
+                  return (
+                    <div key={s.step} className="flex flex-col items-center relative z-10">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 text-[10px] font-black transition-all ${
+                        isCompleted 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : isActive 
+                          ? "bg-white border-blue-600 text-blue-600 active-glow-ring scale-110 shadow-md shadow-blue-500/10" 
+                          : "bg-white border-slate-200 text-slate-400"
+                      }`}>
+                        {isCompleted ? "✓" : s.step}
+                      </div>
+                      <span className={`text-[9px] font-bold mt-1.5 ${
+                        isActive ? "text-blue-600" : isCompleted ? "text-slate-800" : "text-slate-400"
+                      }`}>
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step Content */}
+            <div className="mt-8">
+              {itrStep === 1 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Personal & Tax Identity</h3>
+                  <p className="text-xs text-slate-400 font-medium">Verify credentials for direct government income tax portal mapping.</p>
+                  
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Full Name (As per PAN)</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={applicantName}
+                        onChange={(e) => setApplicantName(e.target.value)}
+                        placeholder="e.g. Alok Sharma"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Mobile Number (Aadhaar linked)</label>
+                      <input 
+                        type="tel" 
+                        required
+                        pattern="[0-9]{10}"
+                        value={applicantMobile}
+                        onChange={(e) => setApplicantMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="e.g. 9876543210"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Email Address</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={applicantEmail}
+                        onChange={(e) => setApplicantEmail(e.target.value)}
+                        placeholder="e.g. alok@example.com"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">City</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={applicantCity}
+                        onChange={(e) => setApplicantCity(e.target.value)}
+                        placeholder="e.g. Pune"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">PAN Card Number *</label>
+                      <input 
+                        type="text" 
+                        required
+                        maxLength={10}
+                        value={itrPanNumber}
+                        onChange={(e) => setItrPanNumber(e.target.value.toUpperCase())}
+                        placeholder="e.g. ABCDE1234F"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Aadhaar Card Number *</label>
+                      <input 
+                        type="text" 
+                        required
+                        maxLength={12}
+                        value={itrAadhaarNumber}
+                        onChange={(e) => setItrAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                        placeholder="e.g. 123456789012"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {itrStep === 2 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Gross Income Details</h3>
+                  <p className="text-xs text-slate-400 font-medium">Provide approximate values for AY 2026-27 (Enter 0 if not applicable).</p>
+
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Annual Salary Income</label>
+                      <input 
+                        type="number" 
+                        value={itrSalaryIncome}
+                        onChange={(e) => setItrSalaryIncome(e.target.value)}
+                        placeholder="e.g. 750000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Business / Freelance Profits</label>
+                      <input 
+                        type="number" 
+                        value={itrBusinessIncome}
+                        onChange={(e) => setItrBusinessIncome(e.target.value)}
+                        placeholder="e.g. 350500"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Capital Gains (Equity/Property)</label>
+                      <input 
+                        type="number" 
+                        value={itrCapGains}
+                        onChange={(e) => setItrCapGains(e.target.value)}
+                        placeholder="e.g. 50000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">House Property Rent Received</label>
+                      <input 
+                        type="number" 
+                        value={itrRentIncome}
+                        onChange={(e) => setItrRentIncome(e.target.value)}
+                        placeholder="e.g. 120000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[9px] font-black uppercase text-slate-400">Other Sources (Interest / Dividends / Gift)</label>
+                      <input 
+                        type="number" 
+                        value={itrOtherIncome}
+                        onChange={(e) => setItrOtherIncome(e.target.value)}
+                        placeholder="e.g. 25000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {itrStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Deductions Claimed</h3>
+                  <p className="text-xs text-slate-400 font-medium">Declare tax savings for tax optimizations (Enter 0 if none).</p>
+
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Section 80C (EPF/PPF/ELSS/LIC - Max 1.5L)</label>
+                      <input 
+                        type="number" 
+                        value={itr80C}
+                        onChange={(e) => setItr80C(e.target.value)}
+                        placeholder="e.g. 150000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Section 80D (Health Insurance Premium)</label>
+                      <input 
+                        type="number" 
+                        value={itr80D}
+                        onChange={(e) => setItr80D(e.target.value)}
+                        placeholder="e.g. 25000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">HRA Tax Exemption (House Rent Allowance)</label>
+                      <input 
+                        type="number" 
+                        value={itrHra}
+                        onChange={(e) => setItrHra(e.target.value)}
+                        placeholder="e.g. 80000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400">Other Deductions (80G/80E/80TTA)</label>
+                      <input 
+                        type="number" 
+                        value={itrOtherDeductions}
+                        onChange={(e) => setItrOtherDeductions(e.target.value)}
+                        placeholder="e.g. 10000"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {itrStep === 4 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Upload Supporting Documents</h3>
+                  <p className="text-xs text-slate-400 font-medium">Please attach at least one document to assist our Chartered Accountants (Max 5MB each).</p>
+
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    {/* Form 16 slot */}
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Form 16 (Salary Certificate)</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG</p>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleItrFileChange("form16", e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      {uploadProgress.form16 !== undefined && uploadProgress.form16 < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading Form 16... {uploadProgress.form16}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.form16}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {itrFiles.form16 && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{itrFiles.form16.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleItrFileChange("form16", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* AIS Statement slot */}
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">AIS / TIS Statement</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG</p>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleItrFileChange("ais", e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      {uploadProgress.ais !== undefined && uploadProgress.ais < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading AIS... {uploadProgress.ais}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.ais}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {itrFiles.ais && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{itrFiles.ais.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleItrFileChange("ais", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bank Statements slot */}
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Bank Statements (FY 25-26)</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG</p>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleItrFileChange("bankStatements", e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      {uploadProgress.bankStatements !== undefined && uploadProgress.bankStatements < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading Bank... {uploadProgress.bankStatements}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.bankStatements}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {itrFiles.bankStatements && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{itrFiles.bankStatements.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleItrFileChange("bankStatements", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Capital Gains reports slot */}
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Capital Gain Reports (Broker Ledger)</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG</p>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleItrFileChange("capGains", e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      {uploadProgress.capGains !== undefined && uploadProgress.capGains < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading Ledger... {uploadProgress.capGains}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.capGains}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {itrFiles.capGains && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{itrFiles.capGains.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleItrFileChange("capGains", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {itrStep === 5 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Review Declaration Summary</h3>
+                  <p className="text-xs text-slate-400 font-medium">Verify your tax ledger coordinates before routing to payment gateways.</p>
+
+                  <div className="p-4 rounded-3xl border border-slate-100 bg-slate-50/50 space-y-4">
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">Applicant:</span>
+                      <span className="font-black text-slate-900">{applicantName}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">PAN / Aadhaar:</span>
+                      <span className="font-black text-slate-900 font-mono">{itrPanNumber} / {itrAadhaarNumber.slice(0, 4)}...</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">Total Declared Income:</span>
+                      <span className="font-black text-slate-900">
+                        {formatCurrency(
+                          Number(itrSalaryIncome || 0) + 
+                          Number(itrBusinessIncome || 0) + 
+                          Number(itrCapGains || 0) + 
+                          Number(itrRentIncome || 0) + 
+                          Number(itrOtherIncome || 0)
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-slate-500">Total Deductions:</span>
+                      <span className="font-black text-emerald-700">
+                        {formatCurrency(
+                          Number(itr80C || 0) + 
+                          Number(itr80D || 0) + 
+                          Number(itrHra || 0) + 
+                          Number(itrOtherDeductions || 0)
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold border-t border-slate-200/50 pt-3">
+                      <span className="text-slate-500">Attached Certificates:</span>
+                      <span className="font-black text-blue-700">
+                        {Object.values(itrFiles).filter(Boolean).length} Documents
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {itrStep === 6 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-900">Review & Payment</h3>
+                  <p className="text-xs text-slate-400 font-medium">Verify your application ledger and initiate secure payment.</p>
+
+                  <div className="p-4 rounded-3xl border border-slate-100 bg-slate-50/50 space-y-3 text-xs font-semibold">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Filing Plan:</span>
+                      <span className="font-black text-slate-900">{selectedServices[0]?.title}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Service Fee:</span>
+                      <span className="font-black text-slate-900">{formatCurrency(totalAmount)}</span>
+                    </div>
+                    {clampedWalletUseAmount > 0 && (
+                      <div className="flex justify-between items-center text-orange-600">
+                        <span>Wallet Redeemed:</span>
+                        <span>-{formatCurrency(clampedWalletUseAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center border-t border-slate-250 pt-2 font-black text-slate-900 text-sm">
+                      <span>Net Payable:</span>
+                      <span className="text-blue-700">{formatCurrency(realPayableAmount)}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-2">
+                    {realPayableAmount > 0 ? (
+                      <div className="space-y-4">
+                        <RazorpayCheckoutButton
+                          amountPaise={payableAmountPaise}
+                          receipt={paymentReceipt}
+                          serviceSlug={selectedServices[0]?.slug}
+                          serviceSlugs={selectedServices.map((item) => item.slug)}
+                          walletUseAmount={clampedWalletUseAmount}
+                          customer={{
+                            name: normalizedApplicationDraft.customer.name,
+                            email: normalizedApplicationDraft.customer.email,
+                            mobile: normalizedApplicationDraft.customer.mobile,
+                          }}
+                          applicationDraft={{
+                            customer: normalizedApplicationDraft.customer,
+                            details: serviceDetailsForPayment,
+                          }}
+                          description={selectedServices.map((item) => item.title).join(", ")}
+                          disabled={!canStartPayment}
+                          onVerified={(payment) => {
+                            setRazorpayPayment({
+                              ...payment,
+                              amount_paise: payableAmountPaise,
+                            });
+                          }}
+                        />
+
+                        {razorpayPayment && (
+                          <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-xs font-black text-emerald-700">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-650" />
+                            Payment verified: {razorpayPayment.razorpay_payment_id}
+                          </div>
+                        )}
+
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 space-y-2.5">
+                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 text-blue-600">
+                              <Lock className="h-3.5 w-3.5 shrink-0" />
+                              <span>SECURE 256-BIT SSL</span>
+                            </div>
+                            <span className="text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-100">Razorpay Secured</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 leading-normal">
+                            All card details, UPI transactions and netbanking sessions are encrypted and securely authenticated directly via Razorpay.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl bg-emerald-50 px-4 py-3.5 text-xs font-black text-emerald-800 border border-emerald-100 text-center">
+                        🎉 Wallet balance covers 100% of order. Click submit below.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between items-center mt-10 pt-6 border-t border-slate-100/80">
+              <button
+                type="button"
+                disabled={itrStep === 1 || isSubmitting}
+                onClick={() => setItrStep((s) => s - 1)}
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              {itrStep < 6 ? (
+                <button
+                  type="button"
+                  onClick={handleItrNext}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full bg-blue-600 px-6 text-xs font-bold text-white shadow hover:bg-blue-700 transition active:scale-95"
+                >
+                  Next Step
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <FormSubmitButton 
+                  type="submit" 
+                  size="lg" 
+                  loading={isSubmitting} 
+                  loadingText={progressText || "Please wait..."}
+                  disabled={!canStartPayment || (realPayableAmount > 0 && !razorpayPayment)}
+                  className="h-10 rounded-full bg-slate-950 font-black hover:bg-slate-900 text-xs px-6 shadow"
+                >
+                  Submit ITR Application
+                </FormSubmitButton>
+              )}
+            </div>
+
+          </Card>
+
+          {/* Right Summary Column */}
+          <div className="space-y-4">
+            
+            {/* Wallet Deductions Card */}
+            <Card className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
+                  <IndianRupee className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pricing Summary</p>
+                  <p className="text-2xl font-black text-slate-900 mt-0.5">{formatCurrency(totalAmount)}</p>
+                  {clampedWalletUseAmount > 0 && (
+                    <p className="text-[10px] font-bold text-blue-700 mt-0.5">Net Payable: {formatCurrency(realPayableAmount)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Wallet Redeem Input (if balance exists) */}
+              {wallet.balance > 0 && (
+                <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-2.5">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-slate-500">Available Wallet Balance</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(wallet.balance)}</span>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400">Redeem Credits (Max: {formatCurrency(wallet.maxUsable)})</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={wallet.maxUsable}
+                      value={walletUseAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.round(Number(e.target.value || 0)));
+                        if (val > wallet.maxUsable) {
+                          setWalletUseAmount(wallet.maxUsable);
+                          toastError(walletLimitMessage);
+                          return;
+                        }
+                        setWalletUseAmount(val);
+                      }}
+                      className="mt-1 block w-full glass-input-premium bg-white/70 py-2.5 px-3.5 text-xs font-semibold focus:bg-white transition"
+                      placeholder="Redemption sum"
+                    />
+                  </div>
+                  {clampedWalletUseAmount > 0 && (
+                    <p className="text-[10px] font-black text-emerald-700">{formatCurrency(clampedWalletUseAmount)} deduction applied.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Ledger Breakdown details */}
+              <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-2 text-xs font-semibold text-slate-700">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Service Fee</span>
+                  <span>{formatCurrency(totalAmount)}</span>
+                </div>
+                {clampedWalletUseAmount > 0 && (
+                  <div className="flex justify-between text-orange-600">
+                    <span>Credits Redeemed</span>
+                    <span>-{formatCurrency(clampedWalletUseAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-slate-100 pt-2 font-black text-slate-900 text-xs">
+                  <span>Net Payable</span>
+                  <span className="text-blue-700">{formatCurrency(realPayableAmount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-dashed border-slate-100 pt-2 text-[10px] text-slate-400 font-bold">
+                  <span>Expected Cashback</span>
+                  <span className="text-emerald-600">{formatCurrency(expectedCashback)}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Trust badge */}
+            <Card className="rounded-3xl border border-blue-50/50 bg-blue-50/10 p-5 shadow-sm space-y-3.5">
+              <div className="flex items-center gap-2.5">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <h4 className="text-xs font-black text-slate-900">CA Audit Protection</h4>
+              </div>
+              <p className="text-[10px] leading-relaxed text-slate-500 font-medium">
+                Our network of certified corporate Chartered Accountants will review your tax filing details to guarantee a query-free submission and secure maximum refund.
               </p>
             </Card>
 

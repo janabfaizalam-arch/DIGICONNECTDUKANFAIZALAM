@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         if (existingLead.notes) {
           parsedNotes = JSON.parse(existingLead.notes);
         }
-      } catch (e) {
+      } catch {
         // If not JSON, treat it as raw notes string
       }
 

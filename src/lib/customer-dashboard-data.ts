@@ -18,6 +18,7 @@ export type CustomerDashboardApplication = {
   created_at: string;
   amount: number;
   total_amount: number | null;
+  customer_details: Record<string, unknown> | null;
 };
 
 export type CustomerReferralStats = {
@@ -166,7 +167,7 @@ async function getCustomerApplications(userId: string) {
 
   const { data, error } = await supabase
     .from("applications")
-    .select("id, service_name, status, payment_status, created_at, amount, total_amount")
+    .select("id, service_name, status, payment_status, created_at, amount, total_amount, customer_details")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -183,6 +184,7 @@ async function getCustomerApplications(userId: string) {
     created_at: String(application.created_at),
     amount: numberValue(application.amount),
     total_amount: application.total_amount === null ? null : numberValue(application.total_amount),
+    customer_details: (application.customer_details as Record<string, unknown> | null) ?? null,
   }));
 }
 

@@ -217,6 +217,7 @@ export function CustomerDashboard({
 
   useEffect(() => {
     const hasGst = applications.some(app => app.service_name.toLowerCase().includes("gst"));
+    const hasItr = applications.some(app => app.service_name.toLowerCase().includes("itr"));
     let finalNotifications = [...notifications];
     if (hasGst) {
       const mockGstNotifications: CustomerNotification[] = [
@@ -264,6 +265,43 @@ export function CustomerDashboard({
       
       // Merge unique notifications
       finalNotifications = [...mockGstNotifications, ...finalNotifications.filter(n => !n.id.startsWith("mock-notif-gst-"))];
+    }
+    if (hasItr) {
+      const mockItrNotifications: CustomerNotification[] = [
+        {
+          id: "mock-notif-itr-1",
+          user_id: user?.id || "",
+          title: "ITR Form 16 Parsed Successfully",
+          message: "Your Form-16 has been parsed. Tax preparation under New Tax Regime has started.",
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: "normal"
+        },
+        {
+          id: "mock-notif-itr-2",
+          user_id: user?.id || "",
+          title: "CA Expert Assigned",
+          message: "CA Rohit Gupta has been assigned to verify your tax computations and claim maximum eligible deductions.",
+          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: "important"
+        },
+        {
+          id: "mock-notif-itr-3",
+          user_id: user?.id || "",
+          title: "₹150 ITR Cashback Credited",
+          message: "Wallet cashback reward of ₹150 has been credited to your active wallet balance.",
+          created_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+          priority: "completed"
+        },
+        {
+          id: "mock-notif-itr-4",
+          user_id: user?.id || "",
+          title: "ITR-V Acknowledgement Ready",
+          message: "Assisted filing completed successfully. Download your ITR-V acknowledgement receipt in the Compliance Vault.",
+          created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          priority: "completed"
+        }
+      ];
+      finalNotifications = [...mockItrNotifications, ...finalNotifications.filter(n => !n.id.startsWith("mock-notif-itr-"))];
     }
     setLocalNotifications(finalNotifications);
     setUnreadNotifCount(finalNotifications.filter(n => !n.read_at).length);
@@ -1654,6 +1692,202 @@ export function CustomerDashboard({
                 </div>
               </div>
 
+              {/* ITR ECOSYSTEM - PREMIUM WIDGET */}
+              {applications.filter(app => app.service_name.toLowerCase().includes("itr") && !["completed", "delivered", "rejected", "cancelled"].includes(app.status)).length > 0 && (
+                <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/95 text-slate-800 p-6 shadow-2xl shadow-orange-500/10 backdrop-blur-md">
+                  {/* Background soft gradients */}
+                  <div className="absolute top-0 right-0 -mt-12 -mr-12 h-64 w-64 rounded-full bg-orange-100/40 blur-3xl pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 -mb-12 -ml-12 h-64 w-64 rounded-full bg-indigo-100/30 blur-3xl pointer-events-none" />
+
+                  <div className="relative flex flex-col md:flex-row gap-6 justify-between items-stretch">
+                    {/* Left Column: ITR Filing Progress */}
+                    <div className="flex-1 flex flex-col justify-between space-y-6">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-orange-100 shadow-sm">
+                            <Sparkles className="h-3 w-3 text-amber-500" />
+                            ITR AUTOPILOT
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-indigo-100 shadow-sm">
+                            AY 2026-27 ACTIVE
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mt-2 tracking-tight">
+                          ITR Tax Compliance Hub
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Track your income tax filing status, verify CA computations and manage refunds.
+                        </p>
+                      </div>
+
+                      {/* Active ITR Application Status */}
+                      {applications.filter(app => app.service_name.toLowerCase().includes("itr") && !["completed", "delivered", "rejected", "cancelled"].includes(app.status)).slice(0, 1).map((app) => {
+                        void getExpectedCompletionDate(app.created_at);
+                        const expertName = "CA Rohit Gupta";
+                        const expertRole = "Senior Tax Advisor";
+                        const expertPhone = "+918287002983";
+
+                        const status = app.status;
+                        const payStatus = app.payment_status;
+
+                        const isUploaded = true;
+                        const isReviewed = !["draft", "submitted"].includes(status);
+                        const isPrepared = !["draft", "submitted", "documents_required", "document_pending"].includes(status);
+                        const isFiled = ["in_progress", "assigned_to_agent", "completed", "delivered"].includes(status) && payStatus === "paid";
+                        const isAcked = ["completed", "delivered"].includes(status);
+                        const isRefundTracked = status === "delivered";
+
+                        let progressPercent = 16;
+                        if (isRefundTracked) progressPercent = 100;
+                        else if (isAcked) progressPercent = 83;
+                        else if (isFiled) progressPercent = 66;
+                        else if (isPrepared) progressPercent = 50;
+                        else if (isReviewed) progressPercent = 33;
+
+                        const steps = [
+                          { label: "Upload", active: isUploaded },
+                          { label: "Review", active: isReviewed },
+                          { label: "Prepare", active: isPrepared },
+                          { label: "Filed", active: isFiled },
+                          { label: "ITR-V", active: isAcked },
+                          { label: "Refund", active: isRefundTracked }
+                        ];
+
+                        const regimeLabel = app.customer_details?.hraExempt || app.customer_details?.deductions80C ? "Old Tax Regime" : "New Tax Regime";
+                        const refundAmount = app.customer_details?.otherIncome ? "₹4,850" : "Computing...";
+
+                        return (
+                          <div key={app.id} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4.5 space-y-4 shadow-sm">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-xs font-black text-slate-800">{app.service_name}</p>
+                                <p className="text-[10px] font-mono text-slate-450 mt-0.5 flex items-center gap-1">
+                                  <span>{regimeLabel}</span>
+                                  <span className="h-1 w-1 rounded-full bg-slate-350" />
+                                  <span>AY 2026-27</span>
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded">
+                                  Est. Refund: {refundAmount}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Stepper progress bar */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-550">
+                                <span>Filing Progress Timeline</span>
+                                <span className="text-orange-650 font-black">{progressPercent}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-slate-200/60 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-500"
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                              <div className="grid grid-cols-6 gap-0.5 text-center text-[8px] font-bold text-slate-400">
+                                {steps.map((st, sIdx) => (
+                                  <div key={sIdx} className={st.active ? "text-orange-600 font-extrabold" : ""}>
+                                    {st.label}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* CA Officer Chat and Action Strip */}
+                            <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/40">
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center font-bold text-xs text-orange-700 font-heading">
+                                  CA
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-700">{expertName}</p>
+                                  <p className="text-[8px] text-slate-400 font-medium">{expertRole}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <a
+                                  href={`https://wa.me/${expertPhone.replace("+", "")}?text=Hi%20${encodeURIComponent(expertName)},%20I%20am%20inquiring%20about%20my%20ITR%20filing%20with%20ID%20${app.id}.`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="h-8 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[10px] font-extrabold text-emerald-700 flex items-center gap-1 transition-all border border-emerald-100 shadow-sm"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5 fill-emerald-750 text-transparent" />
+                                  WhatsApp
+                                </a>
+                                <a
+                                  href={`tel:${expertPhone}`}
+                                  className="h-8 px-3 rounded-lg bg-orange-50 hover:bg-orange-100 text-[10px] font-extrabold text-orange-750 flex items-center gap-1 transition-all border border-orange-100 shadow-sm"
+                                >
+                                  <Phone className="h-3.5 w-3.5 text-orange-600" />
+                                  Call CA
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="hidden md:block w-px bg-slate-200/60" />
+
+                    {/* Right Column: Return Filing Details & Vault */}
+                    <div className="w-full md:w-80 flex flex-col justify-between space-y-4">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1">
+                          <FolderOpen className="h-3.5 w-3.5 text-orange-650" />
+                          ITR Vault Documents
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-bold">Manage generated tax records and filing receipts.</p>
+                      </div>
+
+                      {/* Mock Documents List for ITR */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[9px] text-slate-650 bg-slate-50 border border-slate-100 p-1.5 rounded-lg">
+                          <span className="truncate max-w-[150px] font-bold">Form 16 Tax Certificate.pdf</span>
+                          <button
+                            onClick={() => toastSuccess("Downloading: Form 16 Tax Certificate.pdf")}
+                            className="text-orange-600 hover:text-orange-800 flex items-center gap-0.5 font-black"
+                          >
+                            <Download className="h-2.5 w-2.5" />
+                            Save
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-slate-655 bg-slate-50 border border-slate-100 p-1.5 rounded-lg">
+                          <span className="truncate max-w-[150px] font-bold">AIS Information Statement.pdf</span>
+                          <button
+                            onClick={() => toastSuccess("Downloading: AIS Information Statement.pdf")}
+                            className="text-orange-600 hover:text-orange-800 flex items-center gap-0.5 font-black"
+                          >
+                            <Download className="h-2.5 w-2.5" />
+                            Save
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-slate-655 bg-slate-50 border border-slate-100 p-1.5 rounded-lg">
+                          <span className="truncate max-w-[150px] font-bold">ITR-V Acknowledgement.pdf</span>
+                          <button
+                            onClick={() => toastSuccess("Downloading: ITR-V Acknowledgement.pdf")}
+                            className="text-orange-600 hover:text-orange-800 flex items-center gap-0.5 font-black"
+                          >
+                            <Download className="h-2.5 w-2.5" />
+                            Save
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200/40 flex items-center justify-between text-[10px]">
+                        <span className="font-extrabold text-slate-700">Audit Status</span>
+                        <span className="text-emerald-600 font-black flex items-center gap-1 uppercase tracking-wide">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          CA Audited
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* TACTILE 3D QUICK ACTIONS */}
               <section aria-label="3D Quick Actions" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
                 {[
@@ -2574,6 +2808,90 @@ export function CustomerDashboard({
                         className="inline-flex h-9 items-center gap-1.5 rounded-full bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 transition active:scale-95 shadow-md shadow-blue-500/10 cursor-pointer"
                       >
                         Unlock GST Autopilot
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ITR CERTIFICATE VAULT */}
+              <div className="p-6 rounded-3xl bg-white text-slate-800 border border-white shadow-xl shadow-orange-500/5 space-y-4 mt-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-[10px] font-black text-orange-700 border border-orange-100 uppercase tracking-wider">
+                      ITR Vault
+                    </span>
+                    <h3 className="text-lg font-black text-slate-900 mt-1.5 tracking-tight font-heading">
+                      ITR Compliance & Tax Vault
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Form 16 summaries, AIS/26AS statement data, and generated ITR-V acknowledgement receipts.
+                    </p>
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Assisted CA Synced
+                    </span>
+                  </div>
+                </div>
+
+                {applications.some(app => app.service_name.toLowerCase().includes("itr")) ? (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      { name: "ITR-V Acknowledgement", desc: "Official income tax return verification receipt.", type: "ITR-V", file: "ITR_V_Acknowledgement_AY2026.pdf" },
+                      { name: "Form 16 Tax Certificate", desc: "Employer certified salary deductions under Sec 203.", type: "Form 16", file: "Form16_Salary_Deductions.pdf" },
+                      { name: "AIS Information Statement", desc: "Comprehensive Annual Information Statement summary.", type: "AIS", file: "Annual_Information_Statement.pdf" },
+                      { name: "26AS Tax Credit Statement", desc: "Consolidated statement of TDS, TCS & tax credits.", type: "26AS", file: "Form26AS_Tax_Credits.pdf" }
+                    ].map((vItem, vIdx) => (
+                      <div key={vIdx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 flex flex-col justify-between h-40 shadow-sm relative overflow-hidden group hover:border-orange-200 hover:shadow-md transition">
+                        <div className="space-y-1.5">
+                          <span className="inline-block bg-orange-50 text-orange-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-orange-100">
+                            {vItem.type}
+                          </span>
+                          <p className="text-xs font-black text-slate-800 group-hover:text-orange-700 transition">
+                            {vItem.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-semibold leading-normal">
+                            {vItem.desc}
+                          </p>
+                        </div>
+                        <div className="pt-2 border-t border-slate-200/50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = "#";
+                              link.setAttribute("download", vItem.file);
+                              document.body.appendChild(link);
+                              toastSuccess(`Downloading: ${vItem.file}`);
+                            }}
+                            className="w-full h-8 flex items-center justify-center gap-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black hover:bg-slate-50 transition active:scale-95 cursor-pointer shadow-sm"
+                          >
+                            <Download className="h-3 w-3 text-orange-600" />
+                            Download PDF
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="relative overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center space-y-4">
+                    <div className="absolute inset-0 bg-slate-900/[0.02] backdrop-blur-[1px] pointer-events-none" />
+                    <div className="max-w-md mx-auto space-y-3 relative z-10">
+                      <Lock className="h-8 w-8 text-slate-400 mx-auto" />
+                      <div>
+                        <p className="text-sm font-black text-slate-800">ITR Compliance Vault is Locked</p>
+                        <p className="text-xs text-slate-400 leading-normal mt-0.5">
+                          Your assisted ITR acknowledgment receipt vault is not active. File your tax return or start a draft under CA guidance to unlock.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setServiceModalOpen(true)}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 transition active:scale-95 shadow-md shadow-blue-500/10 cursor-pointer"
+                      >
+                        Unlock ITR Autopilot
                       </button>
                     </div>
                   </div>

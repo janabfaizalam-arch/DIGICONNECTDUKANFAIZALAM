@@ -7,10 +7,8 @@ import useEmblaCarousel from "embla-carousel-react";
 import {
   Sparkles,
   Shield,
-  Phone,
   ArrowRight,
   MessageCircle,
-  AlertTriangle,
   Calculator,
   FileText,
   Check,
@@ -20,14 +18,10 @@ import {
   Gift,
   Search,
   Award,
-  Lock,
   Copy,
-  ExternalLink,
   CheckCircle2,
-  Calendar,
   Building2,
   Users,
-  Building,
   User,
   ArrowUpRight,
   ShoppingBag,
@@ -75,15 +69,16 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export function GstRegistrationClient({
   isLoggedIn: initialIsLoggedIn,
-  faqs: initialFaqs
+  faqs: _initialFaqs
 }: {
   isLoggedIn: boolean;
   faqs: FAQ[];
 }) {
+  void _initialFaqs;
   const { success, error: toastError } = useToast();
 
   // SWR Caching Hook for backend data
-  const { data: profileData, mutate: mutateProfile } = useSWR("/api/customer/profile", fetcher, {
+  const { data: profileData } = useSWR("/api/customer/profile", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });

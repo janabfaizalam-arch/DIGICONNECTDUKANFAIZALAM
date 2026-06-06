@@ -359,7 +359,7 @@ export async function hydrateApplications(applications: Application[]) {
  */
 export async function trackCrmEvent(
   event: "page_visit" | "calculator_usage" | "expert_talk_click" | "apply_click" | "application_started" | "payment_success",
-  service: "gst-registration" | "gst-return-filing",
+  service: "gst-registration" | "gst-return-filing" | "itr-filing",
   customMobile?: string,
   customName?: string
 ) {
@@ -367,9 +367,11 @@ export async function trackCrmEvent(
     let mobile = customMobile || "";
     let name = customName || "";
 
-    // 1. If not provided, try to read from GST Apply draft local storage
+    // 1. If not provided, try to read from Apply draft local storage
     if (typeof window !== "undefined") {
-      const draft = localStorage.getItem("gst_apply_draft");
+      const gstDraft = localStorage.getItem("gst_apply_draft");
+      const itrDraft = localStorage.getItem("itr_apply_draft");
+      const draft = gstDraft || itrDraft;
       if (draft) {
         try {
           const parsed = JSON.parse(draft);

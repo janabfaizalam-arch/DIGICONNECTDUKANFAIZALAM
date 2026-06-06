@@ -5,25 +5,18 @@ import Link from "next/link";
 import useSWR from "swr";
 import {
   Sparkles,
-  Phone,
   ArrowRight,
   MessageCircle,
   AlertTriangle,
   Check,
   X,
-  TrendingUp,
   ChevronDown,
   Gift,
-  Clock,
   CheckSquare,
   Search,
   Award,
-  Lock,
   Copy,
   Calculator,
-  Calendar,
-  Shield,
-  FileText,
   CheckCircle2,
   Users
 } from "lucide-react";
@@ -64,11 +57,12 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export function GstReturnFilingClient({
   isLoggedIn: initialIsLoggedIn,
-  faqs: initialFaqs
+  faqs: _initialFaqs
 }: {
   isLoggedIn: boolean;
   faqs: FAQ[];
 }) {
+  void _initialFaqs;
   const { success, error: toastError } = useToast();
   
   // SWR Hook for profile details
@@ -83,7 +77,7 @@ export function GstReturnFilingClient({
   const referralLink = profileData?.wallet?.referralLink ?? "";
 
   // Active Return Filing App lookup
-  const activeGstApp = profileData?.activeApplications?.find(
+  void profileData?.activeApplications?.find(
     (app: { serviceSlug?: string; serviceName?: string }) => app.serviceSlug === "gst-return-filing" || app.serviceName?.toLowerCase().includes("gst return")
   );
 
@@ -95,8 +89,8 @@ export function GstReturnFilingClient({
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Calculator State
-  const [calcAmount, setCalcAmount] = useState<string>("20000");
-  const [gstType, setGstType] = useState<"exclusive" | "inclusive">("exclusive");
+  const [calcAmount] = useState<string>("20000");
+  const [gstType] = useState<"exclusive" | "inclusive">("exclusive");
 
   // Comparison row highlight state
   const [hoveredCompareRow, setHoveredCompareRow] = useState<number | null>(null);
@@ -345,10 +339,10 @@ export function GstReturnFilingClient({
     }
   };
 
-  const gst5 = computeGst(5);
-  const gst12 = computeGst(12);
-  const gst18 = computeGst(18);
-  const gst28 = computeGst(28);
+  void computeGst(5);
+  void computeGst(12);
+  void computeGst(18);
+  void computeGst(28);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat("en-IN", {
