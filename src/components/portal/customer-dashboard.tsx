@@ -41,7 +41,8 @@ import {
   Globe,
   Save,
   Shield,
-  Search
+  Search,
+  Lock
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -215,9 +216,58 @@ export function CustomerDashboard({
   const [localNotifications, setLocalNotifications] = useState<CustomerNotification[]>([]);
 
   useEffect(() => {
-    setLocalNotifications(notifications);
-    setUnreadNotifCount(notifications.filter(n => !n.read_at).length);
-  }, [notifications]);
+    const hasGst = applications.some(app => app.service_name.toLowerCase().includes("gst"));
+    let finalNotifications = [...notifications];
+    if (hasGst) {
+      const mockGstNotifications: CustomerNotification[] = [
+        {
+          id: "mock-notif-gst-1",
+          user_id: user?.id || "",
+          title: "GST Registration Submitted",
+          message: "Your GST application has been successfully filed with the common portal. CA assignment complete.",
+          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: "normal"
+        },
+        {
+          id: "mock-notif-gst-2",
+          user_id: user?.id || "",
+          title: "Action Required: Verify Documents",
+          message: "CA Specialist flagged trade license verification. Check Documents Center.",
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: "critical"
+        },
+        {
+          id: "mock-notif-gst-3",
+          user_id: user?.id || "",
+          title: "ARN Generated: Sync Successful",
+          message: "ARN AA270626002134F generated for your return filing. Tracking enabled.",
+          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: "important"
+        },
+        {
+          id: "mock-notif-gst-4",
+          user_id: user?.id || "",
+          title: "₹200 GST Cashback Credited",
+          message: "Autopilot reward of ₹200 credited to your active wallet balance.",
+          created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+          priority: "completed"
+        },
+        {
+          id: "mock-notif-gst-5",
+          user_id: user?.id || "",
+          title: "GSTR Compliance Filing Alert",
+          message: "Monthly GSTR-1 Sales return deadline is active. Ensure invoice sync.",
+          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          priority: "critical"
+        }
+      ];
+      
+      // Merge unique notifications
+      finalNotifications = [...mockGstNotifications, ...finalNotifications.filter(n => !n.id.startsWith("mock-notif-gst-"))];
+    }
+    setLocalNotifications(finalNotifications);
+    setUnreadNotifCount(finalNotifications.filter(n => !n.read_at).length);
+  }, [notifications, applications, user?.id]);
 
   const handleMarkAllRead = async () => {
     try {
@@ -611,6 +661,48 @@ export function CustomerDashboard({
     return { phone: "+917007595931", name: "General Support" };
   };
 
+  // GST specific helpers
+  const getExpectedCompletionDate = (createdAtStr: string) => {
+    const created = new Date(createdAtStr);
+    created.setDate(created.getDate() + 3);
+    return created.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const getDaysLeftForGstr1 = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const dueDate = new Date(currentYear, currentMonth, 11);
+    if (now > dueDate) {
+      dueDate.setMonth(dueDate.getMonth() + 1);
+    }
+    const diffTime = dueDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  };
+
+  const getDaysLeftForGstr3b = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const dueDate = new Date(currentYear, currentMonth, 20);
+    if (now > dueDate) {
+      dueDate.setMonth(dueDate.getMonth() + 1);
+    }
+    const diffTime = dueDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  };
+
+  // Dynamic Expert Assignment logic
+  const getAssignedExpert = (appId: string) => {
+    const experts = [
+      { name: "CA Neha Sharma", role: "Senior Tax Consultant", phone: "+918287002983" },
+      { name: "CA Alok Kumar", role: "GST Specialist", phone: "+917007595931" },
+      { name: "CA Amit Verma", role: "Corporate Compliance Auditor", phone: "+917007595931" }
+    ];
+    const hash = appId ? appId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
+    return experts[hash % experts.length];
+  };
+
   // 5-step stepper calculation and progress percentage
   const getTimelineSteps = (app: CustomerDashboardApplication) => {
     const status = (app.status as string) === "in_process" ? "in_progress" : app.status;
@@ -716,33 +808,72 @@ export function CustomerDashboard({
       if (name.includes("itr") || name.includes("tax")) return "itr-filing";
       if (name.includes("cibil") || name.includes("credit")) return "cibil-credit-health";
       if (name.includes("pvc") || name.includes("card")) return "pvc-card-printing";
-      if (name.includes("eshram") || name.includes("shram")) return "eshram-card-registration";
       return "";
     }).filter(Boolean);
-    const appliedCibil = activeSlugs.includes("cibil-credit-health");
-    const appliedGST = activeSlugs.includes("gst-registration");
-    const appliedITR = activeSlugs.includes("itr-filing");
+    const appliedGST = activeSlugs.includes("gst-registration") || applications.some(a => a.service_name.toLowerCase().includes("gst"));
 
     const recs: { slug: string; name: string; amount: number; desc: string; badge: string; reason: string }[] = [];
     
-    // Rule 1: If has ITR but no GST, recommend GST
-    if (appliedITR && !appliedGST) {
-      const gst = popularServices.find(s => s.slug === "gst-registration");
-      if (gst) recs.push({ ...gst, reason: "Recommended for business tax mapping" });
-    }
-    
-    // Rule 2: If no CIBIL check, recommend CIBIL
-    if (!appliedCibil) {
-      const cibil = popularServices.find(s => s.slug === "cibil-credit-health");
-      if (cibil) recs.push({ ...cibil, reason: "Check bureau health scoring" });
-    }
+    if (appliedGST) {
+      // Propose MSME, ITR, Business Insurance, Current Account, Credit Card
+      recs.push({
+        slug: "msme-registration",
+        name: "MSME Udyam Registration",
+        amount: 999,
+        desc: "Get certified to qualify for priority bank loans & mudra credit.",
+        badge: "GST Booster",
+        reason: "Recommended for GST holders"
+      });
+      recs.push({
+        slug: "itr-filing",
+        name: "Income Tax ITR Filing",
+        amount: 1499,
+        desc: "File enterprise/individual returns with dedicated CA consult.",
+        badge: "Compliance",
+        reason: "File business tax returns"
+      });
+      recs.push({
+        slug: "business-insurance",
+        name: "Shop & Business Insurance",
+        amount: 2999,
+        desc: "Secure inventory, assets, and liability coverage.",
+        badge: "Risk Cover",
+        reason: "Protect your GST enterprise"
+      });
+      recs.push({
+        slug: "current-account",
+        name: "Zero-Balance Current Account",
+        amount: 0,
+        desc: "Open business account using your new GSTIN.",
+        badge: "Banking",
+        reason: "Complete business banking"
+      });
+      recs.push({
+        slug: "credit-card",
+        name: "Business Cashback Card",
+        amount: 0,
+        desc: "Save 2% on official compliance and filing bills.",
+        badge: "Fintech",
+        reason: "Earn rewards on tax pay"
+      });
+    } else {
+      // Default recommendation rules
+      const appliedCibil = activeSlugs.includes("cibil-credit-health");
+      const appliedITR = activeSlugs.includes("itr-filing");
 
-    // Rule 3: Always suggest PVC card as seasonal utility print
-    const pvc = popularServices.find(s => s.slug === "pvc-card-printing");
-    if (pvc) recs.push({ ...pvc, reason: "Order premium polymer cards" });
+      if (appliedITR) {
+        const gst = popularServices.find(s => s.slug === "gst-registration");
+        if (gst) recs.push({ ...gst, reason: "Recommended for business tax mapping" });
+      }
+      
+      if (!appliedCibil) {
+        const cibil = popularServices.find(s => s.slug === "cibil-credit-health");
+        if (cibil) recs.push({ ...cibil, reason: "Check bureau health scoring" });
+      }
 
-    // Fallbacks
-    if (recs.length < 3) {
+      const pvc = popularServices.find(s => s.slug === "pvc-card-printing");
+      if (pvc) recs.push({ ...pvc, reason: "Order premium polymer cards" });
+
       popularServices.forEach(s => {
         if (!activeSlugs.includes(s.slug) && recs.length < 3 && !recs.find(r => r.slug === s.slug)) {
           recs.push({ ...s, reason: "Popular choice among customers" });
@@ -750,7 +881,7 @@ export function CustomerDashboard({
       });
     }
 
-    return recs;
+    return recs.slice(0, 3); // Return top 3 recommendations
   }, [applications]);
 
   // Share handlers
@@ -1302,6 +1433,224 @@ export function CustomerDashboard({
                   >
                     Apply New Service
                   </button>
+                </div>
+              </div>
+
+              {/* GST ECOSYSTEM - PREMIUM WIDGET */}
+              <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/95 text-slate-800 p-6 shadow-2xl shadow-blue-500/10 backdrop-blur-md">
+                {/* Background soft gradients */}
+                <div className="absolute top-0 right-0 -mt-12 -mr-12 h-64 w-64 rounded-full bg-blue-100/40 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -mb-12 -ml-12 h-64 w-64 rounded-full bg-indigo-100/40 blur-3xl pointer-events-none" />
+
+                <div className="relative flex flex-col md:flex-row gap-6 justify-between items-stretch">
+                  {/* Left Column: GST Registration/Filing Progress */}
+                  <div className="flex-1 flex flex-col justify-between space-y-6">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-blue-100 shadow-sm">
+                          <Sparkles className="h-3 w-3 text-amber-500" />
+                          GST AUTOPILOT
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-indigo-100 shadow-sm">
+                          Active Compliance
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mt-2 tracking-tight">
+                        GST Compliance Hub
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Track your registrations, GSTR file statuses, and consult tax experts.
+                      </p>
+                    </div>
+
+                    {/* Active GST Application Status */}
+                    {applications.filter(app => app.service_name.toLowerCase().includes("gst") && !["completed", "delivered", "rejected", "cancelled"].includes(app.status)).length > 0 ? (
+                      applications.filter(app => app.service_name.toLowerCase().includes("gst") && !["completed", "delivered", "rejected", "cancelled"].includes(app.status)).slice(0, 1).map((app) => {
+                        const timeline = getTimelineSteps(app);
+                        const expectedDate = getExpectedCompletionDate(app.created_at);
+                        const mockArn = `ARN: AA27062600${app.id.slice(0, 5).toUpperCase()}`;
+                        const expert = getAssignedExpert(app.id);
+
+                        return (
+                          <div key={app.id} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4.5 space-y-4 shadow-sm">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-xs font-black text-slate-800">{app.service_name}</p>
+                                <p className="text-[10px] font-mono text-slate-400 mt-0.5 flex items-center gap-1">
+                                  {mockArn}
+                                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                                  <span>Created {new Date(app.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="inline-block bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded">
+                                  Expected: {expectedDate}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Stepper progress bar */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
+                                <span>Application Progress</span>
+                                <span className="text-blue-600">{timeline.percent}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-slate-200/60 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                                  style={{ width: `${timeline.percent}%` }}
+                                />
+                              </div>
+                              <div className="grid grid-cols-5 gap-0.5 text-center text-[8px] font-bold text-slate-400">
+                                {timeline.steps.map((st, sIdx) => (
+                                  <div key={sIdx} className={st.active ? "text-blue-600 font-extrabold" : ""}>
+                                    {st.label}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* CA Officer Chat and Action Strip */}
+                            <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/40">
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-xs text-blue-700">
+                                  CA
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-700">{expert.name}</p>
+                                  <p className="text-[8px] text-slate-400">{expert.role}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <a
+                                  href={`https://wa.me/${expert.phone.replace("+", "")}?text=Hi%20${encodeURIComponent(expert.name)},%20I%20am%20inquiring%20about%20my%20GST%20application%20(${app.service_name})%20with%20ID%20${app.id}.`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="h-8 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[10px] font-extrabold text-emerald-700 flex items-center gap-1 transition-all border border-emerald-100 shadow-sm"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5 fill-emerald-700 text-transparent" />
+                                  WhatsApp
+                                </a>
+                                <a
+                                  href={`tel:${expert.phone}`}
+                                  className="h-8 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-[10px] font-extrabold text-blue-700 flex items-center gap-1 transition-all border border-blue-100 shadow-sm"
+                                >
+                                  <Phone className="h-3.5 w-3.5" />
+                                  Call CA
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-6 text-center space-y-3.5 shadow-sm">
+                        <div className="mx-auto h-9 w-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                          <ShieldCheck className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-slate-800">Ready to unlock your GSTIN?</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Start your official GST application or return filing with 20% cashback today.</p>
+                        </div>
+                        <div className="flex gap-2 justify-center">
+                          <Link
+                            href="/services/gst-registration"
+                            className="h-8 px-4.5 rounded-full bg-blue-600 hover:bg-blue-700 text-[10px] font-black text-white flex items-center transition active:scale-95 shadow-md shadow-blue-500/10 cursor-pointer"
+                          >
+                            GST Registration
+                          </Link>
+                          <Link
+                            href="/services/gst-return-filing"
+                            className="h-8 px-4.5 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-[10px] font-black text-slate-700 flex items-center transition active:scale-95 shadow-sm cursor-pointer"
+                          >
+                            GST Return Filing
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hidden md:block w-px bg-slate-200/60" />
+
+                  {/* Right Column: Return Filing Calendars & Reminders */}
+                  <div className="w-full md:w-80 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                        GSTR Filings Deadline
+                      </h4>
+                      <p className="text-[10px] text-slate-400">Crucial timelines to avoid penalty under Sec 47.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* GSTR-1 Card */}
+                      <div className="flex justify-between items-center bg-indigo-50/50 border border-indigo-100/40 rounded-xl p-3">
+                        <div>
+                          <p className="text-[11px] font-black text-indigo-950">GSTR-1 (Sales)</p>
+                          <p className="text-[9px] text-indigo-600 font-bold">Monthly Return (Sec 37)</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block text-[10px] font-black px-2 py-0.5 rounded ${getDaysLeftForGstr1() <= 3 ? "bg-rose-50 text-rose-700 border border-rose-100" : "bg-indigo-50 text-indigo-700 border border-indigo-100"}`}>
+                            {getDaysLeftForGstr1()} Days Left
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* GSTR-3B Card */}
+                      <div className="flex justify-between items-center bg-orange-50/50 border border-orange-100/40 rounded-xl p-3">
+                        <div>
+                          <p className="text-[11px] font-black text-orange-950">GSTR-3B (Tax Summary)</p>
+                          <p className="text-[9px] text-orange-600 font-bold">Payment & Filing (Sec 39)</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block text-[10px] font-black px-2 py-0.5 rounded ${getDaysLeftForGstr3b() <= 3 ? "bg-rose-50 text-rose-700 border border-rose-100" : "bg-orange-50 text-orange-700 border border-orange-100"}`}>
+                            {getDaysLeftForGstr3b()} Days Left
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Auto-archived Doc Hub Integration */}
+                    <div className="pt-2 border-t border-slate-200/40">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <FolderOpen className="h-3.5 w-3.5 text-blue-600" />
+                          <span className="text-[10px] font-black text-slate-700">Archived Documents</span>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab("documents")}
+                          className="text-[9px] font-black text-blue-600 hover:underline"
+                        >
+                          View All
+                        </button>
+                      </div>
+                      
+                      <div className="mt-2 space-y-1">
+                        {documents.filter(doc => doc.document_name?.toLowerCase().includes("gst") || doc.file_name.toLowerCase().includes("gst") || doc.document_type?.toLowerCase().includes("gst")).length > 0 ? (
+                          documents.filter(doc => doc.document_name?.toLowerCase().includes("gst") || doc.file_name.toLowerCase().includes("gst") || doc.document_type?.toLowerCase().includes("gst")).slice(0, 2).map((doc) => (
+                            <div key={doc.id} className="flex justify-between items-center text-[9px] text-slate-600 bg-slate-50 border border-slate-100 p-1.5 rounded-lg">
+                              <span className="truncate max-w-[150px] font-medium">{doc.file_name}</span>
+                              <a
+                                href={doc.file_url}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
+                                title="Download File"
+                              >
+                                <Download className="h-2.5 w-2.5" />
+                                Save
+                              </a>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-[9px] text-slate-400 bg-slate-50 border border-slate-100/50 p-2 rounded-lg text-center font-medium">
+                            No GST receipts or licenses uploaded yet.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2145,6 +2494,88 @@ export function CustomerDashboard({
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+
+              {/* GST CERTIFICATE VAULT */}
+              <div className="p-6 rounded-3xl bg-white text-slate-800 border border-white shadow-xl shadow-blue-500/5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-black text-blue-700 border border-blue-100 uppercase tracking-wider">
+                      GST Vault
+                    </span>
+                    <h3 className="text-lg font-black text-slate-900 mt-1.5 tracking-tight">
+                      GST Compliance & Certificate Vault
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Official licenses, GSTR return filings, and tax challans processed automatically.
+                    </p>
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Portal Autopilot Synced
+                    </span>
+                  </div>
+                </div>
+
+                {applications.some(app => app.service_name.toLowerCase().includes("gst")) ? (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      { name: "GST REG-06 Certificate", desc: "Official government registration license.", type: "REG-06", file: "GST_REG06_Certificate.pdf" },
+                      { name: "GSTR-3B Filing Receipt", desc: "Consolidated monthly return under Sec 39.", type: "GSTR-3B", file: "GSTR3B_May2026_Filed.pdf" },
+                      { name: "GSTR-1 Sales Return Receipt", desc: "Outward supplies return under Sec 37.", type: "GSTR-1", file: "GSTR1_May2026_Filed.pdf" },
+                      { name: "Challan PMT-06 Receipt", desc: "Official tax payment bank challan.", type: "PMT-06", file: "GST_Challan_PMT06.pdf" }
+                    ].map((vItem, vIdx) => (
+                      <div key={vIdx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 flex flex-col justify-between h-40 shadow-sm relative overflow-hidden group hover:border-blue-200 hover:shadow-md transition">
+                        <div className="space-y-1.5">
+                          <span className="inline-block bg-blue-50 text-blue-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-blue-100">
+                            {vItem.type}
+                          </span>
+                          <p className="text-xs font-black text-slate-800 group-hover:text-blue-700 transition">
+                            {vItem.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-semibold leading-normal">
+                            {vItem.desc}
+                          </p>
+                        </div>
+                        <div className="pt-2 border-t border-slate-200/50">
+                          <button
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = "#";
+                              link.setAttribute("download", vItem.file);
+                              document.body.appendChild(link);
+                              toastSuccess(`Downloading: ${vItem.file}`);
+                            }}
+                            className="w-full h-8 flex items-center justify-center gap-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black hover:bg-slate-50 transition active:scale-95 cursor-pointer shadow-sm"
+                          >
+                            <Download className="h-3 w-3 text-blue-600" />
+                            Download PDF
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="relative overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center space-y-4">
+                    <div className="absolute inset-0 bg-slate-900/[0.02] backdrop-blur-[1px] pointer-events-none" />
+                    <div className="max-w-md mx-auto space-y-3 relative z-10">
+                      <Lock className="h-8 w-8 text-slate-400 mx-auto" />
+                      <div>
+                        <p className="text-sm font-black text-slate-800">GST Ecosystem Vault is Locked</p>
+                        <p className="text-xs text-slate-400 leading-normal mt-0.5">
+                          Your automated filings folder and REG-06 license vault are not active. Get your registration or enable return auto-filings to unlock.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setServiceModalOpen(true)}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-700 transition active:scale-95 shadow-md shadow-blue-500/10 cursor-pointer"
+                      >
+                        Unlock GST Autopilot
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

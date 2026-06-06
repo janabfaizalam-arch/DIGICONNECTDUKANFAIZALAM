@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, AlertCircle, UploadCloud, Shield } from "lucide-react";
+import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, AlertCircle, UploadCloud, Shield, Check, Lock } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
@@ -214,6 +214,12 @@ export function ServiceApplicationForm({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponApplying, setCouponApplying] = useState(false);
 
+  // Resume Draft alert indicator
+  const [showResumeAlert, setShowResumeAlert] = useState(false);
+
+  // Document Upload progress simulation tracking
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+
   // GST Redesigned Multi-Step Wizard States
   const [gstStep, setGstStep] = useState(1);
   const [gstBusinessName, setGstBusinessName] = useState("");
@@ -243,7 +249,8 @@ export function ServiceApplicationForm({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.name) setApplicantName(parsed.name);
+        let loadedAny = false;
+        if (parsed.name) { setApplicantName(parsed.name); loadedAny = true; }
         if (parsed.mobile) setApplicantMobile(parsed.mobile);
         if (parsed.email) setApplicantEmail(parsed.email);
         if (parsed.city) setApplicantCity(parsed.city);
@@ -255,6 +262,10 @@ export function ServiceApplicationForm({
         if (parsed.schemeType) setGstSchemeType(parsed.schemeType);
         if (parsed.pincode) setGstPincode(parsed.pincode);
         if (parsed.state) setGstState(parsed.state);
+        
+        if (loadedAny) {
+          setShowResumeAlert(true);
+        }
       } catch (e) {
         console.error("Failed to parse GST draft", e);
       }
@@ -309,8 +320,26 @@ export function ServiceApplicationForm({
         toastError(err);
         return;
       }
+
+      // Simulate file upload progress
+      setUploadProgress(prev => ({ ...prev, [slot]: 0 }));
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        setUploadProgress(prev => ({ ...prev, [slot]: progress }));
+        if (progress >= 100) {
+          clearInterval(interval);
+          setGstFiles((current) => ({ ...current, [slot]: file }));
+        }
+      }, 80);
+    } else {
+      setGstFiles((current) => ({ ...current, [slot]: null }));
+      setUploadProgress(prev => {
+        const next = { ...prev };
+        delete next[slot];
+        return next;
+      });
     }
-    setGstFiles((current) => ({ ...current, [slot]: file }));
   };
 
   const handleApplyCoupon = async (code: string) => {
@@ -953,32 +982,64 @@ export function ServiceApplicationForm({
           <input type="hidden" name="businessType" value={gstBusinessType} />
           <input type="hidden" name="schemeType" value={gstSchemeType} />
 
-          <Card className="rounded-3xl border border-blue-150/60 bg-white/95 p-6 shadow-xl relative overflow-hidden backdrop-blur-md">
+          <Card className="rounded-[36px] border border-blue-150/60 bg-white/95 p-6 md:p-8 shadow-xl relative overflow-hidden backdrop-blur-md">
             
-            {/* Header: Title and step bar */}
-            <div className="space-y-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">DigiConnect Fintech Checkout</p>
-                <h2 className="text-xl font-black text-slate-900 mt-1">
-                  {selectedServices.map((item) => item.title).join(", ")}
-                </h2>
-                <p className="text-xs text-slate-400 font-semibold mt-1">
-                  Step {gstStep} of 5: {
-                    gstStep === 1 ? "Personal Details" :
-                    gstStep === 2 ? "Business Profile" :
-                    gstStep === 3 ? "Office Location" :
-                    gstStep === 4 ? "Documents Verification" :
-                    "Review & Payment"
-                  }
-                </p>
+            {showResumeAlert && (
+              <div className="mb-6 p-4 rounded-2xl bg-blue-50/50 border border-blue-150/50 flex items-center justify-between text-xs font-semibold text-blue-800 animate-[fadeIn_0.3s_ease-out]">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-black">✓</span>
+                  <span>Resumed application draft from 10 seconds ago. All fields recovered.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowResumeAlert(false)}
+                  className="text-blue-700 hover:text-blue-950 font-black text-xs px-2 py-1 bg-white border border-slate-100 rounded-full shadow-sm"
+                >
+                  Dismiss
+                </button>
               </div>
-
-              {/* Progress Bar */}
-              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            )}
+            
+            {/* Elegant Stepper Timeline */}
+            <div className="mb-8 border-b border-slate-100 pb-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-4">DigiConnect Fast-Track Apply</p>
+              
+              <div className="relative flex items-center justify-between max-w-xl mx-auto px-4">
+                {/* Connector line behind */}
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
-                  style={{ width: `${gstStep * 20}%` }}
+                  className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 -translate-y-1/2 z-0 transition-all duration-300" 
+                  style={{ width: `${((gstStep - 1) / 4) * 100}%` }}
                 />
+
+                {[
+                  { step: 1, label: "Personal" },
+                  { step: 2, label: "Business" },
+                  { step: 3, label: "Address" },
+                  { step: 4, label: "Documents" },
+                  { step: 5, label: "Checkout" }
+                ].map((s) => {
+                  const isCompleted = s.step < gstStep;
+                  const isActive = s.step === gstStep;
+                  return (
+                    <div key={s.step} className="flex flex-col items-center relative z-10">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 text-[10px] font-black transition-all ${
+                        isCompleted 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : isActive 
+                          ? "bg-white border-blue-600 text-blue-600 active-glow-ring scale-110 shadow-md shadow-blue-500/10" 
+                          : "bg-white border-slate-200 text-slate-400"
+                      }`}>
+                        {isCompleted ? "✓" : s.step}
+                      </div>
+                      <span className={`text-[9px] font-bold mt-1.5 ${
+                        isActive ? "text-blue-600" : isCompleted ? "text-slate-800" : "text-slate-400"
+                      }`}>
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -998,7 +1059,7 @@ export function ServiceApplicationForm({
                         value={applicantName}
                         onChange={(e) => setApplicantName(e.target.value)}
                         placeholder="e.g. Rahul Sharma"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                     <div>
@@ -1010,7 +1071,7 @@ export function ServiceApplicationForm({
                         value={applicantMobile}
                         onChange={(e) => setApplicantMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         placeholder="e.g. 9876543210"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                     <div>
@@ -1021,7 +1082,7 @@ export function ServiceApplicationForm({
                         value={applicantEmail}
                         onChange={(e) => setApplicantEmail(e.target.value)}
                         placeholder="e.g. rahul@example.com"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                     <div>
@@ -1032,7 +1093,7 @@ export function ServiceApplicationForm({
                         value={applicantCity}
                         onChange={(e) => setApplicantCity(e.target.value)}
                         placeholder="e.g. Lucknow"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                   </div>
@@ -1053,7 +1114,7 @@ export function ServiceApplicationForm({
                         value={gstBusinessName}
                         onChange={(e) => setGstBusinessName(e.target.value)}
                         placeholder="e.g. Sharma Retails Private Limited"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                     <div>
@@ -1063,7 +1124,7 @@ export function ServiceApplicationForm({
                         value={gstPanNumber}
                         onChange={(e) => setGstPanNumber(e.target.value.toUpperCase())}
                         placeholder="e.g. ABCDE1234F"
-                        className="mt-1 block w-full rounded-xl border border-slate-255 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                     <div>
@@ -1071,7 +1132,7 @@ export function ServiceApplicationForm({
                       <select 
                         value={gstBusinessType}
                         onChange={(e) => setGstBusinessType(e.target.value)}
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       >
                         <option value="individual">Individual</option>
                         <option value="proprietorship">Proprietorship</option>
@@ -1085,7 +1146,7 @@ export function ServiceApplicationForm({
                       <select 
                         value={gstSchemeType}
                         onChange={(e) => setGstSchemeType(e.target.value)}
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       >
                         <option value="regular">Regular Taxpayer Scheme</option>
                         <option value="composition">Composition Taxpayer Scheme</option>
@@ -1110,7 +1171,7 @@ export function ServiceApplicationForm({
                         value={applicantAddress}
                         onChange={(e) => setApplicantAddress(e.target.value)}
                         placeholder="e.g. Shop No. 12, Ground Floor, Sharma Complex"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                     <div>
@@ -1122,7 +1183,7 @@ export function ServiceApplicationForm({
                         value={gstPincode}
                         onChange={(e) => setGstPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                         placeholder="e.g. 226001"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                       {pincodeStatus && (
                         <p className="text-[10px] text-blue-600 font-bold mt-1">{pincodeStatus}</p>
@@ -1136,7 +1197,7 @@ export function ServiceApplicationForm({
                         value={gstState}
                         onChange={(e) => setGstState(e.target.value)}
                         placeholder="e.g. Uttar Pradesh"
-                        className="mt-1 block w-full rounded-xl border border-slate-250 px-4 py-2.5 text-xs font-semibold outline-none focus:border-blue-500 transition bg-white/70"
+                        className="mt-1 block w-full glass-input-premium transition bg-white/70"
                       />
                     </div>
                   </div>
@@ -1148,85 +1209,175 @@ export function ServiceApplicationForm({
                   <h3 className="text-sm font-black text-slate-900">Upload Identity Documents</h3>
                   <p className="text-xs text-slate-400 font-medium">Provide clear scanned PDF / JPG copies of required proofs (Max 5MB each).</p>
 
-                  <div className="space-y-4 pt-2">
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
                     {/* PAN slot */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-black text-slate-800">Owner PAN Card *</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {gstFiles.pan ? `✓ Uploaded: ${gstFiles.pan.name}` : "No file selected."}
-                        </p>
-                      </div>
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Owner PAN Card *</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG (Max 5MB)</p>
                       <input 
                         type="file" 
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleGstFileChange("pan", e.target.files?.[0] || null)}
-                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                       />
+                      {uploadProgress.pan !== undefined && uploadProgress.pan < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading PAN Card... {uploadProgress.pan}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.pan}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {gstFiles.pan && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{gstFiles.pan.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleGstFileChange("pan", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Aadhaar slot */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-black text-slate-800">Owner Aadhaar Card (Front & Back) *</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {gstFiles.aadhaar ? `✓ Uploaded: ${gstFiles.aadhaar.name}` : "No file selected."}
-                        </p>
-                      </div>
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Owner Aadhaar Card *</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG (Max 5MB)</p>
                       <input 
                         type="file" 
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleGstFileChange("aadhaar", e.target.files?.[0] || null)}
-                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                       />
+                      {uploadProgress.aadhaar !== undefined && uploadProgress.aadhaar < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading Aadhaar Card... {uploadProgress.aadhaar}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.aadhaar}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {gstFiles.aadhaar && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{gstFiles.aadhaar.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleGstFileChange("aadhaar", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Premises Address Proof */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-black text-slate-850">Premises Address Proof (Electricity bill)</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {gstFiles.addressProof ? `✓ Uploaded: ${gstFiles.addressProof.name}` : "Optional file."}
-                        </p>
-                      </div>
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Office Address Proof</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG (Max 5MB)</p>
                       <input 
                         type="file" 
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleGstFileChange("addressProof", e.target.files?.[0] || null)}
-                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                       />
+                      {uploadProgress.addressProof !== undefined && uploadProgress.addressProof < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading Address... {uploadProgress.addressProof}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.addressProof}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {gstFiles.addressProof && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{gstFiles.addressProof.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleGstFileChange("addressProof", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Rent Agreement/NOC */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-black text-slate-855">Consent Letter / Owner NOC</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {gstFiles.noc ? `✓ Uploaded: ${gstFiles.noc.name}` : "Optional file."}
-                        </p>
-                      </div>
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Consent Letter / NOC</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG (Max 5MB)</p>
                       <input 
                         type="file" 
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleGstFileChange("noc", e.target.files?.[0] || null)}
-                        className="text-[10px] font-bold text-blue-605 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                       />
+                      {uploadProgress.noc !== undefined && uploadProgress.noc < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading NOC... {uploadProgress.noc}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.noc}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {gstFiles.noc && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{gstFiles.noc.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleGstFileChange("noc", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Passport Photo */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-black text-slate-850">Owner Passport Photograph</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {gstFiles.photo ? `✓ Uploaded: ${gstFiles.photo.name}` : "Optional file."}
-                        </p>
-                      </div>
+                    <div className="p-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/20 flex flex-col items-center text-center relative hover:bg-slate-50/40 transition group sm:col-span-2">
+                      <UploadCloud className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition" />
+                      <h4 className="text-xs font-black text-slate-800">Passport Photograph</h4>
+                      <p className="text-[9px] text-slate-400 mt-1">Upload PDF, JPG or PNG (Max 5MB)</p>
                       <input 
                         type="file" 
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleGstFileChange("photo", e.target.files?.[0] || null)}
-                        className="text-[10px] font-bold text-blue-650 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer w-full sm:w-auto"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                       />
+                      {uploadProgress.photo !== undefined && uploadProgress.photo < 100 && (
+                        <div className="absolute inset-0 bg-white/95 rounded-[24px] flex flex-col items-center justify-center p-4 z-20">
+                          <p className="text-[10px] font-black text-blue-600 mb-1.5 font-mono">Uploading Photograph... {uploadProgress.photo}%</p>
+                          <div className="h-1.5 w-full max-w-[150px] bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {gstFiles.photo && (
+                        <div className="mt-3 px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 z-10">
+                          <Check className="h-3.5 w-3.5 text-emerald-650" />
+                          <span className="truncate max-w-[150px]">{gstFiles.photo.name}</span>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); handleGstFileChange("photo", null); }}
+                            className="ml-1 text-emerald-800 hover:text-emerald-950 font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1261,31 +1412,63 @@ export function ServiceApplicationForm({
                   {/* Razorpay Trigger integration */}
                   <div className="mt-4 pt-2">
                     {realPayableAmount > 0 ? (
-                      <RazorpayCheckoutButton
-                        amountPaise={payableAmountPaise}
-                        receipt={paymentReceipt}
-                        serviceSlug={selectedServices[0]?.slug}
-                        serviceSlugs={selectedServices.map((item) => item.slug)}
-                        walletUseAmount={clampedWalletUseAmount}
-                        couponCode={appliedCouponCode}
-                        customer={{
-                          name: normalizedApplicationDraft.customer.name,
-                          email: normalizedApplicationDraft.customer.email,
-                          mobile: normalizedApplicationDraft.customer.mobile,
-                        }}
-                        applicationDraft={{
-                          customer: normalizedApplicationDraft.customer,
-                          details: serviceDetailsForPayment,
-                        }}
-                        description={selectedServices.map((item) => item.title).join(", ")}
-                        disabled={!canStartPayment}
-                        onVerified={(payment) => {
-                          setRazorpayPayment({
-                            ...payment,
-                            amount_paise: payableAmountPaise,
-                          });
-                        }}
-                      />
+                      <div className="space-y-4">
+                        <RazorpayCheckoutButton
+                          amountPaise={payableAmountPaise}
+                          receipt={paymentReceipt}
+                          serviceSlug={selectedServices[0]?.slug}
+                          serviceSlugs={selectedServices.map((item) => item.slug)}
+                          walletUseAmount={clampedWalletUseAmount}
+                          couponCode={appliedCouponCode}
+                          customer={{
+                            name: normalizedApplicationDraft.customer.name,
+                            email: normalizedApplicationDraft.customer.email,
+                            mobile: normalizedApplicationDraft.customer.mobile,
+                          }}
+                          applicationDraft={{
+                            customer: normalizedApplicationDraft.customer,
+                            details: serviceDetailsForPayment,
+                          }}
+                          description={selectedServices.map((item) => item.title).join(", ")}
+                          disabled={!canStartPayment}
+                          onVerified={(payment) => {
+                            setRazorpayPayment({
+                              ...payment,
+                              amount_paise: payableAmountPaise,
+                            });
+                          }}
+                        />
+
+                        {razorpayPayment && (
+                          <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-xs font-black text-emerald-700">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                            Payment verified: {razorpayPayment.razorpay_payment_id}
+                          </div>
+                        )}
+
+                        {/* Secure Checkout Trust Info */}
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 space-y-2.5">
+                          <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 text-blue-600">
+                              <Lock className="h-3.5 w-3.5 shrink-0" />
+                              <span>SECURE 256-BIT SSL</span>
+                            </div>
+                            <span className="text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-100">Razorpay Secured</span>
+                          </div>
+
+                          <p className="text-[10px] font-bold text-slate-400 leading-normal">
+                            All card details, UPI transactions and netbanking sessions are encrypted and securely authenticated directly via Razorpay. We do not store your financial information.
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            {["UPI & AutoPay", "Credit/Debit Cards", "NetBanking", "Popular Wallets"].map((method, idx) => (
+                              <span key={idx} className="inline-flex items-center text-[9px] font-extrabold text-slate-500 bg-white border border-slate-100 px-2 py-0.5 rounded-md">
+                                {method}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="rounded-2xl bg-emerald-50 px-4 py-3.5 text-xs font-black text-emerald-800 border border-emerald-100 text-center">
                         🎉 Wallet balance covers 100% of order. Click submit below.
@@ -1374,7 +1557,7 @@ export function ServiceApplicationForm({
                         }
                         setWalletUseAmount(val);
                       }}
-                      className="mt-1 block w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold outline-none focus:border-blue-500 transition"
+                      className="mt-1 block w-full glass-input-premium bg-white/70 py-2.5 px-3.5 text-xs font-semibold focus:bg-white transition"
                       placeholder="Redemption sum"
                     />
                   </div>

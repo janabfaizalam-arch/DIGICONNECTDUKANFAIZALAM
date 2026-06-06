@@ -49,6 +49,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
               <th className="px-4 py-3">Service</th>
               <th className="px-4 py-3">Message</th>
               <th className="px-4 py-3">Source</th>
+              <th className="px-4 py-3">CRM Score / Events</th>
               <th className="px-4 py-3">File</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created</th>
@@ -63,6 +64,46 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                 <td className="px-4 py-3 text-slate-700">{lead.service}</td>
                 <td className="max-w-xs px-4 py-3 text-slate-600">{lead.message || "-"}</td>
                 <td className="px-4 py-3 text-slate-600">{lead.source || "website"}</td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    let crmScore = 5;
+                    let crmEvents: string[] = [];
+                    try {
+                      if (lead.notes) {
+                        const parsed = JSON.parse(lead.notes);
+                        if (typeof parsed.score === "number") crmScore = parsed.score;
+                        if (Array.isArray(parsed.events)) crmEvents = parsed.events;
+                      }
+                    } catch (e) {}
+
+                    const getScoreBadge = (score: number) => {
+                      if (score >= 100) return "bg-emerald-600 text-white font-extrabold";
+                      if (score >= 50) return "bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold";
+                      if (score >= 20) return "bg-amber-50 text-amber-700 border border-amber-200 font-bold";
+                      return "bg-slate-50 text-slate-600 border border-slate-200 font-medium";
+                    };
+
+                    return (
+                      <div className="space-y-1.5">
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${getScoreBadge(crmScore)} shadow-sm`}>
+                          Score: {crmScore}
+                        </span>
+                        {crmEvents.length > 0 && (
+                          <div className="flex flex-wrap gap-1 max-w-[150px]">
+                            {Array.from(new Set(crmEvents)).slice(0, 3).map((ev, idx) => (
+                              <span key={idx} className="inline-block text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase font-bold">
+                                {ev.replace(/_/g, " ")}
+                              </span>
+                            ))}
+                            {new Set(crmEvents).size > 3 && (
+                              <span className="text-[8px] text-slate-400 font-bold">+{new Set(crmEvents).size - 3}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </td>
                 <td className="px-4 py-3">
                   {lead.file_url ? (
                     <a href={lead.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-700">
@@ -102,7 +143,23 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
               </div>
               <AdminStatusBadge status={lead.status} />
             </div>
-            <p className="mt-3 text-sm font-bold text-slate-800">{lead.service}</p>
+            <p className="mt-3 text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>{lead.service}</span>
+              {(() => {
+                let crmScore = 5;
+                try {
+                  if (lead.notes) {
+                    const parsed = JSON.parse(lead.notes);
+                    if (typeof parsed.score === "number") crmScore = parsed.score;
+                  }
+                } catch (e) {}
+                return (
+                  <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">
+                    Score: {crmScore}
+                  </span>
+                );
+              })()}
+            </p>
             {lead.message ? <p className="mt-2 text-sm leading-6 text-slate-600">{lead.message}</p> : null}
             <p className="mt-3 font-mono text-xs text-slate-500">{formatDate(lead.created_at)}</p>
             <div className="mt-4 flex flex-wrap gap-2">

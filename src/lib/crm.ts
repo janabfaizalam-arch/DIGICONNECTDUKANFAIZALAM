@@ -353,3 +353,92 @@ export async function hydrateApplications(applications: Application[]) {
     };
   });
 }
+
+/**
+ * CRM Lead Event Tracker & Lead Scoring client utility
+ */
+export async function trackCrmEvent(
+  event: "page_visit" | "calculator_usage" | "expert_talk_click" | "apply_click" | "application_started" | "payment_success",
+  service: "gst-registration" | "gst-return-filing",
+  customMobile?: string,
+  customName?: string
+) {
+  try {
+    let mobile = customMobile || "";
+    let name = customName || "";
+
+    // 1. If not provided, try to read from GST Apply draft local storage
+    if (typeof window !== "undefined") {
+      const draft = localStorage.getItem("gst_apply_draft");
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (!mobile && parsed.mobile) mobile = parsed.mobile;
+          if (!name && parsed.name) name = parsed.name;
+        } catch {
+          // Ignored
+        }
+      }
+
+      // 2. Try callback local storage keys
+      if (!mobile) mobile = localStorage.getItem("crm_lead_mobile") || "";
+      if (!name) name = localStorage.getItem("crm_lead_name") || "";
+
+      // 3. Save contact details if provided this time
+      if (customMobile) localStorage.setItem("crm_lead_mobile", customMobile);
+      if (customName) localStorage.setItem("crm_lead_name", customName);
+    }
+
+    if (!mobile) {
+      // Cannot send event if mobile is not collected yet.
+      // We will cache events in local storage and batch upload them once contact details are provided.
+      interface PendingCrmEvent {
+        event: string;
+        service: string;
+        timestamp: number;
+      }
+      if (typeof window !== "undefined") {
+        const queue: PendingCrmEvent[] = JSON.parse(localStorage.getItem("crm_pending_events") || "[]");
+        if (!queue.some((item: PendingCrmEvent) => item.event === event && item.service === service)) {
+          queue.push({ event, service, timestamp: Date.now() });
+          localStorage.setItem("crm_pending_events", JSON.stringify(queue));
+        }
+      }
+      return;
+    }
+
+    // 4. Send background fetch to the CRM API
+    const response = await fetch("/api/crm/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile, name, service, event }),
+    });
+
+    if (response.ok) {
+      // If success, clear matched pending events from queue
+      if (typeof window !== "undefined") {
+        interface PendingCrmEvent {
+          event: string;
+          service: string;
+          timestamp: number;
+        }
+        const queue: PendingCrmEvent[] = JSON.parse(localStorage.getItem("crm_pending_events") || "[]");
+        const remaining = queue.filter((item: PendingCrmEvent) => !(item.service === service));
+        localStorage.setItem("crm_pending_events", JSON.stringify(remaining));
+
+        // Flush any other pending events under this mobile
+        for (const pending of queue) {
+          if (pending.event !== event) {
+            await fetch("/api/crm/event", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mobile, name, service: pending.service, event: pending.event }),
+            });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("CRM Event tracking failed background error", err);
+  }
+}

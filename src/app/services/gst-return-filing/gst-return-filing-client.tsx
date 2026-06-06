@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useMemo } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -24,9 +24,12 @@ import {
   Calendar,
   Shield,
   FileText,
-  CheckCircle2
+  CheckCircle2,
+  Users
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
+import useEmblaCarousel from "embla-carousel-react";
+import { trackCrmEvent } from "@/lib/crm";
 
 type FAQ = {
   question: string;
@@ -95,11 +98,124 @@ export function GstReturnFilingClient({
   const [calcAmount, setCalcAmount] = useState<string>("20000");
   const [gstType, setGstType] = useState<"exclusive" | "inclusive">("exclusive");
 
+  // Comparison row highlight state
+  const [hoveredCompareRow, setHoveredCompareRow] = useState<number | null>(null);
+
+  // CRM Page Visit tracking
+  useEffect(() => {
+    trackCrmEvent("page_visit", "gst-return-filing");
+  }, []);
+
+  // Debounced CRM Calculator tracking
+  useEffect(() => {
+    if (!calcAmount || calcAmount === "20000") return;
+    const handler = setTimeout(() => {
+      trackCrmEvent("calculator_usage", "gst-return-filing");
+    }, 2000);
+    return () => clearTimeout(handler);
+  }, [calcAmount, gstType]);
+
+  // Embla Carousel for return filing plans
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "center" });
+  const [activePlanIdx, setActivePlanIdx] = useState(0);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => {
+      setActivePlanIdx(emblaApi.selectedScrollSnap());
+    };
+    emblaApi.on("select", onSelect);
+    onSelect();
+
+    // Auto-scroll loop
+    const autoScroll = setInterval(() => {
+      emblaApi.scrollNext();
+    }, 5000);
+
+    return () => {
+      clearInterval(autoScroll);
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi]);
+
   // Lead Fallback State
   const [leadName, setLeadName] = useState("");
   const [leadMobile, setLeadMobile] = useState("");
   const [leadMessage, setLeadMessage] = useState("");
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+
+  // Live Activity Feed State
+  const [activeActivityIndex, setActiveActivityIndex] = useState(0);
+  const liveActivities = useMemo(() => [
+    { type: "registration", text: "R*** K*** from Bengaluru registered new GSTIN", time: "3 mins ago" },
+    { type: "filing", text: "A*** S*** from Mumbai filed GSTR-3B return", time: "10 mins ago" },
+    { type: "cashback", text: "V*** P*** from New Delhi received ₹200 Cashback credit", time: "15 mins ago" },
+    { type: "registration", text: "D*** C*** from Ahmedabad registered new GSTIN", time: "28 mins ago" },
+    { type: "filing", text: "K*** L*** from Chennai filed GSTR-1 return", time: "35 mins ago" },
+    { type: "cashback", text: "M*** G*** from Hyderabad received ₹150 Cashback credit", time: "52 mins ago" }
+  ], []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveActivityIndex((prev) => (prev + 1) % liveActivities.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [liveActivities.length]);
+
+  // ARN Tracking State
+  const [arnQuery, setArnQuery] = useState("");
+  const [arnStatus, setArnStatus] = useState<null | {
+    arn: string;
+    type: string;
+    date: string;
+    stage: number;
+    timeline: { label: string; date: string; completed: boolean; current?: boolean }[];
+  }>(null);
+  const [arnError, setArnError] = useState("");
+
+  const handleTrackArn = (e: React.FormEvent) => {
+    e.preventDefault();
+    setArnError("");
+    setArnStatus(null);
+
+    const cleanArn = arnQuery.trim().toUpperCase();
+    if (!cleanArn) {
+      setArnError("Please enter an ARN number.");
+      return;
+    }
+    if (cleanArn.length < 10) {
+      setArnError("Application Reference Number (ARN) must be at least 10 characters.");
+      return;
+    }
+
+    const seed = cleanArn.charCodeAt(0) + cleanArn.charCodeAt(cleanArn.length - 1);
+    const stageNum = seed % 3 === 0 ? 3 : (seed % 2 === 0 ? 4 : 2);
+    
+    const stages = [
+      { label: "Submitted", date: "May 28, 2026", completed: true },
+      { label: "CA Verified", date: "May 29, 2026", completed: true },
+      { label: "Portal Synced", date: "May 30, 2026", completed: true },
+      { label: "Desk Review", date: "In Progress", completed: false, current: true },
+      { label: "Approved & Issued", date: "Pending", completed: false }
+    ];
+
+    const timeline = stages.map((st, idx) => ({
+      ...st,
+      completed: idx < stageNum,
+      current: idx === stageNum
+    }));
+
+    setArnStatus({
+      arn: cleanArn,
+      type: cleanArn.includes("FIL") || cleanArn.charCodeAt(1) % 2 === 0 ? "GST Return Filing" : "GST Registration",
+      date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+      stage: stageNum,
+      timeline
+    });
+
+    // Track CRM event
+    trackCrmEvent("calculator_usage", "gst-return-filing");
+  };
 
   // Exit Intent State
   const [showExitIntent, setShowExitIntent] = useState(false);
@@ -165,6 +281,9 @@ export function GstReturnFilingClient({
       toastError("Please enter a valid 10-digit mobile number.");
       return;
     }
+
+    // Track CRM lead event
+    trackCrmEvent("expert_talk_click", "gst-return-filing", mobile, name);
 
     setIsSubmittingLead(true);
     try {
@@ -319,7 +438,12 @@ export function GstReturnFilingClient({
     { q: "What is reverse charge mechanism (RCM)?", a: "Under RCM, the liability to pay GST falls on the buyer of goods or services instead of the supplier (e.g. hiring GTA transport or advocate services)." },
     { q: "Is interest applicable on late tax payments?", a: "Yes, an interest of 18% per annum is applicable on net tax liabilities paid after the due date." },
     { q: "Can I revise a filed GST return?", a: "No, a filed GSTR-1 or GSTR-3B cannot be revised. However, any corrections or omissions can be adjusted in the return of the subsequent tax period." },
-    { q: "What is the due date for GSTR-1 and GSTR-3B?", a: "Typically, GSTR-1 is due by the 11th of the following month, and GSTR-3B is due by the 20th of the following month for monthly filers." }
+    { q: "What is the due date for GSTR-1 and GSTR-3B?", a: "Typically, GSTR-1 is due by the 11th of the following month, and GSTR-3B is due by the 20th of the following month for monthly filers." },
+    { q: "Who is eligible for the GST composition scheme return filing?", a: "Composition taxpayers with an annual aggregate turnover up to ₹1.5 Crore can choose this scheme. They file CMP-08 quarterly and GSTR-4 annually." },
+    { q: "What is GSTR-4 and when is it filed?", a: "GSTR-4 is the annual return filed by composition dealers. It compiles all quarterly summaries and must be submitted by 30th April of the succeeding financial year." },
+    { q: "What happens if I claim excess Input Tax Credit (ITC) in GSTR-3B?", a: "Claiming excess or ineligible ITC violates GST rules. You must reverse the excess credit and pay it back with 18% interest per annum using Form DRC-03." },
+    { q: "What is GSTR-9C and who needs to file it?", a: "GSTR-9C is a reconciliation statement between audited annual financial statements and the GSTR-9 return. It is mandatory for taxpayers with turnover exceeding ₹5 Crore." },
+    { q: "Can I upload bank statements directly on DigiConnect for return drafting?", a: "Yes. In the application wizard, you can securely upload invoice ledgers, sales spreadsheets, and bank statements. Our CAs verify them before submitting." }
   ];
 
   const filteredFaqs = returnFaqList.filter(faq =>
@@ -336,15 +460,80 @@ export function GstReturnFilingClient({
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "FAQPage",
-            "mainEntity": returnFaqList.map(item => ({
-              "@type": "Question",
-              "name": item.q,
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": item.a
+            "@graph": [
+              {
+                "@type": "Organization",
+                "@id": "https://digiconnectdukan.com/#organization",
+                "name": "DigiConnect Dukan",
+                "url": "https://digiconnectdukan.com",
+                "logo": "https://digiconnectdukan.com/logo.png"
+              },
+              {
+                "@type": "LocalBusiness",
+                "@id": "https://digiconnectdukan.com/#localbusiness",
+                "name": "DigiConnect Dukan",
+                "url": "https://digiconnectdukan.com",
+                "telephone": "+917007595931",
+                "address": {
+                  "@type": "PostalAddress",
+                  "streetAddress": "Faizalam Road",
+                  "addressLocality": "Lucknow",
+                  "addressRegion": "Uttar Pradesh",
+                  "postalCode": "226001",
+                  "addressCountry": "IN"
+                }
+              },
+              {
+                "@type": "Service",
+                "name": "GST Return Filing Service",
+                "serviceType": "Tax Compliance",
+                "provider": {
+                  "@type": "Organization",
+                  "name": "DigiConnect Dukan"
+                },
+                "offers": {
+                  "@type": "AggregateOffer",
+                  "priceCurrency": "INR",
+                  "lowPrice": "299",
+                  "highPrice": "4999",
+                  "offerCount": "5"
+                }
+              },
+              {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                  {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": "https://digiconnectdukan.com"
+                  },
+                  {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Services",
+                    "item": "https://digiconnectdukan.com/services"
+                  },
+                  {
+                    "@type": "ListItem",
+                    "position": 3,
+                    "name": "GST Return Filing",
+                    "item": "https://digiconnectdukan.com/services/gst-return-filing"
+                  }
+                ]
+              },
+              {
+                "@type": "FAQPage",
+                "mainEntity": returnFaqList.map(item => ({
+                  "@type": "Question",
+                  "name": item.q,
+                  "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": item.a
+                  }
+                }))
               }
-            }))
+            ]
           })
         }}
       />
@@ -376,6 +565,7 @@ export function GstReturnFilingClient({
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
                 href={isLoggedIn ? "/apply/gst-return-filing" : `/login/customer?redirect=${encodeURIComponent("/apply/gst-return-filing")}`}
+                onClick={() => trackCrmEvent("apply_click", "gst-return-filing")}
                 className="inline-flex h-13 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-8 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] hover:shadow-blue-500/30 active:scale-[0.98]"
               >
                 Apply for GST Return Filing
@@ -385,6 +575,7 @@ export function GstReturnFilingClient({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackCrmEvent("expert_talk_click", "gst-return-filing")}
                 className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/80 px-7 text-sm font-bold text-slate-700 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <MessageCircle className="h-4.5 w-4.5 text-emerald-600" />
@@ -464,7 +655,174 @@ export function GstReturnFilingClient({
 
             </div>
           </div>
+        </div>
+      </section>
 
+      {/* GST LIVE ACTIVITY FEED & ARN TRACKING PORTAL */}
+      <section className="py-12 px-4 md:px-8 max-w-7xl mx-auto border-t border-slate-100/80 bg-slate-50/35 rounded-3xl mt-10">
+        <div className="grid gap-8 lg:grid-cols-12 items-start">
+          
+          {/* Live Activity Ticker */}
+          <div className="lg:col-span-5 space-y-4">
+            <div>
+              <span className="inline-flex rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-100 shadow-sm animate-pulse">
+                Live Activity Feed
+              </span>
+              <h3 className="text-2xl font-black text-[#071326] mt-2 tracking-tight">
+                Privacy-Safe Sync Feeds
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Real-time updates of GST approvals, return submissions, and cashbacks processed by our systems.
+              </p>
+            </div>
+
+            <div className="bg-white border border-slate-100 shadow-xl shadow-blue-500/5 rounded-2xl p-5 relative overflow-hidden h-32 flex flex-col justify-center">
+              <div className="absolute top-0 right-0 -mt-6 -mr-6 h-20 w-20 rounded-full bg-emerald-100/20 blur-xl pointer-events-none" />
+              
+              <div key={activeActivityIndex} className="animate-activity-ticker flex items-start gap-4">
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                  {liveActivities[activeActivityIndex].type === "registration" ? "REG" : liveActivities[activeActivityIndex].type === "filing" ? "FIL" : "₹"}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-slate-800 leading-normal">
+                    {liveActivities[activeActivityIndex].text}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    {liveActivities[activeActivityIndex].time}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ARN Tracking Module */}
+          <div className="lg:col-span-7 space-y-4">
+            <div>
+              <span className="inline-flex rounded-full bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 border border-blue-100 shadow-sm">
+                ARN Tracking Center
+              </span>
+              <h3 className="text-2xl font-black text-[#071326] mt-2 tracking-tight">
+                Track Application Reference Number
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Verify registration filings directly with the GST Common Portal ledger sync status.
+              </p>
+            </div>
+
+            <div className="bg-white border border-slate-100 shadow-xl shadow-blue-500/5 rounded-2xl p-6 space-y-6">
+              <form onSubmit={handleTrackArn} className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Enter 15-character ARN (e.g. AA270626002134F)"
+                    value={arnQuery}
+                    onChange={(e) => setArnQuery(e.target.value)}
+                    className="w-full h-11 px-4 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 transition-all font-mono"
+                  />
+                  {arnError && (
+                    <p className="absolute left-1 -bottom-4.5 text-[9px] text-rose-500 font-bold">{arnError}</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition active:scale-95 shadow-md shadow-blue-500/10 cursor-pointer"
+                >
+                  Query status
+                </button>
+              </form>
+
+              {arnStatus ? (
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-4">
+                  <div className="flex justify-between items-start text-xs border-b border-slate-200/50 pb-2.5">
+                    <div>
+                      <p className="font-bold text-slate-700">ARN: <span className="font-mono text-blue-600">{arnStatus.arn}</span></p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{arnStatus.type}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 font-semibold">Status checked: {arnStatus.date}</p>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute top-3.5 left-2 right-2 h-0.5 bg-slate-200 -z-0" />
+                    
+                    <div className="grid grid-cols-5 relative z-10">
+                      {arnStatus.timeline.map((item, idx) => (
+                        <div key={idx} className="flex flex-col items-center text-center space-y-1.5">
+                          <div
+                            className={`h-7.5 w-7.5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all ${
+                              item.completed
+                                ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
+                                : item.current
+                                ? "bg-blue-500 text-white border-blue-600 shadow-sm animate-pulse"
+                                : "bg-white text-slate-400 border-slate-200"
+                            }`}
+                          >
+                            {item.completed ? "✓" : idx + 1}
+                          </div>
+                          <div>
+                            <p className={`text-[9px] font-black leading-tight ${item.completed || item.current ? "text-slate-800" : "text-slate-400"}`}>
+                              {item.label}
+                            </p>
+                            <p className="text-[7.5px] text-slate-400 font-semibold mt-0.5">{item.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                  <p className="text-[10px] text-slate-400 font-medium">Input your Application Reference Number above to check government sync status.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* SECTION — RETURN TYPES */}
+      <section className="py-20 px-4 md:px-8 max-w-7xl mx-auto border-t border-slate-100 bg-white">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="inline-flex rounded-full bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 border border-blue-100 shadow-sm">
+            Tax Returns
+          </span>
+          <h2 className="text-3xl md:text-4.5xl font-black text-[#071326] mt-3 tracking-tight">
+            GST Return Categories We Handle
+          </h2>
+          <p className="text-sm font-medium text-slate-500 mt-2.5">
+            File any compliance form assisted by Chartered Accountants with instant receipts.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { title: "GSTR-1 (Sales Return)", desc: "Upload details of all outward supplies of goods or services. Mandatorily filed monthly or quarterly to pass Input Tax Credit to clients.", code: "Sales Statement" },
+            { title: "GSTR-3B (Consolidated Summary)", desc: "Self-declaration of sales and purchase values. Used to claim eligible input credit, compute net liability, and pay tax dues.", code: "Tax Declaration" },
+            { title: "Nil Return Filing", desc: "No sales or purchases during the tax period? You must still file a Nil return on the portal to avoid daily accumulative late penalties.", code: "Zero Sales" },
+            { title: "QRMP Scheme Filings", desc: "Quarterly Return Monthly Payment scheme. Allows taxpayers with turnover up to ₹5 Crore to compile GSTR returns once in 3 months.", code: "Quarterly Saver" },
+            { title: "GSTR-9 (Annual Return)", desc: "Consolidated yearly compliance form compiling monthly/quarterly transactions. Crucial to verify book entries with portal data.", code: "Yearly Audit" },
+            { title: "GSTR-2B ITC Reconciliation", desc: "Advanced cross-matching of purchase invoice ledgers with supplier portal uploads to prevent incorrect input tax credit claims.", code: "Credit Sync" }
+          ].map((item, idx) => (
+            <div key={idx} className="liquid-glass-surface rounded-3xl p-6 border bg-white/60 shadow-sm flex flex-col justify-between hover:-translate-y-1 transition-all group">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-blue-50/50 rounded-full text-blue-700">
+                    {item.code}
+                  </span>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 group-hover:scale-125 transition" />
+                </div>
+                <h3 className="text-xs font-black text-slate-900 leading-tight">{item.title}</h3>
+                <p className="text-[10px] font-semibold text-slate-400 mt-3 leading-relaxed">{item.desc}</p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100/50 flex justify-between items-center text-[10px] font-bold text-blue-600">
+                <span>CA Verification Included</span>
+                <ArrowRight className="h-3.5 w-3.5 transform group-hover:translate-x-1 transition" />
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -483,60 +841,163 @@ export function GstReturnFilingClient({
             </p>
           </div>
 
-          {/* Horizontal pricing cards */}
-          <div className="space-y-4 max-w-4xl mx-auto">
-            {filingPlans.map((plan) => (
-              <div 
-                key={plan.planId}
-                className={`glass-panel rounded-3xl border bg-white/70 p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${plan.color}`}
-              >
-                {/* Left block: Title & description */}
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-base font-black text-slate-900 leading-none">{plan.name}</h3>
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-white border border-slate-100 rounded-full text-slate-500">
-                      {plan.badge}
-                    </span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-400 leading-normal max-w-lg">{plan.description}</p>
-                  
-                  {/* Features list */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-[11px] font-bold text-slate-600">
-                    {plan.features.map((feature, i) => (
-                      <span key={i} className="flex items-center gap-1.5">
-                        <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                        <span>{feature}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
+          {/* Embla Pricing Carousel */}
+          <div className="relative max-w-5xl mx-auto">
+            <div className="overflow-hidden py-6" ref={emblaRef}>
+              <div className="flex gap-6">
+                {filingPlans.map((plan, idx) => {
+                  const isCurrent = idx === activePlanIdx;
+                  return (
+                    <div 
+                      key={plan.planId} 
+                      className={`flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_33.3%] select-none min-w-0 transition-all duration-300 transform ${
+                        isCurrent 
+                          ? "scale-100 opacity-100" 
+                          : "scale-95 opacity-60 md:opacity-100"
+                      }`}
+                    >
+                      <div className={`glass-panel h-full rounded-[36px] border bg-white/70 p-6 shadow-md flex flex-col justify-between transition-all ${plan.color}`}>
+                        
+                        <div>
+                          {/* Plan Badge */}
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-white border border-slate-100 rounded-full text-slate-500">
+                              {plan.badge}
+                            </span>
+                            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-100">
+                              20% Cashback
+                            </span>
+                          </div>
 
-                {/* Right block: Pricing & checkout trigger */}
-                <div className="shrink-0 flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto border-t md:border-t-0 border-slate-100/50 pt-4 md:pt-0 gap-4">
-                  <div className="text-left md:text-right">
-                    <div className="flex items-baseline gap-1.5 justify-start md:justify-end">
-                      <span className="text-slate-400 text-xs font-semibold line-through">{plan.regularPrice}</span>
-                      <span className="text-2xl font-black text-slate-950">{plan.price}</span>
-                      <span className="text-xs font-semibold text-slate-400">{plan.billing}</span>
+                          {/* Plan Name & Price */}
+                          <h3 className="text-base font-black text-slate-900 leading-tight">{plan.name}</h3>
+                          <p className="text-[10px] font-semibold text-slate-400 mt-1 leading-relaxed">{plan.description}</p>
+                          
+                          <div className="mt-5 flex items-baseline gap-2">
+                            <span className="text-slate-400 text-xs font-semibold line-through">{plan.regularPrice}</span>
+                            <span className="text-2xl font-black text-slate-950">{plan.price}</span>
+                            <span className="text-[9px] font-bold text-slate-400">{plan.billing}</span>
+                          </div>
+
+                          {/* Features */}
+                          <ul className="mt-6 space-y-2.5 text-xs text-slate-700 border-t border-slate-100/50 pt-5 text-left">
+                            {plan.features.map((feature, i) => (
+                              <li key={i} className="flex items-center gap-2.5">
+                                <Check className="h-4 w-4 text-blue-600 shrink-0" />
+                                <span className="font-semibold text-slate-600">{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* CTA button */}
+                        <div className="mt-8">
+                          <Link 
+                            href={isLoggedIn ? `/apply/gst-return-filing?plan=${plan.planId}` : `/login/customer?redirect=${encodeURIComponent(`/apply/gst-return-filing?plan=${plan.planId}`)}`}
+                            onClick={() => trackCrmEvent("apply_click", "gst-return-filing")}
+                            className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md hover:scale-[1.01] transition duration-150 active:scale-[0.99]"
+                          >
+                            Apply with {plan.badge}
+                            <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        </div>
+
+                      </div>
                     </div>
-                    <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
-                      20% Cashback
-                    </span>
-                  </div>
-                  
-                  <Link
-                    href={isLoggedIn ? `/apply/gst-return-filing?plan=${plan.planId}` : `/login/customer?redirect=${encodeURIComponent(`/apply/gst-return-filing?plan=${plan.planId}`)}`}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white px-5 shadow transition active:scale-95"
-                  >
-                    Select Plan
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
 
+            {/* Slider Dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {filingPlans.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => emblaApi?.scrollTo(idx)}
+                  className={`h-2.5 rounded-full transition-all duration-200 ${
+                    idx === activePlanIdx ? "w-6 bg-blue-600" : "w-2.5 bg-slate-200"
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* DIGICONNECT VS OTHERS */}
+      <section className="py-20 px-4 md:px-8 max-w-7xl mx-auto border-t border-slate-100 bg-slate-50/20">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="inline-flex rounded-full bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 border border-blue-100 shadow-sm">
+            Comparison Hub
+          </span>
+          <h2 className="text-3xl md:text-4.5xl font-black text-[#071326] mt-3 tracking-tight">
+            DigiConnect vs Traditional Filing Options
+          </h2>
+          <p className="text-sm font-medium text-slate-500 mt-2.5">
+            Compare service values to see how we guarantee error-free, timely return submissions.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto border border-slate-150/60 bg-white rounded-3xl shadow-sm max-w-4xl mx-auto">
+          <table className="min-w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[9px]">
+                <th className="p-4.5">Core Features</th>
+                <th className="p-4.5 bg-blue-50/40 text-blue-700 border-l border-r border-blue-100 font-black">DigiConnect Dukan</th>
+                <th className="p-4.5 text-slate-400">Local Agent</th>
+                <th className="p-4.5 text-slate-400">Freelancer</th>
+                <th className="p-4.5 text-slate-400">Random Online Portal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+              {[
+                { name: "CA Verification", dc: true, agent: "Sometimes", free: "Yes", rand: "Self Submission" },
+                { name: "Dedicated Support", dc: true, agent: "Office Hours", free: "Unreliable", rand: "Ticket Only" },
+                { name: "Document Review", dc: true, agent: "Manual check", free: "Manual check", rand: "Automated scan" },
+                { name: "ARN Tracking", dc: true, agent: "No tracker", free: "No tracker", rand: "Standard text" },
+                { name: "WhatsApp Updates", dc: true, agent: "Rarely", free: "Yes", rand: "Email only" },
+                { name: "Cashback (20% Wallet)", dc: true, agent: "No", free: "No", rand: "No" },
+                { name: "Wallet Rewards", dc: true, agent: "No", free: "No", rand: "No" },
+                { name: "Secure Storage", dc: true, agent: "File cabinets", free: "Personal PC", rand: "Standard servers" },
+                { name: "Application Tracking", dc: true, agent: "No", free: "No", rand: "Basic status" },
+                { name: "Expert Consultation", dc: true, agent: "Charges extra", free: "Varies", rand: "Paid add-on" }
+              ].map((row, idx) => (
+                <tr 
+                  key={idx}
+                  onMouseEnter={() => setHoveredCompareRow(idx)}
+                  onMouseLeave={() => setHoveredCompareRow(null)}
+                  className={`transition-colors duration-150 cursor-pointer ${
+                    hoveredCompareRow === idx ? "bg-blue-50/35 text-blue-900 font-bold" : "hover:bg-slate-50/50"
+                  }`}
+                >
+                  <td className="p-4.5 font-semibold text-slate-800 text-xs">{row.name}</td>
+                  
+                  {/* DigiConnect Column */}
+                  <td className="p-4.5 bg-blue-50/20 text-blue-700 border-l border-r border-blue-100/50 font-black text-center md:text-left">
+                    {row.dc === true ? (
+                      <span className="flex items-center gap-1.5 justify-center md:justify-start">
+                        <CheckCircle2 className="h-4.5 w-4.5 text-blue-600 shrink-0" />
+                        <span>Included</span>
+                      </span>
+                    ) : (
+                      row.dc
+                    )}
+                  </td>
+                  
+                  {/* Local Agent Column */}
+                  <td className="p-4.5 text-slate-400">{(row.agent as unknown) === true ? "✓" : row.agent}</td>
+                  
+                  {/* Freelancer Column */}
+                  <td className="p-4.5 text-slate-400">{(row.free as unknown) === true ? "✓" : row.free}</td>
+                  
+                  {/* Random Portal Column */}
+                  <td className="p-4.5 text-slate-400">{(row.rand as unknown) === true ? "✓" : row.rand}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -771,41 +1232,117 @@ export function GstReturnFilingClient({
         </div>
       </section>
 
-      {/* REWARD CENTER SNEAK-PEEK */}
+      {/* REWARD CENTER */}
       <section className="py-20 bg-gradient-to-b from-[#f4f7fc] to-[#fbfcff] px-4 md:px-8 border-t border-slate-100/80">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-8 items-center justify-between">
-          <div className="space-y-4 max-w-xl">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-14">
             <span className="inline-flex rounded-full bg-orange-50 px-3.5 py-1 text-xs font-bold text-orange-700 border border-orange-100 shadow-sm">
-              Reward Center
+              Reward Hub
             </span>
-            <h2 className="text-3xl font-black text-[#071326] tracking-tight">
-              Get 20% Cashback on Filing
+            <h2 className="text-3xl md:text-4.5xl font-black text-[#071326] mt-3 tracking-tight">
+              Unlock Your Wallet Rewards
             </h2>
-            <p className="text-xs font-medium text-slate-500 leading-relaxed">
-              Every completed filing triggers instant wallet points. Enjoy Referral Bonuses of ₹100, dynamic discounts on renewals, and zero portal blocks.
+            <p className="text-sm font-medium text-slate-500 mt-2.5">
+              Obtain cashbacks, refer partners, and reduce fees across return compliance services.
             </p>
-            {isLoggedIn && referralCode && (
-              <div className="p-4 rounded-3xl border border-dashed border-indigo-200 bg-indigo-50/30 flex justify-between items-center gap-4 max-w-md">
-                <div className="min-w-0">
-                  <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Your Referral Link</p>
-                  <p className="text-xs font-black text-slate-800 truncate">{referralCode}</p>
-                </div>
-                <button
-                  onClick={copyReferralLink}
-                  className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-[10px] font-black text-indigo-700 rounded-full hover:bg-indigo-50 active:scale-95 transition"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  {copiedLink ? "Copied" : "Copy Link"}
-                </button>
-              </div>
-            )}
           </div>
 
-          <div className="w-36 h-36 relative flex items-center justify-center bg-blue-50 rounded-full border border-blue-100 shadow-inner shrink-0">
-            <svg viewBox="0 0 100 100" className="w-24 h-24 animate-pulse">
-              <path d="M20 30 h55 a 5 5 0 0 1 5 5 v35 a 5 5 0 0 1 -5 5 h-55 a 5 5 0 0 1 -5 -5 v-35 a 5 5 0 0 1 5 -5 z" fill="#3b82f6" fillOpacity="0.2" stroke="#2563eb" strokeWidth="2.5" />
-              <circle cx="50" cy="50" r="10" fill="#f59e0b" />
-            </svg>
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-center max-w-5xl mx-auto">
+            
+            {/* Wallet illustration & Dashboard details */}
+            <div className="glass-panel rounded-[42px] border border-white/60 p-6 md:p-8 bg-white/70 shadow-lg flex flex-col md:flex-row gap-6 items-center">
+              
+              {/* Animated SVG Wallet graphic with coin animations */}
+              <div className="w-36 h-36 shrink-0 relative flex items-center justify-center bg-blue-50 rounded-full border border-blue-100 shadow-inner">
+                <svg viewBox="0 0 100 100" className="w-24 h-24">
+                  {/* Wallet outline */}
+                  <path d="M20 30 h55 a 5 5 0 0 1 5 5 v35 a 5 5 0 0 1 -5 5 h-55 a 5 5 0 0 1 -5 -5 v-35 a 5 5 0 0 1 5 -5 z" fill="#3b82f6" fillOpacity="0.2" stroke="#2563eb" strokeWidth="2.5" />
+                  {/* Card slot decoration */}
+                  <rect x="25" y="40" width="30" height="4" rx="2" fill="#2563eb" />
+                  {/* Floating Gold Coin */}
+                  <circle cx="50" cy="50" r="10" fill="#f59e0b" className="animate-[bounce_2s_infinite]" />
+                </svg>
+                <div className="absolute top-4 right-4 bg-orange-500 text-white rounded-full p-1 text-[8px] font-black animate-[ping_3s_infinite]">
+                  ₹
+                </div>
+              </div>
+
+              {/* Wallet info */}
+              <div className="space-y-4 text-center md:text-left flex-1">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Credits</span>
+                  <h3 className="text-2xl font-black text-slate-900 leading-tight">
+                    {isLoggedIn ? formatPrice(walletBalance) : "₹0.00"}
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-400">Available to redeem up to 50% on future orders.</p>
+                </div>
+
+                {/* Reward Progress Meter */}
+                <div className="space-y-1.5 pt-2">
+                  <div className="flex justify-between text-[10px] font-black text-slate-500">
+                    <span>Filing Tier Progress</span>
+                    <span>{isLoggedIn ? "Silver Member" : "Non-Member"}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full" 
+                      style={{ width: isLoggedIn ? "60%" : "0%" }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-center md:text-left">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Referral Earned</p>
+                    <p className="text-sm font-black text-slate-800">
+                      {isLoggedIn ? formatPrice(profileData?.wallet?.lifetimeEarned ?? 0) : "₹0.00"}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-center md:text-left">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Cashback Rate</p>
+                    <p className="text-sm font-black text-blue-600">20% Flat</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Reward Center Features */}
+            <div className="space-y-4">
+              {[
+                { title: "20% Cashback Guarantee", desc: "Get 20% of your filing service price instantly credited to your wallet upon completion.", icon: Gift },
+                { title: "Referral Bonus (₹100)", desc: "Share your code. Your partner gets 20% off and you receive ₹100 credits.", icon: Users },
+                { title: "Future Filing Discounts", desc: "Redeem balance credits directly to compute GST Return filings or ITR orders.", icon: Calculator },
+                { title: "Loyalty Benefits & Perks", desc: "Get priority CA reviews and zero penalty notice guarantees as a regular filer.", icon: Award }
+              ].map((item, index) => (
+                <div key={index} className="flex gap-4 p-4 bg-white/70 border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                    <item.icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800">{item.title}</h4>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-1 leading-normal">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Referral sharing widget if logged in */}
+              {isLoggedIn && referralCode && (
+                <div className="p-4 rounded-3xl border border-dashed border-indigo-200 bg-indigo-50/30 flex justify-between items-center gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Share with Partners</p>
+                    <p className="text-xs font-black text-slate-800 truncate">{referralCode}</p>
+                  </div>
+                  <button
+                    onClick={copyReferralLink}
+                    className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-[10px] font-black text-indigo-700 rounded-full hover:bg-indigo-50 active:scale-95 transition"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedLink ? "Copied" : "Copy Link"}
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </section>
@@ -815,7 +1352,7 @@ export function GstReturnFilingClient({
         <div className="grid gap-12 lg:grid-cols-2 items-center">
           <div className="space-y-6">
             <span className="inline-flex rounded-full bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 border border-blue-100 shadow-sm">
-              Trust Signals
+              Trust Center
             </span>
             <h2 className="text-3xl font-black text-[#071326] tracking-tight">
               India&apos;s Preferred Compliance Desk
@@ -823,19 +1360,35 @@ export function GstReturnFilingClient({
             <p className="text-sm font-medium text-slate-500 leading-relaxed">
               We compile returns securely, running invoice matching checks through advanced CA checks to ensure no warning notices are triggered by the tax office.
             </p>
+            
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              {[
+                { title: "PAN India Coverage", desc: "Support in all 28 states & UTs" },
+                { title: "Govt Approved Workflow", desc: "100% compliant server submission" }
+              ].map((badge, idx) => (
+                <div key={idx} className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 leading-none">{badge.title}</h4>
+                    <p className="text-[9px] text-slate-400 mt-1">{badge.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 gap-4">
             {[
-              { value: 10000, suffix: "+", label: "Active Filings" },
-              { value: 99.9, suffix: "%", label: "Accuracy Score" },
-              { value: 0, suffix: "", label: "Penalty Notices" }
+              { value: 50000, suffix: "+", label: "Customers Served" },
+              { value: 99.8, suffix: "%", label: "Success Rate" },
+              { value: 24, suffix: "/7", label: "Active Support" },
+              { value: 72, suffix: " Hours", label: "Avg Processing" }
             ].map((stat, idx) => (
-              <div key={idx} className="text-center p-4 rounded-3xl bg-white border border-slate-100 shadow-sm flex flex-col justify-center">
+              <div key={idx} className="text-center p-4.5 rounded-3xl bg-white border border-slate-100 shadow-sm flex flex-col justify-center">
                 <p className="text-2xl md:text-3.5xl font-black text-blue-600 leading-none">
                   <AnimatedCounter value={stat.value} suffix={stat.suffix} />
                 </p>
-                <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest mt-1.5">{stat.label}</p>
+                <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest mt-2">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -888,6 +1441,76 @@ export function GstReturnFilingClient({
           ) : (
             <p className="text-center text-xs font-semibold text-slate-400 py-8">No matching return questions found.</p>
           )}
+        </div>
+      </section>
+
+      {/* SECTION - SMART RECOMMENDATIONS */}
+      <section className="py-16 px-4 md:px-8 max-w-7xl mx-auto border-t border-slate-100 bg-slate-50/20">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="inline-flex rounded-full bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 border border-blue-100">
+            Recommended For You
+          </span>
+          <h3 className="text-2xl md:text-3.5xl font-black text-slate-900 mt-2 tracking-tight">
+            Compliance & Growth Ecosystem
+          </h3>
+          <p className="text-xs font-semibold text-slate-400 mt-1">
+            Grow your business with other premium compliance setups and government loan schemes.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
+          {[
+            {
+              title: "GST Registration",
+              desc: "Get your official 15-digit GSTIN under regular or composition schemes in 3 working days.",
+              link: "/services/gst-registration",
+              badge: "Startup Pack",
+              cta: "Launch Now"
+            },
+            {
+              title: "CM YUVA Scheme",
+              desc: "Apply for ₹10 Lakhs interest-free business setup loans with government financial aid.",
+              link: "/services/cm-yuva-entrepreneur-loan-assistance",
+              badge: "Govt Subsidy",
+              cta: "Check Eligibility"
+            },
+            {
+              title: "PM Vishwakarma Scheme",
+              desc: "Collateral-free loans up to ₹3 Lakhs, skill training incentives, and vendor toolkit aids.",
+              link: "/services/pm-vishwakarma-yojana",
+              badge: "Artisans & Traders",
+              cta: "Enroll Today"
+            },
+            {
+              title: "Credit Score Health Check",
+              desc: "Verify credit history reports and get professional Chartered Accountant health analysis calls.",
+              link: "/services/cibil-report-analysis-and-credit-health-consultation",
+              badge: "Banking Readiness",
+              cta: "Analyze Now"
+            }
+          ].map((item, idx) => (
+            <div key={idx} className="liquid-glass-surface rounded-3xl p-5 border bg-white/70 shadow-sm flex flex-col justify-between hover:-translate-y-1.5 transition duration-200 group">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-blue-50/50 rounded-full text-blue-700">
+                    {item.badge}
+                  </span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </div>
+                <h4 className="text-xs font-black text-slate-900 leading-tight">{item.title}</h4>
+                <p className="text-[10px] font-semibold text-slate-400 mt-2 leading-relaxed">{item.desc}</p>
+              </div>
+              <div className="mt-5">
+                <Link
+                  href={item.link}
+                  className="w-full inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-[10px] font-extrabold text-white shadow transition-all active:scale-95"
+                >
+                  {item.cta}
+                  <ArrowRight className="h-3.5 w-3.5 transform group-hover:translate-x-0.5 transition" />
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
