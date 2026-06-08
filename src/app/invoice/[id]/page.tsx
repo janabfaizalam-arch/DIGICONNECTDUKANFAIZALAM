@@ -90,11 +90,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        <Card className="invoice-card overflow-hidden rounded-2xl bg-white p-0 shadow-sm md:rounded-[1.5rem] print:rounded-none print:border-0 print:shadow-none">
-          <div className="bg-slate-950 print:bg-white print:text-slate-950 print:border-b print:px-0 print:py-2 px-5 py-4 text-white md:px-10">
+        <Card className="invoice-card overflow-hidden rounded-[24px] border border-white/60 bg-white/72 backdrop-blur-xl p-0 shadow-soft md:rounded-[2rem] print:rounded-none print:border-0 print:shadow-none">
+          <div className="bg-slate-50 border-b border-slate-100 print:bg-white print:text-slate-950 print:border-b print:px-0 print:py-2 px-5 py-4 text-slate-800 md:px-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-200 print:text-slate-700">Official Service Invoice</p>
-              <p className="text-sm font-semibold text-white/80 print:text-slate-500">Powered By RNoS India Pvt Ltd</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Official Service Invoice</p>
+              <p className="text-xs font-bold text-slate-400">Powered By RNoS India Pvt Ltd</p>
             </div>
           </div>
 
@@ -109,85 +109,85 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 priority
                 className="h-auto w-[165px] object-contain md:w-[220px] print:w-[190px]"
               />
-              <p className="mt-3 max-w-sm text-sm leading-6 text-slate-600">
+              <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500 font-semibold">
                 DigiConnect Dukan provides trusted digital and government service application support.
               </p>
             </div>
             <div className="text-right">
-              <h1 className="text-2xl font-bold text-slate-950 md:text-4xl">Invoice</h1>
-              <p className="mt-2 font-mono text-xs font-bold text-slate-700 md:text-sm">{invoice.invoice_number}</p>
-              <p className="mt-1 text-xs text-slate-600 md:text-sm">{formatDate(invoice.created_at)}</p>
+              <h1 className="text-3xl font-serif font-black text-slate-900 md:text-5xl">Invoice</h1>
+              <p className="mt-2 font-mono text-xs font-black text-slate-700 md:text-sm">{invoice.invoice_number}</p>
+              <p className="mt-1 text-xs font-bold text-slate-500 md:text-sm">{formatDate(invoice.created_at)}</p>
             </div>
           </div>
 
           <div className="grid gap-4 border-b py-6 md:grid-cols-3">
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Bill To</p>
-              <p className="mt-2 font-bold text-slate-950">{invoice.customer_name}</p>
-              <p className="mt-1 text-sm text-slate-600">{invoice.customer_email}</p>
-              <p className="mt-1 text-sm text-slate-600">{invoice.customer_mobile ?? "Mobile not available"}</p>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Bill To</p>
+              <p className="mt-2 font-black text-slate-900">{invoice.customer_name}</p>
+              <p className="mt-1 text-xs font-bold text-slate-500">{invoice.customer_email}</p>
+              <p className="mt-1 text-xs font-bold text-slate-500">{invoice.customer_mobile ?? "Mobile not available"}</p>
             </div>
-            <div className="rounded-2xl bg-blue-50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Payment Status</p>
-              <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-sm font-bold text-slate-950">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/20 p-4">
+              <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Payment Status</p>
+              <p className="mt-2.5 inline-flex rounded-full bg-white border border-blue-100 px-3.5 py-1 text-xs font-black text-blue-700">
                 {paymentStatusLabels[invoice.payment_status]}
               </p>
             </div>
-            <div className="rounded-2xl bg-orange-50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Support</p>
-              <p className="mt-2 text-sm font-bold text-slate-950">+91 7007595931, 9305086491</p>
-              <p className="mt-1 text-sm text-slate-600">rnos.in</p>
+            <div className="rounded-2xl border border-orange-100 bg-orange-50/15 p-4">
+              <p className="text-[10px] font-black uppercase tracking-wider text-orange-700">Support Desk</p>
+              <p className="mt-2 text-xs font-black text-slate-900">+91 7007595931, 9305086491</p>
+              <p className="mt-1 text-xs font-bold text-slate-500">rnos.in</p>
             </div>
           </div>
 
           <div className="overflow-hidden border-b py-6">
-            <div className="grid grid-cols-[1fr_72px_110px] bg-slate-950 print:bg-slate-100 print:text-slate-900 print:border-y px-4 py-3 text-sm font-bold text-white">
+            <div className="grid grid-cols-[1fr_72px_110px] bg-slate-50 border-y border-slate-100 print:bg-slate-100 print:text-slate-900 px-4 py-3 text-xs font-black text-slate-700 uppercase tracking-wider">
               <p>Service Item</p>
               <p className="text-center">Qty</p>
-              <p>Amount</p>
+              <p className="text-right">Amount</p>
             </div>
             {invoiceServices.map((serviceName, index) => (
-              <div key={`${serviceName}-${index}`} className="grid grid-cols-[1fr_72px_110px] gap-4 border-x border-b px-4 py-4">
+              <div key={`${serviceName}-${index}`} className="grid grid-cols-[1fr_72px_110px] gap-4 border-b border-slate-100 px-4 py-4">
                 <div>
-                  <p className="font-bold text-slate-950">{serviceName}</p>
-                  <p className="mt-1 text-sm text-slate-600">Digital service application support</p>
+                  <p className="font-bold text-slate-900 text-sm">{serviceName}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Digital service application support</p>
                 </div>
-                <p className="text-center font-bold text-slate-950">1</p>
-                <p className="font-bold text-slate-950">{invoiceServices.length === 1 ? formatCurrency(invoice.amount) : "Included"}</p>
+                <p className="text-center font-bold text-slate-900 text-sm">1</p>
+                <p className="text-right font-serif font-bold text-slate-900 text-sm">{invoiceServices.length === 1 ? formatCurrency(invoice.amount) : "Included"}</p>
               </div>
             ))}
           </div>
 
           <div className="grid gap-6 pt-5 md:grid-cols-[1fr_320px]">
-            <div className="rounded-2xl border bg-slate-50 p-4">
-              <p className="font-bold text-slate-950">Notes</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-4">
+              <p className="text-xs font-black text-slate-900 uppercase tracking-wider">Notes</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 font-semibold">
                 Thank you for choosing DigiConnect Dukan. Keep this invoice for your records and application tracking.
               </p>
-              <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-700 sm:grid-cols-3">
-                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-blue-700" /> Secure</span>
-                <span className="inline-flex items-center gap-2"><Phone className="h-4 w-4 text-orange-600" /> Support</span>
-                <span className="inline-flex items-center gap-2"><Globe2 className="h-4 w-4 text-blue-700" /> rnos.in</span>
+              <div className="mt-4 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-3">
+                <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-blue-700" /> CA Secure</span>
+                <span className="inline-flex items-center gap-1.5"><Phone className="h-4 w-4 text-orange-600" /> Support Desk</span>
+                <span className="inline-flex items-center gap-1.5"><Globe2 className="h-4 w-4 text-blue-700" /> rnos.in</span>
               </div>
             </div>
-            <div className="w-full max-w-xs">
-              <div className="flex justify-between text-sm text-slate-600">
+            <div className="w-full max-w-xs pt-2 space-y-3">
+              <div className="flex justify-between text-xs font-bold text-slate-500">
                 <span>Subtotal</span>
                 <span>{formatCurrency(invoice.amount)}</span>
               </div>
-              <div className="mt-3 flex justify-between text-sm text-slate-600">
+              <div className="flex justify-between text-xs font-bold text-slate-500">
                 <span>Taxes / Charges</span>
                 <span>Included</span>
               </div>
-              <div className="mt-3 flex justify-between text-xl font-bold text-slate-950">
+              <div className="flex justify-between border-t border-slate-150 pt-2 text-lg font-serif font-black text-slate-900">
                 <span>Grand Total</span>
                 <span>{formatCurrency(invoice.amount)}</span>
               </div>
             </div>
           </div>
-          <div className="mt-8 border-t pt-4 text-center text-xs leading-5 text-slate-500">
+          <div className="mt-10 border-t border-slate-100 pt-4 text-center text-[10px] leading-relaxed text-slate-400 font-semibold">
             <p>DigiConnect Dukan | Powered By RNoS India Pvt Ltd | 7007595931 | rnos.in</p>
-            <p className="font-semibold">This is a computer-generated invoice.</p>
+            <p className="mt-0.5">This is a computer-generated tax invoice document. No signature required.</p>
           </div>
           </div>
         </Card>

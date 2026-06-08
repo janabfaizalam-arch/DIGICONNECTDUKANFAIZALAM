@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, FileText, Wallet, UserRound } from "lucide-react";
+import { Home, FileText, Wallet, Gift, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/browser";
@@ -17,18 +17,11 @@ function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
 }
 
-function getMetadataRole(user: User | null) {
-  const role = String(user?.user_metadata.role ?? "").toLowerCase();
-  if (adminRoleAliases.has(role)) {
-    return "admin";
-  }
-  return isAppRole(role) ? role : null;
-}
-
 async function resolveRole(user: User | null): Promise<AppRole | null> {
   if (!user) return null;
-  const metadataRole = getMetadataRole(user);
-  if (metadataRole) return metadataRole;
+  const metadataRole = String(user.user_metadata.role ?? "").toLowerCase();
+  if (adminRoleAliases.has(metadataRole)) return "admin";
+  if (isAppRole(metadataRole)) return metadataRole;
 
   const email = (user.email ?? "").toLowerCase();
   const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
@@ -113,7 +106,7 @@ export function BottomNav() {
       const currentScrollY = window.scrollY;
       const scrollDelta = currentScrollY - lastScrollYRef.current;
 
-      // scroll down threshold 15px, scroll up threshold -10px
+      // Scroll down threshold 15px, scroll up threshold -10px
       if (scrollDelta > 15 && currentScrollY > 60) {
         setNavHidden(true);
       } else if (scrollDelta < -10) {
@@ -136,27 +129,30 @@ export function BottomNav() {
     return null;
   }
 
-  // Resolve dynamic dashboard link
+  // Resolve dynamic dashboard links
   let applicationsHref = "/login";
   let walletHref = "/login";
+  let rewardsHref = "/login";
   let dashboardHref = "/login";
 
   if (user) {
     if (role === "admin") {
       applicationsHref = "/admin/applications";
       walletHref = "/admin/wallet";
+      rewardsHref = "/admin";
       dashboardHref = "/admin";
     } else if (role === "agent") {
       applicationsHref = "/ap/applications";
       walletHref = "/ap/wallet";
+      rewardsHref = "/ap/dashboard";
       dashboardHref = "/ap/dashboard";
     } else {
       applicationsHref = "/customer/dashboard?tab=applications";
-      walletHref = "/customer/wallet";
+      walletHref = "/customer/dashboard?tab=wallet";
+      rewardsHref = "/customer/dashboard?tab=referral";
       dashboardHref = "/customer/dashboard";
     }
   }
-
 
   const navVariants = {
     visible: { 
@@ -176,8 +172,16 @@ export function BottomNav() {
       return pathname === "/customer/dashboard" && currentTabParam === "applications";
     }
     
+    if (tabHref.includes("?tab=wallet")) {
+      return pathname === "/customer/dashboard" && currentTabParam === "wallet";
+    }
+
+    if (tabHref.includes("?tab=referral")) {
+      return pathname === "/customer/dashboard" && currentTabParam === "referral";
+    }
+
     if (tabHref === "/customer/dashboard") {
-      return pathname === "/customer/dashboard" && (currentTabParam === "" || currentTabParam === "dashboard");
+      return pathname === "/customer/dashboard" && (currentTabParam === "" || currentTabParam === "dashboard" || currentTabParam === "profile");
     }
 
     const baseHref = tabHref.split("?")[0];
@@ -190,9 +194,9 @@ export function BottomNav() {
 
   const tabs = [
     { label: "Home", href: "/", icon: Home },
-    { label: "Services", href: "/services", icon: LayoutGrid },
     { label: "Applications", href: applicationsHref, icon: FileText },
     { label: "Wallet", href: walletHref, icon: Wallet },
+    { label: "Rewards", href: rewardsHref, icon: Gift },
     { label: "Account", href: dashboardHref, icon: UserRound },
   ];
 
@@ -201,7 +205,7 @@ export function BottomNav() {
       variants={navVariants}
       animate={navHidden ? "hidden" : "visible"}
       initial="visible"
-      className="fixed bottom-0 inset-x-0 z-[50] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/50 backdrop-blur-2xl border-t border-white/30 shadow-[0_-2px_16px_rgba(15,23,42,0.04)] pb-safe-bottom print:hidden"
+      className="fixed bottom-0 inset-x-0 z-[50] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/60 backdrop-blur-2xl border-t border-white/40 shadow-[0_-2px_16px_rgba(15,23,42,0.04)] pb-safe-bottom print:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {tabs.map((tab) => {

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, FileCheck2, FileUp, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, UploadCloud, Shield, Check, Lock } from "lucide-react";
+import { CheckCircle2, CreditCard, FileCheck2, IndianRupee, Trash2, WalletCards, ArrowLeft, ArrowRight, UploadCloud, Shield, Check, Lock } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import {
@@ -43,9 +43,7 @@ import {
 } from "@/components/portal/cm-yuva-application-fields";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { FormSubmitButton, LoadingOverlay } from "@/components/ui/loading";
-import { Textarea } from "@/components/ui/textarea";
 import { useWallet } from "@/hooks/use-wallet";
 import { trackApplicationSubmit } from "@/lib/google-analytics";
 import { trackSubmitApplication } from "@/lib/meta-pixel";
@@ -2583,36 +2581,36 @@ export function ServiceApplicationForm({
     <>
     <form onSubmit={onSubmit} className="grid gap-4 pb-4 lg:grid-cols-[1fr_340px]" aria-busy={isSubmitting}>
       <fieldset disabled={isSubmitting} className="contents">
-      <Card className="rounded-2xl border-blue-100 bg-white/95 p-4 shadow-sm md:p-6">
+      <Card className="rounded-[28px] border border-slate-100 bg-white/70 backdrop-blur-xl p-5 md:p-7 shadow-sm">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Complete Application</p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Complete Application</p>
+          <h2 className="mt-2 text-xl font-black text-slate-900 tracking-tight">
             {selectedServices.length > 1 ? "Multiple Service Application" : service.title}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          <p className="mt-1 text-xs text-slate-400 font-medium">
             Fill the form, upload documents, pay securely with Razorpay, and track your application in the dashboard.
           </p>
         </div>
 
-        <div className="mt-5 rounded-2xl border bg-white p-4">
+        <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-bold text-slate-950">Selected Services</p>
-              <p className="mt-1 text-sm text-slate-600">Each service will be submitted as a separate application record.</p>
+              <p className="text-xs font-bold text-slate-800">Selected Services</p>
+              <p className="mt-0.5 text-[10px] text-slate-400 font-medium">Each service will be submitted as a separate application record.</p>
             </div>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {selectedServices.map((item) => (
-              <div key={item.slug} className="min-w-0 rounded-2xl bg-slate-50 p-3">
-                <p className="truncate font-bold text-slate-950">{item.title}</p>
-                <p className="mt-1 text-sm text-slate-600">{formatCurrency(item.amount)}</p>
+              <div key={item.slug} className="min-w-0 rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
+                <p className="truncate text-xs font-bold text-slate-800">{item.title}</p>
+                <p className="mt-1 text-xs font-extrabold text-orange-600">{formatCurrency(item.amount)}</p>
               </div>
             ))}
           </div>
         </div>
 
         <div className="mt-5">
-          <p className="font-bold text-slate-950">Applicant Details</p>
+          <p className="text-xs font-bold text-slate-800">Applicant Details</p>
           {isPmVishwakarma ? (
             <PmVishwakarmaApplicationFields values={pmVishwakarmaValues} onChange={updatePmVishwakarmaValue} pincodeStatus={pincodeStatus} />
           ) : isEshram ? (
@@ -2626,43 +2624,97 @@ export function ServiceApplicationForm({
               onFilesChange={setSelectedDocuments}
             />
           ) : (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <Input name="name" placeholder="Full Name" aria-label="Full Name" required className="h-12 text-sm" value={applicantName} onChange={(event) => setApplicantName(event.target.value)} />
-              <Input
-                name="mobile"
-                placeholder="Mobile Number"
-                aria-label="Mobile Number"
-                inputMode="numeric"
-                pattern="[0-9]{10}"
-                required
-                className="h-12 text-sm"
-                value={applicantMobile}
-                onChange={(event) => setApplicantMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
-              />
-              <Input name="email" placeholder="Email" aria-label="Email" type="email" required className="h-12 text-sm" value={applicantEmail} onChange={(event) => setApplicantEmail(event.target.value)} />
-              <Input name="city" placeholder="City" aria-label="City" required className="h-12 text-sm" value={applicantCity} onChange={(event) => setApplicantCity(event.target.value)} />
-              <Input name="address" placeholder="Address (optional)" aria-label="Address (optional)" className="h-12 text-sm" value={applicantAddress} onChange={(event) => setApplicantAddress(event.target.value)} />
-              <Textarea name="message" placeholder="Notes / Message (optional)" aria-label="Notes / Message (optional)" className="min-h-24 text-sm md:col-span-2" value={applicantMessage} onChange={(event) => setApplicantMessage(event.target.value)} />
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400">Full Name *</label>
+                <input 
+                  type="text" 
+                  name="name"
+                  required
+                  value={applicantName}
+                  onChange={(e) => setApplicantName(e.target.value)}
+                  placeholder="e.g. Rahul Sharma"
+                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400">Mobile Number *</label>
+                <input 
+                  type="tel" 
+                  name="mobile"
+                  required
+                  pattern="[0-9]{10}"
+                  value={applicantMobile}
+                  onChange={(e) => setApplicantMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  placeholder="e.g. 9876543210"
+                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400">Email Address *</label>
+                <input 
+                  type="email" 
+                  name="email"
+                  required
+                  value={applicantEmail}
+                  onChange={(e) => setApplicantEmail(e.target.value)}
+                  placeholder="e.g. rahul@example.com"
+                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400">City *</label>
+                <input 
+                  type="text" 
+                  name="city"
+                  required
+                  value={applicantCity}
+                  onChange={(e) => setApplicantCity(e.target.value)}
+                  placeholder="e.g. Lucknow"
+                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[9px] font-black uppercase text-slate-400">Full Address Details (Optional)</label>
+                <input 
+                  type="text" 
+                  name="address"
+                  value={applicantAddress}
+                  onChange={(e) => setApplicantAddress(e.target.value)}
+                  placeholder="e.g. Flat 302, Sharma Heights"
+                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[9px] font-black uppercase text-slate-400">Notes / Special Instructions (Optional)</label>
+                <textarea 
+                  name="message"
+                  value={applicantMessage}
+                  onChange={(e) => setApplicantMessage(e.target.value)}
+                  placeholder="Add any specific details our team should know about this filing..."
+                  className="mt-1 block w-full glass-input-premium transition bg-white/70 min-h-24 resize-none"
+                />
+              </div>
             </div>
           )}
         </div>
 
         {!isPvcCard && !isCmYuva ? (
-          <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/30 p-4 md:p-6 transition duration-200 hover:border-blue-300 hover:bg-blue-50/10">
-            <div className="flex items-start gap-3">
-              <FileUp className="mt-1 h-5 w-5 text-blue-600" />
-              <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-slate-950 text-sm md:text-base">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
-                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
-                  {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
-                </p>
-                <Input
+          <div className="mt-6 p-6 rounded-[28px] border border-dashed border-blue-200/80 bg-blue-50/5 hover:bg-blue-50/10 transition text-center flex flex-col items-center justify-center relative group">
+            <UploadCloud className="h-9 w-9 text-blue-500 mb-2 group-hover:scale-110 transition duration-300" />
+            <div className="max-w-md mx-auto relative z-10">
+              <p className="font-black text-slate-900 text-xs sm:text-sm">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
+              <p className="mt-1 text-[10px] text-slate-400 font-semibold leading-normal">
+                {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
+              </p>
+              <div className="mt-4 relative inline-block cursor-pointer">
+                <input
                   name="documents"
                   type="file"
                   multiple
                   required={!selectedDocuments.length && !isEshram}
                   accept=".pdf,.jpg,.jpeg,.png"
-                  className="mt-4 text-xs font-bold"
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   disabled={isSubmitting}
                   onChange={(event) => {
                     const files = Array.from(event.target.files ?? []);
@@ -2688,28 +2740,32 @@ export function ServiceApplicationForm({
                     event.target.value = "";
                   }}
                 />
-                {selectedDocuments.length ? (
-                  <div className="mt-4 grid gap-2">
-                    {selectedDocuments.map((file, index) => (
-                      <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
-                        <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
-                          <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                          <span className="truncate">{file.name}</span>
-                        </span>
-                        <button
-                          type="button"
-                          disabled={isSubmitting}
-                          onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-red-600 hover:bg-red-100 transition"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+                <span className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white shadow hover:bg-blue-700 transition active:scale-95">
+                  Browse Files
+                </span>
               </div>
+              
+              {selectedDocuments.length ? (
+                <div className="mt-5 grid gap-2">
+                  {selectedDocuments.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
+                      <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
+                        <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                        <span className="truncate max-w-[180px]">{file.name}</span>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[9px] font-extrabold text-red-500 hover:bg-red-100 transition cursor-pointer border-none"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -2717,29 +2773,29 @@ export function ServiceApplicationForm({
 
       <div className="space-y-4">
         {/* Dynamic Ledger Summary Card */}
-        <Card className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm backdrop-blur-sm md:p-5">
+        <Card className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-700">
-              <IndianRupee className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-sm border border-blue-100">
+              <IndianRupee className="h-4.5 w-4.5" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Total</p>
-              <p className="text-2xl font-extrabold text-slate-950 leading-tight">{formatCurrency(totalAmount)}</p>
-              {clampedWalletUseAmount > 0 ? <p className="mt-1 text-xs font-bold text-blue-700">Net Payable: {formatCurrency(realPayableAmount)}</p> : null}
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Service Subtotal</p>
+              <p className="text-xl font-black text-slate-900 leading-tight mt-0.5">{formatCurrency(totalAmount)}</p>
+              {clampedWalletUseAmount > 0 ? <p className="text-[10.5px] font-bold text-blue-600 mt-1">Payable Net: {formatCurrency(realPayableAmount)}</p> : null}
             </div>
           </div>
         </Card>
 
         {realPayableAmount > 0 ? (
-          <Card className="rounded-3xl border border-orange-100 bg-orange-50/10 p-4 shadow-sm md:p-5">
+          <Card className="rounded-[24px] border border-orange-100 bg-orange-50/10 p-5 shadow-sm space-y-3.5">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
-                <CreditCard className="h-5 w-5" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 border border-orange-200">
+                <CreditCard className="h-4.5 w-4.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-slate-950 text-sm">Secure Razorpay Gateway</p>
-                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
-                  Pay securely by card, UPI, net banking, or wallet. All transactions are monitored and verified directly by Razorpay.
+                <p className="font-black text-slate-900 text-xs uppercase tracking-wide">Secure Checkout</p>
+                <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500">
+                  Pay securely by UPI, Cards, Netbanking, or Wallet. Handled and verified directly by Razorpay secure channels.
                 </p>
                 <div className="mt-4">
                   <RazorpayCheckoutButton
@@ -2768,40 +2824,40 @@ export function ServiceApplicationForm({
                   />
                 </div>
                 {razorpayPayment ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3.5 py-2 text-xs font-extrabold text-emerald-700">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-extrabold text-emerald-600 border border-emerald-100">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
                     Payment verified: {razorpayPayment.razorpay_payment_id}
                   </div>
                 ) : null}
                 {!canStartPayment ? (
-                  <p className="mt-3 rounded-2xl bg-orange-50 border border-orange-100/50 px-3 py-2.5 text-xs font-extrabold text-orange-700 leading-normal">
+                  <p className="mt-3 rounded-xl bg-orange-50 border border-orange-100/50 px-3 py-2 text-[10px] font-bold text-orange-700 leading-normal">
                     {isPmVishwakarma
-                      ? "Fill all required PM Vishwakarma fields, accept terms, and upload documents before payment."
+                      ? "Fill required PM Vishwakarma fields, accept terms, and upload documents before payment."
                       : isEshram
-                        ? "Fill required e-Shram fields and consent before payment. Document upload is optional."
+                        ? "Fill required e-Shram fields and consent before payment."
                       : isPvcCard
-                        ? "Fill all PVC Card fields, accept consents, and upload front & back images before payment."
+                        ? "Fill PVC card fields, accept terms, and upload front & back images before payment."
                       : isCmYuva
-                        ? "Complete all 4 steps, accept terms, and select a package before payment."
-                        : "Fill name, 10 digit mobile, email, city, and upload Aadhaar before payment."}
+                        ? "Complete steps, select package, and upload documents before payment."
+                        : "Complete name, 10-digit mobile, email, city, and upload Aadhaar before payment."}
                   </p>
                 ) : null}
               </div>
             </div>
           </Card>
         ) : realPayableAmount === 0 && clampedWalletUseAmount > 0 ? (
-          <Card className="rounded-3xl border border-emerald-100 bg-emerald-50/30 p-4 shadow-sm md:p-5">
+          <Card className="rounded-[24px] border border-emerald-150 bg-emerald-50/15 p-5 shadow-sm space-y-3">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                <WalletCards className="h-5 w-5" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                <WalletCards className="h-4.5 w-4.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-slate-950 text-sm">100% Wallet Payment</p>
-                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
-                  Your wallet balance covers the entire service amount. No Razorpay payment needed.
+                <p className="font-black text-slate-900 text-xs uppercase tracking-wide">100% Wallet Cover</p>
+                <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500">
+                  Your wallet credits will cover the entire amount. Zero Razorpay payment needed.
                 </p>
-                <div className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-3 text-xs font-extrabold text-emerald-800 border border-emerald-100">
-                  🎉 {formatCurrency(clampedWalletUseAmount)} will be deducted from your DigiWallet.
+                <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700 border border-emerald-100">
+                  🎉 {formatCurrency(clampedWalletUseAmount)} will be debited from your DigiWallet.
                 </div>
               </div>
             </div>
@@ -2837,7 +2893,7 @@ export function ServiceApplicationForm({
                 >
                   Apply Max Wallet Discount
                 </button>
-                <Input
+                <input
                   type="number"
                   min={0}
                   max={wallet.maxUsable}
@@ -2854,7 +2910,7 @@ export function ServiceApplicationForm({
                   }}
                   aria-label="DigiWallet amount to use"
                   placeholder="Enter custom wallet credit"
-                  className="h-10 text-xs font-bold"
+                  className="h-10 w-full glass-input-premium bg-white/70 py-2.5 px-3.5 text-xs font-bold focus:bg-white transition"
                 />
               </div>
               {clampedWalletUseAmount > 0 ? (

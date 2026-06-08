@@ -107,20 +107,20 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-100 bg-slate-900 text-white p-6 md:p-8 flex flex-col justify-between">
+        <div className="overflow-hidden rounded-3xl border border-white/50 bg-white/72 backdrop-blur-xl shadow-soft p-6 md:p-8 flex flex-col justify-between">
           <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 shadow-sm">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <h3 className="mt-6 text-lg font-extrabold text-white">Secure Professional Processing</h3>
-            <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-400">
-              Your data is secured using standard encryption, and submission is handled directly by RNoS certified professionals.
+            <h3 className="mt-6 text-lg font-black text-slate-900">Secure Professional Processing</h3>
+            <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+              Your data is secured using standard encryption, and submission is handled directly by certified professionals.
             </p>
           </div>
           <div className="mt-6 grid grid-cols-3 gap-2.5">
             {["Online Apply", "Document Help", "Real Verification"].map((item) => (
-              <div key={item} className="rounded-xl bg-white/5 border border-white/5 p-3 text-center">
-                <p className="text-[10px] font-extrabold text-white">{item}</p>
+              <div key={item} className="rounded-xl bg-slate-50 border border-slate-100/60 p-3 text-center shadow-sm">
+                <p className="text-[10px] font-black text-slate-700">{item}</p>
               </div>
             ))}
           </div>
@@ -294,10 +294,10 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
 
   const text = typeof content.text === "string" ? content.text : items.join("\n");
   return text ? (
-    <section className="rounded-3xl bg-slate-950 p-6 text-white md:p-8 relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(37,99,235,0.14),transparent_35%)]" />
-      {title ? <h2 className="text-xl font-extrabold relative z-10">{title}</h2> : null}
-      <p className="mt-3 whitespace-pre-line text-xs font-semibold leading-relaxed text-slate-400 relative z-10">{text}</p>
+    <section className="rounded-3xl border border-white/50 bg-white/72 backdrop-blur-xl shadow-soft p-6 md:p-8 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(37,99,235,0.06),transparent_35%)]" />
+      {title ? <h2 className="text-xl font-black text-slate-900 relative z-10">{title}</h2> : null}
+      <p className="mt-3 whitespace-pre-line text-xs font-semibold leading-relaxed text-slate-650 relative z-10">{text}</p>
     </section>
   ) : null;
 }
@@ -321,25 +321,25 @@ export function DynamicServicePage({ row, isLoggedIn = false }: { row: DbService
         </div>
         
         {/* Streamlined Visual Footer Apply Card */}
-        <section className="mt-8 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white md:p-8 relative">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_80%,rgba(249,115,22,0.16),transparent_35%)]" />
+        <section className="mt-8 overflow-hidden rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl shadow-soft p-6 md:p-8 relative">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_80%,rgba(249,115,22,0.06),transparent_35%)]" />
           <div className="relative z-10 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h2 className="text-2xl font-extrabold text-white">Apply for {service.title}</h2>
-              <p className="mt-2 text-xs font-semibold text-slate-400 leading-relaxed">
+              <h2 className="text-2xl font-black text-slate-900">Apply for {service.title}</h2>
+              <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
                 Connect with our dedicated support desk, submit details securely, and receive real-time updates.
               </p>
             </div>
             <div className="flex flex-col gap-2.5 sm:flex-row">
               {service.ctaType === "apply" ? (
-                <Link href={`/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-extrabold text-slate-950 shadow-md transition duration-150 active:scale-[0.98]">
+                <Link href={`/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-extrabold text-white shadow-md hover:bg-blue-700 transition duration-150 active:scale-[0.98]">
                   {isLoggedIn ? "Apply Now" : "Login to Apply"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : null}
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 text-sm font-extrabold text-white transition duration-150 hover:bg-white/15 active:scale-[0.98]">
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50 transition duration-150 active:scale-[0.98]">
                 WhatsApp Support
-                <MessageCircle className="h-4 w-4 text-emerald-400" />
+                <MessageCircle className="h-4 w-4 text-emerald-600" />
               </a>
             </div>
           </div>

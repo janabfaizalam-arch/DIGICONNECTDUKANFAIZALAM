@@ -117,21 +117,42 @@ export default async function CustomerApplicationDetailPage({ params }: { params
     }),
   );
 
+  let activeStep = 1; // Default is Submitted
+  if (application.status === "completed" || application.status === "delivered") {
+    activeStep = 5;
+  } else if (application.status === "in_progress" || application.status === "assigned_to_agent") {
+    activeStep = 4;
+  } else if (application.status === "documents_verified") {
+    activeStep = 3;
+  } else if (payment?.status === "paid" || payment?.status === "verified" || application.status === "payment_success" || application.status === "submitted") {
+    activeStep = 2;
+  }
+
+  const trackingSteps = [
+    { step: 1, label: "Submitted" },
+    { step: 2, label: "Payment Done" },
+    { step: 3, label: "Docs Verified" },
+    { step: 4, label: "In Progress" },
+    { step: 5, label: "Completed" }
+  ];
+
   return (
     <main className="min-h-screen px-3 py-6 md:px-8 md:py-10 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
       <div className="mx-auto max-w-5xl">
-        <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-xs font-extrabold text-blue-700">
+        <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-xs font-black text-blue-700">
           <ArrowLeft className="h-4 w-4" />
-          Back to dashboard
+          Back to Dashboard
         </Link>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-5">
-            <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-7">
+            
+            {/* Main Details Glass Panel */}
+            <div className="rounded-[32px] border border-white/60 bg-white/72 backdrop-blur-xl p-6 md:p-8 shadow-soft relative overflow-hidden">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-700">Application File</p>
-                  <h1 className="mt-2 text-2xl font-extrabold text-slate-950 leading-tight">{application.service_name}</h1>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Application File</p>
+                  <h1 className="mt-2 text-2xl font-black text-slate-900 leading-tight">{application.service_name}</h1>
                   <p className="mt-2 font-mono text-xs text-slate-400">ID: {application.id}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -140,65 +161,146 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {Object.entries(formData).map(([key, value]) => (
-                  <div key={key} className="rounded-2xl border border-slate-100/60 bg-slate-50/50 p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{formatFieldLabel(key)}</p>
-                    <p className="mt-1 break-words text-sm font-extrabold text-slate-800 leading-normal">{displayValue(value)}</p>
-                  </div>
-                ))}
+              {/* High-Fidelity Stepper Timeline */}
+              <div className="mt-8 pt-6 border-t border-slate-100/80">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-5">Filing Status Tracker</p>
+                <div className="relative flex items-center justify-between max-w-xl mx-auto px-4">
+                  {/* Connector line behind */}
+                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
+                  <div 
+                    className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 -translate-y-1/2 z-0 transition-all duration-500" 
+                    style={{ width: `${((activeStep - 1) / 4) * 100}%` }}
+                  />
+
+                  {trackingSteps.map((s) => {
+                    const isCompleted = s.step < activeStep;
+                    const isActive = s.step === activeStep;
+                    return (
+                      <div key={s.step} className="flex flex-col items-center relative z-10">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 text-[10px] font-black transition-all duration-300 ${
+                          isCompleted 
+                            ? "bg-emerald-600 border-emerald-600 text-white" 
+                            : isActive 
+                            ? "bg-white border-blue-600 text-blue-600 shadow-md shadow-blue-500/10 scale-110" 
+                            : "bg-white border-slate-200 text-slate-400"
+                        }`}>
+                          {isCompleted ? "✓" : s.step}
+                        </div>
+                        <span className={`text-[10px] font-bold mt-1.5 ${
+                          isActive ? "text-blue-600" : isCompleted ? "text-emerald-700" : "text-slate-400"
+                        }`}>
+                          {s.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Form Data Properties List */}
+              <div className="mt-8 pt-6 border-t border-slate-100/80">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Application Details</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {Object.entries(formData).map(([key, value]) => (
+                    <div key={key} className="rounded-2xl border border-slate-100/50 bg-slate-50/20 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{formatFieldLabel(key)}</p>
+                      <p className="mt-1 break-words text-sm font-black text-slate-800 leading-normal">{displayValue(value)}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-7">
-              <h2 className="text-lg font-extrabold text-slate-950">Submitted Documents</h2>
-              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+            {/* Submitted Documents Panel */}
+            <div className="rounded-[32px] border border-white/60 bg-white/72 backdrop-blur-xl p-6 md:p-8 shadow-soft relative overflow-hidden">
+              <h2 className="text-lg font-black text-slate-900">Submitted Documents</h2>
+              <p className="text-xs font-semibold text-slate-400 mt-0.5">Scanned files and certificates related to this file.</p>
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
                 {application.documents?.length ? (
                   application.documents.map((document) => (
                     <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3.5 text-xs font-bold text-slate-800 shadow-sm transition hover:border-blue-200">
-                      <FileText className="h-4 w-4 shrink-0 text-blue-600" />
+                      <FileText className="h-4.5 w-4.5 shrink-0 text-blue-600" />
                       <span className="truncate">{document.file_name}</span>
                     </a>
                   ))
                 ) : (
-                  <p className="rounded-2xl bg-slate-50 p-4 text-xs font-bold text-slate-500 col-span-2">No documents uploaded.</p>
+                  <p className="rounded-2xl bg-slate-50 border border-slate-100/50 p-4 text-xs font-semibold text-slate-400 col-span-2 text-center">No documents uploaded.</p>
                 )}
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Amount</p>
-              <p className="mt-1 text-2xl font-extrabold text-slate-950">{formatCurrency(application.amount)}</p>
-              <p className="mt-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Submitted Date</p>
-              <p className="mt-1 text-xs font-bold text-slate-700">{formatDate(application.created_at)}</p>
+            
+            {/* Filing Overview Panel */}
+            <div className="rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl p-5 shadow-soft space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filing Overview</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Paid</p>
+                  <p className="mt-1 text-xl font-black text-slate-900">{formatCurrency(application.amount)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Submitted</p>
+                  <p className="mt-1 text-xs font-black text-slate-700">{formatDate(application.created_at)}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm space-y-2.5">
-              {invoice ? (
-                <Link href={`/invoice/${invoice.id}`} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-blue-600 text-xs font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98]">
-                  <Download className="h-4 w-4" />
-                  Download Invoice
-                </Link>
-              ) : null}
+            {/* Quick Actions Panel */}
+            <div className="rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl p-5 shadow-soft space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Manage Application</p>
+                <h3 className="text-sm font-black text-slate-900 mt-1">Quick Actions</h3>
+              </div>
+              
+              <div className="grid gap-2">
+                {invoice ? (
+                  <Link href={`/invoice/${invoice.id}`} className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:scale-105 transition">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-black text-slate-800">Download Invoice</p>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">View your tax payment statement</p>
+                    </div>
+                  </Link>
+                ) : null}
 
-              {application.final_document_url ? (
-                <a href={application.final_document_url} target="_blank" rel="noreferrer" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 text-xs font-extrabold text-white shadow-md shadow-emerald-500/10 transition duration-150 active:scale-[0.98]">
-                  <Download className="h-4 w-4" />
-                  Download Output Document
+                {application.final_document_url ? (
+                  <a href={application.final_document_url} target="_blank" rel="noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-105 transition">
+                      <Download className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-black text-slate-800">Download Output</p>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Get your final certificate / card</p>
+                    </div>
+                  </a>
+                ) : null}
+
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-650 group-hover:scale-105 transition">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-slate-800">Help Desk Chat</p>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Talk to our customer desk on WhatsApp</p>
+                  </div>
                 </a>
-              ) : null}
 
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/40 text-xs font-extrabold text-emerald-700 transition duration-150 hover:bg-emerald-600 hover:text-white hover:border-emerald-600">
-                <MessageCircle className="h-4 w-4 text-emerald-600 group-hover:text-white" />
-                WhatsApp Help Desk
-              </a>
-
-              <Link href={`/services/${application.service_slug}`} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white text-xs font-extrabold text-slate-700 transition duration-150 hover:bg-slate-50">
-                <RotateCcw className="h-4 w-4" />
-                Apply Service Again
-              </Link>
+                <Link href={`/services/${application.service_slug}`} className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 group-hover:scale-105 transition">
+                    <RotateCcw className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-slate-800">Apply Service Again</p>
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Submit a new filing request</p>
+                  </div>
+                </Link>
+              </div>
             </div>
 
             {application.status === "completed" ? (
