@@ -81,7 +81,7 @@ const quickServices = [
 
 export function QuickServiceGrid() {
   return (
-    <section className="bg-white px-4 py-8 md:py-12 relative overflow-hidden">
+    <section className="bg-white px-4 pt-6 pb-8 md:pb-12 relative overflow-hidden">
       {/* Soft background light reflections */}
       <div className="absolute top-0 right-1/4 w-[250px] h-[250px] rounded-full bg-blue-500/5 blur-[80px] pointer-events-none" />
       

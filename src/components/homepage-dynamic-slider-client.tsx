@@ -158,30 +158,35 @@ export function HomepageDynamicSliderClient({ slides }: HomepageDynamicSliderCli
         </div>
 
         {slides.length > 1 ? (
-          <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-2 px-3 z-20">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 border border-white/20 backdrop-blur-md shadow-lg">
-              {scrollSnaps.map((index) => (
-                <button
-                  key={index}
-                  type="button"
-                  aria-label={`Go to slide ${index + 1}`}
-                  onClick={() => scrollTo(index)}
-                  className={cn(
-                    "relative h-1.5 overflow-hidden rounded-full bg-white/40 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white",
-                    selectedIndex === index ? "w-6 bg-white" : "w-1.5 hover:bg-white/70",
-                  )}
-                >
-                  {selectedIndex === index ? (
-                    <span 
-                      className="absolute inset-y-0 left-0 rounded-full bg-white" 
-                      style={{ 
-                        width: `${progress}%`,
-                        transition: progress === 0 ? "none" : "width 160ms linear"
-                      }} 
-                    />
-                  ) : null}
-                </button>
-              ))}
+          <div className="absolute inset-x-0 bottom-6 flex items-center justify-center px-3 z-20">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/15 border border-white/15 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)]">
+              {scrollSnaps.map((index) => {
+                const active = selectedIndex === index;
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`Go to slide ${index + 1}`}
+                    onClick={() => scrollTo(index)}
+                    className={cn(
+                      "relative h-2 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white cursor-pointer",
+                      active 
+                        ? "w-8 bg-white shadow-[0_2px_8px_rgba(255,255,255,0.4)]" 
+                        : "w-2 bg-white/35 hover:bg-white/60"
+                    )}
+                  >
+                    {active ? (
+                      <span 
+                        className="absolute inset-y-0 left-0 rounded-full bg-white/40" 
+                        style={{ 
+                          width: `${progress}%`,
+                          transition: progress === 0 ? "none" : "width 160ms linear"
+                        }} 
+                      />
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}

@@ -18,6 +18,8 @@ import { SupportCenter } from "@/components/homepage/support-center";
 
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
+import { TrustStripMarquee } from "@/components/homepage/trust-strip-marquee";
+import { ScrollReveal } from "@/components/scroll-reveal";
 
 export const metadata: Metadata = {
   title: "DigiConnect Dukan | India's Premium Digital Services Marketplace",
@@ -55,43 +57,74 @@ export default async function Home() {
         <SmartSearchHub />
 
         {/* Section 3 — Trending Now */}
-        <TrendingNow />
+        <ScrollReveal>
+          <TrendingNow />
+        </ScrollReveal>
 
         {/* Section 4 — Quick Categories (8 Glass Cards) */}
-        <QuickServiceGrid />
+        <ScrollReveal>
+          <QuickServiceGrid />
+        </ScrollReveal>
 
         {/* Section 5 — Featured Services */}
-        <FeaturedServices />
+        <ScrollReveal>
+          <FeaturedServices />
+        </ScrollReveal>
 
         {/* Section 6 — Recent Success Stories */}
-        <RecentSuccessStories />
+        <ScrollReveal>
+          <RecentSuccessStories />
+        </ScrollReveal>
 
         {/* Section 7 — Reward Center */}
-        <RewardCenter />
+        <ScrollReveal>
+          <RewardCenter />
+        </ScrollReveal>
+
+        {/* Trust Strip Marquee under Refer & Earn */}
+        <ScrollReveal>
+          <TrustStripMarquee />
+        </ScrollReveal>
 
         {/* Section 8 — Trust Center (Animated Counters) */}
-        <TrustStrip />
+        <ScrollReveal>
+          <TrustStrip />
+        </ScrollReveal>
 
         {/* Section 9 — Why DigiConnect (Premium Visual Trust) */}
-        <WhyChooseUs />
+        <ScrollReveal>
+          <WhyChooseUs />
+        </ScrollReveal>
 
         {/* Section 10 — Google Reviews */}
-        <GoogleReviews />
+        <ScrollReveal>
+          <GoogleReviews />
+        </ScrollReveal>
 
         {/* Section 11 — Video Testimonials */}
-        <VideoTestimonials />
+        <ScrollReveal>
+          <VideoTestimonials />
+        </ScrollReveal>
 
         {/* Section 12 — Government Schemes Hub */}
-        <GovernmentSchemesHub />
+        <ScrollReveal>
+          <GovernmentSchemesHub />
+        </ScrollReveal>
 
         {/* Section 13 — Knowledge Center */}
-        <KnowledgeCenter />
+        <ScrollReveal>
+          <KnowledgeCenter />
+        </ScrollReveal>
 
         {/* Section 14 — FAQ Accordion */}
-        <FaqAccordion />
+        <ScrollReveal>
+          <FaqAccordion />
+        </ScrollReveal>
 
         {/* Section 15 — Support Center */}
-        <SupportCenter />
+        <ScrollReveal>
+          <SupportCenter />
+        </ScrollReveal>
       </main>
 
       {/* Section 16 — Footer */}

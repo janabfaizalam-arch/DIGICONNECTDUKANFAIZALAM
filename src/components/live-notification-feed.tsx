@@ -55,7 +55,7 @@ export function LiveNotificationFeed() {
         setVisible(true);
       }, 500);
 
-    }, 22000); // Cycle every 22 seconds
+    }, 15000); // Cycle every 15 seconds
 
     return () => {
       clearTimeout(startTimer);
@@ -73,55 +73,56 @@ export function LiveNotificationFeed() {
   const isCompleted = currentItem.status === "completed" || currentItem.status === "delivered";
   const isSubmission = currentItem.status === "submitted" || currentItem.status === "new";
 
-  let statusText = "In Progress";
-  let Icon = HelpCircle;
-  let statusColorClass = "text-blue-500 bg-blue-50 border-blue-100/50";
-
+  // Build clean live updates phrase
+  let phrasedText = `${currentItem.service_name} Processing`;
   if (isCompleted) {
-    statusText = "Completed";
-    Icon = CheckCircle2;
-    statusColorClass = "text-emerald-500 bg-emerald-50 border-emerald-100/50";
+    phrasedText = `✓ ${currentItem.service_name} Completed`;
   } else if (isSubmission) {
-    statusText = "Submitted";
-    Icon = FileUp;
-    statusColorClass = "text-orange-500 bg-orange-50 border-orange-100/50";
+    phrasedText = `↑ ${currentItem.service_name} Submitted`;
   }
 
   return (
-    <div className="fixed bottom-6 left-6 z-[45] pointer-events-none select-none max-w-[280px] sm:max-w-xs print:hidden">
+    <div className="fixed bottom-[92px] sm:bottom-6 left-6 z-[45] pointer-events-none select-none max-w-[285px] sm:max-w-xs print:hidden">
       <AnimatePresence>
         {visible && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ 
               opacity: 1, 
               y: 0, 
               scale: 1,
-              transition: { type: "spring", stiffness: 260, damping: 22 }
+              transition: { type: "spring", stiffness: 300, damping: 25 }
             }}
             exit={{ 
               opacity: 0, 
-              y: -15, 
-              scale: 0.95,
-              transition: { duration: 0.3, ease: "easeInOut" }
+              y: -10, 
+              scale: 0.9,
+              transition: { duration: 0.2, ease: "easeInOut" }
             }}
-            className="flex items-center gap-3 p-3 rounded-2xl border border-white/45 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] pointer-events-auto"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-full border border-white/10 bg-slate-950/90 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] pointer-events-auto"
           >
-            {/* Left status badge icon */}
-            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${statusColorClass}`}>
-              <Icon className="h-4.5 w-4.5 stroke-[2]" />
+            {/* iOS style pulsing status dot */}
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/5 border border-white/10">
+              <span className={`h-1.5 w-1.5 rounded-full relative ${
+                isCompleted ? "bg-emerald-400" : 
+                isSubmission ? "bg-amber-400" : 
+                "bg-blue-400"
+              }`}>
+                <span className={`absolute inset-0 rounded-full animate-ping opacity-75 ${
+                  isCompleted ? "bg-emerald-400" : 
+                  isSubmission ? "bg-amber-400" : 
+                  "bg-blue-400"
+                }`} />
+              </span>
             </div>
 
             {/* Content text */}
-            <div className="min-w-0 pr-1 text-left">
-              <span className="text-[9px] font-black tracking-wider text-slate-400 uppercase block leading-none">
-                {statusText} Live
-              </span>
-              <h4 className="text-[11px] font-black text-slate-800 mt-1 leading-tight truncate">
-                {currentItem.service_name}
+            <div className="min-w-0 pr-1 text-left flex flex-col justify-center">
+              <h4 className="text-[11px] font-bold text-white tracking-tight leading-tight truncate">
+                {phrasedText}
               </h4>
-              <span className="text-[9.5px] font-semibold text-slate-450 block leading-none mt-0.5">
-                Processed PAN India
+              <span className="text-[9px] font-semibold text-slate-400 block leading-none mt-0.5">
+                Processed Live PAN India
               </span>
             </div>
           </motion.div>

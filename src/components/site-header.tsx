@@ -177,6 +177,27 @@ export function SiteHeader() {
   const scrolledRef = useRef(false);
   const ticking = useRef(false);
 
+  // AI Search custom event & hotkey listeners
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleOpenSearch = () => setSearchOpen(true);
+    window.addEventListener("open-ai-search", handleOpenSearch);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("open-ai-search", handleOpenSearch);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   // Auth sync — identical to existing logic
   useEffect(() => {
     if (typeof window === "undefined") return;

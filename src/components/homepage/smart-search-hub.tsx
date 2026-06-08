@@ -73,7 +73,32 @@ export function SmartSearchHub() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [activeResultIndex, setActiveResultIndex] = useState(-1);
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    setActiveResultIndex(-1);
+  }, [searchQuery, searchResults]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (searchResults.length === 0) return;
+    const maxIdx = Math.min(searchResults.length, 8);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveResultIndex((prev) => (prev + 1) % maxIdx);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveResultIndex((prev) => (prev - 1 + maxIdx) % maxIdx);
+    } else if (e.key === "Enter") {
+      if (activeResultIndex >= 0 && activeResultIndex < maxIdx) {
+        e.preventDefault();
+        const activeService = searchResults[activeResultIndex];
+        saveSearch(activeService.title);
+        window.location.href = `/services/${activeService.slug}`;
+      }
+    }
+  };
 
   // Load recent searches & recently viewed
   useEffect(() => {
@@ -207,10 +232,10 @@ export function SmartSearchHub() {
   };
 
   return (
-    <section id="search-hub" className="relative z-20 px-4 -mt-8 md:-mt-16 pb-8 md:pb-12 pointer-events-none">
+    <section id="search-hub" className="relative z-20 px-4 mt-8 pb-6 pointer-events-none">
       <div className="container-shell max-w-4xl pointer-events-auto">
         {/* Large Floating Liquid Glass Card */}
-        <div className="rounded-[2rem] border border-white/45 bg-white/60 backdrop-blur-xl p-5 md:p-8 shadow-[0_24px_64px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] relative overflow-hidden">
+        <div className="rounded-3xl border border-white/45 bg-white/60 backdrop-blur-xl p-5 md:p-8 shadow-[0_4px_12px_rgba(15,23,42,0.02),0_16px_32px_rgba(15,23,42,0.04),0_32px_64px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] relative overflow-hidden">
           
           {/* Subtle Ambient lights inside the card */}
           <div className="absolute -top-12 -left-12 w-36 h-36 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
@@ -235,6 +260,7 @@ export function SmartSearchHub() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Search GST, ITR filing, Passport, DL, Mudra loan, PVC card..."
                 className="h-14 w-full rounded-2xl bg-transparent pl-12 pr-14 text-sm md:text-base font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
               />
@@ -285,22 +311,30 @@ export function SmartSearchHub() {
                 <span className="text-[9px] font-bold text-blue-500">Auto Synced</span>
               </p>
               <div className="mt-2 space-y-0.5">
-                {searchResults.slice(0, 8).map((service) => (
+                {searchResults.slice(0, 8).map((service, index) => (
                   <Link
                     key={service.slug}
                     href={`/services/${service.slug}`}
                     onClick={() => saveSearch(service.title)}
-                    className="group flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-blue-50/40 transition"
+                    className={`group flex items-center justify-between gap-3 p-2.5 rounded-xl transition ${
+                      index === activeResultIndex ? "bg-blue-600 text-white" : "hover:bg-blue-50/40"
+                    }`}
                   >
                     <div className="min-w-0">
-                      <h4 className="text-xs md:text-sm font-bold text-slate-800 group-hover:text-blue-600 leading-tight truncate">
+                      <h4 className={`text-xs md:text-sm font-bold leading-tight truncate transition-colors ${
+                        index === activeResultIndex ? "text-white" : "text-slate-800 group-hover:text-blue-600"
+                      }`}>
                         {service.title}
                       </h4>
-                      <p className="text-[10px] md:text-xs text-slate-400 mt-0.5 line-clamp-1 leading-normal font-semibold">
+                      <p className={`text-[10px] md:text-xs mt-0.5 line-clamp-1 leading-normal font-semibold transition-colors ${
+                        index === activeResultIndex ? "text-white/80" : "text-slate-400"
+                      }`}>
                         {service.shortDescription}
                       </p>
                     </div>
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-50 group-hover:bg-blue-600 group-hover:text-white text-slate-450 transition-colors">
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                      index === activeResultIndex ? "bg-white/20 text-white" : "bg-slate-50 group-hover:bg-blue-600 group-hover:text-white text-slate-450"
+                    }`}>
                       <CornerDownRight className="h-3.5 w-3.5" />
                     </span>
                   </Link>
