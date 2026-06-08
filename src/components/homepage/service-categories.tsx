@@ -75,7 +75,7 @@ export function ServiceCategories() {
               <Link
                 key={cat.title}
                 href={cat.href}
-                className="group flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 transition-all duration-200 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5"
+                className="group category-tile-3d flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 transition-all duration-200 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5"
               >
                 <div>
                   <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${cat.color} transition-transform group-hover:scale-105`}>

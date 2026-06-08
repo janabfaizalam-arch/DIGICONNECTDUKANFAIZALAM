@@ -57,17 +57,17 @@ export default async function Home() {
         {/* Section 4 — Featured Services (Horizontal Carousel) */}
         <FeaturedServices />
 
-        {/* Section 5 — Why DigiConnect (Premium Visual Trust) */}
-        <WhyChooseUs />
-
-        {/* Section 6 — Reward Center (Cashback + Referral) */}
+        {/* Section 5 — Compact Reward/Referral Center */}
         <RewardCenter />
 
-        {/* Section 7 — Trust Center (Animated Counters) */}
-        <TrustStrip />
-
-        {/* Section 8 — Popular Categories Showcase */}
+        {/* Section 6 — Popular Categories Showcase */}
         <ServiceCategories />
+
+        {/* Section 7 — Why DigiConnect (Premium Visual Trust) */}
+        <WhyChooseUs />
+
+        {/* Section 8 — Trust Center (Animated Counters) */}
+        <TrustStrip />
 
         {/* Section 9 — Recent Success Stories */}
         <RecentSuccessStories />

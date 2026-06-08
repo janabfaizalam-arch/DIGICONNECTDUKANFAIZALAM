@@ -221,7 +221,7 @@ export function SmartSearchHub() {
 
           {/* Search Input */}
           <div className="relative">
-            <div className="relative flex items-center">
+            <div className="relative flex items-center animate-scan-focus rounded-2xl">
               <Search className="pointer-events-none absolute left-4 h-5 w-5 text-slate-400" />
               <input
                 type="text"

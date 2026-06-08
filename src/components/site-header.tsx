@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X } from "lucide-react";
+import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -97,6 +97,61 @@ function isAgentShellPath(pathname: string) {
   return pathname === "/agent/dashboard" || pathname.startsWith("/agent/");
 }
 
+interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  type: "status" | "wallet" | "referral" | "document" | "payment";
+  href?: string;
+}
+
+interface DbNotification {
+  id: string;
+  title: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+interface DbApplication {
+  id: string;
+  service_name: string;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  updated_at: string | null;
+  amount?: number;
+}
+
+interface DbWalletTransaction {
+  id: string;
+  amount: number;
+  type: string;
+  description: string;
+  created_at: string;
+}
+
+function getRelativeTime(dateStr: string) {
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  } catch {
+    return "";
+  }
+}
+
 export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
@@ -110,6 +165,13 @@ export function SiteHeader() {
   const [navHidden, setNavHidden] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const lastScrollYRef = useRef(0);
   const scrolledRef = useRef(false);
@@ -180,6 +242,212 @@ export function SiteHeader() {
     };
   }, [role, user]);
 
+  // Notifications aggregation effect
+  useEffect(() => {
+    if (!user || !supabase) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    let active = true;
+
+    async function loadNotifications() {
+      if (!active || !supabase || !user) return;
+      setNotifLoading(true);
+      try {
+        // 1. Fetch DB customer notifications
+        const { data: dbNotifs } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        // 2. Fetch Applications to build real-time status and payment reminders
+        const { data: dbApps } = await supabase
+          .from("applications")
+          .select("id, service_name, status, payment_status, created_at, updated_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        // 3. Fetch wallet transactions to build cashback alerts
+        const { data: dbTxs } = await supabase
+          .from("wallet_transactions")
+          .select("id, amount, type, description, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        if (!active) return;
+
+        const list: NotificationItem[] = [];
+        const readIds = JSON.parse(localStorage.getItem(`read_notifs_${user.id}`) || "[]");
+
+        // Process actual DB notifications
+        if (dbNotifs) {
+          dbNotifs.forEach((n: DbNotification) => {
+            const isWallet = n.title.toLowerCase().includes("wallet") || n.title.toLowerCase().includes("cashback") || n.message.toLowerCase().includes("cashback");
+            const isReferral = n.title.toLowerCase().includes("referral") || n.message.toLowerCase().includes("referral");
+            list.push({
+              id: n.id,
+              title: n.title,
+              message: n.message,
+              created_at: n.created_at,
+              read_at: n.read_at || (readIds.includes(n.id) ? new Date().toISOString() : null),
+              type: isWallet ? "wallet" : isReferral ? "referral" : "status"
+            });
+          });
+        }
+
+        // Process Applications for reminders & completions
+        if (dbApps) {
+          dbApps.forEach((app: DbApplication) => {
+            // Payment Reminder
+            if (app.payment_status === "payment_pending") {
+              const notifId = `pay-${app.id}`;
+              list.push({
+                id: notifId,
+                title: "Payment Reminder",
+                message: `Payment of ₹${app.amount || "pending"} is pending for ${app.service_name}. Complete now to process.`,
+                created_at: app.updated_at || app.created_at,
+                read_at: readIds.includes(notifId) ? new Date().toISOString() : null,
+                type: "payment",
+                href: `/customer/dashboard?tab=applications`
+              });
+            }
+            // Document required
+            if (app.status === "documents_required" || app.status === "document_pending") {
+              const notifId = `doc-req-${app.id}`;
+              list.push({
+                id: notifId,
+                title: "Action Required: Verify Docs",
+                message: `Specialist requested document correction/upload for ${app.service_name}.`,
+                created_at: app.updated_at || app.created_at,
+                read_at: readIds.includes(notifId) ? new Date().toISOString() : null,
+                type: "document",
+                href: `/customer/dashboard?tab=documents`
+              });
+            }
+            // Finished
+            if (app.status === "completed" || app.status === "delivered") {
+              const notifId = `doc-ready-${app.id}`;
+              list.push({
+                id: notifId,
+                title: "Final Document Issued",
+                message: `Your final registration file for ${app.service_name} is complete and ready.`,
+                created_at: app.updated_at || app.created_at,
+                read_at: readIds.includes(notifId) ? new Date().toISOString() : null,
+                type: "document",
+                href: `/customer/dashboard?tab=documents`
+              });
+            }
+            // Status Update
+            if (app.status === "in_process" || app.status === "assigned_to_agent" || app.status === "submitted") {
+              const notifId = `status-${app.id}`;
+              const friendlyStatus = app.status === "in_process" ? "Processing" : app.status === "assigned_to_agent" ? "Assigned to Agent" : "Submitted";
+              list.push({
+                id: notifId,
+                title: `Status: ${friendlyStatus}`,
+                message: `Your application for ${app.service_name} status updated to: ${friendlyStatus}.`,
+                created_at: app.updated_at || app.created_at,
+                read_at: readIds.includes(notifId) ? new Date().toISOString() : null,
+                type: "status",
+                href: `/customer/dashboard?tab=applications`
+              });
+            }
+          });
+        }
+
+        // Process Wallet transactions
+        if (dbTxs) {
+          dbTxs.forEach((tx: DbWalletTransaction) => {
+            const notifId = `tx-${tx.id}`;
+            const isCashback = tx.type === "cashback" || tx.description.toLowerCase().includes("cashback");
+            const isReferral = tx.description.toLowerCase().includes("referral");
+            if (isCashback || isReferral) {
+              list.push({
+                id: notifId,
+                title: isReferral ? "Referral Reward Credited" : "Cashback Points Added",
+                message: `₹${tx.amount} added to your active wallet: ${tx.description}`,
+                created_at: tx.created_at,
+                read_at: readIds.includes(notifId) ? new Date().toISOString() : null,
+                type: isReferral ? "referral" : "wallet",
+                href: `/customer/wallet`
+              });
+            }
+          });
+        }
+
+        // Sort all by date desc
+        list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        // Deduplicate
+        const seen = new Set();
+        const uniqueList = list.filter((item) => {
+          const key = `${item.title}-${item.message}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).slice(0, 10);
+
+        setNotifications(uniqueList);
+        setUnreadCount(uniqueList.filter((n) => !n.read_at).length);
+      } catch (err) {
+        console.warn("Failed to load notifications:", err);
+      } finally {
+        if (active) setNotifLoading(false);
+      }
+    }
+
+    void loadNotifications();
+    const interval = setInterval(loadNotifications, 35000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [user, supabase]);
+
+  const handleMarkAllRead = async () => {
+    if (!user || !supabase) return;
+
+    try {
+      const readTime = new Date().toISOString();
+      const updatedList = notifications.map((n) => ({ ...n, read_at: readTime }));
+      setNotifications(updatedList);
+      setUnreadCount(0);
+
+      // Save local IDs to localStorage read list
+      const allIds = updatedList.map((n) => n.id);
+      localStorage.setItem(`read_notifs_${user.id}`, JSON.stringify(allIds));
+
+      // Update actual DB unread notifications
+      const unreadDbIds = notifications
+        .filter((n) => !n.read_at && !n.id.startsWith("pay-") && !n.id.startsWith("doc-") && !n.id.startsWith("status-") && !n.id.startsWith("tx-"))
+        .map((n) => n.id);
+
+      if (unreadDbIds.length > 0) {
+        await supabase
+          .from("notifications")
+          .update({ read_at: readTime })
+          .in("id", unreadDbIds);
+      }
+    } catch (err) {
+      console.warn("Failed to mark notifications as read:", err);
+    }
+  };
+
+  const handleNotifKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setNotifOpen(!notifOpen);
+    } else if (e.key === "Escape") {
+      setNotifOpen(false);
+    }
+  };
+
   // Scroll handler — Apple-style hide on scroll down, show on scroll up
   const handleScroll = useCallback(() => {
     if (ticking.current) return;
@@ -212,6 +480,17 @@ export function SiteHeader() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
+
+  // Click outside to close notifications
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Don't render on admin/dashboard pages
   if (
@@ -304,14 +583,173 @@ export function SiteHeader() {
               <Search className="h-[18px] w-[18px]" />
             </button>
 
-            {/* Notifications */}
-            <button
-              title="Notifications"
-              className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-            >
-              <Bell className="h-[18px] w-[18px]" />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-orange-500 ring-2 ring-white" />
-            </button>
+            {/* Notifications System */}
+            <div className="relative" ref={notifRef}>
+              <button
+                title="Notifications"
+                onClick={() => setNotifOpen(!notifOpen)}
+                onKeyDown={handleNotifKeyDown}
+                aria-haspopup="dialog"
+                aria-expanded={notifOpen}
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+              >
+                <Bell className="h-[18px] w-[18px]" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white animate-pulse" />
+                )}
+              </button>
+
+              {/* Notification Liquid-Glass Panel */}
+              {notifOpen && (
+                <>
+                  {/* Backdrop for mobile bottom drawer */}
+                  <div 
+                    className="fixed inset-0 z-40 bg-slate-900/10 backdrop-blur-xs md:hidden"
+                    onClick={() => setNotifOpen(false)}
+                  />
+
+                  {/* Panel Container */}
+                  <div className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[80vh] flex-col rounded-t-[2rem] border-t border-slate-200/60 bg-white/95 p-5 shadow-2xl backdrop-blur-xl md:absolute md:bottom-auto md:left-auto md:right-0 md:top-full md:mt-2 md:w-96 md:rounded-2xl md:border md:bg-white/92 md:p-4 md:shadow-xl">
+                    
+                    {/* Drawer drag handle for mobile */}
+                    <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200 md:hidden" />
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                        Notifications
+                        {unreadCount > 0 && (
+                          <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600">
+                            {unreadCount} new
+                          </span>
+                        )}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        {isLoggedIn && unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] font-extrabold text-blue-600 hover:underline flex items-center gap-0.5"
+                          >
+                            <Check className="h-3 w-3" /> Mark all read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setNotifOpen(false)}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 md:hidden"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notification Content List */}
+                    <div className="overflow-y-auto py-2 max-h-[45vh] md:max-h-[300px] no-scrollbar">
+                      {notifLoading && notifications.length === 0 ? (
+                        <div className="space-y-3 py-4">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex gap-3 animate-pulse">
+                              <div className="h-8 w-8 rounded-full bg-slate-100" />
+                              <div className="flex-1 space-y-2">
+                                <div className="h-3 w-2/3 rounded bg-slate-100" />
+                                <div className="h-2.5 w-5/6 rounded bg-slate-100" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : !isLoggedIn ? (
+                        /* Logged Out State */
+                        <div className="py-6 text-center">
+                          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                            <Info className="h-6 w-6" />
+                          </div>
+                          <h4 className="text-xs font-bold text-slate-800">Stay Updated</h4>
+                          <p className="mx-auto mt-1 max-w-[220px] text-[10px] leading-normal text-slate-400 font-semibold">
+                            Login to track applications, wallet cashback, referral rewards & document updates.
+                          </p>
+                          <Link
+                            href="/login/customer"
+                            onClick={() => setNotifOpen(false)}
+                            className="mx-auto mt-4 inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+                          >
+                            Login <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        /* Empty State */
+                        <div className="py-8 text-center">
+                          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+                            <Bell className="h-6 w-6" />
+                          </div>
+                          <h4 className="text-xs font-bold text-slate-800">You&apos;re all caught up!</h4>
+                          <p className="mx-auto mt-1 max-w-[220px] text-[10px] leading-normal text-slate-400 font-semibold">
+                            No notifications yet. We will alert you here for application status changes.
+                          </p>
+                        </div>
+                      ) : (
+                        /* List */
+                        <div className="space-y-1.5">
+                          {notifications.map((item) => {
+                            const unread = !item.read_at;
+                            let IconComponent = Info;
+                            let iconColor = "bg-blue-50 text-blue-600";
+
+                            if (item.type === "payment") {
+                              IconComponent = AlertCircle;
+                              iconColor = "bg-rose-50 text-rose-600 border border-rose-100";
+                            } else if (item.type === "document") {
+                              IconComponent = FileText;
+                              iconColor = "bg-sky-50 text-sky-600 border border-sky-100";
+                            } else if (item.type === "wallet") {
+                              IconComponent = Coins;
+                              iconColor = "bg-emerald-50 text-emerald-600 border border-emerald-100";
+                            } else if (item.type === "referral") {
+                              IconComponent = Gift;
+                              iconColor = "bg-amber-50 text-amber-600 border border-amber-100";
+                            } else if (item.type === "status") {
+                              IconComponent = CheckCircle2;
+                              iconColor = "bg-indigo-50 text-indigo-600 border border-indigo-100";
+                            }
+
+                            const elementContent = (
+                              <div className={`flex gap-3 rounded-xl p-2.5 transition duration-150 hover:bg-slate-50 text-left ${unread ? "bg-blue-50/25" : ""}`}>
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconColor}`}>
+                                  <IconComponent className="h-4.5 w-4.5" />
+                                </div>
+                                <div className="flex-1 space-y-0.5">
+                                  <div className="flex items-start justify-between gap-1">
+                                    <h4 className={`text-xs font-bold text-slate-800 ${unread ? "font-black" : ""}`}>{item.title}</h4>
+                                    <span className="text-[9px] font-semibold text-slate-400 shrink-0">{getRelativeTime(item.created_at)}</span>
+                                  </div>
+                                  <p className="text-[10px] leading-relaxed text-slate-500 font-semibold">{item.message}</p>
+                                </div>
+                                {unread && (
+                                  <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                                )}
+                              </div>
+                            );
+
+                            return item.href ? (
+                              <Link
+                                key={item.id}
+                                href={item.href}
+                                onClick={() => setNotifOpen(false)}
+                                className="block"
+                              >
+                                {elementContent}
+                              </Link>
+                            ) : (
+                              <div key={item.id}>
+                                {elementContent}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Wallet (logged-in customer only) */}
             {isLoggedIn && role === "customer" && walletBalance !== null && (
