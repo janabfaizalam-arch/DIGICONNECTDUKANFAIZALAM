@@ -16,7 +16,7 @@ const recentCompletions = [
 
 export function RecentSuccessStories() {
   return (
-    <section className="bg-slate-50/50 py-10 md:py-14 px-3">
+    <section className="bg-slate-50/50 py-8 md:py-10 px-3">
       <div className="container-shell">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-8">

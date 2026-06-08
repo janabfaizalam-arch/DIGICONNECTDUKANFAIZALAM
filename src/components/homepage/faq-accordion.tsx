@@ -65,7 +65,7 @@ export function FaqAccordion() {
   };
 
   return (
-    <section className="bg-slate-50/50 py-10 md:py-14 px-3">
+    <section className="bg-slate-50/50 py-8 md:py-10 px-3">
       <div className="container-shell max-w-3xl">
         {/* Header */}
         <div className="text-center mb-8">

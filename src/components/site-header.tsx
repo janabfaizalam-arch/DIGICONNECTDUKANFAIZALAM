@@ -284,6 +284,7 @@ export function SiteHeader() {
 
         const list: NotificationItem[] = [];
         const readIds = JSON.parse(localStorage.getItem(`read_notifs_${user.id}`) || "[]");
+        const clearedIds = JSON.parse(localStorage.getItem(`cleared_notifs_${user.id}`) || "[]");
 
         // Process actual DB notifications
         if (dbNotifs) {
@@ -383,9 +384,10 @@ export function SiteHeader() {
         // Sort all by date desc
         list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        // Deduplicate
+        // Deduplicate and filter out cleared notifications
         const seen = new Set();
         const uniqueList = list.filter((item) => {
+          if (clearedIds.includes(item.id)) return false;
           const key = `${item.title}-${item.message}`;
           if (seen.has(key)) return false;
           seen.add(key);
@@ -436,6 +438,20 @@ export function SiteHeader() {
       }
     } catch (err) {
       console.warn("Failed to mark notifications as read:", err);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (!user) return;
+    try {
+      const allIds = notifications.map((n) => n.id);
+      const clearedIds = JSON.parse(localStorage.getItem(`cleared_notifs_${user.id}`) || "[]");
+      const nextCleared = Array.from(new Set([...clearedIds, ...allIds]));
+      localStorage.setItem(`cleared_notifs_${user.id}`, JSON.stringify(nextCleared));
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) {
+      console.warn("Failed to clear notifications:", err);
     }
   };
 
@@ -625,13 +641,23 @@ export function SiteHeader() {
                         )}
                       </h3>
                       <div className="flex items-center gap-2">
-                        {isLoggedIn && unreadCount > 0 && (
-                          <button
-                            onClick={handleMarkAllRead}
-                            className="text-[10px] font-extrabold text-blue-600 hover:underline flex items-center gap-0.5"
-                          >
-                            <Check className="h-3 w-3" /> Mark all read
-                          </button>
+                        {isLoggedIn && notifications.length > 0 && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            {unreadCount > 0 && (
+                              <button
+                                onClick={handleMarkAllRead}
+                                className="text-[10px] font-black text-blue-600 hover:underline flex items-center gap-0.5"
+                              >
+                                <Check className="h-3 w-3" /> Read All
+                              </button>
+                            )}
+                            <button
+                              onClick={handleClearAll}
+                              className="text-[10px] font-black text-slate-400 hover:text-slate-650 hover:underline"
+                            >
+                              Clear All
+                            </button>
+                          </div>
                         )}
                         <button
                           onClick={() => setNotifOpen(false)}

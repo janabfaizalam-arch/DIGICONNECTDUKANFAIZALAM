@@ -49,7 +49,7 @@ const categories = [
 
 export function ServiceCategories() {
   return (
-    <section className="bg-white py-10 md:py-14 px-3">
+    <section className="bg-white py-8 md:py-10 px-3">
       <div className="container-shell">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
