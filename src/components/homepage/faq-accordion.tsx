@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronRight, HelpCircle } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { ChevronRight, HelpCircle, Search } from "lucide-react";
 
 const faqs = [
   {
@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     question: "Kya wallet cashback real money me redeem ho sakta hai?",
-    answer: "Wallet cashback points real reward credits hain jinhe aap direct platform par koi bhi nayi paid application select karte waqt up to 50% discount apply karne ke liye redeeam kar sakte hain. Ye directly orders summary ledger me automatically deduct hote hain.",
+    answer: "Wallet cashback points real reward credits hain jinhe aap direct platform par koi bhi nayi paid application select karte waqt up to 50% discount apply karne ke liye redeem kar sakte hain. Ye directly orders summary ledger me automatically deduct hote hain.",
   },
   {
     question: "Agar documents verification reject ho jaye toh kya hoga?",
@@ -24,14 +24,31 @@ const faqs = [
     question: "Payment checkout security kaisi hai?",
     answer: "DigiConnect Dukan safe transactions ke liye industry-standard secure payment gateway (Razorpay) use karta hai. Aap UPI, cards, net banking, ya wallets ke through checkout complete kar sakte hain.",
   },
+  {
+    question: "How long does GST Registration take?",
+    answer: "GST Registration typically takes 3-7 working days after all required documents are verified. Our team ensures proper documentation to avoid rejections and speed up the process.",
+  },
+  {
+    question: "Is there a refund policy?",
+    answer: "Yes, we have a clear refund policy. If a service cannot be processed due to our error, a full refund is initiated. Please check our Refund Policy page for detailed terms.",
+  },
 ];
 
 export function FaqAccordion() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggle = (idx: number) => {
     setOpenIndex(openIndex === idx ? null : idx);
   };
+
+  const filteredFaqs = useMemo(() => {
+    if (!searchQuery.trim()) return faqs;
+    const q = searchQuery.toLowerCase();
+    return faqs.filter(
+      faq => faq.question.toLowerCase().includes(q) || faq.answer.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
 
   // SEO schema markup
   const schema = {
@@ -48,53 +65,77 @@ export function FaqAccordion() {
   };
 
   return (
-    <section className="bg-white py-12 px-3">
+    <section className="bg-slate-50/50 py-10 md:py-14 px-3">
       <div className="container-shell max-w-3xl">
-        <div className="text-center mb-10">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-xs font-black uppercase tracking-widest text-blue-700 shadow-sm border border-blue-100">
-            FAQs
-          </span>
-          <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4.5xl leading-tight">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-600">FAQs</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
             Frequently Asked Questions
           </h2>
-          <p className="mt-3 text-sm font-semibold text-slate-500">
-            Aam sawalon ke seedhe aur sahaj jawab.
+          <p className="mt-2 text-sm font-medium text-slate-500">
+            Quick answers to common questions.
           </p>
         </div>
 
-        {/* Collapsible Accordion Grid */}
-        <div className="space-y-3.5 text-left">
-          {faqs.map((faq, idx) => {
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search questions..."
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-50"
+          />
+        </div>
+
+        {/* Accordion */}
+        <div className="space-y-2.5">
+          {filteredFaqs.map((faq, idx) => {
             const isOpen = openIndex === idx;
             return (
               <div
                 key={idx}
-                className="rounded-2xl border border-slate-150 bg-slate-50/20 p-4 transition-all duration-200 hover:border-slate-350"
+                className={`rounded-xl border bg-white transition-all duration-200 ${
+                  isOpen ? "border-blue-100 shadow-sm" : "border-slate-100 hover:border-slate-200"
+                }`}
               >
                 <button
                   type="button"
                   onClick={() => toggle(idx)}
-                  className="w-full flex items-center justify-between gap-4 font-extrabold text-slate-900 text-sm md:text-base outline-none cursor-pointer"
+                  className="w-full flex items-center justify-between gap-3 p-4 font-bold text-slate-800 text-sm outline-none cursor-pointer text-left"
                 >
-                  <span className="flex items-center gap-3">
-                    <HelpCircle className="h-4.5 w-4.5 text-blue-600 shrink-0" />
+                  <span className="flex items-center gap-2.5">
+                    <HelpCircle className={`h-4 w-4 shrink-0 transition ${isOpen ? "text-blue-600" : "text-slate-300"}`} />
                     <span>{faq.question}</span>
                   </span>
-                  <ChevronRight className={`h-4.5 w-4.5 text-slate-450 shrink-0 transition-transform duration-250 ${isOpen ? "rotate-90 text-blue-600" : ""}`} />
+                  <ChevronRight className={`h-4 w-4 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-90 text-blue-600" : ""}`} />
                 </button>
-                
-                {/* Content Panel */}
-                <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-40 opacity-100 mt-3 pt-3 border-t border-slate-150/40" : "max-h-0 opacity-0"}`}>
-                  <p className="text-xs md:text-sm font-semibold text-slate-650 leading-relaxed">
-                    {faq.answer}
-                  </p>
+
+                {/* Expandable content using grid trick for smooth height animation */}
+                <div
+                  className="grid transition-all duration-300"
+                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                >
+                  <div className="overflow-hidden">
+                    <div className="px-4 pb-4 pl-11">
+                      <p className="text-xs md:text-sm font-medium text-slate-500 leading-relaxed">
+                        {faq.answer}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Injection of Schema */}
+        {filteredFaqs.length === 0 && (
+          <p className="text-center text-sm text-slate-400 py-8">No matching questions found.</p>
+        )}
+
+        {/* Schema injection */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}

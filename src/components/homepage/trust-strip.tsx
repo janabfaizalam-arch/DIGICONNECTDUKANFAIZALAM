@@ -1,41 +1,108 @@
 "use client";
 
-import React from "react";
-import { Users, CheckCircle, Globe, ShieldCheck } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Users, CheckCircle, Clock, Globe } from "lucide-react";
 
 const stats = [
-  { label: "Happy Customers", value: "50,000+", icon: Users, theme: "blue" },
-  { label: "Success Rate", value: "99%", icon: CheckCircle, theme: "green" },
-  { label: "Support Network", value: "PAN India", icon: Globe, theme: "orange" },
-  { label: "Razorpay Payments", value: "100% Secure", icon: ShieldCheck, theme: "teal" },
+  { label: "Customers", value: 50000, suffix: "+", icon: Users, color: "bg-blue-50 text-blue-600" },
+  { label: "Success Rate", value: 99.8, suffix: "%", icon: CheckCircle, color: "bg-emerald-50 text-emerald-600" },
+  { label: "Support", value: "24x7", suffix: "", icon: Clock, color: "bg-orange-50 text-orange-600", isText: true },
+  { label: "Coverage", value: "PAN India", suffix: "", icon: Globe, color: "bg-purple-50 text-purple-600", isText: true },
 ];
+
+function AnimatedCounter({ value, suffix, isText }: { value: number | string; suffix: string; isText?: boolean }) {
+  const [displayValue, setDisplayValue] = useState(isText ? String(value) : "0");
+  const ref = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    if (isText || hasAnimated.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated.current) {
+          hasAnimated.current = true;
+          const numValue = Number(value);
+          const duration = 1200;
+          const startTime = Date.now();
+
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+
+            const current = numValue * eased;
+
+            if (numValue >= 1000) {
+              setDisplayValue(Math.floor(current).toLocaleString("en-IN"));
+            } else if (numValue % 1 !== 0) {
+              setDisplayValue(current.toFixed(1));
+            } else {
+              setDisplayValue(Math.floor(current).toString());
+            }
+
+            if (progress < 1) {
+              requestAnimationFrame(animate);
+            }
+          };
+
+          requestAnimationFrame(animate);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, [value, isText]);
+
+  return (
+    <div ref={ref} className="text-2xl md:text-3xl font-black text-slate-900 leading-none">
+      {displayValue}{suffix}
+    </div>
+  );
+}
 
 export function TrustStrip() {
   return (
-    <section className="bg-white py-3 px-3">
+    <section className="bg-slate-50/50 py-10 md:py-16 px-3">
       <div className="container-shell">
-        <div className="glass-panel rounded-2xl border border-slate-100/80 p-3 shadow-xs bg-slate-50/20">
-          <div className="flex flex-wrap items-center justify-around gap-y-4 gap-x-2 md:flex-nowrap">
-            {stats.map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <div key={idx} className="flex items-center gap-3 px-4 py-1 hover:bg-white/50 rounded-xl transition duration-200 shrink-0">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-xs
-                    ${stat.theme === "blue" && "bg-blue-50 text-blue-600 border border-blue-100/50"}
-                    ${stat.theme === "green" && "bg-emerald-50 text-emerald-600 border border-emerald-100/50"}
-                    ${stat.theme === "orange" && "bg-orange-50 text-orange-600 border border-orange-100/50"}
-                    ${stat.theme === "teal" && "bg-cyan-50 text-cyan-600 border border-cyan-100/50"}
-                  `}>
-                    <Icon className="h-4.5 w-4.5" />
-                  </span>
-                  <div className="text-left">
-                    <h3 className="text-sm font-black text-slate-900 leading-none">{stat.value}</h3>
-                    <p className="text-[9px] font-bold text-slate-450 uppercase tracking-wider mt-1">{stat.label}</p>
-                  </div>
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-600">Trust Metrics</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+            Trusted by Thousands Across India
+          </h2>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {stats.map((stat, idx) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={idx}
+                className="group rounded-2xl border border-slate-100 bg-white p-5 md:p-6 text-center transition hover:shadow-md hover:-translate-y-0.5"
+              >
+                <span className={`mx-auto flex h-11 w-11 items-center justify-center rounded-xl ${stat.color} transition-transform group-hover:scale-105`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="mt-4">
+                  <AnimatedCounter
+                    value={stat.value}
+                    suffix={stat.suffix}
+                    isText={"isText" in stat && stat.isText}
+                  />
                 </div>
-              );
-            })}
-          </div>
+                <p className="mt-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {stat.label}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Home, LayoutGrid, FileText, Wallet, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/browser";
@@ -33,6 +33,37 @@ function shouldHide(pathname: string) {
 export function BottomNav() {
   const pathname = usePathname();
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const ticking = useRef(false);
+
+  // Scroll-aware hide/show — matching header behavior
+  const handleScroll = useCallback(() => {
+    if (ticking.current) return;
+
+    ticking.current = true;
+    window.requestAnimationFrame(() => {
+      ticking.current = false;
+      const currentScrollY = window.scrollY;
+      const scrollDelta = currentScrollY - lastScrollYRef.current;
+
+      if (scrollDelta > 10 && currentScrollY > 80) {
+        setNavHidden(true);
+      } else if (scrollDelta < -5) {
+        setNavHidden(false);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (shouldHide(pathname)) return;
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [pathname, handleScroll]);
 
   useEffect(() => {
     if (shouldHide(pathname)) return;
@@ -73,7 +104,10 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="bottom-nav print:hidden" aria-label="Mobile navigation">
+    <nav
+      className={`bottom-nav print:hidden ${navHidden ? "nav-hidden" : ""}`}
+      aria-label="Mobile navigation"
+    >
       {tabs.map(({ href, label, icon: Icon }) => {
         const active = isTabActive(pathname, href);
 
@@ -85,11 +119,11 @@ export function BottomNav() {
             aria-current={active ? "page" : undefined}
           >
             <span className="nav-icon relative">
-              <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
+              <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.2 : 1.6} />
               {active && (
                 <motion.div
                   layoutId="activeTabGlow"
-                  className="absolute -inset-1.5 -z-10 rounded-xl bg-white/10 opacity-90"
+                  className="absolute -inset-1.5 -z-10 rounded-xl bg-blue-50 opacity-80"
                   transition={{ type: "spring", stiffness: 350, damping: 25 }}
                 />
               )}

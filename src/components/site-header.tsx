@@ -2,23 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, ChevronDown, FileCheck2, LayoutDashboard, LogIn, MessageCircle, Search, UserRound, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { ApplyServiceTrigger } from "@/components/service-selection-modal";
 import { createClient } from "@/lib/supabase/browser";
-import { buildAgentWhatsAppMessage, buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
-
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
-  { href: "/about", label: "About" },
-  { href: "/customer/dashboard#applications", label: "Track Application" },
-  { href: "/#support", label: "Contact" },
-];
 
 type AppRole = "admin" | "agent" | "customer";
 
@@ -107,68 +97,27 @@ function isAgentShellPath(pathname: string) {
   return pathname === "/agent/dashboard" || pathname.startsWith("/agent/");
 }
 
-function CustomerAccountMenu() {
-  return (
-    <details className="group relative z-50">
-      <summary className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-full border border-white/50 bg-white/70 px-5 text-sm font-bold text-blue-700 shadow-sm transition-all duration-300 md:hover:-translate-y-0.5 active:scale-[0.98] [&::-webkit-details-marker]:hidden">
-        <UserRound className="h-4 w-4 text-blue-600" />
-        My Account
-        <ChevronDown className="h-4 w-4 transition duration-200 group-open:rotate-180 text-blue-600" />
-      </summary>
-      <div className="absolute right-0 top-[2.75rem] z-[70] w-60 rounded-[20px] border border-blue-50/80 bg-white/96 p-2 shadow-[0_20px_48px_rgba(15,23,42,0.14)] backdrop-blur-md transition-all duration-200">
-        <nav className="grid text-sm font-semibold text-slate-700">
-          {[
-            ["/customer/dashboard", "Dashboard"],
-            ["/customer/dashboard#applications", "My Applications"],
-            ["/customer/wallet", "Wallet"],
-            ["/customer/dashboard#refer-earn", "Refer & Earn"],
-            ["/customer/profile", "Profile"],
-          ].map(([href, label]) => (
-            <Link key={href} href={href} className="rounded-xl px-3 py-2.5 transition hover:bg-blue-50/50 hover:text-blue-700">
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-1 border-t border-slate-100 pt-2">
-          <LogoutButton className="h-10 w-full justify-center rounded-xl" />
-        </div>
-      </div>
-    </details>
-  );
-}
-
 export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
-  const publicCtaConfig = panelConfig ?? { href: "/login/customer", label: "Login" };
   const agentShell = isAgentShellPath(pathname);
-  const logoHref = "/";
-  const appShell = agentShell;
-  const appShellLabel = "Agent Dashboard";
-  const appShellHref = "/agent/dashboard";
-  const [scrolled, setScrolled] = useState(false);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const scrolledRef = useRef(false);
-  const whatsappUrl = buildWhatsAppUrl(
-    role === "agent"
-      ? buildAgentWhatsAppMessage({
-          agentName: user?.user_metadata.full_name ?? user?.user_metadata.name ?? user?.email,
-          topic: "Header support",
-        })
-      : buildSupportWhatsAppMessage({
-          page: "header",
-          customerName: role === "customer" ? user?.user_metadata.full_name ?? user?.user_metadata.name : null,
-          topic: role === "admin" ? "Admin dashboard support" : "Website service enquiry",
-        }),
-  );
 
+  // Scroll-aware hide/show state
+  const [scrolled, setScrolled] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const lastScrollYRef = useRef(0);
+  const scrolledRef = useRef(false);
+  const ticking = useRef(false);
+
+  // Auth sync — identical to existing logic
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
 
     let isMounted = true;
 
@@ -179,16 +128,10 @@ export function SiteHeader() {
     }
 
     async function syncUser(nextUser: User | null) {
-      if (!isMounted) {
-        return;
-      }
-
+      if (!isMounted) return;
       setUser(nextUser);
       const nextRole = nextUser ? await resolveRole(nextUser) : null;
-
-      if (isMounted) {
-        setRole(nextRole);
-      }
+      if (isMounted) setRole(nextRole);
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -207,6 +150,7 @@ export function SiteHeader() {
     };
   }, [supabase]);
 
+  // Wallet balance
   useEffect(() => {
     let active = true;
 
@@ -225,9 +169,7 @@ export function SiteHeader() {
           setWalletBalance(Number.isFinite(balance) ? balance : 0);
         }
       } catch {
-        if (active) {
-          setWalletBalance(null);
-        }
+        if (active) setWalletBalance(null);
       }
     }
 
@@ -238,36 +180,40 @@ export function SiteHeader() {
     };
   }, [role, user]);
 
-  useEffect(() => {
-    let frameId = 0;
+  // Scroll handler — Apple-style hide on scroll down, show on scroll up
+  const handleScroll = useCallback(() => {
+    if (ticking.current) return;
 
-    function updateScrolled() {
-      if (frameId) {
-        return;
+    ticking.current = true;
+    window.requestAnimationFrame(() => {
+      ticking.current = false;
+      const currentScrollY = window.scrollY;
+      const isScrolled = currentScrollY > 8;
+      const scrollDelta = currentScrollY - lastScrollYRef.current;
+
+      if (isScrolled !== scrolledRef.current) {
+        scrolledRef.current = isScrolled;
+        setScrolled(isScrolled);
       }
 
-      frameId = window.requestAnimationFrame(() => {
-        frameId = 0;
-        const nextScrolled = window.scrollY > 12;
-
-        if (nextScrolled !== scrolledRef.current) {
-          scrolledRef.current = nextScrolled;
-          setScrolled(nextScrolled);
-        }
-      });
-    }
-
-    updateScrolled();
-    window.addEventListener("scroll", updateScrolled, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", updateScrolled);
-      if (frameId) {
-        window.cancelAnimationFrame(frameId);
+      // Hide on scroll down (>10px), show on scroll up
+      if (scrollDelta > 10 && currentScrollY > 80) {
+        setNavHidden(true);
+      } else if (scrollDelta < -5) {
+        setNavHidden(false);
       }
-    };
+
+      lastScrollYRef.current = currentScrollY;
+    });
   }, []);
 
+  useEffect(() => {
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
+  // Don't render on admin/dashboard pages
   if (
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
@@ -277,186 +223,187 @@ export function SiteHeader() {
     return null;
   }
 
+  const dashboardHref = panelConfig?.href ?? "/login/customer";
+  const isLoggedIn = !!user;
+
   return (
-    <header className="sticky top-0 z-40 w-full px-3 sm:px-6 pt-2.5 print:hidden">
-      <div
-        className={`mx-auto max-w-7xl rounded-[24px] border border-white/40 bg-white/60 backdrop-blur-md transition-all duration-300 ${
-          scrolled
-            ? "shadow-[0_16px_36px_rgba(15,23,42,0.08)] bg-white/80 border-slate-200/20 scale-[0.99] py-0.5"
-            : "shadow-[0_8px_20px_rgba(15,23,42,0.02)] scale-100 py-1.5"
-        }`}
+    <>
+      <header
+        className={`site-header print:hidden ${scrolled ? "scrolled" : ""} ${navHidden ? "nav-hidden" : ""}`}
       >
-        <div className={`flex items-center justify-between gap-3 px-4 md:px-6 transition-all duration-300 ${scrolled ? "min-h-[3rem] py-1 md:min-h-[3.5rem]" : "min-h-[3.5rem] py-1.5 md:min-h-16"}`}>
-          <Link href={logoHref} className="flex min-w-0 shrink-0 items-center gap-2 transition-transform duration-200 hover:scale-[1.01]" aria-label="DigiConnect Dukan home">
-            <span className="flex h-7 w-[7rem] items-center md:h-10 md:w-[9.75rem]">
+        <div className="flex h-full items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
+          {/* LEFT — Logo */}
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-2 transition-opacity duration-200 hover:opacity-80"
+            aria-label="DigiConnect Dukan home"
+          >
+            <span className="flex h-7 w-[7rem] items-center md:h-9 md:w-[9rem]">
               <Image
                 src="/logo-navbar.png"
                 alt="DigiConnect Dukan Logo"
-                width={220}
-                height={60}
+                width={200}
+                height={50}
                 priority
                 className="h-full w-auto object-contain"
               />
             </span>
-            <span className={`hidden max-w-[8.5rem] text-[0.62rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-400 ${appShell ? "lg:block" : "lg:block"}`}>
-              Powered By RNoS India
-            </span>
           </Link>
-          {appShell ? (
-            agentShell ? (
-              <nav className="hidden flex-1 items-center justify-center gap-2 text-sm font-semibold text-slate-600 md:flex">
-                {[
-                  ["/agent/dashboard", "Agent Dashboard"],
-                  ["/agent/applications/new", "New Application"],
-                  ["/agent/applications", "Applications"],
-                  ["/agent/commissions", "Commissions"],
-                ].map(([href, label]) => {
-                  const isActive = pathname === href;
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={`relative rounded-full px-4 py-2 transition-all duration-300 ${
-                        isActive
-                          ? "bg-white text-blue-700 shadow-sm"
-                          : "hover:bg-white/60 hover:text-blue-700 text-slate-600"
-                      }`}
-                    >
-                      {label}
-                      {isActive && (
-                        <span className="absolute bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : (
-              <div className="hidden flex-1 items-center justify-center md:flex">
-                <span className="rounded-full bg-blue-50/50 px-4 py-2 text-sm font-bold text-blue-700 border border-blue-100">
-                  {appShellLabel}
-                </span>
-              </div>
-            )
-          ) : (
-            <nav className="hidden items-center gap-1 rounded-full border border-white/40 bg-white/30 p-1 text-sm font-semibold text-slate-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] backdrop-blur-sm md:flex">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+
+          {/* CENTER — Search Bar (Desktop) */}
+          {!agentShell && (
+            <div className="hidden flex-1 items-center justify-center px-8 md:flex lg:px-16">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex h-10 w-full max-w-md items-center gap-2.5 rounded-2xl border border-slate-200/60 bg-slate-50/60 px-4 text-sm font-medium text-slate-400 transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-sm"
+              >
+                <Search className="h-4 w-4 text-slate-400" />
+                <span>Search services...</span>
+                <kbd className="ml-auto hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-400 lg:inline-block">
+                  ⌘K
+                </kbd>
+              </button>
+            </div>
+          )}
+
+          {/* Agent shell center label */}
+          {agentShell && (
+            <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+              {[
+                ["/agent/dashboard", "Dashboard"],
+                ["/agent/applications/new", "New Application"],
+                ["/agent/applications", "Applications"],
+                ["/agent/commissions", "Commissions"],
+              ].map(([href, label]) => {
+                const isActive = pathname === href;
                 return (
                   <Link
-                    key={link.label}
-                    href={link.href}
-                    className={`relative rounded-full px-4 py-2 transition-all duration-300 ${
+                    key={href}
+                    href={href}
+                    className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 ${
                       isActive
-                        ? "bg-white text-blue-700 shadow-sm"
-                        : "hover:bg-white/60 hover:text-blue-700 text-slate-600"
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                     }`}
                   >
-                    {link.label}
-                    {isActive && (
-                      <span className="absolute bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500" />
-                    )}
+                    {label}
                   </Link>
                 );
               })}
             </nav>
           )}
-          <div className="hidden items-center gap-2.5 md:flex">
-            {/* Search shortcut */}
-            <Link href="/services" title="Search Services" className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/50 bg-white/50 text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-700 active:scale-95">
-              <Search className="h-4.5 w-4.5" />
+
+          {/* RIGHT — Actions */}
+          <div className="flex items-center gap-1.5 md:gap-2">
+            {/* Mobile search icon */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 md:hidden"
+              title="Search"
+            >
+              <Search className="h-[18px] w-[18px]" />
+            </button>
+
+            {/* Notifications */}
+            <button
+              title="Notifications"
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+            >
+              <Bell className="h-[18px] w-[18px]" />
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-orange-500 ring-2 ring-white" />
+            </button>
+
+            {/* Wallet (logged-in customer only) */}
+            {isLoggedIn && role === "customer" && walletBalance !== null && (
+              <Link
+                href="/customer/wallet"
+                className="hidden h-9 items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white/60 px-3 text-xs font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50/40 hover:text-blue-700 md:inline-flex"
+              >
+                <WalletCards className="h-4 w-4 text-blue-500" />
+                ₹{walletBalance.toLocaleString("en-IN")}
+              </Link>
+            )}
+
+            {/* Dashboard / Login */}
+            <Link
+              href={dashboardHref}
+              className="hidden h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] md:inline-flex"
+            >
+              {isLoggedIn ? (
+                <>
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Dashboard
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-3.5 w-3.5" />
+                  Login
+                </>
+              )}
             </Link>
 
-            {/* Notifications Shortcut */}
-            <div className="relative group/nav-notif">
-              <button title="Notifications" className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/50 bg-white/50 text-slate-600 transition-all hover:bg-slate-100 hover:text-blue-700 active:scale-95 cursor-pointer">
-                <Bell className="h-4.5 w-4.5" />
-                <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-orange-500 ring-2 ring-white animate-pulse" />
-              </button>
-              {/* Micro-translucent popover */}
-              <div className="absolute right-0 top-[2.75rem] z-50 w-64 rounded-2xl border border-slate-100 bg-white/96 p-3 shadow-lg opacity-0 invisible translate-y-1 group-hover/nav-notif:opacity-100 group-hover/nav-notif:visible group-hover/nav-notif:translate-y-0 transition-all duration-200">
-                <p className="text-[10px] font-black text-slate-900 border-b border-slate-100 pb-1.5 uppercase tracking-wider">Latest Notifications</p>
-                <div className="mt-2 space-y-2 text-[11px] font-semibold text-slate-500 leading-normal">
-                  <div className="p-1.5 rounded-lg hover:bg-blue-50/30 transition">
-                    <p className="font-bold text-slate-800">20% Cashback active</p>
-                    <p className="text-[10px] text-slate-450 mt-0.5">Applied automatically on paid applications.</p>
-                  </div>
-                  <div className="p-1.5 rounded-lg hover:bg-blue-50/30 transition">
-                    <p className="font-bold text-slate-800">PVC card service live</p>
-                    <p className="text-[10px] text-slate-450 mt-0.5">Order premium waterproof polymer smart card print.</p>
-                  </div>
-                </div>
+            {/* Profile / Logout (desktop) */}
+            {isLoggedIn && !agentShell && (
+              <div className="hidden md:block">
+                <LogoutButton showLabel={false} className="h-9 w-9 rounded-xl p-0" />
               </div>
-            </div>
-
-            {appShell ? (
-              <>
-                <Link href={appShellHref} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-5 text-sm font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-300 hover:shadow-orange-600/25 hover:-translate-y-0.5 active:scale-[0.98]">
-                  <LayoutDashboard className="h-4 w-4" />
-                  {agentShell ? "Agent Dashboard" : "Dashboard"}
-                </Link>
-                {user && !agentShell ? <LogoutButton className="h-10" /> : null}
-              </>
-            ) : user && panelConfig ? (
-              <>
-                <ApplyServiceTrigger className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-blue-600/20 bg-white/40 px-5 text-sm font-extrabold text-blue-700 shadow-sm transition-all duration-300 hover:border-blue-600 hover:bg-blue-50/50 hover:-translate-y-0.5 active:scale-[0.98]">
-                  <FileCheck2 className="h-4 w-4 text-blue-600" />
-                  Apply Now
-                </ApplyServiceTrigger>
-                {role === "customer" && walletBalance !== null ? (
-                  <Link href="/customer/dashboard" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-blue-100 bg-white/60 px-4 text-sm font-bold text-blue-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]">
-                    <WalletCards className="h-4 w-4 text-blue-600" />
-                    Rs {walletBalance.toLocaleString("en-IN")}
-                  </Link>
-                ) : null}
-                {role === "customer" ? (
-                  <CustomerAccountMenu />
-                ) : null}
-                <Link href={panelConfig.href} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-5 text-sm font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-300 hover:shadow-orange-600/25 hover:-translate-y-0.5 active:scale-[0.98]">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Link>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/40 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/60 active:scale-[0.98]">
-                  <MessageCircle className="h-4 w-4 text-emerald-600" />
-                  WhatsApp
-                </a>
-                {role === "customer" ? null : <LogoutButton className="h-10" />}
-              </>
-            ) : (
-              <>
-                <ApplyServiceTrigger className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-blue-600/20 bg-white/40 px-5 text-sm font-extrabold text-blue-700 shadow-sm transition-all duration-300 hover:border-blue-600 hover:bg-blue-50/50 hover:-translate-y-0.5 active:scale-[0.98]">
-                  <FileCheck2 className="h-4 w-4 text-blue-600" />
-                  Apply Now
-                </ApplyServiceTrigger>
-                <Link href="/login/customer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-5 text-sm font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-300 hover:shadow-orange-600/25 hover:-translate-y-0.5 active:scale-[0.98]">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Login / Dashboard
-                </Link>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/40 px-4 text-sm font-bold text-emerald-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/60 active:scale-[0.98]">
-                  <MessageCircle className="h-4 w-4 text-emerald-600" />
-                  WhatsApp
-                </a>
-              </>
             )}
+
+            {/* Mobile Login/Dashboard */}
+            <Link
+              href={dashboardHref}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 active:scale-95 md:hidden"
+            >
+              {isLoggedIn ? (
+                <UserRound className="h-[18px] w-[18px]" />
+              ) : (
+                <LogIn className="h-[18px] w-[18px]" />
+              )}
+            </Link>
           </div>
-          {appShell ? (
-            <div className="ml-auto flex shrink-0 flex-nowrap items-center justify-end gap-2 overflow-hidden md:hidden">
-              <Link href={appShellHref} className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-3 text-xs font-bold text-white shadow-sm">
-                <LayoutDashboard className="h-4 w-4" />
-                {agentShell ? "Agent" : "Dashboard"}
-              </Link>
-              {user && !agentShell ? <LogoutButton showLabel={false} className="h-9 w-9 shrink-0 rounded-full p-0" /> : null}
-            </div>
-          ) : (
-            <div className="flex items-center md:hidden">
-              <Link href={publicCtaConfig.href} className="inline-flex h-9 items-center justify-center gap-1.5 truncate rounded-full bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-4 text-xs font-extrabold text-white shadow-md shadow-orange-600/15 transition-all duration-200 active:scale-[0.98]">
-                {panelConfig ? <LayoutDashboard className="h-3.5 w-3.5 shrink-0" /> : <LogIn className="h-3.5 w-3.5 shrink-0" />}
-                <span className="truncate">{user ? "Dashboard" : "Login"}</span>
-              </Link>
-            </div>
-          )}
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Search Overlay */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-white/95 backdrop-blur-xl">
+          <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+            <Search className="h-5 w-5 shrink-0 text-slate-400" />
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search GST, ITR, Passport, CIBIL, DL..."
+              className="flex-1 bg-transparent text-base font-medium text-slate-800 placeholder:text-slate-400 outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSearchOpen(false);
+              }}
+            />
+            <button
+              onClick={() => setSearchOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-6">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Quick Links</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["GST Registration", "ITR Filing", "Passport", "Driving Licence", "CIBIL Analysis", "PVC Card", "PM Vishwakarma"].map(
+                (term) => (
+                  <Link
+                    key={term}
+                    href={`/services`}
+                    onClick={() => setSearchOpen(false)}
+                    className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                  >
+                    {term}
+                  </Link>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-

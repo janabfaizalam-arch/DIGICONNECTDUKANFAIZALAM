@@ -1,42 +1,38 @@
 import type { Metadata } from "next";
 
 import { HeroSearchSection } from "@/components/homepage/hero-search-section";
-import { AiServiceFinder } from "@/components/homepage/ai-service-finder";
+import { SmartSearchHub } from "@/components/homepage/smart-search-hub";
 import { QuickServiceGrid } from "@/components/homepage/quick-service-grid";
-import { TrustStrip } from "@/components/homepage/trust-strip";
 import { FeaturedServices } from "@/components/homepage/featured-services";
-import { CreditCardOffers } from "@/components/homepage/credit-card-offers";
-import { CibilFinanceCenter } from "@/components/homepage/cibil-finance-center";
-import { WalletCashback } from "@/components/homepage/wallet-cashback";
-import { ReferEarn } from "@/components/homepage/refer-earn";
 import { WhyChooseUs } from "@/components/homepage/why-choose-us";
+import { RewardCenter } from "@/components/homepage/reward-center";
+import { TrustStrip } from "@/components/homepage/trust-strip";
 import { ServiceCategories } from "@/components/homepage/service-categories";
+import { RecentSuccessStories } from "@/components/homepage/recent-success-stories";
 import { Testimonials } from "@/components/homepage/testimonials";
 import { FaqAccordion } from "@/components/homepage/faq-accordion";
 import { SupportCenter } from "@/components/homepage/support-center";
 
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
-import { HomepagePvcWidget } from "@/components/homepage-pvc-widget";
-import { HomepageOfferNoticeBar } from "@/components/homepage-offer-notice-bar";
-import { HomepageYuvaPill } from "@/components/homepage-yuva-pill";
 import { MarketingFooter } from "@/components/marketing-footer";
 
 export const metadata: Metadata = {
-  title: "DigiConnect Dukan | Tax, Insurance, Finance & Gov ID Services",
+  title: "DigiConnect Dukan | India's Premium Digital Services Marketplace",
   description:
-    "DigiConnect Dukan by RNOS India Pvt Ltd provides Tax & Business, All Vehicle Insurance, Finance & Banking, and Gov ID form submission services across India.",
+    "DigiConnect Dukan by RNOS India Pvt Ltd — GST Registration, ITR Filing, Passport, Driving Licence, Vehicle Insurance, CIBIL Analysis, PVC Cards & more. 20% Wallet Cashback on every service.",
   keywords: [
-    "Digital Services in India",
-    "Government Services Online",
-    "GST Registration",
-    "20% DigiWallet Cashback",
-    "ITR Filing",
-    "MSME Registration",
-    "Best Online Digital Services",
-    "Digital Wallet Rewards India",
+    "Digital Services India",
+    "GST Registration Online",
+    "ITR Filing Service",
+    "Passport Application",
+    "Driving Licence Online",
+    "CIBIL Score Analysis",
+    "PVC Smart Card",
     "Vehicle Insurance",
-    "Government Subsidy Loans",
-    "Gov ID Form Submission",
+    "20% DigiWallet Cashback",
+    "PM Vishwakarma Yojana",
+    "Government Services Online",
+    "Digital Wallet Rewards India",
   ],
   alternates: {
     canonical: "/",
@@ -49,58 +45,48 @@ export default async function Home() {
   return (
     <>
       <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
-        {/* Auto-scrolling offer strip — directly below header */}
-        <HomepageOfferNoticeBar />
-
-        {/* CM YUVA Highlight Announcement */}
-        <HomepageYuvaPill />
-
-        {/* 1. Hero Section (Dynamic Admin Slider) */}
+        {/* Section 1 — Hero Slides */}
         <HeroSearchSection />
 
-        {/* 2. Quick Service Grid (Premium 3D Glass Icons) */}
+        {/* Section 2 — Smart Search Hub */}
+        <SmartSearchHub />
+
+        {/* Section 3 — Quick Categories (8 Glass Cards) */}
         <QuickServiceGrid />
 
-        {/* 3. AI Service Finder (Fuzzy Search & Suggestions) */}
-        <AiServiceFinder />
-
-        {/* 4. Trust Strip (Animated Stats counters) */}
-        <TrustStrip />
-
-        {/* 5. Featured Services (Apple Card Horizontal Scroll) */}
+        {/* Section 4 — Featured Services (Horizontal Carousel) */}
         <FeaturedServices />
 
-        {/* 6. Credit Card Offers (Glass bank cards & eligibility) */}
-        <CreditCardOffers />
-
-        {/* 7. CIBIL & Finance Center (Dedicated Expert desk) */}
-        <CibilFinanceCenter />
-
-        {/* 8. Wallet & Cashback (Cashback benefits) */}
-        <WalletCashback />
-
-        {/* 9. Refer & Earn (Interactive referral widget) */}
-        <ReferEarn />
-
-        {/* 10. Why DigiConnect (Trust details) */}
+        {/* Section 5 — Why DigiConnect (Premium Visual Trust) */}
         <WhyChooseUs />
 
-        {/* 11. Service Categories (Bento Grid layout) */}
+        {/* Section 6 — Reward Center (Cashback + Referral) */}
+        <RewardCenter />
+
+        {/* Section 7 — Trust Center (Animated Counters) */}
+        <TrustStrip />
+
+        {/* Section 8 — Popular Categories Showcase */}
         <ServiceCategories />
 
-        {/* 12. Testimonials (Rotating glass reviews) */}
+        {/* Section 9 — Recent Success Stories */}
+        <RecentSuccessStories />
+
+        {/* Section 10 — Testimonials */}
         <Testimonials />
 
-        {/* 13. FAQ Accordion (Collapsible Q&As with schema markup) */}
+        {/* Section 11 — FAQ Accordion */}
         <FaqAccordion />
 
-        {/* 14. Contact/Support Center Section */}
+        {/* Section 12 — Support Center */}
         <SupportCenter />
       </main>
 
+      {/* Section 13 — Footer */}
       <MarketingFooter />
+
+      {/* Sticky WhatsApp CTA */}
       <HomepageContactActions />
-      <HomepagePvcWidget />
     </>
   );
 }

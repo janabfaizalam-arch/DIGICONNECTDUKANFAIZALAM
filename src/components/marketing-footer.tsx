@@ -1,98 +1,129 @@
 import Link from "next/link";
-import { Download, Globe, MessageCircle, Phone } from "lucide-react";
+import { Globe, MessageCircle, Phone } from "lucide-react";
 
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
-const footerLinks = [
+const quickLinks = [
   { label: "Home", href: "/" },
   { label: "Services", href: "/services" },
-  { label: "About", href: "/#about" },
-  { label: "Gallery", href: "/#gallery" },
-  { label: "Support", href: "/#support" },
+  { label: "About", href: "/about" },
   { label: "Download App", href: "/download-app" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Terms & Conditions", href: "/terms-and-conditions" },
 ];
 
-const popularServices = [
-  { label: "GST Registration", href: "/services/gst-registration" },
-  { label: "Driving Licence", href: "/services/driving-licence" },
-  { label: "Bike Insurance", href: "/services/bike-insurance" },
-  { label: "PMEGP Loan", href: "/services/pmegp-loan" },
+const legalLinks = [
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Terms & Conditions", href: "/terms-and-conditions" },
+  { label: "Refund Policy", href: "/terms-and-conditions" },
+];
+
+const supportLinks = [
+  { label: "Support", href: "/#support" },
+  { label: "Contact", href: "/#support" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 export function MarketingFooter() {
   const whatsappUrl = buildWhatsAppUrl(buildSupportWhatsAppMessage({ page: "footer", topic: "Website footer service enquiry" }));
 
   return (
-    <footer className="px-0 pb-6 pt-2 pb-safe-bottom">
+    <footer className="bg-white border-t border-slate-100 px-3 pt-10 pb-6 pb-safe-bottom print:hidden">
       <div className="container-shell">
-        <div className="rounded-[1.75rem] border border-white/15 bg-[linear-gradient(135deg,#061226,#0d2a52_58%,#0b4a7a)] p-5 text-white shadow-[0_14px_42px_rgba(15,23,42,0.16)] md:rounded-[2rem] md:p-8">
-          <div className="grid gap-7 lg:grid-cols-[1.05fr_0.85fr_0.85fr_0.8fr]">
-            <div className="max-w-sm">
-              <p className="text-2xl font-bold">DigiConnect Dukan</p>
-              <p className="mt-2 text-sm font-medium text-white/70">Powered By RNoS India Pvt Ltd</p>
-              <p className="mt-4 text-base leading-7 text-white/82">
-                Connecting People, Empowering Digital India
-              </p>
-              <Link href="https://www.rnos.in" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-sky-200 hover:text-white">
-                <Globe className="h-4 w-4" />
-                Website: rnos.in
-              </Link>
-              <Link href="/download-app" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-orange-200 hover:text-white">
-                <Download className="h-4 w-4" />
-                Download Android App
-              </Link>
-            </div>
+        <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]">
+          {/* Brand */}
+          <div className="max-w-xs">
+            <h3 className="text-lg font-black text-slate-900">DigiConnect Dukan</h3>
+            <p className="mt-1 text-xs font-semibold text-slate-400">Powered By RNoS India Pvt Ltd</p>
+            <p className="mt-3 text-sm text-slate-500 leading-relaxed">
+              Connecting People, Empowering Digital India
+            </p>
+            <Link
+              href="https://www.rnos.in"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              rnos.in
+            </Link>
+          </div>
 
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-white/50">Quick Links</p>
-              <nav className="mt-4 grid gap-2 text-sm text-white/72">
-                {footerLinks.map((link) => (
-                  <Link key={link.label} href={link.href} className="transition hover:text-white">
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+          {/* Quick Links */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-3">Quick Links</p>
+            <nav className="grid gap-2">
+              {quickLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-800 transition"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
 
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-white/50">Popular Services</p>
-              <nav className="mt-4 grid gap-2 text-sm text-white/72">
-                {popularServices.map((link) => (
-                  <Link key={link.label} href={link.href} className="transition hover:text-white">
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+          {/* Legal */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-3">Legal</p>
+            <nav className="grid gap-2">
+              {legalLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-800 transition"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {supportLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-800 transition"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
 
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-white/50">Contact Support</p>
-              <div className="mt-4 grid gap-2.5 text-xs text-white/80">
-                <a href={`tel:+91${contactDetails.primaryPhone}`} className="inline-flex items-center gap-2 font-bold text-white hover:text-sky-200 transition">
-                  <Phone className="h-3.5 w-3.5 text-sky-300" />
-                  Primary: +91 {contactDetails.primaryPhone}
-                </a>
-                <a href={`tel:+91${contactDetails.officeSupportPhone}`} className="inline-flex items-center gap-2 font-bold text-white hover:text-sky-200 transition">
-                  <Phone className="h-3.5 w-3.5 text-orange-300" />
-                  Office: +91 {contactDetails.officeSupportPhone}
-                </a>
-                <a href={`tel:+91${contactDetails.cibilExpertPhone}`} className="inline-flex items-center gap-2 font-bold text-white hover:text-sky-200 transition">
-                  <Phone className="h-3.5 w-3.5 text-amber-300" />
-                  CIBIL & Finance: +91 {contactDetails.cibilExpertPhone}
-                </a>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex h-9 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 font-extrabold text-white hover:bg-white/10 active:scale-95 transition">
-                  <MessageCircle className="h-4 w-4 text-emerald-400" />
-                  General WhatsApp
-                </a>
-              </div>
+          {/* Contact */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-3">Contact</p>
+            <div className="space-y-2.5">
+              <a
+                href={`tel:+91${contactDetails.primaryPhone}`}
+                className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition"
+              >
+                <Phone className="h-3.5 w-3.5 text-blue-500" />
+                +91 {contactDetails.primaryPhone}
+              </a>
+              <a
+                href={`tel:+91${contactDetails.officeSupportPhone}`}
+                className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition"
+              >
+                <Phone className="h-3.5 w-3.5 text-orange-500" />
+                +91 {contactDetails.officeSupportPhone}
+              </a>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-50"
+              >
+                <MessageCircle className="h-4 w-4 text-emerald-500" />
+                WhatsApp Support
+              </a>
             </div>
           </div>
-          <div className="mt-6 border-t border-white/10 pt-4 text-xs text-white/60">
-            &copy; 2026 DigiConnect Dukan. All rights reserved.
-          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="mt-8 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+          <p>&copy; 2026 DigiConnect Dukan. All rights reserved.</p>
+          <p className="text-[10px]">Built with care by RNOS India Pvt Ltd</p>
         </div>
       </div>
     </footer>
