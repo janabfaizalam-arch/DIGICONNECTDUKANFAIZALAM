@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 
 import { HeroSearchSection } from "@/components/homepage/hero-search-section";
 import { SmartSearchHub } from "@/components/homepage/smart-search-hub";
+import { TrendingNow } from "@/components/homepage/trending-now";
 import { QuickServiceGrid } from "@/components/homepage/quick-service-grid";
 import { FeaturedServices } from "@/components/homepage/featured-services";
-import { WhyChooseUs } from "@/components/homepage/why-choose-us";
+import { RecentSuccessStories } from "@/components/homepage/recent-success-stories";
 import { RewardCenter } from "@/components/homepage/reward-center";
 import { TrustStrip } from "@/components/homepage/trust-strip";
-import { ServiceCategories } from "@/components/homepage/service-categories";
-import { RecentSuccessStories } from "@/components/homepage/recent-success-stories";
-import { Testimonials } from "@/components/homepage/testimonials";
+import { WhyChooseUs } from "@/components/homepage/why-choose-us";
+import { GoogleReviews } from "@/components/homepage/google-reviews";
+import { VideoTestimonials } from "@/components/homepage/video-testimonials";
+import { GovernmentSchemesHub } from "@/components/homepage/government-schemes-hub";
+import { KnowledgeCenter } from "@/components/homepage/knowledge-center";
 import { FaqAccordion } from "@/components/homepage/faq-accordion";
 import { SupportCenter } from "@/components/homepage/support-center";
 
@@ -51,38 +54,47 @@ export default async function Home() {
         {/* Section 2 — Smart Search Hub */}
         <SmartSearchHub />
 
-        {/* Section 3 — Quick Categories (8 Glass Cards) */}
+        {/* Section 3 — Trending Now */}
+        <TrendingNow />
+
+        {/* Section 4 — Quick Categories (8 Glass Cards) */}
         <QuickServiceGrid />
 
-        {/* Section 4 — Featured Services (Horizontal Carousel) */}
+        {/* Section 5 — Featured Services */}
         <FeaturedServices />
 
-        {/* Section 5 — Compact Reward/Referral Center */}
+        {/* Section 6 — Recent Success Stories */}
+        <RecentSuccessStories />
+
+        {/* Section 7 — Reward Center */}
         <RewardCenter />
-
-        {/* Section 6 — Popular Categories Showcase */}
-        <ServiceCategories />
-
-        {/* Section 7 — Why DigiConnect (Premium Visual Trust) */}
-        <WhyChooseUs />
 
         {/* Section 8 — Trust Center (Animated Counters) */}
         <TrustStrip />
 
-        {/* Section 9 — Recent Success Stories */}
-        <RecentSuccessStories />
+        {/* Section 9 — Why DigiConnect (Premium Visual Trust) */}
+        <WhyChooseUs />
 
-        {/* Section 10 — Testimonials */}
-        <Testimonials />
+        {/* Section 10 — Google Reviews */}
+        <GoogleReviews />
 
-        {/* Section 11 — FAQ Accordion */}
+        {/* Section 11 — Video Testimonials */}
+        <VideoTestimonials />
+
+        {/* Section 12 — Government Schemes Hub */}
+        <GovernmentSchemesHub />
+
+        {/* Section 13 — Knowledge Center */}
+        <KnowledgeCenter />
+
+        {/* Section 14 — FAQ Accordion */}
         <FaqAccordion />
 
-        {/* Section 12 — Support Center */}
+        {/* Section 15 — Support Center */}
         <SupportCenter />
       </main>
 
-      {/* Section 13 — Footer */}
+      {/* Section 16 — Footer */}
       <MarketingFooter />
 
       {/* Sticky WhatsApp CTA */}

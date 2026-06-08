@@ -521,10 +521,12 @@ export function SiteHeader() {
   const dashboardHref = panelConfig?.href ?? "/login/customer";
   const isLoggedIn = !!user;
 
+  const isHome = pathname === "/";
+
   return (
     <>
       <header
-        className={`site-header print:hidden ${scrolled ? "scrolled" : ""} ${navHidden ? "nav-hidden" : ""}`}
+        className={`site-header print:hidden ${isHome ? "home-header" : ""} ${scrolled ? "scrolled" : ""} ${navHidden ? "nav-hidden" : ""}`}
       >
         <div className="flex h-full items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
           {/* LEFT — Logo */}
@@ -545,16 +547,18 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          {/* CENTER — Search Bar (Desktop) */}
+          {/* CENTER — AI Search Trigger (Desktop) */}
           {!agentShell && (
             <div className="hidden flex-1 items-center justify-center px-8 md:flex lg:px-16">
               <button
                 onClick={() => setSearchOpen(true)}
-                className="flex h-10 w-full max-w-md items-center gap-2.5 rounded-2xl border border-slate-200/60 bg-slate-50/60 px-4 text-sm font-medium text-slate-400 transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-sm"
+                className="flex h-10 w-full max-w-md items-center gap-2.5 rounded-2xl border border-slate-200/40 bg-white/40 px-4 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-350 hover:bg-white hover:shadow-sm"
               >
                 <Search className="h-4 w-4 text-slate-400" />
-                <span>Search services...</span>
-                <kbd className="ml-auto hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-400 lg:inline-block">
+                <span className="flex items-center gap-1">
+                  AI Search services, FAQs, schemes...
+                </span>
+                <kbd className="ml-auto hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-405 lg:inline-block">
                   ⌘K
                 </kbd>
               </button>

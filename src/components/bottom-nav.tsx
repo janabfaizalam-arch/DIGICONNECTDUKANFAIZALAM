@@ -27,6 +27,7 @@ function isTabActive(pathname: string, tabHref: string) {
 const hiddenPrefixes = ["/admin", "/agent", "/login", "/signup", "/ap/login", "/forgot-password", "/reset-password", "/customer/dashboard"];
 
 function shouldHide(pathname: string) {
+  if (pathname === "/") return true;
   return hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

@@ -1,181 +1,210 @@
 "use client";
 
-import React, { useState } from "react";
-import { Phone, MessageCircle, PhoneCall, HelpCircle, ShieldCheck, Clock, Landmark } from "lucide-react";
+import React from "react";
+import { Phone, MessageCircle, Mail, MapPin, ShieldCheck, Clock, Landmark, HelpCircle } from "lucide-react";
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
-type SupportTab = "whatsapp" | "call" | "callback" | "cibil";
-
 export function SupportCenter() {
-  const [activeTab, setActiveTab] = useState<SupportTab>("whatsapp");
-
   const whatsappUrl = buildWhatsAppUrl(
     buildSupportWhatsAppMessage({ page: "contact", topic: "General customer support enquiry" })
   );
 
-  const callbackWhatsappUrl = `https://wa.me/917007595931?text=${encodeURIComponent(
-    "Hi DigiConnect Dukan, I would like to request a callback regarding my application / document query."
-  )}`;
-
-  const tabs = [
-    { id: "whatsapp", label: "WhatsApp Support", icon: MessageCircle },
-    { id: "call", label: "Call Support", icon: Phone },
-    { id: "callback", label: "Request Callback", icon: PhoneCall },
-    { id: "cibil", label: "Finance/CIBIL Expert", icon: Landmark }
-  ] as const;
-
   return (
-    <section id="support" className="bg-white py-8 md:py-10 px-3">
-      <div className="container-shell">
+    <section id="support" className="relative py-16 md:py-24 px-4 overflow-hidden bg-slate-50/50 noise-bg border-t border-slate-100">
+      {/* Background Ambient Glows */}
+      <div className="ambient-glow ambient-blue w-[350px] h-[350px] -top-20 -left-20" />
+      <div className="ambient-glow ambient-purple w-[400px] h-[400px] -bottom-20 -right-20" />
+
+      <div className="container-shell relative z-10">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-600 flex items-center justify-center gap-1">
-            <HelpCircle className="h-3.5 w-3.5" /> Support Hub
-          </p>
-          <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 md:text-2xl leading-none">
-            Need Help? We&apos;re Ready
+        <div className="max-w-3xl mx-auto text-center mb-12 md:mb-16">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100/50 uppercase tracking-wider">
+            <HelpCircle className="h-3.5 w-3.5" /> Support Desk 4.0
+          </span>
+          <h2 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+            Need Expert Assistance? <br className="hidden sm:inline" />
+            We&apos;re Here to Help
           </h2>
-          <p className="mt-2 text-xs font-semibold text-slate-500 max-w-md mx-auto leading-relaxed">
-            Fast support for applications, documents, payment and status queries.
+          <p className="mt-3 text-xs md:text-sm font-semibold text-slate-500 max-w-xl mx-auto leading-relaxed">
+            Get instant support for digital applications, GST filings, document corrections, and wallet-related issues from our certified compliance officers.
           </p>
         </div>
 
-        {/* Tabbed Support Center Single Compact Glass Container */}
-        <div className="max-w-2xl mx-auto rounded-3xl border border-slate-200/50 bg-white/70 backdrop-blur-md p-5 md:p-6 shadow-[0_8px_32px_rgba(15,23,42,0.03)] relative overflow-hidden">
-          {/* Subtle light glowing gradient accent */}
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-blue-500/5 blur-2xl pointer-events-none" />
+        {/* 2-Column Premium Grid */}
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-stretch">
           
-          {/* Chips Selector */}
-          <div className="flex gap-1.5 overflow-x-auto pb-4 border-b border-slate-100 no-scrollbar justify-start sm:justify-center">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`h-9 px-4 shrink-0 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
-                    active
-                      ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                      : "bg-white border-slate-200/60 text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                  }`}
+          {/* Left Column: Premium Contact Channels Grid */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            
+            {/* WhatsApp Card */}
+            <div className="glass-liquid-premium rounded-3xl p-6 flex flex-col justify-between group transition-all duration-300">
+              <div>
+                <div className="flex justify-between items-start">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+                    <MessageCircle className="h-6 w-6 stroke-[2]" />
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100/40">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Online
+                  </span>
+                </div>
+                <h3 className="mt-4 text-base font-bold text-slate-800">WhatsApp Support</h3>
+                <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
+                  Fastest way to submit screenshots, documents, or check active status. Directly handled by verification operators.
+                </p>
+              </div>
+              <div className="mt-6">
+                <p className="text-[11px] font-bold text-slate-400 mb-2">Typically replies in under 5 mins</p>
+                <a
+                  id="btn-support-whatsapp"
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
                 >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active Tab Panel Content */}
-          <div className="pt-6 text-center">
-            {activeTab === "whatsapp" && (
-              <div className="space-y-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100/50">
-                  <MessageCircle className="h-6 w-6 stroke-[2]" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-800">WhatsApp Chat Assistance</h3>
-                  <p className="text-[11px] font-semibold text-slate-405 max-w-sm mx-auto leading-normal">
-                    Chat directly with our verification operators. Submit documents or share receipt screenshots.
-                  </p>
-                </div>
-                <p className="text-xs font-black text-slate-600 mt-1">Chat active: +91 {contactDetails.primaryPhone}</p>
-                <div className="pt-1.5">
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 w-full sm:w-auto sm:px-8 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-xs font-black text-white hover:bg-emerald-700 transition active:scale-[0.97] shadow-sm"
-                  >
-                    <MessageCircle className="h-4 w-4" /> Start Chat Now
-                  </a>
-                </div>
+                  <MessageCircle className="h-4 w-4" /> Start WhatsApp Chat
+                </a>
               </div>
-            )}
-
-            {activeTab === "call" && (
-              <div className="space-y-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/50">
-                  <Phone className="h-6 w-6 stroke-[2]" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-800">Direct Calling Support</h3>
-                  <p className="text-[11px] font-semibold text-slate-405 max-w-sm mx-auto leading-normal">
-                    Speak directly with our front desk officers for instant answers. Available 10:00 AM - 6:00 PM.
-                  </p>
-                </div>
-                <p className="text-xs font-black text-slate-650 mt-1">Dial: +91 {contactDetails.primaryPhone}</p>
-                <div className="pt-1.5">
-                  <a
-                    href={`tel:+91${contactDetails.primaryPhone}`}
-                    className="inline-flex h-10 w-full sm:w-auto sm:px-8 items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-black text-white hover:bg-blue-700 transition active:scale-[0.97] shadow-sm"
-                  >
-                    <Phone className="h-4 w-4" /> Place Call
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "callback" && (
-              <div className="space-y-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 border border-orange-100/50">
-                  <PhoneCall className="h-6 w-6 stroke-[2]" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-800">Request Callback</h3>
-                  <p className="text-[11px] font-semibold text-slate-405 max-w-sm mx-auto leading-normal">
-                    Submit your number and query on WhatsApp. Our back office agent will call you back shortly.
-                  </p>
-                </div>
-                <p className="text-xs font-black text-slate-650 mt-1">RTO & Govt Specialists: +91 {contactDetails.primaryPhone}</p>
-                <div className="pt-1.5">
-                  <a
-                    href={callbackWhatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 w-full sm:w-auto sm:px-8 items-center justify-center gap-2 rounded-xl bg-orange-500 text-xs font-black text-white hover:bg-orange-600 transition active:scale-[0.97] shadow-sm"
-                  >
-                    <PhoneCall className="h-4 w-4" /> Request a Callback
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "cibil" && (
-              <div className="space-y-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100/50">
-                  <Landmark className="h-6 w-6 stroke-[2]" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-800">Finance & CIBIL score expert</h3>
-                  <p className="text-[11px] font-semibold text-slate-405 max-w-sm mx-auto leading-normal">
-                    Get consulting from our credit score specialists. Understand dispute filings and credit health reports.
-                  </p>
-                </div>
-                <p className="text-xs font-black text-slate-650 mt-1">Direct Helpline: +91 {contactDetails.cibilExpertPhone}</p>
-                <div className="pt-1.5">
-                  <a
-                    href={`tel:+91${contactDetails.cibilExpertPhone}`}
-                    className="inline-flex h-10 w-full sm:w-auto sm:px-8 items-center justify-center gap-2 rounded-xl bg-amber-600 text-xs font-black text-white hover:bg-amber-700 transition active:scale-[0.97] shadow-sm"
-                  >
-                    <Phone className="h-4 w-4" /> Call CIBIL Expert
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* Bottom Trust Line */}
-            <div className="mt-5 border-t border-slate-100/80 pt-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[9.5px] font-black text-slate-400">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 text-blue-500" /> Mon - Sat, 10:00 AM - 6:00 PM
-              </span>
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Secure encrypted data handling
-              </span>
             </div>
 
+            {/* Direct Calling Support Card */}
+            <div className="glass-liquid-premium rounded-3xl p-6 flex flex-col justify-between group transition-all duration-300">
+              <div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/60">
+                  <Phone className="h-6 w-6 stroke-[2]" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-slate-800">Direct Call Helpline</h3>
+                <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
+                  Call our official front desk lines. Speak to a live customer officer for immediate assistance.
+                </p>
+              </div>
+              <div className="mt-6 space-y-3">
+                <div className="text-xs font-bold text-slate-700 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Primary:</span>
+                    <a href={`tel:+91${contactDetails.primaryPhone}`} className="hover:text-blue-600 transition" id="link-support-primary-phone">+91 {contactDetails.primaryPhone}</a>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Office Support:</span>
+                    <a href={`tel:+91${contactDetails.officeSupportPhone}`} className="hover:text-blue-600 transition" id="link-support-office-phone">+91 {contactDetails.officeSupportPhone}</a>
+                  </div>
+                </div>
+                <a
+                  id="btn-support-call"
+                  href={`tel:+91${contactDetails.primaryPhone}`}
+                  className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
+                >
+                  <Phone className="h-4 w-4" /> Call Helpline
+                </a>
+              </div>
+            </div>
+
+            {/* Finance & CIBIL score expert */}
+            <div className="glass-liquid-premium rounded-3xl p-6 flex flex-col justify-between group transition-all duration-300">
+              <div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100/60">
+                  <Landmark className="h-6 w-6 stroke-[2]" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-slate-800">CIBIL & Credit Expert</h3>
+                <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
+                  Consult with credit advisors. Clear doubts regarding dispute filings, credit applications, and report rectification.
+                </p>
+              </div>
+              <div className="mt-6">
+                <p className="text-[11px] font-bold text-slate-400 mb-2">Direct Line: +91 {contactDetails.cibilExpertPhone}</p>
+                <a
+                  id="btn-support-cibil"
+                  href={`tel:+91${contactDetails.cibilExpertPhone}`}
+                  className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
+                >
+                  <Phone className="h-4 w-4" /> Call Credit Advisor
+                </a>
+              </div>
+            </div>
+
+            {/* Secure Email & Portal Helpdesk */}
+            <div className="glass-liquid-premium rounded-3xl p-6 flex flex-col justify-between group transition-all duration-300">
+              <div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100/60">
+                  <Mail className="h-6 w-6 stroke-[2]" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-slate-800">Email Support Desk</h3>
+                <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
+                  For corporate contracts, bulk application support, or official escalations.
+                </p>
+              </div>
+              <div className="mt-6 space-y-3">
+                <div className="text-xs font-bold text-slate-700 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Email:</span>
+                    <a href={`mailto:${contactDetails.email}`} className="hover:text-indigo-600 transition text-slate-800 font-extrabold truncate" id="link-support-email">{contactDetails.email}</a>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Response time:</span>
+                    <span className="text-indigo-600">Under 2 hours</span>
+                  </div>
+                </div>
+                <a
+                  id="btn-support-email-now"
+                  href={`mailto:${contactDetails.email}`}
+                  className="inline-flex w-full h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
+                >
+                  <Mail className="h-4 w-4" /> Write an Email
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Right Column: Google Maps & Office Address Block */}
+          <div className="glass-liquid-premium rounded-[2rem] p-6 flex flex-col justify-between overflow-hidden">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-blue-600">
+                <MapPin className="h-5 w-5 stroke-[2.5]" />
+                <span className="text-xs font-extrabold uppercase tracking-wider">Registered Office Location</span>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-black text-slate-800">RNOS India Private Limited</h3>
+                <p className="text-xs font-semibold text-slate-500 mt-1 leading-relaxed">
+                  Headquartered in Lucknow, Uttar Pradesh, India. Serving clients nationwide through digital, secure online channels.
+                </p>
+              </div>
+            </div>
+
+            {/* Google Map Container with premium shadows and filters */}
+            <div className="mt-6 relative rounded-2xl overflow-hidden border border-slate-200/50 bg-slate-100 flex-1 min-h-[220px]">
+              <iframe 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d113896.64332403612!2d80.85957790382876!3d26.848820612140643!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bfd991f32b17b%3A0x14c189de69983b60!2sLucknow%2C%20Uttar%20Pradesh!5e0!3m2!1sen!2sin!4v1717800000000!5m2!1sen!2sin"
+                width="100%" 
+                height="100%" 
+                style={{ border: 0, minHeight: "220px", display: "block" }}
+                allowFullScreen={false} 
+                loading="lazy" 
+                referrerPolicy="no-referrer-when-downgrade"
+                className="opacity-90 hover:opacity-100 transition duration-500 rounded-2xl"
+                title="RNOS India Registered Office Lucknow"
+                id="support-google-map-iframe"
+              />
+              {/* Floating micro glass chip over map */}
+              <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-white/85 backdrop-blur-md border border-white/60 shadow-sm pointer-events-none flex items-center gap-1.5 text-[10px] font-black text-slate-700">
+                <Clock className="h-3 w-3 text-blue-500" />
+                <span>Mon-Sat: 10AM - 6PM</span>
+              </div>
+            </div>
+
+            {/* Bottom compliance details */}
+            <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold text-slate-400">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                100% Secure SSL Data Handling
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5 text-blue-500" />
+                Live Ticket Response Guarantee
+              </span>
+            </div>
           </div>
 
         </div>
