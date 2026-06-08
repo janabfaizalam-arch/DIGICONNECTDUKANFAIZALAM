@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, FileUp, HelpCircle } from "lucide-react";
+
 
 interface Application {
   service_name: string;
@@ -73,58 +73,60 @@ export function LiveNotificationFeed() {
   const isCompleted = currentItem.status === "completed" || currentItem.status === "delivered";
   const isSubmission = currentItem.status === "submitted" || currentItem.status === "new";
 
-  // Build clean live updates phrase
-  let phrasedText = `${currentItem.service_name} Processing`;
+  const truncateServiceName = (name: string) => {
+    if (name.length > 22) {
+      return name.substring(0, 20) + "...";
+    }
+    return name;
+  };
+
+  const serviceNameClean = truncateServiceName(currentItem.service_name);
+  let statusText = "processed";
   if (isCompleted) {
-    phrasedText = `✓ ${currentItem.service_name} Completed`;
-  } else if (isSubmission) {
-    phrasedText = `↑ ${currentItem.service_name} Submitted`;
+    statusText = "completed";
+  } else if (currentItem.status === "submitted" || currentItem.status === "new") {
+    statusText = "submitted";
   }
 
+  const phrasedText = `${serviceNameClean} ${statusText}`;
+
   return (
-    <div className="fixed bottom-[92px] sm:bottom-6 left-6 z-[45] pointer-events-none select-none max-w-[285px] sm:max-w-xs print:hidden">
+    <div className="fixed bottom-[76px] sm:bottom-6 left-6 z-[45] pointer-events-none select-none max-w-[240px] print:hidden">
       <AnimatePresence>
         {visible && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
             animate={{ 
               opacity: 1, 
               y: 0, 
               scale: 1,
-              transition: { type: "spring", stiffness: 300, damping: 25 }
+              transition: { type: "spring", stiffness: 350, damping: 30 }
             }}
             exit={{ 
               opacity: 0, 
-              y: -10, 
-              scale: 0.9,
-              transition: { duration: 0.2, ease: "easeInOut" }
+              y: -5, 
+              scale: 0.95,
+              transition: { duration: 0.15, ease: "easeInOut" }
             }}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-full border border-white/10 bg-slate-950/90 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)] pointer-events-auto"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_4px_12px_rgba(15,23,42,0.06)] pointer-events-auto"
           >
-            {/* iOS style pulsing status dot */}
-            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/5 border border-white/10">
-              <span className={`h-1.5 w-1.5 rounded-full relative ${
-                isCompleted ? "bg-emerald-400" : 
-                isSubmission ? "bg-amber-400" : 
-                "bg-blue-400"
-              }`}>
-                <span className={`absolute inset-0 rounded-full animate-ping opacity-75 ${
-                  isCompleted ? "bg-emerald-400" : 
-                  isSubmission ? "bg-amber-400" : 
-                  "bg-blue-400"
-                }`} />
-              </span>
-            </div>
+            {/* Elegant pulsing status dot */}
+            <span className={`relative flex h-1.5 w-1.5 shrink-0 rounded-full ${
+              isCompleted ? "bg-emerald-500" : 
+              isSubmission ? "bg-amber-500" : 
+              "bg-blue-500"
+            }`}>
+              <span className={`absolute inline-flex h-full w-full rounded-full animate-ping opacity-75 ${
+                isCompleted ? "bg-emerald-500" : 
+                isSubmission ? "bg-amber-500" : 
+                "bg-blue-500"
+              }`} />
+            </span>
 
             {/* Content text */}
-            <div className="min-w-0 pr-1 text-left flex flex-col justify-center">
-              <h4 className="text-[11px] font-bold text-white tracking-tight leading-tight truncate">
-                {phrasedText}
-              </h4>
-              <span className="text-[9px] font-semibold text-slate-400 block leading-none mt-0.5">
-                Processed Live PAN India
-              </span>
-            </div>
+            <span className="text-[10px] font-semibold text-slate-800 tracking-tight leading-tight truncate">
+              {phrasedText}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>

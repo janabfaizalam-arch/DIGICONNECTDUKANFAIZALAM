@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, Search, Bell, UserRound } from "lucide-react";
+import { Home, LayoutGrid, FileText, Wallet, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/browser";
@@ -66,9 +66,16 @@ export function BottomNav() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [navHidden, setNavHidden] = useState(false);
+  const [currentTabParam, setCurrentTabParam] = useState("");
   const lastScrollYRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setCurrentTabParam(params.get("tab") || "");
+    }
+  }, [pathname]);
 
   // Sync auth state & resolve role
   useEffect(() => {
@@ -97,42 +104,6 @@ export function BottomNav() {
       subscription.unsubscribe();
     };
   }, []);
-
-  // Fetch unread notifications count
-  useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
-
-    let active = true;
-
-    async function checkNotifications() {
-      const supabase = createClient();
-      if (!supabase) return;
-      try {
-        const { count, error } = await supabase
-          .from("notifications")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user?.id)
-          .is("read_at", null);
-
-        if (!error && active) {
-          setUnreadCount(count || 0);
-        }
-      } catch (err) {
-        console.warn("[bottom-nav] Failed to check notifications:", err);
-      }
-    }
-
-    checkNotifications();
-    const interval = setInterval(checkNotifications, 45000); // Check every 45s
-
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [user]);
 
   // Scroll aware show/hide logic
   useEffect(() => {
@@ -166,17 +137,26 @@ export function BottomNav() {
   }
 
   // Resolve dynamic dashboard link
+  let applicationsHref = "/login";
+  let walletHref = "/login";
   let dashboardHref = "/login";
+
   if (user) {
-    if (role === "admin") dashboardHref = "/admin";
-    else if (role === "agent") dashboardHref = "/agent/dashboard";
-    else dashboardHref = "/customer/dashboard";
+    if (role === "admin") {
+      applicationsHref = "/admin/applications";
+      walletHref = "/admin/wallet";
+      dashboardHref = "/admin";
+    } else if (role === "agent") {
+      applicationsHref = "/ap/applications";
+      walletHref = "/ap/wallet";
+      dashboardHref = "/ap/dashboard";
+    } else {
+      applicationsHref = "/customer/dashboard?tab=applications";
+      walletHref = "/customer/wallet";
+      dashboardHref = "/customer/dashboard";
+    }
   }
 
-  const handleSearchClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    window.dispatchEvent(new Event("open-ai-search"));
-  };
 
   const navVariants = {
     visible: { 
@@ -189,85 +169,62 @@ export function BottomNav() {
     }
   } as const;
 
-  const isTabActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+  const isTabActive = (tabHref: string) => {
+    if (tabHref === "/") return pathname === "/";
+    
+    if (tabHref.includes("?tab=applications")) {
+      return pathname === "/customer/dashboard" && currentTabParam === "applications";
+    }
+    
+    if (tabHref === "/customer/dashboard") {
+      return pathname === "/customer/dashboard" && (currentTabParam === "" || currentTabParam === "dashboard");
+    }
+
+    const baseHref = tabHref.split("?")[0];
+    if (baseHref === "/login") {
+      return pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password");
+    }
+
+    return pathname.startsWith(baseHref);
   };
+
+  const tabs = [
+    { label: "Home", href: "/", icon: Home },
+    { label: "Services", href: "/services", icon: LayoutGrid },
+    { label: "Applications", href: applicationsHref, icon: FileText },
+    { label: "Wallet", href: walletHref, icon: Wallet },
+    { label: "Account", href: dashboardHref, icon: UserRound },
+  ];
 
   return (
     <motion.nav
       variants={navVariants}
       animate={navHidden ? "hidden" : "visible"}
       initial="visible"
-      className="fixed bottom-0 inset-x-0 z-[50] flex md:hidden items-center justify-around h-[76px] px-2 bg-white/60 backdrop-blur-3xl border-t border-white/40 shadow-[0_-8px_32px_rgba(15,23,42,0.06)] rounded-t-[2rem] pb-safe-bottom print:hidden"
+      className="fixed bottom-0 inset-x-0 z-[50] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/50 backdrop-blur-2xl border-t border-white/30 shadow-[0_-2px_16px_rgba(15,23,42,0.04)] pb-safe-bottom print:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {/* Home Tab */}
-      <Link
-        href="/"
-        className={`flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-800 transition-colors ${
-          isTabActive("/") ? "text-blue-600 font-extrabold" : ""
-        }`}
-      >
-        <Home className="h-5.5 w-5.5 stroke-[2]" />
-        <span className="text-[10px] mt-1">Home</span>
-      </Link>
-
-      {/* Services Tab */}
-      <Link
-        href="/services"
-        className={`flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-800 transition-colors ${
-          isTabActive("/services") ? "text-blue-600 font-extrabold" : ""
-        }`}
-      >
-        <LayoutGrid className="h-5.5 w-5.5 stroke-[2]" />
-        <span className="text-[10px] mt-1">Services</span>
-      </Link>
-
-      {/* Elevated AI Search Tab */}
-      <button
-        onClick={handleSearchClick}
-        className="flex flex-col items-center justify-center flex-1 h-full -translate-y-3 cursor-pointer group outline-none"
-        title="Open AI Search"
-      >
-        <div className="flex h-13 w-13 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white border border-blue-400/40 shadow-[0_8px_24px_rgba(37,99,235,0.35),0_0_0_4px_rgba(255,255,255,0.9),0_12px_24px_rgba(37,99,235,0.15)] ring-1 ring-blue-500/10 transition-all duration-200 group-active:scale-90">
-          <Search className="h-5.5 w-5.5 stroke-[2.5]" />
-        </div>
-        <span className="-mt-1 text-[9px] font-black text-blue-600 tracking-wide uppercase">
-          AI Search
-        </span>
-      </button>
-
-      {/* Notifications/Alerts Tab */}
-      <Link
-        href="/notifications"
-        className={`flex flex-col items-center justify-center flex-1 h-full relative text-slate-400 hover:text-slate-800 transition-colors ${
-          isTabActive("/notifications") ? "text-blue-600 font-extrabold" : ""
-        }`}
-      >
-        <div className="relative">
-          <Bell className="h-5.5 w-5.5 stroke-[2]" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[8px] font-black text-white ring-2 ring-white animate-pulse">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </div>
-        <span className="text-[10px] mt-1">Alerts</span>
-      </Link>
-
-      {/* Dashboard Tab */}
-      <Link
-        href={dashboardHref}
-        className={`flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-800 transition-colors ${
-          isTabActive("/customer/dashboard") || isTabActive("/admin") || isTabActive("/agent/dashboard")
-            ? "text-blue-600 font-extrabold"
-            : ""
-        }`}
-      >
-        <UserRound className="h-5.5 w-5.5 stroke-[2]" />
-        <span className="text-[10px] mt-1">Account</span>
-      </Link>
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = isTabActive(tab.href);
+        return (
+          <Link
+            key={tab.label}
+            href={tab.href}
+            className={`flex flex-col items-center justify-center flex-1 h-full relative text-slate-400 hover:text-slate-600 transition-colors ${
+              isActive ? "text-blue-600 font-semibold" : "font-medium"
+            }`}
+          >
+            <div className="flex flex-col items-center justify-center gap-0.5">
+              <Icon className="h-4.5 w-4.5 stroke-[1.8]" />
+              <span className="text-[10px] tracking-wide">{tab.label}</span>
+            </div>
+            {isActive && (
+              <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-blue-600" />
+            )}
+          </Link>
+        );
+      })}
     </motion.nav>
   );
 }

@@ -51,7 +51,7 @@ const schemas = [
     "url": "https://www.rnos.in",
     "logo": "https://www.rnos.in/icon.png",
     "telephone": "+91 7007595931",
-    "email": "digiconnectdukan@rnos.in",
+    "email": "support@rnos.in",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Lucknow",

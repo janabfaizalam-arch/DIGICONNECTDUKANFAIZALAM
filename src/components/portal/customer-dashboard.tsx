@@ -2951,8 +2951,8 @@ export function CustomerDashboard({
 
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between text-xs text-slate-400">
                   <span>General Email Support:</span>
-                  <a href="mailto:digiconnectdukan@rnos.in" className="font-extrabold text-blue-400 hover:underline">
-                    digiconnectdukan@rnos.in
+                  <a href="mailto:support@rnos.in" className="font-extrabold text-blue-400 hover:underline">
+                    support@rnos.in
                   </a>
                 </div>
               </div>

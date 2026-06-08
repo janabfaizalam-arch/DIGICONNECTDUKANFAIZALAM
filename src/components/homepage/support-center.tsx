@@ -173,27 +173,6 @@ export function SupportCenter() {
               </div>
             </div>
 
-            {/* Google Map Container with premium shadows and filters */}
-            <div className="mt-6 relative rounded-2xl overflow-hidden border border-slate-200/50 bg-slate-100 flex-1 min-h-[220px]">
-              <iframe 
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d113896.64332403612!2d80.85957790382876!3d26.848820612140643!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bfd991f32b17b%3A0x14c189de69983b60!2sLucknow%2C%20Uttar%20Pradesh!5e0!3m2!1sen!2sin!4v1717800000000!5m2!1sen!2sin"
-                width="100%" 
-                height="100%" 
-                style={{ border: 0, minHeight: "220px", display: "block" }}
-                allowFullScreen={false} 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade"
-                className="opacity-90 hover:opacity-100 transition duration-500 rounded-2xl"
-                title="RNOS India Registered Office Lucknow"
-                id="support-google-map-iframe"
-              />
-              {/* Floating micro glass chip over map */}
-              <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-white/85 backdrop-blur-md border border-white/60 shadow-sm pointer-events-none flex items-center gap-1.5 text-[10px] font-black text-slate-700">
-                <Clock className="h-3 w-3 text-blue-500" />
-                <span>Mon-Sat: 10AM - 6PM</span>
-              </div>
-            </div>
-
             {/* Bottom compliance details */}
             <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold text-slate-400">
               <span className="flex items-center gap-1">
@@ -202,7 +181,7 @@ export function SupportCenter() {
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5 text-blue-500" />
-                Live Ticket Response Guarantee
+                Mon-Sat: 10AM - 6PM
               </span>
             </div>
           </div>

@@ -92,7 +92,7 @@ const organizationSchema = {
   "@type": "Organization",
   name: "DigiConnect Dukan",
   url: siteUrl,
-  email: "digiconnectdukan@rnos.in",
+  email: "support@rnos.in",
   telephone: "7007595931",
   areaServed: "IN",
 };

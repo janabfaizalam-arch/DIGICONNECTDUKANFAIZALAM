@@ -54,7 +54,7 @@ export const contactDetails = {
   primaryPhone: "7007595931",
   officeSupportPhone: "9305086491",
   cibilExpertPhone: "8287002983",
-  email: "digiconnectdukan@rnos.in",
+  email: "support@rnos.in",
   website: "https://www.rnos.in",
   availability: "Service available across India",
 };

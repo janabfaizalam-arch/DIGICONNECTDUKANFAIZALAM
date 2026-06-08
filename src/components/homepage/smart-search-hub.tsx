@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Search, Mic, MicOff, Sparkles, Clock, Trash2, CornerDownRight, HelpCircle, TrendingUp, Compass } from "lucide-react";
+import { Search, Mic, MicOff, CornerDownRight, HelpCircle } from "lucide-react";
 import { servicesData } from "@/lib/services-data";
 
 // Synonym mapping for abbreviation & typo tolerance
@@ -52,20 +52,7 @@ function levenshtein(a: string, b: string): number {
   return tmp[a.length][b.length];
 }
 
-const popularSearches = [
-  "GST Registration",
-  "ITR Filing",
-  "Passport",
-  "Driving Licence",
-  "CIBIL Analysis",
-  "PVC Smart Card",
-  "PM Vishwakarma",
-  "Vehicle Insurance",
-];
 
-const trendingServices = servicesData.filter(s =>
-  ["gst-registration", "itr-filing", "passport", "pvc-card", "cibil-report-increase"].includes(s.slug)
-);
 
 export function SmartSearchHub() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -184,20 +171,7 @@ export function SmartSearchHub() {
     localStorage.setItem("pvc-recent-searches", JSON.stringify(next));
   };
 
-  const handleRecentDelete = (term: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const next = recentSearches.filter(s => s !== term);
-    setRecentSearches(next);
-    localStorage.setItem("pvc-recent-searches", JSON.stringify(next));
-  };
 
-  const handleClearAllRecents = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setRecentSearches([]);
-    localStorage.removeItem("pvc-recent-searches");
-  };
 
   const toggleVoiceSearch = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -232,223 +206,108 @@ export function SmartSearchHub() {
   };
 
   return (
-    <section id="search-hub" className="relative z-20 px-4 mt-8 pb-6 pointer-events-none">
-      <div className="container-shell max-w-4xl pointer-events-auto">
-        {/* Large Floating Liquid Glass Card */}
-        <div className="rounded-3xl border border-white/45 bg-white/60 backdrop-blur-xl p-5 md:p-8 shadow-[0_4px_12px_rgba(15,23,42,0.02),0_16px_32px_rgba(15,23,42,0.04),0_32px_64px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] relative overflow-hidden">
-          
-          {/* Subtle Ambient lights inside the card */}
-          <div className="absolute -top-12 -left-12 w-36 h-36 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-12 -right-12 w-36 h-36 rounded-full bg-orange-500/10 blur-2xl pointer-events-none" />
+    <section id="search-hub" className="relative z-20 px-4 mt-4 max-w-2xl mx-auto">
+      {/* Search Input Box */}
+      <div className="relative">
+        <div className="relative flex items-center rounded-2xl bg-white/70 border border-slate-200/50 shadow-sm focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100/50 transition-all duration-300">
+          <Search className="pointer-events-none absolute left-4 h-5 w-5 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search services, schemes, forms…"
+            className="h-12 w-full rounded-2xl bg-transparent pl-12 pr-14 text-sm font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
+          />
+          <div className="absolute right-2 flex items-center">
+            <button
+              type="button"
+              onClick={toggleVoiceSearch}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 active:scale-95 ${
+                isListening
+                  ? "bg-red-500 text-white animate-pulse"
+                  : "bg-slate-100/80 hover:bg-slate-200/60 text-slate-500"
+              }`}
+              title="Voice Search"
+            >
+              {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
 
-          {/* Section heading */}
-          <div className="text-center mb-6 max-w-lg mx-auto">
-            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 flex items-center justify-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-500 fill-blue-100" />
-              AI Intelligent Search
-            </h2>
-            <p className="mt-1 text-xs font-semibold text-slate-450 leading-relaxed">
-              Find files, FAQs, categories, schemes & support instantly. Input with voice, typos, or abbreviation codes.
+        {/* Listening indicator */}
+        {isListening && (
+          <div className="mt-2 text-center text-xs font-bold text-red-500 animate-pulse flex items-center justify-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            Listening...
+          </div>
+        )}
+
+        {/* Typo suggestion */}
+        {suggestion && (
+          <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-lg text-left z-30 flex items-center gap-1.5">
+            <HelpCircle className="h-4 w-4 text-orange-500 shrink-0" />
+            <span className="text-xs font-semibold text-slate-500">
+              Did you mean:{" "}
+              <button
+                onClick={() => { setSearchQuery(suggestion); saveSearch(suggestion); }}
+                className="text-blue-600 underline font-bold"
+              >
+                {suggestion}
+              </button>?
+            </span>
+          </div>
+        )}
+
+        {/* Search Results Display */}
+        {searchResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-xl text-left max-h-80 overflow-y-auto no-scrollbar z-30">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 pb-2 border-b border-slate-100 flex items-center justify-between">
+              <span>Matching Services ({searchResults.length})</span>
+              <span className="text-[9px] font-bold text-blue-500">Auto Synced</span>
+            </p>
+            <div className="mt-2 space-y-0.5">
+              {searchResults.slice(0, 8).map((service, index) => (
+                <Link
+                  key={service.slug}
+                  href={`/services/${service.slug}`}
+                  onClick={() => saveSearch(service.title)}
+                  className={`group flex items-center justify-between gap-3 p-2.5 rounded-xl transition ${
+                    index === activeResultIndex ? "bg-blue-600 text-white" : "hover:bg-blue-50/40"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <h4 className={`text-xs md:text-sm font-bold leading-tight truncate transition-colors ${
+                      index === activeResultIndex ? "text-white" : "text-slate-800 group-hover:text-blue-600"
+                    }`}>
+                      {service.title}
+                    </h4>
+                    <p className={`text-[10px] md:text-xs mt-0.5 line-clamp-1 leading-normal font-semibold transition-colors ${
+                      index === activeResultIndex ? "text-white/80" : "text-slate-400"
+                    }`}>
+                      {service.shortDescription}
+                    </p>
+                  </div>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    index === activeResultIndex ? "bg-white/20 text-white" : "bg-slate-50 group-hover:bg-blue-600 group-hover:text-white text-slate-400"
+                  }`}>
+                    <CornerDownRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No results state */}
+        {searchQuery && searchResults.length === 0 && !suggestion && (
+          <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-xl text-left z-30">
+            <p className="text-sm font-bold text-slate-605">No matching services found</p>
+            <p className="text-xs text-slate-400 mt-1 font-semibold leading-normal">
+              Try searching with other keywords.
             </p>
           </div>
-
-          {/* Search Input Box */}
-          <div className="relative">
-            <div className="relative flex items-center rounded-2xl bg-white/70 border border-slate-200/50 shadow-sm focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100/50 transition-all duration-300">
-              <Search className="pointer-events-none absolute left-4 h-5 w-5 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Search GST, ITR filing, Passport, DL, Mudra loan, PVC card..."
-                className="h-14 w-full rounded-2xl bg-transparent pl-12 pr-14 text-sm md:text-base font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
-              />
-              <div className="absolute right-2.5 flex items-center">
-                <button
-                  type="button"
-                  onClick={toggleVoiceSearch}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 active:scale-95 ${
-                    isListening
-                      ? "bg-red-500 text-white animate-pulse"
-                      : "bg-slate-100/80 hover:bg-slate-200/60 text-slate-500"
-                  }`}
-                  title="Voice Search"
-                >
-                  {isListening ? <Mic className="h-4.5 w-4.5" /> : <MicOff className="h-4.5 w-4.5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Listening indicator */}
-            {isListening && (
-              <div className="mt-2.5 text-center text-xs font-bold text-red-500 animate-pulse flex items-center justify-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                Listening... Ask for &quot;GST&quot; or &quot;Passport&quot;
-              </div>
-            )}
-
-            {/* Typo suggestion */}
-            {suggestion && (
-              <div className="mt-3 text-left px-1 text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                <HelpCircle className="h-4 w-4 text-orange-500" />
-                Did you mean:{" "}
-                <button
-                  onClick={() => { setSearchQuery(suggestion); saveSearch(suggestion); }}
-                  className="text-blue-600 underline font-black"
-                >
-                  {suggestion}
-                </button>?
-              </div>
-            )}
-          </div>
-
-          {/* Search Results Display */}
-          {searchResults.length > 0 && (
-            <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg text-left max-h-80 overflow-y-auto no-scrollbar">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-405 pb-2 border-b border-slate-100 flex items-center justify-between">
-                <span>Matching Services ({searchResults.length})</span>
-                <span className="text-[9px] font-bold text-blue-500">Auto Synced</span>
-              </p>
-              <div className="mt-2 space-y-0.5">
-                {searchResults.slice(0, 8).map((service, index) => (
-                  <Link
-                    key={service.slug}
-                    href={`/services/${service.slug}`}
-                    onClick={() => saveSearch(service.title)}
-                    className={`group flex items-center justify-between gap-3 p-2.5 rounded-xl transition ${
-                      index === activeResultIndex ? "bg-blue-600 text-white" : "hover:bg-blue-50/40"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <h4 className={`text-xs md:text-sm font-bold leading-tight truncate transition-colors ${
-                        index === activeResultIndex ? "text-white" : "text-slate-800 group-hover:text-blue-600"
-                      }`}>
-                        {service.title}
-                      </h4>
-                      <p className={`text-[10px] md:text-xs mt-0.5 line-clamp-1 leading-normal font-semibold transition-colors ${
-                        index === activeResultIndex ? "text-white/80" : "text-slate-400"
-                      }`}>
-                        {service.shortDescription}
-                      </p>
-                    </div>
-                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                      index === activeResultIndex ? "bg-white/20 text-white" : "bg-slate-50 group-hover:bg-blue-600 group-hover:text-white text-slate-450"
-                    }`}>
-                      <CornerDownRight className="h-3.5 w-3.5" />
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* No results state */}
-          {searchQuery && searchResults.length === 0 && !suggestion && (
-            <div className="mt-4 rounded-2xl border border-slate-100/80 bg-slate-50/50 p-6 text-center">
-              <p className="text-sm font-bold text-slate-600">No matching services found</p>
-              <p className="text-xs text-slate-400 mt-1.5 font-semibold leading-normal">
-                Search support, categories, or select popular chips below.
-              </p>
-            </div>
-          )}
-
-          {/* Popular & Recents (Shown when search is idle) */}
-          {!searchQuery && (
-            <div className="mt-6 space-y-6">
-              
-              {/* Popular Service Chips */}
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
-                  <Compass className="h-3.5 w-3.5 text-blue-500" />
-                  Popular Services
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {popularSearches.map(term => (
-                    <button
-                      key={term}
-                      onClick={() => { setSearchQuery(term); saveSearch(term); }}
-                      className="rounded-xl border border-slate-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:border-blue-250 hover:bg-blue-50/50 hover:text-blue-600 active:scale-95 cursor-pointer"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Grid: Recents (Left) & Trending Categories (Right) */}
-              <div className="grid gap-6 md:grid-cols-2 pt-2 border-t border-slate-100/60">
-                
-                {/* Recent Searches */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      Recent Searches
-                    </p>
-                    {recentSearches.length > 0 && (
-                      <button
-                        onClick={handleClearAllRecents}
-                        className="text-[9px] font-black text-slate-400 hover:text-red-500 flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Trash2 className="h-3 w-3" /> Clear All
-                      </button>
-                    )}
-                  </div>
-                  {recentSearches.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {recentSearches.map(term => (
-                        <div
-                          key={term}
-                          onClick={() => { setSearchQuery(term); saveSearch(term); }}
-                          className="group inline-flex items-center gap-1 rounded-xl border border-slate-200/80 bg-white/60 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:border-slate-350 cursor-pointer"
-                        >
-                          <Clock className="h-3 w-3 text-slate-300 shrink-0" />
-                          <span className="truncate max-w-[100px]">{term}</span>
-                          <span
-                            onClick={(e) => handleRecentDelete(term, e)}
-                            className="text-slate-300 hover:text-slate-600 font-black text-[10px] pl-1 cursor-pointer"
-                          >
-                            ×
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[10px] font-semibold text-slate-400 py-2">No recent searches saved.</p>
-                  )}
-                </div>
-
-                {/* Trending Categories */}
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
-                    Trending Services
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {trendingServices.map(service => (
-                      <Link
-                        key={service.slug}
-                        href={`/services/${service.slug}`}
-                        className="group rounded-xl border border-slate-200 bg-white/60 p-2 text-left transition hover:border-blue-200/50 hover:bg-blue-50/20"
-                      >
-                        <p className="text-[11px] font-black text-slate-700 group-hover:text-blue-600 line-clamp-1">
-                          {service.title}
-                        </p>
-                        <p className="text-[9px] font-bold text-slate-400 mt-0.5">
-                          {service.amount > 0 ? `₹${service.amount.toLocaleString("en-IN")}` : "Enquiry Now"}
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-          )}
-
-        </div>
+        )}
       </div>
     </section>
   );
