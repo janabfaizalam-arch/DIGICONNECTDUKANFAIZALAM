@@ -47,17 +47,26 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     // Perform atomic lock by updating status only if it is currently 'queued' and payment is 'verified'
+    // AND (claimed_by_agent is null OR claim_expires_at < now)
+    const nowStr = new Date().toISOString();
+    const claimExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    console.log(`[print/agent/claim] Agent ${agentId} attempting to claim/reclaim Job ID: ${jobId}`);
+
     const { data: job, error: claimError } = await supabase
       .from("print_jobs")
       .update({
         print_status: "printing",
-        claimed_at: new Date().toISOString(),
+        claimed_at: nowStr,
         claimed_by: session?.id || null,
-        updated_at: new Date().toISOString(),
+        claimed_by_agent: agentId,
+        claim_expires_at: claimExpiresAt,
+        updated_at: nowStr,
       })
       .eq("id", jobId)
       .eq("print_status", "queued")
       .eq("payment_status", "verified")
+      .or(`claimed_by_agent.is.null,claim_expires_at.lt.${nowStr}`)
       .select("id, job_number")
       .maybeSingle();
 
@@ -68,11 +77,14 @@ export async function POST(request: Request) {
 
     if (!job) {
       // Job was either already claimed, cancelled, or doesn't exist
+      console.warn(`[print/agent/claim] Claim failed for Job ID: ${jobId}. Job is already claimed by another agent or is not queued.`);
       return NextResponse.json(
         { error: "Job could not be claimed. It may already be claimed or is not in the queue." },
         { status: 409 }
       );
     }
+
+    console.log(`[print/agent/claim] Atomic lock succeeded for Job ${job.job_number} (ID: ${jobId}). claimed_by_agent: ${agentId}, expires: ${claimExpiresAt}`);
 
     // Claim succeeded! Now get file details and generate a secure signed URL
     const { data: file, error: fileError } = await supabase
@@ -83,11 +95,29 @@ export async function POST(request: Request) {
 
     if (fileError || !file) {
       console.error("[print/agent/claim] Failed to find files for claimed job:", fileError);
-      // Rollback job status to queued so someone else can claim it, or mark failed
+      // Rollback job status to failed and clear claim metadata
       await supabase
         .from("print_jobs")
-        .update({ print_status: "failed", updated_at: new Date().toISOString() })
+        .update({
+          print_status: "failed",
+          claimed_by_agent: null,
+          claim_expires_at: null,
+          error_message: "Job claimed, but file reference was missing on server",
+          updated_at: new Date().toISOString()
+        })
         .eq("id", jobId);
+
+      await supabase.from("print_job_logs").insert({
+        job_id: jobId,
+        action: "claim_failed_missing_file",
+        actor: `agent:${agentId}`,
+        details: {
+          session_id: session?.id || null,
+          agent_id: agentId,
+          error: "File reference was missing"
+        },
+      });
+
       return NextResponse.json({ error: "Job claimed, but file reference was missing" }, { status: 500 });
     }
 
@@ -98,11 +128,30 @@ export async function POST(request: Request) {
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       console.error("[print/agent/claim] Failed to generate signed URL:", signedUrlError);
-      // Rollback job status
+      // Rollback job status to queued so it can be claimed again, and clear claim metadata
       await supabase
         .from("print_jobs")
-        .update({ print_status: "queued", updated_at: new Date().toISOString() })
+        .update({
+          print_status: "queued",
+          claimed_by_agent: null,
+          claim_expires_at: null,
+          claimed_by: null,
+          claimed_at: null,
+          updated_at: new Date().toISOString()
+        })
         .eq("id", jobId);
+
+      await supabase.from("print_job_logs").insert({
+        job_id: jobId,
+        action: "claim_failed_url_generation",
+        actor: `agent:${agentId}`,
+        details: {
+          session_id: session?.id || null,
+          agent_id: agentId,
+          error: signedUrlError?.message || "Signed URL generation failed"
+        },
+      });
+
       return NextResponse.json({ error: "Failed to generate download URL for the private file" }, { status: 500 });
     }
 
@@ -114,6 +163,7 @@ export async function POST(request: Request) {
       details: {
         session_id: session?.id || null,
         agent_id: agentId,
+        claim_expires_at: claimExpiresAt,
       },
     });
 

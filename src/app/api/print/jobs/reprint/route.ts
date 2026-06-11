@@ -61,6 +61,9 @@ export async function POST(request: Request) {
         print_status: "queued",
         claimed_by: null,
         claimed_at: null,
+        claimed_by_agent: null,
+        claim_expires_at: null,
+        error_message: null,
         printer_id: null,
         updated_at: new Date().toISOString(),
       })

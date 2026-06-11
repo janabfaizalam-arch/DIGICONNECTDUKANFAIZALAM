@@ -40,13 +40,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Supabase service role configuration is missing" }, { status: 500 });
     }
 
+    // Build update payload dynamically
+    const updatePayload: {
+      print_status: "printed" | "failed";
+      updated_at: string;
+      claimed_by_agent?: null;
+      error_message?: string;
+    } = {
+      print_status: status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === "failed") {
+      updatePayload.claimed_by_agent = null;
+      updatePayload.error_message = errorMessage || "Printing failed";
+    }
+
+    console.log(`[print/agent/update-status] Updating job ${jobId} to status "${status}"`, updatePayload);
+
     // Update the print job
     const { data: job, error: updateError } = await supabase
       .from("print_jobs")
-      .update({
-        print_status: status,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", jobId)
       .select("id, job_number")
       .maybeSingle();

@@ -174,6 +174,7 @@ export async function GET(request: Request) {
 
     // 6. Fetch queued, paid print jobs with their files
     addLog("Fetching queued, paid print jobs...");
+    const now = new Date().toISOString();
     const { data: jobs, error: jobsError } = await supabase
       .from("print_jobs")
       .select(`
@@ -185,6 +186,8 @@ export async function GET(request: Request) {
         color_mode,
         price,
         created_at,
+        claimed_by_agent,
+        claim_expires_at,
         print_job_files (
           id,
           file_name,
@@ -194,6 +197,7 @@ export async function GET(request: Request) {
       `)
       .eq("print_status", "queued")
       .eq("payment_status", "verified")
+      .or(`claimed_by_agent.is.null,claim_expires_at.lt.${now}`)
       .order("created_at", { ascending: true });
 
     if (jobsError) {
