@@ -5,6 +5,10 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 // Load configuration
 dotenv.config();
@@ -12,7 +16,9 @@ dotenv.config();
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3000";
 const AGENT_SECRET_KEY = process.env.AGENT_SECRET_KEY;
 const AGENT_ID = process.env.AGENT_ID || "shop-front-pc";
-const TARGET_PRINTER = process.env.PRINTER_NAME || null;
+const DEFAULT_PRINTER = process.env.DEFAULT_PRINTER || null;
+const COLOR_PRINTER = process.env.COLOR_PRINTER || null;
+const NETWORK_COLOR_PRINTER = process.env.NETWORK_COLOR_PRINTER || null;
 const POLL_INTERVAL = 5000; // 5 seconds
 
 // Dynamic import of pdf-to-printer on Windows
@@ -85,6 +91,59 @@ async function pollJobs() {
   } catch (error) {
     console.error("[Agent] Connection error during polling:", error.message);
   }
+}
+
+// Get printer status map from Windows via WMI/CIM
+async function getPrinterStatusMap() {
+  const statusMap = new Map();
+  if (process.platform !== "win32") {
+    return statusMap;
+  }
+  try {
+    const cmd = `powershell -Command "Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, WorkOffline | ConvertTo-Json"`;
+    const { stdout } = await execAsync(cmd);
+    if (!stdout || !stdout.trim()) return statusMap;
+    
+    let printers;
+    try {
+      printers = JSON.parse(stdout);
+    } catch (parseErr) {
+      console.warn("[Agent] Failed to parse printer status JSON:", parseErr.message);
+      return statusMap;
+    }
+    
+    const printersList = Array.isArray(printers) ? printers : [printers];
+    for (const printer of printersList) {
+      if (printer && printer.Name) {
+        // PrinterStatus: 7 is Offline.
+        // WorkOffline: true means offline.
+        const isOffline = printer.WorkOffline === true || printer.PrinterStatus === 7;
+        statusMap.set(printer.Name.toLowerCase(), {
+          name: printer.Name,
+          isOffline,
+          printerStatus: printer.PrinterStatus,
+          workOffline: printer.WorkOffline
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[Agent] Failed to retrieve printer status map:", err.message);
+  }
+  return statusMap;
+}
+
+// Helper to find exact printer name from system printers
+function findSystemPrinter(configuredName, systemPrinters) {
+  if (!configuredName) return null;
+  const lowerConfig = configuredName.toLowerCase();
+  
+  // 1. Exact case-insensitive match
+  let matched = systemPrinters.find(name => name.toLowerCase() === lowerConfig);
+  // 2. Substring match if not found
+  if (!matched) {
+    matched = systemPrinters.find(name => name.toLowerCase().includes(lowerConfig));
+  }
+  return matched || null;
 }
 
 // Convert Image to PDF
@@ -185,37 +244,111 @@ async function processJob(job) {
 
     // 3. Print the document
     try {
-      console.log(`[Agent] Printing file to printer: "${TARGET_PRINTER || "DEFAULT"}" with ${job.copies} copy(ies)...`);
-      
+      const colorMode = (job.color_mode || "mono").toLowerCase();
+      let selectedPrinter = null;
+      let fallbackLog = [];
+
+      let systemPrinterNames = [];
+      let printerStatusMap = new Map();
+
+      if (ptp && process.platform === "win32") {
+        try {
+          const printers = await ptp.getPrinters();
+          systemPrinterNames = printers.map((p) => p.name);
+          printerStatusMap = await getPrinterStatusMap();
+        } catch (err) {
+          console.warn("[Agent] Failed to retrieve system printers:", err.message);
+        }
+      }
+
+      function isPrinterOnline(systemName) {
+        if (!systemName) return false;
+        const status = printerStatusMap.get(systemName.toLowerCase());
+        if (status) {
+          return !status.isOffline;
+        }
+        return true; // default to online if status is missing but printer is in installed list
+      }
+
+      if (colorMode === "color") {
+        // 1. Try COLOR_PRINTER
+        const colorSysName = findSystemPrinter(COLOR_PRINTER, systemPrinterNames);
+        if (colorSysName) {
+          if (isPrinterOnline(colorSysName)) {
+            selectedPrinter = colorSysName;
+          } else {
+            fallbackLog.push(`COLOR_PRINTER ("${COLOR_PRINTER}" matched to "${colorSysName}") is offline/unavailable.`);
+          }
+        } else {
+          fallbackLog.push(`COLOR_PRINTER ("${COLOR_PRINTER || "Not Configured"}") was not found in the system.`);
+        }
+
+        // 2. Fallback to NETWORK_COLOR_PRINTER
+        if (!selectedPrinter) {
+          const netColorSysName = findSystemPrinter(NETWORK_COLOR_PRINTER, systemPrinterNames);
+          if (netColorSysName) {
+            if (isPrinterOnline(netColorSysName)) {
+              selectedPrinter = netColorSysName;
+            } else {
+              fallbackLog.push(`NETWORK_COLOR_PRINTER ("${NETWORK_COLOR_PRINTER}" matched to "${netColorSysName}") is offline/unavailable.`);
+            }
+          } else {
+            fallbackLog.push(`NETWORK_COLOR_PRINTER ("${NETWORK_COLOR_PRINTER || "Not Configured"}") was not found in the system.`);
+          }
+        }
+
+        // 3. Fallback to Windows default printer
+        if (!selectedPrinter) {
+          try {
+            const defaultPrinterObj = await ptp.getDefaultPrinter();
+            if (defaultPrinterObj && defaultPrinterObj.name) {
+              selectedPrinter = defaultPrinterObj.name;
+              fallbackLog.push(`Falling back to Windows default printer: "${selectedPrinter}".`);
+            }
+          } catch (err) {
+            fallbackLog.push(`Failed to get Windows default printer: ${err.message}`);
+          }
+        }
+      } else {
+        // Mono mode: Try DEFAULT_PRINTER
+        const monoSysName = findSystemPrinter(DEFAULT_PRINTER, systemPrinterNames);
+        if (monoSysName) {
+          if (isPrinterOnline(monoSysName)) {
+            selectedPrinter = monoSysName;
+          } else {
+            fallbackLog.push(`DEFAULT_PRINTER ("${DEFAULT_PRINTER}" matched to "${monoSysName}") is offline/unavailable.`);
+          }
+        } else {
+          fallbackLog.push(`DEFAULT_PRINTER ("${DEFAULT_PRINTER || "Not Configured"}") was not found in the system.`);
+        }
+
+        // Fallback to Windows default printer
+        if (!selectedPrinter) {
+          try {
+            const defaultPrinterObj = await ptp.getDefaultPrinter();
+            if (defaultPrinterObj && defaultPrinterObj.name) {
+              selectedPrinter = defaultPrinterObj.name;
+              fallbackLog.push(`Falling back to Windows default printer: "${selectedPrinter}".`);
+            }
+          } catch (err) {
+            fallbackLog.push(`Failed to get Windows default printer: ${err.message}`);
+          }
+        }
+      }
+
+      if (fallbackLog.length > 0) {
+        console.log(`[Agent] Routing notes for ${colorMode} job:\n  - ${fallbackLog.join("\n  - ")}`);
+      }
+      console.log(`[Agent] Selected printer for job: "${selectedPrinter || "DEFAULT"}"`);
+      console.log(`[Agent] Printing file to printer: "${selectedPrinter || "DEFAULT"}" with ${job.copies} copy(ies)...`);
+
       if (ptp && process.platform === "win32") {
         const printOptions = {
           copies: job.copies,
         };
-        
-        let printerToUse = TARGET_PRINTER;
-        if (printerToUse) {
-          try {
-            const printers = await ptp.getPrinters();
-            const printerNames = printers.map(p => p.name);
-            // 1. Exact case-insensitive match
-            let matched = printerNames.find(name => name.toLowerCase() === printerToUse.toLowerCase());
-            // 2. Substring match if not found
-            if (!matched) {
-              matched = printerNames.find(name => name.toLowerCase().includes(printerToUse.toLowerCase()));
-            }
-            if (matched) {
-              printerToUse = matched;
-              console.log(`[Agent] Matched configured printer "${TARGET_PRINTER}" to exact system printer name "${printerToUse}".`);
-            } else {
-              console.warn(`[Agent] Configured printer "${TARGET_PRINTER}" not found in system printers list:`, printerNames);
-            }
-          } catch (err) {
-            console.warn(`[Agent] Failed to retrieve system printers list for matching:`, err.message);
-          }
-        }
 
-        if (printerToUse) {
-          printOptions.printer = printerToUse;
+        if (selectedPrinter) {
+          printOptions.printer = selectedPrinter;
         }
 
         console.log(`[Agent] Sending print command to SumatraPDF...`);
