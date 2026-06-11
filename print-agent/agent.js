@@ -3,6 +3,8 @@ import path from "path";
 import os from "os";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import sharp from "sharp";
+import { PDFDocument } from "pdf-lib";
 
 // Load configuration
 dotenv.config();
@@ -85,6 +87,43 @@ async function pollJobs() {
   }
 }
 
+// Convert Image to PDF
+async function convertImageToPdf(imagePath, pdfPath) {
+  // Read file as buffer
+  const imageBuffer = await fs.promises.readFile(imagePath);
+  
+  // Use sharp to convert to a standardized PNG buffer
+  const pngBuffer = await sharp(imageBuffer)
+    .png()
+    .toBuffer();
+
+  // Extract dimensions
+  const metadata = await sharp(pngBuffer).metadata();
+  const width = metadata.width;
+  const height = metadata.height;
+
+  // Create new PDF
+  const pdfDoc = await PDFDocument.create();
+  
+  // Embed the PNG buffer
+  const pngImage = await pdfDoc.embedPng(pngBuffer);
+
+  // Add page with matching dimensions
+  const page = pdfDoc.addPage([width, height]);
+
+  // Draw the image
+  page.drawImage(pngImage, {
+    x: 0,
+    y: 0,
+    width: width,
+    height: height,
+  });
+
+  // Save the PDF
+  const pdfBytes = await pdfDoc.save();
+  await fs.promises.writeFile(pdfPath, pdfBytes);
+}
+
 // Claim, Download, and Print Job
 async function processJob(job) {
   const jobId = job.id;
@@ -131,6 +170,19 @@ async function processJob(job) {
     await fs.promises.writeFile(tempFilePath, Buffer.from(arrayBuffer));
     console.log(`[Agent] Download complete. File size: ${formatBytes(file.file_size)}.`);
 
+    // Check file extension
+    const ext = path.extname(file.file_name).toLowerCase();
+    const isImage = [".jpg", ".jpeg", ".png", ".webp"].includes(ext);
+    let printFilePath = tempFilePath;
+    let tempPdfPath = null;
+
+    if (isImage) {
+      tempPdfPath = path.join(tempDir, `print_${jobNumber}_converted.pdf`);
+      console.log(`[Agent] Converting image (${ext}) to PDF: ${tempPdfPath}`);
+      await convertImageToPdf(tempFilePath, tempPdfPath);
+      printFilePath = tempPdfPath;
+    }
+
     // 3. Print the document
     try {
       console.log(`[Agent] Printing file to printer: "${TARGET_PRINTER || "DEFAULT"}" with ${job.copies} copy(ies)...`);
@@ -139,10 +191,35 @@ async function processJob(job) {
         const printOptions = {
           copies: job.copies,
         };
-        if (TARGET_PRINTER) {
-          printOptions.printer = TARGET_PRINTER;
+        
+        let printerToUse = TARGET_PRINTER;
+        if (printerToUse) {
+          try {
+            const printers = await ptp.getPrinters();
+            const printerNames = printers.map(p => p.name);
+            // 1. Exact case-insensitive match
+            let matched = printerNames.find(name => name.toLowerCase() === printerToUse.toLowerCase());
+            // 2. Substring match if not found
+            if (!matched) {
+              matched = printerNames.find(name => name.toLowerCase().includes(printerToUse.toLowerCase()));
+            }
+            if (matched) {
+              printerToUse = matched;
+              console.log(`[Agent] Matched configured printer "${TARGET_PRINTER}" to exact system printer name "${printerToUse}".`);
+            } else {
+              console.warn(`[Agent] Configured printer "${TARGET_PRINTER}" not found in system printers list:`, printerNames);
+            }
+          } catch (err) {
+            console.warn(`[Agent] Failed to retrieve system printers list for matching:`, err.message);
+          }
         }
-        await ptp.print(tempFilePath, printOptions);
+
+        if (printerToUse) {
+          printOptions.printer = printerToUse;
+        }
+
+        console.log(`[Agent] Sending print command to SumatraPDF...`);
+        await ptp.print(printFilePath, printOptions);
         console.log(`[Agent] Physical print job completed by OS print spooler.`);
       } else {
         // Mock Printing (Simulates printer hardware delay)
@@ -156,16 +233,31 @@ async function processJob(job) {
       console.log(`[Agent] Job ${jobNumber} marked as successfully printed.`);
 
     } catch (printErr) {
-      console.error(`[Agent] Printing failed on physical device for Job ${jobNumber}:`, printErr.message);
-      await updateJobStatus(jobId, "failed", `Physical printing failed: ${printErr.message}`);
+      let detailedError = `Physical printing failed: ${printErr.message}`;
+      if (printErr.stdout) {
+        detailedError += `\nStdout: ${printErr.stdout}`;
+      }
+      if (printErr.stderr) {
+        detailedError += `\nStderr: ${printErr.stderr}`;
+      }
+      console.error(`[Agent] Printing failed on physical device for Job ${jobNumber}:`, detailedError);
+      await updateJobStatus(jobId, "failed", detailedError);
     } finally {
-      // 5. Clean up local temp file
+      // 5. Clean up local temp files
       if (fs.existsSync(tempFilePath)) {
         try {
           fs.unlinkSync(tempFilePath);
           console.log(`[Agent] Cleaned up temporary local file.`);
         } catch (cleanupErr) {
           console.warn(`[Agent] Temp file cleanup warning:`, cleanupErr.message);
+        }
+      }
+      if (tempPdfPath && fs.existsSync(tempPdfPath)) {
+        try {
+          fs.unlinkSync(tempPdfPath);
+          console.log(`[Agent] Cleaned up temporary converted PDF file.`);
+        } catch (cleanupErr) {
+          console.warn(`[Agent] Temp PDF file cleanup warning:`, cleanupErr.message);
         }
       }
     }
