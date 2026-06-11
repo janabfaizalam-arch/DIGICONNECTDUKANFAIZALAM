@@ -1,0 +1,79 @@
+import { NextResponse } from "next/server";
+
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+
+type UpdateStatusBody = {
+  job_id?: string;
+  status?: "printed" | "failed";
+  error_message?: string;
+};
+
+export async function POST(request: Request) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    const secretKey = process.env.PRINT_AGENT_SECRET_KEY;
+
+    if (!secretKey) {
+      return NextResponse.json(
+        { error: "PRINT_AGENT_SECRET_KEY is not configured on the server" },
+        { status: 500 }
+      );
+    }
+
+    if (authHeader !== `Bearer ${secretKey}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = (await request.json().catch(() => null)) as UpdateStatusBody | null;
+    const jobId = String(body?.job_id ?? "").trim();
+    const status = String(body?.status ?? "").trim() as "printed" | "failed";
+    const errorMessage = String(body?.error_message ?? "").trim();
+
+    if (!jobId || (status !== "printed" && status !== "failed")) {
+      return NextResponse.json({ error: "Job ID and valid status ('printed' or 'failed') are required" }, { status: 400 });
+    }
+
+    const agentId = request.headers.get("x-agent-id") || "default-agent";
+
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase service role configuration is missing" }, { status: 500 });
+    }
+
+    // Update the print job
+    const { data: job, error: updateError } = await supabase
+      .from("print_jobs")
+      .update({
+        print_status: status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", jobId)
+      .select("id, job_number")
+      .maybeSingle();
+
+    if (updateError) {
+      console.error("[print/agent/update-status] Database update error:", updateError);
+      return NextResponse.json({ error: "Failed to update print job status" }, { status: 500 });
+    }
+
+    if (!job) {
+      return NextResponse.json({ error: "Print job not found" }, { status: 404 });
+    }
+
+    // Log the print status update
+    await supabase.from("print_job_logs").insert({
+      job_id: jobId,
+      action: status,
+      actor: `agent:${agentId}`,
+      details: status === "failed" ? { error: errorMessage } : {},
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Job status updated to ${status} successfully.`,
+    });
+  } catch (error) {
+    console.error("[print/agent/update-status] Unexpected error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
+  }
+}
