@@ -16,8 +16,10 @@ dotenv.config();
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3000";
 const AGENT_SECRET_KEY = process.env.AGENT_SECRET_KEY;
 const AGENT_ID = process.env.AGENT_ID || "shop-front-pc";
-const DEFAULT_PRINTER = process.env.DEFAULT_PRINTER || null;
-const COLOR_PRINTER = process.env.COLOR_PRINTER || null;
+const DEFAULT_PRINTER_1 = process.env.DEFAULT_PRINTER_1 || null;
+const DEFAULT_PRINTER_2 = process.env.DEFAULT_PRINTER_2 || null;
+const COLOR_PRINTER_1 = process.env.COLOR_PRINTER_1 || null;
+const COLOR_PRINTER_2 = process.env.COLOR_PRINTER_2 || null;
 const NETWORK_COLOR_PRINTER = process.env.NETWORK_COLOR_PRINTER || null;
 const POLL_INTERVAL = 5000; // 5 seconds
 
@@ -93,57 +95,84 @@ async function pollJobs() {
   }
 }
 
-// Get printer status map from Windows via WMI/CIM
-async function getPrinterStatusMap() {
-  const statusMap = new Map();
+// Get list of installed Windows printers with detailed status via WMI/CIM
+async function getInstalledPrinters() {
+  const printersList = [];
   if (process.platform !== "win32") {
-    return statusMap;
+    return printersList;
   }
   try {
-    const cmd = `powershell -Command "Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, WorkOffline | ConvertTo-Json"`;
+    const cmd = `powershell -Command "Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, PrinterState, WorkOffline, DetectedErrorState, ExtendedPrinterStatus | ConvertTo-Json"`;
     const { stdout } = await execAsync(cmd);
-    if (!stdout || !stdout.trim()) return statusMap;
-    
+    if (!stdout || !stdout.trim()) return printersList;
+
     let printers;
     try {
       printers = JSON.parse(stdout);
     } catch (parseErr) {
       console.warn("[Agent] Failed to parse printer status JSON:", parseErr.message);
-      return statusMap;
+      return printersList;
     }
-    
-    const printersList = Array.isArray(printers) ? printers : [printers];
-    for (const printer of printersList) {
-      if (printer && printer.Name) {
-        // PrinterStatus: 7 is Offline.
-        // WorkOffline: true means offline.
-        const isOffline = printer.WorkOffline === true || printer.PrinterStatus === 7;
-        statusMap.set(printer.Name.toLowerCase(), {
-          name: printer.Name,
-          isOffline,
-          printerStatus: printer.PrinterStatus,
-          workOffline: printer.WorkOffline
+
+    const list = Array.isArray(printers) ? printers : [printers];
+    for (const p of list) {
+      if (p && p.Name) {
+        printersList.push({
+          name: p.Name,
+          status: p.PrinterStatus,
+          state: p.PrinterState,
+          workOffline: p.WorkOffline,
+          detectedErrorState: p.DetectedErrorState,
+          extendedPrinterStatus: p.ExtendedPrinterStatus
         });
       }
     }
   } catch (err) {
-    console.warn("[Agent] Failed to retrieve printer status map:", err.message);
+    console.warn("[Agent] Failed to retrieve system printers details:", err.message);
   }
-  return statusMap;
+  return printersList;
 }
 
-// Helper to find exact printer name from system printers
-function findSystemPrinter(configuredName, systemPrinters) {
+// Helper to find exact printer from installed printers (case-insensitive and substring match)
+function findInstalledPrinter(configuredName, installedPrinters) {
   if (!configuredName) return null;
   const lowerConfig = configuredName.toLowerCase();
-  
   // 1. Exact case-insensitive match
-  let matched = systemPrinters.find(name => name.toLowerCase() === lowerConfig);
+  let found = installedPrinters.find(p => p.name.toLowerCase() === lowerConfig);
   // 2. Substring match if not found
-  if (!matched) {
-    matched = systemPrinters.find(name => name.toLowerCase().includes(lowerConfig));
+  if (!found) {
+    found = installedPrinters.find(p => p.name.toLowerCase().includes(lowerConfig));
   }
-  return matched || null;
+  return found || null;
+}
+
+// Helper to check if a printer is available (online, ready, not paused, not WorkOffline, no error)
+function checkPrinterAvailability(printerObj) {
+  if (!printerObj) {
+    return { available: false, reason: "Printer not installed or configured" };
+  }
+  if (printerObj.workOffline === true) {
+    return { available: false, reason: "WorkOffline is True" };
+  }
+  if (printerObj.status === 7) {
+    return { available: false, reason: "PrinterStatus is 7 (Offline)" };
+  }
+  if (printerObj.detectedErrorState === 9) {
+    return { available: false, reason: "DetectedErrorState is 9 (Offline)" };
+  }
+  if (printerObj.detectedErrorState === 4) {
+    return { available: false, reason: "DetectedErrorState is 4 (No Paper)" };
+  }
+  if (printerObj.detectedErrorState === 8) {
+    return { available: false, reason: "DetectedErrorState is 8 (Jammed)" };
+  }
+  if (printerObj.detectedErrorState === 7) {
+    return { available: false, reason: "DetectedErrorState is 7 (Door Open)" };
+  }
+  if (printerObj.state === 1) {
+    return { available: false, reason: "PrinterState is 1 (Paused)" };
+  }
+  return { available: true, reason: "Online and Ready" };
 }
 
 // Convert Image to PDF with high-quality A4 rendering, centered, 300 DPI, white background, preserving aspect ratio
@@ -271,153 +300,154 @@ async function processJob(job) {
     // 3. Print the document
     try {
       const colorMode = (job.color_mode || "mono").toLowerCase();
-      let selectedPrinter = null;
-      let fallbackLog = [];
-
-      let systemPrinterNames = [];
-      let printerStatusMap = new Map();
+      const isColor = colorMode === "color" || colorMode === "colour";
+      
+      let installedPrinters = [];
+      let defaultSysPrinterName = null;
 
       if (ptp && process.platform === "win32") {
         try {
-          const printers = await ptp.getPrinters();
-          systemPrinterNames = printers.map((p) => p.name);
-          printerStatusMap = await getPrinterStatusMap();
+          installedPrinters = await getInstalledPrinters();
+          const defObj = await ptp.getDefaultPrinter();
+          if (defObj && defObj.name) {
+            defaultSysPrinterName = defObj.name;
+          }
         } catch (err) {
           console.warn("[Agent] Failed to retrieve system printers:", err.message);
         }
       }
 
-      function isPrinterOnline(systemName) {
-        if (!systemName) return false;
-        const status = printerStatusMap.get(systemName.toLowerCase());
-        if (status) {
-          return !status.isOffline;
-        }
-        return true; // default to online if status is missing but printer is in installed list
-      }
-
-      if (colorMode === "color") {
-        // 1. Try COLOR_PRINTER
-        const colorSysName = findSystemPrinter(COLOR_PRINTER, systemPrinterNames);
-        if (colorSysName) {
-          if (isPrinterOnline(colorSysName)) {
-            selectedPrinter = colorSysName;
-          } else {
-            fallbackLog.push(`COLOR_PRINTER ("${COLOR_PRINTER}" matched to "${colorSysName}") is offline/unavailable.`);
-          }
-        } else {
-          fallbackLog.push(`COLOR_PRINTER ("${COLOR_PRINTER || "Not Configured"}") was not found in the system.`);
-        }
-
-        // 2. Fallback to NETWORK_COLOR_PRINTER
-        if (!selectedPrinter) {
-          const netColorSysName = findSystemPrinter(NETWORK_COLOR_PRINTER, systemPrinterNames);
-          if (netColorSysName) {
-            if (isPrinterOnline(netColorSysName)) {
-              selectedPrinter = netColorSysName;
-            } else {
-              fallbackLog.push(`NETWORK_COLOR_PRINTER ("${NETWORK_COLOR_PRINTER}" matched to "${netColorSysName}") is offline/unavailable.`);
-            }
-          } else {
-            fallbackLog.push(`NETWORK_COLOR_PRINTER ("${NETWORK_COLOR_PRINTER || "Not Configured"}") was not found in the system.`);
-          }
-        }
-
-        // 3. Fallback to Windows default printer
-        if (!selectedPrinter) {
-          try {
-            const defaultPrinterObj = await ptp.getDefaultPrinter();
-            if (defaultPrinterObj && defaultPrinterObj.name) {
-              selectedPrinter = defaultPrinterObj.name;
-              fallbackLog.push(`Falling back to Windows default printer: "${selectedPrinter}".`);
-            }
-          } catch (err) {
-            fallbackLog.push(`Failed to get Windows default printer: ${err.message}`);
-          }
-        }
+      // Build prioritized candidate list based on color mode
+      const candidates = [];
+      if (isColor) {
+        candidates.push({ label: "COLOR_PRINTER_1", configuredName: COLOR_PRINTER_1 });
+        candidates.push({ label: "COLOR_PRINTER_2", configuredName: COLOR_PRINTER_2 });
       } else {
-        // Mono mode: Try DEFAULT_PRINTER
-        const monoSysName = findSystemPrinter(DEFAULT_PRINTER, systemPrinterNames);
-        if (monoSysName) {
-          if (isPrinterOnline(monoSysName)) {
-            selectedPrinter = monoSysName;
-          } else {
-            fallbackLog.push(`DEFAULT_PRINTER ("${DEFAULT_PRINTER}" matched to "${monoSysName}") is offline/unavailable.`);
-          }
+        candidates.push({ label: "DEFAULT_PRINTER_1", configuredName: DEFAULT_PRINTER_1 });
+        candidates.push({ label: "DEFAULT_PRINTER_2", configuredName: DEFAULT_PRINTER_2 });
+      }
+      
+      // Last fallback is the Windows default printer
+      candidates.push({ label: "Windows Default Printer", configuredName: defaultSysPrinterName });
+
+      const resolvedPrintersToTry = [];
+      const routingLogs = [];
+
+      for (const cand of candidates) {
+        if (!cand.configuredName) {
+          routingLogs.push(`${cand.label} is not configured.`);
+          continue;
+        }
+        
+        const matchedSys = findInstalledPrinter(cand.configuredName, installedPrinters);
+        if (!matchedSys) {
+          routingLogs.push(`${cand.label} ("${cand.configuredName}") is not installed on this system.`);
+          continue;
+        }
+
+        const availability = checkPrinterAvailability(matchedSys);
+        if (availability.available) {
+          resolvedPrintersToTry.push({
+            name: matchedSys.name,
+            label: cand.label,
+            reason: `Printer is online and ready.`
+          });
         } else {
-          fallbackLog.push(`DEFAULT_PRINTER ("${DEFAULT_PRINTER || "Not Configured"}") was not found in the system.`);
-        }
-
-        // Fallback to Windows default printer
-        if (!selectedPrinter) {
-          try {
-            const defaultPrinterObj = await ptp.getDefaultPrinter();
-            if (defaultPrinterObj && defaultPrinterObj.name) {
-              selectedPrinter = defaultPrinterObj.name;
-              fallbackLog.push(`Falling back to Windows default printer: "${selectedPrinter}".`);
-            }
-          } catch (err) {
-            fallbackLog.push(`Failed to get Windows default printer: ${err.message}`);
-          }
+          routingLogs.push(`${cand.label} ("${matchedSys.name}") is offline or unavailable: ${availability.reason}`);
         }
       }
 
-      if (fallbackLog.length > 0) {
-        console.log(`[Agent] Routing notes for ${colorMode} job:\n  - ${fallbackLog.join("\n  - ")}`);
+      // If no online candidates were found from priorities, try the default printer as final fallback
+      if (resolvedPrintersToTry.length === 0 && defaultSysPrinterName) {
+        const matchedDefault = findInstalledPrinter(defaultSysPrinterName, installedPrinters);
+        const defaultAvailability = checkPrinterAvailability(matchedDefault);
+        
+        resolvedPrintersToTry.push({
+          name: defaultSysPrinterName,
+          label: "Windows Default Printer",
+          reason: `Final fallback. Default printer is ${defaultAvailability.available ? "Online" : "Offline (" + defaultAvailability.reason + ")"}`
+        });
       }
-      console.log(`[Agent] Selected printer for job: "${selectedPrinter || "DEFAULT"}"`);
+
+      // If still empty, fall back to "DEFAULT" spooler
+      if (resolvedPrintersToTry.length === 0) {
+        resolvedPrintersToTry.push({
+          name: defaultSysPrinterName || "DEFAULT",
+          label: "Last Resort Spooler",
+          reason: "No printers found or default printer couldn't be resolved."
+        });
+      }
 
       let printSuccess = false;
-      let printAttempt = 1;
-      const maxPrintAttempts = 2;
       let lastPrintErr = null;
-      let printDuration = 0;
-      let osResponseLog = "";
 
-      while (printAttempt <= maxPrintAttempts && !printSuccess) {
+      for (let i = 0; i < resolvedPrintersToTry.length; i++) {
+        const target = resolvedPrintersToTry[i];
+        const selectedPrinterName = target.name;
+        
+        const primaryLabel = isColor ? "COLOR_PRINTER_1" : "DEFAULT_PRINTER_1";
+        const fallbackUsed = target.label === primaryLabel ? "No" : "Yes";
+
+        // Structured console printout
+        console.log("\n==========================================");
+        console.log(`Job Number: ${jobNumber}`);
+        console.log(`File Name: ${file.file_name}`);
+        console.log(`Color Mode: ${colorMode}`);
+        console.log(`Paper Size: A4`);
+        console.log(`Copies: ${job.copies}`);
+        console.log("\nSelected Printer:\n" + selectedPrinterName);
+        console.log("\nReason for Selection:\n" + `Routed via candidate ${target.label}. ${target.reason}`);
+        console.log("\nFallback Used: " + fallbackUsed);
+        console.log("==========================================\n");
+
+        if (routingLogs.length > 0) {
+          console.log(`[Agent] Routing history/notes:\n  - ${routingLogs.join("\n  - ")}`);
+        }
+
         const startPrintTime = Date.now();
         try {
-          if (printAttempt > 1) {
-            console.log(`[Agent] Retrying print job (Attempt ${printAttempt}/${maxPrintAttempts})...`);
-          }
-          console.log(`[Agent] Sending print command to printer "${selectedPrinter || "DEFAULT"}" with ${job.copies} copy(ies)...`);
-
+          console.log(`[Agent] Sending print command to printer "${selectedPrinterName}"...`);
+          
           if (ptp && process.platform === "win32") {
             const printOptions = {
               copies: job.copies,
             };
-            if (selectedPrinter) {
-              printOptions.printer = selectedPrinter;
+            if (selectedPrinterName && selectedPrinterName !== "DEFAULT") {
+              printOptions.printer = selectedPrinterName;
             }
             await ptp.print(printFilePath, printOptions);
-            printDuration = Date.now() - startPrintTime;
-            osResponseLog = "Success (spooler accepted print command)";
-            console.log(`[Agent] OS print response: ${osResponseLog}`);
+            const printDuration = Date.now() - startPrintTime;
+            console.log(`[Agent] OS print response: Success (spooler accepted print command)`);
+            console.log(`[Agent] Print duration: ${printDuration}ms`);
           } else {
             // Mock Mode
-            console.log(`[Agent] [MOCK MODE] Simulating physical printing...`);
+            console.log(`[Agent] [MOCK MODE] Simulating physical printing on "${selectedPrinterName}"...`);
             await new Promise((resolve) => setTimeout(resolve, 3000));
-            printDuration = Date.now() - startPrintTime;
-            osResponseLog = "Success (Mock Print Completed)";
-            console.log(`[Agent] OS print response: ${osResponseLog}`);
+            const printDuration = Date.now() - startPrintTime;
+            console.log(`[Agent] OS print response: Success (Mock Print Completed)`);
+            console.log(`[Agent] Print duration: ${printDuration}ms`);
           }
+          
           printSuccess = true;
-          console.log(`[Agent] Print duration: ${printDuration}ms`);
+          break; // Print completed successfully, exit failover loop!
         } catch (printErr) {
           lastPrintErr = printErr;
-          printDuration = Date.now() - startPrintTime;
-          osResponseLog = `Failure (Attempt ${printAttempt}/${maxPrintAttempts}). Error: ${printErr.message}`;
-          if (printErr.stdout) osResponseLog += `\nStdout: ${printErr.stdout}`;
-          if (printErr.stderr) osResponseLog += `\nStderr: ${printErr.stderr}`;
+          const printDuration = Date.now() - startPrintTime;
+          let errorLog = `Failure. Error: ${printErr.message}`;
+          if (printErr.stdout) errorLog += `\nStdout: ${printErr.stdout}`;
+          if (printErr.stderr) errorLog += `\nStderr: ${printErr.stderr}`;
           
-          console.warn(`[Agent] OS print response: ${osResponseLog}`);
-          console.warn(`[Agent] Print attempt ${printAttempt} failed in ${printDuration}ms.`);
-          printAttempt++;
+          console.warn(`[Agent] OS print response: ${errorLog}`);
+          console.warn(`[Agent] Print job failed on "${selectedPrinterName}" in ${printDuration}ms.`);
+          
+          if (i < resolvedPrintersToTry.length - 1) {
+            console.log(`[Agent] Automatic Failover: Trying next printer...`);
+          }
         }
       }
 
       if (!printSuccess) {
-        throw lastPrintErr;
+        throw lastPrintErr || new Error("Failed to print using any available printers.");
       }
 
       // 4. Update status to 'printed'
@@ -496,8 +526,34 @@ function formatBytes(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
+// Auto detect and log every printer at startup
+async function detectPrintersAtStartup() {
+  console.log("[Agent] Auto-detecting installed Windows printers...");
+  if (process.platform !== "win32") {
+    console.log("[Agent] Non-Windows OS. Auto-detection is skipped.");
+    return;
+  }
+  const printers = await getInstalledPrinters();
+  if (printers.length === 0) {
+    console.log("[Agent] No printers found on this system.");
+    return;
+  }
+  for (const p of printers) {
+    const availability = checkPrinterAvailability(p);
+    console.log(`[Agent] Printer: "${p.name}"`);
+    console.log(`  - Status: ${p.status}`);
+    console.log(`  - State: ${p.state}`);
+    console.log(`  - WorkOffline: ${p.workOffline}`);
+    console.log(`  - ErrorState (DetectedErrorState): ${p.detectedErrorState}`);
+    console.log(`  - ExtendedPrinterStatus: ${p.extendedPrinterStatus}`);
+    console.log(`  - Result: ${availability.available ? "Online/Ready" : "Offline/Unavailable (" + availability.reason + ")"}`);
+  }
+}
+
 // Start polling cycle
 console.log(`[Agent] Starting polling loop. Polling server every ${POLL_INTERVAL / 1000} seconds...`);
-setInterval(pollJobs, POLL_INTERVAL);
-// Initial run
-pollJobs();
+detectPrintersAtStartup().then(() => {
+  setInterval(pollJobs, POLL_INTERVAL);
+  // Initial run
+  pollJobs();
+});
