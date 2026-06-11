@@ -4,7 +4,7 @@ import os from "os";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import sharp from "sharp";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -146,36 +146,59 @@ function findSystemPrinter(configuredName, systemPrinters) {
   return matched || null;
 }
 
-// Convert Image to PDF
+// Convert Image to PDF with high-quality A4 rendering, centered, 300 DPI, white background, preserving aspect ratio
 async function convertImageToPdf(imagePath, pdfPath) {
   // Read file as buffer
   const imageBuffer = await fs.promises.readFile(imagePath);
   
-  // Use sharp to convert to a standardized PNG buffer
-  const pngBuffer = await sharp(imageBuffer)
+  // 300 DPI A4 size in pixels: 8.27" * 300 = 2480 width, 11.69" * 300 = 3508 height.
+  // We resize to fit inside A4 dimensions while preserving the aspect ratio.
+  const resizedPngBuffer = await sharp(imageBuffer)
+    .resize(2480, 3508, { fit: "inside" })
+    .withMetadata({ density: 300 })
     .png()
     .toBuffer();
 
-  // Extract dimensions
-  const metadata = await sharp(pngBuffer).metadata();
-  const width = metadata.width;
-  const height = metadata.height;
+  // Extract dimensions of the resized image
+  const metadata = await sharp(resizedPngBuffer).metadata();
+  const imgWidth = metadata.width;
+  const imgHeight = metadata.height;
 
   // Create new PDF
   const pdfDoc = await PDFDocument.create();
   
-  // Embed the PNG buffer
-  const pngImage = await pdfDoc.embedPng(pngBuffer);
+  // Standard A4 dimensions in PDF points (72 points per inch)
+  const A4_WIDTH = 595.27;
+  const A4_HEIGHT = 841.89;
+  
+  const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
 
-  // Add page with matching dimensions
-  const page = pdfDoc.addPage([width, height]);
-
-  // Draw the image
-  page.drawImage(pngImage, {
+  // Draw a solid white background rectangle over the entire page
+  page.drawRectangle({
     x: 0,
     y: 0,
-    width: width,
-    height: height,
+    width: A4_WIDTH,
+    height: A4_HEIGHT,
+    color: rgb(1, 1, 1),
+  });
+
+  // Embed the PNG buffer
+  const pngImage = await pdfDoc.embedPng(resizedPngBuffer);
+
+  // Calculate points dimensions to center the image on the A4 page while preserving aspect ratio
+  const scale = Math.min(A4_WIDTH / imgWidth, A4_HEIGHT / imgHeight);
+  const displayWidth = imgWidth * scale;
+  const displayHeight = imgHeight * scale;
+  
+  const x = (A4_WIDTH - displayWidth) / 2;
+  const y = (A4_HEIGHT - displayHeight) / 2;
+
+  // Draw the image centered
+  page.drawImage(pngImage, {
+    x: x,
+    y: y,
+    width: displayWidth,
+    height: displayHeight,
   });
 
   // Save the PDF
@@ -238,7 +261,10 @@ async function processJob(job) {
     if (isImage) {
       tempPdfPath = path.join(tempDir, `print_${jobNumber}_converted.pdf`);
       console.log(`[Agent] Converting image (${ext}) to PDF: ${tempPdfPath}`);
+      const startConversion = Date.now();
       await convertImageToPdf(tempFilePath, tempPdfPath);
+      const conversionDuration = Date.now() - startConversion;
+      console.log(`[Agent] Image successfully converted to A4 PDF in ${conversionDuration}ms.`);
       printFilePath = tempPdfPath;
     }
 
@@ -340,25 +366,58 @@ async function processJob(job) {
         console.log(`[Agent] Routing notes for ${colorMode} job:\n  - ${fallbackLog.join("\n  - ")}`);
       }
       console.log(`[Agent] Selected printer for job: "${selectedPrinter || "DEFAULT"}"`);
-      console.log(`[Agent] Printing file to printer: "${selectedPrinter || "DEFAULT"}" with ${job.copies} copy(ies)...`);
 
-      if (ptp && process.platform === "win32") {
-        const printOptions = {
-          copies: job.copies,
-        };
+      let printSuccess = false;
+      let printAttempt = 1;
+      const maxPrintAttempts = 2;
+      let lastPrintErr = null;
+      let printDuration = 0;
+      let osResponseLog = "";
 
-        if (selectedPrinter) {
-          printOptions.printer = selectedPrinter;
+      while (printAttempt <= maxPrintAttempts && !printSuccess) {
+        const startPrintTime = Date.now();
+        try {
+          if (printAttempt > 1) {
+            console.log(`[Agent] Retrying print job (Attempt ${printAttempt}/${maxPrintAttempts})...`);
+          }
+          console.log(`[Agent] Sending print command to printer "${selectedPrinter || "DEFAULT"}" with ${job.copies} copy(ies)...`);
+
+          if (ptp && process.platform === "win32") {
+            const printOptions = {
+              copies: job.copies,
+            };
+            if (selectedPrinter) {
+              printOptions.printer = selectedPrinter;
+            }
+            await ptp.print(printFilePath, printOptions);
+            printDuration = Date.now() - startPrintTime;
+            osResponseLog = "Success (spooler accepted print command)";
+            console.log(`[Agent] OS print response: ${osResponseLog}`);
+          } else {
+            // Mock Mode
+            console.log(`[Agent] [MOCK MODE] Simulating physical printing...`);
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            printDuration = Date.now() - startPrintTime;
+            osResponseLog = "Success (Mock Print Completed)";
+            console.log(`[Agent] OS print response: ${osResponseLog}`);
+          }
+          printSuccess = true;
+          console.log(`[Agent] Print duration: ${printDuration}ms`);
+        } catch (printErr) {
+          lastPrintErr = printErr;
+          printDuration = Date.now() - startPrintTime;
+          osResponseLog = `Failure (Attempt ${printAttempt}/${maxPrintAttempts}). Error: ${printErr.message}`;
+          if (printErr.stdout) osResponseLog += `\nStdout: ${printErr.stdout}`;
+          if (printErr.stderr) osResponseLog += `\nStderr: ${printErr.stderr}`;
+          
+          console.warn(`[Agent] OS print response: ${osResponseLog}`);
+          console.warn(`[Agent] Print attempt ${printAttempt} failed in ${printDuration}ms.`);
+          printAttempt++;
         }
+      }
 
-        console.log(`[Agent] Sending print command to SumatraPDF...`);
-        await ptp.print(printFilePath, printOptions);
-        console.log(`[Agent] Physical print job completed by OS print spooler.`);
-      } else {
-        // Mock Printing (Simulates printer hardware delay)
-        console.log(`[Agent] [MOCK MODE] Simulating physical printing for ${job.copies} copy(ies) of ${file.file_name}...`);
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        console.log(`[Agent] [MOCK MODE] Simulating physical print job complete.`);
+      if (!printSuccess) {
+        throw lastPrintErr;
       }
 
       // 4. Update status to 'printed'
