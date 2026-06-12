@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { 
   User, School, BookOpen, FileText, CheckCircle, CreditCard, 
   ArrowLeft, ArrowRight, UploadCloud, Trash2, Lock, Check,
-  AlertTriangle, RefreshCw
+  AlertTriangle, RefreshCw, Smartphone, Building
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -46,8 +46,13 @@ type FormState = {
   studentDob: string;
   studentGender: string;
   studentClass: number;
+  fatherName: string;
+  studentMedium: string;
   parentMobile: string;
   parentEmail: string;
+  studentState: string;
+  studentCity: string;
+  studentAddress: string;
   schoolName: string;
   schoolBoard: string;
   schoolPincode: string;
@@ -57,18 +62,23 @@ type FormState = {
   selectedSubjects: string[];
 };
 
-const defaultFormState = (initialMobile: string, initialSubjects: string[]): FormState => ({
+const defaultFormState = (initialMobile: string, initialSubjects: string[], initialFields: FormClientProps["initialProfileFields"]): FormState => ({
   studentName: "",
   studentDob: "",
   studentGender: "",
   studentClass: 3,
+  fatherName: "",
+  studentMedium: "English",
   parentMobile: initialMobile || "",
   parentEmail: "",
+  studentState: initialFields.state || "",
+  studentCity: initialFields.city || "",
+  studentAddress: "",
   schoolName: "",
   schoolBoard: "CBSE",
-  schoolPincode: "",
-  schoolCity: "",
-  schoolState: "",
+  schoolPincode: initialFields.pincode || "",
+  schoolCity: initialFields.city || "",
+  schoolState: initialFields.state || "",
   schoolAddress: "",
   selectedSubjects: initialSubjects,
 });
@@ -85,7 +95,9 @@ export function CscOlympiadFormClient({
   const { success, error: toastError } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [formValues, setFormValues] = useState<FormState>(() => defaultFormState(initialProfileFields.mobile, initialSubjects));
+  const [formValues, setFormValues] = useState<FormState>(() => 
+    defaultFormState(initialProfileFields.mobile, initialSubjects, initialProfileFields)
+  );
   
   // Files
   const [passportPhoto, setPassportPhoto] = useState<File | null>(null);
@@ -114,12 +126,12 @@ export function CscOlympiadFormClient({
   const [showResumeAlert, setShowResumeAlert] = useState(false);
 
   const steps = [
-    { num: 1, label: "Student", icon: User },
-    { num: 2, label: "School", icon: School },
-    { num: 3, label: "Subject", icon: BookOpen },
-    { num: 4, label: "Documents", icon: UploadCloud },
-    { num: 5, label: "Review", icon: FileText },
-    { num: 6, label: "Payment", icon: CreditCard },
+    { num: 1, label: "Student Details", icon: User },
+    { num: 2, label: "Parent / Contact", icon: Smartphone },
+    { num: 3, label: "School Details", icon: School },
+    { num: 4, label: "Subjects & Medium", icon: BookOpen },
+    { num: 5, label: "Documents Hub", icon: UploadCloud },
+    { num: 6, label: "Review & Checkout", icon: CreditCard },
   ];
 
   // Filter subjects based on selected class
@@ -165,7 +177,6 @@ export function CscOlympiadFormClient({
         setFormValues(prev => ({
           ...prev,
           ...parsed,
-          // ensure initial subjects matching parameters don't get erased if empty
           selectedSubjects: parsed.selectedSubjects?.length ? parsed.selectedSubjects : prev.selectedSubjects
         }));
         success("Draft application restored successfully.");
@@ -188,7 +199,7 @@ export function CscOlympiadFormClient({
     }
   }, [formValues]);
 
-  // Pincode Lookup
+  // Pincode Lookup for School
   useEffect(() => {
     const pincode = formValues.schoolPincode.trim();
     if (pincode.length !== 6) return;
@@ -218,15 +229,21 @@ export function CscOlympiadFormClient({
   // Validators per step
   const validateStep = (stepNum: number): string | null => {
     if (stepNum === 1) {
-      if (!formValues.studentName.trim()) return "Student Name is required.";
+      if (!formValues.studentName.trim()) return "Student Full Name is required.";
       if (!formValues.studentDob) return "Student Date of Birth is required.";
       if (!formValues.studentGender) return "Student Gender is required.";
+      if (!formValues.fatherName.trim()) return "Father Name is required.";
+    }
+    if (stepNum === 2) {
       if (!formValues.parentMobile) return "Parent Mobile is required.";
       if (!/^[6-9]\d{9}$/.test(formValues.parentMobile)) return "Enter a valid 10-digit Indian mobile number.";
       if (!formValues.parentEmail.trim()) return "Parent Email is required.";
       if (!/\S+@\S+\.\S+/.test(formValues.parentEmail)) return "Enter a valid email address.";
+      if (!formValues.studentState.trim()) return "Student State is required.";
+      if (!formValues.studentCity.trim()) return "Student City is required.";
+      if (!formValues.studentAddress.trim()) return "Student Street Address is required.";
     }
-    if (stepNum === 2) {
+    if (stepNum === 3) {
       if (!formValues.schoolName.trim()) return "School Name is required.";
       if (!formValues.schoolBoard) return "School Board is required.";
       if (!formValues.schoolPincode || formValues.schoolPincode.length !== 6) return "Valid 6-digit School Pincode is required.";
@@ -234,10 +251,11 @@ export function CscOlympiadFormClient({
       if (!formValues.schoolState.trim()) return "School State is required.";
       if (!formValues.schoolAddress.trim()) return "School Street Address is required.";
     }
-    if (stepNum === 3) {
-      if (formValues.selectedSubjects.length === 0) return "Please select at least one subject to register.";
-    }
     if (stepNum === 4) {
+      if (formValues.selectedSubjects.length === 0) return "Please select at least one subject to register.";
+      if (!formValues.studentMedium) return "Language Medium choice is required.";
+    }
+    if (stepNum === 5) {
       if (!passportPhoto) return "Passport Size Photograph upload is required.";
       if (!studyProof) return "School ID Card or Enrollment Proof upload is required.";
     }
@@ -361,25 +379,18 @@ export function CscOlympiadFormClient({
         throw new Error("Session expired. Please login again.");
       }
 
-      // 1. Upload files to Supabase Storage Bucket 'documents'
-      const filesToUpload = [
-        { file: passportPhoto, type: "Passport Photo" },
-        { file: studyProof, type: "School ID / Study Proof" }
-      ];
-
-      // We will perform API-based document insert during application payload submit.
-      // So we will append them to the multipart form.
       const submitFormData = new FormData();
       const documentTypes: string[] = [];
 
-      for (const item of filesToUpload) {
-        if (item.file) {
-          submitFormData.append("documents", item.file, item.file.name);
-          documentTypes.push(item.type);
-        }
+      if (passportPhoto) {
+        submitFormData.append("documents", passportPhoto, passportPhoto.name);
+        documentTypes.push("Passport Photo");
+      }
+      if (studyProof) {
+        submitFormData.append("documents", studyProof, studyProof.name);
+        documentTypes.push("School ID / Study Proof");
       }
 
-      // Construct detailed application form metadata
       const payload = {
         serviceSlug: "csc-olympiad",
         serviceSlugs: ["csc-olympiad"],
@@ -387,7 +398,7 @@ export function CscOlympiadFormClient({
           name: formValues.studentName,
           mobile: formValues.parentMobile,
           email: formValues.parentEmail,
-          city: formValues.schoolCity,
+          city: formValues.studentCity,
           message: `Olympiad Registration for Class ${formValues.studentClass} - subjects: ${formValues.selectedSubjects.join(", ")}`
         },
         details: {
@@ -396,6 +407,11 @@ export function CscOlympiadFormClient({
           studentDob: formValues.studentDob,
           studentGender: formValues.studentGender,
           studentClass: String(formValues.studentClass),
+          fatherName: formValues.fatherName,
+          studentMedium: formValues.studentMedium,
+          studentState: formValues.studentState,
+          studentCity: formValues.studentCity,
+          studentAddress: formValues.studentAddress,
           schoolName: formValues.schoolName,
           schoolBoard: formValues.schoolBoard,
           schoolPincode: formValues.schoolPincode,
@@ -429,9 +445,7 @@ export function CscOlympiadFormClient({
         throw new Error(result.error || result.message || "Submission failed.");
       }
 
-      // Clean local storage draft upon success
       localStorage.removeItem("csc_olympiad_apply_draft");
-
       success("Olympiad registration submitted successfully!");
       router.push(result.invoiceId ? `/invoice/${result.invoiceId}` : "/customer/dashboard");
       router.refresh();
@@ -460,7 +474,7 @@ export function CscOlympiadFormClient({
               name: formValues.studentName,
               mobile: formValues.parentMobile,
               email: formValues.parentEmail,
-              city: formValues.schoolCity,
+              city: formValues.studentCity,
             },
             details: {
               selectedSubjects: formValues.selectedSubjects.join(","),
@@ -473,7 +487,6 @@ export function CscOlympiadFormClient({
         throw new Error(zeroResult.error || "Wallet order creation failed.");
       }
 
-      // Mock a payment verified package
       const mockPayment: VerifiedRazorpayPayment = {
         razorpay_payment_id: "wallet_only",
         razorpay_order_id: "wallet_only",
@@ -490,54 +503,55 @@ export function CscOlympiadFormClient({
   };
 
   return (
-    <Card className="rounded-2xl p-5 md:p-8 bg-white border border-slate-100 shadow-xl overflow-hidden relative">
+    <Card className="rounded-3xl p-5 md:p-8 bg-slate-900/60 border border-white/10 backdrop-blur-md shadow-2xl overflow-hidden relative text-left">
       {isSubmitting && (
-        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
-          <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
-          <p className="text-sm font-bold text-slate-800">{progressText}</p>
+        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4 text-center">
+          <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin" />
+          <p className="text-sm font-bold text-slate-200">{progressText}</p>
         </div>
       )}
 
       {/* Resume Draft alert */}
       {showResumeAlert && (
-        <div className="mb-6 p-4 rounded-xl border border-blue-100 bg-blue-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-blue-900 font-bold">
-            <AlertTriangle className="h-4.5 w-4.5 text-blue-600" />
+        <div className="mb-6 p-4 rounded-xl border border-blue-900/30 bg-blue-950/40 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-300 font-bold">
+            <AlertTriangle className="h-4.5 w-4.5 text-cyan-400" />
             <span>We found a saved draft of your application. Would you like to resume?</span>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button size={"sm" as unknown as "default"} onClick={loadDraft} className="h-8 rounded-lg cursor-pointer">
+            <Button onClick={loadDraft} className="h-8 rounded-lg cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold select-none">
               Resume Draft
             </Button>
-            <Button size={"sm" as unknown as "default"} variant="outline" onClick={discardDraft} className="h-8 rounded-lg text-slate-500 cursor-pointer">
+            <Button variant="outline" onClick={discardDraft} className="h-8 rounded-lg text-slate-400 hover:text-slate-200 cursor-pointer select-none border-white/10 hover:bg-white/5">
               Discard
             </Button>
           </div>
         </div>
       )}
 
-      {/* Step Indicator */}
-      <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-4 overflow-x-auto no-scrollbar">
+      {/* Wizard Step Progress Tracker */}
+      <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-4 overflow-x-auto no-scrollbar">
         {steps.map((step) => {
           const isCompleted = currentStep > step.num;
           const isActive = currentStep === step.num;
+          const StepIcon = step.icon;
           
           return (
-            <div key={step.num} className="flex items-center gap-1.5 grow last:grow-0 shrink-0">
+            <div key={step.num} className="flex items-center gap-1.5 grow last:grow-0 shrink-0 select-none">
               <div className="flex items-center gap-1.5">
                 <span className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 border",
+                  "flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all duration-300 border",
                   isCompleted 
-                    ? "bg-blue-600 border-blue-600 text-white"
+                    ? "bg-cyan-500 border-cyan-500 text-slate-950 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
                     : isActive
-                      ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10 scale-105"
-                      : "bg-slate-50 border-slate-200 text-slate-400"
+                      ? "bg-slate-100 border-slate-100 text-slate-950 shadow-md scale-105"
+                      : "bg-white/5 border-white/10 text-slate-500"
                 )}>
-                  {isCompleted ? <Check className="h-4 w-4 stroke-[3]" /> : step.num}
+                  {isCompleted ? <Check className="h-4 w-4 stroke-[3]" /> : <StepIcon className="h-4 w-4" />}
                 </span>
                 <span className={cn(
-                  "text-xs font-black hidden sm:inline",
-                  isActive ? "text-slate-900" : isCompleted ? "text-blue-600" : "text-slate-400"
+                  "text-xs font-black hidden lg:inline",
+                  isActive ? "text-white" : isCompleted ? "text-cyan-400" : "text-slate-500"
                 )}>
                   {step.label}
                 </span>
@@ -545,7 +559,7 @@ export function CscOlympiadFormClient({
               {step.num < 6 && (
                 <div className={cn(
                   "h-[2px] grow min-w-4 max-w-16 mx-1.5 transition-all duration-500",
-                  isCompleted ? "bg-blue-500" : "bg-slate-100"
+                  isCompleted ? "bg-cyan-500" : "bg-white/5"
                 )} />
               )}
             </div>
@@ -554,7 +568,7 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Form Steps */}
-      <div className="min-h-80">
+      <div className="min-h-80 text-xs text-slate-300 font-semibold">
         <AnimatePresence mode="wait">
           
           {/* STEP 1: Student details */}
@@ -566,36 +580,38 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-slate-100 pb-2 mb-4">
-                <h3 className="text-base font-extrabold text-slate-900">Student Profile</h3>
-                <p className="text-xs text-slate-500">Provide basic identification details of the participating student.</p>
+              <div className="border-b border-white/5 pb-2 mb-4">
+                <h3 className="text-sm font-black text-white">Student Identification Profile</h3>
+                <p className="text-slate-500 mt-0.5">Provide basic identification parameters of the student.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Student Full Name *</label>
+                  <label className="text-xs font-bold text-slate-400">Student Full Name *</label>
                   <Input 
                     value={formValues.studentName} 
                     onChange={e => setFormValues({...formValues, studentName: e.target.value})} 
-                    placeholder="Enter student name" 
+                    placeholder="Enter student name as in school files" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Date of Birth (DOB) *</label>
+                  <label className="text-xs font-bold text-slate-400">Date of Birth (DOB) *</label>
                   <Input 
                     type="date"
                     value={formValues.studentDob} 
                     onChange={e => setFormValues({...formValues, studentDob: e.target.value})} 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Gender *</label>
+                  <label className="text-xs font-bold text-slate-400">Gender *</label>
                   <select 
                     value={formValues.studentGender} 
                     onChange={e => setFormValues({...formValues, studentGender: e.target.value})} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold focus:border-blue-500 outline-none bg-white"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300"
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -605,7 +621,17 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Student Class *</label>
+                  <label className="text-xs font-bold text-slate-400">Father Full Name *</label>
+                  <Input 
+                    value={formValues.fatherName} 
+                    onChange={e => setFormValues({...formValues, fatherName: e.target.value})} 
+                    placeholder="Enter father's name" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400">Student Class / Grade *</label>
                   <select 
                     value={formValues.studentClass} 
                     onChange={e => {
@@ -617,39 +643,18 @@ export function CscOlympiadFormClient({
                       });
                       setRazorpayPayment(null);
                     }} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold focus:border-blue-500 outline-none bg-white"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300"
                   >
                     {[3,4,5,6,7,8,9,10,11,12].map(c => (
                       <option key={c} value={c}>Class {c}</option>
                     ))}
                   </select>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Parent Mobile Number *</label>
-                  <Input 
-                    type="tel"
-                    maxLength={10}
-                    value={formValues.parentMobile} 
-                    onChange={e => setFormValues({...formValues, parentMobile: e.target.value.replace(/\D/g, "")})} 
-                    placeholder="10 digit contact number" 
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Parent Email Address *</label>
-                  <Input 
-                    type="email"
-                    value={formValues.parentEmail} 
-                    onChange={e => setFormValues({...formValues, parentEmail: e.target.value.trim()})} 
-                    placeholder="Enter email address" 
-                  />
-                </div>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 2: School details */}
+          {/* STEP 2: Parent/Contact details */}
           {currentStep === 2 && (
             <motion.div
               key="step-2"
@@ -658,27 +663,99 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-slate-100 pb-2 mb-4">
-                <h3 className="text-base font-extrabold text-slate-900">School Profile</h3>
-                <p className="text-xs text-slate-500">Input details of the school where the student is currently enrolled.</p>
+              <div className="border-b border-white/5 pb-2 mb-4">
+                <h3 className="text-sm font-black text-white">Parent / Communication Details</h3>
+                <p className="text-slate-500 mt-0.5">Enter contact coordinates to receive proctor keys and dates notifications.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">School Name *</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400">Parent Mobile Number *</label>
                   <Input 
-                    value={formValues.schoolName} 
-                    onChange={e => setFormValues({...formValues, schoolName: e.target.value})} 
-                    placeholder="Enter school name" 
+                    type="tel"
+                    maxLength={10}
+                    value={formValues.parentMobile} 
+                    onChange={e => setFormValues({...formValues, parentMobile: e.target.value.replace(/\D/g, "")})} 
+                    placeholder="10 digit contact number" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">School Board *</label>
+                  <label className="text-xs font-bold text-slate-400">Parent Email Address *</label>
+                  <Input 
+                    type="email"
+                    value={formValues.parentEmail} 
+                    onChange={e => setFormValues({...formValues, parentEmail: e.target.value.trim()})} 
+                    placeholder="name@domain.com" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400">Candidate State *</label>
+                  <Input 
+                    value={formValues.studentState} 
+                    onChange={e => setFormValues({...formValues, studentState: e.target.value})} 
+                    placeholder="State" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400">Candidate City / District *</label>
+                  <Input 
+                    value={formValues.studentCity} 
+                    onChange={e => setFormValues({...formValues, studentCity: e.target.value})} 
+                    placeholder="City / District" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400">Student Street Address *</label>
+                  <Input 
+                    value={formValues.studentAddress} 
+                    onChange={e => setFormValues({...formValues, studentAddress: e.target.value})} 
+                    placeholder="Street Address, House No, Locality" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: School details */}
+          {currentStep === 3 && (
+            <motion.div
+              key="step-3"
+              initial={{ opacity: 0, x: 15 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -15 }}
+              className="space-y-4"
+            >
+              <div className="border-b border-white/5 pb-2 mb-4">
+                <h3 className="text-sm font-black text-white">School Profile</h3>
+                <p className="text-slate-500 mt-0.5">Input details of the school where student is currently studying.</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400">School Name *</label>
+                  <Input 
+                    value={formValues.schoolName} 
+                    onChange={e => setFormValues({...formValues, schoolName: e.target.value})} 
+                    placeholder="Enter school name" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400">School Board *</label>
                   <select 
                     value={formValues.schoolBoard} 
                     onChange={e => setFormValues({...formValues, schoolBoard: e.target.value})} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm font-semibold focus:border-blue-500 outline-none bg-white"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300"
                   >
                     <option value="CBSE">CBSE</option>
                     <option value="ICSE">ICSE</option>
@@ -689,123 +766,53 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="space-y-1.5 relative">
-                  <label className="text-xs font-bold text-slate-700">School Pincode *</label>
+                  <label className="text-xs font-bold text-slate-400">School Pincode *</label>
                   <Input 
                     maxLength={6}
                     value={formValues.schoolPincode} 
                     onChange={e => setFormValues({...formValues, schoolPincode: e.target.value.replace(/\D/g, "")})} 
                     placeholder="6 digit area pincode" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                   {pincodeStatus && (
-                    <span className="absolute bottom-[-16px] left-0 text-[10px] font-bold text-blue-600">{pincodeStatus}</span>
+                    <span className="absolute bottom-[-16px] left-0 text-[10px] font-bold text-cyan-400">{pincodeStatus}</span>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">City / District *</label>
+                  <label className="text-xs font-bold text-slate-400">School City / District *</label>
                   <Input 
                     value={formValues.schoolCity} 
                     onChange={e => setFormValues({...formValues, schoolCity: e.target.value})} 
                     placeholder="City" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">State *</label>
+                  <label className="text-xs font-bold text-slate-400">School State *</label>
                   <Input 
                     value={formValues.schoolState} 
                     onChange={e => setFormValues({...formValues, schoolState: e.target.value})} 
                     placeholder="State" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">Street Address *</label>
+                  <label className="text-xs font-bold text-slate-400">School Address *</label>
                   <Input 
                     value={formValues.schoolAddress} 
                     onChange={e => setFormValues({...formValues, schoolAddress: e.target.value})} 
                     placeholder="School complete address" 
+                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
                   />
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 3: Subject selection */}
-          {currentStep === 3 && (
-            <motion.div
-              key="step-3"
-              initial={{ opacity: 0, x: 15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-              className="space-y-4"
-            >
-              <div className="border-b border-slate-100 pb-2 mb-4 flex justify-between items-end">
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900">Subject Selection</h3>
-                  <p className="text-xs text-slate-500">Register subjects available for Class {formValues.studentClass}.</p>
-                </div>
-                <span className="text-xs font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-full shrink-0">
-                  ₹{pricePerSubject}/Subject
-                </span>
-              </div>
-
-              {classFilteredSubjects.length === 0 ? (
-                <p className="text-xs font-bold text-slate-400 py-6 text-center">No subjects mapped for Class {formValues.studentClass}. Contact support.</p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {classFilteredSubjects.map((sub) => {
-                    const isSelected = formValues.selectedSubjects.includes(sub.id);
-                    return (
-                      <div
-                        key={sub.id}
-                        onClick={() => toggleSubject(sub.id)}
-                        className={cn(
-                          "flex items-center justify-between p-4 rounded-xl border transition-all duration-300 cursor-pointer select-none",
-                          isSelected
-                            ? "border-blue-500 bg-blue-50/20"
-                            : "border-slate-100 hover:border-slate-200 bg-slate-50/20"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded-lg text-sm shrink-0",
-                            isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                          )}>
-                            {/* Generic subject numbering or indicator */}
-                            <BookOpen className="h-4.5 w-4.5" />
-                          </div>
-                          <span className="text-xs font-extrabold text-slate-900">{sub.name}</span>
-                        </div>
-                        
-                        <div className={cn(
-                          "h-5 w-5 rounded-full border flex items-center justify-center transition-all duration-200",
-                          isSelected ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 text-transparent"
-                        )}>
-                          <Check className="h-3 w-3 stroke-[3]" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {totalSubjectsCount > 0 && (
-                <div className="mt-6 p-4.5 bg-slate-50 rounded-xl border border-slate-100 text-xs font-bold text-slate-700 flex flex-col gap-2">
-                  <div className="flex justify-between">
-                    <span>Subjects Selected ({totalSubjectsCount}):</span>
-                    <span>{formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-slate-200/50 pt-2 mt-1">
-                    <span>Total Facilitation Fee:</span>
-                    <span className="text-slate-900">₹{subtotalBeforeDiscounts}</span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* STEP 4: Documents Upload */}
+          {/* STEP 4: Subjects & Medium selection */}
           {currentStep === 4 && (
             <motion.div
               key="step-4"
@@ -814,17 +821,108 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-slate-100 pb-2 mb-4">
-                <h3 className="text-base font-extrabold text-slate-900">Documents Verification</h3>
-                <p className="text-xs text-slate-500">Upload clean verification files. Maximum size: 5MB. Formats: PDF, JPG, PNG.</p>
+              <div className="border-b border-white/5 pb-2 mb-4 flex justify-between items-end">
+                <div>
+                  <h3 className="text-sm font-black text-white">Subject & Language Choice</h3>
+                  <p className="text-slate-500 mt-0.5">Register subjects available for Class {formValues.studentClass}.</p>
+                </div>
+                <span className="text-xs font-black bg-cyan-950 border border-cyan-800/30 text-cyan-400 px-3 py-1 rounded-full shrink-0">
+                  ₹{pricePerSubject}/Subject
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5 max-w-xs">
+                  <label className="text-xs font-bold text-slate-400">Choose Language Medium *</label>
+                  <select 
+                    value={formValues.studentMedium} 
+                    onChange={e => setFormValues({...formValues, studentMedium: e.target.value})} 
+                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300 font-bold"
+                  >
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Bengali">Bengali</option>
+                    <option value="Gujarati">Gujarati</option>
+                    <option value="Kannada">Kannada</option>
+                    <option value="Marathi">Marathi</option>
+                    <option value="Odia">Odia</option>
+                    <option value="Tamil">Tamil</option>
+                    <option value="Telugu">Telugu</option>
+                    <option value="Punjabi">Punjabi</option>
+                    <option value="Malayalam">Malayalam</option>
+                    <option value="Assamese">Assamese</option>
+                  </select>
+                </div>
+
+                {classFilteredSubjects.length === 0 ? (
+                  <p className="text-xs font-bold text-slate-500 py-6 text-center">No subjects mapped for Class {formValues.studentClass}.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {classFilteredSubjects.map((sub) => {
+                      const isSelected = formValues.selectedSubjects.includes(sub.id);
+                      return (
+                        <div
+                          key={sub.id}
+                          onClick={() => toggleSubject(sub.id)}
+                          className={cn(
+                            "flex items-center justify-between p-4 rounded-xl border transition-all duration-300 cursor-pointer select-none",
+                            isSelected
+                              ? "border-cyan-500/50 bg-cyan-950/20"
+                              : "border-white/5 bg-white/[0.01] hover:bg-white/[0.02]"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-extrabold text-white">{sub.name}</span>
+                          </div>
+                          
+                          <div className={cn(
+                            "h-5 w-5 rounded-full border flex items-center justify-center transition-all duration-200",
+                            isSelected ? "bg-cyan-500 border-cyan-500 text-slate-950" : "border-slate-800 text-transparent"
+                          )}>
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {totalSubjectsCount > 0 && (
+                <div className="mt-6 p-4 bg-slate-950/80 rounded-xl border border-white/5 text-xs font-bold text-slate-400 flex flex-col gap-2">
+                  <div className="flex justify-between">
+                    <span>Subjects Selected ({totalSubjectsCount}):</span>
+                    <span className="text-slate-200">{formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/5 pt-2 mt-1">
+                    <span>Total Facilitation Fee:</span>
+                    <span className="text-white">₹{subtotalBeforeDiscounts}</span>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* STEP 5: Documents Upload */}
+          {currentStep === 5 && (
+            <motion.div
+              key="step-5"
+              initial={{ opacity: 0, x: 15 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -15 }}
+              className="space-y-4"
+            >
+              <div className="border-b border-white/5 pb-2 mb-4">
+                <h3 className="text-sm font-black text-white">Documents Upload verification</h3>
+                <p className="text-slate-500 mt-0.5">Attach validation files. Size limit: 5MB per file. Formats: PDF, JPG, PNG.</p>
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 
                 {/* passport photo upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-800 block">Passport Size Photo *</label>
-                  <div className="border border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 text-center hover:bg-slate-50 transition relative overflow-hidden flex flex-col items-center">
+                  <label className="text-xs font-bold text-slate-400 block">Passport Size Photo *</label>
+                  <div className="border border-dashed border-slate-850 rounded-2xl p-6 bg-slate-950/40 text-center hover:bg-slate-950/60 transition relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
                     <input 
                       type="file" 
                       accept="image/jpeg,image/png,application/pdf"
@@ -836,33 +934,32 @@ export function CscOlympiadFormClient({
                     {passportPhoto ? (
                       <div className="w-full flex flex-col items-center">
                         <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                        <span className="text-xs font-bold text-slate-800 block truncate max-w-full px-4">{passportPhoto.name}</span>
-                        <span className="text-[10px] text-slate-400 font-semibold mt-1">{(passportPhoto.size / 1024 / 1024).toFixed(2)} MB</span>
+                        <span className="text-xs font-bold text-slate-200 block truncate max-w-full px-4">{passportPhoto.name}</span>
+                        <span className="text-[10px] text-slate-500 font-semibold mt-1">{(passportPhoto.size / 1024 / 1024).toFixed(2)} MB</span>
                         
                         <Button 
                           type="button" 
                           variant="ghost" 
-                          size={"sm" as unknown as "default"} 
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFileChange("photo", null);
                           }}
-                          className="mt-3 text-red-500 hover:text-red-600 cursor-pointer h-7"
+                          className="mt-3 text-red-400 hover:text-red-500 cursor-pointer h-7 hover:bg-red-950/20"
                         >
-                          <Trash2 className="h-4 w-4" /> Remove
+                          <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <UploadCloud className="h-8 w-8 text-slate-400 mb-3" />
-                        <span className="text-xs font-extrabold text-blue-600 block">Choose Passport Photo</span>
-                        <span className="text-[10px] text-slate-400 font-semibold mt-1">JPG or PNG format</span>
+                        <UploadCloud className="h-8 w-8 text-slate-600 mb-3 animate-pulse" />
+                        <span className="text-xs font-extrabold text-cyan-400 block">Choose Passport Photo</span>
+                        <span className="text-[10px] text-slate-500 font-semibold mt-1">JPG or PNG format</span>
                       </>
                     )}
 
                     {uploadProgress.photo !== undefined && uploadProgress.photo < 100 && (
-                      <div className="absolute bottom-0 left-0 w-full bg-slate-200 h-1">
-                        <div className="bg-blue-600 h-1 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
+                      <div className="absolute bottom-0 left-0 w-full bg-slate-850 h-1">
+                        <div className="bg-cyan-500 h-1 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
                       </div>
                     )}
                   </div>
@@ -870,8 +967,8 @@ export function CscOlympiadFormClient({
 
                 {/* enrollment proof upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-800 block">School ID / Study Proof *</label>
-                  <div className="border border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 text-center hover:bg-slate-50 transition relative overflow-hidden flex flex-col items-center">
+                  <label className="text-xs font-bold text-slate-400 block">School ID / Study Proof *</label>
+                  <div className="border border-dashed border-slate-850 rounded-2xl p-6 bg-slate-950/40 text-center hover:bg-slate-950/60 transition relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
                     <input 
                       type="file" 
                       accept="image/jpeg,image/png,application/pdf"
@@ -883,33 +980,32 @@ export function CscOlympiadFormClient({
                     {studyProof ? (
                       <div className="w-full flex flex-col items-center">
                         <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                        <span className="text-xs font-bold text-slate-800 block truncate max-w-full px-4">{studyProof.name}</span>
-                        <span className="text-[10px] text-slate-400 font-semibold mt-1">{(studyProof.size / 1024 / 1024).toFixed(2)} MB</span>
+                        <span className="text-xs font-bold text-slate-200 block truncate max-w-full px-4">{studyProof.name}</span>
+                        <span className="text-[10px] text-slate-500 font-semibold mt-1">{(studyProof.size / 1024 / 1024).toFixed(2)} MB</span>
                         
                         <Button 
                           type="button" 
                           variant="ghost" 
-                          size={"sm" as unknown as "default"} 
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFileChange("proof", null);
                           }}
-                          className="mt-3 text-red-500 hover:text-red-600 cursor-pointer h-7"
+                          className="mt-3 text-red-400 hover:text-red-500 cursor-pointer h-7 hover:bg-red-950/20"
                         >
-                          <Trash2 className="h-4 w-4" /> Remove
+                          <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <UploadCloud className="h-8 w-8 text-slate-400 mb-3" />
-                        <span className="text-xs font-extrabold text-blue-600 block">Choose School ID / Proof</span>
-                        <span className="text-[10px] text-slate-400 font-semibold mt-1">PDF, JPG or PNG format</span>
+                        <UploadCloud className="h-8 w-8 text-slate-600 mb-3 animate-pulse" />
+                        <span className="text-xs font-extrabold text-cyan-400 block">Choose School ID / Proof</span>
+                        <span className="text-[10px] text-slate-500 font-semibold mt-1">PDF, JPG or PNG format</span>
                       </>
                     )}
 
                     {uploadProgress.proof !== undefined && uploadProgress.proof < 100 && (
-                      <div className="absolute bottom-0 left-0 w-full bg-slate-200 h-1">
-                        <div className="bg-blue-600 h-1 transition-all duration-100" style={{ width: `${uploadProgress.proof}%` }} />
+                      <div className="absolute bottom-0 left-0 w-full bg-slate-850 h-1">
+                        <div className="bg-cyan-500 h-1 transition-all duration-100" style={{ width: `${uploadProgress.proof}%` }} />
                       </div>
                     )}
                   </div>
@@ -928,44 +1024,51 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-slate-100 pb-2 mb-4">
-                <h3 className="text-base font-extrabold text-slate-900">Application Review</h3>
-                <p className="text-xs text-slate-500">Double check the student and board parameters prior to checkout.</p>
+              <div className="border-b border-white/5 pb-2 mb-4">
+                <h3 className="text-sm font-black text-white">Application Review summary</h3>
+                <p className="text-slate-500 mt-0.5">Please check all parameters carefully before making checkout payment.</p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 text-xs font-bold text-slate-700 bg-slate-50/70 p-5 rounded-2xl border border-slate-100/50">
+              <div className="grid gap-4 md:grid-cols-2 text-xs font-bold text-slate-400 bg-slate-950/60 p-5 rounded-2xl border border-white/5">
                 <div className="space-y-2">
-                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider">Student details</h4>
-                  <p><span className="text-slate-400 font-semibold">Name:</span> {formValues.studentName}</p>
-                  <p><span className="text-slate-400 font-semibold">DOB:</span> {formValues.studentDob}</p>
-                  <p><span className="text-slate-400 font-semibold">Gender:</span> {formValues.studentGender}</p>
-                  <p><span className="text-slate-400 font-semibold">Class:</span> Class {formValues.studentClass}</p>
-                  <p><span className="text-slate-400 font-semibold">Mobile:</span> {formValues.parentMobile}</p>
-                  <p><span className="text-slate-400 font-semibold">Email:</span> {formValues.parentEmail}</p>
+                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-cyan-400" /> Student info
+                  </h4>
+                  <p><span className="text-slate-500 font-semibold">Name:</span> {formValues.studentName}</p>
+                  <p><span className="text-slate-500 font-semibold">DOB:</span> {formValues.studentDob}</p>
+                  <p><span className="text-slate-500 font-semibold">Gender:</span> {formValues.studentGender}</p>
+                  <p><span className="text-slate-500 font-semibold">Father Name:</span> {formValues.fatherName}</p>
+                  <p><span className="text-slate-500 font-semibold">Class:</span> Class {formValues.studentClass}</p>
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider">School details</h4>
-                  <p><span className="text-slate-400 font-semibold">School Name:</span> {formValues.schoolName}</p>
-                  <p><span className="text-slate-400 font-semibold">Board:</span> {formValues.schoolBoard}</p>
-                  <p><span className="text-slate-400 font-semibold">Address:</span> {formValues.schoolAddress}</p>
-                  <p><span className="text-slate-400 font-semibold">Pincode:</span> {formValues.schoolPincode}</p>
-                  <p><span className="text-slate-400 font-semibold">City:</span> {formValues.schoolCity}</p>
-                  <p><span className="text-slate-400 font-semibold">State:</span> {formValues.schoolState}</p>
+                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <Building className="h-3.5 w-3.5 text-cyan-400" /> School details
+                  </h4>
+                  <p><span className="text-slate-500 font-semibold">School Name:</span> {formValues.schoolName}</p>
+                  <p><span className="text-slate-500 font-semibold">Board:</span> {formValues.schoolBoard}</p>
+                  <p><span className="text-slate-500 font-semibold">Address:</span> {formValues.schoolAddress}</p>
+                  <p><span className="text-slate-500 font-semibold">Pincode:</span> {formValues.schoolPincode}</p>
+                  <p><span className="text-slate-500 font-semibold">City / State:</span> {formValues.schoolCity}, {formValues.schoolState}</p>
                 </div>
 
                 <div className="md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider">Registered subjects</h4>
-                  <p className="text-slate-800 text-sm font-black">
+                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <BookOpen className="h-3.5 w-3.5 text-cyan-400" /> Subjects & Language Choice
+                  </h4>
+                  <p className="text-slate-200 text-xs font-black">
                     {formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}
                   </p>
+                  <p><span className="text-slate-500 font-semibold">Medium Choice:</span> {formValues.studentMedium}</p>
                 </div>
 
                 <div className="md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider">Uploaded documents</h4>
-                  <div className="flex gap-4">
-                    <p className="flex items-center gap-1.5"><span className="text-slate-400 font-semibold">Photo:</span> {passportPhoto?.name}</p>
-                    <p className="flex items-center gap-1.5"><span className="text-slate-400 font-semibold">ID Proof:</span> {studyProof?.name}</p>
+                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-cyan-400" /> Uploaded documents
+                  </h4>
+                  <div className="flex flex-wrap gap-4 text-[10px]">
+                    <p><span className="text-slate-500 font-semibold">Photo:</span> {passportPhoto?.name}</p>
+                    <p><span className="text-slate-500 font-semibold">ID Proof:</span> {studyProof?.name}</p>
                   </div>
                 </div>
               </div>
@@ -981,60 +1084,60 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-slate-100 pb-2 mb-4">
-                <h3 className="text-base font-extrabold text-slate-900">Application Checkout</h3>
-                <p className="text-xs text-slate-500">Apply coupon codes and redeem wallet balance to complete payment verification.</p>
+              <div className="border-b border-white/5 pb-2 mb-4">
+                <h3 className="text-sm font-black text-white">Registration Checkout</h3>
+                <p className="text-slate-500 mt-0.5">Apply coupon codes and redeem wallet cashback to complete payment verification.</p>
               </div>
 
               {/* Price Breakdown */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3.5 text-xs font-bold text-slate-700">
+              <div className="rounded-2xl border border-white/5 bg-slate-950/50 p-5 space-y-3.5 text-xs font-bold text-slate-400">
                 <div className="flex justify-between">
                   <span>Standard Registration Fee ({totalSubjectsCount} subject{totalSubjectsCount > 1 ? "s" : ""}):</span>
-                  <span className="line-through text-slate-400">₹{basePrice}</span>
+                  <span className="line-through text-slate-650">₹{basePrice}</span>
                 </div>
                 
-                <div className="flex justify-between text-blue-600 bg-blue-50/50 p-2 rounded-xl border border-blue-100/30">
-                  <span>DigiConnect Dukan Special Offer:</span>
+                <div className="flex justify-between text-blue-400 bg-blue-950/20 p-2 rounded-xl border border-blue-900/20">
+                  <span>Facilitator Offer Discount:</span>
                   <span>-₹{basePrice - subtotalBeforeDiscounts}</span>
                 </div>
 
                 {appliedCouponDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-600 bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/30">
+                  <div className="flex justify-between text-emerald-400 bg-emerald-950/20 p-2 rounded-xl border border-emerald-900/20">
                     <span>Coupon Discount Applied ({appliedCouponCode}):</span>
                     <span>-₹{appliedCouponDiscount}</span>
                   </div>
                 )}
 
                 {walletUseAmount > 0 && (
-                  <div className="flex justify-between text-indigo-600 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/30">
+                  <div className="flex justify-between text-cyan-400 bg-cyan-950/20 p-2 rounded-xl border border-cyan-900/20">
                     <span>Wallet Cashback Redeemed (50% cap):</span>
                     <span>-₹{walletUseAmount}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between border-t border-slate-200 pt-3 text-sm font-black text-slate-950">
+                <div className="flex justify-between border-t border-white/5 pt-3 text-sm font-black text-white">
                   <span>Net Payable Amount:</span>
-                  <span className="text-blue-600">₹{realPayableAmount}</span>
+                  <span className="text-cyan-400">₹{realPayableAmount}</span>
                 </div>
               </div>
 
               {/* Coupon code inputs */}
               {appliedCouponCode ? (
-                <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-100 bg-emerald-50/30 text-xs font-extrabold text-emerald-800">
+                <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-900/25 bg-emerald-950/20 text-xs font-extrabold text-emerald-400">
                   <span>Coupon {appliedCouponCode} applied! Saved ₹{appliedCouponDiscount}</span>
-                  <button type="button" onClick={removeCoupon} className="text-red-500 hover:text-red-600 cursor-pointer">
+                  <button type="button" onClick={removeCoupon} className="text-red-400 hover:text-red-500 cursor-pointer">
                     Remove
                   </button>
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Have a Discount Coupon?</label>
+                  <label className="text-xs font-bold text-slate-400">Have a Discount Coupon?</label>
                   <div className="flex gap-2">
                     <Input 
                       value={couponCode} 
                       onChange={e => setCouponCode(e.target.value.trim().toUpperCase())} 
                       placeholder="ENTER COUPON CODE" 
-                      className="uppercase"
+                      className="uppercase bg-slate-950 border-slate-800 text-white rounded-lg text-xs"
                       disabled={couponApplying}
                     />
                     <Button 
@@ -1042,23 +1145,23 @@ export function CscOlympiadFormClient({
                       variant="outline" 
                       onClick={applyCoupon} 
                       disabled={couponApplying || !couponCode.trim()}
-                      className="cursor-pointer"
+                      className="cursor-pointer border-white/10 hover:bg-white/5 text-slate-300 text-xs"
                     >
                       Apply
                     </Button>
                   </div>
                   {couponError && (
-                    <span className="text-[10px] font-bold text-red-500">{couponError}</span>
+                    <span className="text-[10px] font-bold text-red-400">{couponError}</span>
                   )}
                 </div>
               )}
 
               {/* Wallet adjustment */}
               {wallet.balance > 0 && (
-                <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 flex items-center justify-between text-xs">
+                <div className="p-4 rounded-xl border border-white/5 bg-slate-950/30 flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-extrabold text-slate-800 block">Redeem DigiWallet Balance</span>
-                    <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                    <span className="font-extrabold text-slate-200 block">Redeem DigiWallet Balance</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">
                       Available: ₹{wallet.balance.toFixed(2)} | Usable limit: ₹{maxUsableWalletRedeem}
                     </span>
                   </div>
@@ -1072,7 +1175,7 @@ export function CscOlympiadFormClient({
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
                   </label>
                 </div>
               )}
@@ -1113,7 +1216,7 @@ export function CscOlympiadFormClient({
                         name: formValues.studentName,
                         email: formValues.parentEmail,
                         mobile: formValues.parentMobile,
-                        city: formValues.schoolCity,
+                        city: formValues.studentCity,
                       },
                       details: {
                         selectedSubjects: formValues.selectedSubjects.join(","),
@@ -1133,13 +1236,13 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Control Buttons */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-50 pt-4">
+      <div className="mt-8 flex justify-between items-center border-t border-white/5 pt-4">
         {currentStep > 1 && (
           <Button 
             type="button" 
             variant="outline" 
             onClick={handlePrevStep}
-            className="flex items-center gap-2 rounded-xl cursor-pointer"
+            className="flex items-center gap-2 rounded-xl cursor-pointer border-white/10 hover:bg-white/5 text-slate-300"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Previous</span>
@@ -1152,7 +1255,7 @@ export function CscOlympiadFormClient({
           <Button 
             type="button" 
             onClick={handleNextStep}
-            className="flex items-center gap-2 rounded-xl cursor-pointer"
+            className="flex items-center gap-2 rounded-xl cursor-pointer bg-blue-600 hover:bg-blue-500 text-white"
           >
             <span>Next Step</span>
             <ArrowRight className="h-4 w-4" />
@@ -1161,10 +1264,10 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Safety Notice */}
-      <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/40 p-4 text-[10px] leading-relaxed text-slate-400 flex items-start gap-3">
-        <Lock className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+      <div className="mt-6 rounded-2xl border border-white/5 bg-slate-950/40 p-4 text-[10px] leading-relaxed text-slate-500 flex items-start gap-3">
+        <Lock className="h-4 w-4 text-slate-600 shrink-0 mt-0.5" />
         <span>
-          Payment checkouts are proctored by Razorpay with 256-bit encryption. All uploads are locked inside Supabase secure buckets. DigiConnect Dukan coordinators audit applications to prevent incorrect school board codes or duplicate entry rejections.
+          Payment checkouts are secure by Razorpay with 256-bit encryption. All uploads are locked inside secure Supabase buckets. DigiConnect Dukan coordinators audit applications to prevent incorrect school board codes or duplicate entry rejections.
         </span>
       </div>
     </Card>
