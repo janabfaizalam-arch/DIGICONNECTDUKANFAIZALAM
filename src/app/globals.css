@@ -1267,3 +1267,152 @@ textarea {
   }
 }
 
+/* ===== CSC Olympiad 3.0 — Premium Module Styles ===== */
+
+@keyframes olympiad-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(1.5deg); }
+}
+
+@keyframes olympiad-float-reverse {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-1deg); }
+}
+
+@keyframes olympiad-glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.15), 0 8px 32px rgba(37, 99, 235, 0.1); }
+  50% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.25), 0 12px 48px rgba(37, 99, 235, 0.15); }
+}
+
+@keyframes olympiad-aurora {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes olympiad-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes olympiad-counter {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes olympiad-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.olympiad-float {
+  animation: olympiad-float 6s ease-in-out infinite;
+}
+
+.olympiad-float-reverse {
+  animation: olympiad-float-reverse 5s ease-in-out infinite;
+}
+
+.olympiad-float-delay {
+  animation-delay: 1.5s;
+}
+
+.olympiad-glow-cta {
+  animation: olympiad-glow-pulse 3s ease-in-out infinite;
+}
+
+.olympiad-aurora-bg {
+  background: linear-gradient(135deg, #eff6ff, #f0f9ff, #eef2ff, #faf5ff, #eff6ff);
+  background-size: 400% 400%;
+  animation: olympiad-aurora 15s ease infinite;
+}
+
+.olympiad-orbit-ring {
+  animation: olympiad-orbit 20s linear infinite;
+}
+
+.olympiad-counter-animate {
+  animation: olympiad-counter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.olympiad-gold-surface {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 30%, #ffffff 60%, #fffbeb 100%);
+  border: 1px solid rgba(217, 119, 6, 0.15);
+}
+
+.olympiad-hero-mesh {
+  position: relative;
+  background: linear-gradient(180deg, #f0f9ff 0%, #fcfcfd 40%, #ffffff 100%);
+}
+
+.olympiad-hero-mesh::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -15%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.olympiad-hero-mesh::after {
+  content: "";
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.olympiad-glass-badge {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 4px 16px rgba(15, 23, 42, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.olympiad-timeline-node {
+  position: relative;
+}
+
+.olympiad-timeline-node::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -1.5rem;
+  width: 0.75rem;
+  height: 2px;
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.olympiad-shimmer-badge {
+  background: linear-gradient(90deg,
+    rgba(37, 99, 235, 0.05) 25%,
+    rgba(37, 99, 235, 0.12) 50%,
+    rgba(37, 99, 235, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: olympiad-shimmer 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .olympiad-float,
+  .olympiad-float-reverse,
+  .olympiad-glow-cta,
+  .olympiad-aurora-bg,
+  .olympiad-orbit-ring,
+  .olympiad-shimmer-badge {
+    animation: none;
+  }
+}
