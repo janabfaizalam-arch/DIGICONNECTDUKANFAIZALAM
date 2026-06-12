@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { ComponentProps } from "react";
 import { 
-  ArrowRight, Award, BadgeCheck, Beaker, BookOpen, Brain, 
-  BriefcaseBusiness, Calculator, Check, CheckCircle2, 
-  Cpu, FileCheck2, FileText, Globe, GraduationCap, Laptop, 
-  Lightbulb, LineChart, MessageCircle, Phone, HelpCircle, 
-  ShieldCheck, Sparkles, Star, Target, TestTube, Trophy, 
-  TrendingUp, Users, Zap
+  ArrowRight, Award, BookOpen, Brain, 
+  FileCheck2, Laptop, 
+  Lightbulb, LineChart, MessageCircle, Phone, 
+  ShieldCheck, Sparkles, Star, Target, Trophy, 
+  TrendingUp
 } from "lucide-react";
 
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
@@ -89,7 +88,7 @@ const whyChooseCards = [
   { title: "Future Ready", desc: "Prepares children for future competitive entrances like JEE, NEET, and NTSE.", icon: Sparkles, color: "text-purple-500 bg-purple-50" },
 ];
 
-function MedalIcon(props: any) {
+function MedalIcon(props: ComponentProps<typeof Award>) {
   return <Award {...props} />;
 }
 
@@ -149,6 +148,32 @@ const fallbackSubjects = [
   { id: "psychology", name: "Psychology", icon: "Brain", classes: [11,12] }
 ];
 
+interface Subject {
+  id: string;
+  name: string;
+  icon: string;
+  classes: number[];
+}
+
+interface CscOlympiadConfig {
+  session?: string;
+  lastDate?: string;
+  registrationFee?: {
+    offerPrice?: number;
+    price?: number;
+    oldPrice?: number;
+  };
+  hero?: {
+    title?: string;
+    subtitle?: string;
+  };
+  notifications?: string[];
+  gallery?: { url: string; title: string }[];
+  faqs?: { question: string; answer: string }[];
+  testimonials?: { name: string; role: string; text: string }[];
+  subjects?: Subject[];
+}
+
 export default async function CscOlympiadPage() {
   const user = await getCurrentUser();
   const applyCtaLabel = user ? "Register Now" : "Login to Register";
@@ -157,10 +182,10 @@ export default async function CscOlympiadPage() {
   const dbService = await getPublicServiceBySlug("csc-olympiad");
   const fallbackService = getServiceBySlug("csc-olympiad");
 
-  let dbConfig: any = {};
+  let dbConfig: CscOlympiadConfig = {};
   if (dbService?.blogContent) {
     try {
-      dbConfig = JSON.parse(dbService.blogContent);
+      dbConfig = JSON.parse(dbService.blogContent) as CscOlympiadConfig;
     } catch {
       // not json
     }
@@ -181,7 +206,13 @@ export default async function CscOlympiadPage() {
       { url: "/images/services/pm-vishwakarma/toolkit-incentive.png", title: "Olympiad Study Group" }
     ],
     faqs: dbConfig.faqs ?? dbService?.faqs ?? fallbackService?.faqs ?? [],
-    testimonials: dbConfig.testimonials ?? dbService?.reviews ?? fallbackService?.reviews ?? [],
+    testimonials: (dbConfig.testimonials ?? dbService?.reviews ?? fallbackService?.reviews ?? []).map(
+      (t: { name: string; role?: string; location?: string; text: string }) => ({
+        name: t.name,
+        role: t.role ?? t.location ?? "",
+        text: t.text,
+      })
+    ),
     subjects: dbConfig.subjects ?? fallbackSubjects,
   };
 
@@ -189,7 +220,7 @@ export default async function CscOlympiadPage() {
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: finalConfig.faqs.map((faq: any) => ({
+    mainEntity: finalConfig.faqs.map((faq: { question: string; answer: string }) => ({
       "@type": "Question",
       name: faq.question,
       acceptedAnswer: {
@@ -351,7 +382,7 @@ export default async function CscOlympiadPage() {
                 <div className="max-w-2xl">
                   <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">Educational Benchmarking</p>
                   <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">Why Choose CSC Olympiad</h2>
-                  <p className="mt-3 text-sm text-slate-600">Six primary benefits that position this exam as India''s most valued school-level assessment.</p>
+                  <p className="mt-3 text-sm text-slate-600">Six primary benefits that position this exam as India&apos;s most valued school-level assessment.</p>
                 </div>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -391,7 +422,7 @@ export default async function CscOlympiadPage() {
                     Examination Roadmap
                   </span>
                   <h2 className="mt-3 text-2xl font-black text-white">How the Exam Process Works</h2>
-                  <p className="mt-2 text-xs text-slate-400">From form registration to digital certificate download, navigate each step of your child''s olympiad journey.</p>
+                  <p className="mt-2 text-xs text-slate-400">From form registration to digital certificate download, navigate each step of your child&apos;s olympiad journey.</p>
                 </div>
 
                 {/* Horizontal flow line for large screens, grid for mobile */}
@@ -415,7 +446,7 @@ export default async function CscOlympiadPage() {
                 <div className="max-w-2xl">
                   <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">Cognitive Advantages</p>
                   <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">Key Benefits of Participation</h2>
-                  <p className="mt-3 text-sm text-slate-600">Olympiad testing aids a student''s overall development, sharpening school metrics and exam preparedness.</p>
+                  <p className="mt-3 text-sm text-slate-600">Olympiad testing aids a student&apos;s overall development, sharpening school metrics and exam preparedness.</p>
                 </div>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">

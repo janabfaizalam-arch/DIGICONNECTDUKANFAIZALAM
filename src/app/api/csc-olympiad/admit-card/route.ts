@@ -264,8 +264,8 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error("Admit Card generation failure:", err);
-    return NextResponse.json({ success: false, error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }

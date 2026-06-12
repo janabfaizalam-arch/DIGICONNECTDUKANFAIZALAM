@@ -522,11 +522,25 @@ export function serviceFromDb(service: DbService): ServiceItem {
   }
 
   if (item.slug === "csc-olympiad") {
-    let dbConfig: any = {};
+    interface CscOlympiadConfig {
+      registrationFee?: {
+        offerPrice?: number;
+        price?: number;
+        oldPrice?: number;
+      };
+      hero?: {
+        title?: string;
+        subtitle?: string;
+      };
+      faqs?: { question: string; answer: string }[];
+      testimonials?: { name: string; role: string; text: string }[];
+    }
+
+    let dbConfig: CscOlympiadConfig = {};
     if (service.blog_content) {
       try {
-        dbConfig = JSON.parse(service.blog_content);
-      } catch (e) {
+        dbConfig = JSON.parse(service.blog_content) as CscOlympiadConfig;
+      } catch {
         // Not JSON
       }
     }
@@ -544,8 +558,8 @@ export function serviceFromDb(service: DbService): ServiceItem {
       seoTitle: "CSC Olympiad Registration 2026 | DigiConnect Dukan",
       seoDescription: "Register for CSC Olympiad online through DigiConnect Dukan. Official registration assistance for Classes 3–12 with multiple subjects, secure application process and dedicated support.",
       seoKeywords: ["CSC Olympiad", "Olympiad Registration", "Common Service Centres", "Online Olympiad", "DigiConnect Dukan"],
-      faqs: dbConfig.faqs ? dbConfig.faqs.map((f: any) => ({ question: f.question, answer: f.answer })) : item.faqs,
-      reviews: dbConfig.testimonials ? dbConfig.testimonials.map((t: any) => ({ name: t.name, location: t.role, text: t.text })) : item.reviews,
+      faqs: dbConfig.faqs ? dbConfig.faqs.map((f: { question: string; answer: string }) => ({ question: f.question, answer: f.answer })) : item.faqs,
+      reviews: dbConfig.testimonials ? dbConfig.testimonials.map((t: { name: string; role: string; text: string }) => ({ name: t.name, location: t.role, text: t.text })) : item.reviews,
     };
   }
 

@@ -1,34 +1,54 @@
 "use client";
-
+ 
 import { useState, useTransition, type FormEvent } from "react";
-import { Plus, Save, Trash2, X, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Save, Trash2, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
+ 
 type Subject = {
   id: string;
   name: string;
   icon: string;
   classes: number[];
 };
-
+ 
 type Testimonial = {
   name: string;
   role: string;
   text: string;
 };
-
+ 
 type FAQ = {
   question: string;
   answer: string;
 };
 
+type CscOlympiadConfig = {
+  session?: string;
+  lastDate?: string;
+  registrationFee?: {
+    price?: number;
+    discount?: number;
+    offerPrice?: number;
+    offerText?: string;
+  };
+  hero?: {
+    title?: string;
+    subtitle?: string;
+    image?: string;
+  };
+  notifications?: string[];
+  subjects?: Subject[];
+  faqs?: FAQ[];
+  testimonials?: Testimonial[];
+};
+ 
 type CmsFormProps = {
   serviceId: string;
   categoryId: string;
-  currentConfig: any;
+  currentConfig: CscOlympiadConfig;
 };
 
 const defaultSubjects: Subject[] = [
@@ -94,8 +114,8 @@ export function CscOlympiadCmsForm({
 
   // Subject Handlers
   const addSubject = () => setSubjects([...subjects, { id: "", name: "", icon: "BookOpen", classes: [3,4,5,6,7,8,9,10,11,12] }]);
-  const updateSubject = (index: number, field: keyof Subject, val: any) => {
-    setSubjects(subjects.map((sub, i) => i === index ? { ...sub, [field]: val } : sub));
+  const updateSubject = (index: number, field: keyof Subject, val: Subject[keyof Subject]) => {
+    setSubjects(subjects.map((sub, i) => i === index ? { ...sub, [field]: val } : sub) as Subject[]);
   };
   const toggleSubjectClass = (index: number, cls: number) => {
     setSubjects(subjects.map((sub, i) => {
@@ -166,8 +186,8 @@ export function CscOlympiadCmsForm({
 
         success("CSC Olympiad settings updated successfully.");
         window.location.href = "/admin/services";
-      } catch (err: any) {
-        toastError(err.message || "Could not save configuration.");
+      } catch (err) {
+        toastError(err instanceof Error ? err.message : "Could not save configuration.");
       }
     });
   };
@@ -221,7 +241,7 @@ export function CscOlympiadCmsForm({
       <div className="rounded-xl border border-slate-100 p-4 space-y-4">
         <div className="flex items-center justify-between border-b pb-2">
           <h3 className="font-bold text-slate-900">Marquee Notices</h3>
-          <Button type="button" variant="outline" onClick={addNotice} size={"sm" as any} className="cursor-pointer">
+          <Button type="button" variant="outline" onClick={addNotice} size={"sm" as unknown as "default"} className="cursor-pointer">
             <Plus className="h-4 w-4" /> Add Notice
           </Button>
         </div>
@@ -241,7 +261,7 @@ export function CscOlympiadCmsForm({
       <div className="rounded-xl border border-slate-100 p-4 space-y-4">
         <div className="flex items-center justify-between border-b pb-2">
           <h3 className="font-bold text-slate-900">Olympiad Subjects Mapping</h3>
-          <Button type="button" variant="outline" onClick={addSubject} size={"sm" as any} className="cursor-pointer">
+          <Button type="button" variant="outline" onClick={addSubject} size={"sm" as unknown as "default"} className="cursor-pointer">
             <Plus className="h-4 w-4" /> Add Subject
           </Button>
         </div>
@@ -313,7 +333,7 @@ export function CscOlympiadCmsForm({
       <div className="rounded-xl border border-slate-100 p-4 space-y-4">
         <div className="flex items-center justify-between border-b pb-2">
           <h3 className="font-bold text-slate-900">FAQ Accordion (Min 20 FAQs)</h3>
-          <Button type="button" variant="outline" onClick={addFaq} size={"sm" as any} className="cursor-pointer">
+          <Button type="button" variant="outline" onClick={addFaq} size={"sm" as unknown as "default"} className="cursor-pointer">
             <Plus className="h-4 w-4" /> Add FAQ
           </Button>
         </div>
@@ -343,7 +363,7 @@ export function CscOlympiadCmsForm({
       <div className="rounded-xl border border-slate-100 p-4 space-y-4">
         <div className="flex items-center justify-between border-b pb-2">
           <h3 className="font-bold text-slate-900">Testimonials Carousel</h3>
-          <Button type="button" variant="outline" onClick={addTestimonial} size={"sm" as any} className="cursor-pointer">
+          <Button type="button" variant="outline" onClick={addTestimonial} size={"sm" as unknown as "default"} className="cursor-pointer">
             <Plus className="h-4 w-4" /> Add Testimonial
           </Button>
         </div>

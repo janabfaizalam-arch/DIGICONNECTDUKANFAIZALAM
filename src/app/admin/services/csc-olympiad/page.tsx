@@ -33,10 +33,10 @@ export default async function CscOlympiadAdminPage() {
     notFound();
   }
 
-  let dbConfig: any = {};
+  let dbConfig: Record<string, unknown> = {};
   if (dbServiceRow.blog_content) {
     try {
-      dbConfig = JSON.parse(dbServiceRow.blog_content);
+      dbConfig = JSON.parse(dbServiceRow.blog_content) as Record<string, unknown>;
     } catch {
       // not JSON
     }

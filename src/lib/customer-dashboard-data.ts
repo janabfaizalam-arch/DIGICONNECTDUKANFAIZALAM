@@ -20,7 +20,7 @@ export type CustomerDashboardApplication = {
   amount: number;
   total_amount: number | null;
   customer_details: Record<string, unknown> | null;
-  form_data?: Record<string, any> | null;
+  form_data?: Record<string, unknown> | null;
 };
 
 export type CustomerReferralStats = {
@@ -188,7 +188,7 @@ async function getCustomerApplications(userId: string) {
     amount: numberValue(application.amount),
     total_amount: application.total_amount === null ? null : numberValue(application.total_amount),
     customer_details: (application.customer_details as Record<string, unknown> | null) ?? null,
-    form_data: (application.form_data as Record<string, any> | null) ?? null,
+    form_data: (application.form_data as Record<string, unknown> | null) ?? null,
   }));
 }
 

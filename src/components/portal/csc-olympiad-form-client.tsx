@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, FormEvent } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { 
   User, School, BookOpen, FileText, CheckCircle, CreditCard, 
-  ArrowLeft, ArrowRight, UploadCloud, Trash2, Shield, Lock, Check,
+  ArrowLeft, ArrowRight, UploadCloud, Trash2, Lock, Check,
   AlertTriangle, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,11 +14,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
-import { calculateCashbackForFreshPayment } from "@/lib/reward-rules";
 import { createClient } from "@/lib/supabase/browser";
 import { getRealPayableAmount } from "@/lib/wallet";
-import { trackApplicationSubmit } from "@/lib/google-analytics";
-import { trackSubmitApplication } from "@/lib/meta-pixel";
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +27,6 @@ type Subject = {
 };
 
 type FormClientProps = {
-  user: any;
   initialProfileFields: {
     mobile: string;
     pincode: string;
@@ -78,7 +74,6 @@ const defaultFormState = (initialMobile: string, initialSubjects: string[]): For
 });
 
 export function CscOlympiadFormClient({
-  user,
   initialProfileFields,
   pricePerSubject,
   oldPricePerSubject,
@@ -174,7 +169,7 @@ export function CscOlympiadFormClient({
           selectedSubjects: parsed.selectedSubjects?.length ? parsed.selectedSubjects : prev.selectedSubjects
         }));
         success("Draft application restored successfully.");
-      } catch (e) {
+      } catch {
         toastError("Could not load draft.");
       }
     }
@@ -367,7 +362,6 @@ export function CscOlympiadFormClient({
       }
 
       // 1. Upload files to Supabase Storage Bucket 'documents'
-      const uploadedDocs: any[] = [];
       const filesToUpload = [
         { file: passportPhoto, type: "Passport Photo" },
         { file: studyProof, type: "School ID / Study Proof" }
@@ -441,8 +435,8 @@ export function CscOlympiadFormClient({
       success("Olympiad registration submitted successfully!");
       router.push(result.invoiceId ? `/invoice/${result.invoiceId}` : "/customer/dashboard");
       router.refresh();
-    } catch (err: any) {
-      toastError(err.message || "An error occurred during submission.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "An error occurred during submission.");
       setIsSubmitting(false);
     }
   };
@@ -489,8 +483,8 @@ export function CscOlympiadFormClient({
       };
 
       await handleSubmitApplication(mockPayment);
-    } catch (err: any) {
-      toastError(err.message || "Zero payment checkout failed.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Zero payment checkout failed.");
       setIsSubmitting(false);
     }
   };
@@ -512,10 +506,10 @@ export function CscOlympiadFormClient({
             <span>We found a saved draft of your application. Would you like to resume?</span>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button size={"sm" as any} onClick={loadDraft} className="h-8 rounded-lg cursor-pointer">
+            <Button size={"sm" as unknown as "default"} onClick={loadDraft} className="h-8 rounded-lg cursor-pointer">
               Resume Draft
             </Button>
-            <Button size={"sm" as any} variant="outline" onClick={discardDraft} className="h-8 rounded-lg text-slate-500 cursor-pointer">
+            <Button size={"sm" as unknown as "default"} variant="outline" onClick={discardDraft} className="h-8 rounded-lg text-slate-500 cursor-pointer">
               Discard
             </Button>
           </div>
@@ -525,7 +519,6 @@ export function CscOlympiadFormClient({
       {/* Step Indicator */}
       <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-4 overflow-x-auto no-scrollbar">
         {steps.map((step) => {
-          const StepIcon = step.icon;
           const isCompleted = currentStep > step.num;
           const isActive = currentStep === step.num;
           
@@ -849,7 +842,7 @@ export function CscOlympiadFormClient({
                         <Button 
                           type="button" 
                           variant="ghost" 
-                          size={"sm" as any} 
+                          size={"sm" as unknown as "default"} 
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFileChange("photo", null);
@@ -896,7 +889,7 @@ export function CscOlympiadFormClient({
                         <Button 
                           type="button" 
                           variant="ghost" 
-                          size={"sm" as any} 
+                          size={"sm" as unknown as "default"} 
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFileChange("proof", null);

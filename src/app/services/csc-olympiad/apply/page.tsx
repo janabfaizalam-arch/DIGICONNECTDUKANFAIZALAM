@@ -14,6 +14,22 @@ type PageProps = {
   searchParams?: Promise<{ subjects?: string }>;
 };
 
+interface Subject {
+  id: string;
+  name: string;
+  icon: string;
+  classes: number[];
+}
+
+interface CscOlympiadConfig {
+  registrationFee?: {
+    offerPrice?: number;
+    price?: number;
+  };
+  session?: string;
+  subjects?: Subject[];
+}
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -58,10 +74,10 @@ export default async function CscOlympiadApplyPage({ searchParams }: PageProps) 
 
   const initialSubjects = query?.subjects ? query.subjects.split(",").filter(Boolean) : [];
 
-  let dbConfig: any = {};
+  let dbConfig: CscOlympiadConfig = {};
   if (service.blogContent) {
     try {
-      dbConfig = JSON.parse(service.blogContent);
+      dbConfig = JSON.parse(service.blogContent) as CscOlympiadConfig;
     } catch {
       // not json
     }
@@ -125,7 +141,6 @@ export default async function CscOlympiadApplyPage({ searchParams }: PageProps) 
 
           {/* Dynamic multi-step wizard component */}
           <CscOlympiadFormClient
-            user={user}
             initialProfileFields={{
               mobile: userProfile?.mobile ?? "",
               pincode: userProfile?.pincode ?? "",

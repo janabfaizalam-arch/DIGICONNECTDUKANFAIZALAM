@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Calculator, Beaker, BookOpen, Laptop, Globe, Lightbulb, 
@@ -12,7 +12,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // Icon mapping helper
-const subjectIcons: Record<string, any> = {
+const subjectIcons: Record<string, ComponentType<{ className?: string }>> = {
   Calculator, Beaker, BookOpen, Laptop, Globe, Lightbulb, 
   ShieldAlert, Atom, FlaskConical, Activity, Hourglass, 
   Compass, LineChart, Briefcase, BarChart3, Brain
@@ -278,7 +278,7 @@ export function CscOlympiadInteractive({
                 </div>
                 
                 <p className="text-lg md:text-xl font-medium leading-relaxed text-slate-700 italic relative z-10">
-                  "{testimonials[currentTestimonial].text}"
+                  &quot;{testimonials[currentTestimonial].text}&quot;
                 </p>
                 
                 <div className="mt-8 flex items-center gap-4 relative z-10">

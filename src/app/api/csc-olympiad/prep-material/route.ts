@@ -100,12 +100,11 @@ export async function GET(request: NextRequest) {
       doc.moveTo(40, 220).lineTo(555, 220).lineWidth(1).stroke("#e2e8f0");
 
       // Generate syllabus based on class range
-      let syllabusTopics: { subject: string; topics: string[] }[] = [];
+      const syllabusTopics: { subject: string; topics: string[] }[] = [];
       
       const isElementary = studentClass >= 3 && studentClass <= 5;
       const isMiddle = studentClass >= 6 && studentClass <= 8;
       const isSecondary = studentClass >= 9 && studentClass <= 10;
-      const isHigherSecondary = studentClass >= 11 && studentClass <= 12;
 
       subjects.forEach((subj) => {
         const name = subj.toLowerCase();
@@ -226,8 +225,8 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error("Prep Material generation failure:", err);
-    return NextResponse.json({ success: false, error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
   }
 }

@@ -1526,8 +1526,9 @@ export function CustomerDashboard({
                       const timeline = getTimelineSteps(app);
                       const expert = getAssignedExpert(app.id);
                       const isOlympiad = app.service_slug === "csc-olympiad";
-                      const studentName = isOlympiad ? (app.form_data?.studentName || app.customer_details?.name || "Student") : "";
-                      const studentClass = isOlympiad ? (app.form_data?.studentClass || "") : "";
+                      const formData = app.form_data as Record<string, string | number | undefined> | null;
+                      const studentName = isOlympiad ? String(formData?.studentName || app.customer_details?.name || "Student") : "";
+                      const studentClass = isOlympiad ? String(formData?.studentClass || "") : "";
                       
                       return (
                         <div key={app.id} className={`rounded-2xl border p-4 shadow-sm flex flex-col justify-between h-[230px] hover:shadow-md transition ${
@@ -1715,15 +1716,16 @@ export function CustomerDashboard({
                     const whatsAppUrl = `https://api.whatsapp.com/send?phone=${supportDetails.phone}&text=${encodeURIComponent(`Hi, I need assistance with my application: ${app.service_name} (ID: ${app.id}). Status: ${app.status}`)}`;
 
                     if (app.service_slug === "csc-olympiad") {
-                      const subjects = app.form_data?.selectedSubjects 
-                        ? String(app.form_data.selectedSubjects).split(",").map((s) => s.trim()).filter(Boolean)
+                      const formData = app.form_data as Record<string, string | number | undefined> | null;
+                      const subjects = formData?.selectedSubjects 
+                        ? String(formData.selectedSubjects).split(",").map((s) => s.trim()).filter(Boolean)
                         : [];
                       
-                      const studentName = app.form_data?.studentName || app.customer_details?.name || "Student";
-                      const studentClass = app.form_data?.studentClass || "N/A";
-                      const schoolName = app.form_data?.schoolName || "N/A";
-                      const schoolBoard = app.form_data?.schoolBoard || "N/A";
-                      const examSession = app.form_data?.session || "Academic Session 2026-2027";
+                      const studentName = (formData?.studentName || app.customer_details?.name || "Student") as string;
+                      const studentClass = String(formData?.studentClass || "N/A");
+                      const schoolName = (formData?.schoolName || "N/A") as string;
+                      const schoolBoard = (formData?.schoolBoard || "N/A") as string;
+                      const examSession = (formData?.session || "Academic Session 2026-2027") as string;
                       
                       const isApproved = ["approved", "completed", "delivered"].includes(app.status);
                       const isCompleted = ["completed", "delivered"].includes(app.status);
