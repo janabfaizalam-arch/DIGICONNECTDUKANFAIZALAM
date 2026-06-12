@@ -1525,19 +1525,35 @@ export function CustomerDashboard({
                     {activeApplications.slice(0, 3).map((app) => {
                       const timeline = getTimelineSteps(app);
                       const expert = getAssignedExpert(app.id);
+                      const isOlympiad = app.service_slug === "csc-olympiad";
+                      const studentName = isOlympiad ? (app.form_data?.studentName || app.customer_details?.name || "Student") : "";
+                      const studentClass = isOlympiad ? (app.form_data?.studentClass || "") : "";
                       
                       return (
-                        <div key={app.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex flex-col justify-between h-[230px] hover:border-slate-200/80 hover:shadow-md transition">
+                        <div key={app.id} className={`rounded-2xl border p-4 shadow-sm flex flex-col justify-between h-[230px] hover:shadow-md transition ${
+                          isOlympiad 
+                            ? "border-amber-100 bg-gradient-to-tr from-white via-amber-50/10 to-blue-50/5 hover:border-amber-300/40" 
+                            : "border-slate-100 bg-white hover:border-slate-200/80"
+                        }`}>
                           <div className="space-y-2.5">
                             <div className="flex justify-between items-start gap-2">
                               <span className="text-[9px] font-mono text-slate-400 truncate">ID: {app.id.slice(0, 10)}...</span>
                               <div className="flex gap-1">
+                                {isOlympiad && (
+                                  <span className="bg-amber-500 text-white font-black text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                                    Olympiad
+                                  </span>
+                                )}
                                 <StatusBadge status={app.status} />
                               </div>
                             </div>
                             <div>
                               <h4 className="text-xs font-extrabold text-slate-800 line-clamp-1">{app.service_name}</h4>
-                              <p className="text-[9px] text-slate-400 mt-0.5">Created: {new Date(app.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+                              <p className="text-[9px] text-slate-400 mt-0.5">
+                                {isOlympiad 
+                                  ? `Candidate: ${studentName} (Class ${studentClass})` 
+                                  : `Created: ${new Date(app.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
+                              </p>
                             </div>
                           </div>
 
@@ -1693,10 +1709,149 @@ export function CustomerDashboard({
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {applications.map((app) => {
+                   {applications.map((app) => {
                     const timeline = getTimelineSteps(app);
                     const supportDetails = getSupportDetails(app.service_name);
                     const whatsAppUrl = `https://api.whatsapp.com/send?phone=${supportDetails.phone}&text=${encodeURIComponent(`Hi, I need assistance with my application: ${app.service_name} (ID: ${app.id}). Status: ${app.status}`)}`;
+
+                    if (app.service_slug === "csc-olympiad") {
+                      const subjects = app.form_data?.selectedSubjects 
+                        ? String(app.form_data.selectedSubjects).split(",").map((s) => s.trim()).filter(Boolean)
+                        : [];
+                      
+                      const studentName = app.form_data?.studentName || app.customer_details?.name || "Student";
+                      const studentClass = app.form_data?.studentClass || "N/A";
+                      const schoolName = app.form_data?.schoolName || "N/A";
+                      const schoolBoard = app.form_data?.schoolBoard || "N/A";
+                      const examSession = app.form_data?.session || "Academic Session 2026-2027";
+                      
+                      const isApproved = ["approved", "completed", "delivered"].includes(app.status);
+                      const isCompleted = ["completed", "delivered"].includes(app.status);
+                      
+                      return (
+                        <div key={app.id} className="glass-liquid-premium rounded-2xl p-6 border border-white/60 shadow-xl bg-white/80 space-y-4 hover:border-blue-300/40 transition-all duration-350 relative overflow-hidden">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <span className="inline-flex rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 px-3 py-0.5 text-[9px] font-black uppercase text-white tracking-wider shadow-sm">
+                                CSC Olympiad {examSession}
+                              </span>
+                              <h3 className="text-base font-black text-slate-900 mt-2 tracking-tight">
+                                {app.service_name}
+                              </h3>
+                              <p className="text-[10px] font-mono text-slate-400 mt-1">Application ID: {app.id}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Submitted: {new Date(app.created_at).toLocaleDateString("en-IN", { dateStyle: "long", timeStyle: "short" })}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <StatusBadge status={app.status} />
+                              <PaymentBadge status={app.payment_status ?? "pending"} />
+                            </div>
+                          </div>
+
+                          {/* Candidate & Exam Details Grid */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 px-4 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                            <div className="space-y-1">
+                              <p className="text-[9px] font-bold uppercase text-slate-400">Candidate Name</p>
+                              <p className="font-extrabold text-slate-800">{studentName}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[9px] font-bold uppercase text-slate-400">Class & Board</p>
+                              <p className="font-extrabold text-slate-800">Class {studentClass} ({schoolBoard})</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[9px] font-bold uppercase text-slate-400">School Name</p>
+                              <p className="font-extrabold text-slate-800 truncate" title={schoolName}>{schoolName}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[9px] font-bold uppercase text-slate-400">Exam Window</p>
+                              <p className="font-extrabold text-indigo-600">Dec 2026 (Online)</p>
+                            </div>
+                          </div>
+
+                          {/* Selected Subjects Pill Box */}
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-bold uppercase text-slate-400 px-1">Registered Subjects ({subjects.length})</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {subjects.map((sub, sIdx) => (
+                                <span key={sIdx} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50/70 border border-blue-100/50 text-[11px] font-bold text-blue-700">
+                                  <Compass className="h-3 w-3 text-blue-500" />
+                                  {sub}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Actions Section */}
+                          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100 text-xs">
+                            <span className="font-extrabold text-slate-700">
+                              Amount Paid: {formatCurrency(app.total_amount ?? app.amount)}
+                            </span>
+                            
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Prep Material Download (Always visible once submitted) */}
+                              <a
+                                href={`/api/csc-olympiad/prep-material?id=${app.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold border border-indigo-100 transition duration-150"
+                              >
+                                <Compass className="h-3.5 w-3.5 text-indigo-500" /> Study Material
+                              </a>
+
+                              {/* Admit Card Download */}
+                              {isApproved ? (
+                                <a
+                                  href={`/api/csc-olympiad/admit-card?id=${app.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold transition shadow-sm duration-150"
+                                >
+                                  <Download className="h-3.5 w-3.5" /> Admit Card
+                                </a>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed text-[11px] font-bold"
+                                  title="Admit Card will be available after registration review/approval."
+                                >
+                                  <Lock className="h-3.5 w-3.5 text-slate-400" /> Admit Card (Awaiting)
+                                </button>
+                              )}
+
+                              {/* Certificate Download */}
+                              {isCompleted ? (
+                                <a
+                                  href={`/api/csc-olympiad/certificate?id=${app.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold transition shadow-sm duration-150"
+                                >
+                                  <Award className="h-3.5 w-3.5" /> Certificate
+                                </a>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed text-[11px] font-bold"
+                                  title="Certificate will be issued post final examination."
+                                >
+                                  <Lock className="h-3.5 w-3.5 text-slate-400" /> Certificate (Awaiting)
+                                </button>
+                              )}
+
+                              <a
+                                href={whatsAppUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold border border-emerald-100"
+                              >
+                                <MessageCircle className="h-4 w-4" /> Support
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div key={app.id} className="p-5 rounded-2xl border border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm transition-all space-y-4">

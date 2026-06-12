@@ -410,6 +410,11 @@ export async function POST(request: Request) {
               }
             }
           }
+          if (service.slug === "csc-olympiad") {
+            const selectedSubjectsStr = body.details?.selectedSubjects || "";
+            const numSubjects = selectedSubjectsStr.split(",").filter(Boolean).length || 1;
+            itemAmount = itemAmount * numSubjects;
+          }
           return total + itemAmount;
         }, 0);
     const couponCode = String(body.couponCode ?? "").trim();

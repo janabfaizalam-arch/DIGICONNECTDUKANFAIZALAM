@@ -233,7 +233,8 @@ export const allowedPublicServiceSlugs = new Set([
   "dsc",
   "msme-registration",
   "iso-certification",
-  "insurance"
+  "insurance",
+  "csc-olympiad"
 ]);
 
 function categorySlugFromService(service: DbService) {
@@ -517,6 +518,34 @@ export function serviceFromDb(service: DbService): ServiceItem {
       seoTitle: "e-Shram Card Registration Assistance | DigiConnect Dukan",
       seoDescription: "Get e-Shram registration assistance for eligibility check, document guidance, UAN generation, card download, and update support.",
       seoKeywords: ["e-Shram card registration", "e-Shram UAN card", "unorganised workers", "e-Shram download", "DigiConnect Dukan"],
+    };
+  }
+
+  if (item.slug === "csc-olympiad") {
+    let dbConfig: any = {};
+    if (service.blog_content) {
+      try {
+        dbConfig = JSON.parse(service.blog_content);
+      } catch (e) {
+        // Not JSON
+      }
+    }
+    const saleAmount = Number(dbConfig.registrationFee?.offerPrice ?? dbConfig.registrationFee?.price ?? 100);
+    const baseAmount = Number(dbConfig.registrationFee?.oldPrice ?? dbConfig.registrationFee?.price ?? 150);
+    return {
+      ...item,
+      title: dbConfig.hero?.title ?? "CSC Olympiad Registration 2026",
+      shortDescription: dbConfig.hero?.subtitle ?? "Empowering students from Class 3 to 12 through competitive learning and digital excellence.",
+      amount: saleAmount,
+      oldPrice: baseAmount ? `₹${baseAmount}` : undefined,
+      offerPrice: `₹${saleAmount}`,
+      priceLabel: `₹${saleAmount}`,
+      ctaType: "apply",
+      seoTitle: "CSC Olympiad Registration 2026 | DigiConnect Dukan",
+      seoDescription: "Register for CSC Olympiad online through DigiConnect Dukan. Official registration assistance for Classes 3–12 with multiple subjects, secure application process and dedicated support.",
+      seoKeywords: ["CSC Olympiad", "Olympiad Registration", "Common Service Centres", "Online Olympiad", "DigiConnect Dukan"],
+      faqs: dbConfig.faqs ? dbConfig.faqs.map((f: any) => ({ question: f.question, answer: f.answer })) : item.faqs,
+      reviews: dbConfig.testimonials ? dbConfig.testimonials.map((t: any) => ({ name: t.name, location: t.role, text: t.text })) : item.reviews,
     };
   }
 

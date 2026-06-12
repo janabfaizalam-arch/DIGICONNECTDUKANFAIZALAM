@@ -24,6 +24,10 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
   }
   if (!service) notFound();
 
+  if (service.slug === "csc-olympiad") {
+    redirect("/admin/services/csc-olympiad");
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <AdminPageHeader eyebrow="Services CMS" title="Edit Service" description="Update service content, pricing, SEO, CTA, reviews, and publish status." />

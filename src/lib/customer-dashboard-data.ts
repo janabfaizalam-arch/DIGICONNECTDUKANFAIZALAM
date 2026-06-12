@@ -13,12 +13,14 @@ const referralRewardTypes = [
 export type CustomerDashboardApplication = {
   id: string;
   service_name: string;
+  service_slug: string;
   status: ApplicationStatus;
   payment_status: PaymentStatus | null;
   created_at: string;
   amount: number;
   total_amount: number | null;
   customer_details: Record<string, unknown> | null;
+  form_data?: Record<string, any> | null;
 };
 
 export type CustomerReferralStats = {
@@ -167,7 +169,7 @@ async function getCustomerApplications(userId: string) {
 
   const { data, error } = await supabase
     .from("applications")
-    .select("id, service_name, status, payment_status, created_at, amount, total_amount, customer_details")
+    .select("id, service_name, service_slug, status, payment_status, created_at, amount, total_amount, customer_details, form_data")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -179,12 +181,14 @@ async function getCustomerApplications(userId: string) {
   return (data ?? []).map((application) => ({
     id: String(application.id),
     service_name: String(application.service_name ?? "Service"),
+    service_slug: String(application.service_slug ?? ""),
     status: application.status as ApplicationStatus,
     payment_status: (application.payment_status as PaymentStatus | null) ?? null,
     created_at: String(application.created_at),
     amount: numberValue(application.amount),
     total_amount: application.total_amount === null ? null : numberValue(application.total_amount),
     customer_details: (application.customer_details as Record<string, unknown> | null) ?? null,
+    form_data: (application.form_data as Record<string, any> | null) ?? null,
   }));
 }
 
