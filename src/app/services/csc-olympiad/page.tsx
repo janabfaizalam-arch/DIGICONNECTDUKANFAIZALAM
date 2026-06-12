@@ -277,26 +277,26 @@ export default async function CscOlympiadPage() {
 
   return (
     <>
-      <main className="bg-slate-950 text-slate-100 min-h-screen relative overflow-hidden">
+      <main className="bg-[#fcfcfd] text-slate-800 min-h-screen relative overflow-hidden">
         
         {/* Apple WWDC Clear Liquid Glass Background Mesh */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 pointer-events-none z-0" />
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[40%] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute top-[30%] right-[-10%] w-[50%] h-[40%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[40%] rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-blue-50/40 via-white to-[#fcfcfd] pointer-events-none z-0" />
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[40%] rounded-full bg-cyan-200/20 blur-[120px] pointer-events-none" />
+        <div className="absolute top-[30%] right-[-10%] w-[50%] h-[40%] rounded-full bg-blue-200/20 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[40%] rounded-full bg-indigo-200/10 blur-[120px] pointer-events-none" />
         
         {/* Dynamic notices header strip */}
         {finalConfig.notifications.length > 0 && (
-          <div className="bg-blue-950/80 backdrop-blur-md text-white text-[11px] font-bold py-2 px-4 overflow-hidden relative z-40 border-b border-blue-900/50">
+          <div className="bg-blue-50/90 backdrop-blur-md text-blue-900 text-[11px] font-bold py-2 px-4 overflow-hidden relative z-40 border-b border-blue-100">
             <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-                <span className="text-[9px] uppercase tracking-wider text-cyan-400">Notice</span>
+                <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-ping" />
+                <span className="text-[9px] uppercase tracking-wider text-blue-700">Notice</span>
               </div>
-              <div className="flex-1 truncate text-center text-slate-200 font-semibold px-4">
+              <div className="flex-1 truncate text-center text-blue-950 font-semibold px-4">
                 Last Date to apply for Session {finalConfig.session} is {finalConfig.lastDate}. Registration Fee is ₹{finalConfig.pricePerSubject} per subject.
               </div>
-              <div className="hidden md:flex gap-1.5 items-center text-slate-400 text-[10px]">
+              <div className="hidden md:flex gap-1.5 items-center text-slate-500 text-[10px]">
                 Powered by RNoS India
               </div>
             </div>

@@ -503,26 +503,26 @@ export function CscOlympiadFormClient({
   };
 
   return (
-    <Card className="rounded-3xl p-5 md:p-8 bg-slate-900/60 border border-white/10 backdrop-blur-md shadow-2xl overflow-hidden relative text-left">
+    <Card className="rounded-3xl p-5 md:p-8 bg-white/80 border border-slate-200/60 backdrop-blur-md shadow-xl overflow-hidden relative text-left">
       {isSubmitting && (
-        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4 text-center">
-          <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin" />
-          <p className="text-sm font-bold text-slate-200">{progressText}</p>
+        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4 text-center text-slate-850">
+          <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
+          <p className="text-sm font-bold text-slate-700">{progressText}</p>
         </div>
       )}
 
       {/* Resume Draft alert */}
       {showResumeAlert && (
-        <div className="mb-6 p-4 rounded-xl border border-blue-900/30 bg-blue-950/40 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-slate-300 font-bold">
-            <AlertTriangle className="h-4.5 w-4.5 text-cyan-400" />
+        <div className="mb-6 p-4 rounded-xl border border-blue-200 bg-blue-50/50 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-700 font-bold">
+            <AlertTriangle className="h-4.5 w-4.5 text-blue-600" />
             <span>We found a saved draft of your application. Would you like to resume?</span>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button onClick={loadDraft} className="h-8 rounded-lg cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold select-none">
+            <Button onClick={loadDraft} className="h-8 rounded-lg cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold select-none text-xs">
               Resume Draft
             </Button>
-            <Button variant="outline" onClick={discardDraft} className="h-8 rounded-lg text-slate-400 hover:text-slate-200 cursor-pointer select-none border-white/10 hover:bg-white/5">
+            <Button variant="outline" onClick={discardDraft} className="h-8 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer select-none border-slate-200 hover:bg-slate-50 text-xs">
               Discard
             </Button>
           </div>
@@ -530,7 +530,7 @@ export function CscOlympiadFormClient({
       )}
 
       {/* Wizard Step Progress Tracker */}
-      <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-4 overflow-x-auto no-scrollbar">
+      <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-4 overflow-x-auto no-scrollbar">
         {steps.map((step) => {
           const isCompleted = currentStep > step.num;
           const isActive = currentStep === step.num;
@@ -542,16 +542,16 @@ export function CscOlympiadFormClient({
                 <span className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all duration-300 border",
                   isCompleted 
-                    ? "bg-cyan-500 border-cyan-500 text-slate-950 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
+                    ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
                     : isActive
-                      ? "bg-slate-100 border-slate-100 text-slate-950 shadow-md scale-105"
-                      : "bg-white/5 border-white/10 text-slate-500"
+                      ? "bg-blue-600 border-blue-600 text-white shadow-md scale-105"
+                      : "bg-slate-50 border-slate-200 text-slate-400"
                 )}>
                   {isCompleted ? <Check className="h-4 w-4 stroke-[3]" /> : <StepIcon className="h-4 w-4" />}
                 </span>
                 <span className={cn(
                   "text-xs font-black hidden lg:inline",
-                  isActive ? "text-white" : isCompleted ? "text-cyan-400" : "text-slate-500"
+                  isActive ? "text-blue-600" : isCompleted ? "text-emerald-600" : "text-slate-400"
                 )}>
                   {step.label}
                 </span>
@@ -559,7 +559,7 @@ export function CscOlympiadFormClient({
               {step.num < 6 && (
                 <div className={cn(
                   "h-[2px] grow min-w-4 max-w-16 mx-1.5 transition-all duration-500",
-                  isCompleted ? "bg-cyan-500" : "bg-white/5"
+                  isCompleted ? "bg-emerald-500" : "bg-slate-100"
                 )} />
               )}
             </div>
@@ -568,7 +568,7 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Form Steps */}
-      <div className="min-h-80 text-xs text-slate-300 font-semibold">
+      <div className="min-h-80 text-xs text-slate-700 font-semibold">
         <AnimatePresence mode="wait">
           
           {/* STEP 1: Student details */}
@@ -580,38 +580,38 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4">
-                <h3 className="text-sm font-black text-white">Student Identification Profile</h3>
+              <div className="border-b border-slate-100 pb-2 mb-4">
+                <h3 className="text-sm font-black text-slate-900">Student Identification Profile</h3>
                 <p className="text-slate-500 mt-0.5">Provide basic identification parameters of the student.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Student Full Name *</label>
+                  <label className="text-xs font-bold text-slate-700">Student Full Name *</label>
                   <Input 
                     value={formValues.studentName} 
                     onChange={e => setFormValues({...formValues, studentName: e.target.value})} 
                     placeholder="Enter student name as in school files" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Date of Birth (DOB) *</label>
+                  <label className="text-xs font-bold text-slate-700">Date of Birth (DOB) *</label>
                   <Input 
                     type="date"
                     value={formValues.studentDob} 
                     onChange={e => setFormValues({...formValues, studentDob: e.target.value})} 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Gender *</label>
+                  <label className="text-xs font-bold text-slate-700">Gender *</label>
                   <select 
                     value={formValues.studentGender} 
                     onChange={e => setFormValues({...formValues, studentGender: e.target.value})} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:border-blue-500 outline-none bg-white text-slate-700"
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -621,17 +621,17 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Father Full Name *</label>
+                  <label className="text-xs font-bold text-slate-700">Father Full Name *</label>
                   <Input 
                     value={formValues.fatherName} 
                     onChange={e => setFormValues({...formValues, fatherName: e.target.value})} 
                     placeholder="Enter father's name" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Student Class / Grade *</label>
+                  <label className="text-xs font-bold text-slate-700">Student Class / Grade *</label>
                   <select 
                     value={formValues.studentClass} 
                     onChange={e => {
@@ -639,11 +639,11 @@ export function CscOlympiadFormClient({
                       setFormValues({
                         ...formValues, 
                         studentClass: newCls,
-                        selectedSubjects: [] // reset subjects selection when class changes to prevent validation errors
+                        selectedSubjects: [] // reset subjects selection when class changes
                       });
                       setRazorpayPayment(null);
                     }} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:border-blue-500 outline-none bg-white text-slate-700"
                   >
                     {[3,4,5,6,7,8,9,10,11,12].map(c => (
                       <option key={c} value={c}>Class {c}</option>
@@ -663,62 +663,62 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4">
-                <h3 className="text-sm font-black text-white">Parent / Communication Details</h3>
-                <p className="text-slate-500 mt-0.5">Enter contact coordinates to receive proctor keys and dates notifications.</p>
+              <div className="border-b border-slate-100 pb-2 mb-4">
+                <h3 className="text-sm font-black text-slate-900">Parent / Communication Details</h3>
+                <p className="text-slate-505 mt-0.5">Enter contact coordinates to receive proctor keys and dates notifications.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Parent Mobile Number *</label>
+                  <label className="text-xs font-bold text-slate-700">Parent Mobile Number *</label>
                   <Input 
                     type="tel"
                     maxLength={10}
                     value={formValues.parentMobile} 
                     onChange={e => setFormValues({...formValues, parentMobile: e.target.value.replace(/\D/g, "")})} 
                     placeholder="10 digit contact number" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Parent Email Address *</label>
+                  <label className="text-xs font-bold text-slate-700">Parent Email Address *</label>
                   <Input 
                     type="email"
                     value={formValues.parentEmail} 
                     onChange={e => setFormValues({...formValues, parentEmail: e.target.value.trim()})} 
                     placeholder="name@domain.com" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Candidate State *</label>
+                  <label className="text-xs font-bold text-slate-700">Candidate State *</label>
                   <Input 
                     value={formValues.studentState} 
                     onChange={e => setFormValues({...formValues, studentState: e.target.value})} 
                     placeholder="State" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Candidate City / District *</label>
+                  <label className="text-xs font-bold text-slate-700">Candidate City / District *</label>
                   <Input 
                     value={formValues.studentCity} 
                     onChange={e => setFormValues({...formValues, studentCity: e.target.value})} 
                     placeholder="City / District" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-400">Student Street Address *</label>
+                  <label className="text-xs font-bold text-slate-700">Student Street Address *</label>
                   <Input 
                     value={formValues.studentAddress} 
                     onChange={e => setFormValues({...formValues, studentAddress: e.target.value})} 
                     placeholder="Street Address, House No, Locality" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
               </div>
@@ -734,28 +734,28 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4">
-                <h3 className="text-sm font-black text-white">School Profile</h3>
-                <p className="text-slate-500 mt-0.5">Input details of the school where student is currently studying.</p>
+              <div className="border-b border-slate-100 pb-2 mb-4">
+                <h3 className="text-sm font-black text-slate-900">School Profile</h3>
+                <p className="text-slate-505 mt-0.5">Input details of the school where student is currently studying.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-400">School Name *</label>
+                  <label className="text-xs font-bold text-slate-700">School Name *</label>
                   <Input 
                     value={formValues.schoolName} 
                     onChange={e => setFormValues({...formValues, schoolName: e.target.value})} 
                     placeholder="Enter school name" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">School Board *</label>
+                  <label className="text-xs font-bold text-slate-700">School Board *</label>
                   <select 
                     value={formValues.schoolBoard} 
                     onChange={e => setFormValues({...formValues, schoolBoard: e.target.value})} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:border-blue-500 outline-none bg-white text-slate-700"
                   >
                     <option value="CBSE">CBSE</option>
                     <option value="ICSE">ICSE</option>
@@ -766,46 +766,46 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="space-y-1.5 relative">
-                  <label className="text-xs font-bold text-slate-400">School Pincode *</label>
+                  <label className="text-xs font-bold text-slate-700">School Pincode *</label>
                   <Input 
                     maxLength={6}
                     value={formValues.schoolPincode} 
                     onChange={e => setFormValues({...formValues, schoolPincode: e.target.value.replace(/\D/g, "")})} 
                     placeholder="6 digit area pincode" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                   {pincodeStatus && (
-                    <span className="absolute bottom-[-16px] left-0 text-[10px] font-bold text-cyan-400">{pincodeStatus}</span>
+                    <span className="absolute bottom-[-16px] left-0 text-[10px] font-bold text-blue-600">{pincodeStatus}</span>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">School City / District *</label>
+                  <label className="text-xs font-bold text-slate-700">School City / District *</label>
                   <Input 
                     value={formValues.schoolCity} 
                     onChange={e => setFormValues({...formValues, schoolCity: e.target.value})} 
                     placeholder="City" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">School State *</label>
+                  <label className="text-xs font-bold text-slate-700">School State *</label>
                   <Input 
                     value={formValues.schoolState} 
                     onChange={e => setFormValues({...formValues, schoolState: e.target.value})} 
                     placeholder="State" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-400">School Address *</label>
+                  <label className="text-xs font-bold text-slate-700">School Address *</label>
                   <Input 
                     value={formValues.schoolAddress} 
                     onChange={e => setFormValues({...formValues, schoolAddress: e.target.value})} 
                     placeholder="School complete address" 
-                    className="bg-slate-950 border-slate-800 text-white rounded-lg"
+                    className="bg-white border-slate-200 text-slate-800 rounded-lg"
                   />
                 </div>
               </div>
@@ -821,23 +821,23 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4 flex justify-between items-end">
+              <div className="border-b border-slate-100 pb-2 mb-4 flex justify-between items-end">
                 <div>
-                  <h3 className="text-sm font-black text-white">Subject & Language Choice</h3>
-                  <p className="text-slate-500 mt-0.5">Register subjects available for Class {formValues.studentClass}.</p>
+                  <h3 className="text-sm font-black text-slate-900">Subject & Language Choice</h3>
+                  <p className="text-slate-505 mt-0.5">Register subjects available for Class {formValues.studentClass}.</p>
                 </div>
-                <span className="text-xs font-black bg-cyan-950 border border-cyan-800/30 text-cyan-400 px-3 py-1 rounded-full shrink-0">
+                <span className="text-xs font-black bg-cyan-50 border border-cyan-200 text-cyan-700 px-3 py-1 rounded-full shrink-0">
                   ₹{pricePerSubject}/Subject
                 </span>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-1.5 max-w-xs">
-                  <label className="text-xs font-bold text-slate-400">Choose Language Medium *</label>
+                  <label className="text-xs font-bold text-slate-700">Choose Language Medium *</label>
                   <select 
                     value={formValues.studentMedium} 
                     onChange={e => setFormValues({...formValues, studentMedium: e.target.value})} 
-                    className="w-full h-10 px-3 rounded-lg border border-slate-800 focus:border-blue-500 outline-none bg-slate-950 text-slate-300 font-bold"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:border-blue-500 outline-none bg-white text-slate-700 font-bold"
                   >
                     <option value="English">English</option>
                     <option value="Hindi">Hindi</option>
@@ -867,17 +867,17 @@ export function CscOlympiadFormClient({
                           className={cn(
                             "flex items-center justify-between p-4 rounded-xl border transition-all duration-300 cursor-pointer select-none",
                             isSelected
-                              ? "border-cyan-500/50 bg-cyan-950/20"
-                              : "border-white/5 bg-white/[0.01] hover:bg-white/[0.02]"
+                              ? "border-blue-500 bg-blue-50/50"
+                              : "border-slate-200 bg-white hover:bg-slate-50/50"
                           )}
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-xs font-extrabold text-white">{sub.name}</span>
+                            <span className="text-xs font-extrabold text-slate-900">{sub.name}</span>
                           </div>
                           
                           <div className={cn(
                             "h-5 w-5 rounded-full border flex items-center justify-center transition-all duration-200",
-                            isSelected ? "bg-cyan-500 border-cyan-500 text-slate-950" : "border-slate-800 text-transparent"
+                            isSelected ? "bg-blue-600 border-blue-600 text-white" : "border-slate-200 text-transparent"
                           )}>
                             <Check className="h-3 w-3 stroke-[3]" />
                           </div>
@@ -889,18 +889,23 @@ export function CscOlympiadFormClient({
               </div>
 
               {totalSubjectsCount > 0 && (
-                <div className="mt-6 p-4 bg-slate-950/80 rounded-xl border border-white/5 text-xs font-bold text-slate-400 flex flex-col gap-2">
+                <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-150 text-xs font-bold text-slate-605 flex flex-col gap-2 shadow-sm">
                   <div className="flex justify-between">
                     <span>Subjects Selected ({totalSubjectsCount}):</span>
-                    <span className="text-slate-200">{formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}</span>
+                    <span className="text-slate-800">{formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}</span>
                   </div>
-                  <div className="flex justify-between border-t border-white/5 pt-2 mt-1">
+                  <div className="flex justify-between border-t border-slate-150 pt-2 mt-1">
                     <span>Total Facilitation Fee:</span>
-                    <span className="text-white">₹{subtotalBeforeDiscounts}</span>
+                    <span className="text-slate-955">₹{subtotalBeforeDiscounts}</span>
                   </div>
                 </div>
               )}
             </motion.div>
+          )}
+
+          {/* STEP 5: Documents Hub */}
+          {currentStep === 5 && !passportPhoto && !studyProof && (
+            <div className="hidden">Mock alignment block</div>
           )}
 
           {/* STEP 5: Documents Upload */}
@@ -912,17 +917,17 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4">
-                <h3 className="text-sm font-black text-white">Documents Upload verification</h3>
-                <p className="text-slate-500 mt-0.5">Attach validation files. Size limit: 5MB per file. Formats: PDF, JPG, PNG.</p>
+              <div className="border-b border-slate-100 pb-2 mb-4">
+                <h3 className="text-sm font-black text-slate-900">Documents Upload verification</h3>
+                <p className="text-slate-505 mt-0.5">Attach validation files. Size limit: 5MB per file. Formats: PDF, JPG, PNG.</p>
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 
                 {/* passport photo upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 block">Passport Size Photo *</label>
-                  <div className="border border-dashed border-slate-850 rounded-2xl p-6 bg-slate-950/40 text-center hover:bg-slate-950/60 transition relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
+                  <label className="text-xs font-bold text-slate-700 block">Passport Size Photo *</label>
+                  <div className="border border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50 text-center hover:bg-slate-100/50 transition relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
                     <input 
                       type="file" 
                       accept="image/jpeg,image/png,application/pdf"
@@ -934,7 +939,7 @@ export function CscOlympiadFormClient({
                     {passportPhoto ? (
                       <div className="w-full flex flex-col items-center">
                         <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                        <span className="text-xs font-bold text-slate-200 block truncate max-w-full px-4">{passportPhoto.name}</span>
+                        <span className="text-xs font-bold text-slate-800 block truncate max-w-full px-4">{passportPhoto.name}</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">{(passportPhoto.size / 1024 / 1024).toFixed(2)} MB</span>
                         
                         <Button 
@@ -944,22 +949,22 @@ export function CscOlympiadFormClient({
                             e.stopPropagation();
                             handleFileChange("photo", null);
                           }}
-                          className="mt-3 text-red-400 hover:text-red-500 cursor-pointer h-7 hover:bg-red-950/20"
+                          className="mt-3 text-red-650 hover:text-red-700 cursor-pointer h-7 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <UploadCloud className="h-8 w-8 text-slate-600 mb-3 animate-pulse" />
-                        <span className="text-xs font-extrabold text-cyan-400 block">Choose Passport Photo</span>
+                        <UploadCloud className="h-8 w-8 text-slate-450 mb-3 animate-pulse" />
+                        <span className="text-xs font-extrabold text-blue-600 block">Choose Passport Photo</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">JPG or PNG format</span>
                       </>
                     )}
 
                     {uploadProgress.photo !== undefined && uploadProgress.photo < 100 && (
-                      <div className="absolute bottom-0 left-0 w-full bg-slate-850 h-1">
-                        <div className="bg-cyan-500 h-1 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
+                      <div className="absolute bottom-0 left-0 w-full bg-slate-205 h-1">
+                        <div className="bg-blue-650 h-1 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
                       </div>
                     )}
                   </div>
@@ -967,8 +972,8 @@ export function CscOlympiadFormClient({
 
                 {/* enrollment proof upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 block">School ID / Study Proof *</label>
-                  <div className="border border-dashed border-slate-850 rounded-2xl p-6 bg-slate-950/40 text-center hover:bg-slate-950/60 transition relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
+                  <label className="text-xs font-bold text-slate-700 block">School ID / Study Proof *</label>
+                  <div className="border border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50 text-center hover:bg-slate-100/50 transition relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]">
                     <input 
                       type="file" 
                       accept="image/jpeg,image/png,application/pdf"
@@ -980,7 +985,7 @@ export function CscOlympiadFormClient({
                     {studyProof ? (
                       <div className="w-full flex flex-col items-center">
                         <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                        <span className="text-xs font-bold text-slate-200 block truncate max-w-full px-4">{studyProof.name}</span>
+                        <span className="text-xs font-bold text-slate-805 block truncate max-w-full px-4">{studyProof.name}</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">{(studyProof.size / 1024 / 1024).toFixed(2)} MB</span>
                         
                         <Button 
@@ -990,22 +995,22 @@ export function CscOlympiadFormClient({
                             e.stopPropagation();
                             handleFileChange("proof", null);
                           }}
-                          className="mt-3 text-red-400 hover:text-red-500 cursor-pointer h-7 hover:bg-red-950/20"
+                          className="mt-3 text-red-655 hover:text-red-700 cursor-pointer h-7 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <UploadCloud className="h-8 w-8 text-slate-600 mb-3 animate-pulse" />
-                        <span className="text-xs font-extrabold text-cyan-400 block">Choose School ID / Proof</span>
+                        <UploadCloud className="h-8 w-8 text-slate-455 mb-3 animate-pulse" />
+                        <span className="text-xs font-extrabold text-blue-600 block">Choose School ID / Proof</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">PDF, JPG or PNG format</span>
                       </>
                     )}
 
                     {uploadProgress.proof !== undefined && uploadProgress.proof < 100 && (
-                      <div className="absolute bottom-0 left-0 w-full bg-slate-850 h-1">
-                        <div className="bg-cyan-500 h-1 transition-all duration-100" style={{ width: `${uploadProgress.proof}%` }} />
+                      <div className="absolute bottom-0 left-0 w-full bg-slate-205 h-1">
+                        <div className="bg-blue-650 h-1 transition-all duration-100" style={{ width: `${uploadProgress.proof}%` }} />
                       </div>
                     )}
                   </div>
@@ -1016,23 +1021,23 @@ export function CscOlympiadFormClient({
           )}
 
           {/* STEP 5: Review details */}
-          {currentStep === 5 && (
+          {currentStep === 5 && passportPhoto && studyProof && (
             <motion.div
-              key="step-5"
+              key="step-5-review"
               initial={{ opacity: 0, x: 15 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4">
-                <h3 className="text-sm font-black text-white">Application Review summary</h3>
-                <p className="text-slate-500 mt-0.5">Please check all parameters carefully before making checkout payment.</p>
+              <div className="border-b border-slate-100 pb-2 mb-4">
+                <h3 className="text-sm font-black text-slate-900">Application Review summary</h3>
+                <p className="text-slate-505 mt-0.5">Please check all parameters carefully before making checkout payment.</p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 text-xs font-bold text-slate-400 bg-slate-950/60 p-5 rounded-2xl border border-white/5">
+              <div className="grid gap-4 md:grid-cols-2 text-xs font-bold text-slate-600 bg-slate-50 p-5 rounded-2xl border border-slate-200">
                 <div className="space-y-2">
-                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-cyan-400" /> Student info
+                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-blue-600" /> Student info
                   </h4>
                   <p><span className="text-slate-500 font-semibold">Name:</span> {formValues.studentName}</p>
                   <p><span className="text-slate-500 font-semibold">DOB:</span> {formValues.studentDob}</p>
@@ -1042,8 +1047,8 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <Building className="h-3.5 w-3.5 text-cyan-400" /> School details
+                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <Building className="h-3.5 w-3.5 text-blue-600" /> School details
                   </h4>
                   <p><span className="text-slate-500 font-semibold">School Name:</span> {formValues.schoolName}</p>
                   <p><span className="text-slate-500 font-semibold">Board:</span> {formValues.schoolBoard}</p>
@@ -1053,18 +1058,18 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <BookOpen className="h-3.5 w-3.5 text-cyan-400" /> Subjects & Language Choice
+                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <BookOpen className="h-3.5 w-3.5 text-blue-600" /> Subjects & Language Choice
                   </h4>
-                  <p className="text-slate-200 text-xs font-black">
+                  <p className="text-slate-800 text-xs font-black">
                     {formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}
                   </p>
                   <p><span className="text-slate-500 font-semibold">Medium Choice:</span> {formValues.studentMedium}</p>
                 </div>
 
                 <div className="md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-white border-b border-white/5 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-cyan-400" /> Uploaded documents
+                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-blue-600" /> Uploaded documents
                   </h4>
                   <div className="flex flex-wrap gap-4 text-[10px]">
                     <p><span className="text-slate-500 font-semibold">Photo:</span> {passportPhoto?.name}</p>
@@ -1084,60 +1089,60 @@ export function CscOlympiadFormClient({
               exit={{ opacity: 0, x: -15 }}
               className="space-y-4"
             >
-              <div className="border-b border-white/5 pb-2 mb-4">
-                <h3 className="text-sm font-black text-white">Registration Checkout</h3>
-                <p className="text-slate-500 mt-0.5">Apply coupon codes and redeem wallet cashback to complete payment verification.</p>
+              <div className="border-b border-slate-100 pb-2 mb-4">
+                <h3 className="text-sm font-black text-slate-900">Registration Checkout</h3>
+                <p className="text-slate-505 mt-0.5">Apply coupon codes and redeem wallet cashback to complete payment verification.</p>
               </div>
 
               {/* Price Breakdown */}
-              <div className="rounded-2xl border border-white/5 bg-slate-950/50 p-5 space-y-3.5 text-xs font-bold text-slate-400">
+              <div className="rounded-2xl border border-slate-205 bg-slate-50 p-5 space-y-3.5 text-xs font-bold text-slate-600">
                 <div className="flex justify-between">
                   <span>Standard Registration Fee ({totalSubjectsCount} subject{totalSubjectsCount > 1 ? "s" : ""}):</span>
-                  <span className="line-through text-slate-650">₹{basePrice}</span>
+                  <span className="line-through text-slate-400">₹{basePrice}</span>
                 </div>
                 
-                <div className="flex justify-between text-blue-400 bg-blue-950/20 p-2 rounded-xl border border-blue-900/20">
+                <div className="flex justify-between text-blue-700 bg-blue-50/50 p-2 rounded-xl border border-blue-150">
                   <span>Facilitator Offer Discount:</span>
                   <span>-₹{basePrice - subtotalBeforeDiscounts}</span>
                 </div>
 
                 {appliedCouponDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-400 bg-emerald-950/20 p-2 rounded-xl border border-emerald-900/20">
+                  <div className="flex justify-between text-emerald-700 bg-emerald-50/50 p-2 rounded-xl border border-emerald-150">
                     <span>Coupon Discount Applied ({appliedCouponCode}):</span>
                     <span>-₹{appliedCouponDiscount}</span>
                   </div>
                 )}
 
                 {walletUseAmount > 0 && (
-                  <div className="flex justify-between text-cyan-400 bg-cyan-950/20 p-2 rounded-xl border border-cyan-900/20">
+                  <div className="flex justify-between text-cyan-700 bg-cyan-50/50 p-2 rounded-xl border border-cyan-150">
                     <span>Wallet Cashback Redeemed (50% cap):</span>
                     <span>-₹{walletUseAmount}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between border-t border-white/5 pt-3 text-sm font-black text-white">
+                <div className="flex justify-between border-t border-slate-150 pt-3 text-sm font-black text-slate-900">
                   <span>Net Payable Amount:</span>
-                  <span className="text-cyan-400">₹{realPayableAmount}</span>
+                  <span className="text-blue-600">₹{realPayableAmount}</span>
                 </div>
               </div>
 
               {/* Coupon code inputs */}
               {appliedCouponCode ? (
-                <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-900/25 bg-emerald-950/20 text-xs font-extrabold text-emerald-400">
+                <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-250 bg-emerald-50 text-xs font-extrabold text-emerald-750">
                   <span>Coupon {appliedCouponCode} applied! Saved ₹{appliedCouponDiscount}</span>
-                  <button type="button" onClick={removeCoupon} className="text-red-400 hover:text-red-500 cursor-pointer">
+                  <button type="button" onClick={removeCoupon} className="text-red-650 hover:text-red-700 cursor-pointer">
                     Remove
                   </button>
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400">Have a Discount Coupon?</label>
+                  <label className="text-xs font-bold text-slate-700">Have a Discount Coupon?</label>
                   <div className="flex gap-2">
                     <Input 
                       value={couponCode} 
                       onChange={e => setCouponCode(e.target.value.trim().toUpperCase())} 
                       placeholder="ENTER COUPON CODE" 
-                      className="uppercase bg-slate-950 border-slate-800 text-white rounded-lg text-xs"
+                      className="uppercase bg-white border-slate-200 text-slate-805 rounded-lg text-xs"
                       disabled={couponApplying}
                     />
                     <Button 
@@ -1145,22 +1150,22 @@ export function CscOlympiadFormClient({
                       variant="outline" 
                       onClick={applyCoupon} 
                       disabled={couponApplying || !couponCode.trim()}
-                      className="cursor-pointer border-white/10 hover:bg-white/5 text-slate-300 text-xs"
+                      className="cursor-pointer border-slate-250 hover:bg-slate-50 text-slate-700 text-xs bg-white"
                     >
                       Apply
                     </Button>
                   </div>
                   {couponError && (
-                    <span className="text-[10px] font-bold text-red-400">{couponError}</span>
+                    <span className="text-[10px] font-bold text-red-650">{couponError}</span>
                   )}
                 </div>
               )}
 
               {/* Wallet adjustment */}
               {wallet.balance > 0 && (
-                <div className="p-4 rounded-xl border border-white/5 bg-slate-950/30 flex items-center justify-between text-xs">
+                <div className="p-4 rounded-xl border border-slate-150 bg-slate-50 flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-extrabold text-slate-200 block">Redeem DigiWallet Balance</span>
+                    <span className="font-extrabold text-slate-800 block">Redeem DigiWallet Balance</span>
                     <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">
                       Available: ₹{wallet.balance.toFixed(2)} | Usable limit: ₹{maxUsableWalletRedeem}
                     </span>
@@ -1175,7 +1180,7 @@ export function CscOlympiadFormClient({
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
               )}
@@ -1186,7 +1191,7 @@ export function CscOlympiadFormClient({
                   <Button
                     type="button"
                     onClick={handleZeroPaymentCheckout}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
+                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-650 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
                   >
                     Complete Wallet Checkout
                   </Button>
@@ -1194,7 +1199,7 @@ export function CscOlympiadFormClient({
                   <Button
                     type="button"
                     onClick={() => handleSubmitApplication(razorpayPayment)}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
+                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-655 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
                   >
                     Submit CSC Olympiad Application
                   </Button>
@@ -1236,13 +1241,13 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Control Buttons */}
-      <div className="mt-8 flex justify-between items-center border-t border-white/5 pt-4">
+      <div className="mt-8 flex justify-between items-center border-t border-slate-100 pt-4">
         {currentStep > 1 && (
           <Button 
             type="button" 
             variant="outline" 
             onClick={handlePrevStep}
-            className="flex items-center gap-2 rounded-xl cursor-pointer border-white/10 hover:bg-white/5 text-slate-300"
+            className="flex items-center gap-2 rounded-xl cursor-pointer border-slate-200 hover:bg-slate-50 text-slate-700 bg-white"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Previous</span>
@@ -1264,8 +1269,8 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Safety Notice */}
-      <div className="mt-6 rounded-2xl border border-white/5 bg-slate-950/40 p-4 text-[10px] leading-relaxed text-slate-500 flex items-start gap-3">
-        <Lock className="h-4 w-4 text-slate-600 shrink-0 mt-0.5" />
+      <div className="mt-6 rounded-2xl border border-slate-150 bg-slate-50 p-4 text-[10px] leading-relaxed text-slate-550 flex items-start gap-3">
+        <Lock className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
         <span>
           Payment checkouts are secure by Razorpay with 256-bit encryption. All uploads are locked inside secure Supabase buckets. DigiConnect Dukan coordinators audit applications to prevent incorrect school board codes or duplicate entry rejections.
         </span>

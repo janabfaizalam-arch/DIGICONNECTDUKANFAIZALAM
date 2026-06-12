@@ -1769,23 +1769,23 @@ export function CustomerDashboard({
                       const isCompleted = ["completed", "delivered"].includes(app.status);
                       
                       return (
-                        <div key={app.id} className="rounded-3xl p-6 border border-white/10 bg-gradient-to-tr from-cyan-950 via-slate-900 to-indigo-950 shadow-2xl relative overflow-hidden text-slate-200 hover:border-cyan-500/30 transition-all duration-350 space-y-4 group">
+                        <div key={app.id} className="rounded-3xl p-6 border border-slate-200/80 bg-gradient-to-tr from-cyan-50/40 via-white to-blue-50/40 shadow-lg relative overflow-hidden text-slate-700 hover:border-blue-400/40 transition-all duration-350 space-y-4 group">
                           {/* Ambient glow mesh */}
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-bl-full pointer-events-none" />
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-bl-full pointer-events-none" />
                           
                           <div className="flex flex-wrap items-start justify-between gap-3 relative z-10">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="inline-flex rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 px-3 py-0.5 text-[8.5px] font-black uppercase text-slate-950 tracking-wider shadow-sm select-none">
+                                <span className="inline-flex rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-0.5 text-[8.5px] font-black uppercase text-white tracking-wider shadow-sm select-none">
                                   CSC Olympiad {examSession}
                                 </span>
-                                <span className="text-[8.5px] font-mono text-cyan-400 font-bold uppercase tracking-widest">Digital Entry Pass</span>
+                                <span className="text-[8.5px] font-mono text-blue-600 font-bold uppercase tracking-widest">Digital Entry Pass</span>
                               </div>
-                              <h3 className="text-base font-black text-white tracking-tight mt-1.5 group-hover:text-cyan-400 transition">
+                              <h3 className="text-base font-black text-slate-900 tracking-tight mt-1.5 group-hover:text-blue-600 transition">
                                 {app.service_name}
                               </h3>
-                              <p className="text-[10px] font-mono text-slate-400">Application ID: {app.id}</p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">
+                              <p className="text-[10px] font-mono text-slate-500">Application ID: {app.id}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
                                 Submitted: {new Date(app.created_at).toLocaleDateString("en-IN", { dateStyle: "long", timeStyle: "short" })}
                               </p>
                             </div>
@@ -1796,32 +1796,32 @@ export function CustomerDashboard({
                           </div>
 
                           {/* Candidate & Exam Details Grid */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 px-4 rounded-2xl bg-slate-950/40 border border-white/5 text-xs text-slate-400 relative z-10">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 px-4 rounded-2xl bg-slate-50/70 border border-slate-200/60 text-xs text-slate-500 relative z-10">
                             <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-500">Candidate Name</p>
-                              <p className="font-extrabold text-white">{studentName}</p>
+                              <p className="text-[9px] font-bold uppercase text-slate-400">Candidate Name</p>
+                              <p className="font-extrabold text-slate-800">{studentName}</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-500">Class & Board</p>
-                              <p className="font-extrabold text-white">Class {studentClass} ({schoolBoard})</p>
+                              <p className="text-[9px] font-bold uppercase text-slate-400">Class & Board</p>
+                              <p className="font-extrabold text-slate-800">Class {studentClass} ({schoolBoard})</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-500">School Name</p>
-                              <p className="font-extrabold text-white truncate" title={schoolName}>{schoolName}</p>
+                              <p className="text-[9px] font-bold uppercase text-slate-400">School Name</p>
+                              <p className="font-extrabold text-slate-800 truncate" title={schoolName}>{schoolName}</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-500">Exam Window</p>
-                              <p className="font-extrabold text-cyan-400">Dec 2026 (Online)</p>
+                              <p className="text-[9px] font-bold uppercase text-slate-400">Exam Window</p>
+                              <p className="font-extrabold text-blue-600">Dec 2026 (Online)</p>
                             </div>
                           </div>
 
                           {/* Selected Subjects Pill Box */}
                           <div className="space-y-1.5 relative z-10">
-                            <p className="text-[9px] font-bold uppercase text-slate-500 px-1">Registered Subjects ({subjects.length})</p>
+                            <p className="text-[9px] font-bold uppercase text-slate-400 px-1">Registered Subjects ({subjects.length})</p>
                             <div className="flex flex-wrap gap-1.5">
                               {subjects.map((sub, sIdx) => (
-                                <span key={sIdx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-950/60 border border-blue-900/40 text-[11px] font-bold text-blue-400">
-                                  <Compass className="h-3 w-3 text-blue-400" />
+                                <span key={sIdx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200/50 text-[11px] font-bold text-blue-700">
+                                  <Compass className="h-3 w-3 text-blue-600" />
                                   {sub}
                                 </span>
                               ))}
@@ -1829,12 +1829,12 @@ export function CustomerDashboard({
                           </div>
 
                           {/* Barcode Simulator to enhance Apple Wallet aesthetics */}
-                          <div className="py-2.5 flex flex-col items-center justify-center border-t border-b border-white/5 bg-slate-950/20 relative z-10">
+                          <div className="py-2.5 flex flex-col items-center justify-center border-t border-b border-slate-200/60 bg-slate-50/50 relative z-10">
                             <div className="h-6 w-56 flex items-center justify-center gap-[1.5px] opacity-75">
                               {Array.from({ length: 48 }).map((_, i) => (
                                 <div 
                                   key={i} 
-                                  className="h-full bg-slate-400" 
+                                  className="h-full bg-slate-850" 
                                   style={{ 
                                     width: i % 4 === 0 ? "2.5px" : i % 3 === 0 ? "1px" : "1.5px",
                                     opacity: i % 7 === 0 ? 0.3 : 1
@@ -1847,7 +1847,7 @@ export function CustomerDashboard({
 
                           {/* Actions Section */}
                           <div className="flex flex-wrap items-center justify-between gap-4 pt-3 text-xs relative z-10">
-                            <span className="font-black text-white">
+                            <span className="font-black text-slate-900">
                               Paid Amount: {formatCurrency(app.total_amount ?? app.amount)}
                             </span>
                             
@@ -1857,9 +1857,9 @@ export function CustomerDashboard({
                                 href={`/api/csc-olympiad/prep-material?id=${app.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold border border-white/10 transition duration-150 cursor-pointer select-none"
+                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 transition duration-150 cursor-pointer select-none"
                               >
-                                <Compass className="h-3.5 w-3.5 text-cyan-400" /> Prep Study Material
+                                <Compass className="h-3.5 w-3.5 text-blue-650" /> Prep Study Material
                               </a>
 
                               {/* Admit Card Download */}
@@ -1875,10 +1875,10 @@ export function CustomerDashboard({
                               ) : (
                                 <button
                                   disabled
-                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed text-[11px] font-bold"
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed text-[11px] font-bold"
                                   title="Admit Card will be available after registration review/approval."
                                 >
-                                  <Lock className="h-3.5 w-3.5 text-slate-500" /> Admit Card (Awaiting)
+                                  <Lock className="h-3.5 w-3.5 text-slate-400" /> Admit Card (Awaiting)
                                 </button>
                               )}
 
@@ -1895,10 +1895,10 @@ export function CustomerDashboard({
                               ) : (
                                 <button
                                   disabled
-                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed text-[11px] font-bold"
+                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed text-[11px] font-bold"
                                   title="Certificate will be issued post final examination."
                                 >
-                                  <Lock className="h-3.5 w-3.5 text-slate-500" /> Certificate (Awaiting)
+                                  <Lock className="h-3.5 w-3.5 text-slate-400" /> Certificate (Awaiting)
                                 </button>
                               )}
 
@@ -1906,9 +1906,9 @@ export function CustomerDashboard({
                                 href={whatsAppUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-400 font-bold border border-emerald-900/30 transition duration-150 cursor-pointer"
+                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border border-emerald-200/60 transition duration-150 cursor-pointer"
                               >
-                                <MessageCircle className="h-4 w-4 text-emerald-400" /> Support Desk
+                                <MessageCircle className="h-4 w-4 text-emerald-600" /> Support Desk
                               </a>
                             </div>
                           </div>
