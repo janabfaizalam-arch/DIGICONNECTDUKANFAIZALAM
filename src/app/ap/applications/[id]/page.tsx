@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { WorkflowStepper } from "@/components/engines/workflow-stepper";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,70 @@ export default async function APApplicationDetailPage({
   }
 
   const applicationRow = data as Application;
+
+  interface DBWorkflow {
+    id: string;
+    service_id: string;
+    step_key: string;
+    label: string;
+    sort_order: number;
+    allowed_transitions: unknown;
+  }
+
+  interface DBStatusLog {
+    id: string;
+    new_status: string;
+    note: string | null;
+    created_at: string;
+    profiles: { full_name: string | null; role: string | null } | null;
+  }
+
+  // Fetch workflows
+  const { data: workflowsData } = await supabase
+    .from("service_workflows")
+    .select("*")
+    .eq("service_id", applicationRow.service_id)
+    .order("sort_order", { ascending: true });
+
+  const workflows = ((workflowsData ?? []) as unknown as DBWorkflow[]).map((w) => ({
+    id: w.id,
+    service_id: w.service_id,
+    step_key: w.step_key,
+    label: w.label,
+    sort_order: w.sort_order,
+    allowed_transitions: Array.isArray(w.allowed_transitions) ? (w.allowed_transitions as string[]) : []
+  }));
+
+  // Fetch timelines (universal first, fallback to legacy)
+  const { data: timelineData } = await supabase
+    .from("entity_timelines")
+    .select("*")
+    .eq("entity_type", "application")
+    .eq("entity_id", id)
+    .order("created_at", { ascending: false });
+
+  let timelines = timelineData || [];
+
+  if (timelines.length === 0) {
+    const { data: logsData } = await supabase
+      .from("status_logs")
+      .select("*, profiles:changed_by(full_name, role)")
+      .eq("application_id", id)
+      .order("created_at", { ascending: false });
+
+    if (logsData) {
+      timelines = (logsData as unknown as DBStatusLog[]).map((log) => ({
+        id: log.id,
+        event_title: `Status: ${log.new_status.replace(/_/g, " ")}`,
+        event_description: log.note,
+        created_at: log.created_at,
+        metadata: {
+          actor_name: log.profiles?.full_name,
+          actor_role: log.profiles?.role
+        }
+      }));
+    }
+  }
 
   // Verify AP ownership of this application
   const directlyAllowed =
@@ -175,6 +240,16 @@ export default async function APApplicationDetailPage({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Workflow Stepper Engine */}
+            <div className="border-t border-white/5 pt-6">
+              <WorkflowStepper
+                applicationId={application.id}
+                currentStep={(application as unknown as { current_step?: string | null }).current_step || application.status}
+                workflows={workflows}
+                timelines={timelines}
+              />
             </div>
           </Card>
 

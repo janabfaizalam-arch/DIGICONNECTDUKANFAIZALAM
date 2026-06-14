@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check } from "lucide-react";
+import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
+import { cn } from "@/lib/utils";
 
-type AppRole = "admin" | "agent" | "customer";
+type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
-const roleValues = ["admin", "agent", "customer"];
+const roleValues = ["admin", "agent", "customer", "agency_partner"];
 const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
+const apRoleAliases = new Set(["agent", "agency_partner"]);
 
 function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
@@ -24,6 +26,9 @@ function getMetadataRole(user: User | null) {
 
   if (adminRoleAliases.has(role)) {
     return "admin";
+  }
+  if (apRoleAliases.has(role)) {
+    return "agency_partner";
   }
 
   return isAppRole(role) ? role : null;
@@ -62,6 +67,9 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   if (adminRoleAliases.has(profileRole)) {
     return "admin";
   }
+  if (apRoleAliases.has(profileRole)) {
+    return "agency_partner";
+  }
 
   if (isAppRole(profileRole)) {
     return profileRole;
@@ -73,6 +81,9 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   if (adminRoleAliases.has(portalRole)) {
     return "admin";
   }
+  if (apRoleAliases.has(portalRole)) {
+    return "agency_partner";
+  }
 
   return isAppRole(portalRole) ? portalRole : "customer";
 }
@@ -82,8 +93,8 @@ function getPanelConfig(role: AppRole | null) {
     return { href: "/admin", label: "Admin Dashboard" };
   }
 
-  if (role === "agent") {
-    return { href: "/agent/dashboard", label: "Agent Dashboard" };
+  if (role === "agent" || role === "agency_partner") {
+    return { href: "/ap/dashboard", label: "Partner Dashboard" };
   }
 
   if (role === "customer") {
@@ -94,7 +105,7 @@ function getPanelConfig(role: AppRole | null) {
 }
 
 function isAgentShellPath(pathname: string) {
-  return pathname === "/agent/dashboard" || pathname.startsWith("/agent/");
+  return pathname === "/agent/dashboard" || pathname.startsWith("/agent/") || pathname === "/ap" || pathname.startsWith("/ap/");
 }
 
 interface NotificationItem {
@@ -165,6 +176,52 @@ export function SiteHeader() {
   const [navHidden, setNavHidden] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [partnerResults, setPartnerResults] = useState<{
+    services: { id: string; title: string; slug: string; customer_fee: number }[];
+    customers: { id: string; full_name: string; mobile: string; email?: string | null }[];
+    applications: { id: string; customer_name: string; service_name: string; application_code: string; status: string }[];
+    leads: { id: string; name: string; mobile: string; service: string; status: string }[];
+  }>({ services: [], customers: [], applications: [], leads: [] });
+
+  const handlePartnerSearch = async (val: string) => {
+    setSearchQuery(val);
+    if (!val.trim() || !supabase) {
+      setPartnerResults({ services: [], customers: [], applications: [], leads: [] });
+      return;
+    }
+    try {
+      interface DBAppSearchRow {
+        id: string;
+        service_name: string;
+        customer_name: string;
+        status: string;
+        application_code?: string | null;
+      }
+
+      const [servicesRes, customersRes, appsRes, leadsRes] = await Promise.all([
+        supabase.from("agent_services").select("id, title, slug, customer_fee").ilike("title", `%${val}%`).limit(4),
+        supabase.from("customers").select("id, full_name, mobile, email").or(`full_name.ilike.%${val}%,mobile.ilike.%${val}%`).limit(4),
+        supabase.from("applications").select("id, service_name, customer_name, status, application_code").or(`service_name.ilike.%${val}%,customer_name.ilike.%${val}%`).limit(4),
+        supabase.from("leads").select("id, name, mobile, service, status").or(`name.ilike.%${val}%,mobile.ilike.%${val}%,service.ilike.%${val}%`).limit(4)
+      ]);
+
+      setPartnerResults({
+        services: servicesRes.data ?? [],
+        customers: customersRes.data ?? [],
+        applications: ((appsRes.data ?? []) as unknown as DBAppSearchRow[]).map((app) => ({
+          id: app.id,
+          customer_name: app.customer_name || "",
+          service_name: app.service_name || "",
+          application_code: app.application_code || "",
+          status: app.status || ""
+        })),
+        leads: leadsRes.data ?? []
+      });
+    } catch (err) {
+      console.error("Partner search error", err);
+    }
+  };
 
   // Notifications State
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -855,41 +912,202 @@ export function SiteHeader() {
 
       {/* Search Overlay */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-white/95 backdrop-blur-xl">
-          <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+        <div className={cn(
+          "fixed inset-0 z-[60] flex flex-col backdrop-blur-xl",
+          pathname.startsWith("/ap") ? "bg-slate-950/98 text-slate-100" : "bg-white/95 text-slate-850"
+        )}>
+          <div className={cn(
+            "flex items-center gap-3 border-b px-4 py-3",
+            pathname.startsWith("/ap") ? "border-white/10 bg-slate-900" : "border-slate-150 bg-slate-50"
+          )}>
             <Search className="h-5 w-5 shrink-0 text-slate-400" />
             <input
               autoFocus
               type="text"
-              placeholder="Search GST, ITR, Passport, CIBIL, DL..."
-              className="flex-1 bg-transparent text-base font-medium text-slate-800 placeholder:text-slate-400 outline-none"
+              value={searchQuery}
+              onChange={(e) => {
+                if (pathname.startsWith("/ap")) {
+                  handlePartnerSearch(e.target.value);
+                }
+              }}
+              placeholder={
+                pathname.startsWith("/ap")
+                  ? "Search partner services, customers, applications, leads..."
+                  : "Search GST, ITR, Passport, CIBIL, DL..."
+              }
+              className={cn(
+                "flex-1 bg-transparent text-base font-medium outline-none",
+                pathname.startsWith("/ap") ? "text-white placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"
+              )}
               onKeyDown={(e) => {
                 if (e.key === "Escape") setSearchOpen(false);
               }}
             />
             <button
-              onClick={() => setSearchOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              onClick={() => {
+                setSearchOpen(false);
+                setSearchQuery("");
+                setPartnerResults({ services: [], customers: [], applications: [], leads: [] });
+              }}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-lg transition",
+                pathname.startsWith("/ap") ? "text-slate-400 hover:bg-white/5 hover:text-white" : "text-slate-400 hover:bg-slate-200/50 hover:text-slate-700"
+              )}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-4 py-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Quick Links</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {["GST Registration", "ITR Filing", "Passport", "Driving Licence", "CIBIL Analysis", "PVC Card", "PM Vishwakarma"].map(
-                (term) => (
-                  <Link
-                    key={term}
-                    href={`/services`}
-                    onClick={() => setSearchOpen(false)}
-                    className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    {term}
-                  </Link>
-                )
-              )}
-            </div>
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+            {pathname.startsWith("/ap") ? (
+              // Partner Search Results
+              searchQuery.trim() ? (
+                <div className="space-y-6 max-w-4xl mx-auto">
+                  {/* Services */}
+                  {partnerResults.services.length > 0 && (
+                    <div className="space-y-2.5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5" /> Services ({partnerResults.services.length})
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {partnerResults.services.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={`/ap/applications/new?serviceId=${item.id}`}
+                            onClick={() => setSearchOpen(false)}
+                            className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-blue-500/30 hover:bg-slate-900 transition-all group"
+                          >
+                            <div>
+                              <p className="font-extrabold text-white text-sm group-hover:text-blue-400 transition-colors">{item.title}</p>
+                              <p className="text-xs text-slate-500 font-mono">Slug: {item.slug}</p>
+                            </div>
+                            <span className="text-xs font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                              Apply (₹{item.customer_fee})
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Customers */}
+                  {partnerResults.customers.length > 0 && (
+                    <div className="space-y-2.5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" /> Customers ({partnerResults.customers.length})
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {partnerResults.customers.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={`/ap/customers?search=${item.full_name}`}
+                            onClick={() => setSearchOpen(false)}
+                            className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-900 transition-all group"
+                          >
+                            <div>
+                              <p className="font-extrabold text-white text-sm group-hover:text-indigo-400 transition-colors">{item.full_name}</p>
+                              <p className="text-xs text-slate-500 font-mono">{item.mobile}</p>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                              View CRM
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Applications */}
+                  {partnerResults.applications.length > 0 && (
+                    <div className="space-y-2.5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> Applications ({partnerResults.applications.length})
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {partnerResults.applications.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={`/ap/applications/${item.id}`}
+                            onClick={() => setSearchOpen(false)}
+                            className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-emerald-500/30 hover:bg-slate-900 transition-all group"
+                          >
+                            <div>
+                              <p className="font-extrabold text-white text-sm group-hover:text-emerald-400 transition-colors">{item.customer_name}</p>
+                              <p className="text-xs text-slate-450">{item.service_name}</p>
+                            </div>
+                            <span className="text-[10px] font-bold capitalize text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                              {item.status.replace(/_/g, " ")}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Leads */}
+                  {partnerResults.leads.length > 0 && (
+                    <div className="space-y-2.5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <Inbox className="h-3.5 w-3.5" /> Leads ({partnerResults.leads.length})
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {partnerResults.leads.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={`/ap/leads?search=${item.name}`}
+                            onClick={() => setSearchOpen(false)}
+                            className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-amber-500/30 hover:bg-slate-900 transition-all group"
+                          >
+                            <div>
+                              <p className="font-extrabold text-white text-sm group-hover:text-amber-400 transition-colors">{item.name}</p>
+                              <p className="text-xs text-slate-400">{item.service} ({item.mobile})</p>
+                            </div>
+                            <span className="text-[10px] font-bold capitalize text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                              {item.status}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {Object.values(partnerResults).every((arr) => arr.length === 0) && (
+                    <div className="py-12 text-center text-slate-500">
+                      No matching services, customers, applications, or leads found for &ldquo;{searchQuery}&rdquo;.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Partner Quick Links
+                <div className="max-w-md mx-auto py-8 text-center space-y-4">
+                  <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 mx-auto border border-white/10">
+                    <Search className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-bold text-white text-base">DigiPartner Unified Search</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                    Type a name, mobile number, or service title to search across customers, active services, leads, and applications.
+                  </p>
+                </div>
+              )
+            ) : (
+              // Public Customer Search
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Quick Links</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {["GST Registration", "ITR Filing", "Passport", "Driving Licence", "CIBIL Analysis", "PVC Card", "PM Vishwakarma"].map(
+                    (term) => (
+                      <Link
+                        key={term}
+                        href={`/services`}
+                        onClick={() => setSearchOpen(false)}
+                        className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        {term}
+                      </Link>
+                    )
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

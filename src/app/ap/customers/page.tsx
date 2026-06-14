@@ -54,7 +54,7 @@ export default async function APCustomersPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-blue-400">
-              Agency Partner CRM
+              DigiPartner CRM
             </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-5xl">
               My Customers

@@ -5,13 +5,16 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   type LucideIcon,
-  PlusCircle,
   FileText,
-  HandCoins,
-  WalletCards,
-  UserCog,
-  Headphones,
+  Layers,
   Users,
+  Inbox,
+  WalletCards,
+  HandCoins,
+  Headphones,
+  BookOpen,
+  Bell,
+  UserCog,
 } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -19,13 +22,16 @@ import { cn } from "@/lib/utils";
 
 const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/ap/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/ap/applications/new", label: "New Application", icon: PlusCircle },
   { href: "/ap/applications", label: "Applications", icon: FileText },
+  { href: "/ap/services", label: "Services", icon: Layers },
   { href: "/ap/customers", label: "Customers", icon: Users },
-  { href: "/ap/commissions", label: "Commission", icon: HandCoins },
-  { href: "/ap/wallet", label: "Wallet / Payout", icon: WalletCards },
-  { href: "/ap/profile", label: "Profile", icon: UserCog },
+  { href: "/ap/leads", label: "Leads", icon: Inbox },
+  { href: "/ap/wallet", label: "Wallet", icon: WalletCards },
+  { href: "/ap/commissions", label: "Earnings", icon: HandCoins },
   { href: "/ap/support", label: "Support", icon: Headphones },
+  { href: "/ap/knowledge", label: "Knowledge Center", icon: BookOpen },
+  { href: "/ap/notifications", label: "Notifications", icon: Bell },
+  { href: "/ap/profile", label: "Profile & Settings", icon: UserCog },
 ];
 
 export function APPanelNav() {
@@ -49,7 +55,7 @@ export function APPanelNav() {
               )}
             >
               <Icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{label}</span>
+              <span className="hidden lg:inline">{label}</span>
             </Link>
           );
         })}

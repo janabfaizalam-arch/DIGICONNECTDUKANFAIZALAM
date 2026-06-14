@@ -60,7 +60,7 @@ export default function APForgotPasswordPage() {
             Recovery Password
           </h1>
           <p className="text-slate-400 text-sm">
-            Enter your Agency Partner email to request a reset link.
+            Enter your DigiPartner registered email to request a reset link.
           </p>
         </div>
 

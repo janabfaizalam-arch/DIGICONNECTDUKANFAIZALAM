@@ -43,13 +43,13 @@ export default async function APApplicationsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-blue-400">
-              Agency Partner Ecosystem
+              DigiPartner Ecosystem
             </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-5xl">
               Submitted Applications
             </h1>
             <p className="mt-2 text-slate-400 max-w-2xl text-sm">
-              Track and manage all applications created or attributed to your Agency Partner network.
+              Track and manage all applications created or attributed to your DigiPartner network.
             </p>
           </div>
           <Link

@@ -66,6 +66,9 @@ export type DbService = {
   blog_content: string | null;
   faqs: { question: string; answer: string }[] | null;
   reviews: { name: string; location: string; text: string }[] | null;
+  base_customer_fee?: number | null;
+  tat_hours?: number | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   service_categories?: DbServiceCategory | null;

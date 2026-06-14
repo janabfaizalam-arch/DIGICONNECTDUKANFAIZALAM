@@ -28,16 +28,22 @@ export function APApplicationForm({
   customers,
   services,
   defaultCustomerId,
+  defaultServiceId,
+  defaultName,
+  defaultMobile,
 }: {
   customers: Customer[];
   services: AgentService[];
   defaultCustomerId?: string;
+  defaultServiceId?: string;
+  defaultName?: string;
+  defaultMobile?: string;
 }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? "");
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [serviceId, setServiceId] = useState(defaultServiceId ?? services[0]?.id ?? "");
   const [razorpayPayment, setRazorpayPayment] = useState<(VerifiedRazorpayPayment & { amount_paise: number }) | null>(null);
   const [pmVishwakarmaValues, setPmVishwakarmaValues] = useState(() => createPmVishwakarmaInitialValues());
   const [pincodeStatus, setPincodeStatus] = useState("");
@@ -175,8 +181,8 @@ export function APApplicationForm({
               <div className="space-y-3">
                 <p className="text-xs font-bold text-slate-400">New Customer Details</p>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Input name="customerName" placeholder="Customer Name" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />
-                  <Input name="mobile" placeholder="Mobile Number" inputMode="numeric" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />
+                  <Input name="customerName" defaultValue={defaultName} placeholder="Customer Name" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />
+                  <Input name="mobile" defaultValue={defaultMobile} placeholder="Mobile Number" inputMode="numeric" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />
                   <Input name="email" placeholder="Email" type="email" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />
                   <Input name="pincode" placeholder="Pincode" inputMode="numeric" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />
                   <Input name="city" placeholder="City" required={!customerId} className="border-white/5 bg-slate-950 text-white rounded-xl h-11" />

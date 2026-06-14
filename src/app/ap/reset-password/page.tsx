@@ -70,7 +70,7 @@ export default function APResetPasswordPage() {
             Reset Password
           </h1>
           <p className="text-slate-400 text-sm">
-            Enter your new Agency Partner password below.
+            Enter your new DigiPartner password below.
           </p>
         </div>
 

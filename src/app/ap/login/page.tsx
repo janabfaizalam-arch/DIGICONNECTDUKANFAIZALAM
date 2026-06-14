@@ -63,9 +63,9 @@ export default function APLoginPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl shadow-blue-500/25">
             <KeyRound className="h-8 w-8 text-white" />
           </div>
-          <h1 className="mt-5 text-3xl font-bold text-white">Agency Partner Login</h1>
+          <h1 className="mt-5 text-3xl font-bold text-white">DigiPartner Login</h1>
           <p className="mt-2 text-sm text-slate-400">
-            DigiConnect Dukan — Partner Portal
+            DigiConnect Dukan — Partner Dashboard
           </p>
         </div>
 
@@ -81,7 +81,7 @@ export default function APLoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="partner@example.com"
+                placeholder="partner@digiconnectdukan.com"
                 required
                 className="h-12 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
               />

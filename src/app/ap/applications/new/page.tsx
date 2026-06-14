@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function NewAPApplicationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ customerId?: string }>;
+  searchParams: Promise<{ customerId?: string; serviceId?: string; name?: string; mobile?: string }>;
 }) {
   const user = await getCurrentUser();
 
@@ -54,6 +54,9 @@ export default async function NewAPApplicationPage({
           customers={customers}
           services={services}
           defaultCustomerId={params.customerId}
+          defaultServiceId={params.serviceId}
+          defaultName={params.name}
+          defaultMobile={params.mobile}
         />
       </div>
     </main>

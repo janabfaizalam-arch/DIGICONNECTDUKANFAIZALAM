@@ -49,6 +49,7 @@ import { StatusBadge, PaymentBadge } from "@/components/portal/status-badge";
 import type { CustomerDashboardApplication, CustomerDashboardStats } from "@/lib/customer-dashboard-data";
 import { useToast } from "@/components/providers/toast-provider";
 import { servicesData } from "@/lib/services-data";
+import { CustomerVault } from "@/components/portal/customer-vault";
 
 export interface ApplicationDocument {
   id: string;
@@ -160,7 +161,7 @@ interface CustomerDashboardProps {
   user: SupabaseUser;
 }
 
-type Tab = "dashboard" | "applications" | "wallet" | "referral" | "documents" | "support" | "profile";
+type Tab = "dashboard" | "applications" | "wallet" | "referral" | "documents" | "support" | "profile" | "vault";
 
 export function CustomerDashboard({
   applications,
@@ -225,7 +226,7 @@ export function CustomerDashboard({
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam && ["dashboard", "applications", "wallet", "referral", "documents", "support", "profile"].includes(tabParam)) {
+      if (tabParam && ["dashboard", "applications", "wallet", "referral", "documents", "support", "profile", "vault"].includes(tabParam)) {
         setActiveTab(tabParam as Tab);
       } else {
         setActiveTab("dashboard");
@@ -1045,6 +1046,7 @@ export function CustomerDashboard({
               { id: "wallet", label: "Wallet & Cashback", icon: WalletCards },
               { id: "referral", label: "Refer & Earn", icon: Gift },
               { id: "documents", label: "Documents Hub", icon: FolderOpen },
+              { id: "vault", label: "Secure Vault", icon: ShieldCheck },
               { id: "support", label: "Support Center", icon: HelpCircle },
               { id: "profile", label: "Profile Settings", icon: UserRound }
             ].map((item) => {
@@ -1300,6 +1302,7 @@ export function CustomerDashboard({
                     { id: "wallet", label: "Wallet & Cashback", icon: WalletCards },
                     { id: "referral", label: "Refer & Earn", icon: Gift },
                     { id: "documents", label: "Documents Hub", icon: FolderOpen },
+                    { id: "vault", label: "Secure Vault", icon: ShieldCheck },
                     { id: "support", label: "Support Center", icon: HelpCircle },
                     { id: "profile", label: "Profile Settings", icon: UserRound }
                   ].map((item) => {
@@ -2807,6 +2810,11 @@ export function CustomerDashboard({
                 </div>
               </form>
             </div>
+          )}
+
+          {/* TAB 8: SECURE VAULT */}
+          {activeTab === "vault" && (
+            <CustomerVault user={user} />
           )}
 
         </main>

@@ -46,7 +46,7 @@ export default async function APWalletPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
           <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-blue-400">
-            Agency Partner Wallet
+            DigiPartner Wallet
           </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-5xl">
             Wallet & Ledger Console
