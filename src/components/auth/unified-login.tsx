@@ -12,14 +12,7 @@ import {
   UserRound,
   Gift,
   ShieldCheck,
-  CheckCircle2,
   Lock,
-  Globe,
-  Database,
-  Zap,
-  Activity,
-  Fingerprint,
-  Cpu,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -56,7 +49,7 @@ interface UnifiedLoginProps {
   referralCode?: string;
 }
 
-// 1. Premium Custom Floating Label Input with Validation States
+// Apple Premium Floating Label Input (h-58px, rounded-20px)
 interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: React.ReactNode;
@@ -67,18 +60,17 @@ interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 
 const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
   ({ label, icon, rightElement, touched, isValid, className, id, placeholder = " ", ...props }, ref) => {
-    // Determine validation color style classes
     const statusClass = touched
       ? isValid
         ? "border-emerald-200 focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.06)] bg-emerald-50/5"
         : "border-red-200 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.06)] bg-red-50/5"
-      : "border-slate-200 focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.06)] bg-white";
+      : "border-slate-200/80 focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.06)] bg-white";
 
     return (
       <div className="relative w-full">
         <div className="relative flex items-center">
           {icon && (
-            <div className="absolute left-4 text-slate-400 pointer-events-none transition-colors duration-150 peer-focus-within:text-blue-500">
+            <div className="absolute left-4.5 text-slate-400 pointer-events-none transition-colors duration-150 peer-focus-within:text-blue-500">
               {icon}
             </div>
           )}
@@ -87,29 +79,29 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             ref={ref}
             id={id}
             placeholder={placeholder}
-            className={`peer w-full rounded-2xl border text-sm text-slate-900 outline-none transition-all h-12 pt-5 pb-1 ${
-              icon ? "pl-11" : "pl-4"
-            } ${rightElement ? "pr-11" : "pr-4"} ${statusClass} ${className || ""}`}
+            className={`peer w-full rounded-[20px] border text-sm text-[#0F172A] outline-none transition-all h-[58px] pt-[22px] pb-[6px] ${
+              icon ? "pl-12" : "pl-4.5"
+            } ${rightElement ? "pr-12" : "pr-4.5"} ${statusClass} ${className || ""}`}
             {...props}
           />
           
           <label
             htmlFor={id}
-            className={`absolute left-4 text-slate-400 pointer-events-none transition-all duration-150 origin-left select-none top-1.5 text-[10px] ${
-              icon ? "left-11" : "left-4"
-            } peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px] ${
+            className={`absolute pointer-events-none transition-all duration-150 origin-left select-none text-[#64748B] top-[8px] text-[10px] ${
+              icon ? "left-12" : "left-4.5"
+            } peer-placeholder-shown:top-[18px] peer-placeholder-shown:text-sm peer-placeholder-shown:text-[#64748B] peer-focus:top-[8px] peer-focus:text-[10px] ${
               touched && isValid
-                ? "peer-focus:text-emerald-500 text-emerald-600/80"
+                ? "peer-focus:text-emerald-500 text-emerald-600/85"
                 : touched && !isValid
-                ? "peer-focus:text-red-500 text-red-500/80"
-                : "peer-focus:text-blue-500"
+                ? "peer-focus:text-red-500 text-red-500/85"
+                : "peer-focus:text-[#2563EB]"
             }`}
           >
             {label}
           </label>
           
           {rightElement && (
-            <div className="absolute right-3.5 flex items-center justify-center">
+            <div className="absolute right-4 flex items-center justify-center">
               {rightElement}
             </div>
           )}
@@ -128,21 +120,32 @@ export function UnifiedLoginExperience({
 }: UnifiedLoginProps) {
   const { error: toastError, success: toastSuccess } = useToast();
   
-  // Tab and sub-mode states
+  // Tab states and form configuration states
   const [activeTab, setActiveTab] = useState<AuthTab>(initialTab);
   const [userMode, setUserMode] = useState<AuthMode>(initialMode);
   const [partnerType, setPartnerType] = useState<PartnerType>("ap");
 
-  // Loading/Progress states
+  // Determine partner mode based on current URL path
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (window.location.pathname.includes("/agent")) {
+        setPartnerType("agent");
+      } else {
+        setPartnerType("ap");
+      }
+    }
+  }, []);
+
+  // Loading states
   const [isPending, setIsPending] = useState(false);
   const [isGooglePending, setIsGooglePending] = useState(false);
   const [apTransitionPending, startAPTransition] = useTransition();
 
-  // Inputs & Validation
+  // Inputs and validations
   const [showPassword, setShowPassword] = useState(false);
   const [formMessage, setFormMessage] = useState<FormMessage | null>(null);
 
-  // Form value states for real-time validation
+  // Form value states for real-time validation (Customer)
   const [emailVal, setEmailVal] = useState("");
   const [touchedEmail, setTouchedEmail] = useState(false);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
@@ -155,7 +158,6 @@ export function UnifiedLoginExperience({
   const [touchedName, setTouchedName] = useState(false);
   const isNameValid = nameVal.trim().length > 0;
 
-  // Customer Signup Location Fields
   const [pincode, setPincode] = useState("");
   const [touchedPincode, setTouchedPincode] = useState(false);
   const isPinValid = indianPincodePattern.test(pincode);
@@ -174,33 +176,13 @@ export function UnifiedLoginExperience({
 
   const [oauthProvider, setOAuthProvider] = useState<"google" | null>(null);
 
-  // Network node coordinate definitions for left visual container
-  const nodes = [
-    { id: 1, cx: "25%", cy: "25%", label: "Identity Hub", icon: <Fingerprint className="h-3 w-3 text-blue-500" /> },
-    { id: 2, cx: "75%", cy: "20%", label: "API Gateway", icon: <Cpu className="h-3 w-3 text-indigo-500" /> },
-    { id: 3, cx: "50%", cy: "45%", label: "Direct Ledger DB", icon: <Database className="h-3 w-3 text-emerald-500" /> },
-    { id: 4, cx: "20%", cy: "70%", label: "Compliance Engine", icon: <Globe className="h-3 w-3 text-cyan-500" /> },
-    { id: 5, cx: "80%", cy: "65%", label: "Wallet Router", icon: <Zap className="h-3 w-3 text-orange-500" /> },
-    { id: 6, cx: "45%", cy: "80%", label: "Security Vault", icon: <Lock className="h-3 w-3 text-rose-500" /> },
-  ];
-
-  const nodeLinks = [
-    { from: 1, to: 3 },
-    { from: 2, to: 3 },
-    { from: 1, to: 2 },
-    { from: 3, to: 4 },
-    { from: 3, to: 5 },
-    { from: 4, to: 6 },
-    { from: 5, to: 6 },
-  ];
-
   useEffect(() => {
     if (initialMessage) {
       setFormMessage({ type: "success", text: initialMessage });
     }
   }, [initialMessage]);
 
-  // Handle URL Referral Code syncing
+  // Sync Referral Code params from URL
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -219,7 +201,7 @@ export function UnifiedLoginExperience({
     }
   }, [propsReferralCode]);
 
-  // Sync PIN code automatically to resolve location lookup
+  // PIN code location sync
   useEffect(() => {
     if (userMode !== "signup" || pincode.length !== 6) return;
 
@@ -227,7 +209,7 @@ export function UnifiedLoginExperience({
 
     async function lookupPin() {
       setPinLookupPending(true);
-      setPinMessage("Resolving city and state...");
+      setPinMessage("Resolving location...");
 
       try {
         const response = await fetch(
@@ -304,7 +286,7 @@ export function UnifiedLoginExperience({
     return `${origin}/auth/callback`;
   };
 
-  // Google OAuth Launch
+  // Google OAuth flow
   const openOAuthProvider = async () => {
     const supabase = createClient();
     if (!supabase) throw new Error("Supabase is not configured.");
@@ -408,7 +390,7 @@ export function UnifiedLoginExperience({
     Boolean(city.trim() && district.trim() && state.trim()) &&
     !pinLookupPending;
 
-  // Handle Form Submission for Customer (Login/Signup)
+  // Submit flow (Customer User)
   const handleCustomerSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isPending || isGooglePending) return;
@@ -490,7 +472,7 @@ export function UnifiedLoginExperience({
       return;
     }
 
-    // Login flow
+    // Sign in flow
     setIsPending(true);
     try {
       const supabase = createClient();
@@ -515,7 +497,7 @@ export function UnifiedLoginExperience({
     }
   };
 
-  // Handle Partner Workspace Login (AP / Agent)
+  // Form value states for real-time validation (Partner Workspace)
   const [partnerIdentifier, setPartnerIdentifier] = useState("");
   const [touchedPartnerId, setTouchedPartnerId] = useState(false);
   const isPartnerIdValid = partnerIdentifier.trim().length > 0;
@@ -590,7 +572,7 @@ export function UnifiedLoginExperience({
     }
   };
 
-  // Handle Operations Console (Admin) Login
+  // Form value states for real-time validation (Operations Admin Console)
   const [opsEmail, setOpsEmail] = useState("");
   const [touchedOpsEmail, setTouchedOpsEmail] = useState(false);
   const isOpsEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(opsEmail);
@@ -670,225 +652,43 @@ export function UnifiedLoginExperience({
   };
 
   return (
-    <div className="grid min-h-screen bg-white lg:grid-cols-5 overflow-hidden select-none">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-between relative overflow-hidden select-none"
+      style={{
+        background: "radial-gradient(circle at top center, rgba(37,99,235,0.08), transparent 50%), #F8FAFC"
+      }}
+    >
       
-      {/* LEFT COLUMN: 60% Width, BRAND SHOWCASE (Desktop Only) */}
-      <section className="col-span-3 relative hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-blue-50/40 via-slate-50/10 to-indigo-50/20 border-r border-slate-100/80 overflow-hidden">
+      {/* Background blobs (opacity below 5%) */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-5%] left-[20%] w-[480px] h-[480px] rounded-full bg-blue-500/2 blur-3xl animate-pulse" style={{ animationDuration: "14s" }} />
+        <div className="absolute bottom-[-10%] right-[20%] w-[520px] h-[520px] rounded-full bg-indigo-500/1.5 blur-3xl animate-pulse" style={{ animationDuration: "18s" }} />
+      </div>
+
+      {/* STICKY GLASS NAVBAR WITH SEGMENTED SWITCH */}
+      <header className="sticky top-0 z-50 h-16 w-full border-b border-white/20 bg-white/40 backdrop-blur-md px-4 md:px-6 flex items-center justify-between">
         
-        {/* Subtle grid backdrop */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.25]">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern
-                id="mesh-pattern"
-                width="32"
-                height="32"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 32 0 L 0 0 0 32"
-                  fill="none"
-                  stroke="rgba(30,58,138,0.06)"
-                  strokeWidth="1"
-                />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#mesh-pattern)" />
-          </svg>
-        </div>
-
-        {/* Logo at the top */}
-        <div className="relative z-10 flex items-center">
-          <Image
-            src="/logo-navbar.png"
-            alt="RNOS Logo"
-            width={160}
-            height={55}
-            priority
-            className="h-10 w-auto object-contain"
-          />
-        </div>
-
-        {/* Animated Service Connection Graph centerpiece */}
-        <div className="relative z-10 my-auto flex flex-col items-center">
-          
-          <div className="w-full max-w-lg aspect-[5/4] relative bg-white/45 border border-white/80 backdrop-blur-xl rounded-3xl shadow-[0_12px_40px_rgba(8,112,184,0.03)] p-6 flex flex-col justify-between">
-            
-            {/* Header info inside visualization */}
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100/50">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-blue-600 bg-blue-50/50 border border-blue-100/40">
-                  <Activity className="h-3 w-3 animate-pulse" /> SYSTEM READY
-                </span>
-                <h3 className="text-sm font-bold text-slate-800 mt-1">Service Node Map</h3>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-mono text-slate-400">LATENCY &lt; 8ms</span>
-              </div>
-            </div>
-
-            {/* SVG Network Map */}
-            <div className="flex-1 relative my-4">
-              <svg className="w-full h-full absolute inset-0 pointer-events-none" viewBox="0 0 500 400">
-                {/* Node connection lines */}
-                {nodeLinks.map((link, idx) => {
-                  const fromNode = nodes.find(n => n.id === link.from);
-                  const toNode = nodes.find(n => n.id === link.to);
-                  if (!fromNode || !toNode) return null;
-                  return (
-                    <g key={idx}>
-                      <line
-                        x1={fromNode.cx}
-                        y1={fromNode.cy}
-                        x2={toNode.cx}
-                        y2={toNode.cy}
-                        stroke="rgba(99,102,241,0.08)"
-                        strokeWidth="1.5"
-                      />
-                      <motion.line
-                        x1={fromNode.cx}
-                        y1={fromNode.cy}
-                        x2={toNode.cx}
-                        y2={toNode.cy}
-                        stroke="rgba(37,99,235,0.2)"
-                        strokeWidth="1.5"
-                        strokeDasharray="8 12"
-                        animate={{ strokeDashoffset: [0, -40] }}
-                        transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-                      />
-                    </g>
-                  );
-                })}
-
-                {/* Floating active particles */}
-                {[...Array(6)].map((_, i) => (
-                  <motion.circle
-                    key={i}
-                    r={2.5}
-                    fill="#3b82f6"
-                    initial={{
-                      cx: `${20 + Math.random() * 60}%`,
-                      cy: `${20 + Math.random() * 60}%`,
-                      opacity: 0,
-                    }}
-                    animate={{
-                      cx: [`${20 + Math.random() * 60}%`, `${30 + Math.random() * 40}%`],
-                      cy: [`${20 + Math.random() * 60}%`, `${30 + Math.random() * 40}%`],
-                      opacity: [0, 0.7, 0],
-                    }}
-                    transition={{
-                      duration: 8 + i * 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                ))}
-              </svg>
-
-              {/* Node Overlay badges */}
-              {nodes.map(node => (
-                <motion.div
-                  key={node.id}
-                  style={{ left: node.cx, top: node.cy }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white/95 shadow-sm border border-slate-100 py-1.5 px-2.5 rounded-full select-none"
-                  whileHover={{ scale: 1.05, borderColor: "rgba(37,99,235,0.3)" }}
-                  animate={{ y: [0, -3, 3, 0] }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 4 + node.id,
-                    ease: "easeInOut",
-                  }}
-                >
-                  {node.icon}
-                  <span className="text-[9px] font-bold text-slate-700 whitespace-nowrap">{node.label}</span>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100/50">
-              <div className="text-center p-2 rounded-xl bg-slate-50/40 border border-slate-100/20">
-                <span className="block text-xs font-black text-slate-800">99.99%</span>
-                <span className="text-[9px] font-semibold text-slate-400">Core SLA</span>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-slate-50/40 border border-slate-100/20">
-                <span className="block text-xs font-black text-slate-800">1.5M+</span>
-                <span className="text-[9px] font-semibold text-slate-400">Daily Trans</span>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-slate-50/40 border border-slate-100/20">
-                <span className="block text-xs font-black text-slate-800">12+</span>
-                <span className="text-[9px] font-semibold text-slate-400">Compliance Nodes</span>
-              </div>
-            </div>
-
-          </div>
-
-          <div className="mt-8 text-center max-w-sm">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
-              Welcome to RNOS
-            </h1>
-            <p className="mt-2 text-xs font-semibold text-slate-400">
-              India&apos;s Digital Service Operating System
-            </p>
-          </div>
-        </div>
-
-        {/* Bottom trust section */}
-        <div className="relative z-10 border-t border-slate-200/40 pt-6 grid grid-cols-4 gap-4">
-          {[
-            { label: "Secure Auth", desc: "Access tokens" },
-            { label: "ISO Certified", desc: "IEC 27001 standard" },
-            { label: "E2E Encryption", desc: "Data protection" },
-            { label: "Real-Time Processing", desc: "Instant ledgers" },
-          ].map((badge) => (
-            <div key={badge.label} className="text-left">
-              <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-800">
-                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                {badge.label}
-              </span>
-              <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{badge.desc}</p>
-            </div>
-          ))}
-        </div>
-
-      </section>
-
-      {/* RIGHT COLUMN: 40% Width, AUTHENTICATION PANEL (Centered Vertically) */}
-      <section className="col-span-1 lg:col-span-2 min-h-[100dvh] flex flex-col justify-between py-6 px-4 md:px-12 bg-white relative z-10">
-        
-        {/* Mobile Header (Hidden on Desktop) */}
-        <div className="lg:hidden text-center py-2">
+        {/* Left: Logo */}
+        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-85">
           <Image
             src="/logo-navbar.png"
             alt="RNOS Logo"
             width={120}
             height={40}
             priority
-            className="h-8 w-auto object-contain mx-auto"
+            className="h-8 w-auto object-contain"
           />
-          <h2 className="mt-2 text-base font-black text-slate-900">Welcome to RNOS</h2>
-          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">India&apos;s Digital Service Operating System</p>
-        </div>
-
-        {/* Center Auth Card */}
-        <div className="my-auto w-full max-w-[480px] mx-auto space-y-6">
-          
-          {/* Headline (Compact layout) */}
-          <div className="hidden lg:block text-left">
-            <h2 className="text-xl font-black tracking-tight text-slate-950">
-              System Gateway
-            </h2>
-            <p className="text-xs text-slate-400 font-bold mt-1">
-              Select console tab to log into your work node
-            </p>
-          </div>
-
-          {/* Premium Tab Bar Indicator */}
-          <div className="flex rounded-xl bg-slate-100/80 p-1 relative z-0" role="tablist">
+        </Link>
+        
+        {/* Right: Elegant Segmented Switch (Hidden if activeTab is Admin "ops") */}
+        {activeTab !== "ops" && (
+          <div className="flex rounded-full bg-slate-200/50 p-0.5 relative z-0" role="tablist">
             {[
               { id: "user", label: "User Login" },
               { id: "partner", label: "Partner Workspace" },
-              { id: "ops", label: "Operations Console" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -901,15 +701,14 @@ export function UnifiedLoginExperience({
                     setActiveTab(tab.id as AuthTab);
                     setFormMessage(null);
                   }}
-                  className={`relative flex-1 py-2 text-[10px] md:text-xs font-black tracking-tight transition-colors duration-150 rounded-lg cursor-pointer ${
-                    isActive ? "text-blue-700" : "text-slate-500 hover:text-slate-800"
-                  }`}
+                  className={`relative px-3.5 py-1.5 text-[10px] md:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]`}
+                  style={{ color: isActive ? "#2563EB" : "#64748B" }}
                 >
                   {isActive && (
                     <motion.div
-                      layoutId="activeRoleTab"
-                      className="absolute inset-0 bg-white rounded-lg shadow-sm border border-slate-200/50 -z-10"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      layoutId="activeHeaderTab"
+                      className="absolute inset-0 bg-white rounded-full shadow-sm border border-slate-200/50 -z-10"
+                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
                     />
                   )}
                   {tab.label}
@@ -917,286 +716,125 @@ export function UnifiedLoginExperience({
               );
             })}
           </div>
+        )}
 
-          {/* Form glass container card */}
-          <div className="bg-white/80 border border-slate-100/60 backdrop-blur-xl shadow-[0_20px_50px_rgba(8,112,184,0.04)] rounded-[24px] p-6 md:p-8 space-y-5">
+      </header>
+
+      {/* CENTERED LIQUID GLASS AUTHENTICATION CARD */}
+      <main className="flex-1 flex items-center justify-center p-4 md:p-5 z-10">
+        
+        <div className="w-full max-w-[480px] backdrop-blur-[30px] bg-white/65 border border-white/70 shadow-[0_20px_60px_rgba(15,23,42,0.08)] rounded-[32px] p-6 md:p-10 flex flex-col gap-6">
+          
+          <AnimatePresence mode="wait">
             
-            <AnimatePresence mode="wait">
-              {activeTab === "user" && (
-                <motion.div
-                  key="user-tab"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="space-y-4"
-                >
-                  
-                  {/* Mode Toggles: Sign In vs Register */}
-                  <div className="flex border-b border-slate-100 pb-1.5 gap-4">
-                    {(["login", "signup"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => {
-                          setUserMode(mode);
-                          setFormMessage(null);
-                        }}
-                        className={`pb-1.5 text-xs font-extrabold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-                          userMode === mode
-                            ? "border-blue-600 text-blue-700"
-                            : "border-transparent text-slate-400 hover:text-slate-700"
-                        }`}
-                      >
-                        {mode === "login" ? "Sign In" : "Register"}
-                      </button>
-                    ))}
+            {/* 1. USER LOGIN FORM */}
+            {activeTab === "user" && (
+              <motion.div
+                key={`user-${userMode}`}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                {/* Header (Inside Card) */}
+                <div className="text-center space-y-2.5">
+                  <div className="flex justify-center mb-1">
+                    <Image
+                      src="/logo-navbar.png"
+                      alt="RNOS Logo"
+                      width={125}
+                      height={40}
+                      priority
+                      className="h-8 w-auto object-contain"
+                    />
                   </div>
+                  <h2 className="text-xl font-bold tracking-tight text-[#0F172A]">
+                    {userMode === "login" ? "Welcome Back" : "Create Account"}
+                  </h2>
+                  <p className="text-xs text-[#64748B] font-medium leading-relaxed max-w-[280px] mx-auto">
+                    {userMode === "login"
+                      ? "Access your digital services securely"
+                      : "Get started with your digital operating system"}
+                  </p>
+                </div>
 
-                  <form onSubmit={handleCustomerSubmit} className="space-y-3">
-                    
-                    <AnimatePresence initial={false} mode="popLayout">
-                      {userMode === "signup" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="overflow-hidden"
-                        >
-                          <FloatingInput
-                            label="Full Name"
-                            id="signup-name"
-                            type="text"
-                            required
-                            value={nameVal}
-                            onChange={(e) => {
-                              setNameVal(e.target.value);
-                              setTouchedName(true);
-                            }}
-                            onBlur={() => setTouchedName(true)}
-                            touched={touchedName}
-                            isValid={isNameValid}
-                            icon={<UserRound className="h-4 w-4 text-slate-400" />}
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
+                <form onSubmit={handleCustomerSubmit} className="space-y-3.5">
+                  
+                  {userMode === "signup" && (
                     <FloatingInput
-                      label="Email Address"
-                      id="user-email"
-                      type="email"
+                      label="Full Name"
+                      id="customer-name"
+                      type="text"
                       required
-                      value={emailVal}
+                      value={nameVal}
                       onChange={(e) => {
-                        setEmailVal(e.target.value);
-                        setTouchedEmail(true);
+                        setNameVal(e.target.value);
+                        setTouchedName(true);
                       }}
-                      onBlur={() => setTouchedEmail(true)}
-                      touched={touchedEmail}
-                      isValid={isEmailValid}
-                      icon={<Mail className="h-4 w-4 text-slate-400" />}
+                      onBlur={() => setTouchedName(true)}
+                      touched={touchedName}
+                      isValid={isNameValid}
+                      icon={<UserRound className="h-4 w-4 text-[#64748B]" />}
                     />
+                  )}
 
-                    <FloatingInput
-                      label="Password"
-                      id="user-password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={passwordVal}
-                      onChange={(e) => {
-                        setPasswordVal(e.target.value);
-                        setTouchedPassword(true);
-                      }}
-                      onBlur={() => setTouchedPassword(true)}
-                      touched={touchedPassword}
-                      isValid={isPasswordValid}
-                      icon={<Lock className="h-4 w-4 text-slate-400" />}
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-slate-400 hover:text-slate-700 p-1"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
+                  <FloatingInput
+                    label="Email Address"
+                    id="customer-email"
+                    type="email"
+                    required
+                    value={emailVal}
+                    onChange={(e) => {
+                      setEmailVal(e.target.value);
+                      setTouchedEmail(true);
+                    }}
+                    onBlur={() => setTouchedEmail(true)}
+                    touched={touchedEmail}
+                    isValid={isEmailValid}
+                    icon={<Mail className="h-4 w-4 text-[#64748B]" />}
+                  />
 
-                    {userMode === "login" && (
-                      <div className="flex justify-end pt-0.5">
-                        <Link href="/forgot-password" className="text-[10px] font-extrabold text-blue-600 hover:underline">
-                          Forgot Password?
-                        </Link>
-                      </div>
-                    )}
-
-                    <AnimatePresence initial={false} mode="popLayout">
-                      {userMode === "signup" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="overflow-hidden space-y-3"
-                        >
-                          <div className="grid grid-cols-2 gap-3">
-                            <FloatingInput
-                              label="Mobile Number"
-                              id="signup-mobile"
-                              type="tel"
-                              maxLength={10}
-                              value={mobile}
-                              onChange={(e) => {
-                                setMobile(normalizeMobile(e.target.value));
-                                setTouchedMobile(true);
-                              }}
-                              onBlur={() => setTouchedMobile(true)}
-                              touched={touchedMobile}
-                              isValid={isMobileValid}
-                              icon={<Phone className="h-4 w-4 text-slate-400" />}
-                            />
-
-                            <FloatingInput
-                              label="PIN Code"
-                              id="signup-pincode"
-                              type="text"
-                              maxLength={6}
-                              value={pincode}
-                              onChange={(e) => {
-                                setPincode(normalizePincode(e.target.value));
-                                setTouchedPincode(true);
-                                setCity("");
-                                setDistrict("");
-                                setState("");
-                                setPinMessage("");
-                              }}
-                              onBlur={() => setTouchedPincode(true)}
-                              touched={touchedPincode}
-                              isValid={isPinValid}
-                              icon={<MapPin className="h-4 w-4 text-slate-400" />}
-                              rightElement={
-                                pinLookupPending ? (
-                                  <ButtonSpinner className="h-3.5 w-3.5 text-blue-600" />
-                                ) : null
-                              }
-                            />
-                          </div>
-
-                          {pinMessage && (
-                            <div className={`text-[10px] font-black tracking-tight ${
-                              manualLocation ? "text-amber-600" : "text-emerald-600"
-                            }`}>
-                              {pinMessage}
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="relative">
-                              <input
-                                value={city}
-                                onChange={(e) => setCity(e.target.value)}
-                                readOnly={!manualLocation && Boolean(city)}
-                                required
-                                placeholder="City"
-                                className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 bg-slate-50/50 outline-none focus:border-blue-500 font-semibold"
-                              />
-                            </div>
-                            <div className="relative">
-                              <input
-                                value={district}
-                                onChange={(e) => setDistrict(e.target.value)}
-                                readOnly={!manualLocation && Boolean(district)}
-                                required
-                                placeholder="District"
-                                className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 bg-slate-50/50 outline-none focus:border-blue-500 font-semibold"
-                              />
-                            </div>
-                            <div className="relative">
-                              <input
-                                value={state}
-                                onChange={(e) => setState(e.target.value)}
-                                readOnly={!manualLocation && Boolean(state)}
-                                required
-                                placeholder="State"
-                                className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 bg-slate-50/50 outline-none focus:border-blue-500 font-semibold"
-                              />
-                            </div>
-                          </div>
-
-                          <FloatingInput
-                            label="Referral Code (Optional)"
-                            id="signup-referral"
-                            type="text"
-                            value={referralCode}
-                            onChange={(e) => setReferralCode(e.target.value.toUpperCase().slice(0, 10))}
-                            icon={<Gift className="h-4 w-4 text-slate-400" />}
-                            className="font-mono uppercase"
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {formMessage && (
-                      <div className={`p-3 rounded-2xl text-[11px] font-black tracking-tight leading-tight ${
-                        formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50/50 text-rose-700"
-                      }`}>
-                        {formMessage.text}
-                      </div>
-                    )}
-
-                    <FormSubmitButton
-                      loading={isPending}
-                      loadingText={userMode === "signup" ? "Securing node access..." : "Opening console..."}
-                      className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black shadow-[0_4px_12px_rgba(37,99,235,0.15)] mt-2"
-                    >
-                      {userMode === "signup" ? "Create Free Account" : "Sign In with Email"}
-                    </FormSubmitButton>
-                  </form>
-
-                  {/* Google OAuth Login Section */}
-                  {!oauthProvider && (
-                    <div className="space-y-3 pt-3 border-t border-slate-100">
-                      <p className="text-[9px] text-center font-black text-slate-400 uppercase tracking-widest">
-                        Or continue with
-                      </p>
-                      <Button
+                  <FloatingInput
+                    label="Password"
+                    id="customer-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={passwordVal}
+                    onChange={(e) => {
+                      setPasswordVal(e.target.value);
+                      setTouchedPassword(true);
+                    }}
+                    onBlur={() => setTouchedPassword(true)}
+                    touched={touchedPassword}
+                    isValid={isPasswordValid}
+                    icon={<Lock className="h-4 w-4 text-[#64748B]" />}
+                    rightElement={
+                      <button
                         type="button"
-                        variant="outline"
-                        disabled={isPending || isGooglePending}
-                        onClick={() => userMode === "signup" ? setOAuthProvider("google") : void handleOAuthLogin()}
-                        className="w-full h-11 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-[#64748B] hover:text-[#0F172A] p-1.5 outline-none cursor-pointer"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
-                        {isGooglePending ? <ButtonSpinner className="h-4 w-4 text-blue-600" /> : <GoogleIcon />}
-                        <span className="text-xs">Google</span>
-                      </Button>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                  />
+
+                  {userMode === "login" && (
+                    <div className="flex justify-end pr-1.5">
+                      <Link href="/forgot-password" className="text-[10px] font-bold text-[#2563EB] hover:underline outline-none">
+                        Forgot Password?
+                      </Link>
                     </div>
                   )}
 
-                  {/* OAuth Details Verification Screen (Signup Details pre-check) */}
-                  {oauthProvider && (
-                    <motion.section
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="border border-blue-100/50 bg-blue-50/20 p-4 rounded-2xl space-y-3"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black uppercase text-blue-700 tracking-wider">Social Signup Info</span>
-                        <button
-                          type="button"
-                          onClick={() => setOAuthProvider(null)}
-                          className="text-[10px] font-black text-slate-400 hover:text-slate-600"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-400 font-semibold leading-tight">We need a mobile number and PIN to allocate your ledger wallet.</p>
-
+                  {userMode === "signup" && (
+                    <div className="space-y-3.5">
                       <div className="grid grid-cols-2 gap-3">
                         <FloatingInput
                           label="Mobile"
-                          id="oauth-mobile"
+                          id="customer-mobile"
                           type="tel"
                           maxLength={10}
                           value={mobile}
@@ -1207,11 +845,12 @@ export function UnifiedLoginExperience({
                           onBlur={() => setTouchedMobile(true)}
                           touched={touchedMobile}
                           isValid={isMobileValid}
-                          className="text-xs"
+                          icon={<Phone className="h-4 w-4 text-[#64748B]" />}
                         />
+
                         <FloatingInput
                           label="PIN Code"
-                          id="oauth-pincode"
+                          id="customer-pincode"
                           type="text"
                           maxLength={6}
                           value={pincode}
@@ -1226,253 +865,442 @@ export function UnifiedLoginExperience({
                           onBlur={() => setTouchedPincode(true)}
                           touched={touchedPincode}
                           isValid={isPinValid}
-                          className="text-xs"
+                          icon={<MapPin className="h-4 w-4 text-[#64748B]" />}
                           rightElement={
                             pinLookupPending ? (
-                              <ButtonSpinner className="h-3.5 w-3.5 text-blue-600" />
+                              <ButtonSpinner className="h-3.5 w-3.5 text-[#2563EB]" />
                             ) : null
                           }
                         />
                       </div>
 
-                      <Button
-                        type="button"
-                        disabled={!hasVerifiedOAuthDetails || isPending || isGooglePending}
-                        onClick={() => void handleOAuthLogin(true)}
-                        className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
-                      >
-                        {isGooglePending ? <ButtonSpinner className="h-4 w-4" /> : null}
-                        Continue with Google
-                      </Button>
-                    </motion.section>
+                      {pinMessage && (
+                        <p className={`text-[10px] font-bold ${
+                          manualLocation ? "text-[#F97316]" : "text-emerald-600"
+                        } px-1.5`}>
+                          {pinMessage}
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          readOnly={!manualLocation && Boolean(city)}
+                          required
+                          placeholder="City"
+                          className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                        />
+                        <input
+                          value={district}
+                          onChange={(e) => setDistrict(e.target.value)}
+                          readOnly={!manualLocation && Boolean(district)}
+                          required
+                          placeholder="District"
+                          className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                        />
+                        <input
+                          value={state}
+                          onChange={(e) => setState(e.target.value)}
+                          readOnly={!manualLocation && Boolean(state)}
+                          required
+                          placeholder="State"
+                          className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                        />
+                      </div>
+
+                      <FloatingInput
+                        label="Referral Code (Optional)"
+                        id="customer-referral"
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase().slice(0, 10))}
+                        icon={<Gift className="h-4 w-4 text-[#64748B]" />}
+                        className="font-mono uppercase text-xs"
+                      />
+                    </div>
                   )}
 
-                </motion.div>
-              )}
+                  {formMessage && (
+                    <div className={`p-3 rounded-2xl text-[10px] font-bold leading-normal ${
+                      formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50/50 text-rose-700"
+                    }`}>
+                      {formMessage.text}
+                    </div>
+                  )}
 
-              {activeTab === "partner" && (
-                <motion.div
-                  key="partner-tab"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="space-y-4"
-                >
-                  
-                  {/* Partner subtoggle: AP / Agent */}
-                  <div className="flex border-b border-slate-100 pb-1.5 gap-4">
-                    {[
-                      { id: "ap", label: "Agency Partner" },
-                      { id: "agent", label: "Agent Console" },
-                    ].map((p) => (
+                  <FormSubmitButton
+                    loading={isPending}
+                    loadingText={userMode === "signup" ? "Creating free account..." : "Signing in securely..."}
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                  >
+                    {userMode === "signup" ? "Create Free Account" : "Sign In"}
+                  </FormSubmitButton>
+                </form>
+
+                {/* Google Sign In Only */}
+                {!oauthProvider && (
+                  <div className="space-y-3 pt-3 border-t border-slate-100/80">
+                    <Button
+                      type="button"
+                      disabled={isPending || isGooglePending}
+                      onClick={() => userMode === "signup" ? setOAuthProvider("google") : void handleOAuthLogin()}
+                      className="w-full h-[58px] rounded-[20px] border border-slate-200 bg-white text-[#0F172A] font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                    >
+                      {isGooglePending ? <ButtonSpinner className="h-4 w-4 text-[#2563EB]" /> : <GoogleIcon />}
+                      <span className="text-xs">Continue with Google</span>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Preflight signup details for google */}
+                {oauthProvider && (
+                  <motion.section
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border border-blue-100 bg-blue-50/20 p-4 rounded-2xl space-y-3"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black uppercase text-[#2563EB] tracking-wider">Social Registration</span>
+                      <button
+                        type="button"
+                        onClick={() => setOAuthProvider(null)}
+                        className="text-[10px] font-bold text-slate-400 hover:text-[#0F172A]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-[#64748B] font-medium leading-tight">We require a mobile number and PIN code to allocate your secure wallet node.</p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FloatingInput
+                        label="Mobile"
+                        id="oauth-mobile-user"
+                        type="tel"
+                        maxLength={10}
+                        value={mobile}
+                        onChange={(e) => {
+                          setMobile(normalizeMobile(e.target.value));
+                          setTouchedMobile(true);
+                        }}
+                        onBlur={() => setTouchedMobile(true)}
+                        touched={touchedMobile}
+                        isValid={isMobileValid}
+                      />
+                      <FloatingInput
+                        label="PIN Code"
+                        id="oauth-pincode-user"
+                        type="text"
+                        maxLength={6}
+                        value={pincode}
+                        onChange={(e) => {
+                          setPincode(normalizePincode(e.target.value));
+                          setTouchedPincode(true);
+                          setCity("");
+                          setDistrict("");
+                          setState("");
+                          setPinMessage("");
+                        }}
+                        onBlur={() => setTouchedPincode(true)}
+                        touched={touchedPincode}
+                        isValid={isPinValid}
+                        rightElement={
+                          pinLookupPending ? (
+                            <ButtonSpinner className="h-3.5 w-3.5 text-[#2563EB]" />
+                          ) : null
+                        }
+                      />
+                    </div>
+
+                    <Button
+                      type="button"
+                      disabled={!hasVerifiedOAuthDetails || isPending || isGooglePending}
+                      onClick={() => void handleOAuthLogin(true)}
+                      className="w-full h-11 bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer"
+                    >
+                      {isGooglePending ? <ButtonSpinner className="h-4 w-4" /> : null}
+                      Continue with Google
+                    </Button>
+                  </motion.section>
+                )}
+
+                {/* Account mode toggle link */}
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMode(userMode === "login" ? "signup" : "login");
+                      setFormMessage(null);
+                    }}
+                    className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] transition-colors outline-none cursor-pointer"
+                  >
+                    {userMode === "login"
+                      ? "Don't have an account? Create Account"
+                      : "Already have an account? Sign In"}
+                  </button>
+                </div>
+
+              </motion.div>
+            )}
+
+            {/* 2. PARTNER WORKSPACE LOGIN FORM */}
+            {activeTab === "partner" && (
+              <motion.div
+                key="partner-view"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                {/* Header (Inside Card) */}
+                <div className="text-center space-y-2.5">
+                  <div className="flex justify-center mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
+                      RNOS Partner Network
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-bold tracking-tight text-[#0F172A]">
+                    Partner Workspace Login
+                  </h2>
+                  <p className="text-xs text-[#64748B] font-medium leading-relaxed max-w-[300px] mx-auto">
+                    Access your DigiConnect Partner Dashboard
+                  </p>
+                </div>
+
+                {/* Subtle Inner Card Switcher (Agency Partner vs Agent Console) */}
+                <div className="flex rounded-lg bg-slate-100 p-0.5 relative z-0 mx-auto max-w-[280px]" role="tablist">
+                  {[
+                    { id: "ap", label: "Agency Partner" },
+                    { id: "agent", label: "Agent Console" },
+                  ].map((p) => {
+                    const isSelected = partnerType === p.id;
+                    return (
                       <button
                         key={p.id}
                         type="button"
+                        role="tab"
+                        aria-selected={isSelected}
                         onClick={() => {
                           setPartnerType(p.id as PartnerType);
                           setFormMessage(null);
                         }}
-                        className={`pb-1.5 text-xs font-extrabold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-                          partnerType === p.id
-                            ? "border-blue-600 text-blue-700"
-                            : "border-transparent text-slate-400 hover:text-slate-700"
+                        className={`relative flex-1 py-1 text-[10px] font-bold transition-all rounded-md cursor-pointer outline-none ${
+                          isSelected ? "text-blue-700 font-extrabold" : "text-slate-400 hover:text-slate-700"
                         }`}
                       >
+                        {isSelected && (
+                          <motion.div
+                            layoutId="activeSubPartnerTab"
+                            className="absolute inset-0 bg-white rounded-md shadow-sm border border-slate-200/50 -z-10"
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                          />
+                        )}
                         {p.label}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
+                </div>
 
-                  <form onSubmit={handlePartnerSubmit} className="space-y-3">
-                    
-                    <FloatingInput
-                      label={partnerType === "ap" ? "Email Address" : "Agent Code / Email"}
-                      id="partner-id"
-                      type="text"
-                      required
-                      value={partnerIdentifier}
-                      onChange={(e) => {
-                        setPartnerIdentifier(e.target.value);
-                        setTouchedPartnerId(true);
-                      }}
-                      onBlur={() => setTouchedPartnerId(true)}
-                      touched={touchedPartnerId}
-                      isValid={isPartnerIdValid}
-                      icon={partnerType === "ap" ? (
-                        <Mail className="h-4 w-4 text-slate-400" />
-                      ) : (
-                        <UserRound className="h-4 w-4 text-slate-400" />
-                      )}
-                    />
-
-                    <FloatingInput
-                      label="Password"
-                      id="partner-password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={partnerPassword}
-                      onChange={(e) => {
-                        setPartnerPassword(e.target.value);
-                        setTouchedPartnerPassword(true);
-                      }}
-                      onBlur={() => setTouchedPartnerPassword(true)}
-                      touched={touchedPartnerPassword}
-                      isValid={isPartnerPasswordValid}
-                      icon={<Lock className="h-4 w-4 text-slate-400" />}
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-slate-400 hover:text-slate-700 p-1"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-
-                    {formMessage && (
-                      <div className={`p-3 rounded-2xl text-[11px] font-black tracking-tight leading-tight ${
-                        formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50/50 text-rose-700"
-                      }`}>
-                        {formMessage.text}
-                      </div>
-                    )}
-
-                    <FormSubmitButton
-                      loading={isPending || apTransitionPending}
-                      loadingText="Securing workspace connection..."
-                      className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black shadow-[0_4px_12px_rgba(37,99,235,0.15)]"
-                    >
-                      Open Partner Dashboard
-                    </FormSubmitButton>
-                  </form>
-
-                  <div className="pt-2 border-t border-slate-100 text-center">
-                    <span className="text-[10px] font-bold text-slate-400">
-                      Partner accounts are configured by server administrators only.
-                    </span>
-                  </div>
-
-                </motion.div>
-              )}
-
-              {activeTab === "ops" && (
-                <motion.div
-                  key="ops-tab"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="space-y-4"
-                >
+                <form onSubmit={handlePartnerSubmit} className="space-y-3.5">
                   
-                  <div className="rounded-2xl border border-amber-200/50 bg-amber-50/20 p-4">
-                    <div className="flex gap-2">
-                      <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-black text-amber-800 uppercase tracking-wide">Secure Operations Console</p>
-                        <p className="text-[10px] font-bold text-slate-400 mt-1 leading-tight">Access restricted to authorized server staff and administrators.</p>
-                      </div>
+                  <FloatingInput
+                    label={partnerType === "ap" ? "Partner Email Address" : "Agent Code / Email"}
+                    id="partner-id"
+                    type="text"
+                    required
+                    value={partnerIdentifier}
+                    onChange={(e) => {
+                      setPartnerIdentifier(e.target.value);
+                      setTouchedPartnerId(true);
+                    }}
+                    onBlur={() => setTouchedPartnerId(true)}
+                    touched={touchedPartnerId}
+                    isValid={isPartnerIdValid}
+                    icon={partnerType === "ap" ? (
+                      <Mail className="h-4 w-4 text-[#64748B]" />
+                    ) : (
+                      <UserRound className="h-4 w-4 text-[#64748B]" />
+                    )}
+                  />
+
+                  <FloatingInput
+                    label="Password"
+                    id="partner-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={partnerPassword}
+                    onChange={(e) => {
+                      setPartnerPassword(e.target.value);
+                      setTouchedPartnerPassword(true);
+                    }}
+                    onBlur={() => setTouchedPartnerPassword(true)}
+                    touched={touchedPartnerPassword}
+                    isValid={isPartnerPasswordValid}
+                    icon={<Lock className="h-4 w-4 text-[#64748B]" />}
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-[#64748B] hover:text-[#0F172A] p-1.5 outline-none cursor-pointer"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                  />
+
+                  {formMessage && (
+                    <div className={`p-3 rounded-2xl text-[10px] font-bold leading-normal ${
+                      formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50/50 text-rose-700"
+                    }`}>
+                      {formMessage.text}
+                    </div>
+                  )}
+
+                  <FormSubmitButton
+                    loading={isPending || apTransitionPending}
+                    loadingText="Opening partner node..."
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                  >
+                    Sign In
+                  </FormSubmitButton>
+                </form>
+
+                {/* Footer links: Forgot Password, Partner Support, Apply for Partnership */}
+                <div className="flex flex-col gap-2.5 items-center pt-2.5 border-t border-slate-100/80 text-center">
+                  <div className="flex justify-center gap-4 text-xs font-semibold text-[#64748B]">
+                    <Link href="/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
+                      Forgot Password?
+                    </Link>
+                    <span className="text-slate-200">|</span>
+                    <Link href="/ap/support" className="hover:text-[#0F172A] hover:underline outline-none">
+                      Partner Support
+                    </Link>
+                  </div>
+                  
+                  <Link href="/services" className="text-[11px] font-semibold text-[#64748B] hover:text-[#0F172A] hover:underline mt-1 outline-none">
+                    Apply for Partnership
+                  </Link>
+                </div>
+
+              </motion.div>
+            )}
+
+            {/* 3. OPERATIONS VIEW (Bypass for admin-login direct link) */}
+            {activeTab === "ops" && (
+              <motion.div
+                key="ops-view"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/10 p-4 text-left">
+                  <div className="flex gap-2.5">
+                    <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-black text-amber-800 uppercase tracking-wide">Operations Console</p>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-1 leading-tight">Access restricted to authorized server staff and administrators.</p>
                     </div>
                   </div>
+                </div>
 
-                  <form onSubmit={handleAdminSubmit} className="space-y-3">
-                    
-                    <FloatingInput
-                      label="Administrative Email"
-                      id="ops-email"
-                      type="email"
-                      required
-                      value={opsEmail}
-                      onChange={(e) => {
-                        setOpsEmail(e.target.value);
-                        setTouchedOpsEmail(true);
-                      }}
-                      onBlur={() => setTouchedOpsEmail(true)}
-                      touched={touchedOpsEmail}
-                      isValid={isOpsEmailValid}
-                      icon={<Mail className="h-4 w-4 text-slate-400" />}
-                    />
+                <form onSubmit={handleAdminSubmit} className="space-y-3.5">
+                  <FloatingInput
+                    label="Administrative Email"
+                    id="admin-email"
+                    type="email"
+                    required
+                    value={opsEmail}
+                    onChange={(e) => {
+                      setOpsEmail(e.target.value);
+                      setTouchedOpsEmail(true);
+                    }}
+                    onBlur={() => setTouchedOpsEmail(true)}
+                    touched={touchedOpsEmail}
+                    isValid={isOpsEmailValid}
+                    icon={<Mail className="h-4 w-4 text-[#64748B]" />}
+                  />
 
-                    <FloatingInput
-                      label="Security Key"
-                      id="ops-password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={opsPassword}
-                      onChange={(e) => {
-                        setOpsPassword(e.target.value);
-                        setTouchedOpsPassword(true);
-                      }}
-                      onBlur={() => setTouchedOpsPassword(true)}
-                      touched={touchedOpsPassword}
-                      isValid={isOpsPasswordValid}
-                      icon={<Lock className="h-4 w-4 text-slate-400" />}
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-slate-400 hover:text-slate-700 p-1"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
+                  <FloatingInput
+                    label="Security Key"
+                    id="admin-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={opsPassword}
+                    onChange={(e) => {
+                      setOpsPassword(e.target.value);
+                      setTouchedOpsPassword(true);
+                    }}
+                    onBlur={() => setTouchedOpsPassword(true)}
+                    touched={touchedOpsPassword}
+                    isValid={isOpsPasswordValid}
+                    icon={<Lock className="h-4 w-4 text-[#64748B]" />}
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-[#64748B] hover:text-[#0F172A] p-1.5 outline-none cursor-pointer"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                  />
 
-                    {formMessage && (
-                      <div className={`p-3 rounded-2xl text-[11px] font-black tracking-tight leading-tight ${
-                        formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50/50 text-rose-700"
-                      }`}>
-                        {formMessage.text}
-                      </div>
-                    )}
+                  {formMessage && (
+                    <div className={`p-3 rounded-2xl text-[10px] font-bold leading-normal ${
+                      formMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50/50 text-rose-700"
+                    }`}>
+                      {formMessage.text}
+                    </div>
+                  )}
 
-                    <FormSubmitButton
-                      loading={isPending}
-                      loadingText="Unlocking console access..."
-                      className="w-full h-11 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-xs font-black shadow-md mt-1"
-                    >
-                      Open Administrative Console
-                    </FormSubmitButton>
-                  </form>
+                  <FormSubmitButton
+                    loading={isPending}
+                    loadingText="Opening operations node..."
+                    className="w-full h-[58px] rounded-[20px] bg-slate-900 hover:bg-slate-950 text-white font-semibold text-xs tracking-wide shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  >
+                    Open Console
+                  </FormSubmitButton>
+                </form>
 
-                  <div className="space-y-3 pt-3 border-t border-slate-100">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={handleAdminGoogleLogin}
-                      className="w-full h-11 rounded-xl border border-slate-200 bg-white text-slate-800 font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <GoogleIcon />
-                      <span className="text-xs">Staff Sign In with Google</span>
-                    </Button>
-                  </div>
+                <div className="space-y-3 pt-3 border-t border-slate-100/80">
+                  <Button
+                    type="button"
+                    disabled={isPending}
+                    onClick={handleAdminGoogleLogin}
+                    className="w-full h-[58px] rounded-[20px] border border-slate-200 bg-white text-[#0F172A] font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                  >
+                    <GoogleIcon />
+                    <span className="text-xs">Staff Sign In with Google</span>
+                  </Button>
+                </div>
+              </motion.div>
+            )}
 
-                </motion.div>
-              )}
-            </AnimatePresence>
+          </AnimatePresence>
 
+          {/* Subtle security trust lock text */}
+          <div className="text-center pt-1.5 border-t border-slate-100/50">
+            <span className="text-[10px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1">
+              <span>🔒</span> Protected by RNOS Secure Authentication
+            </span>
           </div>
 
-          {/* Secure Trust Footer indicator */}
-          <p className="text-[10px] text-center text-slate-400 font-bold flex items-center justify-center gap-1.5 pt-2">
-            <Lock className="h-3.5 w-3.5 text-slate-350" />
-            ISO 27001 Infrastructure &bull; Direct Secure Gateway
-          </p>
-
         </div>
 
-        {/* Outer Footer copyright */}
-        <div className="text-center py-2">
-          <p className="text-[10px] font-bold text-slate-400">
-            &copy; {new Date().getFullYear()} RNOS Service Operating System. All rights reserved.
-          </p>
-        </div>
+      </main>
 
-      </section>
+      {/* FOOTER */}
+      <footer className="text-center py-4 z-10">
+        <p className="text-[10px] font-semibold text-slate-400">
+          &copy; {new Date().getFullYear()} RNOS India Pvt. Ltd. All rights reserved.
+        </p>
+      </footer>
 
-    </div>
+    </motion.div>
   );
 }
