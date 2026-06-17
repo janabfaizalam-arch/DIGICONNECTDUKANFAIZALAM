@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { validateFileSignature } from "@/lib/file-validation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -61,9 +62,10 @@ export async function POST(request: Request) {
     };
 
     if (file instanceof File && file.size > 0) {
-      if (!allowedFileTypes.includes(file.type)) {
-        console.error("[api/lead] Invalid file type", { type: file.type });
-        return jsonError("File must be uploaded in PDF, JPG, or PNG format.", 400);
+      const validationResult = await validateFileSignature(file, allowedFileTypes);
+      if (!validationResult.valid) {
+        console.error("[api/lead] Invalid file type or signature", { type: file.type, error: validationResult.error });
+        return jsonError(validationResult.error || "File must be uploaded in PDF, JPG, or PNG format.", 400);
       }
 
       if (file.size > maxFileSize) {

@@ -1,3 +1,7 @@
+-- ⚠️ LEGACY — SUPERSEDED by 20260514130000_secure_referral_reward_wallet.sql + 20260516110000_reward_wallet_e2e_repair.sql
+-- Functions here (refresh_reward_wallet_summary, credit_reward_points, redeem_reward_points, etc.)
+-- are replaced by canonical closed-loop system. Migration kept for chain integrity only.
+--
 -- Referral + Reward + Wallet + Cashback production ledger.
 -- The older DigiWallet tables remain for compatibility; reward_transactions is the canonical ledger.
 

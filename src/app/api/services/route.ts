@@ -11,7 +11,7 @@ export async function GET() {
 // POST: create a new service (draft)
 export async function POST(request: Request) {
   const body = await request.json();
-  const result = await createServiceConfig(body as any);
+  const result = await createServiceConfig(body as ServiceConfig);
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }

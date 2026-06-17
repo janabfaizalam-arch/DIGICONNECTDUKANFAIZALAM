@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { validateFileSignature } from "@/lib/file-validation";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { siteMediaBucketName } from "@/lib/homepage-offer-banners";
@@ -81,6 +82,9 @@ export async function POST(request: Request) {
     if (imageError) return jsonError(imageError, 400);
     if (sortOrder === null) return jsonError("Sort order must be a number.", 400);
 
+    const check = await validateFileSignature(image as File, allowedImageTypes);
+    if (!check.valid) return jsonError(check.error || "Invalid file.", 400);
+
     const upload = await uploadImage(image as File);
     if (upload.error || !upload.path || !upload.url) return jsonError(upload.error || "About page image could not be uploaded.", 500);
 
@@ -146,6 +150,9 @@ export async function PATCH(request: Request) {
     };
 
     if (image instanceof File && image.size > 0) {
+      const check = await validateFileSignature(image, allowedImageTypes);
+      if (!check.valid) return jsonError(check.error || "Invalid file.", 400);
+
       const upload = await uploadImage(image);
       if (upload.error || !upload.path || !upload.url) return jsonError(upload.error || "About page image could not be uploaded.", 500);
 

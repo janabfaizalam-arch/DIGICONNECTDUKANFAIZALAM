@@ -12,6 +12,8 @@ import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { validateFileSignature } from "@/lib/file-validation";
+import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 type UploadedDocument = {
   document_type: string;
@@ -534,6 +536,14 @@ export async function POST(request: Request) {
       return jsonError("Please upload Aadhaar / Documents.", 400);
     }
 
+    const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    for (const item of submissionFiles) {
+      const validationResult = await validateFileSignature(item.file, allowedFileTypes);
+      if (!validationResult.valid) {
+        return jsonError(validationResult.error || `Invalid file type for ${item.file.name}`, 400);
+      }
+    }
+
     for (const document of documents) {
       if (!document.file_name || !document.file_url) {
         return jsonError("Uploaded document metadata is invalid.", 400);
@@ -887,6 +897,19 @@ export async function POST(request: Request) {
           applicationIds: existingIds,
           error: notificationError,
         });
+      }
+
+      try {
+        for (const app of existingApplications) {
+          await triggerWhatsAppNotification("application_created", app.id);
+          if (body.razorpayPayment?.razorpay_payment_id) {
+            await triggerWhatsAppNotification("payment_success", app.id, {
+              paymentId: body.razorpayPayment.razorpay_payment_id
+            });
+          }
+        }
+      } catch (waError) {
+        console.error("WhatsApp trigger error for existing applications:", waError);
       }
 
       return NextResponse.json({
@@ -1254,6 +1277,19 @@ export async function POST(request: Request) {
         applicationIds: applications.map((application) => application.id),
         error: notificationError,
       });
+    }
+
+    try {
+      for (const app of applications) {
+        await triggerWhatsAppNotification("application_created", app.id);
+        if (hasVerifiedRazorpayPayment && body.razorpayPayment?.razorpay_payment_id) {
+          await triggerWhatsAppNotification("payment_success", app.id, {
+            paymentId: body.razorpayPayment.razorpay_payment_id
+          });
+        }
+      }
+    } catch (waError) {
+      console.error("WhatsApp trigger error for new applications:", waError);
     }
 
     return NextResponse.json({

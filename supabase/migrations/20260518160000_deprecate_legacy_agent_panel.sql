@@ -1,3 +1,6 @@
+-- ⚠️ LEGACY — Documentation-only migration. Agent panel superseded by 20260517170000_agent_panel_workflow.sql
+-- Migration kept for chain integrity only.
+--
 -- Deprecate the old lead/customer-only agent panel without dropping production data.
 -- New canonical agent work is stored in applications, application_documents, payments,
 -- invoices, assignments, commissions, wallet_transactions, and payout_requests.

@@ -8,6 +8,7 @@ import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { creditCashbackForApplication } from "@/lib/wallet";
+import { validateFileSignature } from "@/lib/file-validation";
 
 function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
@@ -106,8 +107,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (finalDocument instanceof File && finalDocument.size > 0) {
-      if (!allowedFileTypes.includes(finalDocument.type)) {
-        return NextResponse.json({ message: "Final document must be PDF, JPG, PNG, or WebP." }, { status: 400 });
+      const validationResult = await validateFileSignature(finalDocument, allowedFileTypes);
+      if (!validationResult.valid) {
+        return NextResponse.json({ message: validationResult.error || "Final document must be PDF, JPG, PNG, or WebP." }, { status: 400 });
       }
 
       if (finalDocument.size > maxFileSize) {

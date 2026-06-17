@@ -5,7 +5,7 @@ import { emitEvent } from '@/lib/eventBus';
 import type { ServiceConfig } from '@/types/service';
 
 /** Create a new service configuration (draft). */
-export async function createServiceConfig(config: Omit<ServiceConfig, 'service'> & { service: Omit<ServiceConfig['service'], 'id'> }): Promise<{ success: boolean; serviceId?: string; error?: any }> {
+export async function createServiceConfig(config: Omit<ServiceConfig, 'service'> & { service: Omit<ServiceConfig['service'], 'id'> }): Promise<{ success: boolean; serviceId?: string; error?: unknown }> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { success: false, error: 'Supabase not initialized' };
   const { data: serviceData, error: serviceError } = await supabase
@@ -23,12 +23,13 @@ export async function createServiceConfig(config: Omit<ServiceConfig, 'service'>
       icon_value: config.service.icon_value,
       metadata: config.service.metadata,
     })
+    .select('id')
     .single();
   if (serviceError) {
     console.error('[serviceEngine] Service insert error', serviceError);
     return { success: false, error: serviceError };
   }
-  const serviceId = (serviceData as any).id as string;
+  const serviceId = serviceData?.id as string;
   await emitEvent('service_created', { serviceId });
 
   // Insert optional sections
@@ -82,11 +83,11 @@ export async function listServices(): Promise<ServiceConfig['service'][]> {
     console.error('[serviceEngine] listServices error', error);
     return [];
   }
-  return data as any;
+  return (data as unknown) as ServiceConfig['service'][];
 }
 
 /** Update a service */
-export async function updateServiceConfig(serviceId: string, updates: Partial<ServiceConfig['service']>): Promise<{ success: boolean; error?: any }> {
+export async function updateServiceConfig(serviceId: string, updates: Partial<ServiceConfig['service']>): Promise<{ success: boolean; error?: unknown }> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { success: false, error: 'Supabase not initialized' };
   const { error } = await supabase.from('services').update(updates).eq('id', serviceId);
@@ -98,7 +99,7 @@ export async function updateServiceConfig(serviceId: string, updates: Partial<Se
 }
 
 /** Delete a service and its related data */
-export async function deleteServiceConfig(serviceId: string): Promise<{ success: boolean; error?: any }> {
+export async function deleteServiceConfig(serviceId: string): Promise<{ success: boolean; error?: unknown }> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { success: false, error: 'Supabase not initialized' };
   await supabase.from('service_fields').delete().eq('service_id', serviceId);

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 type RazorpayWebhookPayload = {
   event?: string;
@@ -113,6 +114,18 @@ export async function POST(request: Request) {
         .in("id", applicationIds),
       supabase.from("invoices").update({ payment_status: status }).in("application_id", applicationIds),
     ]);
+
+    if (status === "verified") {
+      try {
+        for (const appId of applicationIds) {
+          await triggerWhatsAppNotification("payment_success", appId, {
+            paymentId: payment.id
+          });
+        }
+      } catch (waError) {
+        console.error("WhatsApp trigger error in Razorpay webhook:", waError);
+      }
+    }
   }
 
   return NextResponse.json({ received: true });

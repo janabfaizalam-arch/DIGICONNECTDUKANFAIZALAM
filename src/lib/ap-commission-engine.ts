@@ -223,6 +223,18 @@ export async function createCommissionForApplication(params: {
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      console.log(`[ap-commission] Commission for application ${params.applicationId} already exists (idempotent duplicate, 23505).`);
+      const { data: existingComm } = await supabase
+        .from("ap_commissions")
+        .select("id, calculated_amount")
+        .eq("application_id", params.applicationId)
+        .maybeSingle();
+      if (existingComm) {
+        return { ok: true, commissionId: existingComm.id as string, amount: existingComm.calculated_amount };
+      }
+      return { ok: true, amount: 0 };
+    }
     console.error("[ap-commission] Failed to create commission", error);
     return { ok: false, error: error.message };
   }

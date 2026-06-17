@@ -12,6 +12,8 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 import { linkCustomerApplicationsByMobile } from "@/lib/ap-customer-linking";
+import { validateFileSignature } from "@/lib/file-validation";
+import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -20,9 +22,10 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ message }, { status });
 }
 
-function validateFile(file: File, label: string) {
-  if (!allowedFileTypes.includes(file.type)) {
-    return `${label} must be PDF, JPG, PNG, or WEBP.`;
+async function validateFile(file: File, label: string) {
+  const validationResult = await validateFileSignature(file, allowedFileTypes);
+  if (!validationResult.valid) {
+    return `${label} must be PDF, JPG, PNG, or WEBP (invalid format/signature).`;
   }
 
   if (file.size > maxFileSize) {
@@ -171,7 +174,7 @@ export async function POST(request: Request) {
     }
 
     for (const file of documentFiles) {
-      const validation = validateFile(file, file.name);
+      const validation = await validateFile(file, file.name);
       if (validation) {
         return jsonError(validation, 400);
       }
@@ -478,6 +481,17 @@ export async function POST(request: Request) {
           ]
         : []),
     ]);
+
+    try {
+      await triggerWhatsAppNotification("application_created", application.id);
+      if (expectedAmountPaise > 0) {
+        await triggerWhatsAppNotification("payment_success", application.id, {
+          paymentId: razorpayPaymentId
+        });
+      }
+    } catch (waError) {
+      console.error("WhatsApp trigger error for AP applications:", waError);
+    }
 
     return NextResponse.json({
       message: "Application created successfully.",

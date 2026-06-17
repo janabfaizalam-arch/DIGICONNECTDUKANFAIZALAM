@@ -1082,7 +1082,17 @@ textarea {
   font-weight: 700;
   color: #64748b;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 64px;
+  line-height: 1.1;
+  font-size: 9px;
+}
+
+@media (min-width: 640px) {
+  .timeline-node-label {
+    max-width: 80px;
+    font-size: 10px;
+  }
 }
 
 .timeline-node-label.active {

@@ -1535,47 +1535,47 @@ export function CustomerDashboard({
                       
                       if (isOlympiad) {
                         return (
-                          <div key={app.id} className="rounded-2xl border border-white/10 bg-gradient-to-tr from-cyan-950 via-slate-900 to-indigo-950 p-4 shadow-lg text-slate-100 flex flex-col justify-between h-[230px] hover:border-cyan-500/30 transition-all duration-300 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-bl-full pointer-events-none" />
+                          <div key={app.id} className="rounded-2xl border border-cyan-100 bg-white p-4 shadow-sm text-slate-800 flex flex-col justify-between h-[230px] hover:border-cyan-200 transition-all duration-300 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-cyan-500/5 to-transparent rounded-bl-full pointer-events-none" />
                             <div className="space-y-2.5">
                               <div className="flex justify-between items-start gap-2">
-                                <span className="text-[8.5px] font-mono text-cyan-400/60 uppercase">PASS: {app.id.slice(0, 10).toUpperCase()}</span>
+                                <span className="text-[8.5px] font-mono text-cyan-600/80 uppercase font-bold">PASS: {app.id.slice(0, 10).toUpperCase()}</span>
                                 <div className="flex gap-1">
-                                  <span className="bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-black text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                  <span className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 text-amber-700 font-extrabold text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200/50 shadow-sm">
                                     Olympiad Pass
                                   </span>
                                   <StatusBadge status={app.status} />
                                 </div>
                               </div>
                               <div>
-                                <h4 className="text-xs font-black text-white group-hover:text-cyan-400 transition">{app.service_name}</h4>
-                                <p className="text-[9px] text-slate-400 mt-0.5">
-                                  Candidate: <span className="font-extrabold text-slate-200">{studentName}</span> (Class {studentClass})
+                                <h4 className="text-xs font-black text-slate-900 group-hover:text-cyan-600 transition">{app.service_name}</h4>
+                                <p className="text-[9px] text-slate-500 mt-0.5">
+                                  Candidate: <span className="font-extrabold text-slate-700">{studentName}</span> (Class {studentClass})
                                 </p>
                               </div>
                             </div>
-                            <div className="py-2 px-2.5 bg-slate-950/40 border border-white/5 rounded-xl space-y-1.5">
-                              <div className="flex justify-between text-[8px] font-bold text-slate-400">
+                            <div className="py-2 px-2.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
+                              <div className="flex justify-between text-[8px] font-bold text-slate-500">
                                 <span>Verification Pipeline</span>
-                                <span className="text-cyan-400 font-extrabold">{timeline.percent}%</span>
+                                <span className="text-cyan-600 font-extrabold">{timeline.percent}%</span>
                               </div>
-                              <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
                                 <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${timeline.percent}%` }} />
                               </div>
-                              <p className="text-[8.5px] text-slate-500 leading-normal truncate">Support coordinator assigned</p>
+                              <p className="text-[8.5px] text-slate-400 leading-normal truncate">Support coordinator assigned</p>
                             </div>
-                            <div className="flex gap-2 pt-2.5 border-t border-white/5 shrink-0">
+                            <div className="flex gap-2 pt-2.5 border-t border-slate-100 shrink-0">
                               <Link
                                 href={`/dashboard/applications/${app.id}`}
-                                className="flex-1 h-8 flex items-center justify-center gap-1 rounded-lg border border-white/10 hover:bg-white/5 text-[10px] font-bold text-slate-300 transition"
+                                className="flex-1 h-8 flex items-center justify-center gap-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all"
                               >
-                                <Eye className="h-3.5 w-3.5 text-slate-400" /> Pass Details
+                                <Eye className="h-3.5 w-3.5 text-slate-500" /> Pass Details
                               </Link>
                               <a
                                 href={`https://api.whatsapp.com/send?phone=${expert.phone.replace("+", "")}&text=${encodeURIComponent(`Hi, I need assistance with my application: ${app.service_name} (ID: ${app.id}).`)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="h-8 w-8 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-900/30 hover:bg-emerald-900/40 flex items-center justify-center shrink-0 transition"
+                                className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-all"
                               >
                                 <MessageCircle className="h-3.5 w-3.5" />
                               </a>

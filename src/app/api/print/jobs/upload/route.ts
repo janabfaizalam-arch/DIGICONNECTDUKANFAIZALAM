@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { validateFileSignature } from "@/lib/file-validation";
 
 const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "docx"];
 const ALLOWED_MIME_TYPES = [
@@ -37,9 +38,17 @@ export async function POST(request: Request) {
 
     // Validate extension & mime type
     const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
-    if (!ALLOWED_EXTENSIONS.includes(fileExt) || !ALLOWED_MIME_TYPES.includes(file.type)) {
+    if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
       return NextResponse.json(
-        { error: "Invalid file type. Supported: PDF, JPG, PNG, DOCX" },
+        { error: "Invalid file extension. Supported: PDF, JPG, PNG, DOCX" },
+        { status: 400 }
+      );
+    }
+
+    const validationResult = await validateFileSignature(file, ALLOWED_MIME_TYPES);
+    if (!validationResult.valid) {
+      return NextResponse.json(
+        { error: validationResult.error || "Invalid file signature/content type." },
         { status: 400 }
       );
     }

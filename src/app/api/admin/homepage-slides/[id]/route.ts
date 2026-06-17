@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { validateFileSignature } from "@/lib/file-validation";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { homepageSlidesBucketName } from "@/lib/homepage-slides";
@@ -195,6 +196,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     if (desktopValidationError || mobileValidationError) {
       return jsonError(desktopValidationError || mobileValidationError || "Invalid image.", 400);
+    }
+
+    if (desktopImage instanceof File && desktopImage.size > 0) {
+      const check = await validateFileSignature(desktopImage, allowedImageTypes);
+      if (!check.valid) return jsonError(`Desktop poster: ${check.error}`, 400);
+    }
+    if (mobileImage instanceof File && mobileImage.size > 0) {
+      const check = await validateFileSignature(mobileImage, allowedImageTypes);
+      if (!check.valid) return jsonError(`Mobile poster: ${check.error}`, 400);
     }
 
     const { error: payloadError, payload } = buildSlidePayload(formData);

@@ -1,3 +1,6 @@
+-- ⚠️ LEGACY — SUPERSEDED by generate_secure_referral_code() in 20260514130000_secure_referral_reward_wallet.sql
+-- Migration kept for chain integrity only.
+
 create or replace function public.generate_referral_code(p_user_id uuid)
 returns text
 language plpgsql

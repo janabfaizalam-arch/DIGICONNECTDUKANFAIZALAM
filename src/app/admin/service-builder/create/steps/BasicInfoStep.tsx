@@ -1,7 +1,10 @@
+"use client";
+
 // src/app/admin/service-builder/create/steps/BasicInfoStep.tsx
 
 import React, { useState } from 'react';
 import { useWizard } from '@/app/admin/service-builder/create/ServiceWizardContext';
+import { ServiceConfig } from '@/types/service';
 
 /**
  * Step 1 – Basic Information about the service.
@@ -35,6 +38,10 @@ export const BasicInfoStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     }
     updateData({
       service: {
+        id: state.data.service?.id || '',
+        base_customer_fee: state.data.service?.base_customer_fee || 0,
+        tat_hours: state.data.service?.tat_hours || 0,
+        metadata: state.data.service?.metadata || {},
         ...state.data.service,
         name: form.name,
         slug: form.slug,
@@ -44,7 +51,7 @@ export const BasicInfoStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
         processing_time_hours: form.processing_time_hours,
         icon_type: form.icon_type as 'predefined' | 'custom',
         icon_value: form.icon_value,
-      },
+      } as ServiceConfig['service'],
     });
     onNext();
   };

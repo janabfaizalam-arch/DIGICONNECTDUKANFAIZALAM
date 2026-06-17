@@ -1,3 +1,7 @@
+-- ⚠️ LEGACY — SUPERSEDED by 20260520120000_master_production_stability.sql
+-- claim_customer_applications() is recreated with improvements in the master migration.
+-- Migration kept for chain integrity only.
+--
 -- Make application claiming safe for repaired signup accounts that do not yet
 -- have a verified mobile number on their customer profile.
 

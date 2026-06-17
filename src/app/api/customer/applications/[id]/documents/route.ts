@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { validateFileSignature } from "@/lib/file-validation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -59,8 +60,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const fileObj = file as File;
 
-    if (!allowedFileTypes.includes(fileObj.type)) {
-      return jsonError("Document must be PDF, JPG, PNG, or WebP.", 400);
+    const validationResult = await validateFileSignature(fileObj, allowedFileTypes);
+    if (!validationResult.valid) {
+      return jsonError(validationResult.error || "Document must be PDF, JPG, PNG, or WebP.", 400);
     }
 
     if (fileObj.size > maxFileSize) {

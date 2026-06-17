@@ -93,35 +93,121 @@ export default async function APApplicationDetailPage({
     allowed_transitions: Array.isArray(w.allowed_transitions) ? (w.allowed_transitions as string[]) : []
   }));
 
-  // Fetch timelines (universal first, fallback to legacy)
-  const { data: timelineData } = await supabase
-    .from("entity_timelines")
-    .select("*")
-    .eq("entity_type", "application")
-    .eq("entity_id", id)
-    .order("created_at", { ascending: false });
-
-  let timelines = timelineData || [];
-
-  if (timelines.length === 0) {
-    const { data: logsData } = await supabase
+  // Fetch both timelines and status logs to present a merged activity timeline
+  const [timelineRes, logsRes] = await Promise.all([
+    supabase
+      .from("entity_timelines")
+      .select("*")
+      .eq("entity_type", "application")
+      .eq("entity_id", id),
+    supabase
       .from("status_logs")
       .select("*, profiles:changed_by(full_name, role)")
       .eq("application_id", id)
-      .order("created_at", { ascending: false });
+  ]);
 
-    if (logsData) {
-      timelines = (logsData as unknown as DBStatusLog[]).map((log) => ({
-        id: log.id,
-        event_title: `Status: ${log.new_status.replace(/_/g, " ")}`,
-        event_description: log.note,
-        created_at: log.created_at,
-        metadata: {
-          actor_name: log.profiles?.full_name,
-          actor_role: log.profiles?.role
-        }
-      }));
+  interface TimelineItem {
+    id: string;
+    event_title: string;
+    event_description: string | null;
+    created_at: string;
+    metadata?: {
+      actor_name?: string | null;
+      actor_role?: string | null;
+      [key: string]: unknown;
+    } | null;
+  }
+
+  interface DBTimelineRow {
+    id: string;
+    event_title: string;
+    event_description: string | null;
+    created_at: string;
+    metadata?: {
+      actor_name?: string | null;
+      actor_role?: string | null;
+      [key: string]: unknown;
+    } | null;
+  }
+
+  const rawTimeline = (timelineRes.data || []) as unknown as DBTimelineRow[];
+  const rawLogs = logsRes.data || [];
+
+  const timelineItems: TimelineItem[] = rawTimeline.map((item) => ({
+    id: item.id,
+    event_title: item.event_title,
+    event_description: item.event_description,
+    created_at: item.created_at,
+    metadata: {
+      actor_name: item.metadata?.actor_name || null,
+      actor_role: item.metadata?.actor_role || null,
+      source: "timeline",
+      ...item.metadata
     }
+  }));
+
+  const logItems: TimelineItem[] = (rawLogs as unknown as DBStatusLog[]).map((log) => ({
+    id: log.id,
+    event_title: `Status: ${log.new_status.replace(/_/g, " ")}`,
+    event_description: log.note,
+    created_at: log.created_at,
+    metadata: {
+      actor_name: log.profiles?.full_name || null,
+      actor_role: log.profiles?.role || null,
+      source: "status_log"
+    }
+  }));
+
+  // Merge and sort chronologically by created_at DESC
+  const mergedTimelines = [...timelineItems, ...logItems];
+  mergedTimelines.sort((a, b) => {
+    const tA = new Date(a.created_at).getTime();
+    const tB = new Date(b.created_at).getTime();
+    if (Math.abs(tA - tB) < 2000) {
+      // Put timeline first so it's kept in deduplication
+      const isTimelineA = a.metadata?.source === "timeline" ? 1 : 0;
+      const isTimelineB = b.metadata?.source === "timeline" ? 1 : 0;
+      return isTimelineB - isTimelineA;
+    }
+    return tB - tA;
+  });
+
+  // Deduplicate entries that occur within 2 seconds of each other representing the same transition
+  const dedupedTimelines: TimelineItem[] = [];
+  for (const item of mergedTimelines) {
+    const isDuplicate = dedupedTimelines.some((existing) => {
+      const timeDiff = Math.abs(new Date(existing.created_at).getTime() - new Date(item.created_at).getTime());
+      if (timeDiff < 2000) {
+        const isAStatus = existing.event_title.toLowerCase().includes("status") || existing.event_title.toLowerCase().includes("transition");
+        const isBStatus = item.event_title.toLowerCase().includes("status") || item.event_title.toLowerCase().includes("transition");
+        if (isAStatus && isBStatus) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!isDuplicate) {
+      dedupedTimelines.push(item);
+    }
+  }
+
+  let timelines = dedupedTimelines;
+
+  // Fallback to application creation event if no timeline exists
+  if (timelines.length === 0 && applicationRow.created_at) {
+    timelines = [
+      {
+        id: "fallback-creation",
+        event_title: "Application Created",
+        event_description: "The application was submitted and registered in the system.",
+        created_at: applicationRow.created_at,
+        metadata: {
+          actor_name: "System",
+          actor_role: "system"
+        }
+      }
+    ];
   }
 
   // Verify AP ownership of this application

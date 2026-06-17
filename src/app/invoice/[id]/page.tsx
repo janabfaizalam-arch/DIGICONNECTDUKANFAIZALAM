@@ -74,7 +74,28 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <main className="min-h-screen px-3 py-4 md:px-8 md:py-10 print:min-h-0 print:bg-white print:p-0">
+    <main className="min-h-screen px-3 py-4 md:px-8 md:py-10 bg-slate-50/50 print:min-h-0 print:bg-white print:p-0">
+      {/* Custom high-fidelity print overrides */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+          }
+          .invoice-card {
+            border: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+          }
+          .invoice-shell {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+        }
+      `}} />
       <div className="invoice-shell mx-auto max-w-4xl">
         <div className="mb-6 flex items-center justify-between gap-3 print:hidden">
           <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
@@ -90,7 +111,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        <Card className="invoice-card overflow-hidden rounded-[24px] border border-white/60 bg-white/72 backdrop-blur-xl p-0 shadow-soft md:rounded-[2rem] print:rounded-none print:border-0 print:shadow-none">
+        <Card className="invoice-card overflow-hidden rounded-3xl border border-slate-100 bg-white p-0 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <div className="bg-slate-50 border-b border-slate-100 print:bg-white print:text-slate-950 print:border-b print:px-0 print:py-2 px-5 py-4 text-slate-800 md:px-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Official Service Invoice</p>

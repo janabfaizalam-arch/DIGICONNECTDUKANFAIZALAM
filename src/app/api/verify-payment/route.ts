@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
 import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 type VerifyPaymentBody = {
   razorpay_payment_id?: string;
@@ -291,6 +292,14 @@ export async function POST(request: Request) {
       paymentId,
       applicationIds,
     });
+
+    try {
+      await triggerWhatsAppNotification("payment_success", primaryApplication.id, {
+        paymentId: paymentId
+      });
+    } catch (waError) {
+      console.error("WhatsApp trigger error for payment verification:", waError);
+    }
 
     return NextResponse.json({
       success: true,

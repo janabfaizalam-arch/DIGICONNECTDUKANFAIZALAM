@@ -1,3 +1,6 @@
+-- ⚠️ LEGACY — One-time constraint fix already applied to production.
+-- Adds 'agency_partner' to role constraints. Migration kept for chain integrity only.
+--
 -- ============================================================================
 -- FIX PROFILES AND USERS ROLE CONSTRAINTS
 -- DigiConnect Dukan / RNoS India Pvt Ltd

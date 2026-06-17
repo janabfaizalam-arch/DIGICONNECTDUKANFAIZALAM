@@ -1,3 +1,5 @@
+"use client";
+
 // src/app/admin/service-builder/create/steps/AutomationStep.tsx
 
 import React, { useState } from 'react';

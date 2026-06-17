@@ -117,6 +117,142 @@ export default async function CustomerApplicationDetailPage({ params }: { params
     }),
   );
 
+  // Fetch both timelines and status logs to present a merged activity timeline
+  const [timelineRes, logsRes] = await Promise.all([
+    supabase
+      .from("entity_timelines")
+      .select("*")
+      .eq("entity_type", "application")
+      .eq("entity_id", id),
+    supabase
+      .from("status_logs")
+      .select("*, profiles:changed_by(full_name, role)")
+      .eq("application_id", id)
+  ]);
+
+  interface TimelineItem {
+    id: string;
+    event_title: string;
+    event_description: string | null;
+    created_at: string;
+    metadata?: {
+      actor_name?: string | null;
+      actor_role?: string | null;
+      [key: string]: unknown;
+    } | null;
+  }
+
+  interface DBStatusLog {
+    id: string;
+    new_status: string;
+    note: string | null;
+    created_at: string;
+    profiles: { full_name: string | null; role: string | null } | null;
+  }
+
+  interface DBTimelineRow {
+    id: string;
+    event_title: string;
+    event_description: string | null;
+    created_at: string;
+    metadata?: {
+      actor_name?: string | null;
+      actor_role?: string | null;
+      [key: string]: unknown;
+    } | null;
+  }
+
+  const rawTimeline = (timelineRes.data || []) as unknown as DBTimelineRow[];
+  const rawLogs = logsRes.data || [];
+
+  const timelineItems: TimelineItem[] = rawTimeline.map((item) => ({
+    id: item.id,
+    event_title: item.event_title,
+    event_description: item.event_description,
+    created_at: item.created_at,
+    metadata: {
+      actor_name: item.metadata?.actor_name || null,
+      actor_role: item.metadata?.actor_role || null,
+      source: "timeline",
+      ...item.metadata
+    }
+  }));
+
+  const logItems: TimelineItem[] = (rawLogs as unknown as DBStatusLog[]).map((log) => ({
+    id: log.id,
+    event_title: `Status: ${log.new_status.replace(/_/g, " ")}`,
+    event_description: log.note,
+    created_at: log.created_at,
+    metadata: {
+      actor_name: log.profiles?.full_name || null,
+      actor_role: log.profiles?.role || null,
+      source: "status_log"
+    }
+  }));
+
+  // Merge and sort chronologically by created_at DESC
+  const mergedTimelines = [...timelineItems, ...logItems];
+  mergedTimelines.sort((a, b) => {
+    const tA = new Date(a.created_at).getTime();
+    const tB = new Date(b.created_at).getTime();
+    if (Math.abs(tA - tB) < 2000) {
+      // Put timeline first so it's kept in deduplication
+      const isTimelineA = a.metadata?.source === "timeline" ? 1 : 0;
+      const isTimelineB = b.metadata?.source === "timeline" ? 1 : 0;
+      return isTimelineB - isTimelineA;
+    }
+    return tB - tA;
+  });
+
+  // Deduplicate entries that occur within 2 seconds of each other representing the same transition
+  const dedupedTimelines: TimelineItem[] = [];
+  for (const item of mergedTimelines) {
+    const isDuplicate = dedupedTimelines.some((existing) => {
+      const timeDiff = Math.abs(new Date(existing.created_at).getTime() - new Date(item.created_at).getTime());
+      if (timeDiff < 2000) {
+        const isAStatus = existing.event_title.toLowerCase().includes("status") || existing.event_title.toLowerCase().includes("transition");
+        const isBStatus = item.event_title.toLowerCase().includes("status") || item.event_title.toLowerCase().includes("transition");
+        if (isAStatus && isBStatus) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!isDuplicate) {
+      dedupedTimelines.push(item);
+    }
+  }
+
+  let timelines = dedupedTimelines;
+
+  // Fallback to application creation event if no timeline exists
+  if (timelines.length === 0 && application.created_at) {
+    timelines = [
+      {
+        id: "fallback-creation",
+        event_title: "Application Created",
+        event_description: "The application was submitted and registered in the system.",
+        created_at: application.created_at,
+        metadata: {
+          actor_name: "System",
+          actor_role: "system"
+        }
+      }
+    ];
+  }
+
+  // Fetch assigned operator (agent) name
+  let assignedAgentProfile = null;
+  if (application.assigned_agent_id) {
+    const { data: agentData } = await supabase
+      .from("profiles")
+      .select("full_name, role")
+      .eq("id", application.assigned_agent_id)
+      .maybeSingle();
+    assignedAgentProfile = agentData;
+  }
+
   let activeStep = 1; // Default is Submitted
   if (application.status === "completed" || application.status === "delivered") {
     activeStep = 5;
@@ -137,7 +273,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   ];
 
   return (
-    <main className="min-h-screen px-3 py-6 md:px-8 md:py-10 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
+    <main className="min-h-screen px-3 py-6 md:px-8 md:py-10 bg-slate-50/50">
       <div className="mx-auto max-w-5xl">
         <Link href="/customer/dashboard" className="inline-flex items-center gap-2 text-xs font-black text-blue-700">
           <ArrowLeft className="h-4 w-4" />
@@ -147,8 +283,8 @@ export default async function CustomerApplicationDetailPage({ params }: { params
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-5">
             
-            {/* Main Details Glass Panel */}
-            <div className="rounded-[32px] border border-white/60 bg-white/72 backdrop-blur-xl p-6 md:p-8 shadow-soft relative overflow-hidden">
+            {/* Main Details Panel */}
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-sm relative overflow-hidden">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Application File</p>
@@ -166,10 +302,10 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-5">Filing Status Tracker</p>
                 <div className="relative flex items-center justify-between max-w-xl mx-auto px-4">
                   {/* Connector line behind */}
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
+                  <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
                   <div 
-                    className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 -translate-y-1/2 z-0 transition-all duration-500" 
-                    style={{ width: `${((activeStep - 1) / 4) * 100}%` }}
+                    className="absolute top-1/2 left-4 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 -translate-y-1/2 z-0 transition-all duration-500" 
+                    style={{ width: `calc((100% - 2rem) * ${(activeStep - 1) / 4})` }}
                   />
 
                   {trackingSteps.map((s) => {
@@ -186,7 +322,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                         }`}>
                           {isCompleted ? "✓" : s.step}
                         </div>
-                        <span className={`text-[10px] font-bold mt-1.5 ${
+                        <span className={`text-[9px] sm:text-[10px] text-center max-w-[64px] sm:max-w-[80px] leading-tight font-bold mt-1.5 ${
                           isActive ? "text-blue-600" : isCompleted ? "text-emerald-700" : "text-slate-400"
                         }`}>
                           {s.label}
@@ -211,8 +347,73 @@ export default async function CustomerApplicationDetailPage({ params }: { params
               </div>
             </div>
 
+            {/* Visual Timeline Stream Card */}
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-sm space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Chronological Logs</p>
+                <h2 className="text-lg font-black text-slate-900 mt-1">Activity Milestones</h2>
+              </div>
+              
+              {assignedAgentProfile && (
+                <div className="flex items-center gap-2 rounded-2xl bg-blue-50/50 border border-blue-100 p-3.5 text-xs text-blue-900 font-bold">
+                  <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                  Assigned Expert: {assignedAgentProfile.full_name} ({assignedAgentProfile.role?.replace(/_/g, " ").toUpperCase()})
+                </div>
+              )}
+
+              <div className="mt-4 flow-root">
+                {timelines.length === 0 ? (
+                  <p className="text-xs font-semibold text-slate-450 text-center py-4">No activity logs recorded yet.</p>
+                ) : (
+                  <ul className="-mb-8">
+                    {timelines.map((item: TimelineItem, itemIdx: number) => {
+                      const actorName = item.metadata?.actor_name || null;
+                      const actorRole = item.metadata?.actor_role || null;
+                      
+                      return (
+                        <li key={item.id}>
+                          <div className="relative pb-8">
+                            {itemIdx !== timelines.length - 1 ? (
+                              <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-150" aria-hidden="true" />
+                            ) : null}
+                            <div className="relative flex space-x-3">
+                              <div>
+                                <span className="h-8 w-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                  {timelines.length - itemIdx}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
+                                <div>
+                                  <p className="text-xs font-black text-slate-800">
+                                    {item.event_title}{" "}
+                                    {actorName && (
+                                      <span className="font-semibold text-slate-500 text-[10px]">
+                                        by {actorName} ({actorRole?.replace(/_/g, " ")})
+                                      </span>
+                                    )}
+                                  </p>
+                                  {item.event_description && (
+                                    <p className="mt-1 text-[11px] font-medium text-slate-500 leading-normal bg-slate-50/40 rounded-xl p-2.5 border border-slate-100/30">
+                                      {item.event_description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right text-[10px] whitespace-nowrap text-slate-450 font-semibold">
+                                  <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+
             {/* Submitted Documents Panel */}
-            <div className="rounded-[32px] border border-white/60 bg-white/72 backdrop-blur-xl p-6 md:p-8 shadow-soft relative overflow-hidden">
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-sm relative overflow-hidden">
               <h2 className="text-lg font-black text-slate-900">Submitted Documents</h2>
               <p className="text-xs font-semibold text-slate-400 mt-0.5">Scanned files and certificates related to this file.</p>
               <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
@@ -233,7 +434,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
           <div className="space-y-4">
             
             {/* Filing Overview Panel */}
-            <div className="rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl p-5 shadow-soft space-y-4">
+            <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filing Overview</p>
               </div>
@@ -250,7 +451,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
             </div>
 
             {/* Quick Actions Panel */}
-            <div className="rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl p-5 shadow-soft space-y-4">
+            <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Manage Application</p>
                 <h3 className="text-sm font-black text-slate-900 mt-1">Quick Actions</h3>
@@ -258,7 +459,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
               
               <div className="grid gap-2">
                 {invoice ? (
-                  <Link href={`/invoice/${invoice.id}`} className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                  <Link href={`/invoice/${invoice.id}`} className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:scale-105 transition">
                       <FileText className="h-5 w-5" />
                     </div>
@@ -270,7 +471,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                 ) : null}
 
                 {application.final_document_url ? (
-                  <a href={application.final_document_url} target="_blank" rel="noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                  <a href={application.final_document_url} target="_blank" rel="noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-105 transition">
                       <Download className="h-5 w-5" />
                     </div>
@@ -281,7 +482,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                   </a>
                 ) : null}
 
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-650 group-hover:scale-105 transition">
                     <MessageCircle className="h-5 w-5" />
                   </div>
@@ -291,7 +492,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                   </div>
                 </a>
 
-                <Link href={`/services/${application.service_slug}`} className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white/60 p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
+                <Link href={`/services/${application.service_slug}`} className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 group-hover:scale-105 transition">
                     <RotateCcw className="h-5 w-5" />
                   </div>

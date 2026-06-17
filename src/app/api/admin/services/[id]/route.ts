@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateFileSignature } from "@/lib/file-validation";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { revalidateServicePaths, servicePayload, syncServiceBuilderRows } from "@/lib/service-admin";
@@ -17,6 +18,9 @@ async function uploadHeroImage<T extends ReturnType<typeof servicePayload>>(form
   const file = formData.get("heroImage");
   if (!(file instanceof File) || file.size <= 0) return payload;
   if (!allowedMediaTypes.has(file.type)) throw new Error("Hero image must be JPG, PNG, or WEBP.");
+
+  const check = await validateFileSignature(file, Array.from(allowedMediaTypes));
+  if (!check.valid) throw new Error(check.error || "Hero image is invalid.");
 
   const supabase = getSupabaseAdmin();
   if (!supabase) throw new Error("Supabase service role key is missing.");

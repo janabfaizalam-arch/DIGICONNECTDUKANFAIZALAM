@@ -137,7 +137,11 @@ export async function POST(request: Request) {
             name: "Faizal Alam",
             gender: "MALE",
             dob: "1994-08-15",
-            address: "Ward 12, Main Street, Faizabad, Uttar Pradesh - 224001"
+            address: "Ward 12, Main Street, Faizabad, Uttar Pradesh - 224001",
+            pincode: "224001",
+            city: "Faizabad",
+            state: "Uttar Pradesh",
+            confidence_score: 95
           };
         } else if (documentType === "pan_card") {
           mockData = {
@@ -145,22 +149,25 @@ export async function POST(request: Request) {
             name: "FAIZAL ALAM",
             father_name: "JANAB ALAM",
             dob: "1994-08-15",
-            card_type: "Individual"
+            card_type: "Individual",
+            confidence_score: 89
           };
         } else if (documentType === "gst_certificate") {
           mockData = {
             gstin: "09ABCDE1234F1Z5",
+            business_name: "DigiConnect Dukan",
             legal_name: "DIGICONNECT DUKAN PVT LTD",
             trade_name: "DigiConnect Dukan",
             date_of_registration: "2024-01-10",
-            constitution_of_business: "Private Limited Company"
+            constitution_of_business: "Private Limited Company",
+            confidence_score: 99
           };
         } else {
           mockData = {
             reference_no: `REF-${Math.floor(100000 + Math.random() * 900000)}`,
             extracted_date: new Date().toISOString().split("T")[0],
             raw_text: "Mock OCR data extraction completed successfully. File verified.",
-            confidence_score: 0.98
+            confidence_score: 98
           };
         }
 

@@ -1,3 +1,5 @@
+"use client";
+
 // src/app/admin/service-builder/create/ServiceWizard.tsx
 
 import React from 'react';

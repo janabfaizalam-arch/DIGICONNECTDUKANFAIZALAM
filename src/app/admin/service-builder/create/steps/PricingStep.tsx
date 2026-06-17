@@ -1,3 +1,5 @@
+"use client";
+
 // src/app/admin/service-builder/create/steps/PricingStep.tsx
 
 import React, { useState } from 'react';

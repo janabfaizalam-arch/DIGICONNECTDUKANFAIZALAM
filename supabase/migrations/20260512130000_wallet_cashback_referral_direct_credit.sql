@@ -1,3 +1,7 @@
+-- ⚠️ LEGACY — SUPERSEDED by 20260514130000_secure_referral_reward_wallet.sql
+-- Functions (credit_service_cashback, credit_referral_reward_on_signup, credit_referral_reward_by_code)
+-- replaced by canonical reward wallet functions. Migration kept for chain integrity only.
+--
 -- Direct referral rewards + fixed 20% service cashback.
 -- Idempotent and safe to run multiple times.
 

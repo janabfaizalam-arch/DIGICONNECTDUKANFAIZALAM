@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 interface DBWorkflowStep {
   id: string;
@@ -171,6 +172,18 @@ export async function POST(
       return NextResponse.json({ error: "Failed to update application step." }, { status: 555 });
     }
 
+    try {
+      if (nextStep === "documents_pending" || nextStep === "documents_required") {
+        await triggerWhatsAppNotification("documents_required", id, { notes: note });
+      } else if (nextStep === "in_process" || nextStep === "in_progress") {
+        await triggerWhatsAppNotification("processing_started", id);
+      } else if (nextStep === "completed") {
+        await triggerWhatsAppNotification("completed", id);
+      }
+    } catch (waError) {
+      console.error("WhatsApp trigger error for transition status:", waError);
+    }
+
     // 5. Write logs (Legacy Status Log & Universal Timeline Event)
     await supabase.from("status_logs").insert({
       application_id: id,
@@ -308,71 +321,87 @@ export async function POST(
             .single();
 
           if (commTxErr) {
-            console.error("[transition] Commission transaction insert failed:", commTxErr);
+            if (commTxErr.code === "23505") {
+              console.log(`[transition] Commission transaction for application ${id} already exists (idempotent duplicate, 23505).`);
+            } else {
+              console.error("[transition] Commission transaction insert failed:", commTxErr);
+            }
+          } else if (commTx?.id) {
+            // 6b. Record legacy commission (for backward compatibility with old dashboard & screens)
+            const { error: legacyErr } = await supabase.from("ap_commissions").insert({
+              agency_partner_id: ap.id,
+              application_id: id,
+              commission_rule_id: ruleUsedId,
+              service_slug: application.service_slug,
+              service_name: application.service_name,
+              sale_amount: Number(application.amount),
+              commission_type: ruleUsedType,
+              commission_value: commissionAmount,
+              commission_rate: 0,
+              calculated_amount: commissionAmount,
+              status: "approved"
+            });
+
+            if (legacyErr && legacyErr.code !== "23505") {
+              console.error("[transition] Legacy commission insert failed:", legacyErr);
+            }
+
+            // 6c. Fetch latest wallet balance to record the ledger credit
+            const { data: ledgerHistory } = await supabase
+              .from("ap_wallet_ledger")
+              .select("running_balance")
+              .eq("agency_partner_id", ap.id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            const lastBalance = ledgerHistory && ledgerHistory[0] ? Number(ledgerHistory[0].running_balance) : 0;
+            const newBalance = lastBalance + commissionAmount;
+
+            // Write ledger credit
+            const { error: ledgerErr } = await supabase.from("ap_wallet_ledger").insert({
+              agency_partner_id: ap.id,
+              entry_type: "commission_credit",
+              amount: commissionAmount,
+              running_balance: newBalance,
+              reference_type: "commission",
+              reference_id: commTx.id,
+              description: `Commission credit for application ${application.application_code || id}`,
+              created_by: user.id
+            });
+
+            if (ledgerErr) {
+              if (ledgerErr.code === "23505") {
+                console.log(`[transition] Ledger entry for reference commission ${commTx.id} already exists (idempotent duplicate, 23505).`);
+              } else {
+                console.error("[transition] Ledger credit insert failed:", ledgerErr);
+              }
+            } else {
+              // Timeline wallet log
+              await supabase.from("entity_timelines").insert({
+                entity_type: "wallet",
+                entity_id: ap.id,
+                event_title: "Commission Credited",
+                event_description: `Wallet credited with Rs. ${commissionAmount} from application commission. New balance: Rs. ${newBalance}.`,
+                metadata: {
+                  amount: commissionAmount,
+                  application_id: id,
+                  tx_id: commTx.id
+                }
+              });
+
+              // Event Bus publish
+              await supabase.from("system_events").insert({
+                event_name: "commission.credited",
+                entity_type: "wallet",
+                entity_id: ap.id,
+                payload: {
+                  amount: commissionAmount,
+                  application_id: id,
+                  running_balance: newBalance
+                }
+              });
+            }
           }
-
-          // 6b. Record legacy commission (for backward compatibility with old dashboard & screens)
-          await supabase.from("ap_commissions").insert({
-            agency_partner_id: ap.id,
-            application_id: id,
-            commission_rule_id: ruleUsedId,
-            service_slug: application.service_slug,
-            service_name: application.service_name,
-            sale_amount: Number(application.amount),
-            commission_type: ruleUsedType,
-            commission_value: commissionAmount,
-            commission_rate: 0,
-            calculated_amount: commissionAmount,
-            status: "approved"
-          });
-
-          // 6c. Fetch latest wallet balance to record the ledger credit
-          const { data: ledgerHistory } = await supabase
-            .from("ap_wallet_ledger")
-            .select("running_balance")
-            .eq("agency_partner_id", ap.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          const lastBalance = ledgerHistory && ledgerHistory[0] ? Number(ledgerHistory[0].running_balance) : 0;
-          const newBalance = lastBalance + commissionAmount;
-
-          // Write ledger credit
-          await supabase.from("ap_wallet_ledger").insert({
-            agency_partner_id: ap.id,
-            entry_type: "commission_credit",
-            amount: commissionAmount,
-            running_balance: newBalance,
-            reference_type: "commission",
-            reference_id: commTx?.id || null,
-            description: `Commission credit for application ${application.application_code || id}`,
-            created_by: user.id
-          });
-
-          // Timeline wallet log
-          await supabase.from("entity_timelines").insert({
-            entity_type: "wallet",
-            entity_id: ap.id,
-            event_title: "Commission Credited",
-            event_description: `Wallet credited with Rs. ${commissionAmount} from application commission. New balance: Rs. ${newBalance}.`,
-            metadata: {
-              amount: commissionAmount,
-              application_id: id,
-              tx_id: commTx?.id || null
-            }
-          });
-
-          // Event Bus publish
-          await supabase.from("system_events").insert({
-            event_name: "commission.credited",
-            entity_type: "wallet",
-            entity_id: ap.id,
-            payload: {
-              amount: commissionAmount,
-              application_id: id,
-              running_balance: newBalance
-            }
-          });
         }
       }
     }

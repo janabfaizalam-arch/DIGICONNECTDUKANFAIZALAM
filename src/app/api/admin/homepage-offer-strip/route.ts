@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { validateFileSignature } from "@/lib/file-validation";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import {
@@ -112,6 +113,9 @@ export async function POST(request: Request) {
     if (imageError) return jsonError(imageError, 400);
     if (sortOrder === null) return jsonError("Sort order must be a number.", 400);
     if (!isValidLink(linkUrl)) return jsonError("Link must be an internal path or a valid HTTP/HTTPS URL.", 400);
+
+    const check = await validateFileSignature(image as File, allowedImageTypes);
+    if (!check.valid) return jsonError(check.error || "Invalid file.", 400);
 
     const upload = await uploadImage(image as File);
     if (upload.error || !upload.path || !upload.url) return jsonError(upload.error || "Offer banner could not be uploaded.", 500);

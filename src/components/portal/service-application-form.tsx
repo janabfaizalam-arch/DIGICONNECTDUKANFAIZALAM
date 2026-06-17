@@ -143,6 +143,43 @@ function devInfo(message: string, details?: Record<string, unknown>) {
   }
 }
 
+interface ExtractedOCRData {
+  name?: string;
+  dob?: string;
+  gender?: string;
+  address?: string;
+  pincode?: string;
+  city?: string;
+  state?: string;
+  pan_number?: string;
+  panNumber?: string;
+  business_name?: string;
+  businessName?: string;
+  gstin?: string;
+  confidence_score?: number;
+}
+
+interface OCRJob {
+  id: string;
+  status: "uploaded" | "processing" | "completed" | "failed";
+  extracted_data: ExtractedOCRData | null;
+  error_message?: string | null;
+  updated_at: string;
+}
+
+interface VaultDocument {
+  id: string;
+  customer_id: string;
+  document_type: "aadhaar_front" | "aadhaar_back" | "pan_card" | "photo" | "signature" | "marksheet" | "gst_certificate" | "other";
+  file_name: string;
+  file_url: string;
+  storage_path: string;
+  file_size?: number | null;
+  hash: string;
+  created_at: string;
+  vault_ocr_jobs?: OCRJob | OCRJob[] | null;
+}
+
 export function ServiceApplicationForm({
   service,
   services,
@@ -178,6 +215,7 @@ export function ServiceApplicationForm({
   const isItr = selectedServices.length === 1 && selectedServices[0]?.slug === "itr-filing";
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [defaultStep, setDefaultStep] = useState(1);
   const [progressText, setProgressText] = useState("");
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
   const [razorpayPayment, setRazorpayPayment] = useState<VerifiedApplicationPayment | null>(null);
@@ -217,6 +255,166 @@ export function ServiceApplicationForm({
 
   // Document Upload progress simulation tracking
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+
+  const [vaultDocs, setVaultDocs] = useState<VaultDocument[]>([]);
+  const [hasCompletedDocs, setHasCompletedDocs] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/customer/vault")
+      .then((res) => res.json())
+      .then((data) => {
+        const docs = (data.documents || []) as VaultDocument[];
+        setVaultDocs(docs);
+        
+        // Check if there are completed OCR documents
+        const completed = docs.some((doc: VaultDocument) => {
+          const job = Array.isArray(doc.vault_ocr_jobs)
+            ? doc.vault_ocr_jobs[0]
+            : doc.vault_ocr_jobs;
+          return job?.status === "completed";
+        });
+        setHasCompletedDocs(completed);
+      })
+      .catch((err) => console.error("Error fetching vault docs:", err));
+  }, []);
+
+  const handleOcrAutofill = () => {
+    let aadhaarData: ExtractedOCRData | null = null;
+    let panData: ExtractedOCRData | null = null;
+    let gstData: ExtractedOCRData | null = null;
+
+    for (const doc of vaultDocs) {
+      const job = Array.isArray(doc.vault_ocr_jobs)
+        ? doc.vault_ocr_jobs[0]
+        : doc.vault_ocr_jobs;
+      if (job?.status === "completed" && job.extracted_data) {
+        if (doc.document_type === "aadhaar_front" || doc.document_type === "aadhaar_back") {
+          aadhaarData = { ...(aadhaarData || {}), ...job.extracted_data };
+        } else if (doc.document_type === "pan_card") {
+          panData = job.extracted_data;
+        } else if (doc.document_type === "gst_certificate") {
+          gstData = job.extracted_data;
+        }
+      }
+    }
+
+    const aadhaar = aadhaarData;
+    const pan = panData;
+    const gst = gstData;
+
+    let filledCount = 0;
+    let lowConfidenceFound = false;
+    let minConfidence = 100;
+
+    // Check confidence scores
+    if (aadhaar && aadhaar.confidence_score !== undefined) {
+      minConfidence = Math.min(minConfidence, aadhaar.confidence_score);
+      if (aadhaar.confidence_score < 90) lowConfidenceFound = true;
+    }
+    if (pan && pan.confidence_score !== undefined) {
+      minConfidence = Math.min(minConfidence, pan.confidence_score);
+      if (pan.confidence_score < 90) lowConfidenceFound = true;
+    }
+    if (gst && gst.confidence_score !== undefined) {
+      minConfidence = Math.min(minConfidence, gst.confidence_score);
+      if (gst.confidence_score < 90) lowConfidenceFound = true;
+    }
+
+    // Apply Aadhaar Data
+    if (aadhaar) {
+      if (aadhaar.name) {
+        setApplicantName(aadhaar.name);
+        filledCount++;
+      }
+      if (aadhaar.address) {
+        setApplicantAddress(aadhaar.address);
+        filledCount++;
+      }
+      if (aadhaar.pincode) {
+        setApplicantCity(aadhaar.city || applicantCity);
+        // Sync sub forms
+        setPmVishwakarmaValues((curr) => ({
+          ...curr,
+          name: aadhaar.name || curr.name,
+          pincode: aadhaar.pincode || curr.pincode,
+          city: aadhaar.city || curr.city,
+          state: aadhaar.state || curr.state,
+          address: aadhaar.address || curr.address,
+        }));
+        setEshramValues((curr) => ({
+          ...curr,
+          name: aadhaar.name || curr.name,
+          pincode: aadhaar.pincode || curr.pincode,
+          city: aadhaar.city || curr.city,
+          state: aadhaar.state || curr.state,
+        }));
+        setPvcCardValues((curr) => ({
+          ...curr,
+          name: aadhaar.name || curr.name,
+          pincode: aadhaar.pincode || curr.pincode,
+          city: aadhaar.city || curr.city,
+          state: aadhaar.state || curr.state,
+          deliveryAddress: aadhaar.address || curr.deliveryAddress,
+        }));
+        setCmYuvaValues((curr) => ({
+          ...curr,
+          name: aadhaar.name || curr.name,
+          pincode: aadhaar.pincode || curr.pincode,
+          city: aadhaar.city || curr.city,
+          state: aadhaar.state || curr.state,
+          businessAddress: aadhaar.address || curr.businessAddress,
+        }));
+        if (isGst && aadhaar.pincode) {
+          setGstPincode(aadhaar.pincode);
+          setGstState(aadhaar.state || "");
+        }
+        filledCount++;
+      }
+    }
+
+    // Apply PAN Data
+    if (pan) {
+      if (pan.name && !applicantName) {
+        setApplicantName(pan.name);
+        filledCount++;
+      }
+      if (pan.pan_number || pan.panNumber) {
+        const panNum = pan.pan_number || pan.panNumber;
+        if (panNum) {
+          if (isGst) setGstPanNumber(panNum);
+          if (isItr) setItrPanNumber(panNum);
+          filledCount++;
+        }
+      }
+    }
+
+    // Apply GST Data
+    if (gst) {
+      if (gst.business_name || gst.businessName) {
+        const bname = gst.business_name || gst.businessName;
+        if (bname) {
+          if (isGst) setGstBusinessName(bname);
+          filledCount++;
+        }
+      }
+      if (gst.gstin) {
+        if (isGst) {
+          // If there is a matching GSTIN input, autofill it
+        }
+        filledCount++;
+      }
+    }
+
+    if (filledCount > 0) {
+      if (lowConfidenceFound) {
+        toastError(`Please review extracted data carefully. (Min Confidence: ${minConfidence}%)`);
+      } else {
+        success("⚡ Auto-filled details successfully using vault documents!");
+      }
+    } else {
+      toastError("No matching completed fields found in vault documents.");
+    }
+  };
 
   // GST Redesigned Multi-Step Wizard States
   const [gstStep, setGstStep] = useState(1);
@@ -2577,198 +2775,412 @@ export function ServiceApplicationForm({
     );
   }
 
+  // Step validation helpers for default form
+  const handleDefaultNext = () => {
+    if (defaultStep === 1) {
+      if (!isPmVishwakarma && !isEshram && !isPvcCard) {
+        if (!applicantName.trim()) {
+          toastError("Please enter your full name.");
+          return;
+        }
+        if (!applicantMobile.trim() || !/^[6-9]\d{9}$/.test(applicantMobile)) {
+          toastError("Please enter a valid 10-digit mobile number.");
+          return;
+        }
+        if (!applicantEmail.trim() || !applicantEmail.includes("@")) {
+          toastError("Please enter a valid email address.");
+          return;
+        }
+      } else {
+        const nameVal = isPmVishwakarma ? pmVishwakarmaValues.name : isEshram ? eshramValues.name : pvcCardValues.name;
+        const mobileVal = isPmVishwakarma ? pmVishwakarmaValues.mobile : isEshram ? eshramValues.mobile : pvcCardValues.mobile;
+        const emailVal = isPmVishwakarma ? pmVishwakarmaValues.email : isEshram ? eshramValues.email : pvcCardValues.email;
+        if (!nameVal.trim()) {
+          toastError("Please enter your name.");
+          return;
+        }
+        if (!mobileVal.trim() || !/^[6-9]\d{9}$/.test(mobileVal)) {
+          toastError("Please enter a valid 10-digit mobile number.");
+          return;
+        }
+        if (!isPmVishwakarma && !isEshram && !emailVal.trim()) {
+          toastError("Please enter your email.");
+          return;
+        }
+      }
+      setDefaultStep(2);
+    } else if (defaultStep === 2) {
+      if (!isPmVishwakarma && !isEshram && !isPvcCard) {
+        if (!applicantCity.trim()) {
+          toastError("Please enter your city.");
+          return;
+        }
+      } else {
+        if (isPmVishwakarma && !pmVishwakarmaValues.city.trim()) {
+          toastError("Please enter your city.");
+          return;
+        }
+        if (isEshram && !eshramValues.city.trim()) {
+          toastError("Please enter your city.");
+          return;
+        }
+        if (isPvcCard && !pvcCardValues.city.trim()) {
+          toastError("Please enter your city.");
+          return;
+        }
+      }
+      setDefaultStep(3);
+    } else if (defaultStep === 3) {
+      if (!selectedDocuments.length && !isEshram && !isPvcCard && !isPmVishwakarma) {
+        toastError("Please upload at least one document.");
+        return;
+      }
+      if (isPvcCard && selectedDocuments.length < 2) {
+        toastError("Please upload both front and back card images.");
+        return;
+      }
+      setDefaultStep(4);
+    }
+  };
+
+  const handleDefaultBack = () => {
+    setDefaultStep((s) => Math.max(1, s - 1));
+  };
+
+  const genericSteps = [
+    { step: 1, label: "Basic Info" },
+    { step: 2, label: "Filing Info" },
+    { step: 3, label: "Documents" },
+    { step: 4, label: "Review & Pay" }
+  ];
+
   return (
     <>
     <form onSubmit={onSubmit} className="grid gap-4 pb-4 lg:grid-cols-[1fr_340px]" aria-busy={isSubmitting}>
       <fieldset disabled={isSubmitting} className="contents">
-      <Card className="rounded-[28px] border border-slate-100 bg-white/70 backdrop-blur-xl p-5 md:p-7 shadow-sm">
+      <Card className="rounded-[28px] border border-slate-100 bg-white/90 p-5 md:p-7 shadow-sm">
+        
+        {/* Wizard Progress Stepper Header */}
+        <div className="mb-6 border-b border-slate-100 pb-5">
+          <div className="flex items-center justify-between">
+            {genericSteps.map((s) => {
+              const isActive = defaultStep === s.step;
+              const isDone = defaultStep > s.step;
+              return (
+                <div key={s.step} className="flex items-center gap-2">
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    isActive ? "bg-blue-600 text-white shadow" : isDone ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
+                  }`}>
+                    {isDone ? "✓" : s.step}
+                  </div>
+                  <span className={`text-[10px] md:text-xs font-bold transition-colors ${
+                    isActive ? "text-blue-600" : isDone ? "text-emerald-700" : "text-slate-450"
+                  }`}>
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Complete Application</p>
-          <h2 className="mt-2 text-xl font-black text-slate-900 tracking-tight">
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-700">Service Request Form</p>
+          <h2 className="mt-1.5 text-xl font-black text-slate-900 tracking-tight leading-none">
             {selectedServices.length > 1 ? "Multiple Service Application" : service.title}
           </h2>
-          <p className="mt-1 text-xs text-slate-400 font-medium">
-            Fill the form, upload documents, pay securely with Razorpay, and track your application in the dashboard.
+          <p className="mt-1 text-xs text-slate-400 font-medium leading-relaxed">
+            Please fill the step details below to apply.
           </p>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-800">Selected Services</p>
-              <p className="mt-0.5 text-[10px] text-slate-400 font-medium">Each service will be submitted as a separate application record.</p>
+        {hasCompletedDocs && (
+          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold">⚡ Found completed documents in your secure vault.</span>
             </div>
+            <button
+              type="button"
+              onClick={handleOcrAutofill}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-[10px] font-extrabold text-white rounded-lg transition"
+            >
+              Auto-fill Details
+            </button>
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {selectedServices.map((item) => (
-              <div key={item.slug} className="min-w-0 rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
-                <p className="truncate text-xs font-bold text-slate-800">{item.title}</p>
-                <p className="mt-1 text-xs font-extrabold text-orange-600">{formatCurrency(item.amount)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
-        <div className="mt-5">
-          <p className="text-xs font-bold text-slate-800">Applicant Details</p>
-          {isPmVishwakarma ? (
-            <PmVishwakarmaApplicationFields values={pmVishwakarmaValues} onChange={updatePmVishwakarmaValue} pincodeStatus={pincodeStatus} />
-          ) : isEshram ? (
-            <EshramApplicationFields values={eshramValues} onChange={updateEshramValue} pincodeStatus={pincodeStatus} />
-          ) : isPvcCard ? (
-            <PvcCardApplicationFields
-              values={pvcCardValues}
-              onChange={updatePvcCardValue}
-              pincodeStatus={pincodeStatus}
-              selectedFiles={selectedDocuments}
-              onFilesChange={setSelectedDocuments}
-            />
-          ) : (
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-[9px] font-black uppercase text-slate-400">Full Name *</label>
-                <input 
-                  type="text" 
-                  name="name"
-                  required
-                  value={applicantName}
-                  onChange={(e) => setApplicantName(e.target.value)}
-                  placeholder="e.g. Rahul Sharma"
-                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
+        {/* Dynamic Step Content Rendering */}
+        <div className="mt-6">
+          
+          {/* STEP 1: Basic Info */}
+          {defaultStep === 1 && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Step 1: Contact Details</h3>
+              {isPmVishwakarma || isEshram || isPvcCard ? (
+                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 text-xs text-slate-650 leading-relaxed">
+                  Provide your initial profile credentials inside the service form below.
+                </div>
+              ) : null}
+              
+              {isPmVishwakarma ? (
+                <PmVishwakarmaApplicationFields values={pmVishwakarmaValues} onChange={updatePmVishwakarmaValue} pincodeStatus={pincodeStatus} />
+              ) : isEshram ? (
+                <EshramApplicationFields values={eshramValues} onChange={updateEshramValue} pincodeStatus={pincodeStatus} />
+              ) : isPvcCard ? (
+                <PvcCardApplicationFields
+                  values={pvcCardValues}
+                  onChange={updatePvcCardValue}
+                  pincodeStatus={pincodeStatus}
+                  selectedFiles={selectedDocuments}
+                  onFilesChange={setSelectedDocuments}
                 />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400">Full Name *</label>
+                    <input 
+                      type="text" 
+                      name="name"
+                      required
+                      value={applicantName}
+                      onChange={(e) => setApplicantName(e.target.value)}
+                      placeholder="e.g. Rahul Sharma"
+                      className="mt-1 block w-full glass-input-premium transition bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400">Mobile Number *</label>
+                    <input 
+                      type="tel" 
+                      name="mobile"
+                      required
+                      pattern="[0-9]{10}"
+                      value={applicantMobile}
+                      onChange={(e) => setApplicantMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      placeholder="e.g. 9876543210"
+                      className="mt-1 block w-full glass-input-premium transition bg-white"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-[9px] font-black uppercase text-slate-400">Email Address *</label>
+                    <input 
+                      type="email" 
+                      name="email"
+                      required
+                      value={applicantEmail}
+                      onChange={(e) => setApplicantEmail(e.target.value)}
+                      placeholder="e.g. rahul@example.com"
+                      className="mt-1 block w-full glass-input-premium transition bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 2: Filing Info */}
+          {defaultStep === 2 && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Step 2: Service Location & Address</h3>
+              
+              {isPmVishwakarma || isEshram || isPvcCard ? (
+                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 text-xs text-slate-500 font-bold leading-normal">
+                  Location details are configured inside active application parameters. Verify entries.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400">City *</label>
+                    <input 
+                      type="text" 
+                      name="city"
+                      required
+                      value={applicantCity}
+                      onChange={(e) => setApplicantCity(e.target.value)}
+                      placeholder="e.g. Lucknow"
+                      className="mt-1 block w-full glass-input-premium transition bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400">Full Address Details (Optional)</label>
+                    <input 
+                      type="text" 
+                      name="address"
+                      value={applicantAddress}
+                      onChange={(e) => setApplicantAddress(e.target.value)}
+                      placeholder="e.g. Flat 302, Sharma Heights"
+                      className="mt-1 block w-full glass-input-premium transition bg-white"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-[9px] font-black uppercase text-slate-400">Notes / Special Instructions (Optional)</label>
+                    <textarea 
+                      name="message"
+                      value={applicantMessage}
+                      onChange={(e) => setApplicantMessage(e.target.value)}
+                      placeholder="Add any specific details our team should know about this filing..."
+                      className="mt-1 block w-full glass-input-premium transition bg-white min-h-24 resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 3: Documents Upload */}
+          {defaultStep === 3 && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Step 3: Document Attachments</h3>
+              
+              {!isPvcCard ? (
+                <div className="p-6 rounded-[24px] border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-50/80 transition text-center flex flex-col items-center justify-center relative group cursor-pointer">
+                  <UploadCloud className="h-9 w-9 text-blue-500 mb-2 group-hover:scale-105 transition" />
+                  <div className="max-w-md mx-auto relative z-10">
+                    <p className="font-extrabold text-slate-800 text-xs sm:text-sm">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
+                    <p className="mt-1 text-[9.5px] text-slate-450 font-semibold leading-normal">
+                      {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
+                    </p>
+                    <div className="mt-4 relative inline-block cursor-pointer">
+                      <input
+                        name="documents"
+                        type="file"
+                        multiple
+                        required={!selectedDocuments.length && !isEshram}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        disabled={isSubmitting}
+                        onChange={(event) => {
+                          const files = Array.from(event.target.files ?? []);
+
+                          if (!files.length) {
+                             return;
+                          }
+
+                          const validFiles: File[] = [];
+
+                          for (const file of files) {
+                            const validationError = validateFile(file, file.name);
+
+                            if (validationError) {
+                              toastError(validationError);
+                              continue;
+                            }
+
+                            validFiles.push(file);
+                          }
+
+                          setSelectedDocuments((current) => [...current, ...validFiles]);
+                          event.target.value = "";
+                        }}
+                      />
+                      <span className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white shadow hover:bg-blue-700 transition cursor-pointer">
+                        Browse Files
+                      </span>
+                    </div>
+                    
+                    {selectedDocuments.length ? (
+                      <div className="mt-5 grid gap-2">
+                        {selectedDocuments.map((file, index) => (
+                          <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
+                            <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
+                              <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                              <span className="truncate max-w-[180px]">{file.name}</span>
+                            </span>
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[9px] font-extrabold text-red-500 hover:bg-red-100 transition cursor-pointer border-none"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 text-xs text-slate-500 font-bold leading-normal">
+                  Card photo attachments completed inside initial PVC setup step.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 4: Review Details */}
+          {defaultStep === 4 && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Step 4: Review Application details</h3>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-3.5">
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="text-slate-400 font-bold">Applicant Name</p>
+                    <p className="font-extrabold text-slate-850 mt-0.5">
+                      {isPmVishwakarma ? pmVishwakarmaValues.name : isEshram ? eshramValues.name : isPvcCard ? pvcCardValues.name : applicantName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-bold">Contact Mobile</p>
+                    <p className="font-extrabold text-slate-850 mt-0.5">
+                      {isPmVishwakarma ? pmVishwakarmaValues.mobile : isEshram ? eshramValues.mobile : isPvcCard ? pvcCardValues.mobile : applicantMobile}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-400 font-bold">Billing Email</p>
+                    <p className="font-extrabold text-slate-850 mt-0.5 text-ellipsis overflow-hidden">
+                      {isPmVishwakarma ? pmVishwakarmaValues.email : isEshram ? eshramValues.email : isPvcCard ? pvcCardValues.email : applicantEmail}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-400 font-bold">Filing Location / City</p>
+                    <p className="font-extrabold text-slate-850 mt-0.5">
+                      {isPmVishwakarma ? pmVishwakarmaValues.city : isEshram ? eshramValues.city : isPvcCard ? pvcCardValues.city : applicantCity}
+                    </p>
+                  </div>
+                  {selectedDocuments.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-slate-400 font-bold">Documents Ready ({selectedDocuments.length})</p>
+                      <p className="font-bold text-slate-500 mt-1 text-[10.5px]">
+                        {selectedDocuments.map(f => f.name).join(", ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="text-[9px] font-black uppercase text-slate-400">Mobile Number *</label>
-                <input 
-                  type="tel" 
-                  name="mobile"
-                  required
-                  pattern="[0-9]{10}"
-                  value={applicantMobile}
-                  onChange={(e) => setApplicantMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="e.g. 9876543210"
-                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-black uppercase text-slate-400">Email Address *</label>
-                <input 
-                  type="email" 
-                  name="email"
-                  required
-                  value={applicantEmail}
-                  onChange={(e) => setApplicantEmail(e.target.value)}
-                  placeholder="e.g. rahul@example.com"
-                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-black uppercase text-slate-400">City *</label>
-                <input 
-                  type="text" 
-                  name="city"
-                  required
-                  value={applicantCity}
-                  onChange={(e) => setApplicantCity(e.target.value)}
-                  placeholder="e.g. Lucknow"
-                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-[9px] font-black uppercase text-slate-400">Full Address Details (Optional)</label>
-                <input 
-                  type="text" 
-                  name="address"
-                  value={applicantAddress}
-                  onChange={(e) => setApplicantAddress(e.target.value)}
-                  placeholder="e.g. Flat 302, Sharma Heights"
-                  className="mt-1 block w-full glass-input-premium transition bg-white/70"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-[9px] font-black uppercase text-slate-400">Notes / Special Instructions (Optional)</label>
-                <textarea 
-                  name="message"
-                  value={applicantMessage}
-                  onChange={(e) => setApplicantMessage(e.target.value)}
-                  placeholder="Add any specific details our team should know about this filing..."
-                  className="mt-1 block w-full glass-input-premium transition bg-white/70 min-h-24 resize-none"
-                />
+              <div className="bg-blue-50/30 border border-blue-100 p-4 rounded-xl text-xs text-blue-700 font-bold">
+                Review your filing credentials on the left, and complete payment in the right panel.
               </div>
             </div>
           )}
+
         </div>
 
-        {!isPvcCard && !isCmYuva ? (
-          <div className="mt-6 p-6 rounded-[28px] border border-dashed border-blue-200/80 bg-blue-50/5 hover:bg-blue-50/10 transition text-center flex flex-col items-center justify-center relative group">
-            <UploadCloud className="h-9 w-9 text-blue-500 mb-2 group-hover:scale-110 transition duration-300" />
-            <div className="max-w-md mx-auto relative z-10">
-              <p className="font-black text-slate-900 text-xs sm:text-sm">{isEshram ? "Upload Supporting Documents (Optional)" : "Upload Aadhaar / Required Documents"}</p>
-              <p className="mt-1 text-[10px] text-slate-400 font-semibold leading-normal">
-                {isEshram ? "No Aadhaar upload is mandatory here. Add files only when you want our team to review them." : "Aadhaar document is required. Add additional files only if needed."}
-              </p>
-              <div className="mt-4 relative inline-block cursor-pointer">
-                <input
-                  name="documents"
-                  type="file"
-                  multiple
-                  required={!selectedDocuments.length && !isEshram}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  disabled={isSubmitting}
-                  onChange={(event) => {
-                    const files = Array.from(event.target.files ?? []);
+        {/* Step Navigation Controls */}
+        <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
+          <button
+            type="button"
+            disabled={defaultStep === 1 || isSubmitting}
+            onClick={handleDefaultBack}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 px-4 text-xs font-bold text-slate-600 transition cursor-pointer"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
+          </button>
+          
+          {defaultStep < 4 ? (
+            <button
+              type="button"
+              onClick={handleDefaultNext}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white shadow hover:bg-blue-700 transition cursor-pointer"
+            >
+              Next <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <span className="text-xs text-slate-450 font-bold">Step 4 of 4</span>
+          )}
+        </div>
 
-                    if (!files.length) {
-                       return;
-                    }
-
-                    const validFiles: File[] = [];
-
-                    for (const file of files) {
-                      const validationError = validateFile(file, file.name);
-
-                      if (validationError) {
-                        toastError(validationError);
-                        continue;
-                      }
-
-                      validFiles.push(file);
-                    }
-
-                    setSelectedDocuments((current) => [...current, ...validFiles]);
-                    event.target.value = "";
-                  }}
-                />
-                <span className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white shadow hover:bg-blue-700 transition active:scale-95">
-                  Browse Files
-                </span>
-              </div>
-              
-              {selectedDocuments.length ? (
-                <div className="mt-5 grid gap-2">
-                  {selectedDocuments.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-2.5 text-xs shadow-sm">
-                      <span className="flex min-w-0 items-center gap-2 font-bold text-slate-700">
-                        <FileCheck2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                        <span className="truncate max-w-[180px]">{file.name}</span>
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[9px] font-extrabold text-red-500 hover:bg-red-100 transition cursor-pointer border-none"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
       </Card>
 
       <div className="space-y-4">
@@ -2786,171 +3198,173 @@ export function ServiceApplicationForm({
           </div>
         </Card>
 
-        {realPayableAmount > 0 ? (
-          <Card className="rounded-[24px] border border-orange-100 bg-orange-50/10 p-5 shadow-sm space-y-3.5">
+        {defaultStep === 4 && (
+          <>
+          {realPayableAmount > 0 ? (
+            <Card className="rounded-[24px] border border-orange-100 bg-orange-50/10 p-5 shadow-sm space-y-3.5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 border border-orange-200">
+                  <CreditCard className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-black text-slate-900 text-xs uppercase tracking-wide">Secure Checkout</p>
+                  <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500">
+                    Pay securely by UPI, Cards, Netbanking, or Wallet. Handled and verified directly by Razorpay secure channels.
+                  </p>
+                  <div className="mt-4">
+                    <RazorpayCheckoutButton
+                      amountPaise={payableAmountPaise}
+                      receipt={paymentReceipt}
+                      serviceSlug={selectedServices[0]?.slug}
+                      serviceSlugs={selectedServices.map((item) => item.slug)}
+                      walletUseAmount={clampedWalletUseAmount}
+                      customer={{
+                        name: normalizedApplicationDraft.customer.name,
+                        email: normalizedApplicationDraft.customer.email,
+                        mobile: normalizedApplicationDraft.customer.mobile,
+                      }}
+                      applicationDraft={{
+                        customer: normalizedApplicationDraft.customer,
+                        details: serviceDetailsForPayment,
+                      }}
+                      description={selectedServices.map((item) => item.title).join(", ")}
+                      disabled={!canStartPayment}
+                      onVerified={(payment) => {
+                        setRazorpayPayment({
+                          ...payment,
+                          amount_paise: payableAmountPaise,
+                        });
+                      }}
+                    />
+                  </div>
+                  {razorpayPayment ? (
+                    <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-extrabold text-emerald-600 border border-emerald-100">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      Payment verified: {razorpayPayment.razorpay_payment_id}
+                    </div>
+                  ) : null}
+                  {!canStartPayment ? (
+                    <p className="mt-3 rounded-xl bg-orange-50 border border-orange-100/50 px-3 py-2 text-[10px] font-bold text-orange-700 leading-normal">
+                      {isPmVishwakarma
+                        ? "Fill required PM Vishwakarma fields, accept terms, and upload documents before payment."
+                        : isEshram
+                          ? "Fill required e-Shram fields and consent before payment."
+                        : isPvcCard
+                          ? "Fill PVC card fields, accept terms, and upload front & back images before payment."
+                        : isCmYuva
+                          ? "Complete steps, select package, and upload documents before payment."
+                          : "Complete name, 10-digit mobile, email, city, and upload Aadhaar before payment."}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </Card>
+          ) : realPayableAmount === 0 && clampedWalletUseAmount > 0 ? (
+            <Card className="rounded-[24px] border border-emerald-150 bg-emerald-50/15 p-5 shadow-sm space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <WalletCards className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-black text-slate-900 text-xs uppercase tracking-wide">100% Wallet Cover</p>
+                  <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500">
+                    Your wallet credits will cover the entire amount. Zero Razorpay payment needed.
+                  </p>
+                  <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700 border border-emerald-100">
+                    🎉 {formatCurrency(clampedWalletUseAmount)} will be debited from your DigiWallet.
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
+          <LoadingOverlay show={wallet.isLoading} label="Checking wallet balance...">
+          <Card className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm backdrop-blur-sm md:p-5">
             <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 border border-orange-200">
-                <CreditCard className="h-4.5 w-4.5" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                <WalletCards className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-black text-slate-900 text-xs uppercase tracking-wide">Secure Checkout</p>
-                <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500">
-                  Pay securely by UPI, Cards, Netbanking, or Wallet. Handled and verified directly by Razorpay secure channels.
+                <p className="font-extrabold text-slate-950 text-sm">Redeem Rewards</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                  Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
                 </p>
-                <div className="mt-4">
-                  <RazorpayCheckoutButton
-                    amountPaise={payableAmountPaise}
-                    receipt={paymentReceipt}
-                    serviceSlug={selectedServices[0]?.slug}
-                    serviceSlugs={selectedServices.map((item) => item.slug)}
-                    walletUseAmount={clampedWalletUseAmount}
-                    customer={{
-                      name: normalizedApplicationDraft.customer.name,
-                      email: normalizedApplicationDraft.customer.email,
-                      mobile: normalizedApplicationDraft.customer.mobile,
+                {!wallet.isLoading && wallet.balance <= 0 ? (
+                  <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No reward balance available.</p>
+                ) : null}
+                
+                <p className="mt-2.5 rounded-2xl bg-blue-50/50 border border-blue-50/80 px-3 py-2 text-xs font-extrabold leading-normal text-blue-700">
+                  &bull; Wallet Cap Rule: You can redeem up to 50% of service price and 50% of your wallet balance — whichever is lower.
+                </p>
+                
+                <div className="mt-3.5 grid gap-2">
+                  <button
+                    type="button"
+                    disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
+                    onClick={() => setWalletUseAmount(wallet.maxUsable)}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50/30 px-4 text-xs font-extrabold text-blue-700 transition hover:bg-blue-600 hover:text-white hover:border-blue-600 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    Apply Max Wallet Discount
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={wallet.maxUsable}
+                    disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
+                    value={walletUseAmount}
+                    onChange={(event) => {
+                      const nextValue = Math.max(0, Math.round(Number(event.target.value || 0)));
+                      if (nextValue > wallet.maxUsable) {
+                        setWalletUseAmount(wallet.maxUsable);
+                        toastError(walletLimitMessage);
+                        return;
+                      }
+                      setWalletUseAmount(nextValue);
                     }}
-                    applicationDraft={{
-                      customer: normalizedApplicationDraft.customer,
-                      details: serviceDetailsForPayment,
-                    }}
-                    description={selectedServices.map((item) => item.title).join(", ")}
-                    disabled={!canStartPayment}
-                    onVerified={(payment) => {
-                      setRazorpayPayment({
-                        ...payment,
-                        amount_paise: payableAmountPaise,
-                      });
-                    }}
+                    aria-label="DigiWallet amount to use"
+                    placeholder="Enter custom wallet credit"
+                    className="h-10 w-full glass-input-premium bg-white/70 py-2.5 px-3.5 text-xs font-bold focus:bg-white transition"
                   />
                 </div>
-                {razorpayPayment ? (
-                  <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-extrabold text-emerald-600 border border-emerald-100">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    Payment verified: {razorpayPayment.razorpay_payment_id}
-                  </div>
-                ) : null}
-                {!canStartPayment ? (
-                  <p className="mt-3 rounded-xl bg-orange-50 border border-orange-100/50 px-3 py-2 text-[10px] font-bold text-orange-700 leading-normal">
-                    {isPmVishwakarma
-                      ? "Fill required PM Vishwakarma fields, accept terms, and upload documents before payment."
-                      : isEshram
-                        ? "Fill required e-Shram fields and consent before payment."
-                      : isPvcCard
-                        ? "Fill PVC card fields, accept terms, and upload front & back images before payment."
-                      : isCmYuva
-                        ? "Complete steps, select package, and upload documents before payment."
-                        : "Complete name, 10-digit mobile, email, city, and upload Aadhaar before payment."}
+                {clampedWalletUseAmount > 0 ? (
+                  <p className="mt-2 text-xs font-extrabold text-emerald-700">
+                    {formatCurrency(clampedWalletUseAmount)} reward deduction applied.
                   </p>
                 ) : null}
-              </div>
-            </div>
-          </Card>
-        ) : realPayableAmount === 0 && clampedWalletUseAmount > 0 ? (
-          <Card className="rounded-[24px] border border-emerald-150 bg-emerald-50/15 p-5 shadow-sm space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-                <WalletCards className="h-4.5 w-4.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-black text-slate-900 text-xs uppercase tracking-wide">100% Wallet Cover</p>
-                <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500">
-                  Your wallet credits will cover the entire amount. Zero Razorpay payment needed.
-                </p>
-                <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700 border border-emerald-100">
-                  🎉 {formatCurrency(clampedWalletUseAmount)} will be debited from your DigiWallet.
+                
+                <div className="mt-4 grid gap-2.5 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 font-semibold">Service Subtotal</span>
+                    <span className="font-extrabold text-slate-800">{formatCurrency(totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 font-semibold">Rewards Discount</span>
+                    <span className="font-extrabold text-orange-600">-{formatCurrency(clampedWalletUseAmount)}</span>
+                  </div>
+                  <div className="flex justify-between gap-3 border-t border-slate-200/60 pt-2">
+                    <span className="text-slate-600 font-extrabold">Net Payable Amount</span>
+                    <span className="font-extrabold text-blue-700 text-sm">{formatCurrency(realPayableAmount)}</span>
+                  </div>
+                  <div className="flex justify-between gap-3 border-t border-dashed border-slate-200/60 pt-2">
+                    <span className="text-slate-500 font-semibold">Expected Wallet Cashback</span>
+                    <span className="font-extrabold text-emerald-600">{formatCurrency(expectedCashback)}</span>
+                  </div>
+                  <p className="text-[10px] font-bold leading-relaxed text-slate-400">
+                    {hasFirstServiceCashback
+                      ? "* Get 20% cashback credited to your reward wallet after successful payment."
+                      : "* Get 100% cashback credited to your reward wallet after successful payment (First paid service bonus)."}
+                  </p>
                 </div>
               </div>
             </div>
           </Card>
-        ) : null}
+          </LoadingOverlay>
 
-        <LoadingOverlay show={wallet.isLoading} label="Checking wallet balance...">
-        <Card className="rounded-3xl border border-slate-100 bg-white/78 p-4 shadow-sm backdrop-blur-sm md:p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-              <WalletCards className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-extrabold text-slate-950 text-sm">Redeem Rewards</p>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
-                Available: {wallet.isLoading ? "Checking..." : formatCurrency(wallet.balance)} | Max usable: {formatCurrency(wallet.maxUsable)}
-              </p>
-              {!wallet.isLoading && wallet.balance <= 0 ? (
-                <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No reward balance available.</p>
-              ) : null}
-              
-              {/* Wallet Cap Notice Box */}
-              <p className="mt-2.5 rounded-2xl bg-blue-50/50 border border-blue-50/80 px-3 py-2 text-xs font-extrabold leading-normal text-blue-700">
-                &bull; Wallet Cap Rule: You can redeem up to 50% of service price and 50% of your wallet balance — whichever is lower.
-              </p>
-              
-              <div className="mt-3.5 grid gap-2">
-                <button
-                  type="button"
-                  disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
-                  onClick={() => setWalletUseAmount(wallet.maxUsable)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50/30 px-4 text-xs font-extrabold text-blue-700 transition hover:bg-blue-600 hover:text-white hover:border-blue-600 disabled:cursor-not-allowed disabled:text-slate-400"
-                >
-                  Apply Max Wallet Discount
-                </button>
-                <input
-                  type="number"
-                  min={0}
-                  max={wallet.maxUsable}
-                  disabled={isSubmitting || wallet.isLoading || wallet.maxUsable <= 0}
-                  value={walletUseAmount}
-                  onChange={(event) => {
-                    const nextValue = Math.max(0, Math.round(Number(event.target.value || 0)));
-                    if (nextValue > wallet.maxUsable) {
-                      setWalletUseAmount(wallet.maxUsable);
-                      toastError(walletLimitMessage);
-                      return;
-                    }
-                    setWalletUseAmount(nextValue);
-                  }}
-                  aria-label="DigiWallet amount to use"
-                  placeholder="Enter custom wallet credit"
-                  className="h-10 w-full glass-input-premium bg-white/70 py-2.5 px-3.5 text-xs font-bold focus:bg-white transition"
-                />
-              </div>
-              {clampedWalletUseAmount > 0 ? (
-                <p className="mt-2 text-xs font-extrabold text-emerald-700">
-                  {formatCurrency(clampedWalletUseAmount)} reward deduction applied.
-                </p>
-              ) : null}
-              
-              {/* Modern Ledger breakdown */}
-              <div className="mt-4 grid gap-2.5 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs">
-                <div className="flex justify-between gap-3">
-                  <span className="text-slate-500 font-semibold">Service Subtotal</span>
-                  <span className="font-extrabold text-slate-800">{formatCurrency(totalAmount)}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-slate-500 font-semibold">Rewards Discount</span>
-                  <span className="font-extrabold text-orange-600">-{formatCurrency(clampedWalletUseAmount)}</span>
-                </div>
-                <div className="flex justify-between gap-3 border-t border-slate-200/60 pt-2">
-                  <span className="text-slate-600 font-extrabold">Net Payable Amount</span>
-                  <span className="font-extrabold text-blue-700 text-sm">{formatCurrency(realPayableAmount)}</span>
-                </div>
-                <div className="flex justify-between gap-3 border-t border-dashed border-slate-200/60 pt-2">
-                  <span className="text-slate-500 font-semibold">Expected Wallet Cashback</span>
-                  <span className="font-extrabold text-emerald-600">{formatCurrency(expectedCashback)}</span>
-                </div>
-                <p className="text-[10px] font-bold leading-relaxed text-slate-400">
-                  {hasFirstServiceCashback
-                    ? "* Get 20% cashback credited to your reward wallet after successful payment."
-                    : "* Get 100% cashback credited to your reward wallet after successful payment (First paid service bonus)."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        </LoadingOverlay>
-
-        <FormSubmitButton type="submit" size="lg" loading={isSubmitting} loadingText={progressText || "Please wait..."} className="sticky bottom-3 mb-4 h-13 w-full rounded-2xl shadow-lg md:static md:mb-0 bg-slate-950 font-extrabold hover:bg-slate-900">
-          Submit Application
-        </FormSubmitButton>
+          <FormSubmitButton type="submit" size="lg" loading={isSubmitting} loadingText={progressText || "Please wait..."} className="sticky bottom-3 mb-4 h-13 w-full rounded-2xl shadow-lg md:static md:mb-0 bg-slate-950 font-extrabold hover:bg-slate-900">
+            Submit Application
+          </FormSubmitButton>
+          </>
+        )}
       </div>
       </fieldset>
     </form>

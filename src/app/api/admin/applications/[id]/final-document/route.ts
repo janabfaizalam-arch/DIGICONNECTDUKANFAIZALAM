@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { validateFileSignature } from "@/lib/file-validation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 8 * 1024 * 1024;
@@ -28,8 +29,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ message: "Choose a final document to upload." }, { status: 400 });
   }
 
-  if (!allowedFileTypes.includes(file.type)) {
-    return NextResponse.json({ message: "Final document must be PDF, JPG, PNG, or WebP." }, { status: 400 });
+  const validationResult = await validateFileSignature(file, allowedFileTypes);
+  if (!validationResult.valid) {
+    return NextResponse.json({ message: validationResult.error || "Final document must be PDF, JPG, PNG, or WebP." }, { status: 400 });
   }
 
   if (file.size > maxFileSize) {

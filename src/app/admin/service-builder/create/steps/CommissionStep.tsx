@@ -1,3 +1,5 @@
+"use client";
+
 // src/app/admin/service-builder/create/steps/CommissionStep.tsx
 
 import React, { useState } from 'react';
@@ -16,9 +18,9 @@ export const CommissionStep: React.FC<{ onNext: () => void; onBack: () => void }
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     if (name === 'type') {
-      setCommission((prev) => ({ ...prev, type: value as any }));
+      setCommission((prev) => ({ ...prev, type: value as CommissionEngine['type'] }));
     } else if (name === 'value') {
       setCommission((prev) => ({ ...prev, value: Number(value) }));
     }

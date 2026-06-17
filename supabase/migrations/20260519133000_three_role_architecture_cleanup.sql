@@ -1,3 +1,6 @@
+-- ⚠️ LEGACY — One-time data migration already applied to production.
+-- Role normalization is a one-shot change. Migration kept for chain integrity only.
+--
 -- Final three-role architecture cleanup: admin, agent, customer only.
 -- Historical role values are normalized before constraints are tightened.
 

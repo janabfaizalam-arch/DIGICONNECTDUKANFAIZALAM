@@ -1,3 +1,5 @@
+"use client";
+
 // src/app/admin/service-builder/create/ServiceWizardContext.tsx
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';

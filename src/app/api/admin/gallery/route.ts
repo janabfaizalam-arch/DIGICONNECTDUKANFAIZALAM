@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { validateFileSignature } from "@/lib/file-validation";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { galleryBucketName } from "@/lib/gallery";
@@ -75,6 +76,11 @@ export async function POST(request: Request) {
 
     if (file.size > maxImageSize) {
       return jsonError("Gallery image must be smaller than 5MB.", 400);
+    }
+
+    const check = await validateFileSignature(file, allowedImageTypes);
+    if (!check.valid) {
+      return jsonError(check.error || "Invalid file.", 400);
     }
 
     const storagePath = `homepage/${Date.now()}-${cleanFileName(file.name)}`;
@@ -154,6 +160,11 @@ export async function PATCH(request: Request) {
     if (file instanceof File && file.size > 0) {
       if (!file.type.startsWith("image/") || !allowedImageTypes.includes(file.type)) {
         return jsonError("Gallery image must be JPG, PNG, or WebP.", 400);
+      }
+
+      const check = await validateFileSignature(file, allowedImageTypes);
+      if (!check.valid) {
+        return jsonError(check.error || "Invalid file.", 400);
       }
 
       const { data: existing } = await supabase.from("gallery_images").select("storage_path").eq("id", id).maybeSingle();

@@ -103,7 +103,7 @@ export function CustomerApplicationsList({ applications }: { applications: Custo
   );
 
   return (
-    <section id="applications" className="scroll-mt-20 rounded-[1.5rem] border border-white/85 bg-white/84 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] md:p-6">
+    <section id="applications" className="scroll-mt-20 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">My Applications</p>
@@ -116,7 +116,7 @@ export function CustomerApplicationsList({ applications }: { applications: Custo
               type="button"
               onClick={() => setFilter(item.id)}
               className={`h-9 rounded-full px-3 text-xs font-extrabold transition ${
-                filter === item.id ? "bg-blue-700 text-white" : "border border-blue-100 bg-white text-slate-700"
+                filter === item.id ? "bg-blue-700 text-white" : "border border-slate-100 bg-white text-slate-700"
               }`}
             >
               {item.label}
@@ -126,7 +126,7 @@ export function CustomerApplicationsList({ applications }: { applications: Custo
       </div>
 
       {!applications.length ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-blue-100 bg-blue-50/55 p-6 text-center">
+        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
           <p className="text-base font-bold text-slate-950">No applications yet.</p>
           <p className="mt-1 text-sm text-slate-600">Choose a service to start your first application.</p>
           <Link href="/services" className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-blue-700 px-4 text-sm font-bold text-white">
@@ -134,11 +134,11 @@ export function CustomerApplicationsList({ applications }: { applications: Custo
           </Link>
         </div>
       ) : !visibleApplications.length ? (
-        <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">No {filter.replace("_", " ")} applications found.</p>
+        <p className="mt-4 rounded-2xl bg-slate-50 border border-slate-100 p-4 text-sm font-semibold text-slate-600">No {filter.replace("_", " ")} applications found.</p>
       ) : (
         <div className="mt-4 grid gap-2.5">
           {visibleApplications.map((application) => (
-            <article key={application.id} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_4px_14px_rgba(15,23,42,0.04)] md:p-4">
+            <article key={application.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <div className="flex min-w-0 flex-col gap-2.5 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   <h3 className="break-words text-sm font-bold text-slate-950 md:text-base">{application.service_name}</h3>

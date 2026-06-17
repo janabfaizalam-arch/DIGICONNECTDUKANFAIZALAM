@@ -138,8 +138,8 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
       </div>
     );
   }
@@ -248,32 +248,32 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-800">
       
       {/* Welcome Banner */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-slate-950 p-6 md:p-8 backdrop-blur-xl shadow-2xl">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-[80px]" />
-        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-[80px]" />
+      <section className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-sm">
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-50/50 blur-[80px]" />
+        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-50/50 blur-[80px]" />
 
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between relative z-10">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3.5 py-1.5 border border-blue-500/20 text-xs font-bold text-blue-400">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 border border-blue-100 text-xs font-bold text-blue-700">
               <Sparkles className="h-3.5 w-3.5 animate-pulse" />
               DigiPartner Hub • Live Workspace
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent sm:text-4xl md:text-5xl">
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
               {ap.full_name}
             </h1>
-            <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-slate-400">
-              <span className="rounded bg-white/5 px-2.5 py-1 border border-white/5 font-semibold text-slate-300">
+            <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-slate-500">
+              <span className="rounded bg-slate-50 px-2.5 py-1 border border-slate-200/80 font-semibold text-slate-600">
                 Partner ID: {ap.partner_code}
               </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-700" />
-              <span className="font-semibold text-indigo-400 capitalize bg-indigo-500/5 px-2 py-0.5 border border-indigo-500/10 rounded">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-350" />
+              <span className="font-semibold text-indigo-700 capitalize bg-indigo-50 px-2 py-0.5 border border-indigo-100 rounded">
                 {ap.partner_type.replace("_", " ")}
               </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-700" />
-              <span className="inline-flex items-center gap-1 font-bold text-amber-400 bg-amber-500/5 px-2 py-0.5 border border-amber-500/10 rounded">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-350" />
+              <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 border border-amber-100 rounded">
                 {ap.tier?.name || "AP Starter"} Tier
               </span>
             </div>
@@ -282,13 +282,13 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
           <div className="flex flex-wrap gap-2.5 shrink-0">
             <button
               onClick={() => setIsRechargeOpen(true)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 border border-white/10 hover:bg-slate-800 px-5 font-bold text-white transition-all text-sm"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 px-5 font-bold text-slate-700 transition-all text-sm shadow-sm cursor-pointer"
             >
-              <WalletCards className="h-4.5 w-4.5 text-emerald-400" /> Wallet Recharge
+              <WalletCards className="h-4.5 w-4.5 text-emerald-600" /> Wallet Recharge
             </button>
             <Link
               href="/ap/applications/new"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 font-bold text-white shadow-lg shadow-indigo-950/40 hover:from-blue-500 hover:to-indigo-500 transition-all text-sm"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 font-bold text-white shadow-md shadow-blue-500/10 hover:from-blue-500 hover:to-indigo-500 transition-all text-sm cursor-pointer"
             >
               <PlusCircle className="h-4.5 w-4.5" /> New Application
             </Link>
@@ -298,15 +298,15 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
       {/* KYC Alert */}
       {ap.kyc_status !== "approved" && (
-        <section className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4 md:p-5 backdrop-blur-md">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 md:p-5">
           <div className="flex gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold text-yellow-300">KYC Verification Underway: {ap.kyc_status.toUpperCase()}</h3>
-              <p className="mt-1 text-xs text-slate-400 leading-relaxed font-semibold">
+              <h3 className="font-bold text-amber-800">KYC Verification Underway: {ap.kyc_status.toUpperCase()}</h3>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed font-semibold">
                 Your agency partner profile and automated withdrawal privileges will unlock fully once documents are verified by our compliance verifiers.
               </p>
-              <Link href="/ap/profile" className="mt-2.5 inline-flex items-center gap-1 text-xs font-bold text-yellow-400 hover:text-yellow-300">
+              <Link href="/ap/profile" className="mt-2.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800">
                 Go to Document Upload
                 <ArrowRight className="h-3 w-3" />
               </Link>
@@ -318,59 +318,59 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
       {/* Stats Matrix Grid */}
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Wallet Balance Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg shadow-blue-950/5">
+        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Wallet Balance</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600">
               <WalletCards className="h-4.5 w-4.5" />
             </span>
           </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-white">
+          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
             {formatCurrencyLocal(walletBalance)}
           </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">Instant gateway settle ready</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-400">Instant gateway settle ready</p>
         </Card>
 
         {/* Total Earned Commission Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-white/5 bg-slate-900/20 p-5 backdrop-blur-md">
+        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Earned Payouts</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600">
               <HandCoins className="h-4.5 w-4.5" />
             </span>
           </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-white">
+          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
             {formatCurrencyLocal((stats.commissionApproved ?? 0) + (stats.totalPaidPayout ?? 0))}
           </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">{formatCurrencyLocal(stats.commissionPending ?? 0)} pending review</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-450">{formatCurrencyLocal(stats.commissionPending ?? 0)} pending review</p>
         </Card>
 
         {/* Completed Services Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-white/5 bg-slate-900/20 p-5 backdrop-blur-md">
+        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Completed Services</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600">
               <CheckCircle2 className="h-4.5 w-4.5" />
             </span>
           </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-white">
+          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
             {stats.completedApplications}
           </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">{stats.totalApplications} total applications filed</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-450">{stats.totalApplications} total applications filed</p>
         </Card>
 
         {/* Active Support Tickets Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-white/5 bg-slate-900/20 p-5 backdrop-blur-md">
+        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Open Tickets</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-650">
               <MessageSquare className="h-4.5 w-4.5" />
             </span>
           </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-white">
+          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
             {supportTicketsCount}
           </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">Average response time ~15 mins</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-455">Average response time ~15 mins</p>
         </Card>
       </section>
 
@@ -378,15 +378,15 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
       <section className="grid gap-6 lg:grid-cols-12">
         
         {/* Area Chart: Commission earnings trend */}
-        <Card className="lg:col-span-8 border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between">
+        <Card className="lg:col-span-8 border border-slate-100 bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-extrabold text-white text-base">Monthly Earnings Growth</h3>
-                <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 tracking-wider">Commission & Application Volume Trend</p>
+                <h3 className="font-extrabold text-slate-900 text-base">Monthly Earnings Growth</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">Commission & Application Volume Trend</p>
               </div>
-              <div className="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded-lg border border-white/5 text-[10px] font-bold text-slate-400">
-                <span className="h-2 w-2 rounded-full bg-indigo-500" /> Commission Credits (INR)
+              <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-500">
+                <span className="h-2 w-2 rounded-full bg-blue-600" /> Commission Credits (INR)
               </div>
             </div>
             
@@ -396,34 +396,34 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                 <AreaChart data={MONTHLY_EARNINGS_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.08)", borderRadius: "12px", fontFamily: "monospace", fontSize: "11px" }}
-                    itemStyle={{ color: "#fff" }}
+                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: "12px", fontSize: "11px" }}
+                    itemStyle={{ color: "#1e293b" }}
                     labelStyle={{ color: "#64748b", fontWeight: "bold" }}
                   />
-                  <Area type="monotone" dataKey="earnings" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#earningsGrad)" />
+                  <Area type="monotone" dataKey="earnings" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#earningsGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold border-t border-white/5 pt-4 mt-2">
-            <Info className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold border-t border-slate-100 pt-4 mt-2">
+            <Info className="h-3.5 w-3.5 text-blue-500 shrink-0" />
             <span>Charts indicate cumulative growth across services. Next settlement batch scheduled for Tuesday morning.</span>
           </div>
         </Card>
 
         {/* Pie/Donut Chart: Applications breakdown */}
-        <Card className="lg:col-span-4 border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between">
+        <Card className="lg:col-span-4 border border-slate-100 bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="font-extrabold text-white text-base">Application Ratios</h3>
-            <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 tracking-wider">Verifications breakdown</p>
+            <h3 className="font-extrabold text-slate-900 text-base">Application Ratios</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">Verifications breakdown</p>
 
             <div className="h-48 mt-4 relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
@@ -442,16 +442,16 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.08)", borderRadius: "12px" }}
-                    itemStyle={{ fontSize: "11px", color: "#fff" }}
+                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: "12px" }}
+                    itemStyle={{ fontSize: "11px", color: "#1e293b" }}
                   />
                 </PieChart>
               </ResponsiveContainer>
 
               {/* Central text */}
               <div className="absolute text-center">
-                <p className="text-2xl font-black text-white">{stats.totalApplications || 15}</p>
-                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Applications</p>
+                <p className="text-2xl font-black text-slate-900">{stats.totalApplications || 15}</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Applications</p>
               </div>
             </div>
 
@@ -461,9 +461,9 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                 <div key={idx} className="flex justify-between items-center text-xs font-semibold">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
-                    <span className="text-slate-300">{d.name}</span>
+                    <span className="text-slate-650">{d.name}</span>
                   </div>
-                  <span className="text-white font-mono">{d.value}</span>
+                  <span className="text-slate-950 font-mono font-bold">{d.value}</span>
                 </div>
               ))}
             </div>
@@ -474,75 +474,75 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
       {/* Quick Action Matrix */}
       <section className="space-y-4">
-        <h3 className="text-lg font-bold tracking-tight text-white">Partner Quick Operations</h3>
+        <h3 className="text-lg font-bold tracking-tight text-slate-900">Partner Quick Operations</h3>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
           {/* Action: New App */}
           <Link
             href="/ap/applications/new"
-            className="group p-4 rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 hover:border-white/10 transition-all flex flex-col justify-between min-h-[100px]"
+            className="group p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 group-hover:scale-105 transition-transform">
               <PlusCircle className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">New Submission</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Apply for customer</p>
+              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">New Submission</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Apply for customer</p>
             </div>
           </Link>
 
           {/* Action: Add Customer */}
           <Link
             href="/ap/customers"
-            className="group p-4 rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 hover:border-white/10 transition-all flex flex-col justify-between min-h-[100px]"
+            className="group p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:scale-105 transition-transform">
               <Users className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">Add Customer</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Save customer logs</p>
+              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Add Customer</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Save customer logs</p>
             </div>
           </Link>
 
           {/* Action: Add Lead CRM */}
           <button
             onClick={() => setIsLeadOpen(true)}
-            className="group text-left p-4 rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 hover:border-white/10 transition-all flex flex-col justify-between min-h-[100px]"
+            className="group text-left p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 border border-purple-100 text-purple-600 group-hover:scale-105 transition-transform">
               <Plus className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">Log CRM Lead</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Track follow-ups</p>
+              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Log CRM Lead</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Track follow-ups</p>
             </div>
           </button>
 
           {/* Action: Wallet Recharge */}
           <button
             onClick={() => setIsRechargeOpen(true)}
-            className="group text-left p-4 rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 hover:border-white/10 transition-all flex flex-col justify-between min-h-[100px]"
+            className="group text-left p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600 group-hover:scale-105 transition-transform">
               <WalletCards className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">Recharge Wallet</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Digital payment credits</p>
+              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Recharge Wallet</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Digital payment credits</p>
             </div>
           </button>
 
           {/* Action: Open Support Ticket */}
           <Link
             href="/ap/support"
-            className="group p-4 rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 hover:border-white/10 transition-all flex flex-col justify-between min-h-[100px]"
+            className="group p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-650 group-hover:scale-105 transition-transform">
               <MessageSquare className="h-4.5 w-4.5" />
             </span>
             <div>
-              <p className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">Lodge Support Ticket</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">KYC / refund desk</p>
+              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Lodge Support Ticket</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">KYC / refund desk</p>
             </div>
           </Link>
         </div>
@@ -552,17 +552,17 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Cpu className="h-5 w-5 text-indigo-400 animate-pulse" /> DigiPartner AI Beta Suite
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Cpu className="h-5 w-5 text-indigo-600 animate-pulse" /> DigiPartner AI Beta Suite
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Modern, AI-driven automation layers upcoming in DigiConnect Dukan</p>
+            <p className="text-xs text-slate-400 mt-0.5">Modern, AI-driven automation layers upcoming in DigiConnect Dukan</p>
           </div>
 
           {!isInBetaQueue ? (
             <button
               onClick={handleJoinBetaQueue}
               disabled={isQueueing}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 font-bold text-white transition-all text-xs"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-700 disabled:opacity-50 px-4 font-bold text-white transition-all text-xs cursor-pointer"
             >
               {isQueueing ? (
                 <>
@@ -576,7 +576,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
               )}
             </button>
           ) : (
-            <div className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-1.5 border border-emerald-500/20 text-xs font-bold text-emerald-400">
+            <div className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 border border-emerald-100 text-xs font-bold text-emerald-700">
               <Check className="h-4 w-4" /> Position #109 Registered
             </div>
           )}
@@ -586,52 +586,52 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           
           {/* Card: AI Copilot */}
-          <Card className="relative overflow-hidden border border-white/5 bg-slate-900/20 p-5 rounded-2xl group">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-extrabold text-indigo-400 tracking-wider uppercase">
+          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
+            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
               Soon
             </span>
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-sm text-slate-200">AI Application Copilot</h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+            <div className="space-y-2">
+              <h4 className="font-extrabold text-sm text-slate-800">AI Application Copilot</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Scan customer documents over WhatsApp, and let our LLM parse and fill forms in 3 seconds.
               </p>
             </div>
           </Card>
 
           {/* Card: AI Lead Scorer */}
-          <Card className="relative overflow-hidden border border-white/5 bg-slate-900/20 p-5 rounded-2xl group">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-extrabold text-indigo-400 tracking-wider uppercase">
+          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
+            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
               Soon
             </span>
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-sm text-slate-200">AI Lead Scorer</h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+            <div className="space-y-2">
+              <h4 className="font-extrabold text-sm text-slate-800">AI Lead Scorer</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Analyze CRM records to predict which inquiries are highly likely to convert, maximizing commission.
               </p>
             </div>
           </Card>
 
           {/* Card: AI OCR Compliance */}
-          <Card className="relative overflow-hidden border border-white/5 bg-slate-900/20 p-5 rounded-2xl group">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-extrabold text-indigo-400 tracking-wider uppercase">
+          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
+            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
               Soon
             </span>
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-sm text-slate-200">Document Compliance OCR</h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+            <div className="space-y-2">
+              <h4 className="font-extrabold text-sm text-slate-800">Document Compliance OCR</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Instantly flag blurry photos, incorrect Aadhaar/PAN formats, or signature issues prior to filing.
               </p>
             </div>
           </Card>
 
           {/* Card: AI Demand Analytics */}
-          <Card className="relative overflow-hidden border border-white/5 bg-slate-900/20 p-5 rounded-2xl group">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-extrabold text-indigo-400 tracking-wider uppercase">
+          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
+            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
               Soon
             </span>
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-sm text-slate-200">Revenue Demand Analytics</h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+            <div className="space-y-2">
+              <h4 className="font-extrabold text-sm text-slate-800">Revenue Demand Analytics</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Predict high-demand regional services for the upcoming week based on local transaction volume trends.
               </p>
             </div>
@@ -645,40 +645,40 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
         {/* Recent Applications */}
         <div className="lg:col-span-8 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-400" />
+            <h2 className="text-base font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-500" />
               Recent Applications Log
             </h2>
-            <Link href="/ap/applications" className="inline-flex items-center gap-1 text-xs font-bold text-blue-400 hover:text-blue-300">
+            <Link href="/ap/applications" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700">
               View All Log <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
-          <Card className="overflow-hidden border border-white/5 bg-slate-900/20 backdrop-blur-md rounded-2xl">
+          <Card className="overflow-hidden border border-slate-100 bg-white rounded-2xl shadow-sm">
             {recentApps.length === 0 ? (
               <div className="p-10 text-center">
-                <FileText className="mx-auto h-12 w-12 text-slate-600" />
-                <h3 className="mt-4 text-sm font-bold text-slate-300">No applications yet</h3>
-                <p className="mt-1 text-xs text-slate-500">Submit your first application to earn commission!</p>
+                <FileText className="mx-auto h-12 w-12 text-slate-400" />
+                <h3 className="mt-4 text-sm font-bold text-slate-700">No applications yet</h3>
+                <p className="mt-1 text-xs text-slate-400">Submit your first application to earn commission!</p>
                 <Link
                   href="/ap/applications/new"
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-500/10 px-4 py-2 border border-blue-500/20 text-xs font-bold text-blue-400 hover:bg-blue-500/20 transition-all"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-4 py-2 border border-blue-100 text-xs font-bold text-blue-600 hover:bg-blue-100/50 transition-all cursor-pointer"
                 >
                   Submit Application
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-slate-100">
                 {recentApps.map((app) => (
-                  <div key={app.id} className="p-4 hover:bg-white/5 transition-all duration-150">
+                  <div key={app.id} className="p-4 hover:bg-slate-50/50 transition-all duration-150">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white text-xs">{app.customerName || app.customer_name}</span>
-                          <span className="h-1 w-1 rounded-full bg-slate-600" />
-                          <span className="text-xs text-slate-400 font-semibold">{app.service_name}</span>
+                          <span className="font-bold text-slate-800 text-xs">{app.customerName || app.customer_name}</span>
+                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <span className="text-xs text-slate-500 font-semibold">{app.service_name}</span>
                         </div>
-                        <div className="mt-1 font-mono text-[10px] text-slate-500">
+                        <div className="mt-1 font-mono text-[10px] text-slate-400">
                           Code: {app.application_code || app.id.slice(0, 8)}
                         </div>
                       </div>
@@ -687,10 +687,10 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-extrabold capitalize border ${
                             app.status === "completed"
-                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                               : app.status === "rejected" || app.status === "cancelled"
-                              ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
-                              : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                              ? "bg-rose-50 border-rose-200 text-rose-700"
+                              : "bg-blue-50 border-blue-200 text-blue-700"
                           }`}
                         >
                           {app.status.replace("_", " ")}
@@ -698,7 +698,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
                         <Link
                           href={`/ap/applications/${app.id}`}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 text-slate-400 hover:text-white border border-white/5 hover:border-white/10 transition-all"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 transition-all cursor-pointer"
                         >
                           <ChevronRight className="h-4 w-4" />
                         </Link>
@@ -713,14 +713,14 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
         {/* Announcements & Bulletins */}
         <div className="lg:col-span-4 space-y-4">
-          <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-400" />
+          <h2 className="text-base font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <Bell className="h-5 w-5 text-indigo-500" />
             Bulletins & Updates
           </h2>
 
-          <Card className="overflow-hidden border border-white/5 bg-slate-900/20 backdrop-blur-md rounded-2xl p-4 space-y-3">
+          <Card className="overflow-hidden border border-slate-100 bg-white rounded-2xl p-4 space-y-3 shadow-sm">
             {announcements.length === 0 ? (
-              <div className="py-8 text-center text-slate-500 text-xs font-semibold">
+              <div className="py-8 text-center text-slate-400 text-xs font-semibold">
                 No system updates at this time.
               </div>
             ) : (
@@ -728,26 +728,26 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                 {announcements.map((a) => (
                   <div
                     key={a.id}
-                    className={`rounded-xl border p-3.5 space-y-1.5 bg-slate-950/30 ${
+                    className={`rounded-xl border p-3.5 space-y-1.5 ${
                       a.announcement_type === "urgent"
-                        ? "border-rose-500/30 text-rose-200"
+                        ? "border-rose-100 bg-rose-50/50 text-rose-800"
                         : a.announcement_type === "warning"
-                        ? "border-amber-500/30 text-amber-200"
+                        ? "border-amber-100 bg-amber-50/50 text-amber-855"
                         : a.announcement_type === "success"
-                        ? "border-emerald-500/30 text-emerald-200"
-                        : "border-blue-500/30 text-blue-200"
+                        ? "border-emerald-100 bg-emerald-50/50 text-emerald-800"
+                        : "border-blue-100 bg-blue-50/50 text-blue-800"
                     }`}
                   >
                     <div className="flex items-center justify-between text-[9px] font-bold">
                       <span className="uppercase tracking-wide opacity-75">{a.announcement_type}</span>
                       {a.published_at && (
-                        <span className="text-slate-500 font-mono">
+                        <span className="text-slate-450 font-mono">
                           {new Date(a.published_at).toLocaleDateString()}
                         </span>
                       )}
                     </div>
-                    <h4 className="font-extrabold text-xs text-white leading-snug">{a.title}</h4>
-                    <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-line">{a.body}</p>
+                    <h4 className="font-extrabold text-xs text-slate-900 leading-snug">{a.title}</h4>
+                    <p className="text-[10px] text-slate-500 leading-relaxed whitespace-pre-line">{a.body}</p>
                   </div>
                 ))}
               </div>
@@ -758,21 +758,21 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
       {/* Wallet Recharge Dialog Modal */}
       {isRechargeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-slate-900 p-6 md:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 md:p-8 space-y-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsRechargeOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-800 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div>
-              <div className="inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 rounded-full">
+              <div className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 border border-emerald-100 text-[10px] font-bold text-emerald-700 rounded-full">
                 <DollarSign className="h-3 w-3" /> Secure Payment
               </div>
-              <h2 className="text-lg font-extrabold text-white mt-1.5">Recharge Balance</h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <h2 className="text-lg font-extrabold text-slate-900 mt-1.5">Recharge Balance</h2>
+              <p className="text-xs text-slate-500 mt-1">
                 Enter amount to credit. Processing is managed through Razorpay.
               </p>
             </div>
@@ -788,14 +788,14 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                   placeholder="Minimum Rs. 100"
                   value={rechargeAmount}
                   onChange={e => setRechargeAmount(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-slate-200 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isRecharging}
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
               >
                 {isRecharging ? (
                   <>
@@ -813,21 +813,21 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
       {/* CRM Quick Lead Capture Modal */}
       {isLeadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-slate-900 p-6 md:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 md:p-8 space-y-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsLeadOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-800 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 px-2 py-0.5 border border-purple-500/20 text-[10px] font-bold text-purple-400">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2 py-0.5 border border-purple-100 text-[10px] font-bold text-purple-700">
                 CRM Capture Box
               </div>
-              <h2 className="text-lg font-extrabold text-white mt-1.5">Capture Lead Quick</h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <h2 className="text-lg font-extrabold text-slate-900 mt-1.5">Capture Lead Quick</h2>
+              <p className="text-xs text-slate-500 mt-1">
                 Save prospective clients, mobile inquiries and requested service categories.
               </p>
             </div>
@@ -841,7 +841,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                   placeholder="e.g. Ramesh Kumar"
                   value={leadName}
                   onChange={e => setLeadName(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-slate-200 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
                 />
               </div>
 
@@ -854,7 +854,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                   placeholder="10-digit number"
                   value={leadMobile}
                   onChange={e => setLeadMobile(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-slate-200 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
                 />
               </div>
 
@@ -865,14 +865,14 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                   placeholder="e.g. CM Yuva Scheme, GST Filing"
                   value={leadService}
                   onChange={e => setLeadService(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-slate-200 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmittingLead}
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center cursor-pointer border-none"
               >
                 {isSubmittingLead ? "Saving Lead..." : "Save Lead to CRM"}
               </button>
@@ -880,7 +880,6 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
           </div>
         </div>
       )}
-
     </div>
   );
 }

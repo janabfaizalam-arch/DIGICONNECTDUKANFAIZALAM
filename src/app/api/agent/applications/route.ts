@@ -9,6 +9,7 @@ import { createInvoiceNumber } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { validateFileSignature } from "@/lib/file-validation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -17,9 +18,10 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ message }, { status });
 }
 
-function validateFile(file: File, label: string) {
-  if (!allowedFileTypes.includes(file.type)) {
-    return `${label} must be PDF, JPG, PNG, or WEBP.`;
+async function validateFile(file: File, label: string) {
+  const validationResult = await validateFileSignature(file, allowedFileTypes);
+  if (!validationResult.valid) {
+    return `${label} must be PDF, JPG, PNG, or WEBP (invalid format/signature).`;
   }
 
   if (file.size > maxFileSize) {
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
     }
 
     for (const file of documentFiles) {
-      const validation = validateFile(file, file.name);
+      const validation = await validateFile(file, file.name);
 
       if (validation) {
         return jsonError(validation, 400);
