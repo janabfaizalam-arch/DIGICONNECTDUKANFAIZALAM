@@ -29,7 +29,6 @@ import { createClient } from "@/lib/supabase/browser";
 
 type AuthTab = "user" | "partner" | "ops";
 type AuthMode = "login" | "signup";
-type PartnerType = "ap" | "agent";
 type FormMessage = { type: "success" | "error"; text: string };
 
 type PinLookup = {
@@ -123,18 +122,6 @@ export function UnifiedLoginExperience({
   // Tab states and form configuration states
   const [activeTab, setActiveTab] = useState<AuthTab>(initialTab);
   const [userMode, setUserMode] = useState<AuthMode>(initialMode);
-  const [partnerType, setPartnerType] = useState<PartnerType>("ap");
-
-  // Determine partner mode based on current URL path
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (window.location.pathname.includes("/agent")) {
-        setPartnerType("agent");
-      } else {
-        setPartnerType("ap");
-      }
-    }
-  }, []);
 
   // Loading states
   const [isPending, setIsPending] = useState(false);
@@ -518,58 +505,68 @@ export function UnifiedLoginExperience({
       return;
     }
 
-    if (partnerType === "agent") {
-      try {
-        const response = await fetch("/api/auth/agent-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identifier: partnerIdentifier, password: partnerPassword }),
-        });
-        const result = await response.json();
+    const identifier = partnerIdentifier.trim();
+    const password = partnerPassword;
 
-        if (!response.ok) {
-          throw new Error(result.message || "Agent login failed. Verify credentials.");
-        }
+    // Try Agent Login first
+    try {
+      const response = await fetch("/api/auth/agent-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ identifier, password }),
+      });
+      const result = await response.json().catch(() => ({}));
 
+      if (response.ok) {
         trackLogin("agent_email");
         toastSuccess("Agent workspace ready!");
         window.location.assign(result.destination || "/agent/dashboard");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Agent login failed.";
+        return;
+      }
+      
+      // If agent login is explicitly unauthorized or blocked (403), do not fall back.
+      if (response.status === 403) {
+        throw new Error(result.message || "Access denied. Please contact admin.");
+      }
+    } catch (agentErr: unknown) {
+      const msg = agentErr instanceof Error ? agentErr.message : "";
+      if (msg.includes("Access denied")) {
         setFormMessage({ type: "error", text: msg });
         toastError(msg);
-      } finally {
+        setIsPending(false);
+        return;
+      }
+    }
+
+    // Fall back to Agency Partner login (Supabase authentication)
+    startAPTransition(async () => {
+      try {
+        const supabase = createClient();
+        if (!supabase) throw new Error("Supabase database not linked.");
+
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: identifier.toLowerCase(),
+          password: password,
+        });
+
+        if (authError) {
+          throw new Error(
+            authError.message === "Invalid login credentials"
+              ? "Invalid username or password. Verify credentials."
+              : authError.message
+          );
+        }
+
+        toastSuccess("Partner workspace logged in!");
+        window.location.assign("/ap/dashboard");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Partner login failed.";
+        setFormMessage({ type: "error", text: msg });
+        toastError(msg);
         setIsPending(false);
       }
-    } else {
-      startAPTransition(async () => {
-        try {
-          const supabase = createClient();
-          if (!supabase) throw new Error("Supabase database not linked.");
-
-          const { error: authError } = await supabase.auth.signInWithPassword({
-            email: partnerIdentifier.toLowerCase(),
-            password: partnerPassword,
-          });
-
-          if (authError) {
-            throw new Error(
-              authError.message === "Invalid login credentials"
-                ? "Invalid email or password. Verify credentials."
-                : authError.message
-            );
-          }
-
-          toastSuccess("Partner workspace logged in!");
-          window.location.assign("/ap/dashboard");
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : "Partner login failed.";
-          setFormMessage({ type: "error", text: msg });
-          toastError(msg);
-          setIsPending(false);
-        }
-      });
-    }
+    });
   };
 
   // Form value states for real-time validation (Operations Admin Console)
@@ -669,7 +666,7 @@ export function UnifiedLoginExperience({
       </div>
 
       {/* STICKY GLASS NAVBAR WITH SEGMENTED SWITCH */}
-      <header className="sticky top-0 z-50 h-16 w-full border-b border-white/20 bg-white/40 backdrop-blur-md px-4 md:px-6 flex items-center justify-between">
+      <header className="sticky top-0 z-[100] h-16 w-full border-b border-slate-900/06 bg-white/40 backdrop-blur-[20px] px-4 flex items-center justify-between">
         
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-85">
@@ -679,7 +676,7 @@ export function UnifiedLoginExperience({
             width={120}
             height={40}
             priority
-            className="h-8 w-auto object-contain"
+            className="h-[28px] w-auto object-contain"
           />
         </Link>
         
@@ -721,9 +718,9 @@ export function UnifiedLoginExperience({
       </header>
 
       {/* CENTERED LIQUID GLASS AUTHENTICATION CARD */}
-      <main className="flex-1 flex items-center justify-center p-4 md:p-5 z-10">
+      <main className="flex-1 flex items-center justify-center p-4 z-10 pt-4 pb-10 md:pt-6 md:pb-14">
         
-        <div className="w-full max-w-[480px] backdrop-blur-[30px] bg-white/65 border border-white/70 shadow-[0_20px_60px_rgba(15,23,42,0.08)] rounded-[32px] p-6 md:p-10 flex flex-col gap-6">
+        <div className="w-full max-w-[440px] backdrop-blur-[30px] bg-white/65 border border-white/70 shadow-[0_20px_60px_rgba(15,23,42,0.08)] rounded-[32px] p-5 md:p-8 flex flex-col gap-5">
           
           <AnimatePresence mode="wait">
             
@@ -1051,15 +1048,13 @@ export function UnifiedLoginExperience({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-5"
+                className="space-y-4"
               >
                 {/* Header (Inside Card) */}
-                <div className="text-center space-y-2.5">
-                  <div className="flex justify-center mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
-                      RNOS Partner Network
-                    </span>
-                  </div>
+                <div className="text-center space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#64748B]">
+                    RNOS Partner Network
+                  </p>
                   <h2 className="text-xl font-bold tracking-tight text-[#0F172A]">
                     Partner Workspace Login
                   </h2>
@@ -1068,45 +1063,11 @@ export function UnifiedLoginExperience({
                   </p>
                 </div>
 
-                {/* Subtle Inner Card Switcher (Agency Partner vs Agent Console) */}
-                <div className="flex rounded-lg bg-slate-100 p-0.5 relative z-0 mx-auto max-w-[280px]" role="tablist">
-                  {[
-                    { id: "ap", label: "Agency Partner" },
-                    { id: "agent", label: "Agent Console" },
-                  ].map((p) => {
-                    const isSelected = partnerType === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={isSelected}
-                        onClick={() => {
-                          setPartnerType(p.id as PartnerType);
-                          setFormMessage(null);
-                        }}
-                        className={`relative flex-1 py-1 text-[10px] font-bold transition-all rounded-md cursor-pointer outline-none ${
-                          isSelected ? "text-blue-700 font-extrabold" : "text-slate-400 hover:text-slate-700"
-                        }`}
-                      >
-                        {isSelected && (
-                          <motion.div
-                            layoutId="activeSubPartnerTab"
-                            className="absolute inset-0 bg-white rounded-md shadow-sm border border-slate-200/50 -z-10"
-                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                          />
-                        )}
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
                 <form onSubmit={handlePartnerSubmit} className="space-y-3.5">
                   
                   <FloatingInput
-                    label={partnerType === "ap" ? "Partner Email Address" : "Agent Code / Email"}
-                    id="partner-id"
+                    label="Username"
+                    id="partner-username"
                     type="text"
                     required
                     value={partnerIdentifier}
@@ -1117,11 +1078,8 @@ export function UnifiedLoginExperience({
                     onBlur={() => setTouchedPartnerId(true)}
                     touched={touchedPartnerId}
                     isValid={isPartnerIdValid}
-                    icon={partnerType === "ap" ? (
-                      <Mail className="h-4 w-4 text-[#64748B]" />
-                    ) : (
-                      <UserRound className="h-4 w-4 text-[#64748B]" />
-                    )}
+                    placeholder="Enter Username"
+                    icon={<UserRound className="h-4 w-4 text-[#64748B]" />}
                   />
 
                   <FloatingInput
@@ -1161,14 +1119,14 @@ export function UnifiedLoginExperience({
                   <FormSubmitButton
                     loading={isPending || apTransitionPending}
                     loadingText="Opening partner node..."
-                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                   >
                     Sign In
                   </FormSubmitButton>
                 </form>
 
                 {/* Footer links: Forgot Password, Partner Support, Apply for Partnership */}
-                <div className="flex flex-col gap-2.5 items-center pt-2.5 border-t border-slate-100/80 text-center">
+                <div className="flex flex-col gap-2 items-center pt-2.5 border-t border-slate-100/80 text-center">
                   <div className="flex justify-center gap-4 text-xs font-semibold text-[#64748B]">
                     <Link href="/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
                       Forgot Password?

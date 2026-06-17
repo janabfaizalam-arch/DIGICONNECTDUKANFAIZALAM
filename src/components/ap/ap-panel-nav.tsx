@@ -80,6 +80,9 @@ export function APPanelNav() {
   // Outside click refs
   const desktopDropdownRef = useOutsideClick(() => setDesktopMoreOpen(false));
   const mobileDropdownRef = useOutsideClick(() => setMobileMoreOpen(false));
+  
+  // Exclude dashboard navigation bar from login routes to avoid double header sections
+  if (pathname === "/ap/login") return null;
 
   return (
     <nav 
