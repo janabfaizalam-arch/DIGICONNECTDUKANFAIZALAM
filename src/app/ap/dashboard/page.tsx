@@ -51,7 +51,7 @@ export default async function APDashboardPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <APDashboardClient
           ap={ap as unknown as {

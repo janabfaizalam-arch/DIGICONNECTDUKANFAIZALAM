@@ -4,24 +4,25 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   FileText,
-  CheckCircle2,
   AlertTriangle,
-  HandCoins,
   WalletCards,
   Users,
   PlusCircle,
   ArrowRight,
   Bell,
-  Sparkles,
   Plus,
-  Cpu,
-  Check,
-  Zap,
   ChevronRight,
   Info,
   DollarSign,
   MessageSquare,
-  X
+  X,
+  TrendingUp,
+  Search,
+  Lock,
+  HandCoins,
+  ShieldCheck,
+  Inbox,
+  ArrowUpRight
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
@@ -33,8 +34,11 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  CartesianGrid
 } from "recharts";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface AgencyPartner {
   id: string;
@@ -82,6 +86,15 @@ interface APDashboardClientProps {
   announcements: Announcement[];
 }
 
+interface Transaction {
+  id: string;
+  title: string;
+  amount: number;
+  type: "credit" | "debit";
+  status: "success" | "pending" | "failed";
+  date: string;
+}
+
 const MONTHLY_EARNINGS_DATA = [
   { name: "Jan", earnings: 4200, filings: 12 },
   { name: "Feb", earnings: 5800, filings: 18 },
@@ -94,52 +107,68 @@ const MONTHLY_EARNINGS_DATA = [
 export function APDashboardClient({ ap, stats, recentApps, announcements }: APDashboardClientProps) {
   const [mounted, setMounted] = useState(false);
   
-  // Wallet Recharge Dialog
+  // Wallet Recharge sheet
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState("");
   const [isRecharging, setIsRecharging] = useState(false);
   const [walletBalance, setWalletBalance] = useState(stats.walletBalance);
 
-  // Quick Lead Capture Modal
-  const [isLeadOpen, setIsLeadOpen] = useState(false);
-  const [leadName, setLeadName] = useState("");
-  const [leadMobile, setLeadMobile] = useState("");
-  const [leadService, setLeadService] = useState("");
-  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
-
-  // AI Beta Queue
-  const [isInBetaQueue, setIsInBetaQueue] = useState(false);
-  const [isQueueing, setIsQueueing] = useState(false);
-
-  // Support ticket counter (simulated from local storage)
+  // Active support tickets and transactions
   const [supportTicketsCount, setSupportTicketsCount] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  // Chart view: "earnings" | "growth" | "distribution"
+  const [activeChartTab, setActiveChartTab] = useState<"earnings" | "growth" | "distribution">("earnings");
+
+  // Application search & filtering
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     setMounted(true);
     
-    // Load local storage items to determine count of tickets and custom balance
+    // Load active tickets count
     const savedTickets = localStorage.getItem("digiticket_tickets");
     if (savedTickets) {
       try {
         const parsed = JSON.parse(savedTickets);
         setSupportTicketsCount(parsed.filter((t: { status: string }) => t.status !== "Closed").length);
       } catch {
-        // Safe fallback
+        setSupportTicketsCount(2);
       }
     } else {
-      setSupportTicketsCount(2); // Mock count
+      setSupportTicketsCount(2);
     }
 
+    // Load Wallet Balance
     const savedBalance = localStorage.getItem("digipartner_wallet_balance");
     if (savedBalance) {
       setWalletBalance(parseFloat(savedBalance));
+    }
+
+    // Load Transaction History or set initial
+    const savedTx = localStorage.getItem("digipartner_transactions");
+    if (savedTx) {
+      try {
+        setTransactions(JSON.parse(savedTx));
+      } catch {
+        // Safe fallback
+      }
+    } else {
+      const initialTx: Transaction[] = [
+        { id: "tx-1", title: "Commission Payout Credit", amount: 4500, type: "credit", status: "success", date: new Date(Date.now() - 86400000 * 2).toISOString() },
+        { id: "tx-2", title: "Wallet Recharge - UPI", amount: 2000, type: "credit", status: "success", date: new Date(Date.now() - 86400000 * 5).toISOString() },
+        { id: "tx-3", title: "Processing Fee - App #A209B", amount: -150, type: "debit", status: "success", date: new Date(Date.now() - 86400000 * 7).toISOString() }
+      ];
+      setTransactions(initialTx);
+      localStorage.setItem("digipartner_transactions", JSON.stringify(initialTx));
     }
   }, []);
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2563EB] border-t-transparent" />
       </div>
     );
   }
@@ -151,16 +180,25 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
     if (isNaN(amount) || amount <= 0) return;
 
     setIsRecharging(true);
-    // Simulate Razorpay gateway loader
     setTimeout(() => {
       const newBal = walletBalance + amount;
       setWalletBalance(newBal);
       localStorage.setItem("digipartner_wallet_balance", newBal.toString());
-      setIsRecharging(false);
-      setIsRechargeOpen(false);
-      setRechargeAmount("");
       
-      // Post a transaction alert into notification console if we can
+      // Update transaction list
+      const newTx: Transaction = {
+        id: `tx-${Date.now()}`,
+        title: "Wallet Recharge - Razorpay",
+        amount: amount,
+        type: "credit",
+        status: "success",
+        date: new Date().toISOString()
+      };
+      const updatedTx = [newTx, ...transactions];
+      setTransactions(updatedTx);
+      localStorage.setItem("digipartner_transactions", JSON.stringify(updatedTx));
+
+      // Post notification
       const savedNotifs = localStorage.getItem("digiticket_notifications");
       if (savedNotifs) {
         try {
@@ -168,7 +206,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
           const newNotif = {
             id: `notif-recharge-${Date.now()}`,
             title: "Wallet Recharged Successfully",
-            description: `Successfully added Rs. ${amount.toFixed(2)} to your wallet balance via Razorpay gateway.`,
+            description: `Successfully added Rs. ${amount.toFixed(2)} to your wallet balance.`,
             category: "Wallet & Payouts",
             type: "success",
             createdAt: new Date().toISOString(),
@@ -181,62 +219,17 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
           // Safe fallback
         }
       }
-    }, 2000);
-  };
 
-  // Handle Quick Lead Capture
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadName.trim() || !leadMobile.trim()) return;
-
-    setIsSubmittingLead(true);
-
-    // Call CRM route to add lead
-    try {
-      const res = await fetch("/api/ap/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: leadName,
-          mobile: leadMobile,
-          serviceId: leadService || null,
-          source: "Direct Portal Dashboard",
-          notes: "Quick lead captured from AP Dashboard workspace."
-        })
-      });
-
-      if (res.ok) {
-        setLeadName("");
-        setLeadMobile("");
-        setLeadService("");
-        setIsLeadOpen(false);
-        
-        // Notify
-        alert("Lead captured and added to CRM sheets successfully.");
-      } else {
-        alert("Failed to save lead. Please try again.");
-      }
-    } catch {
-      alert("Error submitting lead.");
-    } finally {
-      setIsSubmittingLead(false);
-    }
-  };
-
-  // Join AI Beta Queue
-  const handleJoinBetaQueue = () => {
-    setIsQueueing(true);
-    setTimeout(() => {
-      setIsQueueing(false);
-      setIsInBetaQueue(true);
+      setIsRecharging(false);
+      setIsRechargeOpen(false);
+      setRechargeAmount("");
     }, 1500);
   };
 
-  // Dynamic distribution chart data for applications
   const appDistributionData = [
-    { name: "Completed", value: stats.completedApplications || 10, color: "#10b981" },
-    { name: "Processing", value: stats.pendingApplications || 4, color: "#3b82f6" },
-    { name: "Cancelled/Rejected", value: stats.rejectedApplications || 1, color: "#f43f5e" },
+    { name: "Approved", value: stats.completedApplications || 10, color: "#10B981" },
+    { name: "Processing", value: stats.pendingApplications || 4, color: "#2563EB" },
+    { name: "Rejected", value: stats.rejectedApplications || 1, color: "#EF4444" },
   ];
 
   const formatCurrencyLocal = (value: number) => {
@@ -247,639 +240,669 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
     }).format(value);
   };
 
-  return (
-    <div className="space-y-6 text-slate-800">
-      
-      {/* Welcome Banner */}
-      <section className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-sm">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-50/50 blur-[80px]" />
-        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-50/50 blur-[80px]" />
+  // Filter application rows
+  const filteredApps = recentApps.filter(app => {
+    const name = (app.customerName || app.customer_name || "").toLowerCase();
+    const service = (app.service_name || "").toLowerCase();
+    const matchesSearch = name.includes(searchTerm.toLowerCase()) || service.includes(searchTerm.toLowerCase());
+    
+    if (statusFilter === "all") return matchesSearch;
+    if (statusFilter === "pending") return matchesSearch && app.status === "pending";
+    if (statusFilter === "approved") return matchesSearch && (app.status === "approved" || app.status === "completed");
+    if (statusFilter === "rejected") return matchesSearch && (app.status === "rejected" || app.status === "cancelled");
+    if (statusFilter === "processing") return matchesSearch && app.status === "processing";
+    return matchesSearch;
+  });
 
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between relative z-10">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 border border-blue-100 text-xs font-bold text-blue-700">
-              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-              DigiPartner Hub • Live Workspace
+  return (
+    <div className="space-y-6 pb-12 text-[#0F172A]">
+      
+      {/* 1. HERO SECTION (Above Fold) */}
+      <section className="backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[24px] p-6 shadow-[0_4px_20px_rgba(15,23,42,0.02)] relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#2563EB]/5 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          {/* Left: Partner details */}
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#0F172A]">{ap.full_name}</h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wide">
+                {ap.tier?.name || "AP Starter"}
+              </span>
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
-              {ap.full_name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-slate-500">
-              <span className="rounded bg-slate-50 px-2.5 py-1 border border-slate-200/80 font-semibold text-slate-600">
-                Partner ID: {ap.partner_code}
-              </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-350" />
-              <span className="font-semibold text-indigo-700 capitalize bg-indigo-50 px-2 py-0.5 border border-indigo-100 rounded">
-                {ap.partner_type.replace("_", " ")}
-              </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-350" />
-              <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 border border-amber-100 rounded">
-                {ap.tier?.name || "AP Starter"} Tier
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[#64748B]">
+              <span className="font-semibold">ID: <strong className="font-mono text-[#0F172A] font-semibold">{ap.partner_code}</strong></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-200" />
+              <span className="capitalize">{ap.partner_type.replace("_", " ")}</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-200" />
+              <span className="inline-flex items-center gap-1">
+                <span className={cn("h-2 w-2 rounded-full animate-pulse", ap.kyc_status === "approved" ? "bg-[#10B981]" : "bg-[#F59E0B]")} />
+                <span className="capitalize font-semibold text-[#0F172A]">{ap.kyc_status === "approved" ? "Active" : "KYC Pending"}</span>
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2.5 shrink-0">
-            <button
-              onClick={() => setIsRechargeOpen(true)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 px-5 font-bold text-slate-700 transition-all text-sm shadow-sm cursor-pointer"
-            >
-              <WalletCards className="h-4.5 w-4.5 text-emerald-600" /> Wallet Recharge
-            </button>
-            <Link
-              href="/ap/applications/new"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 font-bold text-white shadow-md shadow-blue-500/10 hover:from-blue-500 hover:to-indigo-500 transition-all text-sm cursor-pointer"
-            >
-              <PlusCircle className="h-4.5 w-4.5" /> New Application
-            </Link>
+          {/* Right: Performance strip above fold */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-100 lg:pl-8">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Wallet Balance</span>
+              <p className="text-base font-bold text-[#0F172A]">{formatCurrencyLocal(walletBalance)}</p>
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Today&apos;s Commission</span>
+              <p className="text-base font-bold text-[#10B981]">+₹1,250</p>
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Pending Tasks</span>
+              <p className="text-base font-bold text-[#F59E0B]">{stats.pendingApplications} Apps</p>
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Growth Status</span>
+              <div className="flex items-center gap-1 text-[#2563EB]">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className="text-sm font-bold">+18.2%</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* KYC Alert */}
+      {/* KYC Alert Panel */}
       {ap.kyc_status !== "approved" && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 md:p-5">
-          <div className="flex gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <motion.section 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[20px] border border-amber-100 bg-amber-50/45 p-4 flex gap-3.5"
+        >
+          <AlertTriangle className="h-5 w-5 text-[#F59E0B] shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">Verification Notice</h4>
+            <p className="text-xs text-slate-600 leading-relaxed font-semibold">
+              Withdrawal limits are capped until onboarding papers are vetted. Please review upload parameters.
+            </p>
+            <Link href="/ap/profile" className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-800 pt-1">
+              Complete Upload <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </motion.section>
+      )}
+
+      {/* 2. SMART KPI SECTION */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* Card 1: Wallet Balance */}
+        <Card className="group backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(15,23,42,0.01)] hover:-translate-y-1 hover:shadow-md hover:border-slate-200 transition-all duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Wallet Balance</span>
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100/30 group-hover:scale-105 transition-transform">
+              <WalletCards className="h-4.5 w-4.5" />
+            </span>
+          </div>
+          <div className="mt-4 space-y-1">
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">{formatCurrencyLocal(walletBalance)}</p>
+            <button 
+              onClick={() => setIsRechargeOpen(true)}
+              className="text-[10px] font-bold text-blue-600 hover:underline inline-flex items-center gap-0.5"
+            >
+              Recharge wallet
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+        </Card>
+
+        {/* Card 2: Earnings */}
+        <Card className="group backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(15,23,42,0.01)] hover:-translate-y-1 hover:shadow-md hover:border-slate-200 transition-all duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Earned Payouts</span>
+            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100/30 group-hover:scale-105 transition-transform">
+              <HandCoins className="h-4.5 w-4.5" />
+            </span>
+          </div>
+          <div className="mt-4 space-y-1">
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">
+              {formatCurrencyLocal((stats.commissionApproved ?? 0) + (stats.totalPaidPayout ?? 0))}
+            </p>
+            <p className="text-[10px] font-semibold text-[#64748B]">
+              {formatCurrencyLocal(stats.commissionPending ?? 0)} pending audit
+            </p>
+          </div>
+        </Card>
+
+        {/* Card 3: Applications */}
+        <Card className="group backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(15,23,42,0.01)] hover:-translate-y-1 hover:shadow-md hover:border-slate-200 transition-all duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Total Applications</span>
+            <span className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100/30 group-hover:scale-105 transition-transform">
+              <FileText className="h-4.5 w-4.5" />
+            </span>
+          </div>
+          <div className="mt-4 space-y-1">
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">{stats.totalApplications}</p>
+            <p className="text-[10px] font-semibold text-[#64748B]">
+              {stats.completedApplications} approved & active
+            </p>
+          </div>
+        </Card>
+
+        {/* Card 4: Support Tickets */}
+        <Card className="group backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(15,23,42,0.01)] hover:-translate-y-1 hover:shadow-md hover:border-slate-200 transition-all duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Active Tickets</span>
+            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-650 border border-indigo-100/30 group-hover:scale-105 transition-transform">
+              <MessageSquare className="h-4.5 w-4.5" />
+            </span>
+          </div>
+          <div className="mt-4 space-y-1">
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">{supportTicketsCount}</p>
+            <p className="text-[10px] font-semibold text-[#64748B]">Avg. response ~15 mins</p>
+          </div>
+        </Card>
+      </section>
+
+      {/* 3. CHARTS & QUICK ACTIONS SECTION */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left: Stripe-style Chart Card */}
+        <Card className="lg:col-span-8 backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] p-5 rounded-[24px] shadow-[0_4px_20px_rgba(15,23,42,0.02)] flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-[#0F172A] uppercase tracking-wide">Performance Metrics</h3>
+                <p className="text-xs text-[#64748B]">Interactive billing & application volume analysis</p>
+              </div>
+              
+              {/* Apple-style Segmented Switcher for Charts */}
+              <div className="flex rounded-full bg-slate-100 p-0.5 relative z-0">
+                {(["earnings", "growth", "distribution"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveChartTab(tab)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-semibold rounded-full relative transition-all duration-200 select-none cursor-pointer",
+                      activeChartTab === tab ? "text-[#0F172A]" : "text-[#64748B] hover:text-[#0F172A]"
+                    )}
+                  >
+                    {activeChartTab === tab && (
+                      <motion.div
+                        layoutId="activeChartSelector"
+                        className="absolute inset-0 bg-white rounded-full -z-10 shadow-sm border border-slate-900/05"
+                        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                      />
+                    )}
+                    <span className="capitalize">{tab === "earnings" ? "Earnings" : tab === "growth" ? "App Filings" : "Services"}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Interactive chart display area */}
+            <div className="h-60 mt-4 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                {activeChartTab === "earnings" ? (
+                  <AreaChart data={MONTHLY_EARNINGS_DATA} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.08}/>
+                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="#E2E8F0" strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "rgba(15,23,42,0.06)", borderRadius: "12px", boxShadow: "0 4px 12px rgba(15,23,42,0.03)", fontSize: "11px" }}
+                      itemStyle={{ color: "#0F172A", fontWeight: "bold" }}
+                      labelStyle={{ color: "#64748B", fontSize: "10px", textTransform: "uppercase" }}
+                    />
+                    <Area type="monotone" dataKey="earnings" stroke="#2563EB" strokeWidth={2} fillOpacity={1} fill="url(#earningsGrad)" activeDot={{ r: 4, strokeWidth: 0, fill: "#2563EB" }} />
+                  </AreaChart>
+                ) : activeChartTab === "growth" ? (
+                  <AreaChart data={MONTHLY_EARNINGS_DATA} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#F97316" stopOpacity={0.08}/>
+                        <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="#E2E8F0" strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "rgba(15,23,42,0.06)", borderRadius: "12px", boxShadow: "0 4px 12px rgba(15,23,42,0.03)", fontSize: "11px" }}
+                      itemStyle={{ color: "#0F172A", fontWeight: "bold" }}
+                      labelStyle={{ color: "#64748B", fontSize: "10px", textTransform: "uppercase" }}
+                    />
+                    <Area type="monotone" dataKey="filings" stroke="#F97316" strokeWidth={2} fillOpacity={1} fill="url(#growthGrad)" activeDot={{ r: 4, strokeWidth: 0, fill: "#F97316" }} />
+                  </AreaChart>
+                ) : (
+                  <PieChart>
+                    <Pie
+                      data={appDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {appDistributionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#FFFFFF", borderColor: "rgba(15,23,42,0.06)", borderRadius: "12px", boxShadow: "0 4px 12px rgba(15,23,42,0.03)" }}
+                      itemStyle={{ fontSize: "11px", color: "#0F172A" }}
+                    />
+                  </PieChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 text-[10px] text-[#64748B] font-semibold border-t border-slate-100 pt-4 mt-4">
+            <Info className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+            <span>Commission is calculated in real-time. Automated payouts trigger directly into the wallet.</span>
+          </div>
+        </Card>
+
+        {/* Right: Quick Action Hub (Exactly 4 actions) */}
+        <Card className="lg:col-span-4 backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] p-5 rounded-[24px] shadow-[0_4px_20px_rgba(15,23,42,0.02)] flex flex-col justify-between">
+          <div className="space-y-4 h-full flex flex-col">
             <div>
-              <h3 className="font-bold text-amber-800">KYC Verification Underway: {ap.kyc_status.toUpperCase()}</h3>
-              <p className="mt-1 text-xs text-slate-600 leading-relaxed font-semibold">
-                Your agency partner profile and automated withdrawal privileges will unlock fully once documents are verified by our compliance verifiers.
-              </p>
-              <Link href="/ap/profile" className="mt-2.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800">
-                Go to Document Upload
-                <ArrowRight className="h-3 w-3" />
+              <h3 className="text-sm font-bold text-[#0F172A] uppercase tracking-wide">Quick Operations</h3>
+              <p className="text-xs text-[#64748B]">Immediate agency actions</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3.5 my-auto py-2">
+              {/* Action 1: New Application */}
+              <Link
+                href="/ap/applications/new"
+                className="group flex flex-col justify-between p-4 rounded-2xl bg-blue-50/50 hover:bg-blue-50 border border-blue-100/30 hover:border-blue-200 transition-all duration-200 h-[104px]"
+              >
+                <span className="p-2 w-9 h-9 rounded-xl bg-blue-100/60 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <PlusCircle className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-[#0F172A]">New Filing</p>
+                  <p className="text-[10px] text-[#64748B] mt-0.5">Submit customer</p>
+                </div>
+              </Link>
+
+              {/* Action 2: Add Customer */}
+              <Link
+                href="/ap/customers"
+                className="group flex flex-col justify-between p-4 rounded-2xl bg-emerald-50/50 hover:bg-emerald-50 border border-emerald-100/30 hover:border-emerald-200 transition-all duration-200 h-[104px]"
+              >
+                <span className="p-2 w-9 h-9 rounded-xl bg-emerald-100/60 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Users className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-[#0F172A]">Customers</p>
+                  <p className="text-[10px] text-[#64748B] mt-0.5">Manage details</p>
+                </div>
+              </Link>
+
+              {/* Action 3: Recharge Wallet */}
+              <button
+                onClick={() => setIsRechargeOpen(true)}
+                className="group flex flex-col justify-between p-4 rounded-2xl bg-amber-50/50 hover:bg-amber-50 border border-amber-100/30 hover:border-amber-200 text-left transition-all duration-200 h-[104px] cursor-pointer"
+              >
+                <span className="p-2 w-9 h-9 rounded-xl bg-amber-100/60 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <DollarSign className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-[#0F172A]">Add Funds</p>
+                  <p className="text-[10px] text-[#64748B] mt-0.5">Wallet credits</p>
+                </div>
+              </button>
+
+              {/* Action 4: Support Desk */}
+              <Link
+                href="/ap/support"
+                className="group flex flex-col justify-between p-4 rounded-2xl bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100/30 hover:border-indigo-200 transition-all duration-200 h-[104px]"
+              >
+                <span className="p-2 w-9 h-9 rounded-xl bg-indigo-100/60 text-indigo-650 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <MessageSquare className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-[#0F172A]">Support Desk</p>
+                  <p className="text-[10px] text-[#64748B] mt-0.5">Lodge ticket</p>
+                </div>
               </Link>
             </div>
+          </div>
+        </Card>
+
+      </section>
+
+      {/* 4. APPLICATIONS TABLE & WALLET MATRIX ROW */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left: Linear-style Application Table (span 8) */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-[#0F172A] uppercase tracking-wide flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[#2563EB]" /> Recent Applications
+              </h2>
+            </div>
+            <Link href="/ap/applications" className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-0.5">
+              Full Log <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <Card className="backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[24px] overflow-hidden shadow-[0_4px_20px_rgba(15,23,42,0.02)]">
+            {/* Search and Filters Strip */}
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40">
+              <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#64748B]" />
+                <input
+                  type="text"
+                  placeholder="Filter by customer, service..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-[#0F172A] focus:border-[#2563EB] focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Status Filters */}
+              <div className="flex flex-wrap gap-1">
+                {["all", "pending", "processing", "approved", "rejected"].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={cn(
+                      "px-2.5 py-1 text-[10px] font-bold rounded-lg border capitalize transition-colors cursor-pointer select-none",
+                      statusFilter === status
+                        ? "bg-[#2563EB] text-white border-transparent"
+                        : "bg-white text-[#64748B] border-slate-200 hover:bg-slate-50"
+                    )}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Linear Style Table Content */}
+            {filteredApps.length === 0 ? (
+              <div className="p-10 text-center space-y-3">
+                <Inbox className="mx-auto h-10 w-10 text-slate-350" />
+                <h4 className="text-xs font-bold text-[#0F172A]">No records located</h4>
+                <p className="text-xs text-[#64748B]">Adjust search inputs or apply new filings to view records.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[10px] font-bold text-[#64748B] uppercase tracking-wider bg-slate-50/25">
+                      <th className="px-5 py-3">Customer / ID</th>
+                      <th className="px-5 py-3">Service Code</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredApps.map((app) => {
+                      const isApproved = app.status === "completed" || app.status === "approved";
+                      const isRejected = app.status === "rejected" || app.status === "cancelled";
+                      const isProcessing = app.status === "processing";
+                      const isPending = !isApproved && !isRejected && !isProcessing;
+
+                      return (
+                        <tr key={app.id} className="group hover:bg-slate-50/45 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-[#0F172A]">
+                                {app.customerName || app.customer_name || "Direct Client"}
+                              </p>
+                              <p className="text-[10px] font-mono text-[#64748B]">
+                                {app.application_code || app.id.slice(0, 8)}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-xs font-semibold text-slate-700 bg-slate-100/70 border border-slate-200/40 px-2 py-0.5 rounded-md">
+                              {app.service_name}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                              isApproved && "bg-emerald-50 border-emerald-200 text-emerald-700",
+                              isRejected && "bg-rose-50 border-rose-200 text-rose-700",
+                              isProcessing && "bg-blue-50 border-blue-200 text-blue-700",
+                              isPending && "bg-amber-50 border-amber-200 text-amber-700"
+                            )}>
+                              <span className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                isApproved && "bg-[#10B981]",
+                                isRejected && "bg-[#EF4444]",
+                                isProcessing && "bg-[#2563EB]",
+                                isPending && "bg-[#F59E0B]"
+                              )} />
+                              {app.status.replace("_", " ")}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <Link
+                              href={`/ap/applications/${app.id}`}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#64748B] hover:text-[#0F172A] hover:bg-slate-50 transition-all cursor-pointer"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Right: Wallet & Payout Matrix (span 4) */}
+        <div className="lg:col-span-4 space-y-4">
+          <div>
+            <h2 className="text-sm font-bold text-[#0F172A] uppercase tracking-wide flex items-center gap-2">
+              <WalletCards className="h-4 w-4 text-[#2563EB]" /> Wallet & Payouts
+            </h2>
+          </div>
+
+          <Card className="backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[24px] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.02)] space-y-6">
+            {/* Balance figures */}
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Available Balance</span>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-black text-[#0F172A]">{formatCurrencyLocal(walletBalance)}</p>
+                  <button 
+                    onClick={() => setIsRechargeOpen(true)}
+                    className="h-8 px-3 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer border-none transition-colors"
+                  >
+                    Recharge
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-150">
+                <div className="space-y-0.5">
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1">
+                    <Lock className="h-3 w-3" /> Locked Funds
+                  </span>
+                  <p className="text-sm font-bold text-[#0F172A]">{formatCurrencyLocal(stats.commissionPending ?? 0)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider">Approved Commission</span>
+                  <p className="text-sm font-bold text-[#10B981]">{formatCurrencyLocal(stats.commissionApproved ?? 0)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Transaction Log */}
+            <div className="space-y-3">
+              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Recent Transactions</span>
+              
+              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-900/02 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "p-1.5 rounded-lg text-xs flex items-center justify-center shrink-0",
+                        tx.type === "credit" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                      )}>
+                        {tx.type === "credit" ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5 rotate-45" />}
+                      </span>
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-[#0F172A] leading-tight max-w-[140px] truncate">{tx.title}</p>
+                        <p className="text-[9px] text-[#64748B] font-semibold">{new Date(tx.date).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <span className={cn("font-bold font-mono", tx.type === "credit" ? "text-[#10B981]" : "text-[#EF4444]")}>
+                      {tx.type === "credit" ? "+" : ""}{tx.amount}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+      </section>
+
+      {/* 5. SYSTEM ANNOUNCEMENTS SECTION */}
+      {announcements.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-[#2563EB]" />
+            <h3 className="text-sm font-bold text-[#0F172A] uppercase tracking-wide">Bulletins & Notices</h3>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {announcements.map((a) => (
+              <Card 
+                key={a.id} 
+                className={cn(
+                  "border rounded-2xl p-4.5 space-y-2 shadow-sm flex flex-col justify-between transition-all duration-200 hover:shadow-md",
+                  a.announcement_type === "urgent"
+                    ? "border-rose-100 bg-rose-50/10 text-rose-900"
+                    : a.announcement_type === "warning"
+                    ? "border-amber-100 bg-amber-50/10 text-amber-900"
+                    : a.announcement_type === "success"
+                    ? "border-emerald-100 bg-emerald-50/10 text-emerald-900"
+                    : "border-blue-100 bg-blue-50/10 text-blue-900"
+                )}
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[9px] font-bold">
+                    <span className="uppercase tracking-wider opacity-80">{a.announcement_type}</span>
+                    {a.published_at && (
+                      <span className="font-mono text-slate-400">
+                        {new Date(a.published_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-extrabold text-xs text-[#0F172A] leading-snug">{a.title}</h4>
+                  <p className="text-[11px] text-slate-500 leading-relaxed whitespace-pre-line">{a.body}</p>
+                </div>
+              </Card>
+            ))}
           </div>
         </section>
       )}
 
-      {/* Stats Matrix Grid */}
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Wallet Balance Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Wallet Balance</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600">
-              <WalletCards className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
-            {formatCurrencyLocal(walletBalance)}
-          </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-400">Instant gateway settle ready</p>
-        </Card>
-
-        {/* Total Earned Commission Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Earned Payouts</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600">
-              <HandCoins className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
-            {formatCurrencyLocal((stats.commissionApproved ?? 0) + (stats.totalPaidPayout ?? 0))}
-          </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-450">{formatCurrencyLocal(stats.commissionPending ?? 0)} pending review</p>
-        </Card>
-
-        {/* Completed Services Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Completed Services</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600">
-              <CheckCircle2 className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
-            {stats.completedApplications}
-          </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-450">{stats.totalApplications} total applications filed</p>
-        </Card>
-
-        {/* Active Support Tickets Card */}
-        <Card className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Open Tickets</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-650">
-              <MessageSquare className="h-4.5 w-4.5" />
-            </span>
-          </div>
-          <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
-            {supportTicketsCount}
-          </p>
-          <p className="mt-1 text-[10px] font-bold text-slate-455">Average response time ~15 mins</p>
-        </Card>
-      </section>
-
-      {/* Analytics Recharts workspace */}
-      <section className="grid gap-6 lg:grid-cols-12">
-        
-        {/* Area Chart: Commission earnings trend */}
-        <Card className="lg:col-span-8 border border-slate-100 bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-extrabold text-slate-900 text-base">Monthly Earnings Growth</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">Commission & Application Volume Trend</p>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-500">
-                <span className="h-2 w-2 rounded-full bg-blue-600" /> Commission Credits (INR)
-              </div>
-            </div>
-            
-            {/* Chart frame */}
-            <div className="h-64 mt-6 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={MONTHLY_EARNINGS_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: "12px", fontSize: "11px" }}
-                    itemStyle={{ color: "#1e293b" }}
-                    labelStyle={{ color: "#64748b", fontWeight: "bold" }}
-                  />
-                  <Area type="monotone" dataKey="earnings" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#earningsGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold border-t border-slate-100 pt-4 mt-2">
-            <Info className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-            <span>Charts indicate cumulative growth across services. Next settlement batch scheduled for Tuesday morning.</span>
-          </div>
-        </Card>
-
-        {/* Pie/Donut Chart: Applications breakdown */}
-        <Card className="lg:col-span-4 border border-slate-100 bg-white p-5 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-base">Application Ratios</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">Verifications breakdown</p>
-
-            <div className="h-48 mt-4 relative flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={appDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={75}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {appDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: "12px" }}
-                    itemStyle={{ fontSize: "11px", color: "#1e293b" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-
-              {/* Central text */}
-              <div className="absolute text-center">
-                <p className="text-2xl font-black text-slate-900">{stats.totalApplications || 15}</p>
-                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Applications</p>
-              </div>
-            </div>
-
-            {/* Labels and legends */}
-            <div className="space-y-2.5 mt-4">
-              {appDistributionData.map((d, idx) => (
-                <div key={idx} className="flex justify-between items-center text-xs font-semibold">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
-                    <span className="text-slate-650">{d.name}</span>
-                  </div>
-                  <span className="text-slate-950 font-mono font-bold">{d.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-      </section>
-
-      {/* Quick Action Matrix */}
-      <section className="space-y-4">
-        <h3 className="text-lg font-bold tracking-tight text-slate-900">Partner Quick Operations</h3>
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
-          {/* Action: New App */}
-          <Link
-            href="/ap/applications/new"
-            className="group p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 group-hover:scale-105 transition-transform">
-              <PlusCircle className="h-4.5 w-4.5" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">New Submission</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Apply for customer</p>
-            </div>
-          </Link>
-
-          {/* Action: Add Customer */}
-          <Link
-            href="/ap/customers"
-            className="group p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:scale-105 transition-transform">
-              <Users className="h-4.5 w-4.5" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Add Customer</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Save customer logs</p>
-            </div>
-          </Link>
-
-          {/* Action: Add Lead CRM */}
-          <button
-            onClick={() => setIsLeadOpen(true)}
-            className="group text-left p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 border border-purple-100 text-purple-600 group-hover:scale-105 transition-transform">
-              <Plus className="h-4.5 w-4.5" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Log CRM Lead</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Track follow-ups</p>
-            </div>
-          </button>
-
-          {/* Action: Wallet Recharge */}
-          <button
-            onClick={() => setIsRechargeOpen(true)}
-            className="group text-left p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600 group-hover:scale-105 transition-transform">
-              <WalletCards className="h-4.5 w-4.5" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Recharge Wallet</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Digital payment credits</p>
-            </div>
-          </button>
-
-          {/* Action: Open Support Ticket */}
-          <Link
-            href="/ap/support"
-            className="group p-4 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 hover:border-slate-200 transition-all flex flex-col justify-between min-h-[100px] shadow-sm cursor-pointer"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-650 group-hover:scale-105 transition-transform">
-              <MessageSquare className="h-4.5 w-4.5" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Lodge Support Ticket</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">KYC / refund desk</p>
-            </div>
-          </Link>
-        </div>
-      </section>
-
-      {/* AI Assistant Integration (AI Readiness Hooks) */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Cpu className="h-5 w-5 text-indigo-600 animate-pulse" /> DigiPartner AI Beta Suite
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Modern, AI-driven automation layers upcoming in DigiConnect Dukan</p>
-          </div>
-
-          {!isInBetaQueue ? (
-            <button
-              onClick={handleJoinBetaQueue}
-              disabled={isQueueing}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-700 disabled:opacity-50 px-4 font-bold text-white transition-all text-xs cursor-pointer"
-            >
-              {isQueueing ? (
-                <>
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Requesting...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-3.5 w-3.5 fill-current" /> Join Beta Queue
-                </>
-              )}
-            </button>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 border border-emerald-100 text-xs font-bold text-emerald-700">
-              <Check className="h-4 w-4" /> Position #109 Registered
-            </div>
-          )}
-        </div>
-
-        {/* AI widgets grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          
-          {/* Card: AI Copilot */}
-          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
-              Soon
-            </span>
-            <div className="space-y-2">
-              <h4 className="font-extrabold text-sm text-slate-800">AI Application Copilot</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Scan customer documents over WhatsApp, and let our LLM parse and fill forms in 3 seconds.
-              </p>
-            </div>
-          </Card>
-
-          {/* Card: AI Lead Scorer */}
-          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
-              Soon
-            </span>
-            <div className="space-y-2">
-              <h4 className="font-extrabold text-sm text-slate-800">AI Lead Scorer</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Analyze CRM records to predict which inquiries are highly likely to convert, maximizing commission.
-              </p>
-            </div>
-          </Card>
-
-          {/* Card: AI OCR Compliance */}
-          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
-              Soon
-            </span>
-            <div className="space-y-2">
-              <h4 className="font-extrabold text-sm text-slate-800">Document Compliance OCR</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Instantly flag blurry photos, incorrect Aadhaar/PAN formats, or signature issues prior to filing.
-              </p>
-            </div>
-          </Card>
-
-          {/* Card: AI Demand Analytics */}
-          <Card className="relative overflow-hidden border border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
-            <span className="absolute right-3 top-3 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold text-indigo-700 tracking-wider uppercase">
-              Soon
-            </span>
-            <div className="space-y-2">
-              <h4 className="font-extrabold text-sm text-slate-800">Revenue Demand Analytics</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Predict high-demand regional services for the upcoming week based on local transaction volume trends.
-              </p>
-            </div>
-          </Card>
-
-        </div>
-      </section>
-
-      {/* Recent Applications & Announcements row */}
-      <section className="grid gap-6 lg:grid-cols-12">
-        {/* Recent Applications */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-500" />
-              Recent Applications Log
-            </h2>
-            <Link href="/ap/applications" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700">
-              View All Log <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          <Card className="overflow-hidden border border-slate-100 bg-white rounded-2xl shadow-sm">
-            {recentApps.length === 0 ? (
-              <div className="p-10 text-center">
-                <FileText className="mx-auto h-12 w-12 text-slate-400" />
-                <h3 className="mt-4 text-sm font-bold text-slate-700">No applications yet</h3>
-                <p className="mt-1 text-xs text-slate-400">Submit your first application to earn commission!</p>
-                <Link
-                  href="/ap/applications/new"
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-4 py-2 border border-blue-100 text-xs font-bold text-blue-600 hover:bg-blue-100/50 transition-all cursor-pointer"
-                >
-                  Submit Application
-                </Link>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {recentApps.map((app) => (
-                  <div key={app.id} className="p-4 hover:bg-slate-50/50 transition-all duration-150">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 text-xs">{app.customerName || app.customer_name}</span>
-                          <span className="h-1 w-1 rounded-full bg-slate-300" />
-                          <span className="text-xs text-slate-500 font-semibold">{app.service_name}</span>
-                        </div>
-                        <div className="mt-1 font-mono text-[10px] text-slate-400">
-                          Code: {app.application_code || app.id.slice(0, 8)}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-extrabold capitalize border ${
-                            app.status === "completed"
-                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                              : app.status === "rejected" || app.status === "cancelled"
-                              ? "bg-rose-50 border-rose-200 text-rose-700"
-                              : "bg-blue-50 border-blue-200 text-blue-700"
-                          }`}
-                        >
-                          {app.status.replace("_", " ")}
-                        </span>
-
-                        <Link
-                          href={`/ap/applications/${app.id}`}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 transition-all cursor-pointer"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Announcements & Bulletins */}
-        <div className="lg:col-span-4 space-y-4">
-          <h2 className="text-base font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-500" />
-            Bulletins & Updates
-          </h2>
-
-          <Card className="overflow-hidden border border-slate-100 bg-white rounded-2xl p-4 space-y-3 shadow-sm">
-            {announcements.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-xs font-semibold">
-                No system updates at this time.
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                {announcements.map((a) => (
-                  <div
-                    key={a.id}
-                    className={`rounded-xl border p-3.5 space-y-1.5 ${
-                      a.announcement_type === "urgent"
-                        ? "border-rose-100 bg-rose-50/50 text-rose-800"
-                        : a.announcement_type === "warning"
-                        ? "border-amber-100 bg-amber-50/50 text-amber-855"
-                        : a.announcement_type === "success"
-                        ? "border-emerald-100 bg-emerald-50/50 text-emerald-800"
-                        : "border-blue-100 bg-blue-50/50 text-blue-800"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[9px] font-bold">
-                      <span className="uppercase tracking-wide opacity-75">{a.announcement_type}</span>
-                      {a.published_at && (
-                        <span className="text-slate-450 font-mono">
-                          {new Date(a.published_at).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="font-extrabold text-xs text-slate-900 leading-snug">{a.title}</h4>
-                    <p className="text-[10px] text-slate-500 leading-relaxed whitespace-pre-line">{a.body}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      </section>
-
-      {/* Wallet Recharge Dialog Modal */}
-      {isRechargeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 md:p-8 space-y-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-            <button
+      {/* 6. MODALS & BOTTOM SHEETS WITH ANNIHILATED OVERLAYS */}
+      <AnimatePresence>
+        {isRechargeOpen && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+            {/* Backdrop */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1 }
+              }}
               onClick={() => setIsRechargeOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-800 cursor-pointer"
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+
+            {/* Bottom Sheet Modal Container */}
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { y: "100%", opacity: 0.5 },
+                visible: { 
+                  y: 0, 
+                  opacity: 1,
+                  transition: { type: "spring", damping: 25, stiffness: 350 } 
+                },
+                exit: { 
+                  y: "100%", 
+                  opacity: 0.5,
+                  transition: { duration: 0.15 } 
+                }
+              }}
+              className="relative w-full rounded-t-[32px] md:rounded-[24px] bg-white border border-slate-200/50 shadow-2xl p-6 md:p-8 max-h-[85vh] md:max-w-md overflow-hidden z-10"
             >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div>
-              <div className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 border border-emerald-100 text-[10px] font-bold text-emerald-700 rounded-full">
-                <DollarSign className="h-3 w-3" /> Secure Payment
-              </div>
-              <h2 className="text-lg font-extrabold text-slate-900 mt-1.5">Recharge Balance</h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Enter amount to credit. Processing is managed through Razorpay.
-              </p>
-            </div>
-
-            <form onSubmit={handleRechargeSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Amount (INR)</label>
-                <input
-                  type="number"
-                  required
-                  min="100"
-                  max="100000"
-                  placeholder="Minimum Rs. 100"
-                  value={rechargeAmount}
-                  onChange={e => setRechargeAmount(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
-                />
-              </div>
+              {/* Drag handle visible only on mobile */}
+              <div className="h-1 w-12 rounded-full bg-slate-200 mx-auto mb-5 md:hidden" />
 
               <button
-                type="submit"
-                disabled={isRecharging}
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
+                onClick={() => setIsRechargeOpen(false)}
+                className="absolute right-6 top-6 md:top-8 text-slate-400 hover:text-slate-800 p-1 hover:bg-slate-50 rounded-full transition-colors cursor-pointer"
               >
-                {isRecharging ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Connecting Gateway...
-                  </>
-                ) : (
-                  "Initiate Razorpay Pay"
-                )}
+                <X className="h-5 w-5" />
               </button>
-            </form>
+
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 border border-emerald-100 text-[10px] font-bold text-emerald-700 rounded-full uppercase tracking-wider">
+                  <ShieldCheck className="h-3 w-3" /> Secure Recharge
+                </div>
+                <h3 className="text-base font-extrabold text-[#0F172A] mt-1.5">Recharge Account Wallet</h3>
+                <p className="text-xs text-[#64748B]">
+                  Processing is handled securely via our verified Razorpay API integration.
+                </p>
+              </div>
+
+              <form onSubmit={handleRechargeSubmit} className="space-y-4.5 mt-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Amount (INR)</label>
+                  <input
+                    type="number"
+                    required
+                    min="100"
+                    max="100000"
+                    placeholder="Minimum ₹100"
+                    value={rechargeAmount}
+                    onChange={e => setRechargeAmount(e.target.value)}
+                    className="w-full h-12 rounded-[16px] bg-slate-50 px-4 text-xs font-semibold text-[#0F172A] border border-slate-200 focus:border-[#2563EB] focus:bg-white focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isRecharging}
+                  className="w-full h-12 rounded-[16px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
+                >
+                  {isRecharging ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Initializing Gateway...
+                    </>
+                  ) : (
+                    "Initiate Razorpay Transfer"
+                  )}
+                </button>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* CRM Quick Lead Capture Modal */}
-      {isLeadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 md:p-8 space-y-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setIsLeadOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-800 cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2 py-0.5 border border-purple-100 text-[10px] font-bold text-purple-700">
-                CRM Capture Box
-              </div>
-              <h2 className="text-lg font-extrabold text-slate-900 mt-1.5">Capture Lead Quick</h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Save prospective clients, mobile inquiries and requested service categories.
-              </p>
-            </div>
-
-            <form onSubmit={handleLeadSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Client Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ramesh Kumar"
-                  value={leadName}
-                  onChange={e => setLeadName(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mobile Number</label>
-                <input
-                  type="tel"
-                  required
-                  pattern="[0-9]{10}"
-                  placeholder="10-digit number"
-                  value={leadMobile}
-                  onChange={e => setLeadMobile(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Requested Service (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. CM Yuva Scheme, GST Filing"
-                  value={leadService}
-                  onChange={e => setLeadService(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-50 px-4 text-xs font-semibold text-slate-800 border border-slate-200 focus:border-blue-500 focus:bg-white focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmittingLead}
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center cursor-pointer border-none"
-              >
-                {isSubmittingLead ? "Saving Lead..." : "Save Lead to CRM"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
