@@ -666,7 +666,13 @@ export function UnifiedLoginExperience({
       </div>
 
       {/* STICKY GLASS NAVBAR WITH SEGMENTED SWITCH */}
-      <header className="sticky top-0 z-[100] h-16 w-full border-b border-slate-900/06 bg-white/40 backdrop-blur-[20px] px-4 flex items-center justify-between">
+      <header 
+        className="sticky top-0 z-[100] w-full border-b border-slate-900/06 bg-white/40 backdrop-blur-[20px] px-3 flex items-center justify-between"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          height: "calc(60px + env(safe-area-inset-top))"
+        }}
+      >
         
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-85">
@@ -676,13 +682,13 @@ export function UnifiedLoginExperience({
             width={120}
             height={40}
             priority
-            className="h-[28px] w-auto object-contain"
+            className="h-6 w-auto object-contain"
           />
         </Link>
         
         {/* Right: Elegant Segmented Switch (Hidden if activeTab is Admin "ops") */}
         {activeTab !== "ops" && (
-          <div className="flex rounded-full bg-slate-200/50 p-0.5 relative z-0" role="tablist">
+          <div className="flex rounded-full bg-slate-200/50 p-0.5 relative z-0 max-w-[210px] sm:max-w-none" role="tablist">
             {[
               { id: "user", label: "User Login" },
               { id: "partner", label: "Partner Workspace" },
@@ -698,7 +704,7 @@ export function UnifiedLoginExperience({
                     setActiveTab(tab.id as AuthTab);
                     setFormMessage(null);
                   }}
-                  className={`relative px-3.5 py-1.5 text-[10px] md:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]`}
+                  className="relative px-2.5 min-[375px]:px-3 py-1 text-[9px] min-[375px]:text-[10px] md:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
                   style={{ color: isActive ? "#2563EB" : "#64748B" }}
                 >
                   {isActive && (
@@ -718,9 +724,18 @@ export function UnifiedLoginExperience({
       </header>
 
       {/* CENTERED LIQUID GLASS AUTHENTICATION CARD */}
-      <main className="flex-1 flex items-center justify-center p-4 z-10 pt-4 pb-10 md:pt-6 md:pb-14">
+      <main className="flex-1 flex items-start md:items-center justify-center p-4 z-10 pt-3 md:pt-6 pb-10">
         
-        <div className="w-full max-w-[440px] backdrop-blur-[30px] bg-white/65 border border-white/70 shadow-[0_20px_60px_rgba(15,23,42,0.08)] rounded-[32px] p-5 md:p-8 flex flex-col gap-5">
+        <div 
+          className="w-full max-w-[440px] rounded-[32px] p-5 md:p-8 flex flex-col gap-5 mt-3 md:mt-0"
+          style={{
+            backdropFilter: "blur(30px)",
+            WebkitBackdropFilter: "blur(30px)",
+            background: "rgba(255, 255, 255, 0.70)",
+            border: "1px solid rgba(255, 255, 255, 0.8)",
+            boxShadow: "0 20px 60px rgba(15, 23, 42, 0.08)"
+          }}
+        >
           
           <AnimatePresence mode="wait">
             
@@ -929,10 +944,16 @@ export function UnifiedLoginExperience({
                   <FormSubmitButton
                     loading={isPending}
                     loadingText={userMode === "signup" ? "Creating free account..." : "Signing in securely..."}
-                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                   >
                     {userMode === "signup" ? "Create Free Account" : "Sign In"}
                   </FormSubmitButton>
+
+                  <div className="text-center pt-1.5">
+                    <span className="text-[9px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1 select-none">
+                      <span>🔒</span> Protected by RNOS Secure Authentication
+                    </span>
+                  </div>
                 </form>
 
                 {/* Google Sign In Only */}
@@ -1013,7 +1034,7 @@ export function UnifiedLoginExperience({
                       type="button"
                       disabled={!hasVerifiedOAuthDetails || isPending || isGooglePending}
                       onClick={() => void handleOAuthLogin(true)}
-                      className="w-full h-11 bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer"
+                      className="w-full h-11 bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer border-none"
                     >
                       {isGooglePending ? <ButtonSpinner className="h-4 w-4" /> : null}
                       Continue with Google
@@ -1055,7 +1076,7 @@ export function UnifiedLoginExperience({
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#64748B]">
                     RNOS Partner Network
                   </p>
-                  <h2 className="text-xl font-bold tracking-tight text-[#0F172A]">
+                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A] leading-tight">
                     Partner Workspace Login
                   </h2>
                   <p className="text-xs text-[#64748B] font-medium leading-relaxed max-w-[300px] mx-auto">
@@ -1063,7 +1084,7 @@ export function UnifiedLoginExperience({
                   </p>
                 </div>
 
-                <form onSubmit={handlePartnerSubmit} className="space-y-3.5">
+                <form onSubmit={handlePartnerSubmit} className="space-y-3">
                   
                   <FloatingInput
                     label="Username"
@@ -1078,7 +1099,6 @@ export function UnifiedLoginExperience({
                     onBlur={() => setTouchedPartnerId(true)}
                     touched={touchedPartnerId}
                     isValid={isPartnerIdValid}
-                    placeholder="Enter Username"
                     icon={<UserRound className="h-4 w-4 text-[#64748B]" />}
                   />
 
@@ -1119,19 +1139,25 @@ export function UnifiedLoginExperience({
                   <FormSubmitButton
                     loading={isPending || apTransitionPending}
                     loadingText="Opening partner node..."
-                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                   >
                     Sign In
                   </FormSubmitButton>
+
+                  <div className="text-center pt-1.5">
+                    <span className="text-[9px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1 select-none">
+                      <span>🔒</span> Protected by RNOS Secure Authentication
+                    </span>
+                  </div>
                 </form>
 
                 {/* Footer links: Forgot Password, Partner Support, Apply for Partnership */}
                 <div className="flex flex-col gap-2 items-center pt-2.5 border-t border-slate-100/80 text-center">
-                  <div className="flex justify-center gap-4 text-xs font-semibold text-[#64748B]">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs font-semibold text-[#64748B]">
                     <Link href="/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
                       Forgot Password?
                     </Link>
-                    <span className="text-slate-200">|</span>
+                    <span className="hidden sm:inline text-slate-200">|</span>
                     <Link href="/ap/support" className="hover:text-[#0F172A] hover:underline outline-none">
                       Partner Support
                     </Link>
@@ -1223,6 +1249,12 @@ export function UnifiedLoginExperience({
                   >
                     Open Console
                   </FormSubmitButton>
+
+                  <div className="text-center pt-1.5">
+                    <span className="text-[9px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1 select-none">
+                      <span>🔒</span> Protected by RNOS Secure Authentication
+                    </span>
+                  </div>
                 </form>
 
                 <div className="space-y-3 pt-3 border-t border-slate-100/80">
@@ -1241,19 +1273,12 @@ export function UnifiedLoginExperience({
 
           </AnimatePresence>
 
-          {/* Subtle security trust lock text */}
-          <div className="text-center pt-1.5 border-t border-slate-100/50">
-            <span className="text-[10px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1">
-              <span>🔒</span> Protected by RNOS Secure Authentication
-            </span>
-          </div>
-
         </div>
 
       </main>
 
       {/* FOOTER */}
-      <footer className="text-center py-4 z-10">
+      <footer className="text-center py-2 z-10">
         <p className="text-[10px] font-semibold text-slate-400">
           &copy; {new Date().getFullYear()} RNOS India Pvt. Ltd. All rights reserved.
         </p>

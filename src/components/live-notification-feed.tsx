@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 
 interface Application {
@@ -11,6 +12,7 @@ interface Application {
 }
 
 export function LiveNotificationFeed() {
+  const pathname = usePathname();
   const [items, setItems] = useState<Application[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visible, setVisible] = useState(false);
@@ -63,7 +65,7 @@ export function LiveNotificationFeed() {
     };
   }, [items]);
 
-  if (items.length === 0 || currentIndex >= items.length) {
+  if (pathname.includes("/login") || items.length === 0 || currentIndex >= items.length) {
     return null;
   }
 
