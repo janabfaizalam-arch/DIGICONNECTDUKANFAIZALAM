@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { LoginCard } from "@/components/auth/login-card";
+import { UnifiedLoginExperience } from "@/components/auth/unified-login";
 import { getCurrentUser, getCurrentUserRole, getRoleHome } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "Welcome to RNOS | Operations Console",
+  description: "Operations console login for staff and administrators.",
+};
 
 export default async function AdminLoginPage() {
   const user = await getCurrentUser();
@@ -12,9 +18,9 @@ export default async function AdminLoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.18),transparent_35%),linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)]" />
-      <LoginCard title="Admin Login" description="Sign in to manage DigiConnect Dukan applications, agents, customers, and service operations." />
-    </main>
+    <UnifiedLoginExperience
+      initialTab="ops"
+      initialMode="login"
+    />
   );
 }

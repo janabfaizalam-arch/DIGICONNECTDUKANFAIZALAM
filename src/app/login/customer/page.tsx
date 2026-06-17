@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { CustomerLoginCard } from "@/components/auth/customer-login-card";
+import { UnifiedLoginExperience } from "@/components/auth/unified-login";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Login - DigiConnect Dukan",
+  title: "Welcome to RNOS | User Login",
   description:
-    "Login to track your digital service applications, upload documents and manage your DigiConnect Dukan account.",
+    "Login to track your digital service applications, upload documents and manage your account workspace.",
 };
 
 function getSafeRedirect(value: string | undefined) {
@@ -27,17 +27,22 @@ function getSafeRedirect(value: string | undefined) {
   return value;
 }
 
-export default async function CustomerLoginPage({ searchParams }: { searchParams?: Promise<{ redirect?: string; next?: string; reset?: string; error?: string }> }) {
+export default async function CustomerLoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ redirect?: string; next?: string; reset?: string; error?: string; ref?: string }>;
+}) {
   const query = await searchParams;
   const redirectTo = getSafeRedirect(query?.redirect ?? query?.next);
   const initialMessage =
     query?.reset === "success"
       ? "Password updated successfully. Please login with your new password."
       : query?.error === "oauth_signup_details"
-        ? "New Google or Facebook signup needs mobile number and PIN details. Switch to Sign Up and continue."
+      ? "New Google or Facebook signup needs mobile number and PIN details. Switch to Sign Up and continue."
       : query?.error === "oauth"
-        ? "Social login could not be completed. Please try again."
-        : undefined;
+      ? "Social login could not be completed. Please try again."
+      : undefined;
+
   const user = await getCurrentUser();
 
   if (user) {
@@ -45,11 +50,14 @@ export default async function CustomerLoginPage({ searchParams }: { searchParams
     redirect(isCustomerRole(role) ? redirectTo : getRoleHome(role));
   }
 
+  const referralCode = String(query?.ref ?? "").trim().toUpperCase();
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-6">
-      <div className="w-full max-w-[420px]">
-        <CustomerLoginCard initialMessage={initialMessage} />
-      </div>
-    </main>
+    <UnifiedLoginExperience
+      initialTab="user"
+      initialMode="login"
+      initialMessage={initialMessage}
+      referralCode={referralCode}
+    />
   );
 }
