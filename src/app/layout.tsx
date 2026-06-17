@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { MetaPixelEvents } from "@/components/meta-pixel-events";
@@ -154,6 +155,7 @@ export default function RootLayout({
             {JSON.stringify(organizationSchema)}
           </Script>
         </ToastProvider>
+        <Analytics />
       </body>
     </html>
   );
