@@ -18,10 +18,10 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const mobile = String(searchParams.get("mobile") ?? "").trim();
+    const search = String(searchParams.get("search") ?? searchParams.get("mobile") ?? "").trim();
     const serviceSlug = String(searchParams.get("serviceSlug") ?? "").trim();
 
-    if (!mobile || mobile.length < 3) {
+    if (!search || search.length < 3) {
       return NextResponse.json({ results: [] });
     }
 
@@ -30,13 +30,57 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: "Database connection failed." }, { status: 500 });
     }
 
-    // Lookup customers matching the mobile prefix
-    // Only search customers created by or assigned to this agent
+    // Determine search types
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(search);
+    const cleanSearch = search.replace(/[\s-]/g, "");
+    const isAadhaar = /^\d{12}$/.test(cleanSearch);
+    const isPan = /^[a-z]{5}\d{4}[a-z]$/i.test(cleanSearch);
+
+    let matchedCustomerIdsFromApps: string[] = [];
+
+    // If search is a potential Aadhaar or PAN, look up corresponding customer_ids in applications form_data
+    if (isAadhaar || isPan) {
+      let orClause = "";
+      if (isAadhaar) {
+        orClause = `form_data->>aadhaar.eq.${cleanSearch},form_data->>aadhaar_number.eq.${cleanSearch},form_data->>aadhaarNumber.eq.${cleanSearch}`;
+      } else {
+        orClause = `form_data->>pan.eq.${cleanSearch},form_data->>pan_number.eq.${cleanSearch},form_data->>panNumber.eq.${cleanSearch}`;
+      }
+
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("customer_id")
+        .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
+        .or(orClause)
+        .limit(10);
+
+      if (apps) {
+        matchedCustomerIdsFromApps = apps
+          .map((a) => a.customer_id)
+          .filter((id): id is string => Boolean(id));
+      }
+    }
+
+    // Dynamically build the OR query on the customers table
+    const orConditions: string[] = [];
+    orConditions.push(`mobile.like.%${cleanSearch}%`);
+    orConditions.push(`full_name.ilike.%${search}%`);
+
+    if (isUuid) {
+      orConditions.push(`id.eq.${search}`);
+    }
+
+    if (matchedCustomerIdsFromApps.length > 0) {
+      matchedCustomerIdsFromApps.forEach((id) => {
+        orConditions.push(`id.eq.${id}`);
+      });
+    }
+
     const { data: matchedCustomers, error: customerError } = await supabase
       .from("customers")
       .select("id, full_name, mobile, email, city, pincode, state, address")
       .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
-      .like("mobile", `%${mobile}%`)
+      .or(orConditions.join(","))
       .limit(10);
 
     if (customerError) {

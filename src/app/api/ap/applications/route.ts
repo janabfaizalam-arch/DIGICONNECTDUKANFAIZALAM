@@ -150,6 +150,10 @@ export async function POST(request: Request) {
     const state = String(formData.get("state") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
     const address = String(formData.get("address") ?? "").trim();
+    const gender = String(formData.get("gender") ?? "").trim();
+    const dob = String(formData.get("dob") ?? "").trim();
+    const paymentMethod = String(formData.get("paymentMethod") ?? "razorpay").trim();
+    const offlineReference = String(formData.get("offlineReference") ?? "").trim();
     const pmVishwakarmaDetails = {
       pincode,
       district,
@@ -219,9 +223,11 @@ export async function POST(request: Request) {
     }
 
     const expectedAmountPaise = Math.round(Number(service.customer_fee ?? 0) * 100);
+    const isOffline = paymentMethod === "cash" || paymentMethod === "upi_qr";
 
     if (
       expectedAmountPaise > 0 &&
+      !isOffline &&
       !isVerifiedRazorpayPayment({
         orderId: razorpayOrderId,
         paymentId: razorpayPaymentId,
@@ -233,9 +239,9 @@ export async function POST(request: Request) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
     }
 
-    const razorpayDetails = razorpayPaymentId ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
+    const razorpayDetails = (razorpayPaymentId && !isOffline) ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
 
-    if (expectedAmountPaise > 0) {
+    if (expectedAmountPaise > 0 && !isOffline) {
       if (!razorpayDetails) {
         return jsonError("Razorpay payment could not be verified on the server.", 400);
       }
@@ -256,35 +262,39 @@ export async function POST(request: Request) {
     const paidAt = razorpayDetails?.created_at ? new Date(razorpayDetails.created_at * 1000).toISOString() : new Date().toISOString();
 
     let resolvedCustomerId = customerId;
-    let customer = null as { id: string; full_name: string; mobile: string; email: string | null; city: string | null; pincode?: string | null; state?: string | null } | null;
+    let customer = null as { id: string; full_name: string; mobile: string; email: string | null; city: string | null; pincode?: string | null; state?: string | null; address?: string | null } | null;
 
     if (resolvedCustomerId) {
       const { data } = await supabase
         .from("customers")
-        .select("id, full_name, mobile, email, city, pincode, state")
+        .select("id, full_name, mobile, email, city, pincode, state, address")
         .eq("id", resolvedCustomerId)
         .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
         .single();
       customer = data;
-      if (isPmVishwakarmaApplication && customer) {
-        const { data: updatedCustomer } = await supabase
-          .from("customers")
-          .update({
-            full_name: customerName || customer.full_name,
-            mobile: normalizedMobile || customer.mobile,
-            email: email ? email.toLowerCase() : customer.email,
-            ...(address ? { address } : {}),
-            city: city || customer.city,
-            pincode: pincode || customer.pincode,
-            state: state || customer.state,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", resolvedCustomerId)
-          .select("id, full_name, mobile, email, city, pincode, state")
-          .single();
-        customer = updatedCustomer ?? customer;
-      } else if (!customer?.email || !customer.mobile || !customer.pincode || !customer.city || !customer.state) {
-        return jsonError("Selected customer is missing email, mobile, pincode, city, or state.", 400);
+      if (customer) {
+        const updateData: Record<string, string | null> = {
+          updated_at: new Date().toISOString()
+        };
+        if (customerName && customerName !== customer.full_name) updateData.full_name = customerName;
+        if (normalizedMobile && normalizedMobile !== customer.mobile) updateData.mobile = normalizedMobile;
+        if (email && email.toLowerCase() !== customer.email) updateData.email = email.toLowerCase();
+        if (address && address !== customer.address) updateData.address = address;
+        if (city && city !== customer.city) updateData.city = city;
+        if (pincode && pincode !== customer.pincode) updateData.pincode = pincode;
+        if (state && state !== customer.state) updateData.state = state;
+
+        if (Object.keys(updateData).length > 1) {
+          const { data: updatedCustomer } = await supabase
+            .from("customers")
+            .update(updateData)
+            .eq("id", resolvedCustomerId)
+            .select("id, full_name, mobile, email, city, pincode, state, address")
+            .single();
+          if (updatedCustomer) {
+            customer = updatedCustomer;
+          }
+        }
       }
     } else {
       const { data, error } = await supabase
@@ -301,11 +311,11 @@ export async function POST(request: Request) {
           created_by: user.id,
           assigned_agent_id: user.id,
         })
-        .select("id, full_name, mobile, email, city, pincode, state")
+        .select("id, full_name, mobile, email, city, pincode, state, address")
         .single();
 
       if (error || !data) {
-        return jsonError("Customer could not be created.", 500);
+        return jsonError("Customer could not be created: " + error?.message, 500);
       }
 
       customer = data;
@@ -361,6 +371,10 @@ export async function POST(request: Request) {
           pincode: customer.pincode ?? pincode,
           city: customer.city ?? city,
           state: customer.state ?? state,
+          gender,
+          dob,
+          district,
+          address: customer.address ?? address,
           ...(isPmVishwakarmaApplication
             ? {
                 district,
@@ -408,11 +422,11 @@ export async function POST(request: Request) {
       user_id: user.id,
       amount: service.customer_fee,
       status: "verified",
-      razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
-      razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,
-      razorpay_signature: razorpaySignature || null,
-      razorpay_status: razorpayDetails?.status ?? "verified",
-      payment_method: razorpayDetails?.method ?? null,
+      razorpay_order_id: isOffline ? null : (razorpayOrderId || razorpayDetails?.order_id || null),
+      razorpay_payment_id: isOffline ? (offlineReference || `${paymentMethod.toUpperCase()}-OFFLINE`) : (razorpayPaymentId || razorpayDetails?.id || null),
+      razorpay_signature: isOffline ? null : (razorpaySignature || null),
+      razorpay_status: isOffline ? "verified" : (razorpayDetails?.status ?? "verified"),
+      payment_method: isOffline ? paymentMethod : (razorpayDetails?.method ?? null),
       paid_at: paidAt,
     });
 

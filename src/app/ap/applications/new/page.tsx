@@ -41,13 +41,13 @@ export default async function NewAPApplicationPage({
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-slate-800 px-4 py-6 md:px-8 md:py-10 pb-28">
       <div className="mx-auto max-w-7xl space-y-6">
         <Link
           href="/ap/dashboard"
-          className="inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors bg-white/80 border border-slate-100 rounded-full px-4 py-2 shadow-sm w-fit"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3 w-3" />
           Back to Dashboard
         </Link>
         <APApplicationForm
