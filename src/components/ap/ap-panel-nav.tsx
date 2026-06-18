@@ -14,7 +14,6 @@ import {
   Headphones,
   Bell,
   UserCog,
-  LogOut,
   Search,
   Menu,
   X,
@@ -70,15 +69,35 @@ export function APPanelNav() {
       if (!user || !isMounted) return;
 
       // Fetch partner details for tier name / workspace label
-      const { data: ap } = await supabase
+      const { data } = await supabase
         .from("agency_partners")
         .select("partner_code, agency_partner_tiers(name)")
         .eq("user_id", user.id)
         .maybeSingle();
 
+      interface AgencyPartnerQueryResult {
+        partner_code: string;
+        agency_partner_tiers: { name: string } | { name: string }[] | null;
+      }
+
+      const ap = data as AgencyPartnerQueryResult | null;
+
       if (ap && isMounted) {
         setPartnerCode(ap.partner_code);
-        const tierName = (ap.agency_partner_tiers as { name: string } | null)?.name;
+        const tierRaw = ap.agency_partner_tiers;
+        let tierName = "";
+
+        if (tierRaw) {
+          if (Array.isArray(tierRaw)) {
+            const first = tierRaw[0];
+            if (first && typeof first === "object" && "name" in first) {
+              tierName = first.name;
+            }
+          } else {
+            tierName = tierRaw.name;
+          }
+        }
+
         if (tierName) {
           setPartnerTier(tierName);
         }
@@ -429,12 +448,7 @@ export function APPanelNav() {
                   variant="ghost"
                   className="w-full justify-start h-11 text-slate-600 hover:bg-rose-50 hover:text-rose-600 rounded-xl px-4 text-sm font-semibold transition-colors duration-150 outline-none flex items-center gap-3"
                   onLoggedOut={() => setDrawerOpen(false)}
-                >
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-600 shadow-sm shrink-0">
-                    <LogOut className="h-4.5 w-4.5" />
-                  </div>
-                  <span>Logout</span>
-                </LogoutButton>
+                />
               </div>
 
             </motion.div>
