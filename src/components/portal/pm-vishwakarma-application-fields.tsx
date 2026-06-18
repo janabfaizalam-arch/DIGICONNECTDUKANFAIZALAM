@@ -160,7 +160,7 @@ function RequiredMark() {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-bold text-slate-800">{children}</label>;
+  return <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{children}</label>;
 }
 
 export function PmVishwakarmaApplicationFields({
@@ -176,29 +176,28 @@ export function PmVishwakarmaApplicationFields({
     {
       name: "traditionalOccupationCommunity",
       value: values.traditionalOccupationCommunity,
-      label: "Are you from a caste/community related to a traditional occupation?",
+      label: "Traditional community occupation caste?",
     },
     {
       name: "migrantWorker",
       value: values.migrantWorker,
-      label: "Are you a migrant worker/artisan?",
-      helper: "Migrant means a worker from another state.",
+      label: "Migrant artisan/worker?",
     },
     {
       name: "upResidentFamilyBenefit",
       value: values.upResidentFamilyBenefit,
-      label: "I am a permanent resident of Uttar Pradesh and no other person in my family (husband/wife only) has taken scheme benefit.",
+      label: "UP resident + no family benefit taken?",
     },
   ] as const;
 
   return (
-    <div className="mt-3 grid gap-4">
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="grid gap-1.5">
+    <div className="mt-2.5 grid gap-3">
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid gap-0.5">
           <FieldLabel>Full Name <RequiredMark /></FieldLabel>
-          <Input name="name" placeholder="Enter full name" required className="h-12 text-sm" value={values.name} onChange={(event) => onChange("name", event.target.value)} />
+          <Input name="name" placeholder="Enter full name" required className="h-9 text-xs border-slate-200 bg-white" value={values.name} onChange={(event) => onChange("name", event.target.value)} />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>Mobile Number <RequiredMark /></FieldLabel>
           <Input
             name="mobile"
@@ -206,12 +205,12 @@ export function PmVishwakarmaApplicationFields({
             inputMode="numeric"
             pattern="[0-9]{10}"
             required
-            className="h-12 text-sm"
+            className="h-9 text-xs border-slate-200 bg-white"
             value={values.mobile}
             onChange={(event) => onChange("mobile", event.target.value.replace(/\D/g, "").slice(0, 10))}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>Pin Code <RequiredMark /></FieldLabel>
           <Input
             name="pincode"
@@ -219,66 +218,65 @@ export function PmVishwakarmaApplicationFields({
             inputMode="numeric"
             pattern="[0-9]{6}"
             required
-            className="h-12 text-sm"
+            className="h-9 text-xs border-slate-200 bg-white"
             value={values.pincode}
             onChange={(event) => onChange("pincode", event.target.value.replace(/\D/g, "").slice(0, 6))}
           />
-          {pincodeStatus ? <p className="text-xs font-semibold text-blue-700">{pincodeStatus}</p> : null}
+          {pincodeStatus ? <p className="text-[9px] font-semibold text-blue-600 mt-0.5">{pincodeStatus}</p> : null}
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>City <RequiredMark /></FieldLabel>
-          <Input name="city" placeholder="City" required className="h-12 text-sm" value={values.city} onChange={(event) => onChange("city", event.target.value)} />
+          <Input name="city" placeholder="City" required className="h-9 text-xs border-slate-200 bg-white" value={values.city} onChange={(event) => onChange("city", event.target.value)} />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>District <RequiredMark /></FieldLabel>
-          <Input name="district" placeholder="District" required className="h-12 text-sm" value={values.district} onChange={(event) => onChange("district", event.target.value)} />
+          <Input name="district" placeholder="District" required className="h-9 text-xs border-slate-200 bg-white" value={values.district} onChange={(event) => onChange("district", event.target.value)} />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>State <RequiredMark /></FieldLabel>
-          <Input name="state" placeholder="State" required className="h-12 text-sm" value={values.state} onChange={(event) => onChange("state", event.target.value)} />
+          <Input name="state" placeholder="State" required className="h-9 text-xs border-slate-200 bg-white" value={values.state} onChange={(event) => onChange("state", event.target.value)} />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>Marital Status <RequiredMark /></FieldLabel>
-          <select name="maritalStatus" required value={values.maritalStatus} onChange={(event) => onChange("maritalStatus", event.target.value)} className="h-12 rounded-xl border border-[var(--border)] bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]">
-            <option value="">Select marital status</option>
+          <select name="maritalStatus" required value={values.maritalStatus} onChange={(event) => onChange("maritalStatus", event.target.value)} className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500">
+            <option value="">Select status</option>
             <option value="Married">Married</option>
             <option value="Unmarried">Unmarried</option>
           </select>
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>Caste / Category <RequiredMark /></FieldLabel>
-          <Input name="casteCategory" placeholder="Caste / Category" required className="h-12 text-sm" value={values.casteCategory} onChange={(event) => onChange("casteCategory", event.target.value)} />
+          <Input name="casteCategory" placeholder="Caste / Category" required className="h-9 text-xs border-slate-200 bg-white" value={values.casteCategory} onChange={(event) => onChange("casteCategory", event.target.value)} />
         </div>
-        <div className="grid gap-1.5 md:col-span-2">
+        <div className="grid gap-0.5 sm:col-span-2">
           <FieldLabel>Trade / Work Type <RequiredMark /></FieldLabel>
-          <select name="tradeWorkType" required value={values.tradeWorkType} onChange={(event) => onChange("tradeWorkType", event.target.value)} className="h-12 rounded-xl border border-[var(--border)] bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]">
+          <select name="tradeWorkType" required value={values.tradeWorkType} onChange={(event) => onChange("tradeWorkType", event.target.value)} className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 w-full">
             <option value="">Select trade / work type</option>
             {pmVishwakarmaTrades.map((trade) => <option key={trade} value={trade}>{trade}</option>)}
           </select>
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>Email</FieldLabel>
-          <Input name="email" placeholder="Email (optional)" type="email" className="h-12 text-sm" value={values.email} onChange={(event) => onChange("email", event.target.value)} />
+          <Input name="email" placeholder="Email (optional)" type="email" className="h-9 text-xs border-slate-200 bg-white" value={values.email} onChange={(event) => onChange("email", event.target.value)} />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-0.5">
           <FieldLabel>Address</FieldLabel>
-          <Input name="address" placeholder="Address (optional)" className="h-12 text-sm" value={values.address} onChange={(event) => onChange("address", event.target.value)} />
+          <Input name="address" placeholder="Address (optional)" className="h-9 text-xs border-slate-200 bg-white" value={values.address} onChange={(event) => onChange("address", event.target.value)} />
         </div>
-        <div className="grid gap-1.5 md:col-span-2">
+        <div className="grid gap-0.5 sm:col-span-2">
           <FieldLabel>Note / Message</FieldLabel>
-          <Textarea name="message" placeholder="Note / Message (optional)" className="min-h-24 text-sm" value={values.message} onChange={(event) => onChange("message", event.target.value)} />
+          <Textarea name="message" placeholder="Note / Message (optional)" className="min-h-16 text-xs border-slate-200 bg-white" value={values.message} onChange={(event) => onChange("message", event.target.value)} />
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+      <div className="grid gap-2 bg-slate-50/50 rounded-2xl p-2.5">
         {questions.map((question) => (
-          <fieldset key={question.name} className="rounded-xl bg-white p-3">
-            <legend className="text-sm font-bold leading-6 text-slate-900">{question.label} <RequiredMark /></legend>
-            {"helper" in question && question.helper ? <p className="mt-1 text-xs font-semibold text-slate-500">{question.helper}</p> : null}
-            <div className="mt-3 flex gap-4">
+          <fieldset key={question.name} className="p-0 border-0 bg-transparent space-y-1">
+            <legend className="text-[10px] font-bold leading-tight text-slate-800">{question.label} <RequiredMark /></legend>
+            <div className="flex gap-4">
               {["Yes", "No"].map((option) => (
-                <label key={option} className="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
-                  <input type="radio" name={question.name} value={option} required checked={question.value === option} onChange={() => onChange(question.name, option)} />
+                <label key={option} className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer">
+                  <input type="radio" name={question.name} value={option} required checked={question.value === option} onChange={() => onChange(question.name, option)} className="scale-90" />
                   {option}
                 </label>
               ))}
@@ -287,12 +285,12 @@ export function PmVishwakarmaApplicationFields({
         ))}
       </div>
 
-      <label className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-4 text-sm leading-6 text-slate-700">
-        <input type="checkbox" name="termsAccepted" value="true" required checked={values.termsAccepted} onChange={(event) => onChange("termsAccepted", event.target.checked)} className="mt-1" />
+      <label className="flex items-start gap-2.5 rounded-2xl bg-orange-50/40 p-3 text-[10px] leading-relaxed text-slate-600 cursor-pointer border-none shadow-none">
+        <input type="checkbox" name="termsAccepted" value="true" required checked={values.termsAccepted} onChange={(event) => onChange("termsAccepted", event.target.checked)} className="mt-0.5 scale-90" />
         <span>
-          <span className="font-bold text-slate-950">I accept the terms and conditions <RequiredMark /></span>
-          <span className="mt-2 block">
-            I confirm that all information provided is true and correct. I understand that approval and benefits depend on government eligibility, verification, and official scheme rules. I understand that DigiConnect Dukan is an assistance/service provider, not a government authority. I understand that service fee may be non-refundable after processing starts.
+          <span className="font-extrabold text-slate-900">Accept terms and conditions <RequiredMark /></span>
+          <span className="mt-1 block text-slate-500 text-[9px]">
+            I confirm all info is correct. Approvals depend on government eligibility rules. DigiConnect is an assistance/service provider, not an official authority. Fees are non-refundable after processing starts.
           </span>
         </span>
       </label>

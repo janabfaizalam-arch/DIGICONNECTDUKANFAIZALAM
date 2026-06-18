@@ -41,15 +41,8 @@ export default async function NewAPApplicationPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-slate-800 px-4 py-6 md:px-8 md:py-10 pb-28">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <Link
-          href="/ap/dashboard"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors bg-white/80 border border-slate-100 rounded-full px-4 py-2 shadow-sm w-fit"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back to Dashboard
-        </Link>
+    <main className="min-h-screen bg-[#F8FAFC] text-slate-800 px-2 py-3 md:px-8 md:py-8 pb-24">
+      <div className="mx-auto max-w-xl">
         <APApplicationForm
           customers={customers}
           services={services}

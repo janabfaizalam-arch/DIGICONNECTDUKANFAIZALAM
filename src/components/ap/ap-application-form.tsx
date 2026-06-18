@@ -76,7 +76,13 @@ export function APApplicationForm({
   const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  // Wizard Step Tracker
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
+  // Wizard Step Tracker (1 to 5)
   const [currentStep, setCurrentStep] = useState(1);
 
   // Basic States
@@ -214,7 +220,7 @@ export function APApplicationForm({
     const cleanPincode = customerPincode.replace(/\D/g, "").slice(0, 6);
     if (cleanPincode.length !== 6) return;
 
-    setPincodeAutofillStatus("Checking...");
+    setPincodeAutofillStatus("Syncing");
     const controller = new AbortController();
     fetch(`/api/pincode?pincode=${encodeURIComponent(cleanPincode)}`, { signal: controller.signal })
       .then((res) => res.json())
@@ -223,7 +229,7 @@ export function APApplicationForm({
           setCustomerCity(data.city);
           setCustomerState(data.state);
           setCustomerDistrict(data.district || data.city || "");
-          setPincodeAutofillStatus("Auto-filled");
+          setPincodeAutofillStatus("Verified");
           setDraftStatus("Draft Saved");
         } else {
           setPincodeAutofillStatus("Invalid");
@@ -236,7 +242,7 @@ export function APApplicationForm({
     return () => controller.abort();
   }, [customerPincode]);
 
-  // Debounced API call for real-time customer search
+  // Debounced API for customer lookup
   useEffect(() => {
     if (searchQuery.length < 3) {
       setLookupResults([]);
@@ -295,9 +301,9 @@ export function APApplicationForm({
     }
   }, []);
 
-  // Auto-save draft variables to localStorage on field update
+  // Auto-save draft variables on update
   useEffect(() => {
-    setDraftStatus("Saving...");
+    setDraftStatus("Saving");
     const saveTimer = setTimeout(() => {
       const draft = {
         customerName, customerMobile, customerEmail, customerGender, customerDob,
@@ -324,7 +330,6 @@ export function APApplicationForm({
     setLookupResults([]);
     setIsNewCustomer(false);
 
-    // Prefill profile fields
     setCustomerName(cust.full_name || "");
     setCustomerMobile(cust.mobile || "");
     setCustomerEmail(cust.email || "");
@@ -333,7 +338,7 @@ export function APApplicationForm({
     setCustomerPincode(cust.pincode || "");
     setCustomerState(cust.state || "");
 
-    success(`Prefilled details for: ${cust.full_name}`);
+    success(`Attributed: ${cust.full_name}`);
 
     if (result.duplicateApplication) {
       setActiveDuplicateApp(result.duplicateApplication);
@@ -370,7 +375,7 @@ export function APApplicationForm({
     setPmVishwakarmaValues((current) => ({ ...current, [key]: value }));
   }
 
-  // Parse service's required documents checklist
+  // Parse service required documents
   const serviceChecklist = useMemo(() => {
     if (!selectedService || !selectedService.required_documents) return [];
     return selectedService.required_documents
@@ -385,7 +390,6 @@ export function APApplicationForm({
     const array = Array.from(files);
 
     array.forEach((file) => {
-      // Simulate file upload validation with progress ticker
       const fileId = Math.random().toString(36).substring(7);
       const docType = checklistType || "Customer Document";
       
@@ -432,8 +436,8 @@ export function APApplicationForm({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (err) {
-      toastError("Could not access camera device.");
+    } catch {
+      toastError("Camera access denied.");
       setShowCameraModal(false);
     }
   };
@@ -460,7 +464,6 @@ export function APApplicationForm({
             type: "image/jpeg"
           });
           
-          // Append to uploaded files list
           const fileId = Math.random().toString(36).substring(7);
           const newFileObj = {
             id: fileId,
@@ -470,7 +473,7 @@ export function APApplicationForm({
             progress: 100
           };
           setUploadedFiles(prev => [...prev, newFileObj]);
-          success(`Captured scan for ${activeChecklistItem}`);
+          success(`Attached scan for ${activeChecklistItem}`);
         }
         stopCamera();
       }, "image/jpeg");
@@ -481,32 +484,31 @@ export function APApplicationForm({
     setUploadedFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  // Check if a document from checklist has been uploaded
   const isDocumentUploaded = (docName: string) => {
     return uploadedFiles.some(f => f.documentType === docName && f.status === "validated");
   };
 
-  // Commission Calculations
+  // Calculations Breakout
   const calculatedGST = Math.round(Number(selectedService?.customer_fee ?? 0) * 0.18);
   const grossTotal = Number(selectedService?.customer_fee ?? 0) + calculatedGST;
   const partnerNetMargin = selectedPayout;
 
-  // Step Navigations & Validation
+  // Wizard Step Validation
   const validateStep1 = () => {
     if (!customerName.trim()) {
-      toastError("Please enter the customer name.");
+      toastError("Enter customer name.");
       return false;
     }
     if (customerMobile.length !== 10) {
-      toastError("Please enter a valid 10-digit mobile number.");
+      toastError("Enter 10-digit mobile number.");
       return false;
     }
     if (customerPincode.length !== 6) {
-      toastError("Please enter a valid 6-digit pincode.");
+      toastError("Enter 6-digit pincode.");
       return false;
     }
     if (!customerCity.trim() || !customerState.trim() || !customerAddress.trim()) {
-      toastError("Please complete the address details.");
+      toastError("Address fields are mandatory.");
       return false;
     }
     return true;
@@ -514,7 +516,7 @@ export function APApplicationForm({
 
   const validateStep2 = () => {
     if (!serviceId) {
-      toastError("Please select a service.");
+      toastError("Select service.");
       return false;
     }
     if (isPmVishwakarma) {
@@ -527,6 +529,24 @@ export function APApplicationForm({
     return true;
   };
 
+  const validateStep3 = () => {
+    // Check if any mandatory checklist is pending upload
+    const pending = serviceChecklist.filter(doc => !isDocumentUploaded(doc));
+    if (pending.length > 0) {
+      toastError(`Please upload: ${pending[0]}`);
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep4 = () => {
+    if (!razorpayPayment && payableAmountPaise > 0) {
+      toastError("Please complete online payment.");
+      return false;
+    }
+    return true;
+  };
+
   const triggerDraftSave = () => {
     const draft = {
       customerName, customerMobile, customerEmail, customerGender, customerDob,
@@ -534,7 +554,7 @@ export function APApplicationForm({
       serviceId, isNewCustomer
     };
     localStorage.setItem("ap_new_application_draft", JSON.stringify(draft));
-    success("Application draft saved successfully.");
+    success("Draft updated.");
   };
 
   // Submit Application handler
@@ -543,7 +563,7 @@ export function APApplicationForm({
     if (isPending) return;
 
     if (payableAmountPaise > 0 && !razorpayPayment) {
-      toastError("Please complete Razorpay checkout before submitting.");
+      toastError("Razorpay verification is mandatory.");
       return;
     }
 
@@ -587,14 +607,13 @@ export function APApplicationForm({
         const result = (await response.json()) as { message?: string; applicationId?: string; invoiceId?: string };
 
         if (!response.ok || !result.applicationId) {
-          throw new Error(result.message ?? "Application could not be created.");
+          throw new Error(result.message ?? "Application failed.");
         }
 
-        success(result.message ?? "Application created successfully.");
+        success(result.message ?? "Application submitted.");
         trackApplicationSubmit();
         saveRecentService(serviceId);
 
-        // Save submitted info to display victory details
         setSubmittedApplication({
           id: result.applicationId,
           invoiceId: result.invoiceId,
@@ -602,83 +621,71 @@ export function APApplicationForm({
         });
         setSubmitSuccess(true);
         
-        // Clear recovered draft from localStorage
         localStorage.removeItem("ap_new_application_draft");
-        
         router.refresh();
       } catch (error) {
-        toastError(error instanceof Error ? error.message : "Application could not be created.");
+        toastError(error instanceof Error ? error.message : "Application failed.");
       }
     });
   }
 
-  // Print function
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Section 10: Submission Success state UI
   if (submitSuccess && submittedApplication) {
     return (
-      <div className="mx-auto max-w-2xl bg-white border border-slate-100 rounded-3xl p-8 text-center shadow-lg animate-in fade-in zoom-in-95 duration-500">
-        <div className="mx-auto w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6">
-          <Check className="w-10 h-10 stroke-[3]" />
+      <div className="mx-auto max-w-md bg-white border border-slate-100 rounded-3xl p-6 text-center shadow-lg animate-in fade-in zoom-in-95 duration-300">
+        <div className="mx-auto w-14 h-14 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+          <Check className="w-7 h-7 stroke-[3]" />
         </div>
-        <h1 className="text-3xl font-black text-slate-800 tracking-tight">Application Submitted!</h1>
-        <p className="text-sm text-slate-500 mt-2">
-          Your customer application is now processing on the DigiConnect portal.
+        <h1 className="text-xl font-black text-slate-800 tracking-tight">Application Submitted!</h1>
+        <p className="text-xs text-slate-500 mt-1">
+          Processing reference generated successfully.
         </p>
 
         {/* Info card */}
-        <div className="bg-slate-50 rounded-2xl p-5 my-6 text-left border border-slate-100 space-y-3">
-          <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
-            <span className="text-slate-500 font-semibold">Application Reference</span>
+        <div className="bg-slate-50 rounded-2xl p-4 my-4 text-left border border-slate-100 space-y-2 text-xs">
+          <div className="flex justify-between items-center pb-1">
+            <span className="text-slate-500">Reference ID</span>
             <span className="font-mono font-bold text-slate-800">{submittedApplication.applicationCode}</span>
           </div>
-          <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
-            <span className="text-slate-500 font-semibold">Selected Service</span>
-            <span className="font-bold text-slate-800">{selectedService?.title}</span>
+          <div className="flex justify-between items-center pb-1">
+            <span className="text-slate-500">Service</span>
+            <span className="font-bold text-slate-800 truncate max-w-[150px]">{selectedService?.title}</span>
           </div>
-          <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
-            <span className="text-slate-500 font-semibold">Customer Name</span>
+          <div className="flex justify-between items-center pb-1">
+            <span className="text-slate-500">Customer</span>
             <span className="font-bold text-slate-800">{customerName}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-slate-500 font-semibold">Partner Commission</span>
-            <span className="font-bold text-emerald-600">{formatCurrency(partnerNetMargin)}</span>
           </div>
         </div>
 
         {/* Action Triggers */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+        <div className="grid gap-2 grid-cols-3">
           <Link
             href={`/ap/applications/${submittedApplication.id}`}
-            className="flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-xs transition duration-150 shadow-sm"
+            className="flex flex-col items-center justify-center gap-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-[10px] transition shadow-sm"
           >
-            <Clock className="w-4 h-4" />
-            Track Status
+            <Clock className="w-3.5 h-3.5" />
+            Track
           </Link>
           <button
             onClick={() => handlePrint()}
-            className="flex items-center justify-center gap-2 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl font-bold text-xs text-slate-700 transition duration-150"
+            className="flex flex-col items-center justify-center gap-1 py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl font-bold text-[10px] text-slate-700 transition"
           >
-            <Printer className="w-4 h-4" />
-            Print Receipt
+            <Printer className="w-3.5 h-3.5" />
+            Print
           </button>
           <a
-            href={`https://wa.me/${customerMobile.replace(/\D/g, "")}?text=Hello%20${encodeURIComponent(customerName)},%20your%20application%20for%20${encodeURIComponent(selectedService?.title ?? "")}%20has%20been%20submitted%20successfully.%20Tracking%20Reference:%20${submittedApplication.applicationCode}`}
+            href={`https://wa.me/${customerMobile.replace(/\D/g, "")}?text=Hello%20${encodeURIComponent(customerName)},%20your%20application%20for%20${encodeURIComponent(selectedService?.title ?? "")}%20has%20been%20submitted.%20Ref:%20${submittedApplication.applicationCode}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="col-span-2 md:col-span-1 flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-xs transition duration-150"
+            className="flex flex-col items-center justify-center gap-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-[10px] transition"
           >
-            <Share2 className="w-4 h-4" />
-            Share WhatsApp
+            <Share2 className="w-3.5 h-3.5" />
+            Share
           </a>
         </div>
 
         <button
           onClick={() => {
-            // Reset state to submit new application
             setSubmitSuccess(false);
             setSubmittedApplication(null);
             setCustomerId("");
@@ -695,100 +702,87 @@ export function APApplicationForm({
             setRazorpayPayment(null);
             setCurrentStep(1);
           }}
-          className="mt-6 text-sm font-bold text-blue-600 hover:underline block mx-auto cursor-pointer"
+          className="mt-5 text-xs font-bold text-blue-600 hover:underline block mx-auto"
         >
-          Submit Another Application
+          New Application
         </button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]" aria-busy={isPending}>
-      {/* SECTION 1: Sticky Header */}
-      <div className="lg:col-span-2 bg-white/70 backdrop-blur-xl border border-slate-100/80 px-4 py-3 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sticky top-4 z-40 max-w-full overflow-hidden">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-black text-slate-800 tracking-tight">Create Application</h1>
-            <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border ${
-              draftStatus === "Saved" 
-                ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
-                : "bg-amber-50 text-amber-600 border-amber-100"
-            }`}>
-              <Sparkles className="w-2.5 h-2.5" />
+    <form onSubmit={onSubmit} className="max-w-full overflow-hidden pb-16" aria-busy={isPending}>
+      
+      {/* HEADER SECTION (Max Height 120px) */}
+      <div className="w-full bg-white/80 border border-slate-100/60 px-3.5 py-2.5 rounded-2xl shadow-sm flex items-center justify-between mb-3 gap-2 z-40 max-h-[60px]">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/ap/dashboard"
+            className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-slate-100 border border-slate-200/50"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <h1 className="text-xs font-bold text-slate-800 leading-tight">Apply</h1>
+            <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100">
               {draftStatus}
             </span>
           </div>
-          <p className="text-[10px] text-slate-500">Create and submit customer services quickly.</p>
         </div>
-        
-        <div className="flex gap-2 items-center">
+
+        <div className="flex gap-1.5 items-center">
           <button
             type="button"
             onClick={() => setShowRecentDrawer(true)}
-            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-650 bg-slate-50 hover:bg-slate-150 px-3 py-1.5 border border-slate-200 rounded-full transition"
+            className="h-8 w-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/50"
+            title="Recents"
           >
-            <History className="w-3.5 h-3.5" />
-            Recents
+            <History className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={() => setShowHelpModal(true)}
-            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-655 bg-slate-50 hover:bg-slate-150 px-3 py-1.5 border border-slate-200 rounded-full transition"
+            className="h-8 w-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200/50"
+            title="Help Desk"
           >
-            <HelpCircle className="w-3.5 h-3.5" />
-            Help
+            <HelpCircle className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* SECTION 7: Compact Stepper Progress tracker */}
-      <div className="lg:col-span-2 bg-white/70 backdrop-blur-xl border border-slate-100 p-4 rounded-2xl shadow-sm flex justify-between items-center text-[10px] md:text-xs font-bold text-slate-500 overflow-x-auto scrollbar-none gap-2">
-        {[
-          { step: 1, label: "Customer Profile" },
-          { step: 2, label: "Service & Docs" },
-          { step: 3, label: "Review & Checkout" }
-        ].map((s, idx) => {
-          const isDone = currentStep > s.step;
-          const isActive = currentStep === s.step;
-          return (
-            <div key={s.step} className="flex items-center gap-1.5 shrink-0">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center border font-bold text-[10px] ${
-                isDone ? "bg-emerald-500 border-emerald-500 text-white" : isActive ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-200 text-slate-400"
-              }`}>
-                {isDone ? "✓" : s.step}
-              </div>
-              <span className={isActive ? "text-slate-800 font-extrabold" : "text-slate-400"}>{s.label}</span>
-              {idx < 2 && <ChevronRight className="w-3 h-3 text-slate-300 ml-1.5" />}
-            </div>
-          );
-        })}
-      </div>
-
-      <fieldset disabled={isPending} className="contents">
-        {/* Main Wizard Form Steps container */}
-        <div className="space-y-6 lg:col-span-1">
-          {/* STEP 1: Customer Profile Search & Form */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              {/* SECTION 2: Smart Customer Search */}
-              <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-bold text-slate-800">Smart Customer Search</h2>
-                      <p className="text-[10px] text-slate-400">Search customer profiles instantly</p>
-                    </div>
+      {/* SINGLE GLASS SURFACE WRAPPER */}
+      <div className="bg-white/70 backdrop-blur-xl border border-slate-100 rounded-3xl overflow-hidden shadow-sm divide-y divide-slate-100/80 max-w-full">
+        <fieldset disabled={isPending} className="contents">
+          
+          {/* STEP 1: Customer */}
+          <div className="p-3.5 transition-all">
+            {currentStep > 1 ? (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shrink-0 font-bold shadow-sm">
+                    ✓
                   </div>
-                  
-                  <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
+                  <div className="text-slate-500 font-bold">
+                    Step 1: Customer: <span className="text-slate-800 font-semibold">{customerName || "Selected"}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-blue-600 hover:text-blue-700 font-bold text-[11px]"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : currentStep === 1 ? (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide">Step 1: Customer</span>
+                  <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
                     <button
                       type="button"
                       onClick={() => setIsNewCustomer(false)}
-                      className={`px-3 py-1 rounded-md transition ${!isNewCustomer ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                      className={`px-2 py-0.5 rounded transition ${!isNewCustomer ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}
                     >
                       Search
                     </button>
@@ -804,8 +798,12 @@ export function APApplicationForm({
                         setCustomerAddress("");
                         setCustomerPincode("");
                         setCustomerCity("");
+                        setCustomerGender("");
+                        setCustomerDob("");
+                        setCustomerDistrict("");
+                        setCustomerState("");
                       }}
-                      className={`px-3 py-1 rounded-md transition ${isNewCustomer ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                      className={`px-2 py-0.5 rounded transition ${isNewCustomer ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}
                     >
                       New
                     </button>
@@ -813,122 +811,100 @@ export function APApplicationForm({
                 </div>
 
                 {!isNewCustomer && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="relative">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-455" />
                       <Input
                         type="text"
-                        placeholder="Search by Mobile, Aadhaar, PAN, Customer ID..."
+                        placeholder="Search profile..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 border-slate-200 bg-white/80 text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-xs"
+                        className="pl-9 h-9 border-slate-200 bg-white text-xs rounded-xl"
                       />
                       {searchLoading && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 border border-slate-300 border-t-blue-500 rounded-full animate-spin" />
                       )}
                     </div>
 
-                    {/* Suggestions list */}
                     {lookupResults.length > 0 && (
-                      <div className="border border-slate-100 rounded-2xl bg-white shadow-lg overflow-hidden divide-y divide-slate-100 z-55 max-h-60 overflow-y-auto">
+                      <div className="border border-slate-100 rounded-xl bg-white shadow-md overflow-hidden divide-y divide-slate-100 z-50 max-h-40 overflow-y-auto">
                         {lookupResults.map((res) => (
                           <button
                             key={res.customer.id}
                             type="button"
                             onClick={() => selectCustomerResult(res)}
-                            className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center justify-between transition cursor-pointer"
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between text-[11px] transition"
                           >
                             <div>
-                              <p className="text-xs font-bold text-slate-800">{res.customer.full_name}</p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">{res.customer.mobile} &bull; {res.customer.city || "No City"}</p>
+                              <p className="font-bold text-slate-800">{res.customer.full_name}</p>
+                              <p className="text-[9px] text-slate-400 mt-0.5">{res.customer.mobile} &bull; {res.customer.city || "No City"}</p>
                             </div>
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                            <ChevronRight className="w-3 h-3 text-slate-450" />
                           </button>
                         ))}
                       </div>
                     )}
 
-                    {/* Result Card */}
                     {selectedResult && (
-                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 relative animate-in slide-in-from-top-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Selected Profile</span>
-                            <h4 className="text-xs font-extrabold text-slate-800 mt-0.5">{selectedResult.customer.full_name}</h4>
-                            <p className="text-[10px] text-slate-500">{selectedResult.customer.mobile} &bull; {selectedResult.customer.email || "No email"}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedResult(null);
-                              setCustomerId("");
-                            }}
-                            className="text-slate-400 hover:text-slate-600 bg-white border border-slate-200 rounded-full p-1"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                      <div className="bg-slate-50/50 rounded-xl p-2.5 flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-bold text-slate-850">{selectedResult.customer.full_name}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{selectedResult.customer.mobile}</p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedResult(null); setCustomerId(""); }}
+                          className="text-slate-400 hover:text-slate-600 bg-white border border-slate-200 rounded-full p-1 shadow-xs"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
                   </div>
                 )}
 
-                {isNewCustomer && (
-                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-100/50 rounded-2xl p-3 text-blue-750 animate-in slide-in-from-top-1">
-                    <UserPlus className="w-4 h-4 shrink-0 stroke-[2.5]" />
-                    <div>
-                      <p className="text-[11px] font-bold">New Customer Creation Mode</p>
-                      <p className="text-[9px] text-blue-600 mt-0.5">Please fill details in the profile block below.</p>
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              {/* SECTION 3: Customer Profile Form */}
-              <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">Customer Information</h3>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Full Name</label>
+                {/* Customer Profile inputs */}
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <div className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Customer Name</label>
                     <Input
                       name="customerName"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Enter full name"
-                      className="h-10 border-slate-200 bg-white"
+                      placeholder="Enter name"
+                      className="h-9 border-slate-200 bg-white text-xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Mobile Number</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Mobile Number</label>
                     <Input
                       name="mobile"
                       value={customerMobile}
                       onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="10-digit mobile"
                       inputMode="numeric"
-                      className="h-10 border-slate-200 bg-white"
+                      className="h-9 border-slate-200 bg-white text-xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Email Address</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Email Address</label>
                     <Input
                       name="email"
                       type="email"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="customer@domain.com"
-                      className="h-10 border-slate-200 bg-white"
+                      placeholder="email@address.com"
+                      className="h-9 border-slate-200 bg-white text-xs"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Gender</label>
+                    <div className="space-y-0.5">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">Gender</label>
                       <Select value={customerGender} onValueChange={setCustomerGender}>
-                        <SelectTrigger className="h-10 border-slate-200 bg-white text-xs">
+                        <SelectTrigger className="h-9 border-slate-200 bg-white text-xs">
                           <SelectValue placeholder="Gender" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
@@ -939,20 +915,20 @@ export function APApplicationForm({
                       </Select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Date of Birth</label>
+                    <div className="space-y-0.5">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">DOB</label>
                       <Input
                         name="dob"
                         type="date"
                         value={customerDob}
                         onChange={(e) => setCustomerDob(e.target.value)}
-                        className="h-10 border-slate-200 bg-white text-xs"
+                        className="h-9 border-slate-200 bg-white text-xs"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Pincode</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Pincode</label>
                     <div className="relative">
                       <Input
                         name="pincode"
@@ -961,10 +937,10 @@ export function APApplicationForm({
                         placeholder="6-digit PIN"
                         maxLength={6}
                         inputMode="numeric"
-                        className="h-10 border-slate-200 bg-white pr-16"
+                        className="h-9 border-slate-200 bg-white pr-14 text-xs"
                       />
                       {pincodeAutofillStatus && (
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-blue-600 bg-blue-50 px-1 rounded py-0.5">
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-extrabold text-blue-600 bg-blue-50 px-1 py-0.2 rounded">
                           {pincodeAutofillStatus}
                         </span>
                       )}
@@ -972,63 +948,112 @@ export function APApplicationForm({
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">District</label>
+                    <div className="space-y-0.5">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">District</label>
                       <Input
                         name="district"
                         value={customerDistrict}
                         onChange={(e) => setCustomerDistrict(e.target.value)}
                         placeholder="District"
-                        className="h-10 border-slate-200 bg-white"
+                        className="h-9 border-slate-200 bg-white text-xs"
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">State</label>
+                    <div className="space-y-0.5">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">State</label>
                       <Input
                         name="state"
                         value={customerState}
                         onChange={(e) => setCustomerState(e.target.value)}
                         placeholder="State"
-                        className="h-10 border-slate-200 bg-white"
+                        className="h-9 border-slate-200 bg-white text-xs"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Full Address</label>
+                  <div className="space-y-0.5 sm:col-span-2">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Address</label>
                     <Textarea
                       name="address"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      placeholder="Address details..."
-                      rows={2}
+                      placeholder="Complete address..."
+                      rows={1.5}
                       className="border-slate-200 bg-white text-xs"
                     />
                   </div>
                 </div>
-              </Card>
-            </div>
-          )}
 
-          {/* STEP 2: Service & Document Center */}
-          {currentStep === 2 && (
-            <div className="space-y-6 animate-in slide-in-from-right-3 duration-300">
-              {/* SECTION 4: Service Selection */}
-              <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">Choose Service</h3>
+                {/* Duplicate App warnings */}
+                {showDuplicateWarning && activeDuplicateApp && (
+                  <div className="bg-amber-50/50 rounded-2xl p-3 flex items-start gap-2.5 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 text-[10px]">
+                      <p className="font-bold text-amber-800">Duplicate Application Alert</p>
+                      <p className="text-slate-600 mt-0.5">Active application exists for this customer.</p>
+                      <div className="flex gap-2 mt-2">
+                        <Link
+                          href={`/ap/applications/${activeDuplicateApp.id}`}
+                          className="px-2.5 py-1 bg-amber-600 text-white font-bold rounded-lg text-[9px]"
+                        >
+                          View Existing
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setShowDuplicateWarning(false)}
+                          className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-650"
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs py-0.5 text-slate-400">
+                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                  1
+                </div>
+                <span className="font-semibold text-slate-400">Step 1: Customer</span>
+              </div>
+            )}
+          </div>
+
+          {/* STEP 2: Service */}
+          <div className="p-3.5 transition-all">
+            {currentStep > 2 ? (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shrink-0 font-bold shadow-sm">
+                    ✓
+                  </div>
+                  <div className="text-slate-500 font-bold">
+                    Step 2: Service: <span className="text-slate-800 font-semibold">{selectedService?.title || "Selected"}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="text-blue-600 hover:text-blue-700 font-bold text-[11px]"
+                >
+                  Change
+                </button>
+              </div>
+            ) : currentStep === 2 ? (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 2: Service</span>
                 
-                {/* Horizontal categories list */}
                 <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none pr-1">
                   {categories.map((cat) => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1.5 text-[10px] font-bold rounded-full transition whitespace-nowrap cursor-pointer ${
+                      className={`px-3 py-1 text-[9px] font-bold rounded-full transition whitespace-nowrap cursor-pointer ${
                         selectedCategory === cat 
                           ? "bg-blue-600 text-white shadow-sm" 
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-1.50"
+                          : "bg-slate-100 text-slate-655 hover:bg-slate-150"
                       }`}
                     >
                       {cat}
@@ -1037,111 +1062,113 @@ export function APApplicationForm({
                 </div>
 
                 <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <Input
                     type="text"
-                    placeholder="Search services catalog..."
+                    placeholder="Search service item..."
                     value={serviceSearch}
                     onChange={(e) => setServiceSearch(e.target.value)}
-                    className="pl-10 h-10 border-slate-200 bg-white"
+                    className="pl-9 h-9 border-slate-200 bg-white"
                   />
                 </div>
 
                 <Select value={serviceId} onValueChange={setServiceId}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white text-xs text-slate-800">
+                  <SelectTrigger className="h-10 border-slate-200 bg-white text-xs text-slate-800">
                     <SelectValue placeholder="Select Service" />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
                     {filteredServices.map((service) => (
-                      <SelectItem key={service.id} value={service.id} className="hover:bg-slate-50 text-slate-700 text-xs">
+                      <SelectItem key={service.id} value={service.id} className="hover:bg-slate-50 text-slate-707 text-xs">
                         {service.title} - {formatCurrency(service.customer_fee)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                {/* Shortcut badges */}
-                <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-2.5">
-                  {services.slice(0, 3).map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setServiceId(s.id)}
-                      className={`px-2.5 py-1 text-[9px] font-extrabold rounded-lg border transition ${
-                        serviceId === s.id 
-                          ? "bg-blue-50 border-blue-200 text-blue-600" 
-                          : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
-                      }`}
-                    >
-                      {s.title.replace("Registration", "").replace("Application", "").trim()}
-                    </button>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Service Details & Commission */}
-              {selectedService && (
-                <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-3">
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase">Fee</span>
-                      <p className="text-xs font-black text-slate-800 mt-0.5">{formatCurrency(selectedService.customer_fee)}</p>
+                {selectedService && (
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50/50 p-2.5 rounded-2xl text-center text-xs font-bold">
+                    <div>
+                      <span className="text-[8px] font-bold text-slate-455 block uppercase">Fee</span>
+                      <p className="text-slate-800 mt-0.5">{formatCurrency(selectedService.customer_fee)}</p>
                     </div>
-                    <div className="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
-                      <span className="text-[8px] font-bold text-emerald-600 uppercase">Earn Commission</span>
-                      <p className="text-xs font-black text-emerald-600 mt-0.5">{formatCurrency(selectedPayout)}</p>
+                    <div>
+                      <span className="text-[8px] font-bold text-emerald-600 block uppercase">Payout</span>
+                      <p className="text-emerald-600 mt-0.5">{formatCurrency(selectedPayout)}</p>
                     </div>
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase">Time</span>
-                      <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">{selectedService.processing_time || "1-3 Days"}</p>
+                    <div>
+                      <span className="text-[8px] font-bold text-slate-455 block uppercase">TAT</span>
+                      <p className="text-slate-750 mt-0.5 truncate">{selectedService.processing_time || "1-3 Days"}</p>
                     </div>
                   </div>
-                </Card>
-              )}
+                )}
 
-              {/* PM Vishwakarma inputs */}
-              {isPmVishwakarma && (
-                <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-3">
+                {isPmVishwakarma && (
                   <PmVishwakarmaApplicationFields 
                     values={pmVishwakarmaValues} 
                     onChange={updatePmVishwakarmaValue} 
                     pincodeStatus={pincodeStatus} 
                   />
-                </Card>
-              )}
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs py-0.5 text-slate-400">
+                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                  2
+                </div>
+                <span className="font-semibold text-slate-400">Step 2: Service</span>
+              </div>
+            )}
+          </div>
 
-              {/* SECTION 6: Document Upload Center */}
-              <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">Scanner upload center</h3>
-                
-                {/* Document lists */}
+          {/* STEP 3: Documents */}
+          <div className="p-3.5 transition-all">
+            {currentStep > 3 ? (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shrink-0 font-bold shadow-sm">
+                    ✓
+                  </div>
+                  <div className="text-slate-500 font-bold">
+                    Step 3: Documents: <span className="text-slate-800 font-semibold">{uploadedFiles.length} files attached</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="text-blue-600 hover:text-blue-700 font-bold text-[11px]"
+                >
+                  Manage
+                </button>
+              </div>
+            ) : currentStep === 3 ? (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 3: Documents</span>
+
                 {serviceChecklist.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {serviceChecklist.map((doc, idx) => {
                       const uploaded = isDocumentUploaded(doc);
                       return (
-                        <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-100 rounded-xl p-3">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                              uploaded ? "bg-emerald-500 text-white animate-in zoom-in" : "bg-slate-200 text-slate-450"
+                        <div key={idx} className="flex justify-between items-center bg-slate-50/50 rounded-xl p-2.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                              uploaded ? "bg-emerald-500 text-white animate-in zoom-in" : "bg-slate-200 text-slate-400"
                             }`}>
-                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <Check className="w-2.5 h-2.5 stroke-[2.5]" />
                             </div>
-                            <span className="text-xs font-bold text-slate-700">{doc}</span>
+                            <span className="text-xs font-bold text-slate-700 truncate">{doc}</span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
                               onClick={() => startCamera(doc)}
-                              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-650 p-1.5 rounded-lg shadow-sm transition inline-flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 p-1.5 rounded-lg shadow-xs text-[9px] font-bold flex items-center gap-1 cursor-pointer"
                             >
-                              <Camera className="w-3.5 h-3.5" />
-                              Scan
+                              <Camera className="w-3.5 h-3.5" /> Scan
                             </button>
-                            <label className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-655 p-1.5 rounded-lg shadow-sm transition inline-flex items-center gap-1 text-[10px] font-bold cursor-pointer">
-                              <FileUp className="w-3.5 h-3.5" />
-                              Add
+                            <label className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 p-1.5 rounded-lg shadow-xs text-[9px] font-bold flex items-center gap-1 cursor-pointer">
+                              <FileUp className="w-3.5 h-3.5" /> Add
                               <input
                                 type="file"
                                 className="hidden"
@@ -1155,24 +1182,24 @@ export function APApplicationForm({
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-450 text-[11px] font-bold">
-                    No documents mandatory for this service.
+                  <div className="text-center py-4 bg-slate-50/30 rounded-2xl text-[10px] font-bold text-slate-400">
+                    No documents required for this service.
                   </div>
                 )}
 
-                {/* Drag Drop box */}
+                {/* Compact general upload */}
                 <div 
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
                     handleFileUpload(e.dataTransfer.files);
                   }}
-                  className="border border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-4 text-center bg-slate-50/50 transition cursor-pointer flex flex-col items-center justify-center"
+                  className="border border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-3 text-center bg-slate-50/20 cursor-pointer transition flex flex-col items-center justify-center"
                 >
-                  <FileUp className="w-6 h-6 text-slate-400 mb-1" />
-                  <p className="text-[11px] font-bold text-slate-700">Drag or drop scanned files here</p>
-                  <label className="mt-2 px-3 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg text-[10px] font-bold shadow-sm transition inline-block">
-                    Add Scans
+                  <FileUp className="w-5 h-5 text-slate-400 mb-1" />
+                  <p className="text-[10px] font-bold text-slate-600">Drag scans here</p>
+                  <label className="mt-1.5 px-3 py-1 bg-white border border-slate-250 hover:bg-slate-100 rounded-lg text-[9px] font-bold shadow-xs transition inline-block">
+                    Browse Scans
                     <input
                       type="file"
                       multiple
@@ -1183,28 +1210,26 @@ export function APApplicationForm({
                   </label>
                 </div>
 
-                {/* Uploaded lists */}
                 {uploadedFiles.length > 0 && (
-                  <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Scans Attachment:</span>
+                  <div className="space-y-1.5 border-t border-slate-100 pt-2">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block">Attached ({uploadedFiles.length})</span>
                     {uploadedFiles.map((uf) => (
-                      <div key={uf.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm animate-in fade-in">
+                      <div key={uf.id} className="flex items-center justify-between bg-white/50 rounded-lg p-2 animate-in">
                         <div className="flex-1 min-w-0 pr-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-800 truncate block max-w-[150px]">{uf.file.name}</span>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-slate-800 truncate block max-w-[120px]">{uf.file.name}</span>
                             <span className="text-[8px] font-extrabold text-blue-600 bg-blue-50 px-1 rounded">{uf.documentType}</span>
                           </div>
-
                           {uf.status === "validated" && (
-                            <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold text-emerald-600 mt-1">
-                              <ShieldCheck className="w-2.5 h-2.5" /> Checked & Scanned
+                            <span className="inline-flex items-center gap-0.5 text-[8px] font-bold text-emerald-600 mt-0.5">
+                              <ShieldCheck className="w-2.5 h-2.5" /> Validated
                             </span>
                           )}
                         </div>
                         <button
                           type="button"
                           onClick={() => removeUploadedFile(uf.id)}
-                          className="text-slate-400 hover:text-red-500 p-1"
+                          className="text-slate-400 hover:text-red-500 p-0.5"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1212,78 +1237,54 @@ export function APApplicationForm({
                     ))}
                   </div>
                 )}
-              </Card>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs py-0.5 text-slate-400">
+                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                  3
+                </div>
+                <span className="font-semibold text-slate-400">Step 3: Documents</span>
+              </div>
+            )}
+          </div>
 
-          {/* STEP 3: Review & Payment Checkouts */}
-          {currentStep === 3 && (
-            <div className="space-y-6 animate-in slide-in-from-right-3 duration-300">
-              {/* SECTION 9: Pre-Submit Summary Card */}
-              <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">Workspace Summary</h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Customer Profile</span>
-                    <span className="font-extrabold text-slate-700">{customerName}</span>
+          {/* STEP 4: Payment */}
+          <div className="p-3.5 transition-all">
+            {currentStep > 4 ? (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shrink-0 font-bold shadow-sm">
+                    ✓
                   </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Selected Service</span>
-                    <span className="font-extrabold text-slate-700 truncate max-w-[180px]">{selectedService?.title}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Documents Attached</span>
-                    <span className="font-extrabold text-slate-700">{uploadedFiles.length} Scans</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">TAT Duration</span>
-                    <span className="font-bold text-blue-600">{selectedService?.processing_time || "1-3 working days"}</span>
+                  <div className="text-slate-500 font-bold">
+                    Step 4: Payment: <span className="text-emerald-600 font-bold">Verified ({formatCurrency(grossTotal)})</span>
                   </div>
                 </div>
+              </div>
+            ) : currentStep === 4 ? (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 4: Payment</span>
 
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2 text-xs">
+                <div className="bg-slate-50/50 rounded-2xl p-3.5 space-y-2 text-xs">
                   <div className="flex justify-between items-center text-slate-500">
-                    <span>Filings Service Charge</span>
+                    <span>Filings Charge</span>
                     <span className="font-mono">{formatCurrency(selectedService?.customer_fee ?? 0)}</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-500">
                     <span>GST Taxes (18%)</span>
                     <span className="font-mono">{formatCurrency(calculatedGST)}</span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-700 border-t border-slate-200/60 pt-2 font-black">
-                    <span>Grand Total</span>
-                    <span className="font-mono text-slate-800 text-sm">{formatCurrency(grossTotal)}</span>
+                  <div className="flex justify-between items-center text-slate-700 border-t border-slate-200/50 pt-2 font-black text-sm">
+                    <span>Payable Total</span>
+                    <span className="font-mono text-slate-800">{formatCurrency(grossTotal)}</span>
                   </div>
-                  <div className="flex justify-between items-center text-emerald-600 pt-1 font-bold">
-                    <span>Partner Payout margin</span>
+                  <div className="flex justify-between items-center text-emerald-600 pt-0.5 font-bold">
+                    <span>Earning margin</span>
                     <span>{formatCurrency(partnerNetMargin)}</span>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowInvoicePreview(true)}
-                  className="w-full h-10 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Generate Invoice
-                </button>
-              </Card>
-
-              {/* SECTION 5: Razorpay Checkout Integration */}
-              <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">Online Payment</h3>
-                
-                <div className="bg-blue-50 border border-blue-100/50 rounded-2xl p-3 text-blue-800 flex gap-2">
-                  <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                  <div className="text-[10px] leading-relaxed">
-                    <p className="font-bold">Automated online verification only</p>
-                    <p className="mt-0.5 text-blue-600">DigiConnect ecosystem strictly mandates Razorpay checkout. Cash or manual entries are not allowed.</p>
-                  </div>
-                </div>
-
-                <div className="pt-2">
+                <div className="pt-1.5">
                   {selectedService && (
                     <RazorpayCheckoutButton
                       amountPaise={payableAmountPaise}
@@ -1306,119 +1307,100 @@ export function APApplicationForm({
                   )}
 
                   {razorpayPayment && (
-                    <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-2.5 text-xs font-bold text-emerald-600 mt-3 animate-in fade-in">
+                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-xs font-bold text-emerald-600 mt-2.5 animate-in fade-in">
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      Checkout verified: {razorpayPayment.razorpay_payment_id}
+                      Transaction verified successfully.
                     </div>
                   )}
                 </div>
-              </Card>
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs py-0.5 text-slate-400">
+                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                  4
+                </div>
+                <span className="font-semibold text-slate-400">Step 4: Payment</span>
+              </div>
+            )}
+          </div>
 
-        {/* Desktop sidebar summary card (only visible on large screens) */}
-        <div className="hidden lg:block space-y-6 h-fit lg:sticky lg:top-24">
-          <Card className="bg-white/70 backdrop-blur-xl border-slate-100 rounded-3xl p-6 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Attribution</h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between"><span className="text-slate-500">Workspace</span><span className="font-bold text-slate-700">Agent Partner POS</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Service Fee</span><span className="font-mono text-slate-800">{formatCurrency(selectedService?.customer_fee ?? 0)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Commission Payout</span><span className="font-mono text-emerald-600 font-bold">{formatCurrency(partnerNetMargin)}</span></div>
-            </div>
-            
-            {/* Desktop form navigation controllers */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              {currentStep > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(prev => prev - 1)}
-                  className="w-full h-10 border border-slate-200 bg-white text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back
-                </button>
-              )}
-              {currentStep === 1 && (
-                <button
-                  type="button"
-                  onClick={() => { if (validateStep1()) setCurrentStep(2); }}
-                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center"
-                >
-                  Next Step: Choose Service
-                </button>
-              )}
-              {currentStep === 2 && (
-                <button
-                  type="button"
-                  onClick={() => { if (validateStep2()) setCurrentStep(3); }}
-                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center"
-                >
-                  Next Step: Review & Pay
-                </button>
-              )}
-              {currentStep === 3 && (
-                <FormSubmitButton
-                  loading={isPending}
-                  disabled={!serviceId || !customerName || !customerMobile || !razorpayPayment}
-                  loadingText="Submitting..."
-                  icon={<Send className="h-4 w-4" />}
-                  className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/10 cursor-pointer"
-                >
-                  Submit Application
-                </FormSubmitButton>
-              )}
-              
-              <button
-                type="button"
-                onClick={triggerDraftSave}
-                className="w-full h-10 bg-slate-50 hover:bg-slate-100 border border-slate-250 text-slate-650 rounded-xl text-xs font-bold transition flex items-center justify-center"
-              >
-                Save Draft
-              </button>
-            </div>
-          </Card>
-        </div>
-      </fieldset>
+          {/* STEP 5: Submit */}
+          <div className="p-3.5 transition-all">
+            {currentStep === 5 ? (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 5: Submit</span>
 
-      {/* SECTION 4: APPLE-STYLE FLOATING STICKY BOTTOM ACTION FOOTER FOR MOBILE */}
-      <div className="fixed bottom-[68px] inset-x-4 p-3 bg-white/90 backdrop-blur-xl border border-slate-100/80 shadow-2xl rounded-2xl z-40 lg:hidden flex items-center gap-2 animate-in slide-in-from-bottom duration-300">
-        {currentStep > 1 && (
+                <div className="space-y-2.5 text-xs bg-slate-50/50 rounded-2xl p-3.5">
+                  <div className="flex justify-between pb-1 border-b border-slate-200/20">
+                    <span className="text-slate-400">Customer Profile</span>
+                    <span className="font-bold text-slate-800">{customerName}</span>
+                  </div>
+                  <div className="flex justify-between pb-1 border-b border-slate-200/20">
+                    <span className="text-slate-400">Service Title</span>
+                    <span className="font-bold text-slate-800 truncate max-w-[155px]">{selectedService?.title}</span>
+                  </div>
+                  <div className="flex justify-between pb-1 border-b border-slate-200/20">
+                    <span className="text-slate-400">Documents Attached</span>
+                    <span className="font-bold text-slate-800">{uploadedFiles.length} files</span>
+                  </div>
+                  <div className="flex justify-between pb-1 border-b border-slate-200/20">
+                    <span className="text-slate-400">Processing TAT</span>
+                    <span className="font-bold text-slate-800">{selectedService?.processing_time || "As per catalog"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-emerald-600 font-extrabold pt-0.5">
+                    <span>Commission Margin</span>
+                    <span>{formatCurrency(partnerNetMargin)}</span>
+                  </div>
+                </div>
+
+                {selectedService && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInvoicePreview(true)}
+                    className="w-full h-10 border border-slate-200 bg-white hover:bg-slate-50 text-slate-750 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Preview Invoice
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs py-0.5 text-slate-400">
+                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                  5
+                </div>
+                <span className="font-semibold text-slate-450">Step 5: Submit</span>
+              </div>
+            )}
+          </div>
+
+        </fieldset>
+      </div>
+
+      {/* STICKY BOTTOM ACTION BAR (56px) */}
+      <div className="fixed bottom-[60px] md:bottom-0 inset-x-0 h-[56px] px-4 py-2 bg-white/85 backdrop-blur-md border-t border-slate-150 flex items-center justify-between gap-2.5 z-40 max-w-xl mx-auto shadow-lg pb-safe-bottom">
+        {currentStep > 1 ? (
           <button
             type="button"
             onClick={() => setCurrentStep(prev => prev - 1)}
-            className="h-10 px-3 border border-slate-200 bg-white text-slate-700 rounded-xl text-xs font-bold transition shrink-0 flex items-center justify-center"
-            title="Go Back"
+            className="h-9 px-3.5 border border-slate-200 bg-white text-slate-707 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3.5 h-3.5" /> Back
           </button>
-        )}
-
-        {currentStep < 3 && (
+        ) : (
           <button
             type="button"
             onClick={triggerDraftSave}
-            className="h-10 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-[10px] font-bold transition whitespace-nowrap shrink-0 flex items-center justify-center"
+            className="h-9 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-[10px] font-bold transition shrink-0 cursor-pointer"
           >
             Save Draft
           </button>
         )}
 
-        {currentStep === 3 && selectedService && (
-          <button
-            type="button"
-            onClick={() => setShowInvoicePreview(true)}
-            className="h-10 px-3 border border-slate-200 bg-white text-slate-700 rounded-xl text-[10px] font-bold transition whitespace-nowrap shrink-0 flex items-center justify-center"
-          >
-            Invoice
-          </button>
-        )}
-
-        {/* Primary wizard checkout CTA */}
         {currentStep === 1 && (
           <button
             type="button"
             onClick={() => { if (validateStep1()) setCurrentStep(2); }}
-            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-extrabold transition flex items-center justify-center"
+            className="flex-1 h-9 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
           >
             Continue
           </button>
@@ -1428,40 +1410,60 @@ export function APApplicationForm({
           <button
             type="button"
             onClick={() => { if (validateStep2()) setCurrentStep(3); }}
-            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-extrabold transition flex items-center justify-center"
+            className="flex-1 h-9 bg-blue-600 hover:bg-blue-755 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
           >
-            Review & Pay
+            Continue
           </button>
         )}
 
         {currentStep === 3 && (
+          <button
+            type="button"
+            onClick={() => { if (validateStep3()) setCurrentStep(4); }}
+            className="flex-1 h-9 bg-blue-600 hover:bg-blue-755 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
+          >
+            Continue
+          </button>
+        )}
+
+        {currentStep === 4 && (
+          <button
+            type="button"
+            onClick={() => { if (validateStep4()) setCurrentStep(5); }}
+            className="flex-1 h-9 bg-blue-600 hover:bg-blue-755 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
+          >
+            Continue
+          </button>
+        )}
+
+        {currentStep === 5 && (
           <FormSubmitButton
             loading={isPending}
             disabled={!serviceId || !customerName || !customerMobile || !razorpayPayment}
-            loadingText="Submitting..."
+            loadingText="Submitting"
             icon={<Send className="h-3.5 w-3.5" />}
-            className="flex-1 h-10 bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-extrabold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/10 cursor-pointer text-[11px]"
+            className="flex-1 h-9 bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-extrabold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/10 cursor-pointer text-xs"
           >
-            Submit Application
+            Submit
           </FormSubmitButton>
         )}
       </div>
 
-      {/* DIALOGS AND OVERLAYS */}
+      {/* DIALOGS AND MODALS */}
 
-      {/* WebRTC Camera Modal */}
+      {/* WebRTC Camera Scanner */}
       {showCameraModal && (
         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center p-4 z-55 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-100 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-slate-800 text-sm">Document Scanner</h3>
-                <p className="text-[10px] text-slate-400">Position the document within boundaries</p>
+                <h3 className="font-bold text-slate-800 text-sm">Scan Document</h3>
+                <p className="text-[10px] text-slate-450">Position the document inside boundaries</p>
               </div>
               <button
                 type="button"
                 onClick={() => stopCamera()}
-                className="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1.5"
+                className="text-slate-400 hover:text-slate-655 bg-slate-100 rounded-full p-1.5"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1485,13 +1487,12 @@ export function APApplicationForm({
                 onClick={() => capturePhoto()}
                 className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1"
               >
-                <Camera className="w-4 h-4" />
-                Capture
+                <Camera className="w-4 h-4" /> Capture Scan
               </button>
               <button
                 type="button"
                 onClick={() => stopCamera()}
-                className="px-4 h-11 bg-slate-100 hover:bg-slate-200 text-slate-705 font-bold rounded-xl text-xs transition"
+                className="px-4 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
               >
                 Cancel
               </button>
@@ -1500,43 +1501,37 @@ export function APApplicationForm({
         </div>
       )}
 
-      {/* Help Modal */}
+      {/* Guidelines Guide */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/40 flex items-center justify-center p-4 z-55 animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-100 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div className="bg-white border border-slate-100 rounded-3xl w-full max-w-md p-5 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-blue-500" />
-                Guidelines Help Desk
+                <HelpCircle className="w-4 h-4 text-blue-500" />
+                POS Guidelines
               </h3>
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1"
+                className="text-slate-400 hover:text-slate-655 bg-slate-100 rounded-full p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-650 max-h-80 overflow-y-auto pr-1">
-              <div className="space-y-1">
-                <h4 className="font-extrabold text-slate-800">1. Wizard Navigation</h4>
-                <p className="leading-relaxed">
-                  Complete the customer details in Step 1, select the service catalog in Step 2, and checkout with online Razorpay payments in Step 3.
-                </p>
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-extrabold text-slate-800">2. Mandatory Online Pay</h4>
-                <p className="leading-relaxed">
-                  Platform guidelines mandate verified online gateway transactions. Offline cash entries and manual UPI inputs are disabled.
-                </p>
-              </div>
+            <div className="space-y-2.5 text-xs text-slate-650 max-h-60 overflow-y-auto pr-1">
+              <p className="leading-relaxed">
+                Step-by-step wizard guides you to verify customer details, select filing services, upload required document formats, check out using Razorpay gateway validation, and submit the final applications timeline.
+              </p>
+              <p className="leading-relaxed">
+                Automated payments online are mandatory. Offline checkout formats are disabled.
+              </p>
             </div>
 
             <button
               type="button"
               onClick={() => setShowHelpModal(false)}
-              className="w-full h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
+              className="w-full h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
             >
               Close
             </button>
@@ -1544,37 +1539,36 @@ export function APApplicationForm({
         </div>
       )}
 
-      {/* Invoice Center Modal */}
+      {/* Invoice Modal */}
       {showInvoicePreview && selectedService && (
         <div className="fixed inset-0 bg-slate-950/40 flex items-center justify-center p-4 z-55 animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-100 rounded-3xl w-full max-w-xl p-6 shadow-2xl space-y-4 print:p-0 print:border-none print:shadow-none">
+          <div className="bg-white border border-slate-100 rounded-3xl w-full max-w-xl p-5 shadow-2xl space-y-4 print:p-0 print:border-none print:shadow-none animate-in scale-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2 print:hidden">
               <h3 className="font-bold text-slate-800 text-sm">Invoice Center Preview</h3>
               <button
                 type="button"
                 onClick={() => setShowInvoicePreview(false)}
-                className="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1"
+                className="text-slate-400 hover:text-slate-655 bg-slate-100 rounded-full p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Invoice card content */}
-            <div className="border border-slate-200 rounded-2xl p-6 bg-white space-y-4 text-xs text-slate-700 print:border-0 print:p-4">
+            <div className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4 text-xs text-slate-700 print:border-0 print:p-3">
               <div className="flex justify-between items-start border-b border-slate-150 pb-3">
                 <div>
                   <h2 className="text-sm font-black text-slate-800 tracking-tight">DIGICONNECT</h2>
-                  <p className="text-[8px] text-slate-400 uppercase">POS RECEIPT</p>
+                  <p className="text-[8px] text-slate-400">POS RECEIPT</p>
                 </div>
                 <div className="text-right">
-                  <span className="bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded text-[8px] border border-blue-100">
-                    Draft Receipt
+                  <span className="bg-blue-50 text-blue-600 font-bold px-1.5 py-0.2 rounded text-[8px] border border-blue-100">
+                    Draft
                   </span>
                   <p className="text-[9px] text-slate-500 font-mono mt-0.5">Date: {new Date().toLocaleDateString("en-IN")}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-[11px]">
+              <div className="grid grid-cols-2 gap-3 text-[10px]">
                 <div>
                   <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block">Customer Info</span>
                   <p className="font-bold text-slate-800 mt-0.5">{customerName || "Customer Name"}</p>
@@ -1582,14 +1576,14 @@ export function APApplicationForm({
                   <p className="text-slate-500 truncate mt-0.5">{customerEmail || "No Email"}</p>
                 </div>
                 <div>
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block">attributives</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block">Attribution</span>
                   <p className="font-bold text-slate-800 mt-0.5">Agency Partner POS</p>
                   <p className="text-slate-500 mt-0.5">Gateway: Razorpay Online</p>
                 </div>
               </div>
 
-              <div className="border border-slate-150 rounded-xl overflow-hidden">
-                <div className="grid grid-cols-3 bg-slate-50 px-3 py-1.5 border-b border-slate-150 text-[9px] font-bold text-slate-400">
+              <div className="border border-slate-150 rounded-xl overflow-hidden text-[10px]">
+                <div className="grid grid-cols-3 bg-slate-50 px-3 py-1.5 border-b border-slate-150 font-bold text-slate-400">
                   <span className="col-span-2">Service Description</span>
                   <span className="text-right">Amount</span>
                 </div>
@@ -1603,9 +1597,9 @@ export function APApplicationForm({
                 </div>
               </div>
 
-              <div className="flex justify-between items-center border-t border-slate-150 pt-2">
-                <span className="text-xs font-bold text-slate-800">Total Payable Amount</span>
-                <span className="text-sm font-black text-slate-800 font-mono">{formatCurrency(grossTotal)}</span>
+              <div className="flex justify-between items-center border-t border-slate-150 pt-2 font-bold text-slate-800">
+                <span>Total Payable Amount</span>
+                <span className="font-mono text-sm">{formatCurrency(grossTotal)}</span>
               </div>
             </div>
 
@@ -1613,15 +1607,14 @@ export function APApplicationForm({
               <button
                 type="button"
                 onClick={() => handlePrint()}
-                className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1"
+                className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1"
               >
-                <Printer className="w-4 h-4" />
-                Print
+                <Printer className="w-4 h-4" /> Print Invoice
               </button>
               <button
                 type="button"
                 onClick={() => setShowInvoicePreview(false)}
-                className="px-5 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
+                className="px-5 h-10 bg-slate-100 hover:bg-slate-200 text-slate-705 font-bold rounded-xl text-xs transition"
               >
                 Close
               </button>
@@ -1633,16 +1626,16 @@ export function APApplicationForm({
       {/* Recent Applications Drawer */}
       {showRecentDrawer && (
         <div className="fixed inset-0 bg-slate-950/40 flex justify-end z-55 animate-in fade-in duration-200">
-          <div className="bg-white border-l border-slate-150 w-full max-w-md h-full p-6 shadow-2xl flex flex-col space-y-4 animate-in slide-in-from-right duration-300">
+          <div className="bg-white border-l border-slate-150 w-full max-w-sm h-full p-5 shadow-2xl flex flex-col space-y-4 animate-in slide-in-from-right duration-250">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-800 text-sm">Recent Applications</h3>
-                <p className="text-[10px] text-slate-400">Latest customer filings</p>
+                <p className="text-[10px] text-slate-400">Latest customer submissions</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowRecentDrawer(false)}
-                className="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1"
+                className="text-slate-400 hover:text-slate-655 bg-slate-100 rounded-full p-1"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1650,7 +1643,7 @@ export function APApplicationForm({
 
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 pr-1">
               {customers.slice(0, 10).map((c, idx) => (
-                <div key={idx} className="py-2.5 flex items-center justify-between text-xs">
+                <div key={idx} className="py-2 flex items-center justify-between text-xs">
                   <div>
                     <h5 className="font-bold text-slate-800">{c.full_name}</h5>
                     <p className="text-[9px] text-slate-500 font-mono mt-0.5">{c.mobile} &bull; {new Date(c.created_at).toLocaleDateString("en-IN")}</p>
@@ -1665,7 +1658,7 @@ export function APApplicationForm({
             <button
               type="button"
               onClick={() => setShowRecentDrawer(false)}
-              className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-707 font-bold rounded-xl text-xs transition"
+              className="w-full h-10 bg-slate-100 hover:bg-slate-200 text-slate-707 font-bold rounded-xl text-xs transition"
             >
               Close
             </button>
