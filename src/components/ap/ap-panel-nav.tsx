@@ -62,6 +62,11 @@ export function APPanelNav() {
   const [partnerCode, setPartnerCode] = useState("");
   const [partnerName, setPartnerName] = useState("");
 
+  // Scroll-aware bottom nav
+  const [navVisible, setNavVisible] = useState(true);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const lastScrollY = useRef(0);
+
   const notifRef = useRef<HTMLDivElement>(null);
 
   // Sync user notifications and partner tier
@@ -143,6 +148,39 @@ export function APPanelNav() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Scroll direction detection for bottom nav
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+
+      if (delta > 8) {
+        setNavVisible(false);
+      } else if (delta < -8) {
+        setNavVisible(true);
+      }
+
+      lastScrollY.current = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Keyboard detection: hide nav when virtual keyboard opens
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleResize = () => {
+      const threshold = window.innerHeight * 0.75;
+      setKeyboardOpen(vv.height < threshold);
+    };
+
+    vv.addEventListener("resize", handleResize);
+    return () => vv.removeEventListener("resize", handleResize);
   }, []);
 
   // Search handler
@@ -331,7 +369,7 @@ export function APPanelNav() {
       </header>
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
-      <nav className="fixed bottom-0 inset-x-0 z-[49] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/70 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_rgba(15,23,42,0.04)] pb-safe-bottom">
+      <nav className={cn("fixed bottom-0 inset-x-0 z-[49] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_rgba(15,23,42,0.04)] pb-safe-bottom transition-transform duration-300 ease-out", (!navVisible || keyboardOpen) && "translate-y-full")}>
         {[
           { label: "Home", href: "/ap/dashboard", icon: Home },
           { label: "Applications", href: "/ap/applications", icon: FileText },

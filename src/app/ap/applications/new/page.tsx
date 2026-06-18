@@ -41,7 +41,7 @@ export default async function NewAPApplicationPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-slate-800 px-2 py-3 md:px-8 md:py-8 pb-24">
+    <main className="min-h-screen bg-[#F8FAFC] text-slate-800 px-3 py-3 md:px-8 md:py-8 pb-32">
       <div className="mx-auto max-w-xl">
         <APApplicationForm
           customers={customers}

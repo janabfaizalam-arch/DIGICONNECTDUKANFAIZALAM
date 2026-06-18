@@ -711,10 +711,10 @@ export function APApplicationForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-full overflow-hidden pb-16" aria-busy={isPending}>
+    <form onSubmit={onSubmit} className="max-w-full overflow-hidden pb-28" aria-busy={isPending}>
       
       {/* HEADER SECTION (Max Height 120px) */}
-      <div className="w-full bg-white/80 border border-slate-100/60 px-3.5 py-2.5 rounded-2xl shadow-sm flex items-center justify-between mb-3 gap-2 z-40 max-h-[60px]">
+      <div className="w-full bg-white/90 border border-slate-100/60 px-4 py-3 rounded-2xl shadow-sm flex items-center justify-between mb-4 gap-3 z-40">
         <div className="flex items-center gap-2">
           <Link
             href="/ap/dashboard"
@@ -723,8 +723,8 @@ export function APApplicationForm({
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xs font-bold text-slate-800 leading-tight">Apply</h1>
-            <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100">
+            <h1 className="text-sm font-bold text-slate-800 leading-tight">New Application</h1>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
               {draftStatus}
             </span>
           </div>
@@ -755,7 +755,7 @@ export function APApplicationForm({
         <fieldset disabled={isPending} className="contents">
           
           {/* STEP 1: Customer */}
-          <div className="p-3.5 transition-all">
+          <div className="px-4 py-5 transition-all">
             {currentStep > 1 ? (
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -775,9 +775,9 @@ export function APApplicationForm({
                 </button>
               </div>
             ) : currentStep === 1 ? (
-              <div className="space-y-3.5 animate-in fade-in duration-200">
+              <div className="space-y-5 animate-in fade-in duration-200">
                 <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide">Step 1: Customer</span>
+                  <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Step 1: Customer</span>
                   <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
                     <button
                       type="button"
@@ -819,7 +819,7 @@ export function APApplicationForm({
                         placeholder="Search profile..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 h-9 border-slate-200 bg-white text-xs rounded-xl"
+                        className="pl-10 border-slate-200 bg-white rounded-xl"
                       />
                       {searchLoading && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 border border-slate-300 border-t-blue-500 rounded-full animate-spin" />
@@ -864,47 +864,47 @@ export function APApplicationForm({
                 )}
 
                 {/* Customer Profile inputs */}
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Customer Name</label>
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase">Customer Name</label>
                     <Input
                       name="customerName"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Enter name"
-                      className="h-9 border-slate-200 bg-white text-xs"
+                      className="border-slate-200 bg-white"
                     />
                   </div>
 
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Mobile Number</label>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase">Mobile Number</label>
                     <Input
                       name="mobile"
                       value={customerMobile}
                       onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="10-digit mobile"
                       inputMode="numeric"
-                      className="h-9 border-slate-200 bg-white text-xs"
+                      className="border-slate-200 bg-white"
                     />
                   </div>
 
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Email Address</label>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase">Email Address</label>
                     <Input
                       name="email"
                       type="email"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
                       placeholder="email@address.com"
-                      className="h-9 border-slate-200 bg-white text-xs"
+                      className="border-slate-200 bg-white"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-0.5">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">Gender</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500 uppercase">Gender</label>
                       <Select value={customerGender} onValueChange={setCustomerGender}>
-                        <SelectTrigger className="h-9 border-slate-200 bg-white text-xs">
+                        <SelectTrigger className="border-slate-200 bg-white">
                           <SelectValue placeholder="Gender" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
@@ -915,20 +915,20 @@ export function APApplicationForm({
                       </Select>
                     </div>
 
-                    <div className="space-y-0.5">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">DOB</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500 uppercase">DOB</label>
                       <Input
                         name="dob"
                         type="date"
                         value={customerDob}
                         onChange={(e) => setCustomerDob(e.target.value)}
-                        className="h-9 border-slate-200 bg-white text-xs"
+                        className="border-slate-200 bg-white"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Pincode</label>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase">Pincode</label>
                     <div className="relative">
                       <Input
                         name="pincode"
@@ -937,7 +937,7 @@ export function APApplicationForm({
                         placeholder="6-digit PIN"
                         maxLength={6}
                         inputMode="numeric"
-                        className="h-9 border-slate-200 bg-white pr-14 text-xs"
+                        className="border-slate-200 bg-white pr-16"
                       />
                       {pincodeAutofillStatus && (
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-extrabold text-blue-600 bg-blue-50 px-1 py-0.2 rounded">
@@ -947,39 +947,39 @@ export function APApplicationForm({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-0.5">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">District</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500 uppercase">District</label>
                       <Input
                         name="district"
                         value={customerDistrict}
                         onChange={(e) => setCustomerDistrict(e.target.value)}
                         placeholder="District"
-                        className="h-9 border-slate-200 bg-white text-xs"
+                        className="border-slate-200 bg-white"
                       />
                     </div>
 
-                    <div className="space-y-0.5">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">State</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-slate-500 uppercase">State</label>
                       <Input
                         name="state"
                         value={customerState}
                         onChange={(e) => setCustomerState(e.target.value)}
                         placeholder="State"
-                        className="h-9 border-slate-200 bg-white text-xs"
+                        className="border-slate-200 bg-white"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-0.5 sm:col-span-2">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Address</label>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase">Address</label>
                     <Textarea
                       name="address"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
                       placeholder="Complete address..."
                       rows={1.5}
-                      className="border-slate-200 bg-white text-xs"
+                      className="border-slate-200 bg-white"
                     />
                   </div>
                 </div>
@@ -1021,7 +1021,7 @@ export function APApplicationForm({
           </div>
 
           {/* STEP 2: Service */}
-          <div className="p-3.5 transition-all">
+          <div className="px-4 py-5 transition-all">
             {currentStep > 2 ? (
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -1041,8 +1041,8 @@ export function APApplicationForm({
                 </button>
               </div>
             ) : currentStep === 2 ? (
-              <div className="space-y-3.5 animate-in fade-in duration-200">
-                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 2: Service</span>
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <span className="text-sm font-black text-slate-800 uppercase block border-b border-slate-100/60 pb-2.5">Step 2: Service</span>
                 
                 <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none pr-1">
                   {categories.map((cat) => (
@@ -1068,12 +1068,12 @@ export function APApplicationForm({
                     placeholder="Search service item..."
                     value={serviceSearch}
                     onChange={(e) => setServiceSearch(e.target.value)}
-                    className="pl-9 h-9 border-slate-200 bg-white"
+                    className="pl-10 border-slate-200 bg-white"
                   />
                 </div>
 
                 <Select value={serviceId} onValueChange={setServiceId}>
-                  <SelectTrigger className="h-10 border-slate-200 bg-white text-xs text-slate-800">
+                  <SelectTrigger className="border-slate-200 bg-white text-slate-800">
                     <SelectValue placeholder="Select Service" />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
@@ -1121,7 +1121,7 @@ export function APApplicationForm({
           </div>
 
           {/* STEP 3: Documents */}
-          <div className="p-3.5 transition-all">
+          <div className="px-4 py-5 transition-all">
             {currentStep > 3 ? (
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -1141,8 +1141,8 @@ export function APApplicationForm({
                 </button>
               </div>
             ) : currentStep === 3 ? (
-              <div className="space-y-3.5 animate-in fade-in duration-200">
-                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 3: Documents</span>
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <span className="text-sm font-black text-slate-800 uppercase block border-b border-slate-100/60 pb-2.5">Step 3: Documents</span>
 
                 {serviceChecklist.length > 0 ? (
                   <div className="space-y-1.5">
@@ -1249,7 +1249,7 @@ export function APApplicationForm({
           </div>
 
           {/* STEP 4: Payment */}
-          <div className="p-3.5 transition-all">
+          <div className="px-4 py-5 transition-all">
             {currentStep > 4 ? (
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -1262,8 +1262,8 @@ export function APApplicationForm({
                 </div>
               </div>
             ) : currentStep === 4 ? (
-              <div className="space-y-3.5 animate-in fade-in duration-200">
-                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 4: Payment</span>
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <span className="text-sm font-black text-slate-800 uppercase block border-b border-slate-100/60 pb-2.5">Step 4: Payment</span>
 
                 <div className="bg-slate-50/50 rounded-2xl p-3.5 space-y-2 text-xs">
                   <div className="flex justify-between items-center text-slate-500">
@@ -1325,10 +1325,10 @@ export function APApplicationForm({
           </div>
 
           {/* STEP 5: Submit */}
-          <div className="p-3.5 transition-all">
+          <div className="px-4 py-5 transition-all">
             {currentStep === 5 ? (
-              <div className="space-y-3.5 animate-in fade-in duration-200">
-                <span className="text-xs font-black text-slate-800 uppercase block border-b border-slate-100 pb-1.5">Step 5: Submit</span>
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <span className="text-sm font-black text-slate-800 uppercase block border-b border-slate-100/60 pb-2.5">Step 5: Submit</span>
 
                 <div className="space-y-2.5 text-xs bg-slate-50/50 rounded-2xl p-3.5">
                   <div className="flex justify-between pb-1 border-b border-slate-200/20">
@@ -1377,12 +1377,12 @@ export function APApplicationForm({
       </div>
 
       {/* STICKY BOTTOM ACTION BAR (56px) */}
-      <div className="fixed bottom-[60px] md:bottom-0 inset-x-0 h-[56px] px-4 py-2 bg-white/85 backdrop-blur-md border-t border-slate-150 flex items-center justify-between gap-2.5 z-40 max-w-xl mx-auto shadow-lg pb-safe-bottom">
+      <div className="fixed bottom-[60px] md:bottom-0 inset-x-0 h-[68px] px-4 py-2.5 bg-white/92 backdrop-blur-md border-t border-slate-100 flex items-center justify-between gap-3 z-40 max-w-xl mx-auto shadow-lg pb-safe-bottom">
         {currentStep > 1 ? (
           <button
             type="button"
             onClick={() => setCurrentStep(prev => prev - 1)}
-            className="h-9 px-3.5 border border-slate-200 bg-white text-slate-707 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
+            className="h-12 px-4 border border-slate-200 bg-white text-slate-700 rounded-xl text-sm font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back
           </button>
@@ -1390,7 +1390,7 @@ export function APApplicationForm({
           <button
             type="button"
             onClick={triggerDraftSave}
-            className="h-9 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-[10px] font-bold transition shrink-0 cursor-pointer"
+            className="h-12 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold transition shrink-0 cursor-pointer active:scale-95"
           >
             Save Draft
           </button>
@@ -1400,7 +1400,7 @@ export function APApplicationForm({
           <button
             type="button"
             onClick={() => { if (validateStep1()) setCurrentStep(2); }}
-            className="flex-1 h-9 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
+            className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold transition flex items-center justify-center cursor-pointer active:scale-95"
           >
             Continue
           </button>
@@ -1410,7 +1410,7 @@ export function APApplicationForm({
           <button
             type="button"
             onClick={() => { if (validateStep2()) setCurrentStep(3); }}
-            className="flex-1 h-9 bg-blue-600 hover:bg-blue-755 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
+            className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold transition flex items-center justify-center cursor-pointer active:scale-95"
           >
             Continue
           </button>
@@ -1420,7 +1420,7 @@ export function APApplicationForm({
           <button
             type="button"
             onClick={() => { if (validateStep3()) setCurrentStep(4); }}
-            className="flex-1 h-9 bg-blue-600 hover:bg-blue-755 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
+            className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold transition flex items-center justify-center cursor-pointer active:scale-95"
           >
             Continue
           </button>
@@ -1430,7 +1430,7 @@ export function APApplicationForm({
           <button
             type="button"
             onClick={() => { if (validateStep4()) setCurrentStep(5); }}
-            className="flex-1 h-9 bg-blue-600 hover:bg-blue-755 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer"
+            className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold transition flex items-center justify-center cursor-pointer active:scale-95"
           >
             Continue
           </button>
@@ -1442,7 +1442,7 @@ export function APApplicationForm({
             disabled={!serviceId || !customerName || !customerMobile || !razorpayPayment}
             loadingText="Submitting"
             icon={<Send className="h-3.5 w-3.5" />}
-            className="flex-1 h-9 bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-extrabold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/10 cursor-pointer text-xs"
+            className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/10 cursor-pointer text-sm active:scale-95"
           >
             Submit
           </FormSubmitButton>
