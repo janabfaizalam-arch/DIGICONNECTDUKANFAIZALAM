@@ -10,17 +10,12 @@ import {
   PlusCircle,
   ArrowRight,
   Bell,
-  Plus,
   ChevronRight,
   Info,
   DollarSign,
   MessageSquare,
-  X,
-  TrendingUp,
   Search,
-  Lock,
   HandCoins,
-  ShieldCheck,
   Inbox,
   ArrowUpRight
 } from "lucide-react";
@@ -37,7 +32,7 @@ import {
   Cell,
   CartesianGrid
 } from "recharts";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface AgencyPartner {
@@ -79,11 +74,14 @@ interface Announcement {
   body: string;
 }
 
-interface APDashboardClientProps {
-  ap: AgencyPartner;
-  stats: APDashboardStats;
-  recentApps: RecentApp[];
-  announcements: Announcement[];
+interface PartnerAnalytics {
+  walletBalance: number | null;
+  totalApplications: number | null;
+  pendingApplications: number | null;
+  completedApplications: number | null;
+  todayCommission: number | null;
+  monthlyCommission: number | null;
+  activeTickets: number | null;
 }
 
 interface Transaction {
@@ -95,28 +93,33 @@ interface Transaction {
   date: string;
 }
 
-const MONTHLY_EARNINGS_DATA = [
-  { name: "Jan", earnings: 4200, filings: 12 },
-  { name: "Feb", earnings: 5800, filings: 18 },
-  { name: "Mar", earnings: 7100, filings: 22 },
-  { name: "Apr", earnings: 9500, filings: 31 },
-  { name: "May", earnings: 14500, filings: 45 },
-  { name: "Jun", earnings: 18200, filings: 58 },
-];
+interface MonthlyChartPoint {
+  name: string;
+  earnings: number;
+  filings: number;
+}
 
-export function APDashboardClient({ ap, stats, recentApps, announcements }: APDashboardClientProps) {
+interface APDashboardClientProps {
+  ap: AgencyPartner;
+  stats: APDashboardStats;
+  recentApps: RecentApp[];
+  announcements: Announcement[];
+  analytics: PartnerAnalytics;
+  dbTransactions: Transaction[];
+  chartData: MonthlyChartPoint[];
+}
+
+export function APDashboardClient({
+  ap,
+  stats,
+  recentApps,
+  announcements,
+  analytics,
+  dbTransactions: transactions,
+  chartData
+}: APDashboardClientProps) {
   const [mounted, setMounted] = useState(false);
   
-  // Wallet Recharge sheet
-  const [isRechargeOpen, setIsRechargeOpen] = useState(false);
-  const [rechargeAmount, setRechargeAmount] = useState("");
-  const [isRecharging, setIsRecharging] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(stats.walletBalance);
-
-  // Active support tickets and transactions
-  const [supportTicketsCount, setSupportTicketsCount] = useState(0);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-
   // Chart view: "earnings" | "growth" | "distribution"
   const [activeChartTab, setActiveChartTab] = useState<"earnings" | "growth" | "distribution">("earnings");
 
@@ -126,43 +129,6 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
 
   useEffect(() => {
     setMounted(true);
-    
-    // Load active tickets count
-    const savedTickets = localStorage.getItem("digiticket_tickets");
-    if (savedTickets) {
-      try {
-        const parsed = JSON.parse(savedTickets);
-        setSupportTicketsCount(parsed.filter((t: { status: string }) => t.status !== "Closed").length);
-      } catch {
-        setSupportTicketsCount(2);
-      }
-    } else {
-      setSupportTicketsCount(2);
-    }
-
-    // Load Wallet Balance
-    const savedBalance = localStorage.getItem("digipartner_wallet_balance");
-    if (savedBalance) {
-      setWalletBalance(parseFloat(savedBalance));
-    }
-
-    // Load Transaction History or set initial
-    const savedTx = localStorage.getItem("digipartner_transactions");
-    if (savedTx) {
-      try {
-        setTransactions(JSON.parse(savedTx));
-      } catch {
-        // Safe fallback
-      }
-    } else {
-      const initialTx: Transaction[] = [
-        { id: "tx-1", title: "Commission Payout Credit", amount: 4500, type: "credit", status: "success", date: new Date(Date.now() - 86400000 * 2).toISOString() },
-        { id: "tx-2", title: "Wallet Recharge - UPI", amount: 2000, type: "credit", status: "success", date: new Date(Date.now() - 86400000 * 5).toISOString() },
-        { id: "tx-3", title: "Processing Fee - App #A209B", amount: -150, type: "debit", status: "success", date: new Date(Date.now() - 86400000 * 7).toISOString() }
-      ];
-      setTransactions(initialTx);
-      localStorage.setItem("digipartner_transactions", JSON.stringify(initialTx));
-    }
   }, []);
 
   if (!mounted) {
@@ -173,72 +139,26 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
     );
   }
 
-  // Handle Quick Wallet Recharge
-  const handleRechargeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = parseFloat(rechargeAmount);
-    if (isNaN(amount) || amount <= 0) return;
-
-    setIsRecharging(true);
-    setTimeout(() => {
-      const newBal = walletBalance + amount;
-      setWalletBalance(newBal);
-      localStorage.setItem("digipartner_wallet_balance", newBal.toString());
-      
-      // Update transaction list
-      const newTx: Transaction = {
-        id: `tx-${Date.now()}`,
-        title: "Wallet Recharge - Razorpay",
-        amount: amount,
-        type: "credit",
-        status: "success",
-        date: new Date().toISOString()
-      };
-      const updatedTx = [newTx, ...transactions];
-      setTransactions(updatedTx);
-      localStorage.setItem("digipartner_transactions", JSON.stringify(updatedTx));
-
-      // Post notification
-      const savedNotifs = localStorage.getItem("digiticket_notifications");
-      if (savedNotifs) {
-        try {
-          const parsed = JSON.parse(savedNotifs);
-          const newNotif = {
-            id: `notif-recharge-${Date.now()}`,
-            title: "Wallet Recharged Successfully",
-            description: `Successfully added Rs. ${amount.toFixed(2)} to your wallet balance.`,
-            category: "Wallet & Payouts",
-            type: "success",
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            linkUrl: "/ap/wallet",
-            actionLabel: "Check Wallet"
-          };
-          localStorage.setItem("digiticket_notifications", JSON.stringify([newNotif, ...parsed]));
-        } catch {
-          // Safe fallback
-        }
-      }
-
-      setIsRecharging(false);
-      setIsRechargeOpen(false);
-      setRechargeAmount("");
-    }, 1500);
+  // Format Helper that ensures database NULL/Undefined values show correctly instead of falling back to fake defaults
+  const formatVal = (val: number | null | undefined, isCurrency = false, emptyText = "—") => {
+    if (val === null || val === undefined) {
+      return emptyText;
+    }
+    if (isCurrency) {
+      return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0
+      }).format(val);
+    }
+    return String(val);
   };
 
   const appDistributionData = [
-    { name: "Approved", value: stats.completedApplications || 10, color: "#10B981" },
-    { name: "Processing", value: stats.pendingApplications || 4, color: "#2563EB" },
-    { name: "Rejected", value: stats.rejectedApplications || 1, color: "#EF4444" },
+    { name: "Approved", value: analytics.completedApplications || 0, color: "#10B981" },
+    { name: "Processing", value: analytics.pendingApplications || 0, color: "#2563EB" },
+    { name: "Rejected", value: stats.rejectedApplications || 0, color: "#EF4444" },
   ];
-
-  const formatCurrencyLocal = (value: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0
-    }).format(value);
-  };
 
   // Filter application rows
   const filteredApps = recentApps.filter(app => {
@@ -254,6 +174,9 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
     return matchesSearch;
   });
 
+  const hasCommissions = analytics.monthlyCommission !== null && analytics.monthlyCommission > 0;
+  const walletBalanceVal = analytics.walletBalance !== null ? analytics.walletBalance : stats.walletBalance;
+
   return (
     <div className="space-y-6 pb-12 text-[#0F172A]">
       
@@ -262,7 +185,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#2563EB]/5 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          {/* Left: Partner details */}
+          {/* Left: Partner details only - NO fake commission stats or counters */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#0F172A]">{ap.full_name}</h1>
@@ -279,29 +202,6 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                 <span className={cn("h-2 w-2 rounded-full animate-pulse", ap.kyc_status === "approved" ? "bg-[#10B981]" : "bg-[#F59E0B]")} />
                 <span className="capitalize font-semibold text-[#0F172A]">{ap.kyc_status === "approved" ? "Active" : "KYC Pending"}</span>
               </span>
-            </div>
-          </div>
-
-          {/* Right: Performance strip above fold */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-100 lg:pl-8">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Wallet Balance</span>
-              <p className="text-base font-bold text-[#0F172A]">{formatCurrencyLocal(walletBalance)}</p>
-            </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Today&apos;s Commission</span>
-              <p className="text-base font-bold text-[#10B981]">+₹1,250</p>
-            </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Pending Tasks</span>
-              <p className="text-base font-bold text-[#F59E0B]">{stats.pendingApplications} Apps</p>
-            </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Growth Status</span>
-              <div className="flex items-center gap-1 text-[#2563EB]">
-                <TrendingUp className="h-3.5 w-3.5" />
-                <span className="text-sm font-bold">+18.2%</span>
-              </div>
             </div>
           </div>
         </div>
@@ -338,32 +238,36 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
             </span>
           </div>
           <div className="mt-4 space-y-1">
-            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">{formatCurrencyLocal(walletBalance)}</p>
-            <button 
-              onClick={() => setIsRechargeOpen(true)}
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">
+              {formatVal(walletBalanceVal, true)}
+            </p>
+            <Link 
+              href="/ap/wallet"
               className="text-[10px] font-bold text-blue-600 hover:underline inline-flex items-center gap-0.5"
             >
-              Recharge wallet
-              <Plus className="h-3 w-3" />
-            </button>
+              View Wallet Console
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </Card>
 
         {/* Card 2: Earnings */}
         <Card className="group backdrop-blur-xl bg-white/75 border border-[rgba(15,23,42,0.06)] rounded-[20px] p-5 shadow-[0_4px_16px_rgba(15,23,42,0.01)] hover:-translate-y-1 hover:shadow-md hover:border-slate-200 transition-all duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Earned Payouts</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Monthly Earnings</span>
             <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100/30 group-hover:scale-105 transition-transform">
               <HandCoins className="h-4.5 w-4.5" />
             </span>
           </div>
           <div className="mt-4 space-y-1">
             <p className="text-2xl font-bold tracking-tight text-[#0F172A]">
-              {formatCurrencyLocal((stats.commissionApproved ?? 0) + (stats.totalPaidPayout ?? 0))}
+              {hasCommissions ? formatVal(analytics.monthlyCommission, true) : "Commission data will appear here"}
             </p>
-            <p className="text-[10px] font-semibold text-[#64748B]">
-              {formatCurrencyLocal(stats.commissionPending ?? 0)} pending audit
-            </p>
+            {hasCommissions && (
+              <p className="text-[10px] font-semibold text-[#64748B]">
+                Today: {formatVal(analytics.todayCommission, true)}
+              </p>
+            )}
           </div>
         </Card>
 
@@ -376,10 +280,18 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
             </span>
           </div>
           <div className="mt-4 space-y-1">
-            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">{stats.totalApplications}</p>
-            <p className="text-[10px] font-semibold text-[#64748B]">
-              {stats.completedApplications} approved & active
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">
+              {analytics.totalApplications !== null && analytics.totalApplications > 0 ? (
+                formatVal(analytics.totalApplications)
+              ) : (
+                "No applications submitted"
+              )}
             </p>
+            {analytics.totalApplications !== null && analytics.totalApplications > 0 && (
+              <p className="text-[10px] font-semibold text-[#64748B]">
+                {formatVal(analytics.completedApplications)} approved • {formatVal(analytics.pendingApplications)} pending
+              </p>
+            )}
           </div>
         </Card>
 
@@ -392,8 +304,16 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
             </span>
           </div>
           <div className="mt-4 space-y-1">
-            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">{supportTicketsCount}</p>
-            <p className="text-[10px] font-semibold text-[#64748B]">Avg. response ~15 mins</p>
+            <p className="text-2xl font-bold tracking-tight text-[#0F172A]">
+              {analytics.activeTickets !== null && analytics.activeTickets > 0 ? (
+                formatVal(analytics.activeTickets)
+              ) : (
+                "No active support tickets"
+              )}
+            </p>
+            {analytics.activeTickets !== null && analytics.activeTickets > 0 && (
+              <p className="text-[10px] font-semibold text-[#64748B]">Avg. response ~15 mins</p>
+            )}
           </div>
         </Card>
       </section>
@@ -438,7 +358,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
             <div className="h-60 mt-4 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 {activeChartTab === "earnings" ? (
-                  <AreaChart data={MONTHLY_EARNINGS_DATA} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#2563EB" stopOpacity={0.08}/>
@@ -456,7 +376,7 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                     <Area type="monotone" dataKey="earnings" stroke="#2563EB" strokeWidth={2} fillOpacity={1} fill="url(#earningsGrad)" activeDot={{ r: 4, strokeWidth: 0, fill: "#2563EB" }} />
                   </AreaChart>
                 ) : activeChartTab === "growth" ? (
-                  <AreaChart data={MONTHLY_EARNINGS_DATA} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#F97316" stopOpacity={0.08}/>
@@ -541,19 +461,19 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
                 </div>
               </Link>
 
-              {/* Action 3: Recharge Wallet */}
-              <button
-                onClick={() => setIsRechargeOpen(true)}
-                className="group flex flex-col justify-between p-4 rounded-2xl bg-amber-50/50 hover:bg-amber-50 border border-amber-100/30 hover:border-amber-200 text-left transition-all duration-200 h-[104px] cursor-pointer"
+              {/* Action 3: Payout Console (Redirect instead of mock Razorpay) */}
+              <Link
+                href="/ap/wallet"
+                className="group flex flex-col justify-between p-4 rounded-2xl bg-amber-50/50 hover:bg-amber-50 border border-amber-100/30 hover:border-amber-200 transition-all duration-200 h-[104px]"
               >
-                <span className="p-2 w-9 h-9 rounded-xl bg-amber-100/60 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <DollarSign className="h-4.5 w-4.5" />
+                <span className="p-2 w-9 h-9 rounded-xl bg-amber-100/60 text-amber-655 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <DollarSign className="h-4.5 w-4.5 text-amber-600" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-[#0F172A]">Add Funds</p>
-                  <p className="text-[10px] text-[#64748B] mt-0.5">Wallet credits</p>
+                  <p className="text-xs font-bold text-[#0F172A]">Wallet Console</p>
+                  <p className="text-[10px] text-[#64748B] mt-0.5">Payouts & logs</p>
                 </div>
-              </button>
+              </Link>
 
               {/* Action 4: Support Desk */}
               <Link
@@ -626,9 +546,9 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
             {/* Linear Style Table Content */}
             {filteredApps.length === 0 ? (
               <div className="p-10 text-center space-y-3">
-                <Inbox className="mx-auto h-10 w-10 text-slate-350" />
-                <h4 className="text-xs font-bold text-[#0F172A]">No records located</h4>
-                <p className="text-xs text-[#64748B]">Adjust search inputs or apply new filings to view records.</p>
+                <Inbox className="mx-auto h-10 w-10 text-slate-350 animate-pulse" />
+                <h4 className="text-xs font-bold text-[#0F172A]">No applications submitted</h4>
+                <p className="text-xs text-[#64748B]">Start submitting applications to view analytics.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -715,26 +635,26 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Available Balance</span>
                 <div className="flex items-center justify-between">
-                  <p className="text-2xl font-black text-[#0F172A]">{formatCurrencyLocal(walletBalance)}</p>
-                  <button 
-                    onClick={() => setIsRechargeOpen(true)}
-                    className="h-8 px-3 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer border-none transition-colors"
+                  <p className="text-2xl font-black text-[#0F172A]">{formatVal(walletBalanceVal, true)}</p>
+                  <Link 
+                    href="/ap/wallet"
+                    className="h-8 px-3 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors border-none"
                   >
-                    Recharge
-                  </button>
+                    Withdraw
+                  </Link>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-150">
                 <div className="space-y-0.5">
                   <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1">
-                    <Lock className="h-3 w-3" /> Locked Funds
+                    <Inbox className="h-3 w-3" /> Locked Funds
                   </span>
-                  <p className="text-sm font-bold text-[#0F172A]">{formatCurrencyLocal(stats.commissionPending ?? 0)}</p>
+                  <p className="text-sm font-bold text-[#0F172A]">{formatVal(stats.commissionPending, true)}</p>
                 </div>
                 <div className="space-y-0.5">
                   <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider">Approved Commission</span>
-                  <p className="text-sm font-bold text-[#10B981]">{formatCurrencyLocal(stats.commissionApproved ?? 0)}</p>
+                  <p className="text-sm font-bold text-[#10B981]">{formatVal(stats.commissionApproved, true)}</p>
                 </div>
               </div>
             </div>
@@ -743,27 +663,33 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
             <div className="space-y-3">
               <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Recent Transactions</span>
               
-              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-900/02 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "p-1.5 rounded-lg text-xs flex items-center justify-center shrink-0",
-                        tx.type === "credit" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                      )}>
-                        {tx.type === "credit" ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5 rotate-45" />}
-                      </span>
-                      <div className="space-y-0.5">
-                        <p className="font-bold text-[#0F172A] leading-tight max-w-[140px] truncate">{tx.title}</p>
-                        <p className="text-[9px] text-[#64748B] font-semibold">{new Date(tx.date).toLocaleDateString()}</p>
+              {transactions.length === 0 ? (
+                <div className="py-6 text-center text-[#64748B] text-xs font-medium border border-dashed border-slate-200 rounded-xl">
+                  No transactions yet
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                  {transactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-900/02 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "p-1.5 rounded-lg text-xs flex items-center justify-center shrink-0",
+                          tx.type === "credit" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                        )}>
+                          {tx.type === "credit" ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5 rotate-45" />}
+                        </span>
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-[#0F172A] leading-tight max-w-[140px] truncate">{tx.title}</p>
+                          <p className="text-[9px] text-[#64748B] font-semibold">{new Date(tx.date).toLocaleDateString()}</p>
+                        </div>
                       </div>
+                      <span className={cn("font-bold font-mono", tx.type === "credit" ? "text-[#10B981]" : "text-[#EF4444]")}>
+                        {tx.type === "credit" ? "+" : "-"}{formatVal(tx.amount, true)}
+                      </span>
                     </div>
-                    <span className={cn("font-bold font-mono", tx.type === "credit" ? "text-[#10B981]" : "text-[#EF4444]")}>
-                      {tx.type === "credit" ? "+" : ""}{tx.amount}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -810,98 +736,6 @@ export function APDashboardClient({ ap, stats, recentApps, announcements }: APDa
           </div>
         </section>
       )}
-
-      {/* 6. MODALS & BOTTOM SHEETS WITH ANNIHILATED OVERLAYS */}
-      <AnimatePresence>
-        {isRechargeOpen && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-            {/* Backdrop */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={{
-                hidden: { opacity: 0 },
-                visible: { opacity: 1 }
-              }}
-              onClick={() => setIsRechargeOpen(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            />
-
-            {/* Bottom Sheet Modal Container */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={{
-                hidden: { y: "100%", opacity: 0.5 },
-                visible: { 
-                  y: 0, 
-                  opacity: 1,
-                  transition: { type: "spring", damping: 25, stiffness: 350 } 
-                },
-                exit: { 
-                  y: "100%", 
-                  opacity: 0.5,
-                  transition: { duration: 0.15 } 
-                }
-              }}
-              className="relative w-full rounded-t-[32px] md:rounded-[24px] bg-white border border-slate-200/50 shadow-2xl p-6 md:p-8 max-h-[85vh] md:max-w-md overflow-hidden z-10"
-            >
-              {/* Drag handle visible only on mobile */}
-              <div className="h-1 w-12 rounded-full bg-slate-200 mx-auto mb-5 md:hidden" />
-
-              <button
-                onClick={() => setIsRechargeOpen(false)}
-                className="absolute right-6 top-6 md:top-8 text-slate-400 hover:text-slate-800 p-1 hover:bg-slate-50 rounded-full transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 border border-emerald-100 text-[10px] font-bold text-emerald-700 rounded-full uppercase tracking-wider">
-                  <ShieldCheck className="h-3 w-3" /> Secure Recharge
-                </div>
-                <h3 className="text-base font-extrabold text-[#0F172A] mt-1.5">Recharge Account Wallet</h3>
-                <p className="text-xs text-[#64748B]">
-                  Processing is handled securely via our verified Razorpay API integration.
-                </p>
-              </div>
-
-              <form onSubmit={handleRechargeSubmit} className="space-y-4.5 mt-5">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Amount (INR)</label>
-                  <input
-                    type="number"
-                    required
-                    min="100"
-                    max="100000"
-                    placeholder="Minimum ₹100"
-                    value={rechargeAmount}
-                    onChange={e => setRechargeAmount(e.target.value)}
-                    className="w-full h-12 rounded-[16px] bg-slate-50 px-4 text-xs font-semibold text-[#0F172A] border border-slate-200 focus:border-[#2563EB] focus:bg-white focus:outline-none transition-colors"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isRecharging}
-                  className="w-full h-12 rounded-[16px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
-                >
-                  {isRecharging ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      Initializing Gateway...
-                    </>
-                  ) : (
-                    "Initiate Razorpay Transfer"
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
     </div>
   );

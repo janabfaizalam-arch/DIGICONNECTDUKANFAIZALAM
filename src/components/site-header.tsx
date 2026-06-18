@@ -591,7 +591,9 @@ export function SiteHeader() {
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
     pathname === "/customer/dashboard" ||
-    pathname.startsWith("/customer/dashboard")
+    pathname.startsWith("/customer/dashboard") ||
+    pathname === "/ap" ||
+    pathname.startsWith("/ap/")
   ) {
     return null;
   }

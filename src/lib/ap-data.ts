@@ -381,3 +381,187 @@ export async function getNextPartnerCode(): Promise<string> {
 
   return `DCD-AP-${String(next).padStart(4, "0")}`;
 }
+
+// ── Partner Analytics Aggregation ──────────────────────────────────────────
+
+export interface PartnerAnalytics {
+  walletBalance: number | null;
+  totalApplications: number | null;
+  pendingApplications: number | null;
+  completedApplications: number | null;
+  todayCommission: number | null;
+  monthlyCommission: number | null;
+  activeTickets: number | null;
+}
+
+export async function getPartnerAnalytics(apId: string): Promise<PartnerAnalytics> {
+  const supabase = getSupabaseAdmin();
+  const empty: PartnerAnalytics = {
+    walletBalance: null,
+    totalApplications: null,
+    pendingApplications: null,
+    completedApplications: null,
+    todayCommission: null,
+    monthlyCommission: null,
+    activeTickets: null,
+  };
+
+  if (!supabase) return empty;
+
+  const now = new Date();
+  
+  // start of today (local date boundaries)
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  
+  // start of current calendar month
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  // Run database queries safely catching error rejections
+  const [apps, commissions, walletBalance, activeTickets] = await Promise.all([
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("applications")
+          .select("id, status")
+          .eq("agency_partner_id", apId);
+        if (error) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    })(),
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("ap_commissions")
+          .select("calculated_amount, created_at, status")
+          .eq("agency_partner_id", apId);
+        if (error) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    })(),
+    (async () => {
+      try {
+        return await getAPWalletBalance(apId);
+      } catch {
+        return null;
+      }
+    })(),
+    (async () => {
+      try {
+        const { count, error } = await supabase
+          .from("support_tickets")
+          .select("id", { count: "exact", head: true })
+          .eq("agency_partner_id", apId)
+          .not("status", "eq", "Closed");
+        if (error) return null;
+        return count;
+      } catch {
+        return null;
+      }
+    })(),
+  ]);
+
+  return {
+    walletBalance,
+    totalApplications: apps !== null ? apps.length : null,
+    pendingApplications: apps !== null 
+      ? apps.filter((a) => !["completed", "rejected", "cancelled"].includes(a.status)).length 
+      : null,
+    completedApplications: apps !== null 
+      ? apps.filter((a) => a.status === "completed").length 
+      : null,
+    todayCommission: commissions !== null
+      ? commissions
+          .filter((c) => ["earned", "approved", "paid"].includes(c.status) && c.created_at >= startOfToday)
+          .reduce((sum, c) => sum + safeNumber(c.calculated_amount), 0)
+      : null,
+    monthlyCommission: commissions !== null
+      ? commissions
+          .filter((c) => ["earned", "approved", "paid"].includes(c.status) && c.created_at >= startOfMonth)
+          .reduce((sum, c) => sum + safeNumber(c.calculated_amount), 0)
+      : null,
+    activeTickets,
+  };
+}
+
+export interface MonthlyChartPoint {
+  name: string;
+  earnings: number;
+  filings: number;
+}
+
+export async function getMonthlyChartData(apId: string): Promise<MonthlyChartPoint[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const now = new Date();
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(now.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const [commissionsRes, appsRes] = await Promise.all([
+    (async () => {
+      try {
+        return await supabase
+          .from("ap_commissions")
+          .select("calculated_amount, created_at, status")
+          .eq("agency_partner_id", apId)
+          .gte("created_at", sixMonthsAgo.toISOString());
+      } catch {
+        return { data: null };
+      }
+    })(),
+    (async () => {
+      try {
+        return await supabase
+          .from("applications")
+          .select("id, created_at")
+          .eq("agency_partner_id", apId)
+          .gte("created_at", sixMonthsAgo.toISOString());
+      } catch {
+        return { data: null };
+      }
+    })(),
+  ]);
+
+  const commissions = commissionsRes.data ?? [];
+  const apps = appsRes.data ?? [];
+
+  const chartData: MonthlyChartPoint[] = [];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(now.getMonth() - i);
+    const monthIndex = d.getMonth();
+    const year = d.getFullYear();
+    const monthName = months[monthIndex];
+
+    // Filter commissions for this month & year
+    const monthCommissions = commissions.filter((c) => {
+      const cDate = new Date(c.created_at);
+      return cDate.getMonth() === monthIndex && cDate.getFullYear() === year && ["earned", "approved", "paid"].includes(c.status);
+    });
+
+    // Filter apps for this month & year
+    const monthApps = apps.filter((a) => {
+      const aDate = new Date(a.created_at);
+      return aDate.getMonth() === monthIndex && aDate.getFullYear() === year;
+    });
+
+    const earnings = monthCommissions.reduce((sum, c) => sum + Number(c.calculated_amount || 0), 0);
+    const filings = monthApps.length;
+
+    chartData.push({
+      name: monthName,
+      earnings,
+      filings,
+    });
+  }
+
+  return chartData;
+}

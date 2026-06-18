@@ -3,7 +3,10 @@ import {
   getAgencyPartnerByUserId,
   getAPDashboardStats,
   getAPApplications,
+  getPartnerAnalytics,
   getActiveAnnouncements,
+  getAPWalletLedger,
+  getMonthlyChartData,
 } from "@/lib/ap-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { APDashboardClient } from "./dashboard-client";
@@ -27,10 +30,13 @@ export default async function APDashboardPage() {
     redirect("/unauthorized");
   }
 
-  const [stats, applications, announcements] = await Promise.all([
+  const [stats, applications, announcements, analytics, transactions, chartData] = await Promise.all([
     getAPDashboardStats(ap.id),
     getAPApplications(ap.id, 5),
     getActiveAnnouncements(ap.id, ap.tier_id),
+    getPartnerAnalytics(ap.id),
+    getAPWalletLedger(ap.id, 5),
+    getMonthlyChartData(ap.id),
   ]);
 
   const recentApps = applications.slice(0, 5).map((app) => ({
@@ -50,6 +56,15 @@ export default async function APDashboardPage() {
     body: ann.body,
   }));
 
+  const mappedTransactions = transactions.map((tx) => ({
+    id: tx.id,
+    title: tx.description || tx.entry_type.replace(/_/g, " "),
+    amount: Number(tx.amount),
+    type: ["commission_credit", "manual_credit", "bonus"].includes(tx.entry_type) ? ("credit" as const) : ("debit" as const),
+    status: "success" as const,
+    date: tx.created_at,
+  }));
+
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -65,6 +80,9 @@ export default async function APDashboardPage() {
           stats={stats}
           recentApps={recentApps}
           announcements={mappedAnnouncements}
+          analytics={analytics}
+          dbTransactions={mappedTransactions}
+          chartData={chartData}
         />
       </div>
     </main>
