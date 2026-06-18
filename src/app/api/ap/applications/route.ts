@@ -152,8 +152,6 @@ export async function POST(request: Request) {
     const address = String(formData.get("address") ?? "").trim();
     const gender = String(formData.get("gender") ?? "").trim();
     const dob = String(formData.get("dob") ?? "").trim();
-    const paymentMethod = String(formData.get("paymentMethod") ?? "razorpay").trim();
-    const offlineReference = String(formData.get("offlineReference") ?? "").trim();
     const pmVishwakarmaDetails = {
       pincode,
       district,
@@ -223,11 +221,9 @@ export async function POST(request: Request) {
     }
 
     const expectedAmountPaise = Math.round(Number(service.customer_fee ?? 0) * 100);
-    const isOffline = paymentMethod === "cash" || paymentMethod === "upi_qr";
 
     if (
       expectedAmountPaise > 0 &&
-      !isOffline &&
       !isVerifiedRazorpayPayment({
         orderId: razorpayOrderId,
         paymentId: razorpayPaymentId,
@@ -239,9 +235,9 @@ export async function POST(request: Request) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
     }
 
-    const razorpayDetails = (razorpayPaymentId && !isOffline) ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
+    const razorpayDetails = razorpayPaymentId ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
 
-    if (expectedAmountPaise > 0 && !isOffline) {
+    if (expectedAmountPaise > 0) {
       if (!razorpayDetails) {
         return jsonError("Razorpay payment could not be verified on the server.", 400);
       }
@@ -422,11 +418,11 @@ export async function POST(request: Request) {
       user_id: user.id,
       amount: service.customer_fee,
       status: "verified",
-      razorpay_order_id: isOffline ? null : (razorpayOrderId || razorpayDetails?.order_id || null),
-      razorpay_payment_id: isOffline ? (offlineReference || `${paymentMethod.toUpperCase()}-OFFLINE`) : (razorpayPaymentId || razorpayDetails?.id || null),
-      razorpay_signature: isOffline ? null : (razorpaySignature || null),
-      razorpay_status: isOffline ? "verified" : (razorpayDetails?.status ?? "verified"),
-      payment_method: isOffline ? paymentMethod : (razorpayDetails?.method ?? null),
+      razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
+      razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,
+      razorpay_signature: razorpaySignature || null,
+      razorpay_status: razorpayDetails?.status ?? "verified",
+      payment_method: razorpayDetails?.method ?? null,
       paid_at: paidAt,
     });
 
