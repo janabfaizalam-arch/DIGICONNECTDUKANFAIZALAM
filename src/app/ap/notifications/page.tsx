@@ -169,44 +169,44 @@ export default function NotificationsPage() {
   const getIcon = (category: string) => {
     switch (category) {
       case "Wallet & Payouts":
-        return <Wallet className="h-5 w-5 text-emerald-400" />;
+        return <Wallet className="h-5 w-5 text-emerald-600" />;
       case "Support Desk":
-        return <MessageSquare className="h-5 w-5 text-indigo-400" />;
+        return <MessageSquare className="h-5 w-5 text-indigo-600" />;
       case "Tier & Compliance":
-        return <Sparkles className="h-5 w-5 text-amber-400" />;
+        return <Sparkles className="h-5 w-5 text-amber-600" />;
       default:
-        return <FileText className="h-5 w-5 text-blue-400" />;
+        return <FileText className="h-5 w-5 text-blue-600" />;
     }
   };
 
   const getTypeStyle = (notif: NotificationItem) => {
     if (!notif.isRead) {
       switch (notif.type) {
-        case "danger": return "border-red-500/30 bg-red-500/5 shadow-md shadow-red-950/5";
-        case "warning": return "border-amber-500/30 bg-amber-500/5 shadow-md shadow-amber-950/5";
-        case "success": return "border-emerald-500/30 bg-emerald-500/5 shadow-md shadow-emerald-950/5";
-        default: return "border-blue-500/30 bg-blue-500/5 shadow-md shadow-blue-950/5";
+        case "danger": return "border-red-200 bg-red-50/70 shadow-sm";
+        case "warning": return "border-amber-200 bg-amber-50/70 shadow-sm";
+        case "success": return "border-emerald-200 bg-emerald-50/70 shadow-sm";
+        default: return "border-blue-200 bg-blue-50/70 shadow-sm";
       }
     }
-    return "border-white/5 bg-slate-900/10 opacity-70";
+    return "border-slate-200/50 bg-white/70 opacity-80 shadow-sm";
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-4xl space-y-6">
         
         {/* Header Rebranding */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-400">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
               <Bell className="h-3.5 w-3.5" /> Notification Center
             </div>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
               DigiPartner Alerts & Updates
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-500 text-sm mt-1 font-medium">
               Stay updated with payouts, customer applications processing, security validations and compliance deadlines.
             </p>
           </div>
@@ -216,7 +216,7 @@ export default function NotificationsPage() {
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-slate-900 border border-white/10 hover:bg-slate-800 px-4 font-bold text-white transition-all text-xs"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 px-4 font-bold text-slate-800 transition-all text-xs shadow-sm"
               >
                 <Check className="h-3.5 w-3.5" /> Mark all read
               </button>
@@ -224,7 +224,7 @@ export default function NotificationsPage() {
             {notifications.some(n => n.isRead) && (
               <button
                 onClick={handleDeleteAllRead}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-slate-950 border border-white/5 hover:bg-slate-900 px-4 font-bold text-slate-400 hover:text-red-400 transition-all text-xs"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 px-4 font-bold text-slate-500 hover:text-red-600 hover:border-red-200 transition-all text-xs shadow-sm"
                 title="Clear all read notifications"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Clear read
@@ -241,10 +241,10 @@ export default function NotificationsPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                   selectedCategory === cat
-                    ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-400"
-                    : "bg-slate-900/30 border-white/5 text-slate-400 hover:text-slate-300"
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-750 font-bold"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-850 shadow-sm"
                 }`}
               >
                 {cat}
@@ -254,13 +254,13 @@ export default function NotificationsPage() {
 
           {/* Search Input */}
           <div className="sm:col-span-4 relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search notifications..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 rounded-lg bg-slate-900/40 pl-9 pr-4 text-xs font-semibold text-slate-200 placeholder-slate-500 border border-white/5 focus:border-indigo-500 focus:outline-none transition-all"
+              className="w-full h-9 rounded-lg bg-white pl-9 pr-4 text-xs font-semibold text-slate-800 placeholder:text-slate-400 border border-slate-200 focus:border-indigo-500 focus:outline-none transition-all shadow-sm"
             />
           </div>
         </div>
@@ -268,10 +268,10 @@ export default function NotificationsPage() {
         {/* Notifications list workspace */}
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <Card className="border border-dashed border-white/10 bg-slate-900/10 p-12 text-center rounded-3xl">
-              <Inbox className="mx-auto h-10 w-10 text-slate-600 animate-pulse" />
-              <p className="mt-3 text-base font-bold text-slate-400">All clear!</p>
-              <p className="text-xs text-slate-500 mt-1.5">No notifications match your current filter settings.</p>
+            <Card className="border border-dashed border-slate-250 bg-white/50 p-12 text-center rounded-3xl">
+              <Inbox className="mx-auto h-10 w-10 text-slate-400 animate-pulse" />
+              <p className="mt-3 text-base font-bold text-slate-850">All clear!</p>
+              <p className="text-xs text-slate-450 mt-1.5 font-semibold">No notifications match your current filter settings.</p>
             </Card>
           ) : (
             filtered.map((item) => (
@@ -281,11 +281,11 @@ export default function NotificationsPage() {
               >
                 {/* Unread Indicator Dot */}
                 {!item.isRead && (
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 flex h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                 )}
 
                 {/* Category Icon */}
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 border border-white/5 shadow-inner">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200/60 shadow-sm">
                   {getIcon(item.category)}
                 </span>
 
@@ -293,15 +293,15 @@ export default function NotificationsPage() {
                 <div className="flex-1 space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-extrabold text-white text-sm leading-snug">
+                      <h3 className="font-extrabold text-slate-900 text-sm leading-snug">
                         {item.title}
                       </h3>
-                      <span className="px-2 py-0.5 rounded-md bg-slate-950/80 border border-white/5 text-[9px] font-bold text-slate-400">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[9px] font-bold text-slate-500">
                         {item.category}
                       </span>
                     </div>
                     
-                    <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap font-mono">
                       {new Date(item.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -311,7 +311,7 @@ export default function NotificationsPage() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                  <p className="text-xs text-slate-655 font-medium leading-relaxed">
                     {item.description}
                   </p>
 
@@ -321,7 +321,7 @@ export default function NotificationsPage() {
                       {item.linkUrl && (
                         <Link
                           href={item.linkUrl}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
                         >
                           {item.actionLabel || "Resolve Now"} <ArrowRight className="h-3 w-3" />
                         </Link>
@@ -329,7 +329,7 @@ export default function NotificationsPage() {
                       {!item.isRead && (
                         <button
                           onClick={() => handleMarkAsRead(item.id)}
-                          className="text-[10px] font-bold text-slate-400 hover:text-white transition-colors"
+                          className="text-[10px] font-bold text-slate-400 hover:text-slate-700 transition-colors"
                         >
                           Mark Read
                         </button>
@@ -338,7 +338,7 @@ export default function NotificationsPage() {
 
                     <button
                       onClick={() => handleDeleteNotification(item.id)}
-                      className="text-slate-500 hover:text-red-400 transition-colors"
+                      className="text-slate-405 hover:text-red-600 transition-colors"
                       title="Delete notification log record"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -351,10 +351,10 @@ export default function NotificationsPage() {
         </div>
 
         {/* Dynamic Tip Banner */}
-        <Card className="border border-white/5 bg-gradient-to-r from-blue-950/10 via-slate-900/40 to-slate-950 p-5 rounded-2xl flex gap-3 items-center">
-          <TrendingUp className="h-5 w-5 text-indigo-400 shrink-0" />
-          <p className="text-xs text-slate-400 leading-relaxed font-semibold">
-            <span className="text-white font-extrabold">Partner Tip:</span> Keep your notification settings toggled for immediate WhatsApp alerts under Profile Settings. Never miss payout clearances or document corrections.
+        <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl flex gap-3 items-center shadow-sm">
+          <TrendingUp className="h-5 w-5 text-indigo-650 shrink-0" />
+          <p className="text-xs text-slate-500 leading-relaxed font-medium">
+            <span className="text-slate-900 font-extrabold">Partner Tip:</span> Keep your notification settings toggled for immediate WhatsApp alerts under Profile Settings. Never miss payout clearances or document corrections.
           </p>
         </Card>
 

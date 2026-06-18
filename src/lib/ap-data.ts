@@ -113,9 +113,9 @@ export async function getAdminAgencyPartnerList(): Promise<APListItem[]> {
 
 // ── AP Dashboard Stats ─────────────────────────────────────────────────────
 
-export async function getAPDashboardStats(apId: string): Promise<APDashboardStats> {
+export async function getAPDashboardStats(apId: string): Promise<APDashboardStats & { todayApplications: number; revenueCollected: number; conversionRate: number }> {
   const supabase = getSupabaseAdmin();
-  const empty: APDashboardStats = {
+  const empty = {
     totalApplications: 0,
     pendingApplications: 0,
     completedApplications: 0,
@@ -127,15 +127,19 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     walletBalance: 0,
     customerCount: 0,
     monthlyApplications: 0,
+    todayApplications: 0,
+    revenueCollected: 0,
+    conversionRate: 0,
   };
 
   if (!supabase) return empty;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
   const [appsResult, commissionsResult, walletResult, payoutsResult, customersResult, monthlyResult] = await Promise.all([
-    supabase.from("applications").select("id, status").eq("agency_partner_id", apId),
+    supabase.from("applications").select("id, status, created_at, amount").eq("agency_partner_id", apId),
     supabase.from("ap_commissions").select("calculated_amount, status").eq("agency_partner_id", apId),
     supabase.from("ap_wallet_ledger").select("amount, entry_type").eq("agency_partner_id", apId),
     supabase.from("ap_payouts").select("amount, status").eq("agency_partner_id", apId),
@@ -143,7 +147,7 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     supabase.from("applications").select("id").eq("agency_partner_id", apId).gte("created_at", monthStart),
   ]);
 
-  const apps = (appsResult.data ?? []) as { id: string; status: string }[];
+  const apps = (appsResult.data ?? []) as { id: string; status: string; created_at: string; amount: number }[];
   const commissions = (commissionsResult.data ?? []) as { calculated_amount: number; status: string }[];
   const walletEntries = (walletResult.data ?? []) as { amount: number; entry_type: string }[];
   const payouts = (payoutsResult.data ?? []) as { amount: number; status: string }[];
@@ -155,6 +159,14 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     if (["manual_debit", "payout_deduction", "penalty", "reversal"].includes(e.entry_type)) return total - Math.abs(amt);
     return total;
   }, 0);
+
+  const todayApplications = apps.filter((a) => a.created_at && a.created_at >= startOfToday).length;
+  const revenueCollected = apps
+    .filter((a) => ["completed", "approved", "submitted", "in_process", "in_progress"].includes(a.status))
+    .reduce((sum, a) => sum + safeNumber(a.amount), 0);
+  const conversionRate = apps.length > 0
+    ? Math.round((apps.filter((a) => a.status === "completed").length / apps.length) * 100)
+    : 0;
 
   return {
     totalApplications: apps.length,
@@ -174,6 +186,9 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     walletBalance,
     customerCount: new Set(customerMobiles.map((c) => c.customer_mobile_normalized)).size,
     monthlyApplications: (monthlyResult.data ?? []).length,
+    todayApplications,
+    revenueCollected,
+    conversionRate,
   };
 }
 

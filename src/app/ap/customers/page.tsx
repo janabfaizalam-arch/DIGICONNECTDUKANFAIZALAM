@@ -48,24 +48,24 @@ export default async function APCustomersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header section */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-blue-400">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
               DigiPartner CRM
             </div>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-5xl">
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
               My Customers
             </h1>
-            <p className="mt-2 text-slate-400 max-w-2xl text-sm">
+            <p className="mt-2 text-slate-555 max-w-2xl text-sm font-medium">
               Manage lead generation contacts, duplicate mobile status, and trigger quick POS applications.
             </p>
           </div>
           <Link
             href="/ap/applications/new"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-6 font-bold text-white shadow-lg shadow-blue-500/25 hover:from-blue-600 hover:to-indigo-600 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-bold text-white shadow-lg shadow-blue-500/15 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
           >
             <UserPlus className="h-4.5 w-4.5" />
             Add New Customer
@@ -75,17 +75,17 @@ export default async function APCustomersPage() {
         {/* Search & stats bar */}
         <div className="grid gap-4 md:grid-cols-4 items-center">
           <div className="relative md:col-span-3">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search registered customers by name, mobile, email or pincode..."
-              className="w-full rounded-xl border border-white/5 bg-slate-900/40 py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+              className="w-full rounded-xl border border-slate-200 bg-white/70 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
-          <Card className="border border-white/5 bg-slate-900/20 p-3.5 backdrop-blur-md rounded-xl text-center">
-            <p className="text-[10px] font-bold uppercase text-slate-500">Total Customers</p>
-            <p className="text-xl font-black text-white mt-0.5">{customers.length}</p>
+          <Card className="border border-slate-200/50 bg-white/70 p-3.5 backdrop-blur-md rounded-xl text-center shadow-sm">
+            <p className="text-[10px] font-bold uppercase text-slate-400">Total Customers</p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">{customers.length}</p>
           </Card>
         </div>
 
@@ -95,35 +95,35 @@ export default async function APCustomersPage() {
             customers.map((c) => (
               <Card
                 key={c.id}
-                className="relative overflow-hidden border border-white/5 bg-slate-900/20 p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between hover:border-white/10 hover:bg-slate-900/30 transition-all duration-150 group"
+                className="relative overflow-hidden border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between hover:border-slate-300 hover:bg-white transition-all duration-150 shadow-sm group"
               >
                 <div className="space-y-3.5">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-extrabold text-white text-base group-hover:text-blue-400 transition-colors">
+                      <h4 className="font-extrabold text-slate-900 text-base group-hover:text-blue-600 transition-colors">
                         {c.full_name}
                       </h4>
-                      <span className="text-[10px] font-semibold text-slate-500 font-mono">
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
                         ID: {c.id.slice(0, 8).toUpperCase()}
                       </span>
                     </div>
 
-                    <span className="text-[9px] font-bold text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/5 capitalize">
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/60 capitalize">
                       {c.source?.replace("_", " ") || "AP POS"}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 font-mono text-xs text-slate-400">
+                  <div className="space-y-1.5 font-mono text-xs text-slate-500 font-semibold">
                     <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-slate-600" />
+                      <Phone className="h-3.5 w-3.5 text-slate-405" />
                       <span>{c.mobile}</span>
                     </div>
                     <div className="flex items-center gap-2 truncate">
-                      <Mail className="h-3.5 w-3.5 text-slate-600" />
+                      <Mail className="h-3.5 w-3.5 text-slate-405" />
                       <span className="truncate">{c.email || "No email registered"}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 text-slate-600" />
+                      <MapPin className="h-3.5 w-3.5 text-slate-405" />
                       <span>
                         {c.city || "—"}, {c.state || "—"} ({c.pincode || "—"})
                       </span>
@@ -131,14 +131,14 @@ export default async function APCustomersPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 pt-3.5 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500 font-medium">
+                <div className="mt-5 pt-3.5 border-t border-slate-150 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 font-semibold">
                     Added: {formatDate(c.created_at)}
                   </span>
 
                   <Link
                     href={`/ap/applications/new?customerId=${c.id}`}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 px-3 text-xs font-bold text-blue-400 border border-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    className="inline-flex h-8 items-center gap-1 rounded-lg bg-blue-50 hover:bg-blue-100 px-3 text-xs font-bold text-blue-600 border border-blue-200 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     New Apply
@@ -147,10 +147,10 @@ export default async function APCustomersPage() {
               </Card>
             ))
           ) : (
-            <div className="col-span-full rounded-2xl border border-dashed border-white/10 p-12 text-center">
-              <Users className="mx-auto h-12 w-12 text-slate-600" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-300">No customers registered</h3>
-              <p className="mt-2 text-sm text-slate-500">
+            <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-12 text-center bg-white/50">
+              <Users className="mx-auto h-12 w-12 text-slate-400 animate-pulse" />
+              <h3 className="mt-4 text-lg font-bold text-slate-850">No customers registered</h3>
+              <p className="mt-2 text-sm text-slate-450 font-medium">
                 Register your first customer lead to easily apply for services on their behalf.
               </p>
             </div>

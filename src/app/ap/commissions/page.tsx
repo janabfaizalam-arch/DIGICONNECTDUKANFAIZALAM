@@ -54,33 +54,33 @@ export default async function APCommissionsPage() {
       label: "Total Commission",
       value: totalCommission,
       icon: HandCoins,
-      gradient: "from-blue-500/20 to-cyan-500/20 text-blue-400 border-blue-500/20",
+      gradient: "from-blue-500/10 to-cyan-500/10 text-blue-600 border-blue-200",
     },
     {
       label: "Pending Verification",
       value: pendingCommission,
       icon: TrendingUp,
-      gradient: "from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/20",
+      gradient: "from-amber-500/10 to-orange-500/10 text-amber-600 border-amber-200",
     },
     {
       label: "Total Paid Out",
       value: paidCommission,
       icon: CheckCircle,
-      gradient: "from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/20",
+      gradient: "from-emerald-500/10 to-teal-500/10 text-emerald-600 border-emerald-200",
     },
   ];
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-blue-400">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
             DigiPartner Ecosystem
           </div>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-5xl">
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
             My Commissions
           </h1>
-          <p className="mt-2 text-slate-400 max-w-2xl text-sm">
+          <p className="mt-2 text-slate-500 max-w-2xl text-sm font-medium">
             Review your earnings, rule overrides, and commission statuses calculated by the hierarchical commission engine.
           </p>
         </div>
@@ -90,15 +90,15 @@ export default async function APCommissionsPage() {
           {commissionStats.map(({ label, value, icon: Icon, gradient }) => (
             <Card
               key={label}
-              className={`border border-white/5 bg-slate-900/20 p-5 backdrop-blur-md rounded-2xl ${gradient.split(" ")[2]}`}
+              className="border border-slate-200/50 bg-white/70 p-5 backdrop-blur-md rounded-2xl shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-500">{label}</p>
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 border ${gradient}`}>
+                <p className="text-xs font-bold text-slate-500">{label}</p>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white border bg-gradient-to-br ${gradient}`}>
                   <Icon className="h-4.5 w-4.5" />
                 </span>
               </div>
-              <p className="mt-4 text-2xl font-black tracking-tight text-white">
+              <p className="mt-4 text-2xl font-black tracking-tight text-slate-900">
                 {formatCurrency(value)}
               </p>
             </Card>
@@ -106,46 +106,46 @@ export default async function APCommissionsPage() {
         </div>
 
         {/* Commission History */}
-        <Card className="border border-white/5 bg-slate-900/20 backdrop-blur-md rounded-3xl p-5 md:p-7 overflow-hidden">
-          <h2 className="text-lg font-bold text-white mb-4">Earning Logs</h2>
+        <Card className="border border-slate-200/50 bg-white/70 backdrop-blur-md rounded-3xl p-5 md:p-7 overflow-hidden shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Earning Logs</h2>
           <div className="space-y-3">
             {commissions.length ? (
               commissions.map((c) => (
                 <div
                   key={c.id}
-                  className="flex flex-col gap-4 rounded-xl border border-white/5 bg-slate-900/30 p-4 transition-all duration-150 hover:bg-slate-900/50 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-4 rounded-xl border border-slate-200/50 bg-white/50 p-4 transition-all duration-150 hover:bg-white hover:border-slate-300 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="space-y-1">
-                    <p className="font-extrabold text-white text-sm">
+                    <p className="font-extrabold text-slate-900 text-sm">
                       {c.service_name || "Premium Digital Service"}
                     </p>
-                    <p className="font-mono text-xs text-slate-500">
-                      Rule Type: <span className="capitalize text-slate-400">{c.commission_type}</span>
+                    <p className="font-mono text-xs text-slate-400 font-semibold">
+                      Rule Type: <span className="capitalize text-slate-650 font-bold">{c.commission_type}</span>
                       {c.commission_rate ? ` (${c.commission_rate}%)` : ""}
                     </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4 shrink-0 justify-between md:justify-end">
-                    <p className="text-lg font-black text-white">{formatCurrency(c.calculated_amount)}</p>
+                    <p className="text-lg font-black text-slate-900">{formatCurrency(c.calculated_amount)}</p>
                     
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold capitalize border ${
                         c.status === "paid"
-                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                           : c.status === "approved"
-                          ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                          : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                          ? "bg-blue-50 border-blue-200 text-blue-700"
+                          : "bg-amber-50 border-amber-200 text-amber-700"
                       }`}
                     >
                       {c.status}
                     </span>
 
-                    <p className="text-xs text-slate-500 font-mono">{formatDate(c.created_at)}</p>
+                    <p className="text-xs text-slate-400 font-mono font-semibold">{formatDate(c.created_at)}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="rounded-2xl border border-dashed border-white/10 p-10 text-center text-sm text-slate-500">
+              <p className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-400 font-semibold bg-white/50">
                 No commission transactions recorded yet.
               </p>
             )}

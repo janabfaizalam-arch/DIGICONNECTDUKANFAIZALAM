@@ -19,7 +19,7 @@ export default async function PartnerServicesPage() {
   const services = await getVisibleAgentServices(user.id);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <PartnerServicesClient initialServices={services} />
       </div>

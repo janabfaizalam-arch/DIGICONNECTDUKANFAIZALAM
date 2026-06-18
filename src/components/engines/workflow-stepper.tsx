@@ -129,9 +129,9 @@ export function WorkflowStepper({
   return (
     <div className="space-y-6">
       {/* Visual Stepper */}
-      <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-5 md:p-6 backdrop-blur-xl">
+      <div className="bg-slate-50/50 border border-slate-200/60 rounded-[20px] p-5 md:p-6 backdrop-blur-xl">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-6 flex items-center gap-1.5">
-          <Sparkles className="h-4 w-4 text-indigo-400" />
+          <Sparkles className="h-4 w-4 text-indigo-500" />
           Application Workflow Progress
         </h3>
 
@@ -146,10 +146,10 @@ export function WorkflowStepper({
                   <div
                     className={`h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 ${
                       status === "completed"
-                        ? "bg-indigo-500/20 border-2 border-indigo-400 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                        ? "bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-sm"
                         : status === "active"
-                        ? "bg-indigo-500 border-2 border-indigo-400 text-white animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-                        : "bg-slate-950 border border-white/10 text-slate-500"
+                        ? "bg-indigo-600 border-2 border-indigo-400 text-white shadow-[0_0_12px_rgba(99,102,241,0.3)]"
+                        : "bg-white border border-slate-200 text-slate-400"
                     }`}
                   >
                     {status === "completed" ? (
@@ -164,15 +164,15 @@ export function WorkflowStepper({
                     <p
                       className={`text-xs font-extrabold capitalize ${
                         status === "active"
-                          ? "text-indigo-400"
+                          ? "text-indigo-600 font-black"
                           : status === "completed"
-                          ? "text-slate-200"
-                          : "text-slate-500"
+                          ? "text-slate-800"
+                          : "text-slate-400"
                       }`}
                     >
                       {step.label}
                     </p>
-                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                       Stage {idx + 1}
                     </span>
                   </div>
@@ -180,7 +180,7 @@ export function WorkflowStepper({
 
                 {/* Connection Line (hidden on last step) */}
                 {idx < steps.length - 1 && (
-                  <div className="hidden md:block h-0.5 flex-1 bg-gradient-to-r from-indigo-500/30 to-indigo-500/5 min-w-[20px]" />
+                  <div className="hidden md:block h-0.5 flex-1 bg-gradient-to-r from-indigo-500/20 to-indigo-500/5 min-w-[20px]" />
                 )}
               </React.Fragment>
             );
@@ -190,27 +190,27 @@ export function WorkflowStepper({
 
       {/* Allowed Transitions / Actions */}
       {allowedTransitions.length > 0 && (
-        <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-5 md:p-6 backdrop-blur-xl space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-455">
+        <div className="bg-slate-50/50 border border-slate-200/60 rounded-[20px] p-5 md:p-6 backdrop-blur-xl space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Available Operations
           </h3>
           
           {selectedNextStep ? (
             <form onSubmit={handleTransitionSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-455 mb-1.5 block">
-                  Remarks / Notes for transition to <span className="text-indigo-400 uppercase">&quot;{steps.find(s => s.step_key === selectedNextStep)?.label}&quot;</span>
+                <label className="text-xs font-bold text-slate-500 mb-1.5 block">
+                  Remarks / Notes for transition to <span className="text-indigo-600 uppercase font-extrabold">&quot;{steps.find(s => s.step_key === selectedNextStep)?.label}&quot;</span>
                 </label>
                 <textarea
                   value={transitionNote}
                   onChange={(e) => setTransitionNote(e.target.value)}
                   placeholder="Provide details or instructions for this status change..."
-                  className="w-full bg-slate-950 border border-white/5 text-slate-100 rounded-2xl px-4 py-3 text-xs font-medium focus:border-indigo-500 focus:outline-none transition-all resize-none min-h-[90px]"
+                  className="w-full bg-white border border-slate-200 text-slate-800 rounded-2xl px-4 py-3 text-xs font-medium focus:border-indigo-500 focus:outline-none transition-all resize-none min-h-[90px]"
                 />
               </div>
 
               {errorMessage && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-xl flex items-center gap-2">
+                <div className="p-3 bg-red-50 border border-red-200 text-red-655 text-xs font-bold rounded-xl flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {errorMessage}
                 </div>
@@ -225,14 +225,14 @@ export function WorkflowStepper({
                     setErrorMessage("");
                   }}
                   disabled={isSubmitting}
-                  className="px-4 py-2 border border-white/5 text-xs font-bold text-slate-400 rounded-xl hover:bg-white/5 transition"
+                  className="px-4 py-2 border border-slate-200 text-xs font-bold text-slate-500 rounded-xl hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-indigo-600 text-xs font-bold text-white rounded-xl hover:bg-indigo-500 shadow-md shadow-indigo-950/20 transition flex items-center gap-1.5"
+                  className="px-4 py-2 bg-indigo-600 text-xs font-bold text-white rounded-xl hover:bg-indigo-500 shadow-md shadow-indigo-500/10 transition flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
@@ -261,12 +261,12 @@ export function WorkflowStepper({
                     key={nextKey}
                     type="button"
                     onClick={() => setSelectedNextStep(nextKey)}
-                    className={`h-11 px-4 text-xs font-bold rounded-xl transition duration-150 flex items-center gap-2 border ${
+                    className={`h-11 px-4 text-xs font-bold rounded-xl transition duration-150 flex items-center gap-2 border cursor-pointer ${
                       isCompletedOrRejected
                         ? nextKey === "completed"
-                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-450 hover:bg-emerald-500/20"
-                          : "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
-                        : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100/50"
+                          : "bg-red-50 border-red-200 text-red-700 hover:bg-red-100/50"
+                        : "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100/50"
                     }`}
                   >
                     Transition to {targetStep.label}
@@ -280,37 +280,37 @@ export function WorkflowStepper({
       )}
 
       {/* Activity Timeline */}
-      <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-5 md:p-6 backdrop-blur-xl space-y-4">
+      <div className="bg-slate-50/50 border border-slate-200/60 rounded-[20px] p-5 md:p-6 backdrop-blur-xl space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <Clock className="h-4 w-4 text-slate-500" />
+          <Clock className="h-4 w-4 text-slate-450" />
           Activity Log & Timeline
         </h3>
 
         {timelines.length > 0 ? (
-          <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/5">
+          <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200/60">
             {timelines.map((log) => (
               <div key={log.id} className="relative group animate-in fade-in duration-200">
                 {/* Timeline Dot */}
-                <div className="absolute -left-[22px] top-1 h-3.5 w-3.5 rounded-full border border-white/10 bg-slate-950 flex items-center justify-center group-hover:border-indigo-500 transition-colors">
-                  <div className="h-1.5 w-1.5 rounded-full bg-slate-500 group-hover:bg-indigo-400 transition-colors" />
+                <div className="absolute -left-[22px] top-1 h-3.5 w-3.5 rounded-full border border-slate-200 bg-white flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+                  <div className="h-1.5 w-1.5 rounded-full bg-slate-400 group-hover:bg-indigo-500 transition-colors" />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h4 className="text-xs font-extrabold text-slate-200">
+                    <h4 className="text-xs font-extrabold text-slate-800">
                       {log.event_title}
                     </h4>
-                    <span className="text-[10px] text-slate-500 font-semibold font-mono">
+                    <span className="text-[10px] text-slate-400 font-semibold font-mono">
                       {formatTimelineDate(log.created_at)}
                     </span>
                   </div>
                   {log.event_description && (
-                    <p className="text-xs text-slate-400 font-medium">
+                    <p className="text-xs text-slate-655 font-medium">
                       {log.event_description}
                     </p>
                   )}
                   {log.metadata?.actor_name && (
-                    <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-slate-450 flex items-center gap-1">
                       <User className="h-3 w-3" /> By {log.metadata.actor_name}
                       {log.metadata.actor_role && ` (${log.metadata.actor_role})`}
                     </span>
@@ -320,10 +320,10 @@ export function WorkflowStepper({
             ))}
           </div>
         ) : (
-          <div className="p-6 border border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center gap-1">
-            <BadgeAlert className="h-8 w-8 text-slate-600 mb-1" />
-            <p className="text-xs font-bold text-slate-500">No events recorded on timeline yet</p>
-            <span className="text-[10px] text-slate-650 font-semibold">Future application updates will appear here</span>
+          <div className="p-6 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center gap-1">
+            <BadgeAlert className="h-8 w-8 text-slate-400 mb-1" />
+            <p className="text-xs font-bold text-slate-400">No events recorded on timeline yet</p>
+            <span className="text-[10px] text-slate-500 font-semibold">Future application updates will appear here</span>
           </div>
         )}
       </div>

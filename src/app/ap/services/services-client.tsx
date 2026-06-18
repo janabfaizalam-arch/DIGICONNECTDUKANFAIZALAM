@@ -109,14 +109,14 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-400">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
             <Sparkles className="h-3.5 w-3.5" />
             Service Engine
           </div>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-5xl">
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
             Service Catalog
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-500 text-sm mt-1 font-medium">
             Browse active products, calculate custom commission overlays, and initiate quick client submissions.
           </p>
         </div>
@@ -126,7 +126,7 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
       {recentlyUsedServices.length > 0 && (
         <div className="space-y-2.5">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <History className="h-3.5 w-3.5" /> Recently Used Services
+            <History className="h-3.5 w-3.5 text-slate-400" /> Recently Used Services
           </p>
           <div className="flex flex-wrap gap-2">
             {recentlyUsedServices.map((srv) => (
@@ -134,10 +134,10 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
                 key={srv.id}
                 href={`/ap/applications/new?serviceId=${srv.id}`}
                 onClick={() => trackRecentUse(srv.slug)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/5 bg-slate-900/40 text-xs text-slate-300 hover:border-blue-500/20 hover:text-white hover:bg-slate-900 transition-all font-semibold"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200/60 bg-white/70 text-xs text-slate-600 hover:border-blue-550 hover:text-blue-600 hover:bg-white transition-all font-semibold shadow-sm"
               >
                 <span>{srv.title}</span>
-                <ArrowRight className="h-3 w-3 text-slate-500" />
+                <ArrowRight className="h-3 w-3 text-slate-400" />
               </Link>
             ))}
           </div>
@@ -147,17 +147,17 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
       {/* Filter and Search Bar */}
       <div className="grid gap-4 md:grid-cols-4 items-center">
         <div className="relative md:col-span-3">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search active services by title, instructions or documents..."
-            className="w-full rounded-xl border border-white/5 bg-slate-900/40 py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="w-full rounded-xl border border-slate-200 bg-white/70 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none shadow-sm"
           />
         </div>
 
-        <div className="text-right text-xs text-slate-500 font-semibold px-1">
+        <div className="text-right text-xs text-slate-400 font-bold px-1">
           Showing {filteredServices.length} of {processedServices.length} services
         </div>
       </div>
@@ -170,13 +170,13 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
             onClick={() => setSelectedCategory(cat)}
             className={`h-9 px-4 shrink-0 rounded-xl text-xs font-bold transition-all duration-200 border ${
               selectedCategory === cat
-                ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-transparent shadow-md shadow-blue-500/25"
-                : "bg-slate-900/40 text-slate-400 border-white/5 hover:text-white hover:bg-slate-900"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-md shadow-blue-500/15"
+                : "bg-white/70 text-slate-500 border-slate-200/60 hover:text-slate-800 hover:bg-white hover:border-slate-350 shadow-sm"
             }`}
           >
             {cat === "Favorites" ? (
               <span className="flex items-center gap-1">
-                <Star className={`h-3.5 w-3.5 ${selectedCategory === "Favorites" ? "fill-white" : ""}`} />
+                <Star className={`h-3.5 w-3.5 ${selectedCategory === "Favorites" ? "fill-white text-white" : "text-amber-500 fill-amber-500"}`} />
                 Favorites ({favorites.length})
               </span>
             ) : (
@@ -198,52 +198,52 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
             return (
               <Card
                 key={srv.id}
-                className="relative overflow-hidden border border-white/5 bg-slate-900/20 p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between hover:border-white/10 hover:bg-slate-900/30 transition-all duration-150 group"
+                className="relative overflow-hidden border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all duration-150 group"
               >
                 <div className="space-y-4">
                   {/* Card Title & Category */}
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                         {srv.calculatedCategory}
                       </span>
-                      <h3 className="mt-2 font-extrabold text-white text-base leading-tight group-hover:text-blue-400 transition-colors">
+                      <h3 className="mt-2 font-extrabold text-slate-900 text-base leading-tight group-hover:text-blue-600 transition-colors">
                         {srv.title}
                       </h3>
                     </div>
 
                     <button
                       onClick={() => toggleFavorite(srv.slug)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg border border-white/5 bg-slate-950 transition hover:bg-slate-800 ${
-                        isFav ? "text-amber-400" : "text-slate-500"
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white transition hover:bg-slate-50 ${
+                        isFav ? "text-amber-500" : "text-slate-400"
                       }`}
                     >
-                      <Star className={`h-4.5 w-4.5 ${isFav ? "fill-amber-400" : ""}`} />
+                      <Star className={`h-4.5 w-4.5 ${isFav ? "fill-amber-500 text-amber-500" : ""}`} />
                     </button>
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-slate-450 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-slate-500 leading-relaxed font-medium line-clamp-2">
                     {srv.description || "Guides customers through eligibility check and documentation collection."}
                   </p>
 
                   {/* Pricing and Commission Details */}
-                  <div className="grid grid-cols-3 gap-2.5 rounded-xl bg-slate-950 p-3.5 border border-white/5">
+                  <div className="grid grid-cols-3 gap-2.5 rounded-xl bg-white/50 p-3.5 border border-slate-200/50">
                     <div>
-                      <p className="text-[9px] font-bold uppercase text-slate-500">Price</p>
-                      <p className="mt-0.5 text-sm font-black text-white">
+                      <p className="text-[9px] font-bold uppercase text-slate-400">Price</p>
+                      <p className="mt-0.5 text-sm font-black text-slate-900">
                         {formatCurrency(srv.customer_fee)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase text-emerald-500">Earnings</p>
-                      <p className="mt-0.5 text-sm font-black text-emerald-400">
+                      <p className="text-[9px] font-bold uppercase text-emerald-600">Earnings</p>
+                      <p className="mt-0.5 text-sm font-black text-emerald-600">
                         {formatCurrency(payoutAmount)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase text-indigo-500">TAT</p>
-                      <p className="mt-0.5 text-sm font-extrabold text-indigo-400 truncate">
+                      <p className="text-[9px] font-bold uppercase text-indigo-600">TAT</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-indigo-600 truncate">
                         {srv.processing_time || "48 hrs"}
                       </p>
                     </div>
@@ -252,10 +252,10 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
                   {/* Required Documents */}
                   {srv.required_documents && (
                     <div className="text-xs space-y-1">
-                      <p className="font-bold text-slate-300 flex items-center gap-1">
-                        <FileText className="h-3.5 w-3.5 text-slate-500" /> Required Docs:
+                      <p className="font-bold text-slate-700 flex items-center gap-1">
+                        <FileText className="h-3.5 w-3.5 text-slate-400" /> Required Docs:
                       </p>
-                      <p className="text-[10px] text-slate-500 leading-normal line-clamp-2">
+                      <p className="text-[10px] text-slate-550 leading-normal font-semibold line-clamp-2">
                         {srv.required_documents}
                       </p>
                     </div>
@@ -263,11 +263,11 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
                 </div>
 
                 {/* Apply Button */}
-                <div className="mt-5 pt-3.5 border-t border-white/5">
+                <div className="mt-5 pt-3.5 border-t border-slate-100">
                   <Link
                     href={`/ap/applications/new?serviceId=${srv.id}`}
                     onClick={() => trackRecentUse(srv.slug)}
-                    className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white font-bold text-xs transition duration-150 border border-blue-500/20 hover:border-transparent hover:scale-[1.01] active:scale-[0.99]"
+                    className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs transition duration-150 border border-blue-200 hover:border-transparent hover:scale-[1.01] active:scale-[0.99]"
                   >
                     <span>Apply Now</span>
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -277,10 +277,10 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
             );
           })
         ) : (
-          <div className="col-span-full rounded-2xl border border-dashed border-white/10 p-12 text-center">
-            <Layers className="mx-auto h-12 w-12 text-slate-600" />
-            <h3 className="mt-4 text-lg font-semibold text-slate-300">No services found</h3>
-            <p className="mt-2 text-sm text-slate-500">
+          <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-12 text-center bg-white/50">
+            <Layers className="mx-auto h-12 w-12 text-slate-400 animate-pulse" />
+            <h3 className="mt-4 text-lg font-bold text-slate-900">No services found</h3>
+            <p className="mt-2 text-sm text-slate-400 font-semibold">
               Try adjusting your search criteria or category filters to find the required digital service.
             </p>
           </div>

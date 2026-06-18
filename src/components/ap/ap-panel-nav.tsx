@@ -19,14 +19,19 @@ import {
   X,
   ChevronRight,
   Settings,
-  Compass
+  Compass,
+  Landmark,
+  ReceiptText,
+  TrendingUp,
+  Gift,
+  Home,
+  LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Supabase notification item type
 interface NotificationItem {
   id: string;
   title: string;
@@ -55,6 +60,7 @@ export function APPanelNav() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [partnerTier, setPartnerTier] = useState("Partner Workspace");
   const [partnerCode, setPartnerCode] = useState("");
+  const [partnerName, setPartnerName] = useState("");
 
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -68,22 +74,24 @@ export function APPanelNav() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !isMounted) return;
 
-      // Fetch partner details for tier name / workspace label
+      // Fetch partner details
       const { data } = await supabase
         .from("agency_partners")
-        .select("partner_code, agency_partner_tiers(name)")
+        .select("full_name, partner_code, agency_partner_tiers(name)")
         .eq("user_id", user.id)
         .maybeSingle();
 
       interface AgencyPartnerQueryResult {
+        full_name: string;
         partner_code: string;
         agency_partner_tiers: { name: string } | { name: string }[] | null;
       }
 
-      const ap = data as AgencyPartnerQueryResult | null;
+      const ap = data as unknown as AgencyPartnerQueryResult | null;
 
       if (ap && isMounted) {
         setPartnerCode(ap.partner_code);
+        setPartnerName(ap.full_name);
         const tierRaw = ap.agency_partner_tiers;
         let tierName = "";
 
@@ -197,19 +205,11 @@ export function APPanelNav() {
   return (
     <>
       {/* Sleek, responsive white glassmorphism header row */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-100/80 bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
           
-          {/* LEFT: Menu trigger (mobile only) + Logo + Workspace Badge */}
+          {/* LEFT: Logo + Workspace Badge */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-50 md:hidden"
-              aria-label="Open navigation menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
             <Link href="/ap/dashboard" className="flex shrink-0 items-center gap-2">
               <span className="flex h-6 w-24 items-center">
                 <Image
@@ -240,7 +240,7 @@ export function APPanelNav() {
                   className={cn(
                     "rounded-xl px-3 py-1.5 text-xs font-semibold tracking-wide transition-all duration-150 outline-none",
                     active
-                      ? "bg-slate-900 text-white shadow-sm"
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-500/10"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                   )}
                 >
@@ -250,7 +250,7 @@ export function APPanelNav() {
             })}
           </nav>
 
-          {/* RIGHT: Actions (Search, Notification, Profile) */}
+          {/* RIGHT: Actions (Search, Notification, Settings Menu) */}
           <div className="flex items-center gap-1.5 md:gap-2">
             
             {/* Search Icon */}
@@ -314,131 +314,229 @@ export function APPanelNav() {
               </AnimatePresence>
             </div>
 
-            {/* Profile Dropdown */}
-            <Link
-              href="/ap/profile"
-              className="flex h-9 items-center justify-center rounded-xl px-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 gap-1.5"
-              title="Profile & Settings"
+            {/* Settings Drawer Button (Profile Badging) */}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex h-9 items-center justify-center rounded-xl px-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 gap-1.5 cursor-pointer"
+              title="Menu Drawer"
             >
-              <div className="h-6 w-6 rounded-full bg-slate-100 border border-slate-200/50 flex items-center justify-center text-slate-600 text-xs font-bold font-mono">
+              <div className="h-6 w-6 rounded-full bg-blue-100 border border-blue-200/50 flex items-center justify-center text-blue-700 text-xs font-bold font-mono">
                 {partnerCode ? partnerCode.slice(-2) : "AP"}
               </div>
-              <span className="hidden text-xs font-bold text-slate-600 md:inline-block">Profile</span>
-            </Link>
+              <span className="hidden text-xs font-bold text-slate-600 md:inline-block">Menu</span>
+            </button>
           </div>
 
         </div>
       </header>
 
-      {/* MOBILE SLIDE-OUT DRAWER MENU (80% Width, Smooth animations, Apple Settings Layout) */}
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <nav className="fixed bottom-0 inset-x-0 z-[49] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/70 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_rgba(15,23,42,0.04)] pb-safe-bottom">
+        {[
+          { label: "Home", href: "/ap/dashboard", icon: Home },
+          { label: "Applications", href: "/ap/applications", icon: FileText },
+          { label: "Customers", href: "/ap/customers", icon: Users },
+          { label: "Wallet", href: "/ap/wallet", icon: WalletCards },
+          { label: "More", href: "#more", icon: Menu, action: () => setDrawerOpen(true) }
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = item.href !== "#more" && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+
+          return item.action ? (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className="flex flex-col items-center justify-center flex-1 h-full text-slate-450 hover:text-slate-700 transition-colors border-none bg-transparent"
+            >
+              <Icon className="h-5 w-5 stroke-[1.8]" />
+              <span className="text-[10px] font-bold mt-1 tracking-wide">{item.label}</span>
+            </button>
+          ) : (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 h-full relative transition-colors",
+                isActive ? "text-blue-600 font-extrabold" : "text-slate-450 hover:text-slate-700 font-bold"
+              )}
+            >
+              <Icon className="h-5 w-5 stroke-[1.8]" />
+              <span className="text-[10px] mt-1 tracking-wide">{item.label}</span>
+              {isActive && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-600" />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* SLIDE-OUT DRAWER MENU (RIGHT SIDE, Liquid Glass Theme) */}
       <AnimatePresence>
         {drawerOpen && (
-          <div className="fixed inset-0 z-50 flex md:hidden">
-            {/* Dark overlay backdrop blur */}
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
-              className="absolute inset-0 bg-slate-900/35 backdrop-blur-xs"
+              className="absolute inset-0 bg-slate-900/20 backdrop-blur-xs"
             />
 
-            {/* Drawer Container (80% width) */}
+            {/* Right Drawer Container */}
             <motion.div
-              initial={{ x: "-100%" }}
+              initial={{ x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="relative flex h-full w-[80%] max-w-sm flex-col bg-white shadow-2xl border-r border-slate-100"
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 240 }}
+              className="relative flex h-full w-[85%] max-w-sm flex-col bg-white/90 backdrop-blur-xl shadow-2xl border-l border-slate-200/50 pb-safe-bottom"
             >
               {/* Drawer Header */}
-              <div className="flex h-14 items-center justify-between px-5 border-b border-slate-100 bg-slate-50/50">
-                <div className="space-y-0.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">DigiConnect</p>
-                  <p className="text-xs font-black text-slate-800 leading-none mt-1">{partnerTier}</p>
+              <div className="flex h-16 items-center justify-between px-5 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 text-xs font-mono font-bold">
+                    {partnerCode ? partnerCode.slice(-2) : "AP"}
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-black text-slate-800 leading-none">{partnerName || "Partner"}</p>
+                    <p className="text-[9px] font-mono font-bold text-slate-500 leading-none mt-1">{partnerCode}</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/50 hover:text-slate-800 transition"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/50 hover:text-slate-800 transition cursor-pointer"
                 >
                   <X className="h-4.5 w-4.5" />
                 </button>
               </div>
 
-              {/* Drawer Content (Apple Settings style rows list) */}
-              <div className="flex-1 overflow-y-auto py-4 px-2 space-y-4">
-                
-                {/* Primary List */}
-                <div className="space-y-0.5 bg-white rounded-2xl overflow-hidden border border-slate-100">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setDrawerOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3.5 px-4 py-3 text-sm font-semibold transition-colors border-b border-slate-50 last:border-0",
-                          active ? "bg-slate-50 text-slate-900" : "text-slate-600 hover:bg-slate-50/50"
-                        )}
-                      >
-                        {/* iOS settings style colored icon container */}
-                        <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-sm", item.color)}>
-                          <Icon className="h-4.5 w-4.5" />
-                        </div>
-                        <span>{item.label}</span>
-                        <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
-                      </Link>
-                    );
-                  })}
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
+                {/* 1. Account Section */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Account Profile</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
+                    <Link
+                      href="/ap/profile"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <UserCog className="h-4.5 w-4.5 text-blue-500" />
+                      <span>My Profile</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/profile"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Settings className="h-4.5 w-4.5 text-slate-500" />
+                      <span>Workspace Settings</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                  </div>
                 </div>
 
-                {/* Secondary Divider / List */}
-                <div className="space-y-0.5 bg-white rounded-2xl overflow-hidden border border-slate-100">
-                  {/* Notifications Row */}
-                  <Link
-                    href="/ap/notifications"
-                    onClick={() => setDrawerOpen(false)}
-                    className="flex items-center gap-3.5 px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50/50 border-b border-slate-50"
-                  >
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500 text-white shadow-sm">
-                      <Bell className="h-4.5 w-4.5" />
-                    </div>
-                    <span>Notifications</span>
-                    {unreadCount > 0 && (
-                      <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-600">
-                        {unreadCount}
-                      </span>
-                    )}
-                    <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
-                  </Link>
+                {/* 2. Operations Section */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Services & Filings</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
+                    <Link
+                      href="/ap/dashboard"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <LayoutDashboard className="h-4.5 w-4.5 text-blue-500" />
+                      <span>Analytics Console</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/applications"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <FileText className="h-4.5 w-4.5 text-orange-500" />
+                      <span>Applications Log</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/services"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Layers className="h-4.5 w-4.5 text-emerald-500" />
+                      <span>Services Catalog</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/customers"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Users className="h-4.5 w-4.5 text-sky-500" />
+                      <span>Customers & CRM</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                  </div>
+                </div>
 
-                  {/* Profile Row */}
-                  <Link
-                    href="/ap/profile"
-                    onClick={() => setDrawerOpen(false)}
-                    className="flex items-center gap-3.5 px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50/50 border-b border-slate-50"
-                  >
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-600 text-white shadow-sm">
-                      <UserCog className="h-4.5 w-4.5" />
-                    </div>
-                    <span>Profile</span>
-                    <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
-                  </Link>
+                {/* 3. Financials Section */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Wallet & earnings</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
+                    <Link
+                      href="/ap/wallet"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <WalletCards className="h-4.5 w-4.5 text-teal-500" />
+                      <span>Wallet Ledger</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/wallet"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Landmark className="h-4.5 w-4.5 text-indigo-500" />
+                      <span>Payout Requests</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/commissions"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <HandCoins className="h-4.5 w-4.5 text-amber-500" />
+                      <span>Earning Reports</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                  </div>
+                </div>
 
-                  {/* Settings Row */}
-                  <Link
-                    href="/ap/profile"
-                    onClick={() => setDrawerOpen(false)}
-                    className="flex items-center gap-3.5 px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50/50"
-                  >
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white shadow-sm">
-                      <Settings className="h-4.5 w-4.5" />
-                    </div>
-                    <span>Settings</span>
-                    <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
-                  </Link>
+                {/* 4. Support & Notices Section */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Information Desk</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
+                    <Link
+                      href="/ap/notifications"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Bell className="h-4.5 w-4.5 text-rose-500" />
+                      <span>Updates & Bulletins</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/support"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Headphones className="h-4.5 w-4.5 text-indigo-650" />
+                      <span>Help Support Desk</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                  </div>
                 </div>
               </div>
 
@@ -446,7 +544,7 @@ export function APPanelNav() {
               <div className="p-4 border-t border-slate-100 bg-slate-50/40">
                 <LogoutButton
                   variant="ghost"
-                  className="w-full justify-start h-11 text-slate-600 hover:bg-rose-50 hover:text-rose-600 rounded-xl px-4 text-sm font-semibold transition-colors duration-150 outline-none flex items-center gap-3"
+                  className="w-full justify-start h-11 text-slate-600 hover:bg-rose-50 hover:text-rose-600 rounded-xl px-4 text-xs font-bold transition-colors duration-150 outline-none flex items-center gap-3"
                   onLoggedOut={() => setDrawerOpen(false)}
                 />
               </div>
@@ -593,3 +691,4 @@ export function APPanelNav() {
     </>
   );
 }
+

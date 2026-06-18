@@ -75,6 +75,7 @@ export default async function APDashboardPage() {
             partner_code: string;
             partner_type: string;
             kyc_status: string;
+            status: string;
             tier?: { name: string };
           }}
           stats={stats}

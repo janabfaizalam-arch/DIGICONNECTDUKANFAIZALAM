@@ -235,77 +235,77 @@ export default async function APApplicationDetailPage({
   const mobile = getCustomerMobile(application);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-6 md:px-8 md:py-10">
+    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-5xl space-y-6">
         <Link
           href="/ap/applications"
-          className="inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Applications
         </Link>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <Card className="border border-white/5 bg-slate-900/30 p-5 md:p-8 rounded-3xl backdrop-blur-xl space-y-6">
+          <Card className="border border-slate-200/50 bg-white/70 p-5 md:p-8 rounded-3xl backdrop-blur-xl shadow-sm space-y-6">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-blue-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-blue-600">
                 Application Detail
               </p>
-              <h1 className="mt-2 text-2xl md:text-3xl font-black text-white">
+              <h1 className="mt-2 text-2xl md:text-3xl font-black text-slate-900">
                 {application.service_name}
               </h1>
-              <p className="mt-1 font-mono text-xs text-slate-500">
+              <p className="mt-1 font-mono text-xs text-slate-400">
                 ID: {application.id}
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl bg-slate-950 p-4 border border-white/5">
-                <p className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-slate-600" />
+              <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-200/60">
+                <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-slate-400" />
                   Customer
                 </p>
-                <p className="mt-1 text-sm font-extrabold text-white">
+                <p className="mt-1 text-sm font-extrabold text-slate-900">
                   {getCustomerName(application)}
                 </p>
               </div>
-              <div className="rounded-2xl bg-slate-950 p-4 border border-white/5">
-                <p className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-slate-600" />
+              <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-200/60">
+                <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-slate-400" />
                   Mobile
                 </p>
-                <p className="mt-1 text-sm font-mono font-bold text-slate-200">
+                <p className="mt-1 text-sm font-mono font-bold text-slate-800">
                   {mobile || "—"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-slate-950 p-4 border border-white/5">
-                <p className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-1.5">
-                  <Wallet className="h-3.5 w-3.5 text-slate-600" />
+              <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-200/60">
+                <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1.5">
+                  <Wallet className="h-3.5 w-3.5 text-slate-400" />
                   Paid Amount
                 </p>
-                <p className="mt-1 text-sm font-extrabold text-white">
+                <p className="mt-1 text-sm font-extrabold text-slate-900">
                   {formatCurrency(application.amount)}
                 </p>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/5 bg-slate-950 p-5 space-y-1">
-                <p className="text-xs font-semibold text-slate-500">Work Status</p>
-                <p className="font-extrabold capitalize text-white text-base">
+              <div className="rounded-2xl border border-slate-200/60 bg-slate-50/30 p-5 space-y-1">
+                <p className="text-xs font-semibold text-slate-400">Work Status</p>
+                <p className="font-extrabold capitalize text-slate-900 text-base">
                   {application.status.replace(/_/g, " ")}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/5 bg-slate-950 p-5 space-y-1">
-                <p className="text-xs font-semibold text-slate-500">Payment Status</p>
-                <p className="font-extrabold capitalize text-white text-base">
+              <div className="rounded-2xl border border-slate-200/60 bg-slate-50/30 p-5 space-y-1">
+                <p className="text-xs font-semibold text-slate-400">Payment Status</p>
+                <p className="font-extrabold capitalize text-slate-900 text-base">
                   {application.payment_status ?? "pending"}
                 </p>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-lg font-bold text-white">Uploaded Documents</h2>
+              <h2 className="text-lg font-bold text-slate-900">Uploaded Documents</h2>
               <div className="grid gap-3 md:grid-cols-2">
                 {application.documents?.length ? (
                   application.documents.map((document) => (
@@ -314,14 +314,14 @@ export default async function APApplicationDetailPage({
                       href={document.file_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-3 rounded-2xl border border-white/5 bg-slate-950 p-4 text-sm font-bold text-slate-300 hover:border-blue-500/30 hover:text-white transition-all duration-150"
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white p-4 text-sm font-bold text-slate-700 hover:border-blue-500/40 hover:text-blue-600 transition-all duration-150 shadow-sm"
                     >
-                      <FileText className="h-4.5 w-4.5 text-blue-400 shrink-0" />
+                      <FileText className="h-4.5 w-4.5 text-blue-500 shrink-0" />
                       <span className="truncate">{document.file_name}</span>
                     </a>
                   ))
                 ) : (
-                  <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-slate-500 text-center col-span-2">
+                  <p className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-400 text-center col-span-2">
                     No documents uploaded.
                   </p>
                 )}
@@ -329,7 +329,7 @@ export default async function APApplicationDetailPage({
             </div>
 
             {/* Workflow Stepper Engine */}
-            <div className="border-t border-white/5 pt-6">
+            <div className="border-t border-slate-100 pt-6">
               <WorkflowStepper
                 applicationId={application.id}
                 currentStep={(application as unknown as { current_step?: string | null }).current_step || application.status}
@@ -341,11 +341,11 @@ export default async function APApplicationDetailPage({
 
           <div className="space-y-4">
             {/* Commission Widget */}
-            <Card className="border border-white/5 bg-slate-900/30 p-5 rounded-3xl backdrop-blur-xl text-center space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-3xl backdrop-blur-xl text-center space-y-2 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 AP Commission Payout
               </p>
-              <p className="text-3xl font-black text-emerald-400">
+              <p className="text-3xl font-black text-emerald-600">
                 {formatCurrency(
                   apCommission?.calculated_amount ??
                     application.commission_amount ??
@@ -355,10 +355,10 @@ export default async function APApplicationDetailPage({
               <span
                 className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold capitalize border ${
                   apCommission?.status === "paid"
-                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                     : apCommission?.status === "approved"
-                    ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                    : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                    ? "bg-blue-50 border-blue-200 text-blue-700"
+                    : "bg-amber-50 border-amber-200 text-amber-700"
                 }`}
               >
                 {apCommission?.status ?? "pending"}
@@ -369,9 +369,9 @@ export default async function APApplicationDetailPage({
             {application.invoices?.[0] ? (
               <Link
                 href={`/invoice/${application.invoices[0].id}`}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/5 bg-slate-900/30 text-sm font-bold text-white hover:bg-white/5 transition-all duration-150"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-800 hover:bg-slate-50 transition-all duration-150 shadow-sm"
               >
-                <ReceiptText className="h-4.5 w-4.5 text-blue-400" />
+                <ReceiptText className="h-4.5 w-4.5 text-blue-500" />
                 View Invoice Bill
               </Link>
             ) : null}
@@ -398,7 +398,7 @@ export default async function APApplicationDetailPage({
                     target="_blank"
                     rel="noopener noreferrer"
                     title={topic}
-                    className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 font-bold text-white hover:bg-emerald-500 transition-all duration-150 text-xs shadow-md shadow-emerald-950/20"
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 font-bold text-white hover:bg-emerald-500 transition-all duration-150 text-xs shadow-md shadow-emerald-950/10"
                   >
                     <MessageCircle className="h-4 w-4 shrink-0" />
                     {label}
@@ -407,7 +407,7 @@ export default async function APApplicationDetailPage({
               </div>
             ) : null}
 
-            <p className="text-center text-[10px] text-slate-600">
+            <p className="text-center text-[10px] text-slate-400 font-semibold">
               Submitted: {formatDate(application.created_at)}
             </p>
           </div>

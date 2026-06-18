@@ -243,20 +243,20 @@ export function SupportClient({ partnerName }: SupportClientProps) {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "Critical": return "bg-red-500/10 border-red-500/20 text-red-400";
-      case "High": return "bg-amber-500/10 border-amber-500/20 text-amber-400";
-      case "Medium": return "bg-blue-500/10 border-blue-500/20 text-blue-400";
-      default: return "bg-slate-500/10 border-slate-500/20 text-slate-400";
+      case "Critical": return "bg-red-50 border-red-200 text-red-750 font-extrabold";
+      case "High": return "bg-amber-50 border-amber-200 text-amber-750 font-extrabold";
+      case "Medium": return "bg-blue-50 border-blue-200 text-blue-750 font-extrabold";
+      default: return "bg-slate-50 border-slate-200 text-slate-600 font-extrabold";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Open": return "bg-blue-500/10 border-blue-500/20 text-blue-400";
-      case "Working": return "bg-amber-500/10 border-amber-500/20 text-amber-300";
-      case "Resolved": return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
-      case "Closed": return "bg-slate-800 border-slate-700 text-slate-400";
-      default: return "bg-slate-500/10 border-slate-500/20 text-slate-400";
+      case "Open": return "bg-blue-50 border-blue-200 text-blue-750 font-extrabold";
+      case "Working": return "bg-amber-50 border-amber-200 text-amber-750 font-extrabold";
+      case "Resolved": return "bg-emerald-50 border-emerald-200 text-emerald-750 font-extrabold";
+      case "Closed": return "bg-slate-100 border-slate-200 text-slate-500 font-extrabold";
+      default: return "bg-slate-50 border-slate-200 text-slate-500 font-extrabold";
     }
   };
 
@@ -472,19 +472,19 @@ export function SupportClient({ partnerName }: SupportClientProps) {
       {/* Top Banner Rebranding */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-400">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
             <Sparkles className="h-3.5 w-3.5" /> DigiPartner Help Center
           </div>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
             Partner Support Console
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-500 text-sm mt-1 font-medium">
             Open, track, and manage support tickets for KYC, ledger settlements, and service applications.
           </p>
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-5 font-bold text-white transition-all duration-150 text-sm shadow-lg shadow-indigo-950/20"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02] active:scale-[0.98] px-5 font-bold text-white transition-all duration-150 text-sm shadow-lg shadow-indigo-500/10"
         >
           <Plus className="h-4 w-4" /> Create Support Ticket
         </button>
@@ -492,25 +492,25 @@ export function SupportClient({ partnerName }: SupportClientProps) {
 
       {/* Overview stats cards */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-        <Card className="border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Tickets</p>
-          <p className="mt-1 text-3xl font-extrabold text-white">{tickets.length}</p>
+        <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-450">Total Tickets</p>
+          <p className="mt-1 text-3xl font-black text-slate-900">{tickets.length}</p>
         </Card>
-        <Card className="border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Open Tickets</p>
-          <p className="mt-1 text-3xl font-extrabold text-blue-400">
+        <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-450">Open Tickets</p>
+          <p className="mt-1 text-3xl font-black text-blue-600">
             {tickets.filter(t => t.status === "Open" || t.status === "Working").length}
           </p>
         </Card>
-        <Card className="border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Resolved</p>
-          <p className="mt-1 text-3xl font-extrabold text-emerald-400">
+        <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-450">Resolved</p>
+          <p className="mt-1 text-3xl font-black text-emerald-600">
             {tickets.filter(t => t.status === "Resolved").length}
           </p>
         </Card>
-        <Card className="border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Closed</p>
-          <p className="mt-1 text-3xl font-extrabold text-slate-400">
+        <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-450">Closed</p>
+          <p className="mt-1 text-3xl font-black text-slate-500">
             {tickets.filter(t => t.status === "Closed").length}
           </p>
         </Card>
@@ -521,31 +521,31 @@ export function SupportClient({ partnerName }: SupportClientProps) {
         
         {/* Ticket List Pane */}
         <div className="lg:col-span-4 space-y-4">
-          <Card className="border border-white/5 bg-slate-900/40 p-4 rounded-2xl backdrop-blur-md space-y-4">
+          <Card className="border border-slate-200/50 bg-white/70 p-4 rounded-2xl backdrop-blur-md space-y-4 shadow-sm">
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search tickets..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full h-10 rounded-xl bg-slate-950/60 pl-10 pr-4 text-xs font-semibold text-slate-200 placeholder-slate-500 border border-white/5 focus:border-indigo-500 focus:outline-none transition-all"
+                className="w-full h-10 rounded-xl bg-white pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 border border-slate-200 focus:border-indigo-500 focus:outline-none transition-all shadow-sm"
               />
             </div>
 
             {/* Filter buttons */}
             <div className="space-y-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status Filter</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Status Filter</p>
                 <div className="flex flex-wrap gap-1.5">
                   {["All", "Open", "Working", "Resolved", "Closed"].map((st) => (
                     <button
                       key={st}
                       onClick={() => setStatusFilter(st)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
                         statusFilter === st 
-                          ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-400" 
-                          : "bg-slate-950 border-white/5 text-slate-400 hover:text-slate-300"
+                          ? "bg-indigo-50 border-indigo-200 text-indigo-750 font-bold" 
+                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                       }`}
                     >
                       {st}
@@ -555,16 +555,16 @@ export function SupportClient({ partnerName }: SupportClientProps) {
               </div>
 
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Priority Filter</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Priority Filter</p>
                 <div className="flex flex-wrap gap-1.5">
                   {["All", "Low", "Medium", "High", "Critical"].map((pr) => (
                     <button
                       key={pr}
                       onClick={() => setPriorityFilter(pr)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
                         priorityFilter === pr
-                          ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-400"
-                          : "bg-slate-950 border-white/5 text-slate-400 hover:text-slate-300"
+                          ? "bg-indigo-50 border-indigo-200 text-indigo-750 font-bold"
+                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                       }`}
                     >
                       {pr}
@@ -578,10 +578,10 @@ export function SupportClient({ partnerName }: SupportClientProps) {
           {/* Actual ticket list */}
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
             {filteredTickets.length === 0 ? (
-              <Card className="border border-dashed border-white/10 bg-slate-900/10 p-8 text-center rounded-2xl">
-                <AlertCircle className="mx-auto h-8 w-8 text-slate-600" />
-                <p className="mt-2 text-sm font-bold text-slate-400">No tickets found</p>
-                <p className="text-xs text-slate-500 mt-1">Try refining your filter queries or open a new support ticket.</p>
+              <Card className="border border-dashed border-slate-250 bg-white/50 p-8 text-center rounded-2xl">
+                <AlertCircle className="mx-auto h-8 w-8 text-slate-400" />
+                <p className="mt-2 text-sm font-bold text-slate-800">No tickets found</p>
+                <p className="text-xs text-slate-400 mt-1 font-semibold">Try refining your filter queries or open a new support ticket.</p>
               </Card>
             ) : (
               filteredTickets.map(ticket => (
@@ -590,25 +590,25 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                   onClick={() => setSelectedTicketId(ticket.id)}
                   className={`w-full text-left p-4 rounded-2xl border transition-all flex flex-col gap-2 ${
                     selectedTicket?.id === ticket.id
-                      ? "bg-slate-900/60 border-indigo-500/30 shadow-lg shadow-indigo-950/10"
-                      : "bg-slate-900/20 border-white/5 hover:bg-slate-900/30"
+                      ? "bg-white border-indigo-400 shadow-md"
+                      : "bg-white/50 border-slate-200/50 hover:bg-white hover:border-slate-350"
                   }`}
                 >
                   <div className="flex justify-between items-start gap-2">
-                    <span className="text-[10px] font-bold text-slate-500 tracking-wider font-mono">{ticket.id}</span>
+                    <span className="text-[10px] font-bold text-slate-400 tracking-wider font-mono">{ticket.id}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${getPriorityColor(ticket.priority)}`}>
                       {ticket.priority}
                     </span>
                   </div>
 
-                  <h3 className="font-extrabold text-white text-sm line-clamp-1">{ticket.subject}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-1 leading-relaxed">{ticket.description}</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm line-clamp-1">{ticket.subject}</h3>
+                  <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed font-semibold">{ticket.description}</p>
 
-                  <div className="flex justify-between items-center mt-1 pt-2 border-t border-white/5">
+                  <div className="flex justify-between items-center mt-1 pt-2 border-t border-slate-100">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${getStatusColor(ticket.status)}`}>
                       {ticket.status}
                     </span>
-                    <span className="text-[10px] font-semibold text-slate-500">
+                    <span className="text-[10px] font-bold text-slate-400 font-mono">
                       {new Date(ticket.updatedAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -623,15 +623,15 @@ export function SupportClient({ partnerName }: SupportClientProps) {
           </div>
 
           {/* Quick Help Channels */}
-          <Card className="border border-white/5 bg-slate-900/40 p-5 rounded-2xl backdrop-blur-md space-y-4">
-            <h3 className="text-sm font-extrabold text-white">Need Urgent Help?</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+          <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl backdrop-blur-md space-y-4 shadow-sm">
+            <h3 className="text-sm font-extrabold text-slate-900">Need Urgent Help?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed font-medium">
               For immediate service processing halts, billing emergencies, or high-priority inquiries, you can use our direct hotlines.
             </p>
             <div className="flex flex-col gap-2 pt-1">
               <a
                 href="tel:7007595931"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 border border-white/5 hover:bg-slate-900 font-bold text-white transition-all text-xs"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-350 font-bold text-slate-800 transition-all text-xs"
               >
                 <Phone className="h-3.5 w-3.5" /> Call Support Helpdesk
               </a>
@@ -660,13 +660,13 @@ export function SupportClient({ partnerName }: SupportClientProps) {
               
               {/* Messages & Chat Console */}
               <div className="xl:col-span-8 flex flex-col gap-4">
-                <Card className="border border-white/5 bg-slate-900/40 rounded-2xl backdrop-blur-md flex flex-col min-h-[500px] max-h-[650px] overflow-hidden">
+                <Card className="border border-slate-200/50 bg-white/70 rounded-2xl backdrop-blur-md flex flex-col min-h-[500px] max-h-[650px] overflow-hidden shadow-sm">
                   
                   {/* Chat Header */}
-                  <div className="p-4 border-b border-white/5 bg-slate-900/60 flex justify-between items-center gap-3">
+                  <div className="p-4 border-b border-slate-150 bg-white/70 flex justify-between items-center gap-3">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-500 tracking-wider font-mono">{selectedTicket.id}</span>
-                      <h2 className="font-extrabold text-white text-base line-clamp-1 leading-snug">{selectedTicket.subject}</h2>
+                      <span className="text-[10px] font-bold text-slate-400 tracking-wider font-mono">{selectedTicket.id}</span>
+                      <h2 className="font-extrabold text-slate-900 text-base line-clamp-1 leading-snug">{selectedTicket.subject}</h2>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -679,10 +679,10 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                   {/* Messages list */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Initial Description */}
-                    <div className="bg-slate-950/40 p-4 rounded-2xl border border-white/5 space-y-2">
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ticket Description & Context</p>
-                      <p className="text-sm font-semibold text-slate-300 leading-relaxed">{selectedTicket.description}</p>
-                      <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 pt-1 font-semibold">
+                    <div className="bg-white/55 p-4 rounded-2xl border border-slate-200/50 space-y-2">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ticket Description & Context</p>
+                      <p className="text-sm font-semibold text-slate-700 leading-relaxed">{selectedTicket.description}</p>
+                      <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 pt-1 font-bold">
                         <span>Category: {selectedTicket.category}</span>
                         <span>•</span>
                         <span>Opened: {new Date(selectedTicket.createdAt).toLocaleDateString()}</span>
@@ -698,8 +698,8 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                             {/* Avatar */}
                             <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold border ${
                               isAgent 
-                                ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" 
-                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                ? "bg-indigo-50 text-indigo-600 border-indigo-200" 
+                                : "bg-blue-50 text-blue-600 border-blue-200"
                             }`}>
                               {isAgent ? <User className="h-4.5 w-4.5" /> : <Shield className="h-4.5 w-4.5" />}
                             </span>
@@ -708,22 +708,22 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                             <div className="space-y-1">
                               <div className={`rounded-2xl p-3 text-xs font-semibold leading-relaxed border ${
                                 isAgent 
-                                  ? "bg-indigo-600/10 border-indigo-500/20 text-slate-100" 
-                                  : "bg-slate-900 border-white/5 text-slate-200"
+                                  ? "bg-indigo-50/70 border-indigo-200/60 text-slate-800 shadow-sm" 
+                                  : "bg-white border-slate-200 text-slate-800 shadow-sm"
                               }`}>
                                 <p className="text-[10px] font-bold text-slate-400 mb-1">{msg.senderName}</p>
                                 <p className="whitespace-pre-wrap">{msg.content}</p>
 
                                 {/* Message Attachments */}
                                 {msg.attachments && msg.attachments.length > 0 && (
-                                  <div className="mt-2.5 pt-2.5 border-t border-white/5 space-y-1">
+                                  <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Attached Proofs</p>
                                     {msg.attachments.map((file, idx) => (
-                                      <div key={idx} className="inline-flex items-center gap-2 bg-slate-950 px-2 py-1.5 rounded-lg border border-white/5 text-[10px]">
-                                        <FileText className="h-3 w-3 text-blue-400" />
-                                        <span className="text-slate-300 truncate max-w-[130px] font-mono">{file.name}</span>
-                                        <span className="text-slate-500 font-mono">({file.size})</span>
-                                        <button className="text-slate-400 hover:text-white ml-1">
+                                      <div key={idx} className="inline-flex items-center gap-2 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200 text-[10px]">
+                                        <FileText className="h-3 w-3 text-blue-500" />
+                                        <span className="text-slate-700 truncate max-w-[130px] font-mono">{file.name}</span>
+                                        <span className="text-slate-400 font-mono">({file.size})</span>
+                                        <button className="text-slate-500 hover:text-slate-850 ml-1">
                                           <Download className="h-3 w-3" />
                                         </button>
                                       </div>
@@ -731,7 +731,7 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                                   </div>
                                 )}
                               </div>
-                              <p className={`text-[9px] text-slate-500 font-bold px-1 ${isAgent ? "text-right" : "text-left"}`}>
+                              <p className={`text-[9px] text-slate-400 font-bold px-1 ${isAgent ? "text-right" : "text-left"}`}>
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
                             </div>
@@ -742,13 +742,13 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                       {/* Simulated typing indicator */}
                       {isTyping && (
                         <div className="flex gap-3 max-w-[80%] mr-auto items-center">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
                             <Shield className="h-4.5 w-4.5" />
                           </span>
-                          <div className="bg-slate-900 border border-white/5 rounded-2xl p-3.5 flex gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex gap-1 shadow-sm">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "300ms" }}></span>
                           </div>
                         </div>
                       )}
@@ -758,19 +758,19 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                   </div>
 
                   {/* Chat reply panel */}
-                  <form onSubmit={handleSendReply} className="p-3 border-t border-white/5 bg-slate-900/60 space-y-2">
+                  <form onSubmit={handleSendReply} className="p-3 border-t border-slate-150 bg-white/75 space-y-2">
                     
                     {/* List of files pending upload */}
                     {attachedFiles.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 p-2 bg-slate-950/80 rounded-xl border border-white/5">
+                      <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-250">
                         {attachedFiles.map((file, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300">
-                            <FileText className="h-3 w-3 text-blue-400" />
+                          <div key={idx} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg text-[10px] font-bold text-slate-600 border border-slate-100">
+                            <FileText className="h-3 w-3 text-blue-550" />
                             <span className="truncate max-w-[150px]">{file.name}</span>
                             <button
                               type="button"
                               onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                              className="text-slate-500 hover:text-red-400"
+                              className="text-slate-400 hover:text-red-500"
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -790,7 +790,7 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 border border-white/5 hover:bg-slate-900 text-slate-400 hover:text-white transition-all"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-all shadow-sm"
                         title="Attach Documents / Proofs"
                       >
                         <Paperclip className="h-4.5 w-4.5" />
@@ -822,27 +822,27 @@ export function SupportClient({ partnerName }: SupportClientProps) {
               <div className="xl:col-span-4 space-y-4">
                 
                 {/* Details card */}
-                <Card className="border border-white/5 bg-slate-900/40 p-4 rounded-2xl backdrop-blur-md space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-white/5 pb-2">Ticket Info</h3>
+                <Card className="border border-slate-200/50 bg-white/70 p-4 rounded-2xl backdrop-blur-md space-y-4 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">Ticket Info</h3>
                   
                   <div className="space-y-3 text-xs font-semibold">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase">Assignee</p>
-                      <p className="text-slate-200 mt-0.5">{selectedTicket.assignedTo}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Assignee</p>
+                      <p className="text-slate-850 mt-0.5 font-bold">{selectedTicket.assignedTo}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase">Category</p>
-                      <p className="text-slate-200 mt-0.5 leading-normal">{selectedTicket.category}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Category</p>
+                      <p className="text-slate-850 mt-0.5 leading-normal font-bold">{selectedTicket.category}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase">Priority</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Priority</p>
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold border mt-1 ${getPriorityColor(selectedTicket.priority)}`}>
                         {selectedTicket.priority}
                       </span>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase">Created</p>
-                      <p className="text-slate-400 mt-0.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Created</p>
+                      <p className="text-slate-600 mt-0.5 font-bold">
                         {new Date(selectedTicket.createdAt).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",
@@ -855,22 +855,22 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                   </div>
 
                   {/* Actions / Change Status manually */}
-                  <div className="pt-3 border-t border-white/5 space-y-2">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">Ticket Control</p>
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">Ticket Control</p>
                     <div className="grid grid-cols-2 gap-1.5">
                       {selectedTicket.status !== "Closed" ? (
                         <>
                           {selectedTicket.status !== "Resolved" && (
                             <button
                               onClick={() => handleUpdateStatus("Resolved")}
-                              className="px-2 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 rounded-xl text-[10px] font-bold text-emerald-400 transition-all text-center"
+                              className="px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[10px] font-bold text-emerald-700 transition-all text-center"
                             >
                               Mark Resolved
                             </button>
                           )}
                           <button
                             onClick={() => handleUpdateStatus("Closed")}
-                            className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-white/5 rounded-xl text-[10px] font-bold text-slate-400 transition-all text-center"
+                            className="px-2 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-700 transition-all text-center"
                           >
                             Close Ticket
                           </button>
@@ -878,7 +878,7 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                       ) : (
                         <button
                           onClick={() => handleUpdateStatus("Open")}
-                          className="col-span-2 px-2 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl text-[10px] font-bold text-blue-400 transition-all text-center"
+                          className="col-span-2 px-2 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-[10px] font-bold text-blue-700 transition-all text-center"
                         >
                           Reopen Ticket
                         </button>
@@ -888,24 +888,24 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                 </Card>
 
                 {/* Audit Timeline */}
-                <Card className="border border-white/5 bg-slate-900/40 p-4 rounded-2xl backdrop-blur-md space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-white/5 pb-2">Ticket Timeline</h3>
+                <Card className="border border-slate-200/50 bg-white/70 p-4 rounded-2xl backdrop-blur-md space-y-4 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">Ticket Timeline</h3>
                   
-                  <div className="relative pl-4 border-l border-white/5 space-y-4">
+                  <div className="relative pl-4 border-l border-slate-200 space-y-4">
                     {selectedTicket.timeline.slice().reverse().map((event) => (
                       <div key={event.id} className="relative group">
                         {/* Timeline point indicator */}
                         <span className={`absolute -left-[20.5px] top-1 h-2 w-2 rounded-full border ${
                           event.type === "success" 
-                            ? "bg-emerald-400 border-emerald-400" 
+                            ? "bg-emerald-500 border-emerald-500" 
                             : event.type === "warning" 
-                            ? "bg-amber-400 border-amber-400" 
-                            : "bg-blue-400 border-blue-400"
+                            ? "bg-amber-500 border-amber-500" 
+                            : "bg-blue-500 border-blue-500"
                         }`} />
                         
                         <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-slate-200 leading-normal">{event.title}</p>
-                          <p className="text-[9px] font-bold text-slate-500 font-mono">
+                          <p className="text-xs font-bold text-slate-800 leading-normal">{event.title}</p>
+                          <p className="text-[9px] font-bold text-slate-400 font-mono">
                             {new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
@@ -918,8 +918,8 @@ export function SupportClient({ partnerName }: SupportClientProps) {
 
             </div>
           ) : (
-            <Card className="border border-white/5 bg-slate-900/20 p-12 text-center rounded-2xl">
-              <p className="text-slate-400">Select a support ticket to start auditing diagnostics.</p>
+            <Card className="border border-slate-200/50 bg-white/50 p-12 text-center rounded-2xl">
+              <p className="text-slate-500 font-bold">Select a support ticket to start auditing diagnostics.</p>
             </Card>
           )}
         </div>
@@ -928,45 +928,45 @@ export function SupportClient({ partnerName }: SupportClientProps) {
 
       {/* Slide-over Drawer / Modal for ticket generation */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 md:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 md:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsCreateOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-700"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-0.5 border border-blue-500/20 text-[10px] font-bold text-blue-400">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 border border-blue-200 text-[10px] font-bold text-blue-700">
                 Compliance & Billing Desk
               </div>
-              <h2 className="text-xl font-extrabold text-white mt-1.5">Open Support Ticket</h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <h2 className="text-xl font-extrabold text-slate-900 mt-1.5">Open Support Ticket</h2>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
                 Fill details below. Our ticket engine automatically parses and routes inquiries.
               </p>
             </div>
 
             <form onSubmit={handleCreateTicket} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subject</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Subject</label>
                 <input
                   type="text"
                   required
                   placeholder="Summarize the issue (e.g. Wallet recharge failed)"
                   value={newSubject}
                   onChange={e => setNewSubject(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-slate-200 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                  className="w-full h-11 rounded-xl bg-white px-4 text-xs font-semibold text-slate-805 border border-slate-200 focus:border-indigo-650 focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Topic Category</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Topic Category</label>
                   <select
                     value={newCategory}
                     onChange={e => setNewCategory(e.target.value)}
-                    className="w-full h-11 rounded-xl bg-slate-950 px-3 text-xs font-semibold text-slate-300 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                    className="w-full h-11 rounded-xl bg-white px-3 text-xs font-semibold text-slate-805 border border-slate-200 focus:border-indigo-650 focus:outline-none"
                   >
                     {SUPPORT_TOPICS.map((topic) => (
                       <option key={topic} value={topic}>{topic}</option>
@@ -975,11 +975,11 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Severity Priority</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Severity Priority</label>
                   <select
                     value={newPriority}
                     onChange={e => setNewPriority(e.target.value as ("Low" | "Medium" | "High" | "Critical"))}
-                    className="w-full h-11 rounded-xl bg-slate-950 px-3 text-xs font-semibold text-slate-300 border border-white/5 focus:border-indigo-500 focus:outline-none"
+                    className="w-full h-11 rounded-xl bg-white px-3 text-xs font-semibold text-slate-850 border border-slate-200 focus:border-indigo-650 focus:outline-none"
                   >
                     <option value="Low">Low (General Query)</option>
                     <option value="Medium">Medium (General Support)</option>
@@ -990,14 +990,14 @@ export function SupportClient({ partnerName }: SupportClientProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Detailed Description</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Detailed Description</label>
                 <textarea
                   required
                   rows={4}
                   placeholder="Provide transaction IDs, customer names, application categories, and detailed timelines of the issue."
                   value={newDescription}
                   onChange={e => setNewDescription(e.target.value)}
-                  className="w-full rounded-xl bg-slate-950 p-4 text-xs font-semibold text-slate-200 border border-white/5 focus:border-indigo-500 focus:outline-none resize-none leading-relaxed"
+                  className="w-full rounded-xl bg-white p-4 text-xs font-semibold text-slate-805 border border-slate-200 focus:border-indigo-650 focus:outline-none resize-none leading-relaxed"
                 />
               </div>
 
@@ -1005,13 +1005,13 @@ export function SupportClient({ partnerName }: SupportClientProps) {
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="flex-1 h-11 rounded-xl bg-slate-950 hover:bg-slate-900 border border-white/5 text-xs font-bold text-slate-400 transition-all"
+                  className="flex-1 h-11 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-bold text-white transition-all shadow-md"
+                  className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.01] active:scale-[0.99] text-xs font-bold text-white transition-all shadow-md shadow-blue-500/10"
                 >
                   Open Ticket
                 </button>

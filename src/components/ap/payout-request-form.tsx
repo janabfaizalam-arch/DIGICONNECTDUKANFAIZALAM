@@ -61,8 +61,8 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-slate-400">Withdrawal Amount (₹)</label>
+      <div className="space-y-1.5">
+        <label className="text-xs font-bold text-slate-500">Withdrawal Amount (₹)</label>
         <div className="relative">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-extrabold text-slate-400 text-sm">
             ₹
@@ -73,7 +73,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Enter ₹500 or more"
             required
-            className="border-white/5 bg-slate-950 text-white rounded-xl h-11 pl-8 pr-4"
+            className="border-slate-200 bg-white/70 text-slate-800 placeholder:text-slate-400 rounded-xl h-11 pl-8 pr-4 focus:border-blue-500 focus:outline-none"
           />
         </div>
       </div>
@@ -83,7 +83,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
         disabled={isPending || Number(amount) < 500 || Number(amount) > availableBalance}
         loadingText="Requesting..."
         icon={<Send className="h-4 w-4" />}
-        className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold rounded-xl hover:from-blue-600 hover:to-indigo-600 shadow-md shadow-blue-500/10"
+        className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-500/10 transition-all duration-150"
       >
         Submit Payout Request
       </FormSubmitButton>
