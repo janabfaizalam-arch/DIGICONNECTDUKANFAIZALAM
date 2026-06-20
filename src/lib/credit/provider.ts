@@ -13,7 +13,7 @@ import type {
   UnifersCreditInfoResponse,
 } from "./types";
 
-const DEFAULT_BASE_URL = "https://bifrost.unifers.ai";
+const DEFAULT_BASE_URL = "https://app.unifers.ai/api";
 const TIMEOUT_MS = 15000; // 15s timeout
 
 // 1. Verify UNIFERS_API_BASE_URL
@@ -35,21 +35,27 @@ if (!UNIFERS_API_BASE_URL.startsWith("http")) {
  * Build endpoints using: new URL()
  */
 export function getEndpointUrl(path: string, baseUrl: string): string {
-  let relativePath = path;
-  if (baseUrl.includes("bifrost.unifers.ai")) {
-    relativePath = path.replace(/^\/api/, "");
-  } else {
-    if (!relativePath.startsWith("/api")) {
-      relativePath = "/api" + relativePath;
-    }
+  // Normalize base URL (strip trailing slash)
+  const base = baseUrl.replace(/\/$/, "");
+  
+  // Clean path: ensure it starts with /
+  let relativePath = path.startsWith("/") ? path : "/" + path;
+
+  // If base ends with /api and path starts with /api/, strip /api from path to avoid duplication.
+  if (base.endsWith("/api") && relativePath.startsWith("/api/")) {
+    relativePath = relativePath.slice(4);
+  } else if (base.endsWith("/api") && relativePath === "/api") {
+    relativePath = "/";
+  } else if (!base.endsWith("/api") && !relativePath.startsWith("/api/")) {
+    // If base doesn't end with /api and path doesn't start with /api/, prepend it
+    relativePath = "/api" + relativePath;
   }
 
-  // Ensure base URL ends with a slash so that subpaths are not stripped when using relative paths
-  const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-  // Convert relativePath to be relative to base (remove leading slash if we append to directory)
-  const pathWithoutLeadingSlash = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
+  // Ensure final base ends with a slash for relative path resolution in new URL
+  const finalBase = base + "/";
+  const finalPath = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
 
-  return new URL(pathWithoutLeadingSlash, base).toString();
+  return new URL(finalPath, finalBase).toString();
 }
 
 /**
