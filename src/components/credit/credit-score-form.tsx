@@ -44,7 +44,8 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    trigger,
+    formState: { errors, isValid },
   } = useForm<CreditReportRequestInput>({
     resolver: zodResolver(creditReportRequestSchema),
     defaultValues: {
@@ -59,6 +60,38 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
 
   const selectedPackageType = watch("packageType");
   const consentChecked = watch("consent");
+  const fullName = watch("fullName") || "";
+  const mobile = watch("mobile") || "";
+  const pan = watch("pan") || "";
+  const dob = watch("dob") || "";
+
+  // Step 1 Validation checks
+  const isStep1Valid = 
+    fullName.trim().length >= 3 &&
+    fullName.trim().length <= 100 &&
+    /^[a-zA-Z\s.'-]+$/.test(fullName) &&
+    /^[6-9]\d{9}$/.test(mobile.replace(/\D/g, "")) &&
+    /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.toUpperCase()) &&
+    dob !== "" &&
+    new Date(dob) < new Date() &&
+    (() => {
+      const birthDate = new Date(dob);
+      if (isNaN(birthDate.getTime())) return false;
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age >= 18;
+    })();
+
+  // Temporary debugging console logs as requested
+  console.log("--- CREDIT SCORE FORM DEBUG ---");
+  console.log("formState.isValid:", isValid);
+  console.log("errors:", errors);
+  console.log("disabled state:", !isStep1Valid);
+  console.log("current values:", { fullName, mobile, pan, dob });
 
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -75,8 +108,12 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
   };
 
   // Step 1: Validate inputs and advance to step 2 (Consent)
-  const handleProceedToConsent = () => {
-    setStep(2);
+  const handleProceedToConsent = async () => {
+    const isValidStep1 = await trigger(["fullName", "mobile", "pan", "dob"]);
+    if (isValidStep1) {
+      setStep(2);
+      setErrorMessage(null);
+    }
   };
 
   // Step 2: Proceed to Package Selection
@@ -204,7 +241,13 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
             <p className="text-white/60 text-xs">Verify your identity to pull official TransUnion CIBIL credit score</p>
           </div>
 
-          <form onSubmit={handleSubmit(handleProceedToConsent)} className="space-y-4">
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await handleProceedToConsent();
+            }} 
+            className="space-y-4"
+          >
             <div className="space-y-2">
               <label htmlFor="fullName" className="text-sm font-medium text-white/95 block">Full Name (As in PAN)</label>
               <Input
@@ -249,7 +292,11 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
               {errors.dob && <p className="text-red-400 text-xs">{errors.dob.message}</p>}
             </div>
 
-            <Button type="submit" className="w-full bg-white hover:bg-white/95 text-black font-semibold h-11 mt-4">
+            <Button 
+              type="submit" 
+              disabled={!isStep1Valid}
+              className="w-full bg-white hover:bg-white/95 text-black font-semibold h-11 mt-4 disabled:opacity-50 disabled:pointer-events-none"
+            >
               Proceed to Consent
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
