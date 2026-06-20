@@ -6,8 +6,7 @@
 "use client";
 
 import React from "react";
-import { Download, User, Calendar, ShieldCheck, CreditCard, HelpCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { User, CreditCard, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { SCORE_COLORS, formatCreditDate } from "@/lib/credit/constants";
 import type { CreditReportRecord, ScoreCategory } from "@/lib/credit/types";
@@ -19,7 +18,6 @@ interface CreditReportViewerProps {
 
 export function CreditReportViewer({ report }: CreditReportViewerProps) {
   const category = (report.score_category as ScoreCategory) || "good";
-  const colors = SCORE_COLORS[category];
 
   const handleDownload = () => {
     window.open(`/api/credit/download?id=${report.id}`, "_blank");
@@ -31,7 +29,7 @@ export function CreditReportViewer({ report }: CreditReportViewerProps) {
     bureauName: report.bureau_name || "CIBIL",
     reportDate: report.created_at,
     creditRating: report.credit_rating || "Good Health",
-    scoreCategory: (report.score_category as any) || "good",
+    scoreCategory: (report.score_category as ScoreCategory) || "good",
     reportReference: report.report_reference || "N/A",
     reportPdfUrl: report.report_pdf_url,
   };

@@ -63,8 +63,9 @@ export async function POST(request: Request) {
       success: true,
       result: scoreResult,
     });
-  } catch (error: any) {
-    console.error("[credit/request] Credit check request failed:", error);
-    return NextResponse.json({ error: error.message || "Failed to process credit check request." }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[credit/request] Credit check request failed:", err);
+    return NextResponse.json({ error: err.message || "Failed to process credit check request." }, { status: 500 });
   }
 }

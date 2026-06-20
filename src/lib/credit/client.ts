@@ -8,13 +8,12 @@ import * as provider from "./provider";
 import * as mapper from "./mapper";
 import {
   unifersCibilResponseSchema,
-  unifersCrifResponseSchema,
   sanitizePanForLog,
 } from "./validators";
 import type {
-  CreditReportRecord,
   CreditScoreResult,
   CreditPackageType,
+  CreditReportStatus,
   CreditAdminAnalytics,
   CreditHistoryEntry,
 } from "./types";
@@ -47,7 +46,7 @@ async function uploadPdfToStorage(
 
   const filePath = `${userId}/${reportId}.pdf`;
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from("credit-reports")
     .upload(filePath, pdfBuffer, {
       contentType: "application/pdf",
@@ -111,9 +110,6 @@ export async function processCreditScoreCheck(
     .eq("id", creditReportId);
 
   try {
-    let scoreResult: CreditScoreResult;
-    let rawResponse: any;
-
     // 3. Call Unifers API based on package/bureau preference (defaulting to CIBIL)
     // CIBIL requires: Mobile_Number, PAN_Number, Full_Name, Callback_Url, Concent_Text, Concent
     const cibilPayload = {
@@ -130,13 +126,13 @@ export async function processCreditScoreCheck(
       userId,
     });
 
-    rawResponse = response;
+    const rawResponse = response as unknown as Record<string, unknown>;
 
     // 4. Runtime validation of Unifers Response
     const validatedResponse = unifersCibilResponseSchema.parse(response);
 
     // 5. Map the validated response
-    scoreResult = mapper.mapUnifersCibilToScore(validatedResponse);
+    const scoreResult = mapper.mapUnifersCibilToScore(validatedResponse);
 
     // 6. If the response contains a PDF URL, download and store it in Supabase Storage
     let storagePath: string | null = null;
@@ -186,8 +182,8 @@ export async function processCreditScoreCheck(
       ...scoreResult,
       reportPdfUrl: storagePath ? await getSignedReportUrl(storagePath) : null,
     };
-  } catch (err: any) {
-    const errorMsg = err.message || "An unexpected error occurred during credit scoring.";
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred during credit scoring.";
     console.error("processCreditScoreCheck failed:", err);
 
     // Update status to failed
@@ -224,8 +220,8 @@ export async function getCustomerCreditHistory(userId: string): Promise<CreditHi
     creditScore: item.credit_score,
     scoreCategory: item.score_category,
     bureauName: item.bureau_name,
-    status: item.status as any,
-    packageType: item.package_type as any,
+    status: item.status as CreditReportStatus,
+    packageType: item.package_type as CreditPackageType,
     createdAt: item.created_at,
     hasPdf: !!item.report_pdf_url,
   }));

@@ -138,8 +138,9 @@ export async function POST(request: Request) {
       message: "Payment verified and credit score fetched successfully.",
       result: scoreResult,
     });
-  } catch (error: any) {
-    console.error("[credit/verify-payment] Payment verification failed:", error);
-    return NextResponse.json({ error: error.message || "Payment verification failed." }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[credit/verify-payment] Payment verification failed:", err);
+    return NextResponse.json({ error: err.message || "Payment verification failed." }, { status: 500 });
   }
 }

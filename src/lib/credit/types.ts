@@ -136,7 +136,7 @@ export interface UnifersCibilResponse {
     result: {
       reportUrl: string;
       webUrl?: string;
-      data: any; // Raw bureau CIBIL JSON details
+      data: Record<string, unknown>; // Raw bureau CIBIL JSON details
     };
     refId: string;
   };
@@ -163,7 +163,7 @@ export interface UnifersCrifResponse {
         "BATCH-ID": string;
         "INQUIRY-ID": string;
       };
-      [key: string]: any;
+      [key: string]: unknown;
     };
   };
 }

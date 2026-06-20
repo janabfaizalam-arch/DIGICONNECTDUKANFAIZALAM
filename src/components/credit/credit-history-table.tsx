@@ -7,7 +7,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Download, Eye, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { Download, Eye, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -31,7 +31,7 @@ export function CreditHistoryTable({ entries }: CreditHistoryTableProps) {
         <AlertCircle className="w-10 h-10 mx-auto text-white/30" />
         <h4 className="font-semibold text-white/80">No credit reports found</h4>
         <p className="text-xs max-w-xs mx-auto leading-normal">
-          You haven't run any credit checks yet. Choose "Check Credit Score" to start.
+          You haven&apos;t run any credit checks yet. Choose &quot;Check Credit Score&quot; to start.
         </p>
       </div>
     );

@@ -6,7 +6,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Shield, ShieldAlert, CreditCard, ChevronRight, Loader2, Sparkles, FileCheck } from "lucide-react";
+import { ShieldAlert, CreditCard, ChevronRight, Loader2, Sparkles, FileCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,18 @@ import { CREDIT_PACKAGES } from "@/lib/credit/constants";
 import { CreditScoreCard } from "./credit-score-card";
 import type { CreditScoreResult } from "@/lib/credit/types";
 
+interface RazorpayPaymentResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
+type RazorpayConstructor = new (options: Record<string, unknown>) => RazorpayInstance;
+
 interface CreditScoreFormProps {
   onSuccess?: (result: CreditScoreResult) => void;
 }
@@ -24,7 +36,6 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [creditReportId, setCreditReportId] = useState<string | null>(null);
   const [result, setResult] = useState<CreditScoreResult | null>(null);
 
@@ -49,10 +60,9 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
   const selectedPackageType = watch("packageType");
   const consentChecked = watch("consent");
 
-  // Load Razorpay script dynamically
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
-      if ((window as any).Razorpay) {
+      if ((window as Window & { Razorpay?: unknown }).Razorpay) {
         resolve(true);
         return;
       }
@@ -97,7 +107,6 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
         throw new Error(orderData.error || "Failed to create payment order.");
       }
 
-      setCreatedOrderId(orderData.order_id);
       setCreditReportId(orderData.credit_report_id);
 
       // 2. Load Razorpay checkout script
@@ -121,7 +130,7 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
         theme: {
           color: "#0f172a", // Dark indigo theme color
         },
-        handler: async (paymentRes: any) => {
+        handler: async (paymentRes: RazorpayPaymentResponse) => {
           setStep(4); // Move to retrieving score loader
           setLoading(true);
 
@@ -147,8 +156,9 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
             setResult(verifyData.result);
             setStep(5); // Result display page
             if (onSuccess) onSuccess(verifyData.result);
-          } catch (verifyErr: any) {
-            setErrorMessage(verifyErr.message || "Failed to retrieve credit report after payment.");
+          } catch (verifyErr: unknown) {
+            const verifyErrMsg = verifyErr instanceof Error ? verifyErr.message : "Failed to retrieve credit report after payment.";
+            setErrorMessage(verifyErrMsg);
             setStep(3); // Go back to package selection step
           } finally {
             setLoading(false);
@@ -161,10 +171,15 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const RazorpayCtor = (window as Window & { Razorpay?: RazorpayConstructor }).Razorpay;
+      if (!RazorpayCtor) {
+        throw new Error("Razorpay SDK is not loaded.");
+      }
+      const rzp = new RazorpayCtor(options as unknown as Record<string, unknown>);
       rzp.open();
-    } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred during submission.");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "An error occurred during submission.";
+      setErrorMessage(errMsg);
       setLoading(false);
     }
   };
@@ -253,7 +268,7 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
           <div className="bg-white/5 border border-white/5 rounded-xl p-4 text-xs text-white/70 leading-relaxed max-h-48 overflow-y-auto space-y-3">
             <p className="font-semibold text-white">Credit Score Search Consent Wording:</p>
             <p>
-              "We confirm and undertake that valid end-user consent has been obtained for fetching CIBIL. I hereby authorize DigiConnect Dukan (Powered by RNOS India Pvt. Ltd.) to fetch my credit information from TransUnion CIBIL, CRIF, and other credit bureaus on my behalf."
+              &quot;We confirm and undertake that valid end-user consent has been obtained for fetching CIBIL. I hereby authorize DigiConnect Dukan (Powered by RNOS India Pvt. Ltd.) to fetch my credit information from TransUnion CIBIL, CRIF, and other credit bureaus on my behalf.&quot;
             </p>
             <p>
               I understand that this search will be registered as a soft enquiry on my credit profile and will not adversely impact my overall credit score.

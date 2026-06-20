@@ -87,7 +87,7 @@ export function CreditDashboardWidget({ latestCheck }: CreditDashboardWidgetProp
           </div>
         ) : (
           <div className="py-4 text-center space-y-2">
-            <p className="text-white/60 text-xs">You haven't checked your credit rating yet.</p>
+            <p className="text-white/60 text-xs">You haven&apos;t checked your credit rating yet.</p>
             <p className="text-[10px] text-white/40 max-w-xs mx-auto leading-normal">
               Find out your credit score, account defaults, and liability indicators instantly.
             </p>

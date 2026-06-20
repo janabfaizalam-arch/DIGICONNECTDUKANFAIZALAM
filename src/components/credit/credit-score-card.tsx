@@ -6,7 +6,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Download, ShieldCheck, TrendingUp, AlertTriangle } from "lucide-react";
+import { Download, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SCORE_COLORS, formatCreditDate } from "@/lib/credit/constants";

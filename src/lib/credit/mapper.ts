@@ -64,8 +64,9 @@ export function getScorePercentage(score: number): number {
 /**
  * Robustly extract score value from parsed JSON object checking multiple common paths
  */
-function extractScore(data: any): number {
-  if (!data) return 750; // Fallback default score if unable to extract
+function extractScore(data: unknown): number {
+  if (!data || typeof data !== "object") return 750; // Fallback default score if unable to extract
+  const obj = data as Record<string, unknown>;
 
   // Common score keys in credit bureau APIs
   const keys = [
@@ -85,27 +86,27 @@ function extractScore(data: any): number {
 
   // 1. Direct search at root of data
   for (const key of keys) {
-    if (typeof data[key] === "number") return data[key];
-    if (typeof data[key] === "string" && !isNaN(Number(data[key]))) {
-      return Number(data[key]);
+    if (typeof obj[key] === "number") return obj[key] as number;
+    if (typeof obj[key] === "string" && !isNaN(Number(obj[key]))) {
+      return Number(obj[key]);
     }
   }
 
   // 2. Nested search inside common objects (e.g. scoreDetail, result, header, data, etc.)
   const nestedKeys = ["scoreDetail", "score_detail", "bureauScore", "CRIF_REPORT", "CIBIL_REPORT", "result", "HEADER"];
   for (const nKey of nestedKeys) {
-    if (data[nKey] && typeof data[nKey] === "object") {
-      const score = extractScore(data[nKey]);
+    if (obj[nKey] && typeof obj[nKey] === "object") {
+      const score = extractScore(obj[nKey]);
       if (score !== 750) return score;
     }
   }
 
   // 3. Fallback search: recursively look for any key named score or containing score
-  for (const key in data) {
+  for (const key in obj) {
     if (key.toLowerCase().includes("score")) {
-      if (typeof data[key] === "number") return data[key];
-      if (typeof data[key] === "string" && !isNaN(Number(data[key]))) {
-        return Number(data[key]);
+      if (typeof obj[key] === "number") return obj[key] as number;
+      if (typeof obj[key] === "string" && !isNaN(Number(obj[key]))) {
+        return Number(obj[key]);
       }
     }
   }

@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Search, Eye, Download, Users, Landmark, AlertCircle, BarChart3, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCreditDate } from "@/lib/credit/constants";
-import type { CreditAdminAnalytics } from "@/lib/credit/types";
+import type { CreditAdminAnalytics, CreditReportRecord } from "@/lib/credit/types";
 
 interface CreditAdminDashboardProps {
   initialAnalytics: CreditAdminAnalytics;
@@ -25,12 +25,12 @@ export function CreditAdminDashboard({ initialAnalytics }: CreditAdminDashboardP
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<CreditReportRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // Fetch reports on filter change
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
@@ -51,11 +51,11 @@ export function CreditAdminDashboard({ initialAnalytics }: CreditAdminDashboardP
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, status, page]);
 
   useEffect(() => {
     fetchReports();
-  }, [search, status, page]);
+  }, [fetchReports]);
 
   const totalPages = Math.ceil(total / 10);
 

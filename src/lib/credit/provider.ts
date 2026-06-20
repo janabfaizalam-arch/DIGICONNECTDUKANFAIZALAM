@@ -38,8 +38,8 @@ async function logApiCall(params: {
   creditReportId: string | null;
   userId: string | null;
   endpoint: string;
-  requestPayload: any;
-  responsePayload: any;
+  requestPayload: Record<string, unknown> | null;
+  responsePayload: Record<string, unknown> | null;
   statusCode: number | null;
   isSuccess: boolean;
   errorMessage: string | null;
@@ -49,10 +49,10 @@ async function logApiCall(params: {
     if (!supabase) return;
 
     // Mask PAN in the request payload JSON
-    let maskedRequest = null;
+    let maskedRequest: Record<string, unknown> | null = null;
     if (params.requestPayload) {
       maskedRequest = { ...params.requestPayload };
-      if (maskedRequest.PAN_Number) {
+      if (typeof maskedRequest.PAN_Number === "string") {
         maskedRequest.PAN_Number = sanitizePanForLog(maskedRequest.PAN_Number);
       }
     }
@@ -91,14 +91,15 @@ async function fetchWithRetry(
     });
     clearTimeout(timeoutId);
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     clearTimeout(timeoutId);
-    const isTimeout = error.name === "AbortError";
+    const err = error as Error;
+    const isTimeout = err.name === "AbortError";
     
     if (retries > 0) {
       const nextDelay = backoff * 2;
       console.warn(
-        `Unifers API call failed (${isTimeout ? "timeout" : error.message}). Retrying in ${backoff}ms... (${retries} attempts left)`
+        `Unifers API call failed (${isTimeout ? "timeout" : err.message}). Retrying in ${backoff}ms... (${retries} attempts left)`
       );
       await new Promise((resolve) => setTimeout(resolve, backoff));
       return fetchWithRetry(url, options, retries - 1, nextDelay);
@@ -121,7 +122,7 @@ export async function getCreditInfo(): Promise<UnifersCreditInfoResponse> {
   };
 
   let statusCode: number | null = null;
-  let responseData: any = null;
+  let responseData: Record<string, unknown> | null = null;
   let isSuccess = false;
   let errorMessage: string | null = null;
 
@@ -132,16 +133,18 @@ export async function getCreditInfo(): Promise<UnifersCreditInfoResponse> {
     });
 
     statusCode = res.status;
-    responseData = await res.json();
+    const json = await res.json();
+    responseData = json as Record<string, unknown>;
     isSuccess = res.ok && responseData.error === false;
 
     if (!isSuccess) {
-      errorMessage = responseData?.message || `API Error with status code ${res.status}`;
+      errorMessage = (responseData?.message as string) || `API Error with status code ${res.status}`;
     }
 
-    return responseData as UnifersCreditInfoResponse;
-  } catch (err: any) {
-    errorMessage = err.name === "AbortError" ? "API Request Timed Out" : err.message;
+    return responseData as unknown as UnifersCreditInfoResponse;
+  } catch (err: unknown) {
+    const error = err as Error;
+    errorMessage = error.name === "AbortError" ? "API Request Timed Out" : error.message;
     throw new Error(`Unifers API Credit Info request failed: ${errorMessage}`);
   } finally {
     await logApiCall({
@@ -174,7 +177,7 @@ export async function getCibilReport(
   };
 
   let statusCode: number | null = null;
-  let responseData: any = null;
+  let responseData: Record<string, unknown> | null = null;
   let isSuccess = false;
   let errorMessage: string | null = null;
 
@@ -186,24 +189,26 @@ export async function getCibilReport(
     });
 
     statusCode = res.status;
-    responseData = await res.json();
+    const json = await res.json();
+    responseData = json as Record<string, unknown>;
     // Validate response payload shape (check if responseData has data and refId/result)
-    isSuccess = res.ok && !!responseData?.data && !!responseData?.data?.result;
+    isSuccess = res.ok && !!responseData?.data && !!(responseData?.data as Record<string, unknown>)?.result;
 
     if (!isSuccess) {
-      errorMessage = responseData?.message || responseData?.error || `API Error with status code ${res.status}`;
+      errorMessage = (responseData?.message as string) || (responseData?.error as string) || `API Error with status code ${res.status}`;
     }
 
-    return responseData as UnifersCibilResponse;
-  } catch (err: any) {
-    errorMessage = err.name === "AbortError" ? "API Request Timed Out" : err.message;
+    return responseData as unknown as UnifersCibilResponse;
+  } catch (err: unknown) {
+    const error = err as Error;
+    errorMessage = error.name === "AbortError" ? "API Request Timed Out" : error.message;
     throw new Error(`Unifers CIBIL Report request failed: ${errorMessage}`);
   } finally {
     await logApiCall({
       creditReportId: metadata.creditReportId,
       userId: metadata.userId,
       endpoint,
-      requestPayload: payload,
+      requestPayload: payload as unknown as Record<string, unknown>,
       responsePayload: responseData,
       statusCode,
       isSuccess,
@@ -229,7 +234,7 @@ export async function getCrifReport(
   };
 
   let statusCode: number | null = null;
-  let responseData: any = null;
+  let responseData: Record<string, unknown> | null = null;
   let isSuccess = false;
   let errorMessage: string | null = null;
 
@@ -241,23 +246,25 @@ export async function getCrifReport(
     });
 
     statusCode = res.status;
-    responseData = await res.json();
-    isSuccess = res.ok && !!responseData?.data && !!responseData?.data?.result;
+    const json = await res.json();
+    responseData = json as Record<string, unknown>;
+    isSuccess = res.ok && !!responseData?.data && !!(responseData?.data as Record<string, unknown>)?.result;
 
     if (!isSuccess) {
-      errorMessage = responseData?.message || responseData?.error || `API Error with status code ${res.status}`;
+      errorMessage = (responseData?.message as string) || (responseData?.error as string) || `API Error with status code ${res.status}`;
     }
 
-    return responseData as UnifersCrifResponse;
-  } catch (err: any) {
-    errorMessage = err.name === "AbortError" ? "API Request Timed Out" : err.message;
+    return responseData as unknown as UnifersCrifResponse;
+  } catch (err: unknown) {
+    const error = err as Error;
+    errorMessage = error.name === "AbortError" ? "API Request Timed Out" : error.message;
     throw new Error(`Unifers CRIF Report request failed: ${errorMessage}`);
   } finally {
     await logApiCall({
       creditReportId: metadata.creditReportId,
       userId: metadata.userId,
       endpoint,
-      requestPayload: payload,
+      requestPayload: payload as unknown as Record<string, unknown>,
       responsePayload: responseData,
       statusCode,
       isSuccess,
