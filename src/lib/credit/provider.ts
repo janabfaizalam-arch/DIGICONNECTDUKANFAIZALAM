@@ -16,11 +16,47 @@ import type {
 const DEFAULT_BASE_URL = "https://bifrost.unifers.ai";
 const TIMEOUT_MS = 15000; // 15s timeout
 
+// 1. Verify UNIFERS_API_BASE_URL
+let rawBaseUrl = process.env.UNIFERS_API_BASE_URL || DEFAULT_BASE_URL;
+
+// 2. Ensure URL starts with: https://
+if (!rawBaseUrl.startsWith("http://") && !rawBaseUrl.startsWith("https://")) {
+  rawBaseUrl = "https://" + rawBaseUrl;
+}
+
+export const UNIFERS_API_BASE_URL = rawBaseUrl;
+
+// 4. Add startup validation:
+if (!UNIFERS_API_BASE_URL.startsWith("http")) {
+  throw new Error("Invalid UNIFERS_API_BASE_URL");
+}
+
+/**
+ * Build endpoints using: new URL()
+ */
+export function getEndpointUrl(path: string, baseUrl: string): string {
+  let relativePath = path;
+  if (baseUrl.includes("bifrost.unifers.ai")) {
+    relativePath = path.replace(/^\/api/, "");
+  } else {
+    if (!relativePath.startsWith("/api")) {
+      relativePath = "/api" + relativePath;
+    }
+  }
+
+  // Ensure base URL ends with a slash so that subpaths are not stripped when using relative paths
+  const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+  // Convert relativePath to be relative to base (remove leading slash if we append to directory)
+  const pathWithoutLeadingSlash = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
+
+  return new URL(pathWithoutLeadingSlash, base).toString();
+}
+
 /**
  * Get configuration from environment variables
  */
 function getProviderConfig() {
-  const baseUrl = (process.env.UNIFERS_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const baseUrl = UNIFERS_API_BASE_URL.replace(/\/$/, "");
   const token = process.env.UNIFERS_API_TOKEN;
 
   if (!token) {
@@ -113,8 +149,11 @@ async function fetchWithRetry(
  */
 export async function getCreditInfo(): Promise<UnifersCreditInfoResponse> {
   const { baseUrl, token } = getProviderConfig();
-  const endpoint = "/enrich/get-credit-info";
-  const url = `${baseUrl}${endpoint}`;
+  const endpoint = "/api/enrich/get-credit-info";
+  const url = getEndpointUrl(endpoint, baseUrl);
+
+  // 5. Log final generated URL before request.
+  console.log("[Unifers API] Request URL (getCreditInfo):", url);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -168,8 +207,11 @@ export async function getCibilReport(
   metadata: { creditReportId: string; userId: string }
 ): Promise<UnifersCibilResponse> {
   const { baseUrl, token } = getProviderConfig();
-  const endpoint = "/enrich/get-cibil-report";
-  const url = `${baseUrl}${endpoint}`;
+  const endpoint = "/api/enrich/get-cibil-report";
+  const url = getEndpointUrl(endpoint, baseUrl);
+
+  // 5. Log final generated URL before request.
+  console.log("[Unifers API] Request URL (getCibilReport):", url);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -225,8 +267,11 @@ export async function getCrifReport(
   metadata: { creditReportId: string; userId: string }
 ): Promise<UnifersCrifResponse> {
   const { baseUrl, token } = getProviderConfig();
-  const endpoint = "/enrich/get-crif-report";
-  const url = `${baseUrl}${endpoint}`;
+  const endpoint = "/api/enrich/get-crif-report";
+  const url = getEndpointUrl(endpoint, baseUrl);
+
+  // 5. Log final generated URL before request.
+  console.log("[Unifers API] Request URL (getCrifReport):", url);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -271,4 +316,58 @@ export async function getCrifReport(
       errorMessage,
     });
   }
+}
+
+/**
+ * 4. Download Report PDF
+ */
+export async function downloadReport(reportId: string): Promise<Buffer> {
+  const { baseUrl, token } = getProviderConfig();
+  const endpoint = "/api/enrich/download-report";
+  const url = getEndpointUrl(endpoint, baseUrl);
+
+  // 5. Log final generated URL before request.
+  console.log("[Unifers API] Request URL (downloadReport):", url);
+
+  const headers: Record<string, string> = {
+    Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}`,
+  };
+
+  const res = await fetchWithRetry(url + `?refId=${reportId}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to download report PDF: Status ${res.status}`);
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * 5. Provider Authentication / Login
+ */
+export async function login(credentials: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { baseUrl, token } = getProviderConfig();
+  const endpoint = "/api/login";
+  const url = getEndpointUrl(endpoint, baseUrl);
+
+  // 5. Log final generated URL before request.
+  console.log("[Unifers API] Request URL (login):", url);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}`,
+  };
+
+  const res = await fetchWithRetry(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(credentials),
+  });
+
+  const json = await res.json();
+  return json as Record<string, unknown>;
 }
