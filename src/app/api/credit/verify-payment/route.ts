@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     }
 
     // 4. Retrieve and validate credit report request row
+    const selectPayload = { id: input.credit_report_id, customer_id: user.id };
     const { data: record, error: dbErr } = await supabase
       .from("credit_reports")
       .select("*")
@@ -85,8 +86,14 @@ export async function POST(request: Request) {
       .single();
 
     if (dbErr || !record) {
-      console.error("[credit/verify-payment] Record lookup failed:", dbErr);
-      return NextResponse.json({ error: "Associated credit report request not found." }, { status: 404 });
+      console.error({
+        error: dbErr,
+        table: "credit_reports",
+        payload: selectPayload,
+      });
+      return NextResponse.json({
+        error: `Associated credit report request not found: ${dbErr?.message || "Not found or unauthorized"}`
+      }, { status: 404 });
     }
 
     if (record.razorpay_order_id !== input.razorpay_order_id) {
@@ -100,33 +107,47 @@ export async function POST(request: Request) {
     const paidAt = new Date().toISOString();
 
     // 5. Update credit report and credit payments status
+    const update1Payload = {
+      status: "payment_verified",
+      razorpay_payment_id: input.razorpay_payment_id,
+      updated_at: paidAt,
+    };
+
     const { error: updateErr1 } = await supabase
       .from("credit_reports")
-      .update({
-        status: "payment_verified",
-        razorpay_payment_id: input.razorpay_payment_id,
-        updated_at: paidAt,
-      })
+      .update(update1Payload)
       .eq("id", record.id);
 
     if (updateErr1) {
-      console.error("[credit/verify-payment] Failed to update credit report:", updateErr1);
-      return NextResponse.json({ error: "Failed to update payment status on report." }, { status: 500 });
+      console.error({
+        error: updateErr1,
+        table: "credit_reports",
+        payload: update1Payload,
+      });
+      return NextResponse.json({
+        error: `Failed to update payment status on report: ${updateErr1?.message || "Unknown database error"}`
+      }, { status: 500 });
     }
+
+    const update2Payload = {
+      status: "verified",
+      razorpay_payment_id: input.razorpay_payment_id,
+      razorpay_signature: input.razorpay_signature,
+      paid_at: paidAt,
+      updated_at: paidAt,
+    };
 
     const { error: updateErr2 } = await supabase
       .from("credit_payments")
-      .update({
-        status: "verified",
-        razorpay_payment_id: input.razorpay_payment_id,
-        razorpay_signature: input.razorpay_signature,
-        paid_at: paidAt,
-        updated_at: paidAt,
-      })
+      .update(update2Payload)
       .eq("credit_report_id", record.id);
 
     if (updateErr2) {
-      console.error("[credit/verify-payment] Failed to update payment record:", updateErr2);
+      console.error({
+        error: updateErr2,
+        table: "credit_payments",
+        payload: update2Payload,
+      });
       // Non-blocking for the check execution, but logged
     }
 

@@ -50,25 +50,33 @@ export async function POST(request: Request) {
     }
 
     // Save pending credit score report record
+    const insertPayload = {
+      customer_id: user.id,
+      full_name: input.fullName,
+      mobile: input.mobile,
+      pan: input.pan,
+      dob: input.dob,
+      status: "payment_pending",
+      package_type: input.packageType,
+      amount: pkg.price,
+      provider: "unifers",
+    };
+
     const { data: record, error: dbErr } = await supabase
       .from("credit_reports")
-      .insert({
-        customer_id: user.id,
-        full_name: input.fullName,
-        mobile: input.mobile,
-        pan: input.pan,
-        dob: input.dob,
-        status: "payment_pending",
-        package_type: input.packageType,
-        amount: pkg.price,
-        provider: "unifers",
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
     if (dbErr || !record) {
-      console.error("[credit/create-order] Database error:", dbErr);
-      return NextResponse.json({ error: "Failed to initialize credit check request in database." }, { status: 500 });
+      console.error({
+        error: dbErr,
+        table: "credit_reports",
+        payload: insertPayload,
+      });
+      return NextResponse.json({
+        error: `Failed to initialize credit check request in database: ${dbErr?.message || "Unknown database error"}`
+      }, { status: 500 });
     }
 
     // 4. Create Razorpay order
@@ -91,27 +99,47 @@ export async function POST(request: Request) {
     }
 
     // 5. Link Razorpay order ID to the report record
+    const updatePayload = {
+      razorpay_order_id: order.id,
+      updated_at: new Date().toISOString(),
+    };
+
     const { error: updateErr } = await supabase
       .from("credit_reports")
-      .update({
-        razorpay_order_id: order.id,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", record.id);
 
     if (updateErr) {
-      console.error("[credit/create-order] Update error:", updateErr);
-      return NextResponse.json({ error: "Failed to link payment order to credit report request." }, { status: 500 });
+      console.error({
+        error: updateErr,
+        table: "credit_reports",
+        payload: updatePayload,
+      });
+      return NextResponse.json({
+        error: `Failed to link payment order to credit report request: ${updateErr?.message || "Unknown database error"}`
+      }, { status: 500 });
     }
 
     // Save pending credit payment record
-    await supabase.from("credit_payments").insert({
+    const paymentPayload = {
       credit_report_id: record.id,
       user_id: user.id,
       amount: pkg.price,
       status: "pending",
       razorpay_order_id: order.id,
-    });
+    };
+
+    const { error: paymentErr } = await supabase
+      .from("credit_payments")
+      .insert(paymentPayload);
+
+    if (paymentErr) {
+      console.error({
+        error: paymentErr,
+        table: "credit_payments",
+        payload: paymentPayload,
+      });
+    }
 
     return NextResponse.json({
       order_id: order.id,

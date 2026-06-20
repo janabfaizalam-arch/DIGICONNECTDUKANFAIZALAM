@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { creditReportRequestSchema, type CreditReportRequestInput } from "@/lib/credit/validators";
-import { CREDIT_PACKAGES } from "@/lib/credit/constants";
+import { CREDIT_PACKAGES, TEST_MODE } from "@/lib/credit/constants";
 import { CreditScoreCard } from "./credit-score-card";
 import type { CreditScoreResult } from "@/lib/credit/types";
 
@@ -349,9 +349,16 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
       {/* Step 3: Package selection & Payment */}
       {step === 3 && (
         <div className="space-y-6 bg-black/40 border border-white/10 backdrop-blur-md rounded-2xl p-6 shadow-xl text-white">
-          <div className="border-b border-white/5 pb-4">
-            <h2 className="text-xl font-bold tracking-tight">Choose Package</h2>
-            <p className="text-white/60 text-xs">Select your preferred report option below</p>
+          <div className="border-b border-white/5 pb-4 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Choose Package</h2>
+              <p className="text-white/60 text-xs">Select your preferred report option below</p>
+            </div>
+            {TEST_MODE && (
+              <span className="bg-amber-500 text-slate-950 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse whitespace-nowrap">
+                TEST MODE - ₹10
+              </span>
+            )}
           </div>
 
           <div className="space-y-3">

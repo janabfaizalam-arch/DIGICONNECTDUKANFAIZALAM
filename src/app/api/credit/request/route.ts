@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Retrieve and validate request ownership
+    const selectPayload = { id: creditReportId, customer_id: user.id };
     const { data: record, error: dbErr } = await supabase
       .from("credit_reports")
       .select("*")
@@ -46,7 +47,14 @@ export async function POST(request: Request) {
       .single();
 
     if (dbErr || !record) {
-      return NextResponse.json({ error: "Credit report request not found." }, { status: 404 });
+      console.error({
+        error: dbErr,
+        table: "credit_reports",
+        payload: selectPayload,
+      });
+      return NextResponse.json({
+        error: `Credit report request not found: ${dbErr?.message || "Not found or unauthorized"}`
+      }, { status: 404 });
     }
 
     // Check payment is verified

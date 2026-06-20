@@ -35,13 +35,15 @@ export function getScoreCategoryFromScore(score: number): ScoreCategory {
   return "poor";
 }
 
+export const TEST_MODE = true;
+
 /** Credit packages with pricing */
 export const CREDIT_PACKAGES: CreditPackage[] = [
   {
     type: "score_check",
     name: "Credit Score Check",
     description: "Instant credit score with bureau name and rating category",
-    price: 99,
+    price: TEST_MODE ? 10 : 99,
     features: [
       "Instant Credit Score",
       "Bureau Name & Report Date",
@@ -54,7 +56,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     type: "report_pdf",
     name: "Credit Report PDF",
     description: "Full credit report with downloadable PDF and account details",
-    price: 149,
+    price: TEST_MODE ? 10 : 149,
     features: [
       "Everything in Score Check",
       "Detailed Credit Report PDF",
@@ -69,7 +71,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     type: "premium",
     name: "Premium Credit Package",
     description: "Complete credit intelligence with analytics and score insights",
-    price: 199,
+    price: TEST_MODE ? 10 : 199,
     features: [
       "Everything in Report PDF",
       "Credit Score Analytics",
