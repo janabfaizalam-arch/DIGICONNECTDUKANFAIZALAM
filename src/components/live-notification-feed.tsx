@@ -65,7 +65,8 @@ export function LiveNotificationFeed() {
     };
   }, [items]);
 
-  if (pathname.includes("/login") || items.length === 0 || currentIndex >= items.length) {
+  // Suppress notification ticker inside AP partner routes to prevent CTA overlap
+  if (pathname.startsWith("/ap/") || pathname.includes("/login") || items.length === 0 || currentIndex >= items.length) {
     return null;
   }
 
