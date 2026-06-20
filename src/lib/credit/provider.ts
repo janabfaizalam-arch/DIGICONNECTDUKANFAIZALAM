@@ -145,6 +145,36 @@ async function fetchWithRetry(
 }
 
 /**
+ * Robust JSON response parser with debugging logs
+ */
+async function parseJsonResponse(res: Response, endpointName: string): Promise<Record<string, unknown>> {
+  const contentType = res.headers.get("content-type") || "";
+  console.log(`[Unifers API Debug - ${endpointName}] URL:`, res.url);
+  console.log(`[Unifers API Debug - ${endpointName}] Status:`, res.status);
+  console.log(`[Unifers API Debug - ${endpointName}] StatusText:`, res.statusText);
+  console.log(`[Unifers API Debug - ${endpointName}] Content-Type:`, contentType);
+
+  const clone = res.clone();
+  const raw = await clone.text();
+  console.log(`[Unifers API Debug - ${endpointName}] Raw Response (First 1000 chars):`, raw.slice(0, 1000));
+
+  if (contentType.includes("text/html")) {
+    console.log(`[Unifers API Debug - ${endpointName}] Full HTML Response:`, raw);
+  }
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(`Unexpected response content-type: "${contentType}". Expected "application/json".`);
+  }
+
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch (err) {
+    console.error(`[Unifers API Debug - ${endpointName}] JSON parse error:`, err);
+    throw err;
+  }
+}
+
+/**
  * 1. Get Credit Info/Unused Credits
  */
 export async function getCreditInfo(): Promise<UnifersCreditInfoResponse> {
@@ -172,8 +202,8 @@ export async function getCreditInfo(): Promise<UnifersCreditInfoResponse> {
     });
 
     statusCode = res.status;
-    const json = await res.json();
-    responseData = json as Record<string, unknown>;
+    const json = await parseJsonResponse(res, "getCreditInfo");
+    responseData = json;
     isSuccess = res.ok && responseData.error === false;
 
     if (!isSuccess) {
@@ -231,8 +261,8 @@ export async function getCibilReport(
     });
 
     statusCode = res.status;
-    const json = await res.json();
-    responseData = json as Record<string, unknown>;
+    const json = await parseJsonResponse(res, "getCibilReport");
+    responseData = json;
     // Validate response payload shape (check if responseData has data and refId/result)
     isSuccess = res.ok && !!responseData?.data && !!(responseData?.data as Record<string, unknown>)?.result;
 
@@ -291,8 +321,8 @@ export async function getCrifReport(
     });
 
     statusCode = res.status;
-    const json = await res.json();
-    responseData = json as Record<string, unknown>;
+    const json = await parseJsonResponse(res, "getCrifReport");
+    responseData = json;
     isSuccess = res.ok && !!responseData?.data && !!(responseData?.data as Record<string, unknown>)?.result;
 
     if (!isSuccess) {
@@ -338,6 +368,20 @@ export async function downloadReport(reportId: string): Promise<Buffer> {
     headers,
   });
 
+  const contentType = res.headers.get("content-type") || "";
+  console.log("[Unifers API Debug - downloadReport] URL:", res.url);
+  console.log("[Unifers API Debug - downloadReport] Status:", res.status);
+  console.log("[Unifers API Debug - downloadReport] StatusText:", res.statusText);
+  console.log("[Unifers API Debug - downloadReport] Content-Type:", contentType);
+
+  const clone = res.clone();
+  const raw = await clone.text();
+  console.log("[Unifers API Debug - downloadReport] Raw Response (First 1000 chars):", raw.slice(0, 1000));
+
+  if (contentType.includes("text/html")) {
+    console.log("[Unifers API Debug - downloadReport] Full HTML Response:", raw);
+  }
+
   if (!res.ok) {
     throw new Error(`Failed to download report PDF: Status ${res.status}`);
   }
@@ -368,6 +412,6 @@ export async function login(credentials: Record<string, unknown>): Promise<Recor
     body: JSON.stringify(credentials),
   });
 
-  const json = await res.json();
-  return json as Record<string, unknown>;
+  const json = await parseJsonResponse(res, "login");
+  return json;
 }
