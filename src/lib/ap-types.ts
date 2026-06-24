@@ -24,11 +24,9 @@ export type APTier = {
 // ── Agency Partner ─────────────────────────────────────────────────────────
 
 export type APPartnerType =
+  | "ceo"
   | "shop_owner"
-  | "field_executive"
-  | "franchise"
-  | "consultant"
-  | "reseller";
+  | "field_executive";
 
 export type APStatus =
   | "draft"
@@ -112,6 +110,9 @@ export type AgencyPartner = {
   activated_at: string | null;
   suspended_at: string | null;
   blacklisted_at: string | null;
+
+  // Team hierarchy
+  created_by_user_id: string | null;
 
   // Joined data
   tier?: APTier | null;
@@ -440,11 +441,9 @@ export const AP_KYC_STATUS_LABELS: Record<APKycStatus, string> = {
 };
 
 export const AP_PARTNER_TYPE_LABELS: Record<APPartnerType, string> = {
+  ceo: "CEO",
   shop_owner: "Shop Owner",
   field_executive: "Field Executive",
-  franchise: "Franchise",
-  consultant: "Consultant",
-  reseller: "Reseller",
 };
 
 export const AP_KYC_DOCUMENT_TYPE_LABELS: Record<APKycDocumentType, string> = {

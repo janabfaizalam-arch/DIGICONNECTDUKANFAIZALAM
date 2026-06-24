@@ -237,11 +237,9 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ceo">CEO</SelectItem>
                     <SelectItem value="shop_owner">Shop Owner</SelectItem>
                     <SelectItem value="field_executive">Field Executive</SelectItem>
-                    <SelectItem value="franchise">Franchise</SelectItem>
-                    <SelectItem value="consultant">Consultant</SelectItem>
-                    <SelectItem value="reseller">Reseller</SelectItem>
                   </SelectContent>
                 </Select>
               </label>

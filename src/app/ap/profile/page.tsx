@@ -4,6 +4,7 @@ import { User, Landmark, ShieldCheck, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getAgencyPartnerByUserId, getAPKycDocuments } from "@/lib/ap-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
+import { AP_PARTNER_TYPE_LABELS, type APPartnerType } from "@/lib/ap-types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function APProfilePage() {
         ["Mobile Number", ap.mobile],
         ["WhatsApp Number", ap.whatsapp || "—"],
         ["Email Address", ap.email],
-        ["Partner Type", ap.partner_type.replace("_", " ")],
+        ["Partner Type", AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")],
         ["Full Address", `${ap.address || ""}, ${ap.district || ""}, ${ap.state || ""} - ${ap.pin || ""}`],
       ],
     },

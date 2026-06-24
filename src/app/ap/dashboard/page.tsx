@@ -8,7 +8,8 @@ import {
   getAPWalletLedger,
   getMonthlyChartData,
 } from "@/lib/ap-data";
-import { getCurrentUser, isActiveAgent } from "@/lib/auth";
+import { getCurrentUser, isActiveAgent, isCeoPartnerType } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { APDashboardClient } from "./dashboard-client";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,31 @@ export default async function APDashboardPage() {
     getAPWalletLedger(ap.id, 5),
     getMonthlyChartData(ap.id),
   ]);
+
+  // Fetch team member data for CEO partners
+  let teamMemberCount = 0;
+  let teamMembers: { id: string; full_name: string; partner_type: string; status: string; partner_code: string }[] = [];
+
+  if (isCeoPartnerType(ap.partner_type)) {
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      const { data: members, count } = await supabase
+        .from("agency_partners")
+        .select("id, full_name, partner_type, status, partner_code", { count: "exact" })
+        .eq("created_by_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      teamMemberCount = count ?? 0;
+      teamMembers = (members ?? []).map((m) => ({
+        id: m.id,
+        full_name: m.full_name,
+        partner_type: m.partner_type,
+        status: m.status,
+        partner_code: m.partner_code,
+      }));
+    }
+  }
 
   const recentApps = applications.slice(0, 5).map((app) => ({
     id: app.id,
@@ -76,6 +102,8 @@ export default async function APDashboardPage() {
             partner_type: string;
             kyc_status: string;
             status: string;
+            district?: string | null;
+            state?: string | null;
             tier?: { name: string };
           }}
           stats={stats}
@@ -84,6 +112,8 @@ export default async function APDashboardPage() {
           analytics={analytics}
           dbTransactions={mappedTransactions}
           chartData={chartData}
+          teamMemberCount={teamMemberCount}
+          teamMembers={teamMembers}
         />
       </div>
     </main>

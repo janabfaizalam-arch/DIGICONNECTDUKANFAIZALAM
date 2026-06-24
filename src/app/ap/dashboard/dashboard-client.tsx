@@ -29,7 +29,9 @@ import {
   MapPin,
   Clock,
   Sparkles,
-  Landmark
+  Landmark,
+  UserPlus2,
+  Crown
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
@@ -123,6 +125,14 @@ interface MonthlyChartPoint {
   filings: number;
 }
 
+interface TeamMember {
+  id: string;
+  full_name: string;
+  partner_type: string;
+  status: string;
+  partner_code: string;
+}
+
 interface APDashboardClientProps {
   ap: AgencyPartner;
   stats: APDashboardStats;
@@ -131,6 +141,8 @@ interface APDashboardClientProps {
   analytics: PartnerAnalytics;
   dbTransactions: Transaction[];
   chartData: MonthlyChartPoint[];
+  teamMemberCount?: number;
+  teamMembers?: TeamMember[];
 }
 
 export function APDashboardClient({
@@ -140,7 +152,9 @@ export function APDashboardClient({
   announcements,
   analytics,
   dbTransactions: transactions,
-  chartData
+  chartData,
+  teamMemberCount = 0,
+  teamMembers = []
 }: APDashboardClientProps) {
   const [mounted, setMounted] = useState(false);
   const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<"revenue" | "applications" | "commissions" | "customers">("revenue");
@@ -294,6 +308,38 @@ export function APDashboardClient({
           </Link>
         </div>
       </section>
+
+      {/* CEO: Quick Team Action in Hero */}
+      {ap.partner_type === "ceo" && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link
+            href="/ap/team/new"
+            className="flex items-center gap-4 p-5 rounded-[20px] bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100/60 hover:border-indigo-200 hover:shadow-md transition-all duration-200 group"
+          >
+            <span className="p-3 rounded-2xl bg-indigo-100/80 text-indigo-600 group-hover:scale-105 transition-transform">
+              <UserPlus2 className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">Create Team Member</h3>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">Add a Shop Owner or Field Executive to your team</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-slate-400 ml-auto group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+          <Link
+            href="/ap/team"
+            className="flex items-center gap-4 p-5 rounded-[20px] bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100/60 hover:border-emerald-200 hover:shadow-md transition-all duration-200 group"
+          >
+            <span className="p-3 rounded-2xl bg-emerald-100/80 text-emerald-600 group-hover:scale-105 transition-transform">
+              <Users className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">My Team</h3>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">{teamMemberCount} team member{teamMemberCount !== 1 ? "s" : ""} registered</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-slate-400 ml-auto group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </section>
+      )}
 
       {/* KYC Warning banner if pending */}
       {ap.kyc_status !== "approved" && (
@@ -754,7 +800,54 @@ export function APDashboardClient({
 
       </section>
 
-      {/* 5. SYSTEM ANNOUNCEMENTS SECTION */}
+      {/* CEO TEAM MANAGEMENT SECTION */}
+      {ap.partner_type === "ceo" && teamMembers.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Crown className="h-4.5 w-4.5 text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">My Team Members</h3>
+            </div>
+            <Link href="/ap/team" className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-0.5">
+              View All Team <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {teamMembers.map((member) => (
+              <Card
+                key={member.id}
+                className="backdrop-blur-xl bg-white/70 border border-slate-200/50 rounded-[20px] p-4 shadow-[0_2px_8px_rgba(15,23,42,0.01)] hover:shadow-md hover:border-slate-300 transition-all duration-200"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-extrabold text-slate-900">{member.full_name}</h4>
+                    <p className="text-[10px] font-mono text-slate-400">{member.partner_code}</p>
+                  </div>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border",
+                    member.status === "active"
+                      ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                      : "bg-amber-50 border-amber-100 text-amber-700"
+                  )}>
+                    <span className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      member.status === "active" ? "bg-emerald-500" : "bg-amber-500"
+                    )} />
+                    {member.status}
+                  </span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    {member.partner_type.replace(/_/g, " ")}
+                  </span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
       {announcements.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-2">

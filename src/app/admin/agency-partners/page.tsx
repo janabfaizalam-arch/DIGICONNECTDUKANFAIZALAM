@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { safeCurrency } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminAgencyPartnerList } from "@/lib/ap-data";
-import type { APListItem } from "@/lib/ap-types";
+import { AP_PARTNER_TYPE_LABELS, type APListItem, type APPartnerType } from "@/lib/ap-types";
 
 export const dynamic = "force-dynamic";
 
@@ -119,7 +119,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                       <TableCell className="font-mono text-xs font-semibold text-indigo-600">{ap.partner_code}</TableCell>
                       <TableCell className="text-xs font-semibold capitalize">
                         <span className="text-amber-600">{ap.tier?.name || "AP Starter"}</span>
-                        <div className="text-[10px] text-slate-400 font-normal">{ap.partner_type.replace("_", " ")}</div>
+                        <div className="text-[10px] text-slate-400 font-normal">{AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")}</div>
                       </TableCell>
                       <TableCell className="text-xs">
                         {ap.totalApplications} total ({ap.pendingApplications} pending)
@@ -183,7 +183,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="rounded-xl bg-slate-50 p-2 border">
                     <p className="text-[9px] text-slate-400">Type</p>
-                    <p className="font-bold capitalize truncate">{ap.partner_type.replace("_", " ")}</p>
+                    <p className="font-bold capitalize truncate">{AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")}</p>
                   </div>
                   <div className="rounded-xl bg-slate-50 p-2 border">
                     <p className="text-[9px] text-slate-400">Apps</p>

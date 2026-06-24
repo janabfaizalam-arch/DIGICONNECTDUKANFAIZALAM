@@ -74,6 +74,10 @@ export function isAgencyPartnerRole(role: AppRole | string | null | undefined) {
   return normalizeAppRole(role) === "agency_partner";
 }
 
+export function isCeoPartnerType(partnerType: string | null | undefined): boolean {
+  return partnerType === "ceo";
+}
+
 export type AgentAccessResult =
   | { ok: true; reason: "active_approved_agent" | "active_approved_ap" }
   | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "kyc_not_approved" | "missing_server_config" | "ap_not_active"; role?: AppRole | string | null };

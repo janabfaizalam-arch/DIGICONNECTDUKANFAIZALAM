@@ -85,6 +85,10 @@ export async function POST(request: Request) {
       return jsonError("Password must be at least 8 characters.", 400);
     }
 
+    if (!["ceo", "shop_owner", "field_executive"].includes(partnerType)) {
+      return jsonError("Invalid partner type. Must be ceo, shop_owner, or field_executive.", 400);
+    }
+
     if (!["fixed", "percentage", "tiered"].includes(commissionType)) {
       return jsonError("Invalid commission type.", 400);
     }

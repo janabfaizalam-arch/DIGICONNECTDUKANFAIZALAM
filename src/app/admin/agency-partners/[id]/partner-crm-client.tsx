@@ -27,14 +27,16 @@ import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { safeCurrency } from "@/lib/admin-format";
 import type { Application } from "@/lib/portal-types";
-import type {
-  AgencyPartner,
-  APCommission,
-  APKycDocument,
-  APWalletEntry,
-  APStatus,
-  APKycStatus,
-  APWalletEntryType,
+import {
+  AP_PARTNER_TYPE_LABELS,
+  type AgencyPartner,
+  type APCommission,
+  type APKycDocument,
+  type APWalletEntry,
+  type APStatus,
+  type APKycStatus,
+  type APWalletEntryType,
+  type APPartnerType,
 } from "@/lib/ap-types";
 import { cn } from "@/lib/utils";
 
@@ -184,7 +186,7 @@ export function PartnerCrmClient({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <InfoTile label="Partner ID / Code" value={ap.partner_code} mono />
-                <InfoTile label="Partner Type" value={ap.partner_type.replace("_", " ")} />
+                <InfoTile label="Partner Type" value={AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")} />
                 <InfoTile label="Mobile" value={ap.mobile} mono />
                 <InfoTile label="WhatsApp" value={ap.whatsapp || "—"} mono />
                 <InfoTile label="Email" value={ap.email} />
