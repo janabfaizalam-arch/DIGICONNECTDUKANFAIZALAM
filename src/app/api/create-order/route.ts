@@ -111,7 +111,7 @@ function getServiceAmountForPlan(
 
   const planLower = String(selectedPlan ?? "").toLowerCase();
 
-  if (slug === "cibil-report-analysis-and-credit-health-consultation") {
+  if (slug === "cibil-report-analysis-and-credit-health-consultation" || slug === "cibil-report-increase") {
     if (selectedPlan && (selectedPlan === "Basic CIBIL One Pager Report" || planLower.includes("basic"))) {
       return 518;
     } else if (selectedPlan && (selectedPlan === "Premium CIBIL Analysis & Consultation" || planLower.includes("premium"))) {
@@ -496,6 +496,13 @@ export async function POST(request: Request) {
       walletUsed = walletRedeemAmount;
       rewardUsed = walletRedeemAmount;
       finalPayable = freshPayableAmount;
+
+      const serviceSlug = body?.serviceSlug || serviceSlugs[0];
+      const selectedPlan = body?.applicationDraft?.details?.selectedPlan;
+      console.log("SERVICE", serviceSlug);
+      console.log("PLAN", selectedPlan);
+      console.log("CALCULATED_PRICE", servicePrice);
+      console.log("FINAL_PAYABLE", finalPayable);
 
       if (body?.applicationDraft) {
         const supabase = getSupabaseAdmin();

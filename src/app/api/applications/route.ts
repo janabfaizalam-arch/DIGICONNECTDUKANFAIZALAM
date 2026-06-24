@@ -396,7 +396,7 @@ export async function POST(request: Request) {
       ? 699
       : resolvedServices.reduce((total, service) => {
           let itemAmount = Number(service.amount ?? 0);
-          if (service.slug === "cibil-report-analysis-and-credit-health-consultation") {
+          if (service.slug === "cibil-report-analysis-and-credit-health-consultation" || service.slug === "cibil-report-increase") {
             const plan = body.details?.selectedPlan;
             if (plan && (plan === "Basic CIBIL One Pager Report" || String(plan).toLowerCase().includes("basic"))) {
               itemAmount = 518;

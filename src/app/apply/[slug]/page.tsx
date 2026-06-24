@@ -73,11 +73,14 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
     .filter(Boolean);
   const relatedServices = await getPublicServicesByCategory(service.categorySlug);
   const selectedPublicServices = selectedServices
-    .map((item) => [service, ...relatedServices].find((candidate) => candidate.slug === item))
+    .map((item) => {
+      const normalizedItem = item === "cibil-report-analysis-and-credit-health-consultation" ? "cibil-report-increase" : item;
+      return [service, ...relatedServices].find((candidate) => candidate.slug === normalizedItem);
+    })
     .filter((item): item is typeof service => Boolean(item));
 
   const selectedPublicServicesOverridden = selectedPublicServices.map((item) => {
-    if (item.slug === "cibil-report-analysis-and-credit-health-consultation") {
+    if (item.slug === "cibil-report-analysis-and-credit-health-consultation" || item.slug === "cibil-report-increase") {
       const isBasic = query?.plan === "basic";
       return {
         ...item,
