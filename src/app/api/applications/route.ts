@@ -417,6 +417,17 @@ export async function POST(request: Request) {
             const numSubjects = selectedSubjectsStr.split(",").filter(Boolean).length || 1;
             itemAmount = itemAmount * numSubjects;
           }
+          if (service.slug === "food-license") {
+            const plan = body.details?.selectedPlan;
+            const planLower = String(plan ?? "").toLowerCase();
+            if (planLower.includes("pro") || planLower.includes("business_pro") || planLower.includes("business pro")) {
+              itemAmount = 2999;
+            } else if (planLower.includes("premium") || planLower.includes("premium_compliance") || planLower.includes("premium compliance")) {
+              itemAmount = 4999;
+            } else {
+              itemAmount = 1499;
+            }
+          }
           return total + itemAmount;
         }, 0);
     const couponCode = String(body.couponCode ?? "").trim();

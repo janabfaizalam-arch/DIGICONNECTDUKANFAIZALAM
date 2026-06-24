@@ -205,6 +205,31 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
         };
       }
     }
+    if (item.slug === "food-license") {
+      const plan = query?.plan || "basic";
+      if (plan === "pro" || plan === "business_pro") {
+        return {
+          ...item,
+          title: "FSSAI Business Pro License",
+          amount: 2999,
+          shortDescription: "Everything in Basic, plus Document Review, Priority Processing, and Business Consultation.",
+        };
+      } else if (plan === "premium" || plan === "premium_compliance") {
+        return {
+          ...item,
+          title: "FSSAI Premium Compliance License",
+          amount: 4999,
+          shortDescription: "Everything in Pro, plus Renewal Reminder, Dedicated Executive, and Compliance Support.",
+        };
+      } else {
+        return {
+          ...item,
+          title: "Basic FSSAI Food License Registration",
+          amount: 1499,
+          shortDescription: "FSSAI Registration, Application Filing, Document Support, and Tracking.",
+        };
+      }
+    }
     return item;
   });
 
@@ -292,6 +317,22 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
       serviceDescription = "File your salaried tax return (Form 16/AIS) with expert coordinator assistance.";
     }
   }
+  if (slug === "food-license") {
+    const plan = query?.plan || "basic";
+    if (plan === "pro" || plan === "business_pro") {
+      serviceTitle = "FSSAI Business Pro License";
+      serviceAmount = 2999;
+      serviceDescription = "Everything in Basic, plus Document Review, Priority Processing, and Business Consultation.";
+    } else if (plan === "premium" || plan === "premium_compliance") {
+      serviceTitle = "FSSAI Premium Compliance License";
+      serviceAmount = 4999;
+      serviceDescription = "Everything in Pro, plus Renewal Reminder, Dedicated Executive, and Compliance Support.";
+    } else {
+      serviceTitle = "Basic FSSAI Food License Registration";
+      serviceAmount = 1499;
+      serviceDescription = "FSSAI Registration, Application Filing, Document Support, and Tracking.";
+    }
+  }
   const whatsappUrl = buildWhatsAppUrl(
     buildApplicationWhatsAppMessage({
       action: "apply_help",
@@ -303,6 +344,7 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
     if (serviceSlug === "pm-vishwakarma-yojana") return [];
     if (serviceSlug === "cm-yuva-entrepreneur-loan-assistance") return [];
     if (serviceSlug === "itr-filing") return [];
+    if (serviceSlug === "food-license") return [{ name: "businessName", label: "Business / Shop Name", required: true }, { name: "panNumber", label: "PAN Card Number", required: false }];
     if (categorySlug === "tax-business") return [{ name: "businessName", label: "Business Name", required: false }, { name: "panNumber", label: "PAN", required: false }];
     if (categorySlug === "insurance") return [{ name: "vehicleNumber", label: "Vehicle Number", required: false }, { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false }];
     if (categorySlug === "finance-banking") return [{ name: "loanPurpose", label: "Loan / Banking Requirement", type: "textarea", required: false }, { name: "monthlyIncome", label: "Monthly Income / Turnover", required: false }];

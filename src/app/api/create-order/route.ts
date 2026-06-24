@@ -169,6 +169,17 @@ function getServiceAmountForPlan(
     return 699;
   }
 
+  if (slug === "food-license") {
+    if (planLower.includes("pro") || planLower.includes("business_pro") || planLower.includes("business pro")) {
+      return 2999;
+    } else if (planLower.includes("premium") || planLower.includes("premium_compliance") || planLower.includes("premium compliance")) {
+      return 4999;
+    } else if (planLower.includes("basic")) {
+      return 1499;
+    }
+    return 1499;
+  }
+
   return defaultAmount;
 }
 

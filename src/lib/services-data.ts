@@ -660,6 +660,30 @@ const rawServices: RawService[] = [
       "Confidence & academic growth"
     ]
   },
+  {
+    title: "Food License (FSSAI)",
+    slug: "food-license",
+    categorySlug: "company",
+    shortDescription: "Apply for FSSAI Registration, State License or Central License with expert assistance.",
+    oldPrice: "₹2,999",
+    offerPrice: "₹1,499",
+    iconKey: "compliance",
+    badge: "Most Popular",
+    documents: [
+      "Aadhaar Card of Applicant",
+      "PAN Card of Applicant",
+      "Passport Size Photograph",
+      "Address Proof (NOC/Electric Bill)",
+      "GST / Utility Bill / Trade License (if applicable)"
+    ],
+    benefits: [
+      "FSSAI Registration & Filing Assistance",
+      "Avoid Heavy Penalties & Non-compliance",
+      "Sell Food Products on Swiggy & Zomato",
+      "Establish Trust & Business Legitimacy",
+      "Expert Coordinator Guidance"
+    ]
+  },
 ];
 
 export const servicesData = rawServices.map(createService);
@@ -668,8 +692,8 @@ export function getServiceBySlug(slug: string) {
   const aliases: Record<string, string> = {
     msme: "msme-registration",
     "msme-certificate": "msme-registration",
-    "food-license": "insurance",
-    "food-license-fssai": "insurance",
+    "food-license": "food-license",
+    "food-license-fssai": "food-license",
     passport: "passport",
     "passport-assistance": "passport",
     "pvc-card-printing": "pvc-card",

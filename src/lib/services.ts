@@ -237,7 +237,8 @@ export const allowedPublicServiceSlugs = new Set([
   "msme-registration",
   "iso-certification",
   "insurance",
-  "csc-olympiad"
+  "csc-olympiad",
+  "food-license"
 ]);
 
 function categorySlugFromService(service: DbService) {
@@ -624,8 +625,8 @@ export async function getPublicServiceBySlug(slug: string) {
   const aliases: Record<string, string> = {
     msme: "msme-registration",
     "msme-certificate": "msme-registration",
-    "food-license": "insurance",
-    "food-license-fssai": "insurance",
+    "food-license": "food-license",
+    "food-license-fssai": "food-license",
     passport: "passport",
     "passport-assistance": "passport",
     "pvc-card-printing": "pvc-card",
@@ -677,8 +678,8 @@ export async function getPublicServiceRowBySlug(slug: string) {
   const aliases: Record<string, string> = {
     msme: "msme-registration",
     "msme-certificate": "msme-registration",
-    "food-license": "insurance",
-    "food-license-fssai": "insurance",
+    "food-license": "food-license",
+    "food-license-fssai": "food-license",
     passport: "passport",
     "passport-assistance": "passport",
     "pvc-card-printing": "pvc-card",

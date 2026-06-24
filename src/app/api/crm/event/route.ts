@@ -8,6 +8,7 @@ const EVENT_SCORES: Record<string, number> = {
   apply_click: 30,
   application_started: 50,
   payment_success: 100,
+  smart_chat_interaction: 15,
 };
 
 export async function POST(request: Request) {

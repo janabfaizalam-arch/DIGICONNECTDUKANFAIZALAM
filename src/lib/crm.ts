@@ -358,8 +358,15 @@ export async function hydrateApplications(applications: Application[]) {
  * CRM Lead Event Tracker & Lead Scoring client utility
  */
 export async function trackCrmEvent(
-  event: "page_visit" | "calculator_usage" | "expert_talk_click" | "apply_click" | "application_started" | "payment_success",
-  service: "gst-registration" | "gst-return-filing" | "itr-filing",
+  event:
+    | "page_visit"
+    | "calculator_usage"
+    | "expert_talk_click"
+    | "apply_click"
+    | "application_started"
+    | "payment_success"
+    | "smart_chat_interaction",
+  service: "gst-registration" | "gst-return-filing" | "itr-filing" | "food-license" | "food-license-doc-checker",
   customMobile?: string,
   customName?: string
 ) {
