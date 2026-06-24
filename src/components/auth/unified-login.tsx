@@ -654,7 +654,7 @@ export function UnifiedLoginExperience({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col justify-start relative overflow-y-auto select-none pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
+      className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col justify-start relative select-none pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
       style={{
         background: "radial-gradient(circle at top center, rgba(37,99,235,0.08), transparent 50%), #F8FAFC"
       }}
@@ -683,16 +683,16 @@ export function UnifiedLoginExperience({
             width={110}
             height={36}
             priority
-            className="h-[28px] w-auto object-contain shrink-0"
+            className="h-[24px] sm:h-[28px] w-auto object-contain shrink-0"
           />
         </Link>
         
         {/* Right: Elegant Segmented Switch (Hidden if activeTab is Admin "ops") */}
         {activeTab !== "ops" && (
-          <div className="flex items-center h-[40px] rounded-full bg-slate-200/40 p-1 relative z-0 shrink-0 border border-slate-100" role="tablist">
+          <div className="flex items-center h-[38px] rounded-full bg-slate-200/40 p-0.5 relative z-0 shrink-0 border border-slate-100" role="tablist">
             {[
-              { id: "user", label: "User Login" },
-              { id: "partner", label: "Partner Login" },
+              { id: "user", labelMobile: "User", labelDesktop: "User Login" },
+              { id: "partner", labelMobile: "Partner", labelDesktop: "Partner Login" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -705,7 +705,7 @@ export function UnifiedLoginExperience({
                     setActiveTab(tab.id as AuthTab);
                     setFormMessage(null);
                   }}
-                  className="relative h-8 px-4 text-[13px] font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0 flex items-center justify-center"
+                  className="relative h-[34px] px-3 sm:px-3.5 text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0 flex items-center justify-center"
                   style={{ color: isActive ? "#2563EB" : "#64748B" }}
                 >
                   {isActive && (
@@ -715,7 +715,8 @@ export function UnifiedLoginExperience({
                       transition={{ type: "spring", stiffness: 450, damping: 30 }}
                     />
                   )}
-                  {tab.label}
+                  <span className="inline sm:hidden">{tab.labelMobile}</span>
+                  <span className="hidden sm:inline">{tab.labelDesktop}</span>
                 </button>
               );
             })}
@@ -725,7 +726,7 @@ export function UnifiedLoginExperience({
       </header>
 
       {/* CENTERED LIQUID GLASS AUTHENTICATION CARD */}
-      <main className="flex-1 flex items-start md:items-center justify-center p-4 z-10 pt-1 min-[375px]:pt-2 md:pt-6 pb-10">
+      <main className="flex-1 flex items-center justify-center p-4 z-10 py-6 sm:py-10">
         
         <div 
           className="w-full max-w-[440px] rounded-[32px] p-4 min-[375px]:p-6 md:p-8 flex flex-col gap-6 mt-1 min-[375px]:mt-2 md:mt-0"
@@ -1084,10 +1085,20 @@ export function UnifiedLoginExperience({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-4"
+                className="space-y-6"
               >
                 {/* Header (Inside Card) */}
                 <div className="text-center space-y-3">
+                  <div className="flex justify-center mb-2">
+                    <Image
+                      src="/logo-navbar.png"
+                      alt="RNOS Logo"
+                      width={120}
+                      height={36}
+                      priority
+                      className="h-[34px] w-auto object-contain"
+                    />
+                  </div>
                   <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#64748B]">
                     RNOS Partner Network
                   </p>
