@@ -69,7 +69,7 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       <div className="relative w-full">
         <div className="relative flex items-center">
           {icon && (
-            <div className="absolute left-4.5 text-slate-400 pointer-events-none transition-colors duration-150 peer-focus-within:text-blue-500">
+            <div className="absolute left-4.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none transition-colors duration-150 peer-focus-within:text-blue-500 flex items-center justify-center">
               {icon}
             </div>
           )}
@@ -101,7 +101,7 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           </label>
           
           {rightElement && (
-            <div className="absolute right-4 flex items-center justify-center">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
               {rightElement}
             </div>
           )}
@@ -683,16 +683,16 @@ export function UnifiedLoginExperience({
             width={110}
             height={36}
             priority
-            className="h-[22px] w-auto object-contain shrink-0"
+            className="h-[28px] w-auto object-contain shrink-0"
           />
         </Link>
         
         {/* Right: Elegant Segmented Switch (Hidden if activeTab is Admin "ops") */}
         {activeTab !== "ops" && (
-          <div className="flex rounded-full bg-slate-200/40 p-0.5 relative z-0 shrink-0 border border-slate-100" role="tablist">
+          <div className="flex items-center h-[40px] rounded-full bg-slate-200/40 p-1 relative z-0 shrink-0 border border-slate-100" role="tablist">
             {[
               { id: "user", label: "User Login" },
-              { id: "partner", label: "Partner Workspace" },
+              { id: "partner", label: "Partner Login" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -705,14 +705,14 @@ export function UnifiedLoginExperience({
                     setActiveTab(tab.id as AuthTab);
                     setFormMessage(null);
                   }}
-                  className="relative px-3 py-1 text-[9.5px] sm:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0"
-                  style={{ color: isActive ? "#2563EB" : "#64748b" }}
+                  className="relative h-8 px-4 text-[13px] font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0 flex items-center justify-center"
+                  style={{ color: isActive ? "#2563EB" : "#64748B" }}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activeHeaderTab"
                       className="absolute inset-0 bg-white rounded-full shadow-sm border border-slate-200/30 -z-10"
-                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
                     />
                   )}
                   {tab.label}
@@ -728,7 +728,7 @@ export function UnifiedLoginExperience({
       <main className="flex-1 flex items-start md:items-center justify-center p-4 z-10 pt-1 min-[375px]:pt-2 md:pt-6 pb-10">
         
         <div 
-          className="w-full max-w-[440px] rounded-[32px] p-4 min-[375px]:p-5 md:p-8 flex flex-col gap-5 mt-1 min-[375px]:mt-2 md:mt-0"
+          className="w-full max-w-[440px] rounded-[32px] p-4 min-[375px]:p-6 md:p-8 flex flex-col gap-6 mt-1 min-[375px]:mt-2 md:mt-0"
           style={{
             backdropFilter: "blur(30px)",
             WebkitBackdropFilter: "blur(30px)",
@@ -748,31 +748,31 @@ export function UnifiedLoginExperience({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-5"
+                className="space-y-6"
               >
                 {/* Header (Inside Card) */}
-                <div className="text-center space-y-1.5">
-                  <div className="flex justify-center mb-1">
+                <div className="text-center space-y-3">
+                  <div className="flex justify-center mb-2">
                     <Image
                       src="/logo-navbar.png"
                       alt="RNOS Logo"
                       width={120}
                       height={36}
                       priority
-                      className="h-[30px] w-auto object-contain"
+                      className="h-[34px] w-auto object-contain"
                     />
                   </div>
                   <h2 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-[#0F172A] leading-[1.1] max-w-[290px] mx-auto">
                     {userMode === "login" ? "Welcome Back" : "Create Account"}
                   </h2>
-                  <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[280px] mx-auto mt-1">
+                  <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[280px] mx-auto">
                     {userMode === "login"
                       ? "Access your digital services securely"
                       : "Get started with your digital operating system"}
                   </p>
                 </div>
 
-                <form onSubmit={handleCustomerSubmit} className="space-y-3.5">
+                <form onSubmit={handleCustomerSubmit} className="space-y-4">
                   
                   {userMode === "signup" && (
                     <FloatingInput
@@ -950,9 +950,9 @@ export function UnifiedLoginExperience({
                     {userMode === "signup" ? "Create Free Account" : "Sign In"}
                   </FormSubmitButton>
 
-                  <div className="text-center pt-1.5">
-                    <span className="text-[9px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1 select-none">
-                      <span>🔒</span> Protected by RNOS Secure Authentication
+                  <div className="text-center pt-1">
+                    <span className="text-[10px] font-medium text-[#64748B] tracking-tight flex items-center justify-center gap-1.5 select-none opacity-80">
+                      <span>🔒</span> Enterprise-grade security powered by RNOS
                     </span>
                   </div>
                 </form>
@@ -1087,19 +1087,19 @@ export function UnifiedLoginExperience({
                 className="space-y-4"
               >
                 {/* Header (Inside Card) */}
-                <div className="text-center space-y-1.5">
+                <div className="text-center space-y-3">
                   <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#64748B]">
                     RNOS Partner Network
                   </p>
-                  <h2 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-[#0F172A] leading-[1.1] max-w-[320px] mx-auto">
-                    Partner Workspace Login
+                  <h2 className="text-3xl sm:text-[32px] font-extrabold tracking-tight text-[#0F172A] leading-[1.1] max-w-none mx-auto whitespace-nowrap">
+                    Partner Login
                   </h2>
-                  <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[300px] mx-auto mt-1">
+                  <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[300px] mx-auto">
                     Access your DigiConnect Partner Dashboard
                   </p>
                 </div>
 
-                <form onSubmit={handlePartnerSubmit} className="space-y-3">
+                <form onSubmit={handlePartnerSubmit} className="space-y-4">
                   
                   <FloatingInput
                     label="Username"
@@ -1159,9 +1159,9 @@ export function UnifiedLoginExperience({
                     Sign In
                   </FormSubmitButton>
 
-                  <div className="text-center pt-1.5">
-                    <span className="text-[9px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1 select-none">
-                      <span>🔒</span> Protected by RNOS Secure Authentication
+                  <div className="text-center pt-1">
+                    <span className="text-[10px] font-medium text-[#64748B] tracking-tight flex items-center justify-center gap-1.5 select-none opacity-80">
+                      <span>🔒</span> Enterprise-grade security powered by RNOS
                     </span>
                   </div>
                 </form>
@@ -1178,8 +1178,8 @@ export function UnifiedLoginExperience({
                     </Link>
                   </div>
                   
-                  <Link href="/services" className="text-[11px] font-semibold text-[#64748B] hover:text-[#0F172A] hover:underline mt-1 outline-none">
-                    Apply for Partnership
+                  <Link href="/services" className="text-xs font-medium text-[#F97316] hover:text-orange-600 hover:underline mt-1.5 outline-none inline-flex items-center gap-1">
+                    Become a DigiConnect Partner →
                   </Link>
                 </div>
 
@@ -1265,9 +1265,9 @@ export function UnifiedLoginExperience({
                     Open Console
                   </FormSubmitButton>
 
-                  <div className="text-center pt-1.5">
-                    <span className="text-[9px] font-semibold text-[#64748B] tracking-tight flex items-center justify-center gap-1 select-none">
-                      <span>🔒</span> Protected by RNOS Secure Authentication
+                  <div className="text-center pt-1">
+                    <span className="text-[10px] font-medium text-[#64748B] tracking-tight flex items-center justify-center gap-1.5 select-none opacity-80">
+                      <span>🔒</span> Enterprise-grade security powered by RNOS
                     </span>
                   </div>
                 </form>
