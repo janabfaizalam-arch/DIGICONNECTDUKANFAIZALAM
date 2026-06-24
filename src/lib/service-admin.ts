@@ -223,3 +223,104 @@ export function revalidateServicePaths(slug?: string) {
     revalidatePath(`/apply/${slug}`);
   }
 }
+
+export function getChangesDiff(oldRow: Record<string, unknown>, newRow: Record<string, unknown>) {
+  const diff: Record<string, { old: unknown; new: unknown }> = {};
+  for (const key of Object.keys(newRow)) {
+    if (key === "updated_at" || key === "created_at" || key === "id") continue;
+    const oldVal = oldRow[key];
+    const newVal = newRow[key];
+    if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+      diff[key] = { old: oldVal, new: newVal };
+    }
+  }
+  return diff;
+}
+
+export async function writeServiceAuditLog(
+  supabase: SupabaseClient,
+  serviceId: string,
+  userId: string,
+  action: string,
+  changes: Record<string, unknown> = {}
+) {
+  const { error } = await supabase.from("service_audit_logs").insert({
+    service_id: serviceId,
+    user_id: userId,
+    action,
+    changes,
+  });
+  if (error) {
+    console.error("[service_audit_logs] Failed to write log", error);
+  }
+}
+
+export async function syncServiceCatalogAndAgentPortal(
+  supabase: SupabaseClient,
+  serviceSlug: string,
+  payload: {
+    title: string;
+    description: string;
+    category?: string | null;
+    customer_fee: number;
+    agent_payout: number;
+    payout_type: "fixed" | "percentage";
+    payout_percentage: number;
+    required_documents: string[];
+    is_active: boolean;
+    sort_order: number;
+  }
+) {
+  // 1. Sync with service_catalog
+  const catalogPayload = {
+    slug: serviceSlug,
+    name: payload.title,
+    description: payload.description || "",
+    amount: payload.customer_fee,
+    commission_amount: payload.agent_payout,
+    commission_rate: payload.payout_type === "percentage" ? payload.payout_percentage : null,
+    required_documents: payload.required_documents,
+    active: payload.is_active,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: catalogData, error: catalogError } = await supabase
+    .from("service_catalog")
+    .upsert(catalogPayload, { onConflict: "slug" })
+    .select("id")
+    .maybeSingle();
+
+  if (catalogError) {
+    console.error("[sync] service_catalog sync failed", catalogError);
+    throw catalogError;
+  }
+
+  const catalogId = catalogData?.id;
+
+  // 2. Sync with agent_services
+  const agentServicePayload = {
+    service_id: catalogId || null,
+    slug: serviceSlug,
+    title: payload.title,
+    description: payload.description || "",
+    category: payload.category || "services",
+    customer_fee: payload.customer_fee,
+    agent_payout: payload.agent_payout,
+    payout_type: payload.payout_type,
+    payout_percentage: payload.payout_percentage,
+    required_documents: payload.required_documents.join("\n"),
+    is_active: payload.is_active,
+    sort_order: payload.sort_order,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error: agentError } = await supabase
+    .from("agent_services")
+    .upsert(agentServicePayload, { onConflict: "slug" });
+
+  if (agentError) {
+    console.error("[sync] agent_services sync failed", agentError);
+    throw agentError;
+  }
+}
+

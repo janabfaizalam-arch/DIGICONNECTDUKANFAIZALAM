@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { AdminService, DbServiceCategory } from "@/lib/services";
 import { ServiceField, ServiceWorkflow, ValidationRule } from "@/lib/services-engine";
-import { AdminServiceForm } from "./admin-service-form";
+import { AdminServiceWizard } from "./admin-service-wizard";
 
 interface AdminEngineConfigTabsProps {
   service: AdminService;
@@ -426,7 +426,7 @@ export function AdminEngineConfigTabs({
                 </p>
               </div>
             </div>
-            <AdminServiceForm service={service} categories={categories} />
+            <AdminServiceWizard service={service} categories={categories} />
           </div>
         )}
 

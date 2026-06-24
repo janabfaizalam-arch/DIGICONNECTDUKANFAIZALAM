@@ -78,6 +78,8 @@ export type DbService = {
   service_documents_required?: DbServiceDocument[] | null;
   service_process_steps?: DbServiceProcessStep[] | null;
   service_testimonials?: DbServiceTestimonial[] | null;
+  created_by_profile?: { id: string; full_name: string; role: string } | null;
+  updated_by_profile?: { id: string; full_name: string; role: string } | null;
 };
 
 export type AdminService = Omit<DbService, "category"> & {
@@ -282,7 +284,7 @@ function activeServiceFilter(service: DbService) {
 }
 
 const serviceSelect =
-  "*, service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*)";
+  "*, service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*), created_by_profile:created_by(id, full_name, role), updated_by_profile:updated_by(id, full_name, role)";
 
 const legacyServiceSelect = "*";
 const serviceCatalogSelect = "id, slug, name, description, amount, commission_amount, required_documents, active, created_at, updated_at";
