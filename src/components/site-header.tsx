@@ -586,14 +586,31 @@ export function SiteHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Don't render on admin/dashboard pages
+  // Don't render on admin/dashboard pages or auth routes
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/signup" ||
+    pathname.startsWith("/signup/") ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/forgot-password/") ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/reset-password/") ||
+    pathname === "/admin-login" ||
+    pathname.startsWith("/admin-login/") ||
+    pathname === "/agent-login" ||
+    pathname.startsWith("/agent-login/") ||
+    pathname === "/customer-login" ||
+    pathname.startsWith("/customer-login/");
+
   if (
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
     pathname === "/customer/dashboard" ||
     pathname.startsWith("/customer/dashboard") ||
     pathname === "/ap" ||
-    pathname.startsWith("/ap/")
+    pathname.startsWith("/ap/") ||
+    isAuthRoute
   ) {
     return null;
   }

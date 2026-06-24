@@ -238,7 +238,13 @@ export function APPanelNav() {
     { href: "/ap/support", label: "Support", icon: Headphones, color: "bg-indigo-500" },
   ];
 
-  if (pathname === "/ap/login") return null;
+  if (
+    pathname === "/ap/login" ||
+    pathname === "/ap/forgot-password" ||
+    pathname === "/ap/reset-password"
+  ) {
+    return null;
+  }
 
   return (
     <>

@@ -46,7 +46,7 @@ export default function APForgotPasswordPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 text-slate-100 overflow-hidden">
+    <main className="relative flex min-h-[100dvh] items-center justify-center bg-slate-950 px-4 py-12 text-slate-100 overflow-hidden">
       {/* Decorative gradients */}
       <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-blue-500/10 blur-[120px]" />
       <div className="absolute -left-32 -bottom-32 h-96 w-96 rounded-full bg-indigo-500/10 blur-[120px]" />

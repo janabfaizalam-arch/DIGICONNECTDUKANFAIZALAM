@@ -78,7 +78,7 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             ref={ref}
             id={id}
             placeholder={placeholder}
-            className={`peer w-full rounded-[20px] border text-sm text-[#0F172A] outline-none transition-all h-[58px] pt-[22px] pb-[6px] ${
+            className={`peer w-full rounded-[20px] border text-base text-[#0F172A] outline-none transition-all h-[58px] pt-[22px] pb-[6px] ${
               icon ? "pl-12" : "pl-4.5"
             } ${rightElement ? "pr-12" : "pr-4.5"} ${statusClass} ${className || ""}`}
             {...props}
@@ -88,7 +88,7 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             htmlFor={id}
             className={`absolute pointer-events-none transition-all duration-150 origin-left select-none text-[#64748B] top-[8px] text-[10px] ${
               icon ? "left-12" : "left-4.5"
-            } peer-placeholder-shown:top-[18px] peer-placeholder-shown:text-sm peer-placeholder-shown:text-[#64748B] peer-focus:top-[8px] peer-focus:text-[10px] ${
+            } peer-placeholder-shown:top-[18px] peer-placeholder-shown:text-base peer-placeholder-shown:text-[#64748B] peer-focus:top-[8px] peer-focus:text-[10px] ${
               touched && isValid
                 ? "peer-focus:text-emerald-500 text-emerald-600/85"
                 : touched && !isValid
@@ -653,7 +653,7 @@ export function UnifiedLoginExperience({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-between relative overflow-hidden select-none"
+      className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col justify-start relative overflow-y-auto select-none"
       style={{
         background: "radial-gradient(circle at top center, rgba(37,99,235,0.08), transparent 50%), #F8FAFC"
       }}
@@ -675,20 +675,20 @@ export function UnifiedLoginExperience({
       >
         
         {/* Left: Logo */}
-        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-85">
+        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-85 shrink-0">
           <Image
             src="/logo-navbar.png"
             alt="RNOS Logo"
             width={120}
             height={40}
             priority
-            className="h-6 w-auto object-contain"
+            className="h-5 sm:h-6 w-auto object-contain shrink-0"
           />
         </Link>
         
         {/* Right: Elegant Segmented Switch (Hidden if activeTab is Admin "ops") */}
         {activeTab !== "ops" && (
-          <div className="flex rounded-full bg-slate-200/50 p-0.5 relative z-0 max-w-[210px] sm:max-w-none" role="tablist">
+          <div className="flex rounded-full bg-slate-200/50 p-0.5 relative z-0 max-w-[190px] min-[375px]:max-w-[210px] sm:max-w-none shrink-0" role="tablist">
             {[
               { id: "user", label: "User Login" },
               { id: "partner", label: "Partner Workspace" },
@@ -704,7 +704,7 @@ export function UnifiedLoginExperience({
                     setActiveTab(tab.id as AuthTab);
                     setFormMessage(null);
                   }}
-                  className="relative px-2.5 min-[375px]:px-3 py-1 text-[9px] min-[375px]:text-[10px] md:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+                  className="relative px-2 min-[375px]:px-2.5 py-1 text-[8.5px] min-[375px]:text-[10px] md:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0"
                   style={{ color: isActive ? "#2563EB" : "#64748B" }}
                 >
                   {isActive && (
@@ -724,10 +724,10 @@ export function UnifiedLoginExperience({
       </header>
 
       {/* CENTERED LIQUID GLASS AUTHENTICATION CARD */}
-      <main className="flex-1 flex items-start md:items-center justify-center p-4 z-10 pt-3 md:pt-6 pb-10">
+      <main className="flex-1 flex items-start md:items-center justify-center p-4 z-10 pt-1 min-[375px]:pt-2 md:pt-6 pb-10">
         
         <div 
-          className="w-full max-w-[440px] rounded-[32px] p-5 md:p-8 flex flex-col gap-5 mt-3 md:mt-0"
+          className="w-full max-w-[440px] rounded-[32px] p-4 min-[375px]:p-5 md:p-8 flex flex-col gap-5 mt-1 min-[375px]:mt-2 md:mt-0"
           style={{
             backdropFilter: "blur(30px)",
             WebkitBackdropFilter: "blur(30px)",
@@ -750,8 +750,8 @@ export function UnifiedLoginExperience({
                 className="space-y-5"
               >
                 {/* Header (Inside Card) */}
-                <div className="text-center space-y-2.5">
-                  <div className="flex justify-center mb-1">
+                <div className="text-center space-y-1.5">
+                  <div className="flex justify-center mb-0.5">
                     <Image
                       src="/logo-navbar.png"
                       alt="RNOS Logo"
@@ -901,7 +901,7 @@ export function UnifiedLoginExperience({
                           readOnly={!manualLocation && Boolean(city)}
                           required
                           placeholder="City"
-                          className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                          className="w-full text-base md:text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
                         />
                         <input
                           value={district}
@@ -909,7 +909,7 @@ export function UnifiedLoginExperience({
                           readOnly={!manualLocation && Boolean(district)}
                           required
                           placeholder="District"
-                          className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                          className="w-full text-base md:text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
                         />
                         <input
                           value={state}
@@ -917,7 +917,7 @@ export function UnifiedLoginExperience({
                           readOnly={!manualLocation && Boolean(state)}
                           required
                           placeholder="State"
-                          className="w-full text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                          className="w-full text-base md:text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
                         />
                       </div>
 
@@ -1276,13 +1276,6 @@ export function UnifiedLoginExperience({
         </div>
 
       </main>
-
-      {/* FOOTER */}
-      <footer className="text-center py-2 z-10">
-        <p className="text-[10px] font-semibold text-slate-400">
-          &copy; {new Date().getFullYear()} RNOS India Pvt. Ltd. All rights reserved.
-        </p>
-      </footer>
 
     </motion.div>
   );

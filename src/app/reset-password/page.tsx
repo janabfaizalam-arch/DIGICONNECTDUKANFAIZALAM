@@ -200,10 +200,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="relative isolate min-h-screen overflow-hidden px-4 py-8 md:px-8 md:py-12">
+    <main className="relative isolate min-h-[100dvh] overflow-hidden px-4 py-8 md:px-8 md:py-12">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_10%,rgba(37,99,235,0.18),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(249,115,22,0.12),transparent_26%),linear-gradient(180deg,#fbfdff_0%,#eef6ff_52%,#f8fbff_100%)]" />
 
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl items-center justify-center">
+      <div className="mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-5xl items-center justify-center">
         <section className="glass-panel shadow-soft relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 p-5 text-center md:p-7">
           <Image
             src="/logo-navbar.png"

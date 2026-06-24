@@ -49,7 +49,7 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   }
 }
 
-const hiddenPrefixes = ["/admin", "/agent", "/login", "/signup", "/ap", "/forgot-password", "/reset-password", "/staff"];
+const hiddenPrefixes = ["/admin", "/agent", "/login", "/signup", "/ap", "/forgot-password", "/reset-password", "/staff", "/customer-login"];
 
 function shouldHide(pathname: string) {
   return hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
