@@ -61,9 +61,9 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
   ({ label, icon, rightElement, touched, isValid, className, id, placeholder = " ", ...props }, ref) => {
     const statusClass = touched
       ? isValid
-        ? "border-emerald-200 focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.06)] bg-emerald-50/5"
-        : "border-red-200 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.06)] bg-red-50/5"
-      : "border-slate-200/80 focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.06)] bg-white";
+        ? "border-emerald-200 focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.10)] bg-emerald-50/5"
+        : "border-red-200 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.10)] bg-red-50/5"
+      : "border-slate-200/80 focus:border-[#2563EB] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.10)] bg-white";
 
     return (
       <div className="relative w-full">
@@ -78,9 +78,10 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             ref={ref}
             id={id}
             placeholder={placeholder}
-            className={`peer w-full rounded-[20px] border text-base text-[#0F172A] outline-none transition-all h-[58px] pt-[22px] pb-[6px] ${
+            className={`peer w-full rounded-[20px] border text-base text-[#0F172A] outline-none transition-all duration-200 ease-in-out h-[58px] pt-[22px] pb-[6px] ${
               icon ? "pl-12" : "pl-4.5"
             } ${rightElement ? "pr-12" : "pr-4.5"} ${statusClass} ${className || ""}`}
+            style={{ textTransform: props.type === "email" || id?.includes("email") ? "none" : undefined, ...props.style }}
             {...props}
           />
           
@@ -653,7 +654,7 @@ export function UnifiedLoginExperience({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col justify-start relative overflow-y-auto select-none"
+      className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col justify-start relative overflow-y-auto select-none pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
       style={{
         background: "radial-gradient(circle at top center, rgba(37,99,235,0.08), transparent 50%), #F8FAFC"
       }}
@@ -667,10 +668,10 @@ export function UnifiedLoginExperience({
 
       {/* STICKY GLASS NAVBAR WITH SEGMENTED SWITCH */}
       <header 
-        className="sticky top-0 z-[100] w-full border-b border-slate-900/06 bg-white/40 backdrop-blur-[20px] px-3 flex items-center justify-between"
+        className="sticky top-0 z-[100] w-full border-b border-slate-200/40 bg-white/40 backdrop-blur-[20px] px-4 sm:px-6 flex items-center justify-between"
         style={{
           paddingTop: "env(safe-area-inset-top)",
-          height: "calc(60px + env(safe-area-inset-top))"
+          height: "calc(54px + env(safe-area-inset-top))"
         }}
       >
         
@@ -679,16 +680,16 @@ export function UnifiedLoginExperience({
           <Image
             src="/logo-navbar.png"
             alt="RNOS Logo"
-            width={120}
-            height={40}
+            width={110}
+            height={36}
             priority
-            className="h-5 sm:h-6 w-auto object-contain shrink-0"
+            className="h-[22px] w-auto object-contain shrink-0"
           />
         </Link>
         
         {/* Right: Elegant Segmented Switch (Hidden if activeTab is Admin "ops") */}
         {activeTab !== "ops" && (
-          <div className="flex rounded-full bg-slate-200/50 p-0.5 relative z-0 max-w-[190px] min-[375px]:max-w-[210px] sm:max-w-none shrink-0" role="tablist">
+          <div className="flex rounded-full bg-slate-200/40 p-0.5 relative z-0 shrink-0 border border-slate-100" role="tablist">
             {[
               { id: "user", label: "User Login" },
               { id: "partner", label: "Partner Workspace" },
@@ -704,14 +705,14 @@ export function UnifiedLoginExperience({
                     setActiveTab(tab.id as AuthTab);
                     setFormMessage(null);
                   }}
-                  className="relative px-2 min-[375px]:px-2.5 py-1 text-[8.5px] min-[375px]:text-[10px] md:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0"
-                  style={{ color: isActive ? "#2563EB" : "#64748B" }}
+                  className="relative px-3 py-1 text-[9.5px] sm:text-xs font-bold transition-colors duration-150 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0"
+                  style={{ color: isActive ? "#2563EB" : "#64748b" }}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activeHeaderTab"
-                      className="absolute inset-0 bg-white rounded-full shadow-sm border border-slate-200/50 -z-10"
-                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                      className="absolute inset-0 bg-white rounded-full shadow-sm border border-slate-200/30 -z-10"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
                   )}
                   {tab.label}
@@ -731,7 +732,7 @@ export function UnifiedLoginExperience({
           style={{
             backdropFilter: "blur(30px)",
             WebkitBackdropFilter: "blur(30px)",
-            background: "rgba(255, 255, 255, 0.70)",
+            background: "rgba(255, 255, 255, 0.72)",
             border: "1px solid rgba(255, 255, 255, 0.8)",
             boxShadow: "0 20px 60px rgba(15, 23, 42, 0.08)"
           }}
@@ -751,20 +752,20 @@ export function UnifiedLoginExperience({
               >
                 {/* Header (Inside Card) */}
                 <div className="text-center space-y-1.5">
-                  <div className="flex justify-center mb-0.5">
+                  <div className="flex justify-center mb-1">
                     <Image
                       src="/logo-navbar.png"
                       alt="RNOS Logo"
-                      width={125}
-                      height={40}
+                      width={120}
+                      height={36}
                       priority
-                      className="h-8 w-auto object-contain"
+                      className="h-[30px] w-auto object-contain"
                     />
                   </div>
-                  <h2 className="text-xl font-bold tracking-tight text-[#0F172A]">
+                  <h2 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-[#0F172A] leading-[1.1] max-w-[290px] mx-auto">
                     {userMode === "login" ? "Welcome Back" : "Create Account"}
                   </h2>
-                  <p className="text-xs text-[#64748B] font-medium leading-relaxed max-w-[280px] mx-auto">
+                  <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[280px] mx-auto mt-1">
                     {userMode === "login"
                       ? "Access your digital services securely"
                       : "Get started with your digital operating system"}
@@ -901,7 +902,7 @@ export function UnifiedLoginExperience({
                           readOnly={!manualLocation && Boolean(city)}
                           required
                           placeholder="City"
-                          className="w-full text-base md:text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                          className="w-full text-base md:text-xs rounded-xl border border-slate-200/80 h-10 px-3 outline-none focus:border-[#2563EB] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.10)] font-medium transition-all duration-200 ease-in-out bg-white"
                         />
                         <input
                           value={district}
@@ -909,7 +910,7 @@ export function UnifiedLoginExperience({
                           readOnly={!manualLocation && Boolean(district)}
                           required
                           placeholder="District"
-                          className="w-full text-base md:text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                          className="w-full text-base md:text-xs rounded-xl border border-slate-200/80 h-10 px-3 outline-none focus:border-[#2563EB] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.10)] font-medium transition-all duration-200 ease-in-out bg-white"
                         />
                         <input
                           value={state}
@@ -917,7 +918,7 @@ export function UnifiedLoginExperience({
                           readOnly={!manualLocation && Boolean(state)}
                           required
                           placeholder="State"
-                          className="w-full text-base md:text-xs rounded-xl border border-slate-200 h-10 px-3 outline-none focus:border-blue-500 font-medium"
+                          className="w-full text-base md:text-xs rounded-xl border border-slate-200/80 h-10 px-3 outline-none focus:border-[#2563EB] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.10)] font-medium transition-all duration-200 ease-in-out bg-white"
                         />
                       </div>
 
@@ -943,8 +944,8 @@ export function UnifiedLoginExperience({
 
                   <FormSubmitButton
                     loading={isPending}
-                    loadingText={userMode === "signup" ? "Creating free account..." : "Signing in securely..."}
-                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                    loadingText={userMode === "signup" ? "Creating Account..." : "Signing in..."}
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white font-bold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 flex items-center justify-center gap-2"
                   >
                     {userMode === "signup" ? "Create Free Account" : "Sign In"}
                   </FormSubmitButton>
@@ -963,10 +964,12 @@ export function UnifiedLoginExperience({
                       type="button"
                       disabled={isPending || isGooglePending}
                       onClick={() => userMode === "signup" ? setOAuthProvider("google") : void handleOAuthLogin()}
-                      className="w-full h-[58px] rounded-[20px] border border-slate-200 bg-white text-[#0F172A] font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                      className="w-full h-[58px] rounded-[20px] border border-slate-200/80 bg-white/60 hover:bg-white/90 active:scale-[0.98] active:bg-slate-50/50 backdrop-blur-md text-[#0F172A] font-bold transition-all duration-200 flex items-center justify-center gap-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)] cursor-pointer hover:shadow-sm hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 outline-none"
                     >
-                      {isGooglePending ? <ButtonSpinner className="h-4 w-4 text-[#2563EB]" /> : <GoogleIcon />}
-                      <span className="text-xs">Continue with Google</span>
+                      <div className="flex items-center justify-center shrink-0">
+                        {isGooglePending ? <ButtonSpinner className="h-4.5 w-4.5 text-[#2563EB]" /> : <GoogleIcon />}
+                      </div>
+                      <span className="text-xs font-semibold tracking-tight">Continue with Google</span>
                     </Button>
                   </div>
                 )}
@@ -1034,27 +1037,39 @@ export function UnifiedLoginExperience({
                       type="button"
                       disabled={!hasVerifiedOAuthDetails || isPending || isGooglePending}
                       onClick={() => void handleOAuthLogin(true)}
-                      className="w-full h-11 bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-95 cursor-pointer border-none"
+                      className="w-full h-[58px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white rounded-[20px] font-bold flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] cursor-pointer border-none transition-all duration-200"
                     >
-                      {isGooglePending ? <ButtonSpinner className="h-4 w-4" /> : null}
+                      {isGooglePending ? <ButtonSpinner className="h-4.5 w-4.5 text-white" /> : null}
                       Continue with Google
                     </Button>
                   </motion.section>
                 )}
 
                 {/* Account mode toggle link */}
-                <div className="text-center pt-1">
+                <div className="text-center pt-2">
                   <button
                     type="button"
                     onClick={() => {
                       setUserMode(userMode === "login" ? "signup" : "login");
                       setFormMessage(null);
                     }}
-                    className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] transition-colors outline-none cursor-pointer"
+                    className="text-xs text-[#64748B] transition-colors outline-none cursor-pointer hover:text-[#0F172A] font-medium"
                   >
-                    {userMode === "login"
-                      ? "Don't have an account? Create Account"
-                      : "Already have an account? Sign In"}
+                    {userMode === "login" ? (
+                      <>
+                        New to RNOS?{" "}
+                        <span className="font-bold text-[#2563EB] hover:underline">
+                          Create your account
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Already have an account?{" "}
+                        <span className="font-bold text-[#2563EB] hover:underline">
+                          Sign In
+                        </span>
+                      </>
+                    )}
                   </button>
                 </div>
 
@@ -1073,13 +1088,13 @@ export function UnifiedLoginExperience({
               >
                 {/* Header (Inside Card) */}
                 <div className="text-center space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#64748B]">
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#64748B]">
                     RNOS Partner Network
                   </p>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A] leading-tight">
+                  <h2 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-[#0F172A] leading-[1.1] max-w-[320px] mx-auto">
                     Partner Workspace Login
                   </h2>
-                  <p className="text-xs text-[#64748B] font-medium leading-relaxed max-w-[300px] mx-auto">
+                  <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[300px] mx-auto mt-1">
                     Access your DigiConnect Partner Dashboard
                   </p>
                 </div>
@@ -1138,8 +1153,8 @@ export function UnifiedLoginExperience({
 
                   <FormSubmitButton
                     loading={isPending || apTransitionPending}
-                    loadingText="Opening partner node..."
-                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                    loadingText="Accessing Workspace..."
+                    className="w-full h-[58px] rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white font-bold text-xs tracking-wide shadow-md shadow-blue-500/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 flex items-center justify-center gap-2"
                   >
                     Sign In
                   </FormSubmitButton>
@@ -1244,8 +1259,8 @@ export function UnifiedLoginExperience({
 
                   <FormSubmitButton
                     loading={isPending}
-                    loadingText="Opening operations node..."
-                    className="w-full h-[58px] rounded-[20px] bg-slate-900 hover:bg-slate-950 text-white font-semibold text-xs tracking-wide shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                    loadingText="Accessing Console..."
+                    className="w-full h-[58px] rounded-[20px] bg-slate-900 hover:bg-slate-950 text-white font-bold text-xs tracking-wide shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
                   >
                     Open Console
                   </FormSubmitButton>
@@ -1262,10 +1277,12 @@ export function UnifiedLoginExperience({
                     type="button"
                     disabled={isPending}
                     onClick={handleAdminGoogleLogin}
-                    className="w-full h-[58px] rounded-[20px] border border-slate-200 bg-white text-[#0F172A] font-semibold hover:bg-slate-50 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+                    className="w-full h-[58px] rounded-[20px] border border-slate-200/80 bg-white/60 hover:bg-white/90 active:scale-[0.98] active:bg-slate-50/50 backdrop-blur-md text-[#0F172A] font-bold transition-all duration-200 flex items-center justify-center gap-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)] cursor-pointer hover:shadow-sm hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 outline-none"
                   >
-                    <GoogleIcon />
-                    <span className="text-xs">Staff Sign In with Google</span>
+                    <div className="flex items-center justify-center shrink-0">
+                      <GoogleIcon />
+                    </div>
+                    <span className="text-xs font-semibold tracking-tight">Staff Sign In with Google</span>
                   </Button>
                 </div>
               </motion.div>
