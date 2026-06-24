@@ -147,6 +147,10 @@ export async function POST(request: Request) {
       currency: order.currency,
       credit_report_id: record.id,
       key_id: getRazorpayKeyId(),
+      servicePrice: pkg.price,
+      walletUsed: 0,
+      rewardUsed: 0,
+      finalPayable: pkg.price,
     });
   } catch (error) {
     console.error("[credit/create-order] Error in order creation route:", error);

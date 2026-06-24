@@ -64,6 +64,10 @@ type CreateOrderResponse = {
   application_ids?: string[];
   message?: string;
   error?: string;
+  servicePrice?: number;
+  walletUsed?: number;
+  rewardUsed?: number;
+  finalPayable?: number;
 };
 
 type CreateOrderRequestBody = {
@@ -207,7 +211,18 @@ export function RazorpayCheckoutButton({
 
       setPaymentStep("opening");
 
-      const checkout = new window.Razorpay({
+      const servicePrice = order.servicePrice;
+      const walletUsed = order.walletUsed;
+      const rewardUsed = order.rewardUsed;
+      const finalPayable = order.finalPayable;
+
+      console.log("Service Price", servicePrice);
+      console.log("Wallet Used", walletUsed);
+      console.log("Reward Used", rewardUsed);
+      console.log("Final Payable", finalPayable);
+      console.log("Razorpay Order Amount", order.amount);
+
+      const razorpayOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
@@ -232,7 +247,7 @@ export function RazorpayCheckoutButton({
             toastError("Payment cancelled.");
           },
         },
-        handler: async (payment) => {
+        handler: async (payment: RazorpaySuccessResponse) => {
           try {
             setPaymentStep("verifying");
             const verifyResponse = await fetch("/api/verify-payment", {
@@ -267,7 +282,14 @@ export function RazorpayCheckoutButton({
             setPaymentStep("idle");
           }
         },
-      });
+      };
+
+      // Ensure razorpayOptions.amount === order.amount holds
+      if (razorpayOptions.amount !== order.amount) {
+        throw new Error("Razorpay options amount does not match order amount.");
+      }
+
+      const checkout = new window.Razorpay(razorpayOptions);
 
       checkout.on("payment.failed", (response) => {
         setIsPending(false);

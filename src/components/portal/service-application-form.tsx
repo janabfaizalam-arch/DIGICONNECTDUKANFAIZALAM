@@ -796,10 +796,10 @@ export function ServiceApplicationForm({
                     }
                   : (normalizedApplicationDraft.details || {});
 
-      if (isCibil) {
+      if (isCibil || isGst || isItr) {
         return {
           ...baseDetails,
-          selectedPlan: selectedServices[0]?.title || "Premium CIBIL Analysis & Consultation",
+          selectedPlan: selectedServices[0]?.title || "",
           planPrice: formatCurrency(totalAmount),
         };
       }

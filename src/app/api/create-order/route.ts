@@ -101,6 +101,77 @@ function getCustomerValidationError(customer: ReturnType<typeof normalizeCustome
   return null;
 }
 
+function getServiceAmountForPlan(
+  slug: string | undefined,
+  defaultAmount: number,
+  selectedPlan: string | undefined,
+  clientAmountPaise?: number
+): number {
+  if (!slug) return defaultAmount;
+
+  const planLower = String(selectedPlan ?? "").toLowerCase();
+
+  if (slug === "cibil-report-analysis-and-credit-health-consultation") {
+    if (selectedPlan && (selectedPlan === "Basic CIBIL One Pager Report" || planLower.includes("basic"))) {
+      return 518;
+    } else if (selectedPlan && (selectedPlan === "Premium CIBIL Analysis & Consultation" || planLower.includes("premium"))) {
+      return 2599;
+    } else {
+      if (clientAmountPaise === 260000 || clientAmountPaise === 2600) {
+        return 2600;
+      }
+      return 2599;
+    }
+  }
+
+  if (slug === "gst-registration") {
+    if (planLower.includes("msme")) {
+      return 2999;
+    } else if (planLower.includes("starter") || planLower.includes("starter pack")) {
+      return 3999;
+    } else if (planLower.includes("premium")) {
+      return 4999;
+    } else if (planLower.includes("basic")) {
+      return 2499;
+    }
+    return 2499;
+  }
+
+  if (slug === "gst-return-filing") {
+    if (planLower.includes("monthly_business") || planLower.includes("business monthly")) {
+      return 499;
+    } else if (planLower.includes("monthly_premium") || planLower.includes("premium monthly")) {
+      return 999;
+    } else if (planLower.includes("quarterly_qrmp") || planLower.includes("quarterly gst qrmp")) {
+      return 1499;
+    } else if (planLower.includes("annual")) {
+      return 4999;
+    } else if (planLower.includes("starter") || planLower.includes("starter monthly")) {
+      return 299;
+    }
+    return 299;
+  }
+
+  if (slug === "itr-filing") {
+    if (planLower.includes("itr2") || planLower.includes("itr-2")) {
+      return 999;
+    } else if (planLower.includes("itr3") || planLower.includes("itr-3")) {
+      return 1499;
+    } else if (planLower.includes("itr4") || planLower.includes("itr-4")) {
+      return 999;
+    } else if (planLower.includes("nri")) {
+      return 2499;
+    } else if (planLower.includes("capgain") || planLower.includes("capital gains")) {
+      return 2999;
+    } else if (planLower.includes("itr1") || planLower.includes("itr-1") || planLower.includes("salaried")) {
+      return 699;
+    }
+    return 699;
+  }
+
+  return defaultAmount;
+}
+
 export async function POST(request: Request) {
   try {
     const rateLimit = checkRateLimit(`create-order:${getClientIp(request)}`, 20, 60_000);
@@ -117,6 +188,10 @@ export async function POST(request: Request) {
     let applicationIds: string[] = [];
     let orderUserId: string | null = null;
     let walletRedeemAmount = 0;
+    let servicePrice = 0;
+    let walletUsed = 0;
+    let rewardUsed = 0;
+    let finalPayable = 0;
     const serviceSlugs = Array.from(
       new Set((Array.isArray(body?.serviceSlugs) && body?.serviceSlugs.length ? body.serviceSlugs : [body?.serviceSlug])
         .map((slug) => String(slug ?? "").trim())
@@ -141,24 +216,12 @@ export async function POST(request: Request) {
       const serviceAmount = isItrMsmeCombo
         ? 699
         : services.reduce((total, service) => {
-            let itemAmount = Number(service?.amount ?? 0);
-            if (service?.slug === "cibil-report-analysis-and-credit-health-consultation") {
-              const plan = body?.applicationDraft?.details?.selectedPlan;
-              if (plan && (plan === "Basic CIBIL One Pager Report" || String(plan).toLowerCase().includes("basic"))) {
-                itemAmount = 518;
-              } else if (plan && (plan === "Premium CIBIL Analysis & Consultation" || String(plan).toLowerCase().includes("premium"))) {
-                itemAmount = 2599;
-              } else {
-                // If it is the legacy flow, the client might send 2600 (original price).
-                // Let's support both 2599 and 2600 to prevent any payment mismatch!
-                const clientAmountPaise = Math.round(Number(body?.amount ?? 0));
-                if (clientAmountPaise === 260000 || clientAmountPaise === 2600) {
-                  itemAmount = 2600;
-                } else {
-                  itemAmount = 2599;
-                }
-              }
-            }
+            const itemAmount = getServiceAmountForPlan(
+              service?.slug,
+              Number(service?.amount ?? 0),
+              body?.applicationDraft?.details?.selectedPlan,
+              body?.amount
+            );
             return total + itemAmount;
           }, 0);
 
@@ -222,6 +285,10 @@ export async function POST(request: Request) {
           application_id: undefined,
           application_ids: [],
           message: "No payment is required for this free service.",
+          servicePrice: 0,
+          walletUsed: 0,
+          rewardUsed: 0,
+          finalPayable: 0,
         });
       }
 
@@ -309,7 +376,14 @@ export async function POST(request: Request) {
 
         let remainingWalletToAllocate = walletRedeemAmount;
         const applicationsToInsert = services.filter(Boolean).map((service, index) => {
-          let serviceAmountForRow = isItrMsmeCombo ? (index === 0 ? serviceAmount : 0) : Number(service?.amount ?? 0);
+          let serviceAmountForRow = isItrMsmeCombo
+            ? (index === 0 ? serviceAmount : 0)
+            : getServiceAmountForPlan(
+                service?.slug,
+                Number(service?.amount ?? 0),
+                body?.applicationDraft?.details?.selectedPlan,
+                body?.amount
+              );
           if (service!.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
           }
@@ -399,10 +473,18 @@ export async function POST(request: Request) {
           application_ids: walletAppIds,
           wallet_only: true,
           message: "Service paid using DigiWallet. No Razorpay payment required.",
+          servicePrice: serviceAmount,
+          walletUsed: walletRedeemAmount,
+          rewardUsed: walletRedeemAmount,
+          finalPayable: 0,
         });
       }
 
       amount = expectedAmount;
+      servicePrice = serviceAmount;
+      walletUsed = walletRedeemAmount;
+      rewardUsed = walletRedeemAmount;
+      finalPayable = freshPayableAmount;
 
       if (body?.applicationDraft) {
         const supabase = getSupabaseAdmin();
@@ -506,7 +588,14 @@ export async function POST(request: Request) {
         };
         let remainingWalletToAllocate = walletRedeemAmount;
         const applicationsToInsert = services.filter(Boolean).map((service, index) => {
-          let serviceAmountForRow = isItrMsmeCombo ? (index === 0 ? serviceAmount : 0) : Number(service?.amount ?? 0);
+          let serviceAmountForRow = isItrMsmeCombo
+            ? (index === 0 ? serviceAmount : 0)
+            : getServiceAmountForPlan(
+                service?.slug,
+                Number(service?.amount ?? 0),
+                body?.applicationDraft?.details?.selectedPlan,
+                body?.amount
+              );
           if (service!.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
           }
@@ -595,6 +684,10 @@ export async function POST(request: Request) {
           application_id: application.id,
           application_ids: [application.id],
           message: "No payment is required for this application.",
+          servicePrice: Number(application.total_amount ?? application.amount ?? 0),
+          walletUsed: walletRedeemAmount,
+          rewardUsed: walletRedeemAmount,
+          finalPayable: 0,
         });
       }
 
@@ -602,6 +695,10 @@ export async function POST(request: Request) {
       applicationIds = [application.id];
       orderUserId = user.id;
       walletRedeemAmount = Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0);
+      servicePrice = Number(application.total_amount ?? application.amount ?? 0);
+      walletUsed = walletRedeemAmount;
+      rewardUsed = walletRedeemAmount;
+      finalPayable = freshPayableAmount;
     }
 
     if (!Number.isFinite(amount) || amount < 100) {
@@ -678,6 +775,10 @@ export async function POST(request: Request) {
       currency: order.currency,
       application_id: applicationIds[0],
       application_ids: applicationIds,
+      servicePrice,
+      walletUsed,
+      rewardUsed,
+      finalPayable,
     });
   } catch (error) {
     const status = getRazorpayErrorStatus(error);
