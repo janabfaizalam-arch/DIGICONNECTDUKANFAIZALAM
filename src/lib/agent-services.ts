@@ -26,6 +26,48 @@ export type AgentService = {
   created_at?: string;
   updated_at?: string;
   assigned_agent_ids?: string[];
+
+  // new V2 fields
+  government_fee_type: "included" | "extra" | "not_applicable";
+  government_fee_amount: number;
+  processing_fee: number;
+  eligibility: string | null;
+  faq: Array<{ question: string; answer: string }> | null;
+  terms: string | null;
+  important_notes: string | null;
+  popular: boolean;
+  thumbnail: string | null;
+  banner: string | null;
+  supported_states: string[] | null;
+  supported_districts: string[] | null;
+  supported_pincodes: string[] | null;
+  variants: Array<{
+    id: string;
+    name: string;
+    price: number;
+    score: number;
+    processing_time: string;
+    government_fee?: string;
+    required_documents?: Array<{
+      id: string;
+      name: string;
+      type: "Text" | "Image" | "PDF";
+      required: boolean;
+    }>;
+    restrictions?: {
+      type: "india" | "states" | "districts" | "cities" | "pincodes";
+      states?: string[];
+      districts?: string[];
+      cities?: string[];
+      pincodes?: string[];
+    };
+  }> | null;
+  required_documents_list: Array<{
+    id: string;
+    name: string;
+    type: "Text" | "Image" | "PDF";
+    required: boolean;
+  }> | null;
 };
 
 export type AgentServiceInput = Omit<AgentService, "id" | "created_at" | "updated_at" | "assigned_agent_ids"> & {
@@ -77,6 +119,23 @@ export function normalizeAgentService(row: Record<string, unknown>): AgentServic
     sort_order: numberValue(row.sort_order),
     created_at: row.created_at ? String(row.created_at) : undefined,
     updated_at: row.updated_at ? String(row.updated_at) : undefined,
+
+    // new V2 fields
+    government_fee_type: (row.government_fee_type as AgentService["government_fee_type"]) ?? "not_applicable",
+    government_fee_amount: numberValue(row.government_fee_amount),
+    processing_fee: numberValue(row.processing_fee),
+    eligibility: (row.eligibility as string | null | undefined) ?? null,
+    faq: (row.faq as AgentService["faq"]) ?? [],
+    terms: (row.terms as string | null | undefined) ?? null,
+    important_notes: (row.important_notes as string | null | undefined) ?? null,
+    popular: Boolean(row.popular ?? false),
+    thumbnail: (row.thumbnail as string | null | undefined) ?? null,
+    banner: (row.banner as string | null | undefined) ?? null,
+    supported_states: (row.supported_states as string[] | null | undefined) ?? [],
+    supported_districts: (row.supported_districts as string[] | null | undefined) ?? [],
+    supported_pincodes: (row.supported_pincodes as string[] | null | undefined) ?? [],
+    variants: (row.variants as AgentService["variants"]) ?? [],
+    required_documents_list: (row.required_documents_list as AgentService["required_documents_list"]) ?? [],
   };
 }
 

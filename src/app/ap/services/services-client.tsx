@@ -7,6 +7,7 @@ import { Search, Star, ArrowRight, FileText, Sparkles, Layers, History } from "l
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/portal-data";
 import type { AgentService } from "@/lib/agent-services";
+import { cn } from "@/lib/utils";
 
 interface PartnerServicesClientProps {
   initialServices: AgentService[];
@@ -17,8 +18,9 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentSlugs, setRecentSlugs] = useState<string[]>([]);
+  const [showScore, setShowScore] = useState(false);
 
-  // Load favorites and recents from localStorage
+  // Load favorites, recents, and score toggle from localStorage
   useEffect(() => {
     try {
       const storedFavs = JSON.parse(localStorage.getItem("digipartner_favorites") || "[]");
@@ -26,26 +28,15 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
       
       const storedRecents = JSON.parse(localStorage.getItem("digipartner_recently_used") || "[]");
       setRecentSlugs(storedRecents);
+
+      const storedShowScore = localStorage.getItem("digipartner_show_score");
+      if (storedShowScore !== null) {
+        setShowScore(storedShowScore === "true");
+      }
     } catch (err) {
       console.warn("Could not load stored services state", err);
     }
   }, []);
-
-  // Classify category on the fly to remain service-agnostic
-  const getCategoryLabel = (category: string | null, slug: string) => {
-    const s = String(slug).toLowerCase();
-    
-    if (s.includes("loan") || s.includes("pmegp") || s.includes("mudra") || s.includes("yuva")) {
-      return "Loans & Subsidy";
-    }
-    if (s.includes("card") || s.includes("account") || s.includes("cibil") || s.includes("credit") || s.includes("saving") || s.includes("current")) {
-      return "Finance & Credit";
-    }
-    if (s.includes("gst") || s.includes("itr") || s.includes("limited") || s.includes("msme") || s.includes("dsc") || s.includes("iso")) {
-      return "Tax & Business";
-    }
-    return "Gov ID & Forms";
-  };
 
   // Toggle favorite status
   const toggleFavorite = (slug: string) => {
@@ -63,16 +54,25 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
     localStorage.setItem("digipartner_recently_used", JSON.stringify(updated));
   };
 
+  const handleToggleScore = () => {
+    const next = !showScore;
+    setShowScore(next);
+    localStorage.setItem("digipartner_show_score", String(next));
+  };
+
   // Categorized & filtered services
   const processedServices = useMemo(() => {
     return initialServices.map((srv) => ({
       ...srv,
-      calculatedCategory: getCategoryLabel(srv.category, srv.slug),
+      calculatedCategory: srv.category || "Other",
     }));
   }, [initialServices]);
 
   // Categories list
-  const categories = ["All", "Tax & Business", "Gov ID & Forms", "Loans & Subsidy", "Finance & Credit", "Favorites"];
+  const categories = useMemo(() => {
+    const list = new Set(processedServices.map((srv) => srv.calculatedCategory));
+    return ["All", ...Array.from(list), "Favorites"];
+  }, [processedServices]);
 
   // Filtered lists
   const filteredServices = useMemo(() => {
@@ -119,6 +119,19 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
           <p className="text-slate-500 text-sm mt-1 font-medium">
             Browse active products, calculate custom commission overlays, and initiate quick client submissions.
           </p>
+        </div>
+        <div className="flex shrink-0 items-center">
+          <button
+            onClick={handleToggleScore}
+            className={cn(
+              "flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition shadow-sm",
+              showScore
+                ? "bg-emerald-600 border-transparent text-white hover:bg-emerald-700"
+                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            )}
+          >
+            {showScore ? "Hide Score" : "Show Score"}
+          </button>
         </div>
       </div>
 
@@ -236,9 +249,9 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
                       </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase text-emerald-600">Earnings</p>
+                      <p className="text-[9px] font-bold uppercase text-emerald-600">Score</p>
                       <p className="mt-0.5 text-sm font-black text-emerald-600">
-                        {formatCurrency(payoutAmount)}
+                        {showScore ? payoutAmount : "••••"}
                       </p>
                     </div>
                     <div>
@@ -262,12 +275,18 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
                   )}
                 </div>
 
-                {/* Apply Button */}
-                <div className="mt-5 pt-3.5 border-t border-slate-100">
+                {/* Apply & Details Buttons */}
+                <div className="mt-5 pt-3.5 border-t border-slate-100 flex gap-2">
+                  <Link
+                    href={`/ap/services/${srv.slug}`}
+                    className="flex-1 flex h-10 items-center justify-center gap-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs transition duration-150 border border-slate-200"
+                  >
+                    <span>Details</span>
+                  </Link>
                   <Link
                     href={`/ap/applications/new?serviceId=${srv.id}`}
                     onClick={() => trackRecentUse(srv.slug)}
-                    className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs transition duration-150 border border-blue-200 hover:border-transparent hover:scale-[1.01] active:scale-[0.99]"
+                    className="flex-1 flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs transition duration-150 border border-blue-200 hover:border-transparent hover:scale-[1.01] active:scale-[0.99] group"
                   >
                     <span>Apply Now</span>
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />

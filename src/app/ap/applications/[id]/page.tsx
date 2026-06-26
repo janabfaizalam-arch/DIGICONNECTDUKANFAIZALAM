@@ -340,17 +340,15 @@ export default async function APApplicationDetailPage({
           </Card>
 
           <div className="space-y-4">
-            {/* Commission Widget */}
+            {/* Score Widget */}
             <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-3xl backdrop-blur-xl text-center space-y-2 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                AP Commission Payout
+                Partner Score
               </p>
               <p className="text-3xl font-black text-emerald-600">
-                {formatCurrency(
-                  apCommission?.calculated_amount ??
-                    application.commission_amount ??
-                    0
-                )}
+                {apCommission?.calculated_amount ??
+                  application.commission_amount ??
+                  0}
               </p>
               <span
                 className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold capitalize border ${

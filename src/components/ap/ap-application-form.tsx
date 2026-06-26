@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
+import { cn } from "@/lib/utils";
 import {
   createPmVishwakarmaInitialValues,
   getPmVishwakarmaValidationError,
@@ -94,6 +95,7 @@ export function APApplicationForm({
   // Basic States
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? "");
   const [serviceId, setServiceId] = useState(defaultServiceId ?? services[0]?.id ?? "");
+  const [variantId, setVariantId] = useState("");
   const [razorpayPayment, setRazorpayPayment] = useState<(VerifiedRazorpayPayment & { amount_paise: number }) | null>(null);
   
   // Search states
@@ -160,29 +162,43 @@ export function APApplicationForm({
   } | null>(null);
 
   const selectedService = services.find((service) => service.id === serviceId);
+  const selectedVariant = useMemo(() => {
+    if (!selectedService || !selectedService.variants) return null;
+    return selectedService.variants.find((v) => v.id === variantId) || null;
+  }, [selectedService, variantId]);
+
+  useEffect(() => {
+    const srv = services.find((s) => s.id === serviceId);
+    if (srv && srv.variants && srv.variants.length > 0) {
+      setVariantId(srv.variants[0].id);
+    } else {
+      setVariantId("");
+    }
+  }, [serviceId, services]);
+
   const selectedPayout = selectedService ? payoutForAgentService(selectedService) : 0;
-  const payableAmountPaise = Math.round(Number(selectedService?.customer_fee ?? 0) * 100);
+  
+  // Calculations Breakout
+  const finalCustomerFee = selectedVariant ? Number(selectedVariant.price) : Number(selectedService?.customer_fee ?? 0);
+  const finalScore = selectedVariant ? Number(selectedVariant.score) : Number(selectedPayout);
+  const calculatedGST = Math.round(finalCustomerFee * 0.18);
+  const grossTotal = finalCustomerFee + calculatedGST;
+  const partnerNetMargin = finalScore;
+  const payableAmountPaise = Math.round(finalCustomerFee * 100);
+
   const receiptPrefix = `ap-${selectedService?.slug ?? "service"}`;
   const [paymentReceipt, setPaymentReceipt] = useState(receiptPrefix);
   const isPmVishwakarma = selectedService?.slug === "pm-vishwakarma-yojana";
 
   // Category Catalog list
-  const categories = [
-    "All", "Identity", "Certificates", "Business", "GST", "Tax", "Banking", "Licenses", "Education", "RTO", "Passport"
-  ];
+  const categories = useMemo(() => {
+    const list = new Set(services.map((s) => s.category).filter((c): c is string => Boolean(c)));
+    return ["All", ...Array.from(list)];
+  }, [services]);
 
   // Map service slug to UI categories
   const getServiceCategory = (s: AgentService) => {
-    if (s.category) return s.category.toLowerCase();
-    const slug = s.slug.toLowerCase();
-    if (slug.includes("gst")) return "gst";
-    if (slug.includes("itr") || slug.includes("tax") || slug.includes("income")) return "tax";
-    if (slug.includes("vishwakarma") || slug.includes("eshram") || slug.includes("aadhaar") || slug.includes("pan")) return "identity";
-    if (slug.includes("pvc") || slug.includes("certificate") || slug.includes("voter")) return "certificates";
-    if (slug.includes("loan") || slug.includes("banking") || slug.includes("cibil") || slug.includes("credit")) return "banking";
-    if (slug.includes("rto") || slug.includes("dl") || slug.includes("rc")) return "rto";
-    if (slug.includes("passport")) return "passport";
-    return "business";
+    return s.category || "Other";
   };
 
   // Filter service items
@@ -391,14 +407,36 @@ export function APApplicationForm({
     setPmVishwakarmaValues((current) => ({ ...current, [key]: value }));
   }
 
-  // Parse service required documents
+  // Parse service required documents checklist
   const serviceChecklist = useMemo(() => {
-    if (!selectedService || !selectedService.required_documents) return [];
-    return selectedService.required_documents
-      .split(/,|\n/)
-      .map(doc => doc.trim())
-      .filter(Boolean);
-  }, [selectedService]);
+    if (!selectedService) return [];
+    
+    // If a variant is selected, look at its required documents
+    if (selectedVariant && selectedVariant.required_documents && selectedVariant.required_documents.length > 0) {
+      return selectedVariant.required_documents;
+    }
+    
+    // Fallback to service required_documents_list
+    if (selectedService.required_documents_list && selectedService.required_documents_list.length > 0) {
+      return selectedService.required_documents_list;
+    }
+    
+    // Fallback to splitting standard required_documents string
+    if (selectedService.required_documents) {
+      return selectedService.required_documents
+        .split(/,|\n/)
+        .map(doc => doc.trim())
+        .filter(Boolean)
+        .map((doc, idx) => ({
+          id: `doc-${idx + 1}`,
+          name: doc,
+          type: "Image" as const,
+          required: true,
+        }));
+    }
+    
+    return [];
+  }, [selectedService, selectedVariant]);
 
   // Drag and drop zone upload
   const handleFileUpload = (files: FileList | null, checklistType?: string) => {
@@ -504,11 +542,6 @@ export function APApplicationForm({
     return uploadedFiles.some(f => f.documentType === docName && f.status === "validated");
   };
 
-  // Calculations Breakout
-  const calculatedGST = Math.round(Number(selectedService?.customer_fee ?? 0) * 0.18);
-  const grossTotal = Number(selectedService?.customer_fee ?? 0) + calculatedGST;
-  const partnerNetMargin = selectedPayout;
-
   // Wizard Step Validation
   const validateStep1 = () => {
     if (!customerName.trim()) {
@@ -535,6 +568,39 @@ export function APApplicationForm({
       toastError("Select service.");
       return false;
     }
+    if (selectedService && selectedService.variants && selectedService.variants.length > 0) {
+      if (!variantId) {
+        toastError("Please select a service variant.");
+        return false;
+      }
+      
+      // Look up selected variant restrictions
+      const v = selectedService.variants.find((x) => x.id === variantId);
+      if (v && v.restrictions && v.restrictions.type !== "india") {
+        const r = v.restrictions;
+        if (r.states && r.states.length > 0) {
+          const match = r.states.some((s: string) => s.toLowerCase() === customerState.toLowerCase());
+          if (!match) {
+            toastError(`Selected variant is not available in ${customerState || "your state"}`);
+            return false;
+          }
+        }
+        if (r.districts && r.districts.length > 0) {
+          const match = r.districts.some((d: string) => d.toLowerCase() === customerDistrict.toLowerCase());
+          if (!match) {
+            toastError(`Selected variant is only available in District ${r.districts.join(", ")} (PIN: ${r.pincodes?.join(", ") || ""})`);
+            return false;
+          }
+        }
+        if (r.pincodes && r.pincodes.length > 0) {
+          const match = r.pincodes.some((p: string) => p === customerPincode);
+          if (!match) {
+            toastError(`Selected variant is only available in PIN code ${r.pincodes.join(", ")}`);
+            return false;
+          }
+        }
+      }
+    }
     if (isPmVishwakarma) {
       const pmValidationError = getPmVishwakarmaValidationError(pmVishwakarmaValues);
       if (pmValidationError) {
@@ -547,9 +613,9 @@ export function APApplicationForm({
 
   const validateStep3 = () => {
     // Check if any mandatory checklist is pending upload
-    const pending = serviceChecklist.filter(doc => !isDocumentUploaded(doc));
+    const pending = serviceChecklist.filter(doc => doc.required && !isDocumentUploaded(doc.name));
     if (pending.length > 0) {
-      toastError(`Please upload: ${pending[0]}`);
+      toastError(`Please upload: ${pending[0].name}`);
       return false;
     }
     return true;
@@ -567,7 +633,7 @@ export function APApplicationForm({
     const draft = {
       customerName, customerMobile, customerEmail, customerGender, customerDob,
       customerAddress, customerState, customerDistrict, customerPincode, customerCity,
-      serviceId, isNewCustomer
+      serviceId, variantId, isNewCustomer
     };
     localStorage.setItem("ap_new_application_draft", JSON.stringify(draft));
     success("Draft updated.");
@@ -588,6 +654,7 @@ export function APApplicationForm({
     formData.set("customerId", isNewCustomer ? "" : customerId);
     formData.set("agentServiceId", serviceId);
     formData.set("serviceId", selectedService?.service_id ?? "");
+    formData.set("variantId", variantId);
 
     // Set Customer Details manually
     formData.set("customerName", customerName);
@@ -680,7 +747,7 @@ export function APApplicationForm({
                   {formatCurrency(service.customer_fee)}
                 </span>
                 <span className="flex items-center gap-1 text-emerald-600 font-semibold">
-                  +{formatCurrency(payout)} earn
+                  Score: {payout}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -800,7 +867,7 @@ export function APApplicationForm({
   /* ═══════════════════════════════════════════════════════════
      MAIN RENDER: Application Creation Wizard
      ═══════════════════════════════════════════════════════════ */
-  const docsUploaded = serviceChecklist.filter(doc => isDocumentUploaded(doc)).length;
+  const docsUploaded = serviceChecklist.filter(doc => isDocumentUploaded(doc.name)).length;
   const docsTotal = serviceChecklist.length;
 
   return (
@@ -1282,22 +1349,107 @@ export function APApplicationForm({
               )}
             </div>
 
+            {/* Service Variant Selector */}
+            {selectedService && selectedService.variants && selectedService.variants.length > 0 && (
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">
+                  Select Service Variant
+                </h3>
+                <div className="grid gap-2">
+                  {selectedService.variants.map((v) => {
+                    const isVarSelected = variantId === v.id;
+                    
+                    // Validate area restriction
+                    let isAvailable = true;
+                    let restrictionMsg = "";
+
+                    if (v.restrictions && v.restrictions.type !== "india") {
+                      const r = v.restrictions;
+                      if (r.states && r.states.length > 0) {
+                        const match = r.states.some((s: string) => s.toLowerCase() === customerState.toLowerCase());
+                        if (!match) {
+                          isAvailable = false;
+                          restrictionMsg = `Not available in ${customerState || "your state"}`;
+                        }
+                      }
+                      if (isAvailable && r.districts && r.districts.length > 0) {
+                        const match = r.districts.some((d: string) => d.toLowerCase() === customerDistrict.toLowerCase());
+                        if (!match) {
+                          isAvailable = false;
+                          restrictionMsg = `Only available in District ${r.districts.join(", ")} (PIN: ${r.pincodes?.join(", ") || ""})`;
+                        }
+                      }
+                      if (isAvailable && r.pincodes && r.pincodes.length > 0) {
+                        const match = r.pincodes.some((p: string) => p === customerPincode);
+                        if (!match) {
+                          isAvailable = false;
+                          restrictionMsg = `Only available in PIN code ${r.pincodes.join(", ")}`;
+                        }
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        disabled={!isAvailable}
+                        onClick={() => setVariantId(v.id)}
+                        className={cn(
+                          "w-full text-left rounded-xl p-3 border transition flex items-center justify-between cursor-pointer",
+                          !isAvailable
+                            ? "bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed"
+                            : isVarSelected
+                            ? "bg-indigo-50 border-indigo-500 shadow-sm"
+                            : "bg-white border-slate-100 hover:border-slate-250"
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("text-sm font-semibold", isVarSelected ? "text-indigo-850" : "text-slate-800")}>
+                            {v.name}
+                          </p>
+                          <div className="flex gap-3 text-xs mt-1 text-slate-550 font-medium">
+                            <span>Price: {formatCurrency(v.price)}</span>
+                            <span className="text-emerald-600 font-semibold">Score: {v.score}</span>
+                            <span>TAT: {v.processing_time}</span>
+                          </div>
+                          {!isAvailable && (
+                            <p className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 rounded px-2 py-0.5 mt-1.5 inline-flex items-center gap-1.5">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {restrictionMsg}
+                            </p>
+                          )}
+                        </div>
+                        {isAvailable && (
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center border transition-colors shrink-0",
+                            isVarSelected ? "bg-indigo-600 border-transparent text-white" : "border-slate-300"
+                          )}>
+                            {isVarSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Selected Service Summary */}
             {selectedService && (
               <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 space-y-2">
-                <p className="text-sm font-semibold text-blue-800">Selected: {selectedService.title}</p>
+                <p className="text-sm font-semibold text-blue-800">Selected: {selectedService.title}{selectedVariant ? ` - ${selectedVariant.name}` : ""}</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-white/80 rounded-lg py-2">
-                    <p className="text-xs text-slate-500">Fee</p>
-                    <p className="text-sm font-bold text-slate-800">{formatCurrency(selectedService.customer_fee)}</p>
+                    <p className="text-xs text-slate-500 font-semibold">Price</p>
+                    <p className="text-sm font-black text-slate-900">{formatCurrency(finalCustomerFee)}</p>
                   </div>
                   <div className="bg-white/80 rounded-lg py-2">
-                    <p className="text-xs text-emerald-600">Earn</p>
-                    <p className="text-sm font-bold text-emerald-600">{formatCurrency(selectedPayout)}</p>
+                    <p className="text-xs text-emerald-600 font-semibold">Score</p>
+                    <p className="text-sm font-black text-emerald-600">{finalScore}</p>
                   </div>
                   <div className="bg-white/80 rounded-lg py-2">
-                    <p className="text-xs text-slate-500">Time</p>
-                    <p className="text-sm font-bold text-slate-800">{selectedService.processing_time || "1-3 Days"}</p>
+                    <p className="text-xs text-slate-500 font-semibold">Time</p>
+                    <p className="text-sm font-bold text-slate-800">{selectedVariant ? selectedVariant.processing_time : (selectedService.processing_time || "1-3 Days")}</p>
                   </div>
                 </div>
               </div>
@@ -1347,7 +1499,7 @@ export function APApplicationForm({
                 {/* Checklist */}
                 <div className="space-y-2">
                   {serviceChecklist.map((doc, idx) => {
-                    const uploaded = isDocumentUploaded(doc);
+                    const uploaded = isDocumentUploaded(doc.name);
                     return (
                       <div key={idx} className={`flex items-center justify-between rounded-xl p-3 transition-colors ${
                         uploaded ? "bg-emerald-50/50" : "bg-slate-50"
@@ -1361,27 +1513,29 @@ export function APApplicationForm({
                             {uploaded && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
                           <span className={`text-sm font-medium truncate ${uploaded ? "text-emerald-700" : "text-slate-700"}`}>
-                            {doc}
+                            {doc.name} {doc.required ? <span className="text-[10px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded ml-1 border border-red-200">Required</span> : <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-1.5 py-0.5 rounded ml-1">Optional</span>}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => startCamera(doc)}
-                            className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50 transition active:scale-95 min-h-[36px]"
-                          >
-                            <Camera className="w-3.5 h-3.5" />
-                            Scan
-                          </button>
+                          {doc.type === "Image" && (
+                            <button
+                              type="button"
+                              onClick={() => startCamera(doc.name)}
+                              className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50 transition active:scale-95 min-h-[36px]"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                              Scan
+                            </button>
+                          )}
                           <label className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50 transition cursor-pointer active:scale-95 min-h-[36px]">
                             <FileUp className="w-3.5 h-3.5" />
                             Add
                             <input
                               type="file"
                               className="hidden"
-                              onChange={(e) => handleFileUpload(e.target.files, doc)}
-                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={(e) => handleFileUpload(e.target.files, doc.name)}
+                              accept={doc.type === "PDF" ? ".pdf" : doc.type === "Image" ? ".jpg,.jpeg,.png" : ".txt,.pdf,.jpg,.jpeg,.png"}
                             />
                           </label>
                         </div>
@@ -1481,7 +1635,7 @@ export function APApplicationForm({
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between items-center text-slate-600">
                   <span>Service Fee</span>
-                  <span className="font-mono font-medium">{formatCurrency(selectedService?.customer_fee ?? 0)}</span>
+                  <span className="font-mono font-medium">{formatCurrency(finalCustomerFee)}</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
                   <span>GST (18%)</span>
@@ -1495,12 +1649,12 @@ export function APApplicationForm({
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-emerald-600 font-medium">Your Commission</p>
-                  <p className="text-base font-bold text-emerald-700 mt-0.5">{formatCurrency(partnerNetMargin)}</p>
+                  <p className="text-xs text-emerald-600 font-medium">Your Score</p>
+                  <p className="text-base font-extrabold text-emerald-705 mt-0.5">{finalScore}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 text-center">
                   <p className="text-xs text-slate-500 font-medium">Expected Delivery</p>
-                  <p className="text-base font-bold text-slate-800 mt-0.5">{selectedService?.processing_time || "1-3 Days"}</p>
+                  <p className="text-base font-bold text-slate-800 mt-0.5">{selectedVariant ? selectedVariant.processing_time : (selectedService?.processing_time || "1-3 Days")}</p>
                 </div>
               </div>
             </div>
@@ -1564,7 +1718,7 @@ export function APApplicationForm({
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
                   <span className="text-slate-500">Service</span>
-                  <span className="font-semibold text-slate-800 text-right max-w-[180px] truncate">{selectedService?.title}</span>
+                  <span className="font-semibold text-slate-800 text-right max-w-[180px] truncate">{selectedService?.title}{selectedVariant ? ` - ${selectedVariant.name}` : ""}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
                   <span className="text-slate-500">Documents</span>
@@ -1576,11 +1730,11 @@ export function APApplicationForm({
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
                   <span className="text-slate-500">Processing Time</span>
-                  <span className="font-semibold text-slate-800">{selectedService?.processing_time || "1-3 Days"}</span>
+                  <span className="font-semibold text-slate-800">{selectedVariant ? selectedVariant.processing_time : (selectedService?.processing_time || "1-3 Days")}</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="text-emerald-600 font-semibold">Your Commission</span>
-                  <span className="font-bold text-emerald-600">{formatCurrency(partnerNetMargin)}</span>
+                  <span className="text-emerald-600 font-semibold">Your Score</span>
+                  <span className="font-bold text-emerald-600">{finalScore}</span>
                 </div>
               </div>
             </div>
@@ -1794,8 +1948,8 @@ export function APApplicationForm({
                   <span className="text-right">Amount</span>
                 </div>
                 <div className="grid grid-cols-3 px-3 py-2.5 font-medium border-b border-slate-50">
-                  <span className="col-span-2 truncate">{selectedService.title}</span>
-                  <span className="text-right font-mono">{formatCurrency(selectedService.customer_fee)}</span>
+                  <span className="col-span-2 truncate">{selectedService.title}{selectedVariant ? ` - ${selectedVariant.name}` : ""}</span>
+                  <span className="text-right font-mono">{formatCurrency(finalCustomerFee)}</span>
                 </div>
                 <div className="grid grid-cols-3 px-3 py-2 text-slate-500">
                   <span className="col-span-2">GST (18%)</span>

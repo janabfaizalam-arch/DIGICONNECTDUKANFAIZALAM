@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { replaceAgentServiceAssignments, type AgentServiceInput } from "@/lib/agent-services";
+import { replaceAgentServiceAssignments, type AgentServiceInput, type AgentService } from "@/lib/agent-services";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -27,7 +27,6 @@ function numberValue(value: unknown, fallback = 0) {
   const next = Number(value);
   return Number.isFinite(next) ? next : fallback;
 }
-
 function cleanPayload(input: Record<string, unknown>): AgentServiceInput {
   const title = String(input.title ?? "").trim();
   const slug = slugify(String(input.slug ?? title));
@@ -52,9 +51,25 @@ function cleanPayload(input: Record<string, unknown>): AgentServiceInput {
     visibility_type: visibilityType,
     sort_order: Math.round(numberValue(input.sort_order)),
     assigned_agent_ids: Array.isArray(input.assigned_agent_ids) ? input.assigned_agent_ids.map(String).filter(Boolean) : [],
+
+    // V2 Fields
+    government_fee_type: (input.government_fee_type as AgentService["government_fee_type"]) ?? "not_applicable",
+    government_fee_amount: numberValue(input.government_fee_amount),
+    processing_fee: numberValue(input.processing_fee),
+    eligibility: String(input.eligibility ?? "").trim() || null,
+    faq: Array.isArray(input.faq) ? input.faq : [],
+    terms: String(input.terms ?? "").trim() || null,
+    important_notes: String(input.important_notes ?? "").trim() || null,
+    popular: Boolean(input.popular),
+    thumbnail: String(input.thumbnail ?? "").trim() || null,
+    banner: String(input.banner ?? "").trim() || null,
+    supported_states: Array.isArray(input.supported_states) ? input.supported_states.map(String) : [],
+    supported_districts: Array.isArray(input.supported_districts) ? input.supported_districts.map(String) : [],
+    supported_pincodes: Array.isArray(input.supported_pincodes) ? input.supported_pincodes.map(String) : [],
+    variants: Array.isArray(input.variants) ? input.variants : [],
+    required_documents_list: Array.isArray(input.required_documents_list) ? input.required_documents_list : [],
   };
 }
-
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) return jsonError("Admin access required.", 403);
 

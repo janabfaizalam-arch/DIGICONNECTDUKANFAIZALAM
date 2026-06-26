@@ -141,9 +141,11 @@ export async function POST(request: Request) {
     const customerId = String(formData.get("customerId") ?? "").trim();
     const agentServiceId = String(formData.get("agentServiceId") ?? "").trim();
     const serviceId = String(formData.get("serviceId") ?? "").trim();
+    const variantId = String(formData.get("variantId") ?? "").trim();
     const customerName = String(formData.get("customerName") ?? formData.get("name") ?? "").trim();
     const mobile = String(formData.get("mobile") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+
     const pincode = String(formData.get("pincode") ?? "").replace(/\D/g, "").slice(0, 6);
     const city = String(formData.get("city") ?? "").trim();
     const district = String(formData.get("district") ?? "").trim();
@@ -220,7 +222,68 @@ export async function POST(request: Request) {
       }
     }
 
-    const expectedAmountPaise = Math.round(Number(service.customer_fee ?? 0) * 100);
+    // Resolve variant if any
+    const serviceVariants = service.variants;
+    const hasVariants = serviceVariants && Array.isArray(serviceVariants) && serviceVariants.length > 0;
+    if (hasVariants && !variantId) {
+      return jsonError("Please select a service variant.", 400);
+    }
+    const selectedVariant = hasVariants
+      ? (serviceVariants.find((v) => v.id === variantId) ?? null)
+      : null;
+    if (hasVariants && !selectedVariant) {
+      return jsonError("Selected variant not found.", 400);
+    }
+
+    // Validate selected variant restrictions
+    if (selectedVariant && selectedVariant.restrictions) {
+      const r = selectedVariant.restrictions;
+      const rType = r.type;
+      if (rType !== "india") {
+        if (r.states && r.states.length > 0) {
+          const matchState = r.states.some((s: string) => s.toLowerCase() === state.toLowerCase());
+          if (!matchState) {
+            return jsonError(`This variant is only available in selected states: ${r.states.join(", ")}`, 400);
+          }
+        }
+        if (r.districts && r.districts.length > 0) {
+          const matchDistrict = r.districts.some((d: string) => d.toLowerCase() === district.toLowerCase());
+          if (!matchDistrict) {
+            return jsonError(`This variant is only available in District ${r.districts.join(", ")} (PIN: ${r.pincodes?.join(", ") || ""})`, 400);
+          }
+        }
+        if (r.pincodes && r.pincodes.length > 0) {
+          const matchPincode = r.pincodes.some((p: string) => p === pincode);
+          if (!matchPincode) {
+            return jsonError(`This variant is only available in PIN code ${r.pincodes.join(", ")}`, 400);
+          }
+        }
+      }
+    }
+
+    // Validate service-level restrictions
+    if (service.supported_states && service.supported_states.length > 0) {
+      const matchState = service.supported_states.some((s: string) => s.toLowerCase() === state.toLowerCase());
+      if (!matchState) {
+        return jsonError(`This service is only available in: ${service.supported_states.join(", ")}`, 400);
+      }
+    }
+    if (service.supported_districts && service.supported_districts.length > 0) {
+      const matchDistrict = service.supported_districts.some((d: string) => d.toLowerCase() === district.toLowerCase());
+      if (!matchDistrict) {
+        return jsonError(`This service is only available in districts: ${service.supported_districts.join(", ")}`, 400);
+      }
+    }
+    if (service.supported_pincodes && service.supported_pincodes.length > 0) {
+      const matchPincode = service.supported_pincodes.some((p: string) => p === pincode);
+      if (!matchPincode) {
+        return jsonError(`This service is only available in PIN codes: ${service.supported_pincodes.join(", ")}`, 400);
+      }
+    }
+
+    const finalCustomerFee = selectedVariant ? Number(selectedVariant.price) : Number(service.customer_fee);
+    const commissionAmount = selectedVariant ? Number(selectedVariant.score) : payoutForAgentService(service);
+    const expectedAmountPaise = Math.round(finalCustomerFee * 100);
 
     if (
       expectedAmountPaise > 0 &&
@@ -322,8 +385,8 @@ export async function POST(request: Request) {
       return jsonError("Customer not found.", 404);
     }
 
-    const commissionAmount = payoutForAgentService(service);
     const invoiceNumber = createInvoiceNumber();
+    const serviceNameWithVariant = selectedVariant ? `${service.title} - ${selectedVariant.name}` : service.title;
 
     const { data: application, error: applicationError } = await supabase
       .from("applications")
@@ -340,12 +403,12 @@ export async function POST(request: Request) {
         service_id: service.service_id || serviceId || null,
         agent_service_id: service.id,
         service_slug: service.slug,
-        service_name: service.title,
-        amount: service.customer_fee,
-        total_amount: service.customer_fee,
-        customer_fee_snapshot: service.customer_fee,
+        service_name: serviceNameWithVariant,
+        amount: finalCustomerFee,
+        total_amount: finalCustomerFee,
+        customer_fee_snapshot: finalCustomerFee,
         agent_payout_snapshot: commissionAmount,
-        agent_payout_type_snapshot: service.payout_type,
+        agent_payout_type_snapshot: selectedVariant ? "fixed" : service.payout_type,
         source_channel: "agency_partner",
         ownership_status: "ap_created",
         service_snapshot: {
@@ -353,12 +416,16 @@ export async function POST(request: Request) {
           service_id: service.service_id,
           slug: service.slug,
           title: service.title,
-          customer_fee: service.customer_fee,
-          agent_payout: service.agent_payout,
-          payout_type: service.payout_type,
-          payout_percentage: service.payout_percentage,
-          required_documents: service.required_documents,
-          processing_time: service.processing_time,
+          customer_fee: finalCustomerFee,
+          agent_payout: commissionAmount,
+          payout_type: selectedVariant ? "fixed" : service.payout_type,
+          payout_percentage: selectedVariant ? 0 : service.payout_percentage,
+          required_documents: selectedVariant && selectedVariant.required_documents
+            ? selectedVariant.required_documents.map((d) => d.name).join(", ")
+            : service.required_documents,
+          processing_time: selectedVariant ? selectedVariant.processing_time : service.processing_time,
+          variant_id: variantId || null,
+          variant_name: selectedVariant ? selectedVariant.name : null,
         },
         form_data: {
           name: customer.full_name,
@@ -416,7 +483,7 @@ export async function POST(request: Request) {
     await supabase.from("payments").insert({
       application_id: application.id,
       user_id: user.id,
-      amount: service.customer_fee,
+      amount: finalCustomerFee,
       status: "verified",
       razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
       razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,
@@ -432,8 +499,8 @@ export async function POST(request: Request) {
       customerName: customer.full_name,
       customerEmail: customer.email,
       customerMobile: customer.mobile,
-      serviceName: service.title,
-      amount: service.customer_fee,
+      serviceName: serviceNameWithVariant,
+      amount: finalCustomerFee,
       paymentStatus: "verified",
     });
 
@@ -442,8 +509,8 @@ export async function POST(request: Request) {
       agencyPartnerId: ap.id,
       applicationId: application.id,
       serviceSlug: service.slug,
-      serviceName: service.title,
-      saleAmount: service.customer_fee,
+      serviceName: serviceNameWithVariant,
+      saleAmount: finalCustomerFee,
       tierId: ap.tier_id,
       serviceId: service.service_id || null,
     });
