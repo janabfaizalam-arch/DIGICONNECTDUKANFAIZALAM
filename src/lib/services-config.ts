@@ -55,13 +55,13 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
   {
     slug: "passport",
     categorySlug: "licence",
-    govFee: 1500,
-    serviceCharge: 999,
+    govFee: 0,
+    serviceCharge: 0,
     processingTime: "7-10 Working Days",
     successMessage: "Passport online file submitted. Our coordinator will contact you via WhatsApp with appointment slot options.",
     plans: [
-      { id: "normal", name: "Normal Processing", price: 2499, description: "Standard passport file creation and RPO scheduling" },
-      { id: "tatkal", name: "Tatkal Speed Processing", price: 3999, description: "Fast track Tatkal file submission and urgent slots" }
+      { id: "normal", name: "Normal Processing", price: 0, description: "Standard passport file creation and RPO scheduling" },
+      { id: "tatkal", name: "Tatkal Speed Processing", price: 0, description: "Fast track Tatkal file submission and urgent slots" }
     ],
     documents: [
       { id: "aadhaar", name: "Aadhaar Card Copy", required: true, ocrType: "aadhaar", helpHint: "Must have complete DOB (DD/MM/YYYY)" },
@@ -95,13 +95,13 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
     slug: "gst-registration",
     categorySlug: "tax",
     govFee: 0,
-    serviceCharge: 2499,
+    serviceCharge: 0,
     processingTime: "3-5 Working Days",
     successMessage: "GST registration dossier sent to GSTN processor. Check updates in dashboard.",
     plans: [
-      { id: "basic", name: "Basic Registration", price: 2499, description: "Standard business registration & ARN generation" },
-      { id: "msme", name: "GST + MSME Bundle", price: 2999, description: "GSTIN registration plus Udyam Certificate" },
-      { id: "starter", name: "Business Starter Pack", price: 3999, description: "GST, MSME, Business consultations and GST compliance checklist" }
+      { id: "basic", name: "Basic Registration", price: 0, description: "Standard business registration & ARN generation" },
+      { id: "msme", name: "GST + MSME Bundle", price: 0, description: "GSTIN registration plus Udyam Certificate" },
+      { id: "starter", name: "Business Starter Pack", price: 0, description: "GST, MSME, Business consultations and GST compliance checklist" }
     ],
     documents: [
       { id: "pan", name: "PAN of Business/Proprietor", required: true, ocrType: "pan" },
@@ -147,12 +147,12 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
     slug: "itr-filing",
     categorySlug: "tax",
     govFee: 0,
-    serviceCharge: 699,
+    serviceCharge: 0,
     processingTime: "2-3 Working Days",
     plans: [
-      { id: "itr1", name: "ITR-1 Salaried", price: 699, description: "Filing for Single salary, pension or interest income" },
-      { id: "itr2", name: "ITR-2 Capital Gains", price: 999, description: "Filing for Share market gains or multiple house properties" },
-      { id: "itr3", name: "ITR-3 Business/Professional", price: 1499, description: "Filing for business logs, CA audits, or freelancers" }
+      { id: "itr1", name: "ITR-1 Salaried", price: 0, description: "Filing for Single salary, pension or interest income" },
+      { id: "itr2", name: "ITR-2 Capital Gains", price: 0, description: "Filing for Share market gains or multiple house properties" },
+      { id: "itr3", name: "ITR-3 Business/Professional", price: 0, description: "Filing for business logs, CA audits, or freelancers" }
     ],
     documents: [
       { id: "form16", name: "Form 16 / AIS Summary", required: true },
@@ -182,12 +182,12 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
   {
     slug: "pvc-card",
     categorySlug: "cards",
-    govFee: 49,
-    serviceCharge: 100,
+    govFee: 0,
+    serviceCharge: 0,
     processingTime: "2-3 Working Days",
     plans: [
-      { id: "standard", name: "Standard PVC Card", price: 149, description: "High quality polymer print with free normal delivery" },
-      { id: "premium_pvc", name: "Express PVC Smart Card", price: 199, description: "Extra-thick polymer with speed post shipping (+₹50)" }
+      { id: "standard", name: "Standard PVC Card", price: 0, description: "High quality polymer print with free normal delivery" },
+      { id: "premium_pvc", name: "Express PVC Smart Card", price: 0, description: "Extra-thick polymer with speed post shipping (+₹50)" }
     ],
     documents: [
       { id: "card_front", name: "Card Front PDF/Image", required: true, helpHint: "Upload front screenshot or PDF copy" },
@@ -209,7 +209,7 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
     slug: "voter-id",
     categorySlug: "cards",
     govFee: 0,
-    serviceCharge: 99,
+    serviceCharge: 0,
     processingTime: "5-7 Working Days",
     documents: [
       { id: "aadhaar", name: "Aadhaar Card (Birth Proof)", required: true, ocrType: "aadhaar" },
@@ -231,7 +231,7 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
     slug: "eshram-card",
     categorySlug: "cards",
     govFee: 0,
-    serviceCharge: 149,
+    serviceCharge: 0,
     processingTime: "1-2 Working Days",
     documents: [
       { id: "aadhaar", name: "Aadhaar Card Copy", required: true, ocrType: "aadhaar" },
@@ -259,8 +259,8 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
   {
     slug: "learning-driving-license",
     categorySlug: "licence",
-    govFee: 450,
-    serviceCharge: 1049,
+    govFee: 0,
+    serviceCharge: 0,
     processingTime: "5-7 Working Days",
     documents: [
       { id: "aadhaar", name: "Aadhaar Card Copy", required: true, ocrType: "aadhaar" },
@@ -290,7 +290,7 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
     slug: "cm-yuva-entrepreneur-loan-assistance",
     categorySlug: "banking",
     govFee: 0,
-    serviceCharge: 13499,
+    serviceCharge: 0,
     processingTime: "15-20 Working Days",
     documents: [
       { id: "pan", name: "PAN Card Copy", required: true, ocrType: "pan" },
@@ -340,7 +340,7 @@ export function getDynamicServiceConfig(slug: string, categorySlug = "cards"): S
     slug,
     categorySlug,
     govFee: 0,
-    serviceCharge: 499,
+    serviceCharge: 0,
     processingTime: "5-7 Working Days",
     documents: [
       { id: "aadhaar", name: "Aadhaar Card Copy", required: true, ocrType: "aadhaar" },

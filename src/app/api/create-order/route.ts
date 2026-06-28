@@ -123,11 +123,9 @@ export async function POST(request: Request) {
     let walletUsed = 0;
     let rewardUsed = 0;
     let finalPayable = 0;
-    const serviceSlugs = Array.from(
-      new Set((Array.isArray(body?.serviceSlugs) && body?.serviceSlugs.length ? body.serviceSlugs : [body?.serviceSlug])
-        .map((slug) => String(slug ?? "").trim())
-        .filter(Boolean)),
-    );
+    const serviceSlugs = (Array.isArray(body?.serviceSlugs) && body?.serviceSlugs.length ? body.serviceSlugs : [body?.serviceSlug])
+      .map((slug) => String(slug ?? "").trim())
+      .filter(Boolean);
 
     if (serviceSlugs.length) {
       const user = await getCurrentUser();
@@ -142,11 +140,11 @@ export async function POST(request: Request) {
         const service = await getAgentServiceBySlug(slug);
         if (!service) {
           console.error(`[PAYMENT AUDIT] Service "${slug}" not found in agent_services.`);
-          return jsonError(`Pricing configuration for service "${slug}" is missing in the Admin Panel.`, 400);
+          return jsonError("Service pricing is not configured in Admin Panel.", 400);
         }
         if (service.customer_fee === null || service.customer_fee === undefined) {
           console.error(`[PAYMENT AUDIT] Price for service "${service.title || slug}" is missing in agent_services.`);
-          return jsonError(`Pricing configuration for service "${service.title || slug}" is missing in the Admin Panel.`, 400);
+          return jsonError("Service pricing is not configured in Admin Panel.", 400);
         }
         services.push(service);
       }

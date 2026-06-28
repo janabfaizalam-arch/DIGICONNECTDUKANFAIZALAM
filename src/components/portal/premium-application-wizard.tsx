@@ -641,6 +641,17 @@ export function PremiumApplicationWizard({
         throw new Error(errMsg);
       }
 
+      // Verify amounts match exactly
+      const reviewTotal = cartTotal;
+      const backendTotal = Number(orderData.servicePrice);
+      const razorpayAmount = Number(orderData.amount) / 100;
+
+      if (reviewTotal !== backendTotal || backendTotal !== razorpayAmount) {
+        const mismatchMsg = "Payment amount mismatch detected. Please refresh cart.";
+        console.error("[PAY:MISMATCH]", { reviewTotal, backendTotal, razorpayAmount });
+        throw new Error(mismatchMsg);
+      }
+
       payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100, stage: "INITIALIZE" });
 
       const rzpOptions = {

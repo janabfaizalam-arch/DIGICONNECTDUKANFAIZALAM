@@ -257,54 +257,14 @@ export async function replaceAgentServiceAssignments(agentServiceId: string, age
 
 export async function getAgentServiceBySlug(slug: string): Promise<AgentService | null> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    const fallback = portalServices.find(s => s.slug === slug);
-    if (!fallback) return null;
-    return {
-      id: fallback.slug,
-      service_id: fallback.slug,
-      slug: fallback.slug,
-      title: fallback.title,
-      description: fallback.description,
-      category: "tax",
-      customer_fee: fallback.amount,
-      agent_payout: Math.round(fallback.amount * 0.1),
-      payout_type: "fixed",
-      payout_percentage: 0,
-      required_documents: fallback.documents?.join(",") || null,
-      processing_time: "2-3 days",
-      instructions: null,
-      is_active: true,
-      is_featured: true,
-      visibility_type: "all",
-      sort_order: 1,
-      government_fee_type: "included",
-      government_fee_amount: 0,
-      processing_fee: 0,
-      eligibility: null,
-      faq: null,
-      terms: null,
-      important_notes: null,
-      popular: true,
-      thumbnail: null,
-      banner: null,
-      supported_states: null,
-      supported_districts: null,
-      supported_pincodes: null,
-      variants: null,
-      required_documents_list: (fallback.documents ?? []).map(docName => ({
-        id: docName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        name: docName,
-        type: "PDF",
-        required: false
-      }))
-    };
-  }
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from("agent_services")
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
+
   if (error || !data) return null;
   return normalizeAgentService(data);
 }

@@ -249,11 +249,8 @@ export const serviceIconMap: Record<string, LucideIcon> = {
 };
 
 function parseAmount(price?: string) {
-  if (!price) {
-    return 0;
-  }
-  const value = Number(price.replace(/[^\d]/g, ""));
-  return Number.isFinite(value) ? value : 0;
+  void price;
+  return 0;
 }
 
 function buildFaqs(title: string, categorySlug: ServiceCategorySlug, priceLabel: string): ServiceFaq[] {
@@ -351,8 +348,8 @@ const rawServices: RawService[] = [
     slug: "pvc-card",
     categorySlug: "cards",
     shortDescription: "Get your digital Aadhaar, PAN, Voter or DL printed on premium waterproof PVC smart cards.",
-    oldPrice: "₹299",
-    offerPrice: "₹149",
+    
+    
     iconKey: "card",
     badge: "Popular",
     documents: ["Front Side Image", "Back Side Image", "Delivery Address with Pincode"],
@@ -363,8 +360,8 @@ const rawServices: RawService[] = [
     slug: "voter-id",
     categorySlug: "cards",
     shortDescription: "New Voter ID registration, details correction, and duplicate smart card printing assistance.",
-    oldPrice: "₹349",
-    offerPrice: "₹99",
+    
+    
     iconKey: "voter",
     badge: "New",
   },
@@ -373,8 +370,8 @@ const rawServices: RawService[] = [
     slug: "eshram-card",
     categorySlug: "cards",
     shortDescription: "UAN eShram registration assistance, worker profiling, and digital card print guidance.",
-    oldPrice: "₹299",
-    offerPrice: "₹149",
+    
+    
     iconKey: "labour",
     badge: "Quick Apply",
     documents: ["Aadhaar Card", "Mobile Number Linked to Aadhaar", "Bank Details"],
@@ -384,8 +381,8 @@ const rawServices: RawService[] = [
     slug: "labour-card",
     categorySlug: "cards",
     shortDescription: "Labour Department registration support, renewal help, and state benefit schemes documentation.",
-    oldPrice: "₹999",
-    offerPrice: "₹399",
+    
+    
     iconKey: "labour",
     badge: "Popular",
   },
@@ -396,7 +393,7 @@ const rawServices: RawService[] = [
     slug: "pmegp-loan",
     categorySlug: "loans",
     shortDescription: "PMEGP subsidy business loans file preparation, project reporting, and online application support.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "loan",
     badge: "Popular",
   },
@@ -405,7 +402,7 @@ const rawServices: RawService[] = [
     slug: "mudra-loan",
     categorySlug: "loans",
     shortDescription: "Secure Mudra Business Loan documentation guidance for Shishu, Kishor, or Tarun categories.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "loan",
     badge: "Popular",
   },
@@ -414,8 +411,8 @@ const rawServices: RawService[] = [
     slug: "pm-vishwakarma-yojana",
     categorySlug: "loans",
     shortDescription: "PM Vishwakarma scheme registration assistance for eligible traditional artisans and craftsmen.",
-    oldPrice: "₹499",
-    offerPrice: "₹250",
+    
+    
     iconKey: "loan",
     badge: "Government",
     documents: ["Aadhaar Card", "Bank Account Details", "Ration Card or Family Proof", "Skill Category Name"],
@@ -425,7 +422,7 @@ const rawServices: RawService[] = [
     slug: "startup-india-assistance",
     categorySlug: "loans",
     shortDescription: "DPIIT startup registration support, tax exemptions advice, and business pitching deck checklist.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "bank",
     badge: "Business",
   },
@@ -436,9 +433,9 @@ const rawServices: RawService[] = [
     slug: "cm-yuva-entrepreneur-loan-assistance",
     categorySlug: "banking",
     shortDescription: "Professional assistance for project reports, MSME registration, documentation support, and business loan applications.",
-    oldPrice: "₹39,999",
-    offerPrice: "₹13,499",
-    priceLabel: "₹13,499",
+    
+    
+    
     iconKey: "loan",
     badge: "Popular",
     documents: [
@@ -460,7 +457,7 @@ const rawServices: RawService[] = [
     slug: "credit-cards",
     categorySlug: "banking",
     shortDescription: "Apply for top credit cards from leading banks with guided eligibility and documentation support.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "card",
     badge: "Popular",
   },
@@ -469,7 +466,7 @@ const rawServices: RawService[] = [
     slug: "saving-account-opening",
     categorySlug: "banking",
     shortDescription: "Zero balance or premium savings account opening assistance with full KYC guidance.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "savings",
     badge: "Instant",
   },
@@ -478,7 +475,7 @@ const rawServices: RawService[] = [
     slug: "current-account-opening",
     categorySlug: "banking",
     shortDescription: "Open a business current account in top banks with trade certificate validation.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "bank",
     badge: "Business",
   },
@@ -487,8 +484,8 @@ const rawServices: RawService[] = [
     slug: "cibil-report-increase",
     categorySlug: "banking",
     shortDescription: "TransUnion CIBIL membership, comprehensive score analysis, and negative remarks disputing guide.",
-    oldPrice: "₹3200",
-    offerPrice: "₹2600",
+    
+    
     iconKey: "cibil",
     badge: "Credit Score",
     documents: ["Aadhaar Card", "PAN Card", "Mobile Number", "Email ID"],
@@ -500,8 +497,8 @@ const rawServices: RawService[] = [
     slug: "passport",
     categorySlug: "licence",
     shortDescription: "Online Fresh/Reissue Passport application, slot scheduling, and document checks assistance.",
-    oldPrice: "₹6499",
-    offerPrice: "₹2499",
+    
+    
     iconKey: "passport",
     badge: "Popular",
   },
@@ -510,8 +507,8 @@ const rawServices: RawService[] = [
     slug: "learning-driving-license",
     categorySlug: "licence",
     shortDescription: "Apply online for your learner driving license, scheduling exam slot, and fee processing.",
-    oldPrice: "₹2499",
-    offerPrice: "₹1499",
+    
+    
     iconKey: "licence",
     badge: "Instant",
   },
@@ -522,8 +519,8 @@ const rawServices: RawService[] = [
     slug: "gst-registration",
     categorySlug: "tax",
     shortDescription: "Get your GST registration completed online with expert support and document assistance.",
-    oldPrice: "₹6999",
-    offerPrice: "₹2499",
+    
+    
     iconKey: "gst",
     badge: "Popular",
     documents: [
@@ -545,8 +542,8 @@ const rawServices: RawService[] = [
     slug: "gst-return-filing",
     categorySlug: "tax",
     shortDescription: "Timely GSTR-1 & GSTR-3B filings with expert review to avoid penalties and late fees.",
-    oldPrice: "₹2999",
-    offerPrice: "₹999",
+    
+    
     iconKey: "gst",
     badge: "Assisted",
     documents: [
@@ -567,8 +564,8 @@ const rawServices: RawService[] = [
     slug: "itr-filing",
     categorySlug: "tax",
     shortDescription: "Income tax return filing support for salary, business, and self-employment earnings.",
-    oldPrice: "₹1499",
-    offerPrice: "₹699",
+    
+    
     iconKey: "itr",
     badge: "Popular",
   },
@@ -579,7 +576,7 @@ const rawServices: RawService[] = [
     slug: "private-limited-registration",
     categorySlug: "company",
     shortDescription: "Incorporate a Private Limited company with SPICe+ form filings and ROC documentation.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "company",
     badge: "Corporate",
   },
@@ -588,7 +585,7 @@ const rawServices: RawService[] = [
     slug: "private-limited-compliance",
     categorySlug: "company",
     shortDescription: "Manage annual ROC compliance, DIR-3 KYC, and income tax audit checklist.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "compliance",
     badge: "Compliance",
   },
@@ -597,7 +594,7 @@ const rawServices: RawService[] = [
     slug: "opc-registration",
     categorySlug: "company",
     shortDescription: "Register a One Person Company (OPC) with single-owner shares and directorship guide.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "trade",
     badge: "Startups",
   },
@@ -606,7 +603,7 @@ const rawServices: RawService[] = [
     slug: "dsc",
     categorySlug: "company",
     shortDescription: "Secure Class-3 Digital Signature Certificate (DSC) for secure online government e-filings.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "dsc",
     badge: "Secure",
   },
@@ -615,8 +612,8 @@ const rawServices: RawService[] = [
     slug: "msme-registration",
     categorySlug: "company",
     shortDescription: "Register under MSME/Udyam to gain priority lending rates and government subsidies.",
-    oldPrice: "₹1499",
-    offerPrice: "₹699",
+    
+    
     iconKey: "msme",
     badge: "Popular",
   },
@@ -625,7 +622,7 @@ const rawServices: RawService[] = [
     slug: "iso-certification",
     categorySlug: "company",
     shortDescription: "Acquire ISO 9001, 14001, 27001 standard certification documents for audits.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "insurance",
     badge: "Verified",
   },
@@ -636,7 +633,7 @@ const rawServices: RawService[] = [
     slug: "insurance",
     categorySlug: "insurance",
     shortDescription: "Get the best comprehensive or third-party insurance renewals for bike, car, or trucks.",
-    priceLabel: "Enquiry Now",
+    
     iconKey: "insurance",
     badge: "Secure",
   },
@@ -645,9 +642,9 @@ const rawServices: RawService[] = [
     slug: "csc-olympiad",
     categorySlug: "loans",
     shortDescription: "Official CSC Olympiad online registration assistance for students of Class 3 to 12.",
-    oldPrice: "₹150",
-    offerPrice: "₹100",
-    priceLabel: "₹100",
+    
+    
+    
     iconKey: "compliance",
     badge: "Olympiad 2026",
     documents: ["Student Name", "DOB", "School Name", "Class", "Parent Mobile", "Email", "Passport Photo"],
@@ -665,8 +662,8 @@ const rawServices: RawService[] = [
     slug: "food-license",
     categorySlug: "company",
     shortDescription: "Apply for FSSAI Registration, State License or Central License with expert assistance.",
-    oldPrice: "₹2,999",
-    offerPrice: "₹1,499",
+    
+    
     iconKey: "compliance",
     badge: "Most Popular",
     documents: [

@@ -232,6 +232,17 @@ export function RazorpayCheckoutButton({
         throw new Error(order.error || order.message || "Could not create Razorpay order.");
       }
 
+      // Verify amounts match exactly
+      const reviewTotal = amountPaise / 100;
+      const backendTotal = Number(order.finalPayable);
+      const razorpayAmount = Number(order.amount) / 100;
+
+      if (reviewTotal !== backendTotal || backendTotal !== razorpayAmount) {
+        const mismatchMsg = "Payment amount mismatch detected. Please refresh cart.";
+        console.error("[PAY:MISMATCH]", { reviewTotal, backendTotal, razorpayAmount });
+        throw new Error(mismatchMsg);
+      }
+
       setPaymentStep("opening");
 
       const servicePrice = order.servicePrice;

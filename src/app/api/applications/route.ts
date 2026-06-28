@@ -399,10 +399,10 @@ export async function POST(request: Request) {
     for (const slug of serviceSlugs) {
       const svc = await getAgentServiceBySlug(slug);
       if (!svc) {
-        return jsonError(`Pricing configuration for service "${slug}" is missing in the Admin Panel.`, 400);
+        return jsonError("Service pricing is not configured in Admin Panel.", 400);
       }
       if (svc.customer_fee === null || svc.customer_fee === undefined) {
-        return jsonError(`Pricing configuration for service "${svc.title || slug}" is missing in the Admin Panel.`, 400);
+        return jsonError("Service pricing is not configured in Admin Panel.", 400);
       }
       resolvedServices.push(svc);
     }
