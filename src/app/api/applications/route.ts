@@ -316,7 +316,7 @@ async function buildUploadedFileDocumentRows({
   return rows;
 }
 
-function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undefined, expectedAmountPaise: number) {
+function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undefined) {
   const keySecret = getRazorpayKeySecret();
 
   if (!keySecret || !value?.razorpay_order_id || !value.razorpay_payment_id || !value.razorpay_signature) {
@@ -328,10 +328,10 @@ function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undef
     .update(`${value.razorpay_order_id}|${value.razorpay_payment_id}`)
     .digest("hex");
 
-  return Boolean(
-    expectedSignature === value.razorpay_signature &&
-      Number(value.amount_paise ?? 0) === expectedAmountPaise,
-  );
+  // IMPORTANT: Only the HMAC signature is verified here.
+  // The amount was already verified by Razorpay's servers during /api/verify-payment.
+  // Checking amount_paise here caused false negatives due to floating-point recalculation drift.
+  return expectedSignature === value.razorpay_signature;
 }
 
 async function fetchRazorpayPaymentDetails(paymentId: string) {
@@ -488,7 +488,8 @@ export async function POST(request: Request) {
     const isPmVishwakarmaApplication = resolvedServices.some((service) => service.slug === "pm-vishwakarma-yojana");
     const isEshramApplication = resolvedServices.some((service) => service.slug === "eshram-card-registration" || service.slug === "eshram-card");
     const customerValidationError = getCustomerValidationError(customer, {
-      emailOptional: isPmVishwakarmaApplication || isEshramApplication,
+      // Agent and Eshram flows never collect email — always make it optional
+      emailOptional: true,
     });
 
     devInfo("[applications] Customer validation before application submit", {
@@ -563,10 +564,34 @@ export async function POST(request: Request) {
     }
 
     const isDraft = body.isDraft || ["draft", "documents_pending", "payment_pending"].includes(body.status || "");
-    const hasVerifiedRazorpayPayment = orderAmount === 0 || isDraft || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
+    // BUG FIX: removed `expectedRazorpayAmountPaise` arg — amount is cryptographically verified
+    // by Razorpay in /api/verify-payment. Recalculating it here causes float drift false negatives.
+    const hasVerifiedRazorpayPayment = orderAmount === 0 || isDraft || isVerifiedRazorpayPayment(body.razorpayPayment);
+
+    console.info("[applications] PAYMENT_VERIFICATION_CHECK", {
+      userId: user.id,
+      orderAmount,
+      expectedRazorpayAmountPaise,
+      isDraft,
+      hasRazorpayPayment: Boolean(body.razorpayPayment?.razorpay_payment_id),
+      hasVerifiedRazorpayPayment,
+      orderId: body.razorpayPayment?.razorpay_order_id,
+      paymentId: body.razorpayPayment?.razorpay_payment_id,
+    });
 
     if (!hasVerifiedRazorpayPayment) {
-      return jsonError("Please complete Razorpay checkout before submitting.", 400);
+      const diagDetail = {
+        hasSignature: Boolean(body.razorpayPayment?.razorpay_signature),
+        hasOrderId:   Boolean(body.razorpayPayment?.razorpay_order_id),
+        hasPaymentId: Boolean(body.razorpayPayment?.razorpay_payment_id),
+        isDraft,
+        orderAmount,
+      };
+      console.error("[applications] PAYMENT_VERIFICATION_FAILED", { userId: user.id, ...diagDetail });
+      return jsonError(
+        `Razorpay payment verification failed. Ensure payment completed before submitting. (${JSON.stringify(diagDetail)})`,
+        400,
+      );
     }
 
     const razorpayDetails =

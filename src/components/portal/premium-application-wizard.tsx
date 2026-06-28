@@ -12,6 +12,8 @@ import {
   ArrowLeft, ArrowRight, Camera, Upload, Trash2, RefreshCw, X,
   FileText, UserCheck, Building, Briefcase, Car, FileCheck,
   HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
+  SwitchCamera, Zap, ZapOff, Clock, Wallet, CheckCircle2, History,
+  ChevronRight, Phone, MapPin, User, TrendingUp, Award,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
@@ -80,6 +82,25 @@ interface SuccessDetails {
   amountPaid:     number;
 }
 
+interface Customer360 {
+  found:   true;
+  profile: {
+    id: string; name: string; mobile: string; email: string;
+    city: string; address: string; pincode: string; state: string; district: string; avatarUrl: string;
+  };
+  stats: {
+    totalApplications: number; completedApplications: number; pendingApplications: number;
+    recentServices: string[]; walletBalance: number; customerSince: string; lastVisit: string;
+    recentApplications: { id: string; serviceName: string; status: string; amount: number; createdAt: string; }[];
+  };
+}
+
+// Per-stage payment logging
+type PaymentStage = "ORDER_CREATE" | "RAZORPAY_OPEN" | "PAYMENT_DONE" | "VERIFY" | "FINALIZE";
+function payLog(stage: PaymentStage, detail: Record<string, unknown>) {
+  console.info(`[PAY:${stage}]`, detail);
+}
+
 export interface PremiumApplicationWizardProps {
   initialServiceSlug?:    string;
   initialProfileFields?: { mobile?: string; pincode?: string; city?: string; state?: string; };
@@ -142,9 +163,19 @@ export function PremiumApplicationWizard({
   const [cameraStream,  setCameraStream]  = useState<MediaStream | null>(null);
   const [capturedFrame, setCapturedFrame] = useState<string | null>(null);
 
+  // Customer 360
+  const [customer360,      setCustomer360]      = useState<Customer360 | null>(null);
+  const [lookupStatus,     setLookupStatus]     = useState<"idle" | "searching" | "found" | "not_found">("idle");
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+
   // Payment
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [isScriptReady, setIsScriptReady] = useState(false);
+  const [paymentError,  setPaymentError]  = useState<string | null>(null);
+
+  // Camera extras
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
+  const [flashOn,      setFlashOn]      = useState(false);
 
   // Auto-save toast
   const [autoSaved, setAutoSaved] = useState(false);
@@ -208,6 +239,33 @@ export function PremiumApplicationWizard({
     }, 1500);
     return () => clearTimeout(t);
   }, [cart, customer, currentStep]);
+
+  // ── Customer 360 debounced lookup (fires when mobile hits 10 valid digits) ──
+  useEffect(() => {
+    const mobile = customer.mobile;
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
+      setCustomer360(null);
+      setLookupStatus("idle");
+      return;
+    }
+    setLookupStatus("searching");
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/customer/lookup?mobile=${mobile}`);
+        const d = await r.json();
+        if (d?.found && d.profile) {
+          setCustomer360(d as Customer360);
+          setLookupStatus("found");
+        } else {
+          setCustomer360(null);
+          setLookupStatus("not_found");
+        }
+      } catch {
+        setLookupStatus("not_found");
+      }
+    }, 400); // 400ms debounce → well under 500ms target
+    return () => clearTimeout(timer);
+  }, [customer.mobile]);
 
   // ── Assign stream to video element ────────────────────────────────────────
   useEffect(() => {
@@ -365,27 +423,36 @@ export function PremiumApplicationWizard({
   }, []);
 
   // ── Inline camera ─────────────────────────────────────────────────────────
-  const openCamera = useCallback(async (slotId: DocSlotId) => {
+  const openCamera = useCallback(async (slotId: DocSlotId, facing: "environment" | "user" = "environment") => {
+    // Stop any existing stream first
+    cameraStream?.getTracks().forEach(t => t.stop());
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
       setCameraSlot(slotId);
       setCameraStream(stream);
+      setCameraFacing(facing);
       setCapturedFrame(null);
     } catch {
       // Fallback to input[capture] on devices without getUserMedia
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "image/*";
-      input.setAttribute("capture", "environment");
+      input.setAttribute("capture", facing === "user" ? "user" : "environment");
       input.onchange = (ev) => {
         const f = (ev.target as HTMLInputElement).files?.[0];
         if (f) handleFileChange(slotId, f);
       };
       input.click();
     }
-  }, [handleFileChange]);
+  }, [handleFileChange, cameraStream]);
+
+  const switchCamera = useCallback(() => {
+    if (!cameraSlot) return;
+    const newFacing = cameraFacing === "environment" ? "user" : "environment";
+    openCamera(cameraSlot, newFacing);
+  }, [cameraSlot, cameraFacing, openCamera]);
 
   const captureFrame = useCallback(() => {
     const v = videoRef.current;
@@ -394,7 +461,7 @@ export function PremiumApplicationWizard({
     c.width  = v.videoWidth;
     c.height = v.videoHeight;
     c.getContext("2d")?.drawImage(v, 0, 0);
-    setCapturedFrame(c.toDataURL("image/jpeg", 0.85));
+    setCapturedFrame(c.toDataURL("image/jpeg", 0.9));
   }, []);
 
   const retakeFrame = useCallback(() => setCapturedFrame(null), []);
@@ -407,7 +474,7 @@ export function PremiumApplicationWizard({
       const file = new File([blob], `cam-${cameraSlot}-${Date.now()}.jpg`, { type: "image/jpeg" });
       handleFileChange(cameraSlot, file);
       closeCamera();
-    }, "image/jpeg", 0.85);
+    }, "image/jpeg", 0.9);
   }, [capturedFrame, cameraSlot, handleFileChange]); // eslint-disable-line
 
   const closeCamera = useCallback(() => {
@@ -415,7 +482,23 @@ export function PremiumApplicationWizard({
     setCameraStream(null);
     setCameraSlot(null);
     setCapturedFrame(null);
+    setFlashOn(false);
   }, [cameraStream]);
+
+  // Auto-fill from Customer 360
+  const applyCustomer360Autofill = useCallback(() => {
+    if (!customer360) return;
+    const p = customer360.profile;
+    setCustomer(prev => ({
+      ...prev,
+      name:     p.name     || prev.name,
+      pincode:  p.pincode  || prev.pincode,
+      state:    p.state    || prev.state,
+      district: p.district || p.city || prev.district,
+      address:  p.address  || prev.address,
+    }));
+    toastSuccess?.("Details auto-filled from customer profile!");
+  }, [customer360, toastSuccess]);
 
   // ── Final submission (called after Razorpay verification) ─────────────────
   const handleFinalSubmit = useCallback(async (
@@ -484,19 +567,19 @@ export function PremiumApplicationWizard({
     }
   }, [cartItems, cartTotal, customer, docFiles, toastSuccess, toastError]);
 
-  // ── Razorpay checkout ─────────────────────────────────────────────────────
-  // PAYMENT FIX: frontend sends NO amount — server calculates authoritative total.
-  // We use orderData.amount (from server) for Razorpay, never a client calculation.
+  // ── Razorpay checkout — server is SOLE source of amount ──────────────────
   const triggerRazorpayCheckout = useCallback(async () => {
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      toastError("Razorpay not configured.");
-      return;
+      const msg = "Razorpay key is not configured. Contact support.";
+      setPaymentError(msg); toastError(msg); return;
     }
     setIsSubmitting(true);
+    setPaymentError(null);
     try {
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
+      payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile });
 
-      // ↓ KEY FIX: No "amount" field — let server compute authoritative amount
+      // No amount sent — server computes authoritative total
       const orderRes = await fetch("/api/create-order", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -521,26 +604,29 @@ export function PremiumApplicationWizard({
         }),
       });
       const orderData = await orderRes.json();
+      payLog("ORDER_CREATE", { status: orderRes.status, orderId: orderData.order_id, amount: orderData.amount, appIds: orderData.application_ids });
 
       if (!orderRes.ok || !orderData.order_id) {
-        throw new Error(orderData.error ?? orderData.message ?? "Order creation failed.");
+        const errMsg = orderData.error ?? orderData.message ?? `Order creation failed (HTTP ${orderRes.status})`;
+        throw new Error(errMsg);
       }
 
-      // ↓ Use server-returned amount — never frontend cartTotal
+      payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100 });
+
       const rzpOptions = {
         key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount:      orderData.amount,         // ← AUTHORITATIVE: from server
+        amount:      orderData.amount,         // ← AUTHORITATIVE — from server, never frontend
         currency:    orderData.currency ?? "INR",
         name:        "DigiConnect Dukan",
         description: cartItems.map(i => i.service.title).join(", "),
         order_id:    orderData.order_id,
-        prefill: {
-          name:    customer.name,
-          contact: customer.mobile,
-        },
+        prefill: { name: customer.name, contact: customer.mobile },
         theme: { color: "#2563eb" },
         handler: async (payRes: Record<string, unknown>) => {
+          payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id });
           try {
+            // Verify signature
+            payLog("VERIFY", { applicationIds: orderData.application_ids });
             const verRes  = await fetch("/api/verify-payment", {
               method:  "POST",
               headers: { "Content-Type": "application/json" },
@@ -551,15 +637,22 @@ export function PremiumApplicationWizard({
               }),
             });
             const verData = await verRes.json();
+            payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback });
+
             if (!verRes.ok || !verData.success) {
-              throw new Error(verData.error ?? "Payment verification failed.");
+              throw new Error(verData.error ?? verData.message ?? `Verification failed (HTTP ${verRes.status})`);
             }
+
+            // Finalize applications
+            payLog("FINALIZE", { applicationIds: orderData.application_ids });
             await handleFinalSubmit(
               { ...payRes, amount_paise: orderData.amount },
               orderData.application_ids as string[],
             );
           } catch (e) {
-            toastError(e instanceof Error ? e.message : "Verification failed.");
+            const msg = e instanceof Error ? e.message : "Verification failed.";
+            setPaymentError(msg);
+            toastError(msg);
             setIsSubmitting(false);
           }
         },
@@ -574,7 +667,9 @@ export function PremiumApplicationWizard({
       const rzp = new (window as any).Razorpay(rzpOptions);
       rzp.open();
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Payment error.");
+      const msg = e instanceof Error ? e.message : "Payment initialisation error.";
+      setPaymentError(msg);
+      toastError(msg);
       setIsSubmitting(false);
     }
   }, [cartItems, customer, handleFinalSubmit, toastError]);
@@ -613,56 +708,121 @@ export function PremiumApplicationWizard({
       {/* Hidden canvas for camera capture */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* ── INLINE CAMERA MODAL ──────────────────────────────────────────── */}
+      {/* ══ PREMIUM CAMERA MODAL ════════════════════════════════════════════ */}
       {cameraSlot && (
-        <div className="fixed inset-0 z-[200] bg-black flex flex-col">
-          <div className="flex items-center justify-between p-4 bg-black/80 shrink-0">
-            <span className="text-white text-sm font-bold">
-              Capture: {DOC_SLOTS.find(d => d.id === cameraSlot)?.label}
-            </span>
-            <button onClick={closeCamera} className="text-white/80 hover:text-white p-2 rounded-full">
-              <X className="h-5 w-5" />
+        <div className="fixed inset-0 z-[200] bg-black flex flex-col" style={{ touchAction: "none" }}>
+
+          {/* Top bar */}
+          <div className="relative flex items-center justify-between px-5 pt-10 pb-4 bg-gradient-to-b from-black/80 to-transparent shrink-0">
+            <button
+              onClick={closeCamera}
+              className="w-10 h-10 rounded-full bg-white/15 backdrop-blur flex items-center justify-center active:bg-white/30 transition"
+            >
+              <X className="h-5 w-5 text-white" />
             </button>
+            <span className="text-white text-sm font-bold tracking-wide">
+              {DOC_SLOTS.find(d => d.id === cameraSlot)?.label}
+            </span>
+            <div className="flex gap-2">
+              {/* Flash toggle */}
+              <button
+                onClick={() => setFlashOn(f => !f)}
+                className="w-10 h-10 rounded-full bg-white/15 backdrop-blur flex items-center justify-center active:bg-white/30 transition"
+              >
+                {flashOn
+                  ? <Zap    className="h-5 w-5 text-yellow-300 fill-yellow-300" />
+                  : <ZapOff className="h-5 w-5 text-white/70" />}
+              </button>
+              {/* Flip camera */}
+              <button
+                onClick={switchCamera}
+                className="w-10 h-10 rounded-full bg-white/15 backdrop-blur flex items-center justify-center active:bg-white/30 transition"
+              >
+                <SwitchCamera className="h-5 w-5 text-white" />
+              </button>
+            </div>
           </div>
 
           {capturedFrame ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-4 gap-5 bg-black">
-              <img
-                src={capturedFrame}
-                alt="Preview"
-                className="max-h-[60vh] max-w-full rounded-xl object-contain border border-white/10"
-              />
-              <div className="flex gap-3">
+            /* ── Preview screen ──────────────────────────────────────────── */
+            <div className="flex-1 flex flex-col items-center justify-between pb-10 px-6 gap-6">
+              <p className="text-white/60 text-xs font-semibold tracking-wider uppercase">Preview</p>
+              <div className="flex-1 flex items-center justify-center w-full">
+                <img
+                  src={capturedFrame}
+                  alt="Preview"
+                  className="max-h-[62vh] max-w-full rounded-2xl object-contain ring-2 ring-white/10 shadow-2xl"
+                />
+              </div>
+              <div className="flex gap-4 w-full max-w-xs">
                 <button
                   onClick={retakeFrame}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white px-5 py-4 rounded-2xl font-bold text-sm transition"
                 >
                   <RotateCcw className="h-4 w-4" /> Retake
                 </button>
                 <button
                   onClick={saveFrame}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-blue-900/40"
                 >
                   <Check className="h-4 w-4" /> Use Photo
                 </button>
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center bg-black gap-5">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full max-h-[72vh] object-cover"
-              />
-              <button
-                onClick={captureFrame}
-                className="w-18 h-18 rounded-full bg-white border-4 border-blue-600 flex items-center justify-center shadow-2xl active:scale-90 transition-transform"
-                style={{ width: 72, height: 72 }}
-              >
-                <Camera className="h-8 w-8 text-blue-700" />
-              </button>
+            /* ── Live viewfinder ─────────────────────────────────────────── */
+            <div className="flex-1 flex flex-col items-center justify-end bg-black pb-10">
+              {/* Video fills remaining height */}
+              <div className="absolute inset-0 top-20 bottom-32 flex items-center justify-center overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                {/* Viewfinder corner guides */}
+                <div className="absolute inset-[14%] pointer-events-none">
+                  {["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"].map((pos, i) => (
+                    <div
+                      key={i}
+                      className={`absolute w-7 h-7 ${pos} border-white/70`}
+                      style={{
+                        borderTopWidth:    i < 2 ? 3 : 0,
+                        borderBottomWidth: i >= 2 ? 3 : 0,
+                        borderLeftWidth:   i % 2 === 0 ? 3 : 0,
+                        borderRightWidth:  i % 2 === 1 ? 3 : 0,
+                        borderRadius: i === 0 ? "6px 0 0 0" : i === 1 ? "0 6px 0 0" : i === 2 ? "0 0 0 6px" : "0 0 6px 0",
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Shutter row */}
+              <div className="relative z-10 flex items-center justify-center gap-10 mb-2">
+                {/* Thumbnail of existing file */}
+                <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
+                  {docFiles[cameraSlot!] ? (
+                    <img
+                      src={URL.createObjectURL(docFiles[cameraSlot!]!)}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : <Camera className="h-5 w-5 text-white/40" />}
+                </div>
+
+                {/* Shutter */}
+                <button
+                  onClick={captureFrame}
+                  className="relative w-20 h-20 rounded-full border-4 border-white flex items-center justify-center shadow-2xl active:scale-90 transition-transform"
+                >
+                  <div className="w-14 h-14 rounded-full bg-white" />
+                </button>
+
+                {/* Spacer */}
+                <div className="w-12" />
+              </div>
             </div>
           )}
         </div>
@@ -932,6 +1092,102 @@ export function PremiumApplicationWizard({
                   ))}
 
                   {/* Pincode with auto-fill */}
+                  {/* Customer 360 lookup card — auto-triggers after valid mobile */}
+                  {lookupStatus === "searching" && (
+                    <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                      <RefreshCw className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0" />
+                      <span className="text-xs font-semibold text-blue-600">Looking up customer...</span>
+                    </div>
+                  )}
+
+                  {lookupStatus === "not_found" && (
+                    <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+                      <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span className="text-xs font-medium text-slate-500">New customer — no existing profile found.</span>
+                    </div>
+                  )}
+
+                  {lookupStatus === "found" && customer360 && (
+                    <div className="sm:col-span-2 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-emerald-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+                            {customer360.profile.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900 leading-tight">{customer360.profile.name}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                              <span className="text-[10px] font-bold text-emerald-600">Existing Customer Found</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Wallet</p>
+                          <p className="text-base font-black text-emerald-700">₹{customer360.stats.walletBalance.toLocaleString("en-IN")}</p>
+                        </div>
+                      </div>
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-3 divide-x divide-emerald-100 border-b border-emerald-100">
+                        {[
+                          { label: "Total",    value: customer360.stats.totalApplications,     icon: TrendingUp },
+                          { label: "Pending",  value: customer360.stats.pendingApplications,   icon: Clock },
+                          { label: "Done",     value: customer360.stats.completedApplications, icon: Award },
+                        ].map(({ label, value, icon: Icon }) => (
+                          <div key={label} className="flex flex-col items-center py-3">
+                            <Icon className="h-3.5 w-3.5 text-slate-400 mb-1" />
+                            <p className="text-base font-black text-slate-900">{value}</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Recent services */}
+                      {customer360.stats.recentServices.length > 0 && (
+                        <div className="px-4 py-3 border-b border-emerald-100">
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Recent Services</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {customer360.stats.recentServices.slice(0, 4).map(s => (
+                              <span key={s} className="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Member since / last visit */}
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-100 text-[10px]">
+                        <div className="flex items-center gap-1 text-slate-500">
+                          <Clock className="h-3 w-3" />
+                          <span>Member since {customer360.stats.customerSince}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-500">
+                          <MapPin className="h-3 w-3" />
+                          <span>Last visit {customer360.stats.lastVisit}</span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2 p-3">
+                        <button
+                          onClick={applyCustomer360Autofill}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-black py-2.5 rounded-xl transition"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Auto Fill Details
+                        </button>
+                        <button
+                          onClick={() => setShowHistoryDrawer(true)}
+                          className="flex items-center gap-1.5 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 text-xs font-black px-4 py-2.5 rounded-xl transition"
+                        >
+                          <History className="h-3.5 w-3.5" /> History
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pincode with auto-fill */}
+                  {/* ↓↓ original pincode block continues ↓↓ */}
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">PIN Code *</label>
                     <div className="relative">
@@ -1345,6 +1601,75 @@ export function PremiumApplicationWizard({
             ) : (
               <>Continue <ArrowRight className="h-4 w-4" /></>
             )}
+          </button>
+        </div>
+      )}
+      {/* ── HISTORY DRAWER ─────────────────────────────────────────────────── */}
+      {showHistoryDrawer && customer360 && (
+        <div className="fixed inset-0 z-[300] flex flex-col justify-end">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowHistoryDrawer(false)} />
+          {/* Sheet */}
+          <div className="relative bg-white rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 bg-slate-200 rounded-full" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+              <div>
+                <p className="text-sm font-black text-slate-900">Application History</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{customer360.profile.name} · {customer360.stats.totalApplications} total</p>
+              </div>
+              <button onClick={() => setShowHistoryDrawer(false)} className="p-2 rounded-xl hover:bg-slate-100 transition">
+                <X className="h-4 w-4 text-slate-500" />
+              </button>
+            </div>
+            {/* List */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {customer360.stats.recentApplications.length === 0 ? (
+                <p className="text-center text-slate-400 text-sm py-8">No applications yet.</p>
+              ) : (
+                customer360.stats.recentApplications.map(app => (
+                  <div key={app.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full shrink-0",
+                      app.status === "completed" ? "bg-emerald-500" :
+                      app.status === "rejected"  ? "bg-red-500" :
+                      "bg-amber-400"
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">{app.serviceName}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {new Date(app.createdAt).toLocaleDateString("en-IN")} · ₹{app.amount}
+                      </p>
+                    </div>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0",
+                      app.status === "completed" ? "bg-emerald-100 text-emerald-700" :
+                      app.status === "rejected"  ? "bg-red-100 text-red-700" :
+                      "bg-amber-100 text-amber-700"
+                    )}>
+                      {app.status}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PAYMENT ERROR BANNER ─────────────────────────────────────────────── */}
+      {paymentError && currentStep === 5 && (
+        <div className="fixed bottom-20 left-4 right-4 z-50 bg-red-600 text-white rounded-2xl px-4 py-3 flex items-start gap-3 shadow-xl">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black">Payment Error</p>
+            <p className="text-[11px] font-medium mt-0.5 leading-snug">{paymentError}</p>
+          </div>
+          <button onClick={() => setPaymentError(null)} className="shrink-0 p-1 hover:bg-white/20 rounded-lg transition">
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}

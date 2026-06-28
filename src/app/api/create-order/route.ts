@@ -317,7 +317,8 @@ export async function POST(request: Request) {
 
         const customer = normalizeCustomer(body.applicationDraft.customer);
         const customerValidationError = getCustomerValidationError(customer, {
-          emailOptional: serviceSlugs.includes("pm-vishwakarma-yojana") || serviceSlugs.includes("cm-yuva-entrepreneur-loan-assistance"),
+          // Agent flow never collects email — always make it optional
+          emailOptional: true,
         });
 
         if (customerValidationError) {
@@ -503,10 +504,14 @@ export async function POST(request: Request) {
 
       const serviceSlug = body?.serviceSlug || serviceSlugs[0];
       const selectedPlan = body?.applicationDraft?.details?.selectedPlan;
-      console.log("SERVICE", serviceSlug);
-      console.log("PLAN", selectedPlan);
-      console.log("CALCULATED_PRICE", servicePrice);
-      console.log("FINAL_PAYABLE", finalPayable);
+      devInfo("[razorpay/create-order] Pricing summary", {
+        serviceSlug,
+        selectedPlan,
+        servicePrice,
+        finalPayable,
+        amountPaise: amount,
+        walletRedeem: walletRedeemAmount,
+      });
 
       if (body?.applicationDraft) {
         const supabase = getSupabaseAdmin();
@@ -518,7 +523,8 @@ export async function POST(request: Request) {
 
         const customer = normalizeCustomer(body.applicationDraft.customer);
         const customerValidationError = getCustomerValidationError(customer, {
-          emailOptional: serviceSlugs.includes("pm-vishwakarma-yojana") || serviceSlugs.includes("cm-yuva-entrepreneur-loan-assistance"),
+          // Agent flow never collects email — always make it optional
+          emailOptional: true,
         });
 
         devInfo("[razorpay/create-order] Customer validation before payment", {
