@@ -545,9 +545,8 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!documentFileCount && !isEshramApplication) {
-      return jsonError("Please upload Aadhaar / Documents.", 400);
-    }
+    // Documents are optional — per-service requirements are managed via Admin Panel.
+    // The agent wizard enforces 3 optional slots (Aadhaar / PAN / Other).
 
     const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     for (const item of submissionFiles) {

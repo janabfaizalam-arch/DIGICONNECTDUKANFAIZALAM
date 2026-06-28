@@ -269,9 +269,13 @@ export async function POST(request: Request) {
         console.warn("[razorpay/create-order] Wallet redeem clamped to 50% cap", redeem);
       }
 
-      if (amount !== expectedAmount) {
+      // If client omits amount (sends 0), trust server calculation instead of rejecting.
+      // If client does send an amount, it must match exactly (prevents tampering).
+      if (amount > 0 && amount !== expectedAmount) {
         return jsonError(`Razorpay amount does not match the server-side payable amount. Client: ${amount}, Expected: ${expectedAmount}`, 400);
       }
+      // Always override with authoritative server amount
+      amount = expectedAmount;
 
       if (finalAmountBeforeWallet > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
         return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
