@@ -49,15 +49,47 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const { id } = await params;
-    const formData = await request.formData();
-    const status = String(formData.get("status") ?? "");
-    const assignedTo = String(formData.get("assignedTo") ?? "").trim();
-    const assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
-    const internalNotes = String(formData.get("internalNotes") ?? "").trim();
-    const customerNote = String(formData.get("customerNote") ?? "").trim();
-    const note = String(formData.get("note") ?? "").trim();
-    const finalTitle = String(formData.get("finalDocumentTitle") ?? "Final completed document").trim();
-    const finalDocument = formData.get("finalDocument");
+    const contentType = request.headers.get("content-type") ?? "";
+    let status = "";
+    let assignedTo = "";
+    let assignedAgentId = "";
+    let internalNotes = "";
+    let customerNote = "";
+    let note = "";
+    let finalTitle = "";
+    let finalDocument = null;
+    let customFormData = null;
+
+    if (contentType.includes("application/json")) {
+      const jsonBody = await request.json().catch(() => ({}));
+      status = jsonBody.status || "";
+      assignedTo = jsonBody.assignedTo || "";
+      assignedAgentId = jsonBody.assignedAgentId || "";
+      internalNotes = jsonBody.internalNotes || "";
+      customerNote = jsonBody.customerNote || "";
+      note = jsonBody.note || "";
+      finalTitle = jsonBody.finalDocumentTitle || "";
+      customFormData = jsonBody.formData || null;
+    } else {
+      const formData = await request.formData();
+      status = String(formData.get("status") ?? "");
+      assignedTo = String(formData.get("assignedTo") ?? "").trim();
+      assignedAgentId = String(formData.get("assignedAgentId") ?? "").trim();
+      internalNotes = String(formData.get("internalNotes") ?? "").trim();
+      customerNote = String(formData.get("customerNote") ?? "").trim();
+      note = String(formData.get("note") ?? "").trim();
+      finalTitle = String(formData.get("finalDocumentTitle") ?? "Final completed document").trim();
+      finalDocument = formData.get("finalDocument");
+      const rawForm = formData.get("formData");
+      if (typeof rawForm === "string") {
+        try {
+          customFormData = JSON.parse(rawForm);
+        } catch {
+          // ignore parsing error
+        }
+      }
+    }
+
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
@@ -74,11 +106,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application not found." }, { status: 404 });
     }
 
-    const updates: Record<string, string | number | boolean | null> = {
+    const updates: Record<string, any> = {
       updated_at: new Date().toISOString(),
       cashback_enabled: true,
       cashback_amount: null,
     };
+
+    if (customFormData) {
+      updates.form_data = {
+        ...((application.form_data as Record<string, any>) || {}),
+        ...customFormData,
+      };
+    }
 
     if (status) {
       if (!isApplicationStatus(status)) {

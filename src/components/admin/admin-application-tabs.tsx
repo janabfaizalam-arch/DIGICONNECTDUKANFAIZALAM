@@ -7,16 +7,18 @@ type AdminApplicationTabsProps = {
   overviewContent: ReactNode;
   documentsContent: ReactNode;
   activityContent: ReactNode;
+  operationsContent: ReactNode;
   documentCount: number;
   activityCount: number;
 };
 
-type TabKey = "overview" | "documents" | "activity";
+type TabKey = "overview" | "documents" | "activity" | "operations";
 
 export function AdminApplicationTabs({
   overviewContent,
   documentsContent,
   activityContent,
+  operationsContent,
   documentCount,
   activityCount,
 }: AdminApplicationTabsProps) {
@@ -41,13 +43,19 @@ export function AdminApplicationTabs({
       icon: History,
       count: activityCount,
     },
+    {
+      key: "operations" as const,
+      label: "Operations & CRM",
+      icon: History,
+      count: null,
+    },
   ];
 
   return (
     <div className="space-y-5">
       {/* Premium Stripe-like tab navigation */}
-      <div className="flex border-b border-slate-200 bg-white p-1 rounded-2xl shadow-sm md:p-1.5">
-        <div className="flex flex-1 gap-1">
+      <div className="flex border-b border-slate-200 bg-white p-1 rounded-2xl shadow-sm md:p-1.5 overflow-x-auto no-scrollbar">
+        <div className="flex flex-1 gap-1 min-w-[480px]">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -57,7 +65,7 @@ export function AdminApplicationTabs({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider transition md:py-3 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider transition md:py-3 md:text-sm shrink-0 ${
                   isActive
                     ? "bg-[var(--primary)] text-white shadow-md shadow-blue-600/10"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -83,6 +91,7 @@ export function AdminApplicationTabs({
         {activeTab === "overview" && <div className="space-y-5 animate-fade-in">{overviewContent}</div>}
         {activeTab === "documents" && <div className="space-y-5 animate-fade-in">{documentsContent}</div>}
         {activeTab === "activity" && <div className="space-y-5 animate-fade-in">{activityContent}</div>}
+        {activeTab === "operations" && <div className="space-y-5 animate-fade-in">{operationsContent}</div>}
       </div>
     </div>
   );

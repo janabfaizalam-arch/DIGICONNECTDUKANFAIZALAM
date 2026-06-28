@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { AdminOperationsCRM } from "@/components/admin/admin-operations-crm";
 
 export const dynamic = "force-dynamic";
 
@@ -240,6 +241,27 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
     </>
   );
 
+  const operationsContent = (
+    <AdminOperationsCRM
+      applicationId={application.id}
+      currentStatus={application.status}
+      currentPaymentStatus={application.payment_status ?? payment?.status ?? "pending"}
+      customer={{
+        id: application.customer_id || application.user_id || "",
+        name: customer.name || text(formData.name),
+        mobile: customerMobile || text(formData.mobile),
+        email: customer.email || text(formData.email),
+        address: customer.address || text(formData.address),
+        city: customer.city || text(formData.city),
+        state: customer.state || text(formData.state),
+        pincode: customer.pincode || text(formData.pincode),
+      }}
+      serviceName={application.service_name}
+      serviceSlug={application.service_slug}
+      initialFormData={formData}
+    />
+  );
+
   return (
     <div className="mx-auto max-w-7xl">
       <Link href="/admin/applications" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700 hover:text-blue-900 transition">
@@ -276,6 +298,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             overviewContent={overviewContent}
             documentsContent={documentsContent}
             activityContent={activityContent}
+            operationsContent={operationsContent}
             documentCount={customerDocuments.length}
             activityCount={notes.length + statusLogs.length}
           />

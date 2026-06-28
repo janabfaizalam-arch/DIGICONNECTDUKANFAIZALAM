@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, MessageCircle, ShieldCheck } from "lucide-react";
-
-import { ServiceApplicationForm } from "@/components/portal/service-application-form";
-import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import { portalServices, type ServiceField } from "@/lib/portal-data";
-import { getPublicServiceBySlug, getPublicServicesByCategory } from "@/lib/services";
+import { portalServices } from "@/lib/portal-data";
+import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { buildApplicationWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { PremiumApplicationWizard } from "@/components/portal/premium-application-wizard";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -28,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const service = await getPublicServiceBySlug(slug);
 
-  if (slug === "pvc-card-printing") {
+  if (slug === "pvc-card-printing" || slug === "pvc-card") {
     return {
       title: "PVC Card Print Order | DigiConnect Dukan",
       description: "Order premium PVC card printing online. Convert Aadhaar, PAN, Voter ID, Ayushman, or ABHA card into durable, waterproof, premium PVC smart cards.",
@@ -43,21 +38,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ApplyPage({ params, searchParams }: PageProps) {
-  const [{ slug }, query, user] = await Promise.all([params, searchParams, getCurrentUser()]);
+export default async function ApplySlugPage({ params }: PageProps) {
+  const { slug } = await params;
   const service = await getPublicServiceBySlug(slug);
 
   if (!service || service.ctaType !== "apply") {
     notFound();
   }
 
+  const user = await getCurrentUser();
+
   if (!user) {
-    const servicesParam = query?.services ? `?services=${encodeURIComponent(query.services)}` : "";
-    redirect(`/login/customer?redirect=${encodeURIComponent(`/apply/${slug}${servicesParam}`)}`);
+    redirect(`/login/customer?redirect=${encodeURIComponent(`/apply/${slug}`)}`);
   }
 
   const supabaseAdmin = getSupabaseAdmin();
   let userProfile = null;
+
   if (supabaseAdmin) {
     const { data } = await supabaseAdmin
       .from("profiles")
@@ -66,399 +63,18 @@ export default async function ApplyPage({ params, searchParams }: PageProps) {
       .maybeSingle();
     userProfile = data;
   }
-  const isProfileIncomplete = !userProfile?.mobile || !userProfile?.pincode || !userProfile?.city || !userProfile?.state;
-
-  const selectedServices = Array.from(new Set([slug, ...(query?.services?.split(",") ?? [])]))
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const relatedServices = await getPublicServicesByCategory(service.categorySlug);
-  const selectedPublicServices = selectedServices
-    .map((item) => {
-      const normalizedItem = item === "cibil-report-analysis-and-credit-health-consultation" ? "cibil-report-increase" : item;
-      return [service, ...relatedServices].find((candidate) => candidate.slug === normalizedItem);
-    })
-    .filter((item): item is typeof service => Boolean(item));
-
-  const selectedPublicServicesOverridden = selectedPublicServices.map((item) => {
-    if (item.slug === "cibil-report-analysis-and-credit-health-consultation" || item.slug === "cibil-report-increase") {
-      const isBasic = query?.plan === "basic";
-      return {
-        ...item,
-        title: isBasic ? "Basic CIBIL One Pager Report" : "Premium CIBIL Analysis & Consultation",
-        amount: isBasic ? 518 : 2599,
-        shortDescription: isBasic
-          ? "Latest TransUnion CIBIL Report & One Page Financial History Summary"
-          : "Complete CIBIL Report Analysis, score improvement plan, and expert consultation.",
-      };
-    }
-    if (item.slug === "gst-registration") {
-      const plan = query?.plan || "basic";
-      if (plan === "msme") {
-        return {
-          ...item,
-          title: "GST Registration + MSME",
-          amount: 2999,
-          shortDescription: "GST Registration, MSME Registration, and Udyam Certificate.",
-        };
-      } else if (plan === "starter") {
-        return {
-          ...item,
-          title: "GST Business Starter Pack",
-          amount: 3999,
-          shortDescription: "GST Registration, MSME, Business Consultation, and Compliance Guide.",
-        };
-      } else if (plan === "premium") {
-        return {
-          ...item,
-          title: "GST Premium",
-          amount: 4999,
-          shortDescription: "GST Registration, MSME, Compliance Setup, and Dedicated Advisor.",
-        };
-      } else {
-        return {
-          ...item,
-          title: "Basic GST Registration",
-          amount: 2499,
-          shortDescription: "GST Registration, ARN Tracking, and Certificate Download.",
-        };
-      }
-    }
-    if (item.slug === "gst-return-filing") {
-      const plan = query?.plan || "monthly_starter";
-      if (plan === "monthly_business") {
-        return {
-          ...item,
-          title: "Business Monthly GST Filing",
-          amount: 499,
-          shortDescription: "Monthly GSTR-1 & GSTR-3B filings support (Business).",
-        };
-      } else if (plan === "monthly_premium") {
-        return {
-          ...item,
-          title: "Premium Monthly GST Filing",
-          amount: 999,
-          shortDescription: "Monthly GSTR-1 & GSTR-3B filings support (Premium).",
-        };
-      } else if (plan === "quarterly_qrmp") {
-        return {
-          ...item,
-          title: "Quarterly GST QRMP Plan",
-          amount: 1499,
-          shortDescription: "Quarterly QRMP GSTR compliance and filing package.",
-        };
-      } else if (plan === "annual") {
-        return {
-          ...item,
-          title: "Annual GST Filing Package",
-          amount: 4999,
-          shortDescription: "Annual GSTR compliance, audits, and consolidated GSTR-9 filings.",
-        };
-      } else {
-        return {
-          ...item,
-          title: "Starter Monthly GST Filing",
-          amount: 299,
-          shortDescription: "Monthly GSTR-1 & GSTR-3B filings support (Starter).",
-        };
-      }
-    }
-    if (item.slug === "itr-filing") {
-      const plan = query?.plan || "itr1";
-      if (plan === "itr2") {
-        return {
-          ...item,
-          title: "ITR-2 Filing (Capital Gains & Multiple Houses)",
-          amount: 999,
-          shortDescription: "File ITR-2 online with expert CA verification, secure documents, and tax-saving optimization.",
-        };
-      } else if (plan === "itr3") {
-        return {
-          ...item,
-          title: "ITR-3 Filing (Business / Professional)",
-          amount: 1499,
-          shortDescription: "Assisted ITR-3 business tax return filing with custom balance sheet checks & audit prep.",
-        };
-      } else if (plan === "itr4") {
-        return {
-          ...item,
-          title: "ITR-4 Filing (Presumptive Business)",
-          amount: 999,
-          shortDescription: "File presumptive tax returns under Sec 44AD/44ADA quickly with professional review.",
-        };
-      } else if (plan === "nri") {
-        return {
-          ...item,
-          title: "NRI ITR Filing Assistance",
-          amount: 2499,
-          shortDescription: "Specialized non-resident taxation, foreign assets disclosures, and DTAA relief mapping.",
-        };
-      } else if (plan === "capgain") {
-        return {
-          ...item,
-          title: "Capital Gains ITR Filing Assistance",
-          amount: 2999,
-          shortDescription: "Consolidated capital gains computation for equity, mutual funds, real estate & crypto.",
-        };
-      } else {
-        return {
-          ...item,
-          title: "ITR-1 (Salaried) Filing Assistance",
-          amount: 699,
-          shortDescription: "File your salaried tax return (Form 16/AIS) with expert coordinator assistance.",
-        };
-      }
-    }
-    if (item.slug === "food-license") {
-      const plan = query?.plan || "basic";
-      if (plan === "pro" || plan === "business_pro") {
-        return {
-          ...item,
-          title: "FSSAI Business Pro License",
-          amount: 2999,
-          shortDescription: "Everything in Basic, plus Document Review, Priority Processing, and Business Consultation.",
-        };
-      } else if (plan === "premium" || plan === "premium_compliance") {
-        return {
-          ...item,
-          title: "FSSAI Premium Compliance License",
-          amount: 4999,
-          shortDescription: "Everything in Pro, plus Renewal Reminder, Dedicated Executive, and Compliance Support.",
-        };
-      } else {
-        return {
-          ...item,
-          title: "Basic FSSAI Food License Registration",
-          amount: 1499,
-          shortDescription: "FSSAI Registration, Application Filing, Document Support, and Tracking.",
-        };
-      }
-    }
-    return item;
-  });
-
-  let serviceTitle = service.slug === "pm-vishwakarma-yojana" ? "PM Vishwakarma Yojana Registration" : service.title;
-  let serviceAmount = service.amount;
-  let serviceDescription = service.shortDescription;
-
-  if (slug === "cibil-report-analysis-and-credit-health-consultation") {
-    const isBasic = query?.plan === "basic";
-    serviceTitle = isBasic ? "Basic CIBIL One Pager Report" : "Premium CIBIL Analysis & Consultation";
-    serviceAmount = isBasic ? 518 : 2599;
-    serviceDescription = isBasic
-      ? "Latest TransUnion CIBIL Report & One Page Financial History Summary"
-      : "Complete CIBIL Report Analysis, score improvement plan, and expert consultation.";
-  }
-  if (slug === "gst-registration") {
-    const plan = query?.plan || "basic";
-    if (plan === "msme") {
-      serviceTitle = "GST Registration + MSME";
-      serviceAmount = 2999;
-      serviceDescription = "GST Registration, MSME Registration, and Udyam Certificate.";
-    } else if (plan === "starter") {
-      serviceTitle = "GST Business Starter Pack";
-      serviceAmount = 3999;
-      serviceDescription = "GST Registration, MSME, Business Consultation, and Compliance Guide.";
-    } else if (plan === "premium") {
-      serviceTitle = "GST Premium";
-      serviceAmount = 4999;
-      serviceDescription = "GST Registration, MSME, Compliance Setup, and Dedicated Advisor.";
-    } else {
-      serviceTitle = "Basic GST Registration";
-      serviceAmount = 2499;
-      serviceDescription = "GST Registration, ARN Tracking, and Certificate Download.";
-    }
-  }
-  if (slug === "gst-return-filing") {
-    const plan = query?.plan || "monthly_starter";
-    if (plan === "monthly_business") {
-      serviceTitle = "Business Monthly GST Filing";
-      serviceAmount = 499;
-      serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Business).";
-    } else if (plan === "monthly_premium") {
-      serviceTitle = "Premium Monthly GST Filing";
-      serviceAmount = 999;
-      serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Premium).";
-    } else if (plan === "quarterly_qrmp") {
-      serviceTitle = "Quarterly GST QRMP Plan";
-      serviceAmount = 1499;
-      serviceDescription = "Quarterly QRMP GSTR compliance and filing package.";
-    } else if (plan === "annual") {
-      serviceTitle = "Annual GST Filing Package";
-      serviceAmount = 4999;
-      serviceDescription = "Annual GSTR compliance, audits, and consolidated GSTR-9 filings.";
-    } else {
-      serviceTitle = "Starter Monthly GST Filing";
-      serviceAmount = 299;
-      serviceDescription = "Monthly GSTR-1 & GSTR-3B filings support (Starter).";
-    }
-  }
-  if (slug === "itr-filing") {
-    const plan = query?.plan || "itr1";
-    if (plan === "itr2") {
-      serviceTitle = "ITR-2 Filing (Capital Gains & Multiple Houses)";
-      serviceAmount = 999;
-      serviceDescription = "File ITR-2 online with expert CA verification, secure documents, and tax-saving optimization.";
-    } else if (plan === "itr3") {
-      serviceTitle = "ITR-3 Filing (Business / Professional)";
-      serviceAmount = 1499;
-      serviceDescription = "Assisted ITR-3 business tax return filing with custom balance sheet checks & audit prep.";
-    } else if (plan === "itr4") {
-      serviceTitle = "ITR-4 Filing (Presumptive Business)";
-      serviceAmount = 999;
-      serviceDescription = "File presumptive tax returns under Sec 44AD/44ADA quickly with professional review.";
-    } else if (plan === "nri") {
-      serviceTitle = "NRI ITR Filing Assistance";
-      serviceAmount = 2499;
-      serviceDescription = "Specialized non-resident taxation, foreign assets disclosures, and DTAA relief mapping.";
-    } else if (plan === "capgain") {
-      serviceTitle = "Capital Gains ITR Filing Assistance";
-      serviceAmount = 2999;
-      serviceDescription = "Consolidated capital gains computation for equity, mutual funds, real estate & crypto.";
-    } else {
-      serviceTitle = "ITR-1 (Salaried) Filing Assistance";
-      serviceAmount = 699;
-      serviceDescription = "File your salaried tax return (Form 16/AIS) with expert coordinator assistance.";
-    }
-  }
-  if (slug === "food-license") {
-    const plan = query?.plan || "basic";
-    if (plan === "pro" || plan === "business_pro") {
-      serviceTitle = "FSSAI Business Pro License";
-      serviceAmount = 2999;
-      serviceDescription = "Everything in Basic, plus Document Review, Priority Processing, and Business Consultation.";
-    } else if (plan === "premium" || plan === "premium_compliance") {
-      serviceTitle = "FSSAI Premium Compliance License";
-      serviceAmount = 4999;
-      serviceDescription = "Everything in Pro, plus Renewal Reminder, Dedicated Executive, and Compliance Support.";
-    } else {
-      serviceTitle = "Basic FSSAI Food License Registration";
-      serviceAmount = 1499;
-      serviceDescription = "FSSAI Registration, Application Filing, Document Support, and Tracking.";
-    }
-  }
-  const whatsappUrl = buildWhatsAppUrl(
-    buildApplicationWhatsAppMessage({
-      action: "apply_help",
-      serviceName: service.title,
-    }),
-  );
-
-  function fieldsFor(categorySlug: string, serviceSlug: string): ServiceField[] {
-    if (serviceSlug === "pm-vishwakarma-yojana") return [];
-    if (serviceSlug === "cm-yuva-entrepreneur-loan-assistance") return [];
-    if (serviceSlug === "itr-filing") return [];
-    if (serviceSlug === "food-license") return [{ name: "businessName", label: "Business / Shop Name", required: true }, { name: "panNumber", label: "PAN Card Number", required: false }];
-    if (categorySlug === "tax-business") return [{ name: "businessName", label: "Business Name", required: false }, { name: "panNumber", label: "PAN", required: false }];
-    if (categorySlug === "insurance") return [{ name: "vehicleNumber", label: "Vehicle Number", required: false }, { name: "previousPolicy", label: "Previous Policy Details", type: "textarea", required: false }];
-    if (categorySlug === "finance-banking") return [{ name: "loanPurpose", label: "Loan / Banking Requirement", type: "textarea", required: false }, { name: "monthlyIncome", label: "Monthly Income / Turnover", required: false }];
-    return [];
-  }
 
   return (
-    <main className="min-h-screen px-4 pb-10 pt-5 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl">
-        <Link href={`/services/${service.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
-          <ArrowLeft className="h-4 w-4" />
-          Back to service
-        </Link>
-
-        <div className="mt-5 grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
-          {service.slug === "cm-yuva-entrepreneur-loan-assistance" ? (
-            <Card className="rounded-2xl p-4 lg:p-5 shadow-sm border border-blue-50/50 bg-white/90 backdrop-blur-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[var(--primary)] shrink-0">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-blue-600">Secure Submission</p>
-                  <h1 className="text-base lg:text-lg font-black text-slate-950 mt-0.5">
-                    Apply for CM YUVA Assistance
-                  </h1>
-                </div>
-              </div>
-              
-              <p className="mt-3 text-xs leading-relaxed text-slate-500 font-semibold">
-                Fill details, upload documents, and complete secure payment.
-              </p>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
-                <div className="flex items-center gap-1.5">
-                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
-                  <span>Fill applicant details</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
-                  <span>Upload 4 documents</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
-                  <span>Pay securely</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-500 text-white text-[9px]">✓</span>
-                  <span>Track updates</span>
-                </div>
-              </div>
-              
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition">
-                <MessageCircle className="h-3.5 w-3.5" />
-                Get WhatsApp Help
-              </a>
-            </Card>
-          ) : (
-            <Card className="rounded-2xl p-5 md:p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[var(--primary)]">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
-              <p className="mt-6 text-sm font-medium uppercase tracking-[0.18em] text-[var(--secondary)]">
-                Secure Application
-              </p>
-              <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 md:text-5xl">
-                {service.slug === "pvc-card-printing" ? "PVC Card Print Order" : `Apply for ${service.title}`}
-              </h1>
-              <p className="mt-4 text-sm leading-relaxed text-slate-600">
-                Fill in your details, upload documents, and pay securely with Razorpay. Our team will share updates through your dashboard, call, or WhatsApp.
-              </p>
-              <div className="mt-6 space-y-3 text-sm font-medium text-slate-700">
-                <p>1. Fill in your details</p>
-                <p>2. Upload required documents</p>
-                <p>3. Pay securely with Razorpay</p>
-                <p>4. Receive invoice and updates</p>
-              </div>
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white">
-                <MessageCircle className="h-4 w-4" />
-                Get WhatsApp Help
-              </a>
-            </Card>
-          )}
-
-          <ServiceApplicationForm
-            service={{
-              title: serviceTitle,
-              slug: service.slug,
-              amount: serviceAmount,
-              description: serviceDescription,
-              documents: service.documents,
-              fields: fieldsFor(service.categorySlug, service.slug),
-            }}
-            services={selectedPublicServicesOverridden.map((item) => ({
-              title: item.title,
-              slug: item.slug,
-              amount: item.amount,
-              description: item.shortDescription,
-              documents: item.documents,
-              fields: fieldsFor(item.categorySlug, item.slug),
-            }))}
-            isProfileIncompleteInitial={isProfileIncomplete}
-            initialProfileFields={{
-              mobile: userProfile?.mobile ?? "",
-              pincode: userProfile?.pincode ?? "",
-              city: userProfile?.city ?? "",
-              state: userProfile?.state ?? "",
-            }}
-          />
-        </div>
-      </div>
+    <main className="min-h-screen bg-slate-50/30 px-4 pb-12 pt-8 md:px-8">
+      <PremiumApplicationWizard
+        initialServiceSlug={slug}
+        initialProfileFields={{
+          mobile: userProfile?.mobile ?? "",
+          pincode: userProfile?.pincode ?? "",
+          city: userProfile?.city ?? "",
+          state: userProfile?.state ?? "",
+        }}
+      />
     </main>
   );
 }
