@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -9,12 +10,14 @@ import {
   Search, Check, Shield, CreditCard, Wallet, AlertTriangle, ArrowLeft, ArrowRight,
   Camera, Upload, Trash2, Edit2, Download, Copy, RefreshCw, X, FileText, MapPin,
   UserCheck, Sparkles, Building, Briefcase, Car, FileCheck, HeartHandshake,
-  RotateCw, ZoomIn, ZoomOut, AlertCircle, Share2, QrCode, ClipboardList
+  RotateCw, ZoomIn, ZoomOut, AlertCircle, Share2, QrCode, ClipboardList, Star, ShoppingCart, Info, User
 } from "lucide-react";
-import { servicesData, type ServiceItem } from "@/lib/services-data";
 import { getDynamicServiceConfig, type FieldSchema } from "@/lib/services-config";
 import { useToast } from "@/components/providers/toast-provider";
 import Script from "next/script";
+import { createClient } from "@/lib/supabase/browser";
+import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
+import { cn } from "@/lib/utils";
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -28,13 +31,12 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 };
 
 const STEPS = [
-  { id: 1, label: "Service" },
-  { id: 2, label: "Details" },
-  { id: 3, label: "Customer" },
-  { id: 4, label: "Documents" },
-  { id: 5, label: "Review" },
-  { id: 6, label: "Payment" },
-  { id: 7, label: "Success" }
+  { id: 1, label: "Services" },
+  { id: 2, label: "Customer Details" },
+  { id: 3, label: "Documents" },
+  { id: 4, label: "Review" },
+  { id: 5, label: "Payment" },
+  { id: 6, label: "Success" }
 ];
 
 export interface PremiumApplicationWizardProps {
@@ -57,15 +59,6 @@ interface CustomerApplicationHistoryItem {
   assignedTo: string;
 }
 
-interface DuplicateMatchItem {
-  applicationId: string;
-  serviceName: string;
-  status: string;
-  createdAt: string;
-  matchedField: string;
-  matchedValue: string;
-}
-
 export function PremiumApplicationWizard({
   initialServiceSlug,
   initialProfileFields
@@ -78,18 +71,23 @@ export function PremiumApplicationWizard({
     toast({ title, description, variant: "default" });
   };
 
+  // State for loaded database services
+  const [dbServices, setDbServices] = useState<AgentService[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+
   // Step state
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
 
-  // Dynamic Service Config derived from JSON Driven Configuration Registry
-  const serviceConfig = useMemo(() => {
-    if (!selectedService) return null;
-    return getDynamicServiceConfig(selectedService.slug, selectedService.categorySlug);
-  }, [selectedService]);
+  // Cart State: list of service slugs with quantity
+  const [cart, setCart] = useState<{ slug: string; quantity: number }[]>([]);
 
-  // Selected Plan state
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  // Search and Category state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Recent and Favourite services
+  const [recentServices, setRecentServices] = useState<string[]>([]);
+  const [favouriteServices, setFavouriteServices] = useState<string[]>([]);
 
   // Customer Contact State
   const [profileData, setProfileData] = useState<{
@@ -133,12 +131,12 @@ export function PremiumApplicationWizard({
   const [pincodeLookupStatus, setPincodeLookupStatus] = useState<"idle" | "searching" | "found" | "not_found">("idle");
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
-  // Dynamic Form Field details
+  // Dynamic Form Field details (suffixed with _index)
   const [serviceDetails, setServiceDetails] = useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [validatedFields, setValidatedFields] = useState<Record<string, boolean>>({});
 
-  // Document management center states
+  // Document management center states (suffixed with _index)
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [fileMetadata, setFileMetadata] = useState<Record<string, { size: string; type: string; sharpness: string; dpi: number; validationPassed: boolean; errors: string[] }>>({});
@@ -152,19 +150,10 @@ export function PremiumApplicationWizard({
     fields: { fieldName: string; extractedValue: string; confidence: number }[];
   } | null>(null);
 
-  // Duplicate Check warning
-  const [duplicateWarning, setDuplicateWarning] = useState<{
-    show: boolean;
-    duplicates: DuplicateMatchItem[];
-  } | null>(null);
-
-  // Pricing & Coupon
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
-  const [validatingCoupon, setValidatingCoupon] = useState(false);
+  // Wallet & Payment
   const [walletBalance, setWalletBalance] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cash" | "upi" | "wallet">("razorpay");
   const [useWallet, setUseWallet] = useState(false);
-  const [splitPayment, setSplitPayment] = useState(false);
 
   // Notifications Simulation
   const [notificationLogs, setNotificationLogs] = useState<{ type: "WhatsApp" | "Email" | "SMS"; message: string; timestamp: string }[]>([]);
@@ -182,33 +171,49 @@ export function PremiumApplicationWizard({
     paymentStatus: string;
   } | null>(null);
 
-  // Search Step 1
-  const [searchQuery, setSearchQuery] = useState("");
   const [showAutoSaveToast, setShowAutoSaveToast] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string>("");
 
-  // Initialize service if slug is provided
+  // Helper: Payout formula
+  const getServicePayout = (srv: AgentService) => {
+    if (srv.payout_type === "percentage") {
+      return Math.round((Number(srv.customer_fee ?? 0) * Number(srv.payout_percentage ?? 0)) / 100);
+    }
+    return Number(srv.agent_payout ?? 0);
+  };
+
+  // Load Services from Supabase
   useEffect(() => {
-    const slug = initialServiceSlug || searchParams.get("service");
-    if (slug) {
-      const found = servicesData.find((s) => s.slug === slug || (s.slug === `cibil-report-increase` && slug === `cibil-report-analysis-and-credit-health-consultation`));
-      if (found) {
-        setSelectedService(found);
-        setCurrentStep(2);
+    async function loadServices() {
+      try {
+        const supabase = createClient();
+        if (!supabase) {
+          throw new Error("Supabase client is null");
+        }
+        const { data, error } = await supabase
+          .from("agent_services")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true })
+          .order("title", { ascending: true });
+
+        if (error) {
+          console.error("Error loading services:", error);
+          toastError("Failed to fetch database services. Using fallbacks.");
+        } else if (data) {
+          setDbServices(data.map((row: any) => normalizeAgentService(row)));
+        }
+      } catch (err) {
+        console.error("Error loading services:", err);
+      } finally {
+        setLoadingServices(false);
       }
     }
-  }, [initialServiceSlug, searchParams]);
 
-  // Configure first plan if config details load
-  useEffect(() => {
-    if (serviceConfig?.plans && serviceConfig.plans.length > 0) {
-      setSelectedPlanId(serviceConfig.plans[0].id);
-    } else {
-      setSelectedPlanId("");
-    }
-  }, [serviceConfig]);
+    loadServices();
+  }, []);
 
-  // Load profile statistics
+  // Sync profile data and wallet balance on load
   useEffect(() => {
     fetch("/api/customer/profile")
       .then((res) => res.json())
@@ -233,34 +238,58 @@ export function PremiumApplicationWizard({
       .catch((err) => console.error("Error loading user profile:", err));
   }, []);
 
-  // Restore Draft options
+  // Sync recent/favourites from localStorage
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const recents = JSON.parse(localStorage.getItem("ap_recent_services") || "[]");
+      const favourites = JSON.parse(localStorage.getItem("ap_favourite_services") || "[]");
+      setRecentServices(recents);
+      setFavouriteServices(favourites);
+    }
+  }, []);
+
+  // Restore Draft logic (if resume=true parameter)
+  useEffect(() => {
+    const resume = searchParams.get("resume") === "true";
+    if (!resume) {
+      localStorage.removeItem("dukan_wizard_enterprise_draft");
+      return;
+    }
     const savedDraft = localStorage.getItem("dukan_wizard_enterprise_draft");
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
-        if (parsed.selectedServiceSlug && !initialServiceSlug) {
-          const found = servicesData.find((s) => s.slug === parsed.selectedServiceSlug);
-          if (found) {
-            setSelectedService(found);
-            setServiceDetails(parsed.serviceDetails || {});
-            setProfileData((prev) => ({ ...prev, ...parsed.profileData }));
-            setCurrentStep(parsed.currentStep || 1);
-            if (toastSuccess) toastSuccess("Restored your previous enterprise application draft!");
-          }
+        if (parsed.cart && parsed.cart.length > 0) {
+          setCart(parsed.cart);
+          setServiceDetails(parsed.serviceDetails || {});
+          setProfileData((prev) => ({ ...prev, ...parsed.profileData }));
+          setCurrentStep(parsed.currentStep || 1);
+          if (toastSuccess) toastSuccess("Restored your previous application draft!");
         }
       } catch (e) {
         console.error("Error restoring draft", e);
       }
     }
-  }, [initialServiceSlug, toastSuccess]);
+  }, [searchParams, toastSuccess]);
+
+  // Handle URL Service Parameter directly
+  useEffect(() => {
+    const serviceSlug = initialServiceSlug || searchParams.get("service");
+    if (serviceSlug && dbServices.length > 0) {
+      const found = dbServices.find((s) => s.slug === serviceSlug);
+      if (found) {
+        setCart([{ slug: found.slug, quantity: 1 }]);
+        setCurrentStep(2);
+      }
+    }
+  }, [initialServiceSlug, searchParams, dbServices]);
 
   // Autosave
   useEffect(() => {
-    if (!selectedService) return;
+    if (cart.length === 0) return;
     const timeout = setTimeout(() => {
       const draft = {
-        selectedServiceSlug: selectedService.slug,
+        cart,
         serviceDetails,
         profileData,
         currentStep
@@ -272,7 +301,7 @@ export function PremiumApplicationWizard({
     }, 2000);
 
     return () => clearTimeout(timeout);
-  }, [selectedService, serviceDetails, profileData, currentStep]);
+  }, [cart, serviceDetails, profileData, currentStep]);
 
   // PIN lookup
   useEffect(() => {
@@ -323,7 +352,7 @@ export function PremiumApplicationWizard({
               lastVisit: data.stats.lastVisit,
             });
             setCustomerLookupStatus("found");
-            if (toastSuccess) toastSuccess("Customer record sync'd. Open 360° Panel below to autofill.");
+            if (toastSuccess) toastSuccess("Customer record sync'd. Apply autofill in Customer Details.");
           } else {
             setCustomerLookupStatus("not_found");
             setCustomer360(null);
@@ -339,9 +368,156 @@ export function PremiumApplicationWizard({
     }
   }, [profileData.mobile, toastSuccess]);
 
-  // Live Inline Validation for Dynamic Inputs
-  const handleLiveValidate = (field: FieldSchema, value: string) => {
+  // Cart operations
+  const addToCart = (service: AgentService) => {
+    const existing = cart.find((item) => item.slug === service.slug);
+    if (existing) {
+      setCart(cart.map((item) => item.slug === service.slug ? { ...item, quantity: item.quantity + 1 } : item));
+    } else {
+      setCart([...cart, { slug: service.slug, quantity: 1 }]);
+    }
+    // Update recents
+    const updatedRecents = [service.slug, ...recentServices.filter((s) => s !== service.slug)].slice(0, 4);
+    setRecentServices(updatedRecents);
+    localStorage.setItem("ap_recent_services", JSON.stringify(updatedRecents));
+  };
+
+  const removeFromCart = (slug: string) => {
+    const existing = cart.find((item) => item.slug === slug);
+    if (!existing) return;
+    if (existing.quantity <= 1) {
+      setCart(cart.filter((item) => item.slug !== slug));
+    } else {
+      setCart(cart.map((item) => item.slug === slug ? { ...item, quantity: item.quantity - 1 } : item));
+    }
+  };
+
+  const toggleFavourite = (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = favouriteServices.includes(slug)
+      ? favouriteServices.filter((s) => s !== slug)
+      : [...favouriteServices, slug];
+    setFavouriteServices(updated);
+    localStorage.setItem("ap_favourite_services", JSON.stringify(updated));
+  };
+
+  // Derive cart items
+  const cartItems = useMemo(() => {
+    return cart.map((item) => {
+      const service = dbServices.find((s) => s.slug === item.slug);
+      return {
+        service,
+        quantity: item.quantity,
+      };
+    }).filter((item): item is { service: AgentService; quantity: number } => item.service !== undefined);
+  }, [cart, dbServices]);
+
+  // Pricing calculations
+  const cartTotalAmount = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const itemAmount = Number(item.service.customer_fee ?? 0);
+      return sum + itemAmount * item.quantity;
+    }, 0);
+  }, [cartItems]);
+
+  const totalPayout = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const payout = getServicePayout(item.service);
+      return sum + payout * item.quantity;
+    }, 0);
+  }, [cartItems]);
+
+  // Derived list of all service instances with their sequential indexes
+  const serviceConfigsList = useMemo(() => {
+    const configs: { service: AgentService; config: any; index: number }[] = [];
+    let absoluteIndex = 0;
+    cartItems.forEach((item) => {
+      for (let q = 0; q < item.quantity; q++) {
+        const config = getDynamicServiceConfig(item.service.slug, item.service.category || "");
+        configs.push({
+          service: item.service,
+          config,
+          index: absoluteIndex,
+        });
+        absoluteIndex++;
+      }
+    });
+    return configs;
+  }, [cartItems]);
+
+  // Dynamic document slots mapping
+  const documentSlots = useMemo(() => {
+    const slots: { slotId: string; document: any; serviceTitle: string; instanceIndex: number }[] = [];
+    serviceConfigsList.forEach(({ service, config, index }) => {
+      if (config?.documents) {
+        config.documents.forEach((doc: any) => {
+          slots.push({
+            slotId: `${doc.id}_${index}`,
+            document: doc,
+            serviceTitle: service.title,
+            instanceIndex: index,
+          });
+        });
+      }
+    });
+    return slots;
+  }, [serviceConfigsList]);
+
+  // Validation values
+  const basePrice = cartTotalAmount;
+  const totalDueBeforeOffsets = basePrice;
+  const walletRedeemAmount = (paymentMethod === "wallet" || useWallet) ? Math.min(walletBalance, totalDueBeforeOffsets) : 0;
+  const totalAmountPayable = Math.max(0, totalDueBeforeOffsets - walletRedeemAmount);
+
+  // Form Progress Completion Score
+  const completionScore = useMemo(() => {
+    let score = 0;
+    if (cart.length > 0) score += 20;
+
+    // Details + Contacts
+    let contactsCount = 0;
+    if (profileData.name) contactsCount++;
+    if (profileData.mobile) contactsCount++;
+    if (profileData.address) contactsCount++;
+    if (profileData.pincode) contactsCount++;
+    if (profileData.city) contactsCount++;
+    if (profileData.state) contactsCount++;
+    score += Math.round((contactsCount / 6) * 30);
+
+    // Required fields check
+    let requiredFieldsTotal = 0;
+    let completedFields = 0;
+    serviceConfigsList.forEach(({ config, index }) => {
+      config?.formSections?.flatMap((s: any) => s.fields).forEach((f: any) => {
+        if (f.required) {
+          requiredFieldsTotal++;
+          if (serviceDetails[`${f.name}_${index}`]) completedFields++;
+        }
+      });
+    });
+
+    if (requiredFieldsTotal > 0) {
+      score += Math.round((completedFields / requiredFieldsTotal) * 20);
+    } else {
+      score += 20;
+    }
+
+    // Documents
+    const reqDocs = documentSlots.filter((d) => d.document.required);
+    if (reqDocs.length === 0) {
+      score += 30;
+    } else {
+      const uploadedCount = reqDocs.filter((d) => uploadedFiles[d.slotId]).length;
+      score += Math.round((uploadedCount / reqDocs.length) * 30);
+    }
+
+    return Math.min(100, score);
+  }, [cart, serviceConfigsList, serviceDetails, profileData, documentSlots, uploadedFiles]);
+
+  // Live validation checks
+  const handleLiveValidateInstance = (field: FieldSchema, value: string, index: number) => {
     const rule = field.validation?.ruleType;
+    const fieldKey = `${field.name}_${index}`;
     let err = "";
     if (field.required && !value.trim()) {
       err = `${field.label} is required.`;
@@ -383,144 +559,48 @@ export function PremiumApplicationWizard({
 
     setValidationErrors((prev) => {
       const copy = { ...prev };
-      if (err) copy[field.name] = err;
-      else delete copy[field.name];
+      if (err) copy[fieldKey] = err;
+      else delete copy[fieldKey];
       return copy;
     });
 
     setValidatedFields((prev) => ({
       ...prev,
-      [field.name]: !err && value.trim().length > 0
+      [fieldKey]: !err && value.trim().length > 0
     }));
-
-    // Trigger Async Duplicate check if unique field is completed (PAN, Aadhaar, GSTIN)
-    if (!err && value.trim() && ["panNumber", "aadhaarNumber", "aadhaar", "businessPan", "gstin"].includes(field.name)) {
-      void triggerDuplicateCheck(field.name, value);
-    }
   };
 
-  // Duplicate Check API invoker
-  const triggerDuplicateCheck = async (fieldName: string, value: string) => {
-    if (!selectedService) return;
-    try {
-      const response = await fetch("/api/applications/check-duplicate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          serviceSlug: selectedService.slug,
-          identifiers: { [fieldName]: value }
-        })
-      });
-      const result = await response.json();
-      if (result.success && result.duplicateFound) {
-        setDuplicateWarning({
-          show: true,
-          duplicates: result.duplicates
-        });
-        if (toastWarning) toastWarning(`Potential duplicate found for ${fieldName}! Check duplicate log.`);
-      }
-    } catch (e) {
-      console.error("Error checking duplicates:", e);
-    }
+  const validateCustomerDetails = () => {
+    const errors: Record<string, string> = {};
+    if (!profileData.name.trim()) errors.name = "Full Name is required.";
+    if (!/^[6-9]\d{9}$/.test(profileData.mobile)) errors.mobile = "Enter 10-digit mobile number.";
+    if (profileData.email && !/\S+@\S+\.\S+/.test(profileData.email)) errors.email = "Enter a valid email.";
+    if (!profileData.address.trim()) errors.address = "Address is required.";
+    if (!/^\d{6}$/.test(profileData.pincode)) errors.pincode = "Enter 6-digit Pincode.";
+    if (!profileData.city.trim()) errors.city = "City is required.";
+    if (!profileData.state.trim()) errors.state = "State is required.";
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  // Pricing calculations based on Selected Plan
-  const planDetails = useMemo(() => {
-    if (!serviceConfig) return null;
-    if (!selectedPlanId) return null;
-    return serviceConfig.plans?.find((p) => p.id === selectedPlanId) || null;
-  }, [serviceConfig, selectedPlanId]);
-
-  const basePrice = planDetails ? planDetails.price : (selectedService?.amount || 0);
-  const govFee = serviceConfig?.govFee || 0;
-  const serviceCharge = planDetails ? Math.max(0, planDetails.price - govFee) : (serviceConfig?.serviceCharge || 0);
-  const gstAmount = Math.round(serviceCharge * 0.18);
-  const totalDueBeforeOffsets = basePrice + gstAmount;
-
-  const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
-  const walletRedeemAmount = useWallet ? Math.min(walletBalance, Math.max(0, totalDueBeforeOffsets - discountAmount)) : 0;
-  
-  const totalAmountPayable = Math.max(0, totalDueBeforeOffsets - discountAmount - walletRedeemAmount);
-  
-  // Split payment configuration
-  const initialInstallment = splitPayment ? Math.round(totalAmountPayable * 0.5) : totalAmountPayable;
-  const payLaterInstallment = splitPayment ? Math.round(totalAmountPayable * 0.5) : 0;
-
-  // Filter service catalog
-  const filteredServices = useMemo(() => {
-    if (!searchQuery.trim()) return servicesData;
-    return servicesData.filter(
-      (s) =>
-        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.shortDescription.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
-
-  // Form Progress Completion Score
-  const completionScore = useMemo(() => {
-    let score = 0;
-    if (selectedService) score += 20; // Step 1 Selected
-    
-    // Step 2 dynamic fields populated
-    if (serviceConfig) {
-      const activeFields = serviceConfig.formSections.flatMap((s) => s.fields);
-      const reqCount = activeFields.filter((f) => f.required).length;
-      if (reqCount === 0) {
-        score += 20;
-      } else {
-        const completedReq = activeFields.filter((f) => f.required && serviceDetails[f.name]).length;
-        score += Math.round((completedReq / reqCount) * 20);
-      }
-    }
-
-    // Step 3 Customer contacts
-    let contactsCount = 0;
-    if (profileData.name) contactsCount++;
-    if (profileData.mobile) contactsCount++;
-    if (profileData.address) contactsCount++;
-    if (profileData.pincode) contactsCount++;
-    if (profileData.city) contactsCount++;
-    if (profileData.state) contactsCount++;
-    score += Math.round((contactsCount / 6) * 20);
-
-    // Step 4 Documents uploaded
-    if (serviceConfig) {
-      const reqDocs = serviceConfig.documents.filter((d) => d.required);
-      if (reqDocs.length === 0) {
-        score += 20;
-      } else {
-        const uploadedCount = reqDocs.filter((d) => uploadedFiles[d.id]).length;
-        score += Math.round((uploadedCount / reqDocs.length) * 20);
-      }
-    }
-
-    // Step 5 Review check
-    if (currentStep >= 5) score += 10;
-    // Step 6 Payment check
-    if (currentStep >= 6) score += 10;
-
-    return Math.min(100, score);
-  }, [selectedService, serviceConfig, serviceDetails, profileData, uploadedFiles, currentStep]);
-
-  // AI Validation checks
-  const runAiValidation = (docId: string, file: File) => {
-    // Generate simulated metadata
+  // Document management functions
+  const runAiValidation = (slotId: string, file: File) => {
     const sizeMb = (file.size / (1024 * 1024)).toFixed(2) + " MB";
-    const sharpness = Math.random() > 0.15 ? "High (92%)" : "Blurry (45%)";
+    const sharpness = Math.random() > 0.15 ? "High (94%)" : "Blurry (48%)";
     const dpi = Math.random() > 0.1 ? 300 : 150;
     
     const errors: string[] = [];
     if (sharpness.includes("Blurry")) {
-      errors.push("Document text is blurry. Please upload a clear photo.");
+      errors.push("Document text is blurry. Capture in brighter light.");
     }
     if (dpi < 200) {
-      errors.push("Low DPI detected. Recommended DPI is 200+.");
+      errors.push("Low DPI detected. Zoom closer or use scanning apps.");
     }
 
     setFileMetadata((prev) => ({
       ...prev,
-      [docId]: {
+      [slotId]: {
         size: sizeMb,
         type: file.type || "unknown",
         sharpness,
@@ -531,166 +611,118 @@ export function PremiumApplicationWizard({
     }));
 
     if (errors.length > 0) {
-      if (toastWarning) toastWarning(`Document validation failed: ${errors[0]}`);
+      toastWarning(`Document check warning: ${errors[0]}`);
     } else {
-      if (toastSuccess) toastSuccess(`AI validation passed for ${docId}!`);
+      if (toastSuccess) toastSuccess("AI document validation passed!");
     }
   };
 
-  // Dropzone File handlers
-  const handleFileChange = (docId: string, file: File) => {
-    setUploadProgress((prev) => ({ ...prev, [docId]: 0 }));
+  const handleFileChange = (slotId: string, file: File) => {
+    setUploadProgress((prev) => ({ ...prev, [slotId]: 0 }));
     let progress = 0;
     const interval = setInterval(() => {
       progress += 20;
-      setUploadProgress((prev) => ({ ...prev, [docId]: progress }));
+      setUploadProgress((prev) => ({ ...prev, [slotId]: progress }));
       if (progress >= 100) {
         clearInterval(interval);
-        setUploadedFiles((prev) => ({ ...prev, [docId]: file }));
-        runAiValidation(docId, file);
+        setUploadedFiles((prev) => ({ ...prev, [slotId]: file }));
+        runAiValidation(slotId, file);
       }
     }, 100);
   };
 
-  // Crop & rotate tools
-  const handleRotate = (docId: string) => {
+  const handleCameraCapture = (slotId: string) => {
+    if (typeof window === "undefined") return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.setAttribute("capture", "environment");
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        handleFileChange(slotId, file);
+      }
+    };
+    input.click();
+  };
+
+  const handleRotate = (slotId: string) => {
     setRotateAngle((prev) => ({
       ...prev,
-      [docId]: ((prev[docId] || 0) + 90) % 360
+      [slotId]: ((prev[slotId] || 0) + 90) % 360
     }));
   };
 
-  const handleZoom = (docId: string, direction: "in" | "out") => {
+  const handleZoom = (slotId: string, direction: "in" | "out") => {
     setZoomScale((prev) => {
-      const current = prev[docId] || 1;
+      const current = prev[slotId] || 1;
       const step = 0.25;
       const next = direction === "in" ? Math.min(2.5, current + step) : Math.max(0.5, current - step);
-      return { ...prev, [docId]: next };
+      return { ...prev, [slotId]: next };
     });
   };
 
-  // simulated OCR Extraction
-  const handleOcrExtraction = (docId: string) => {
-    const file = uploadedFiles[docId];
+  // OCR Mock
+  const handleOcrExtraction = (slotId: string) => {
+    const file = uploadedFiles[slotId];
     if (!file) return;
 
-    setOcrScanningSlot(docId);
+    setOcrScanningSlot(slotId);
     setTimeout(() => {
       setOcrScanningSlot(null);
-      let ocrFields: { fieldName: string; extractedValue: string; confidence: number }[] = [];
-
-      if (docId.includes("pan")) {
-        ocrFields = [
-          { fieldName: "panNumber", extractedValue: "AFIPA8392D", confidence: 99.1 },
-          { fieldName: "businessName", extractedValue: "FAIZAL ENTERPRISES", confidence: 96.5 }
-        ];
-      } else if (docId.includes("aadhaar")) {
-        ocrFields = [
-          { fieldName: "aadhaarNumber", extractedValue: "483920194857", confidence: 98.4 },
-          { fieldName: "name", extractedValue: "FAIZAL ALAM", confidence: 99.8 },
-          { fieldName: "address", extractedValue: "Flat 402, Sector 15, Vasundhara", confidence: 94.2 },
-          { fieldName: "pincode", extractedValue: "201012", confidence: 99.9 },
-          { fieldName: "city", extractedValue: "Ghaziabad", confidence: 98.0 },
-          { fieldName: "state", extractedValue: "Uttar Pradesh", confidence: 99.0 }
-        ];
-      } else {
-        ocrFields = [
-          { fieldName: "name", extractedValue: "FAIZAL ALAM", confidence: 92.5 }
-        ];
-      }
-
+      const extractedValue = "ABCDE" + Math.floor(Math.random() * 9000 + 1000) + "F";
       setOcrExtractionResult({
-        slot: docId,
-        fields: ocrFields
+        slot: slotId,
+        fields: [
+          { fieldName: "Extracted Document ID", extractedValue, confidence: 98 }
+        ]
       });
+      if (toastSuccess) toastSuccess("OCR complete. Apply fields values below.");
     }, 1500);
   };
 
-  // Apply OCR values
-  const applyOcrAutofill = () => {
+  const applyOcrValue = () => {
     if (!ocrExtractionResult) return;
-    
-    ocrExtractionResult.fields.forEach((f) => {
-      if (f.fieldName === "name") {
-        setProfileData((prev) => ({ ...prev, name: f.extractedValue }));
-      } else if (f.fieldName === "address") {
-        setProfileData((prev) => ({ ...prev, address: f.extractedValue }));
-      } else if (f.fieldName === "pincode") {
-        setProfileData((prev) => ({ ...prev, pincode: f.extractedValue }));
-      } else if (f.fieldName === "city") {
-        setProfileData((prev) => ({ ...prev, city: f.extractedValue }));
-      } else if (f.fieldName === "state") {
-        setProfileData((prev) => ({ ...prev, state: f.extractedValue }));
-      } else {
-        setServiceDetails((prev) => ({ ...prev, [f.fieldName]: f.extractedValue }));
-        setValidatedFields((prev) => ({ ...prev, [f.fieldName]: true }));
-      }
-    });
+    const { slot, fields } = ocrExtractionResult;
+    const cleanSlotName = slot.split("_")[0];
+    const index = slot.split("_")[1];
 
+    if (cleanSlotName && index !== undefined) {
+      const targetFieldName = cleanSlotName === "panCard" ? "panNumber" : "aadhaarNumber";
+      const targetKey = `${targetFieldName}_${index}`;
+      setServiceDetails((prev) => ({
+        ...prev,
+        [targetKey]: fields[0].extractedValue
+      }));
+      setValidatedFields((prev) => ({ ...prev, [targetKey]: true }));
+    }
     setOcrExtractionResult(null);
-    if (toastSuccess) toastSuccess("⚡ OCR Extracted fields populated onto applicant forms!");
   };
 
-  // Autofill from customer 360
+  // Autofill CRM details
   const applyCustomer360Autofill = () => {
     if (!customer360) return;
     setProfileData((prev) => ({
       ...prev,
-      name: customer360.name || prev.name,
-      email: prev.email || "",
-      address: prev.address || "",
-      city: prev.city || "",
-      state: prev.state || "",
-      pincode: prev.pincode || "",
+      name: customer360.name,
+      email: prev.email || `${customer360.name.toLowerCase().replace(/\s/g, "")}@example.com`,
     }));
-    if (toastSuccess) toastSuccess("⚡ Customer 360 metrics loaded into contacts!");
+    if (toastSuccess) toastSuccess("CRM contact details loaded!");
   };
 
-  // Coupon validations
-  const applyCouponCode = async () => {
-    if (!couponCode.trim()) return;
-    setValidatingCoupon(true);
-    try {
-      const response = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          couponCode,
-          serviceSlug: selectedService?.slug,
-          amount: basePrice
-        })
-      });
-      const result = await response.json();
-      if (result.success && result.valid) {
-        setAppliedCoupon({
-          code: couponCode.trim().toUpperCase(),
-          discount: result.discountAmount || 0
-        });
-        logNotification("WhatsApp", "Coupon applied successfully! Total invoice modified.");
-        if (toastSuccess) toastSuccess("Promo coupon code applied successfully!");
-      } else {
-        toastError(result.message || "Invalid coupon code.");
-      }
-    } catch {
-      toastError("Failed to check coupon code.");
-    } finally {
-      setValidatingCoupon(false);
-    }
-  };
-
-  // Submit flow
+  // Submission handler
   const handleFinalSubmit = async (razorpayDetails?: Record<string, unknown> | null) => {
     setIsSubmitting(true);
     try {
       const payload = {
-        serviceSlug: selectedService?.slug,
-        serviceSlugs: [selectedService?.slug],
+        serviceSlug: cartItems[0]?.service.slug,
+        serviceSlugs: cartItems.flatMap((item) => Array(item.quantity).fill(item.service.slug)),
         customer: {
           name: profileData.name,
           mobile: profileData.mobile,
           email: profileData.email,
           city: profileData.city,
-          message: `Application submitted via Dynamic Configuration Engine. Plan: ${selectedPlanId || "Default"}. Split Pay: ${splitPayment}`,
+          message: `Application submitted via DigiPartner Wizard. Route: ${paymentMethod}.`,
         },
         details: {
           ...serviceDetails,
@@ -698,14 +730,11 @@ export function PremiumApplicationWizard({
           pincode: profileData.pincode,
           state: profileData.state,
           district: profileData.district,
-          selectedPlan: planDetails?.name || "Standard",
-          splitPaymentEnabled: String(splitPayment),
-          installmentPaid: String(initialInstallment),
-          installmentRemaining: String(payLaterInstallment)
+          paymentMethod,
         },
         walletUseAmount: walletRedeemAmount,
         razorpayPayment: razorpayDetails || null,
-        couponCode: appliedCoupon?.code || ""
+        couponCode: ""
       };
 
       const formData = new FormData();
@@ -714,8 +743,8 @@ export function PremiumApplicationWizard({
       const docTypes = Object.keys(uploadedFiles);
       formData.append("documentTypes", JSON.stringify(docTypes));
 
-      docTypes.forEach((docId) => {
-        const file = uploadedFiles[docId];
+      docTypes.forEach((slotId) => {
+        const file = uploadedFiles[slotId];
         formData.append("documents", file, file.name);
       });
 
@@ -724,37 +753,26 @@ export function PremiumApplicationWizard({
         body: formData,
       });
 
-      const text = await response.text();
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch {
-        throw new Error("Invalid response schema from backend.");
-      }
-
+      const result = await response.json();
       if (!response.ok || !result.success) {
         throw new Error(result.message || result.error || "Submission failed.");
       }
 
-      // Clear draft cache
+      // Clear draft
       localStorage.removeItem("dukan_wizard_enterprise_draft");
       
       setSuccessDetails({
         applicationId: result.applicationId || "DCD-" + Math.floor(Math.random() * 90000 + 10000),
         invoiceId: result.invoiceId || "",
         customerName: profileData.name,
-        serviceTitle: planDetails ? `${selectedService?.title} (${planDetails.name})` : (selectedService?.title || ""),
-        amountPaid: initialInstallment + walletRedeemAmount,
-        processingTime: serviceConfig?.processingTime || "5-7 Working Days",
-        paymentStatus: splitPayment ? "Partially Paid (50%)" : "Paid"
+        serviceTitle: cartItems.map((item) => `${item.service.title} (x${item.quantity})`).join(", "),
+        amountPaid: totalDueBeforeOffsets - walletRedeemAmount,
+        processingTime: cartItems[0]?.service.processing_time || "3-5 Working Days",
+        paymentStatus: paymentMethod === "razorpay" ? "Online Verified" : paymentMethod === "wallet" ? "Wallet Debited" : "Cash Collected"
       });
 
-      // Log notifications simulation
-      logNotification("WhatsApp", `Order confirm. Application ID: ${result.applicationId} submitted.`);
-      logNotification("Email", `Invoice details for ${selectedService?.title} delivery.`);
-
-      setCurrentStep(7);
-      if (toastSuccess) toastSuccess("Enterprise application submitted successfully!");
+      setCurrentStep(6);
+      if (toastSuccess) toastSuccess("Applications submitted successfully!");
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Submission failed.";
       toastError(errorMsg);
@@ -763,20 +781,21 @@ export function PremiumApplicationWizard({
     }
   };
 
+  // Razorpay Checkout
   const triggerRazorpayCheckout = async () => {
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      toastError("Razorpay key configuration is missing.");
+      toastError("Razorpay key config details are missing.");
       return;
     }
     setIsSubmitting(true);
     try {
       const orderBody = {
-        amount: Math.round(initialInstallment * 100),
+        amount: Math.round(totalAmountPayable * 100),
         currency: "INR",
         receipt: `receipt-wiz-${Date.now()}`,
-        serviceSlug: selectedService?.slug,
+        serviceSlug: cartItems[0]?.service.slug,
         walletUseAmount: walletRedeemAmount,
-        couponCode: appliedCoupon?.code || "",
+        couponCode: "",
         applicationDraft: {
           customer: {
             name: profileData.name,
@@ -786,7 +805,6 @@ export function PremiumApplicationWizard({
           },
           details: {
             ...serviceDetails,
-            selectedPlan: planDetails?.name || "Standard",
           }
         }
       };
@@ -799,7 +817,7 @@ export function PremiumApplicationWizard({
       const orderData = await orderResponse.json();
 
       if (!orderResponse.ok || !orderData.order_id) {
-        throw new Error(orderData.error || orderData.message || "Could not create Razorpay order.");
+        throw new Error(orderData.error || orderData.message || "Razorpay order creation failed.");
       }
 
       const options = {
@@ -807,7 +825,7 @@ export function PremiumApplicationWizard({
         amount: orderData.amount,
         currency: orderData.currency,
         name: "DigiConnect Dukan",
-        description: `Apply for ${selectedService?.title}`,
+        description: `Apply for ${cartItems.map(item => item.service.title).join(", ")}`,
         order_id: orderData.order_id,
         prefill: {
           name: profileData.name,
@@ -817,7 +835,6 @@ export function PremiumApplicationWizard({
         theme: { color: "#2563eb" },
         handler: async (paymentResponse: Record<string, unknown>) => {
           try {
-            // Verify payment
             const verifyResponse = await fetch("/api/verify-payment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -829,7 +846,7 @@ export function PremiumApplicationWizard({
             });
             const verifyData = await verifyResponse.json();
             if (!verifyResponse.ok || !verifyData.success) {
-              throw new Error(verifyData.error || "Payment verification failed.");
+              throw new Error(verifyData.error || "Online verification check failed.");
             }
 
             await handleFinalSubmit({
@@ -846,113 +863,121 @@ export function PremiumApplicationWizard({
         },
         modal: {
           ondismiss: () => {
-            toastError("Payment cancelled.");
+            toastError("Payment window closed.");
             setIsSubmitting(false);
           }
         }
       };
 
-      const rzpay = new (window as unknown as { Razorpay: new (options: Record<string, unknown>) => { open: () => void } }).Razorpay(options);
+      const rzpay = new (window as any).Razorpay(options);
       rzpay.open();
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Payment window error.";
+      const errorMsg = e instanceof Error ? e.message : "Payment error.";
       toastError(errorMsg);
       setIsSubmitting(false);
     }
   };
 
-  const logNotification = (type: "WhatsApp" | "Email" | "SMS", message: string) => {
-    setNotificationLogs((prev) => [
-      { type, message, timestamp: new Date().toLocaleTimeString() },
-      ...prev
-    ]);
-  };
-
-  // Navigations
+  // Step Navigations
   const handleNextStep = () => {
     if (currentStep === 1) {
-      if (!selectedService) {
-        toastError("Please select a service.");
+      if (cart.length === 0) {
+        toastError("Please add at least one service to your cart.");
         return;
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      // Validate form sections dynamically
-      if (!serviceConfig) return;
-      let valid = true;
-      serviceConfig.formSections.flatMap((s) => s.fields).forEach((f) => {
-        if (f.required && !serviceDetails[f.name]) {
-          setValidationErrors((prev) => ({ ...prev, [f.name]: `${f.label} is required.` }));
-          valid = false;
-        }
-      });
-      if (Object.keys(validationErrors).length > 0) valid = false;
-
-      if (valid) {
-        setCurrentStep(3);
-      } else {
-        toastError("Please complete dynamic parameters validations.");
+      if (!validateCustomerDetails()) {
+        toastError("Please resolve customer address and contacts errors.");
+        return;
       }
+      // Dynamic parameters checks
+      let hasDetailsError = false;
+      serviceConfigsList.forEach(({ config, index }) => {
+        config?.formSections?.flatMap((s: any) => s.fields).forEach((f: any) => {
+          const valKey = `${f.name}_${index}`;
+          if (f.required && !serviceDetails[valKey]) {
+            setValidationErrors((prev) => ({ ...prev, [valKey]: `${f.label} is required.` }));
+            hasDetailsError = true;
+          }
+        });
+      });
+      if (hasDetailsError) {
+        toastError("Please complete dynamic forms values.");
+        return;
+      }
+      setCurrentStep(3);
     } else if (currentStep === 3) {
-      // Validate customer contacts
-      if (validateStep3()) {
-        setCurrentStep(4);
-      } else {
-        toastError("Please verify contact parameters details.");
-      }
-    } else if (currentStep === 4) {
-      // Validate documents uploads & AI passing checks
-      if (!serviceConfig) return;
-      const missing = serviceConfig.documents.filter((d) => d.required && !uploadedFiles[d.id]);
+      const missing = documentSlots.filter((slot) => slot.document.required && !uploadedFiles[slot.slotId]);
       if (missing.length > 0) {
-        toastError(`Missing uploads: ${missing.map((m) => m.name).join(", ")}`);
+        toastError(`Uploads missing: ${missing.map((m) => `${m.document.name} (Instance #${m.instanceIndex+1})`).join(", ")}`);
         return;
       }
-      
-      const failedChecks = serviceConfig.documents.filter((d) => {
-        const meta = fileMetadata[d.id];
-        return meta && !meta.validationPassed;
-      });
-
-      if (failedChecks.length > 0) {
-        toastError("Some documents failed validation check constraints.");
-        return;
-      }
-
+      setCurrentStep(4);
+    } else if (currentStep === 4) {
       setCurrentStep(5);
     } else if (currentStep === 5) {
-      setCurrentStep(6);
-    } else if (currentStep === 6) {
-      if (initialInstallment === 0) {
-        void handleFinalSubmit();
-      } else {
+      if (paymentMethod === "razorpay" && totalAmountPayable > 0) {
         void triggerRazorpayCheckout();
+      } else {
+        void handleFinalSubmit();
       }
     }
   };
 
   const handlePrevStep = () => {
-    if (currentStep > 1 && currentStep < 7) {
+    if (currentStep > 1 && currentStep < 6) {
       setCurrentStep((prev) => prev - 1);
     }
   };
 
-  const validateStep3 = () => {
-    const errors: Record<string, string> = {};
-    if (!profileData.name.trim()) errors.name = "Full Name is required.";
-    if (!/^[6-9]\d{9}$/.test(profileData.mobile)) errors.mobile = "Enter 10-digit mobile number.";
-    if (profileData.email && !/\S+@\S+\.\S+/.test(profileData.email)) errors.email = "Enter a valid email.";
-    if (!profileData.address.trim()) errors.address = "Address is required.";
-    if (!/^\d{6}$/.test(profileData.pincode)) errors.pincode = "Enter 6-digit Pincode.";
-    if (!profileData.city.trim()) errors.city = "City is required.";
-    if (!profileData.state.trim()) errors.state = "State is required.";
+  // Filter service catalog
+  const categoriesList = [
+    { id: "all", name: "All Categories" },
+    { id: "tax", name: "Tax & GST" },
+    { id: "company", name: "Company Registration" },
+    { id: "banking", name: "Banking & Finance" },
+    { id: "licence", name: "Licences" },
+    { id: "loans", name: "Loans & CIBIL" },
+    { id: "insurance", name: "Insurance" },
+    { id: "cards", name: "Credit Cards" },
+  ];
 
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  const filteredServices = useMemo(() => {
+    let list = dbServices;
+    if (selectedCategory !== "all") {
+      list = list.filter((s) => {
+        if (!s.category) return false;
+        const catLower = s.category.toLowerCase();
+        if (catLower === selectedCategory) return true;
+        const catObj = categoriesList.find((c) => c.id === selectedCategory);
+        if (catObj && catLower === catObj.name.toLowerCase()) return true;
+
+        if (selectedCategory === "tax" && (catLower.includes("tax") || catLower.includes("gst"))) return true;
+        if (selectedCategory === "company" && (catLower.includes("company") || catLower.includes("registration"))) return true;
+        if (selectedCategory === "banking" && (catLower.includes("bank") || catLower.includes("finance"))) return true;
+        if (selectedCategory === "licence" && (catLower.includes("licence") || catLower.includes("license"))) return true;
+        if (selectedCategory === "loans" && (catLower.includes("loan") || catLower.includes("cibil"))) return true;
+        if (selectedCategory === "insurance" && catLower.includes("insurance")) return true;
+        if (selectedCategory === "cards" && catLower.includes("card")) return true;
+
+        return false;
+      });
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          (s.description && s.description.toLowerCase().includes(q)) ||
+          s.slug.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [dbServices, selectedCategory, searchQuery]);
 
   return (
-    <div className="relative mx-auto w-full max-w-[1200px] px-4 py-8 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+    <div className="relative mx-auto w-full max-w-[1200px] px-3 py-4 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
       
       {/* Script load for Razorpay */}
       <Script
@@ -961,25 +986,25 @@ export function PremiumApplicationWizard({
         onLoad={() => setIsScriptReady(true)}
       />
 
-      {/* Dynamic Toast auto-save status */}
+      {/* Auto-save Toast alert */}
       {showAutoSaveToast && (
         <div className="fixed top-6 right-6 z-50 flex items-center gap-2 bg-slate-900/95 text-white text-xs px-3.5 py-2 rounded-full shadow-lg border border-slate-800/80 backdrop-blur-sm transition-all duration-300">
           <Sparkles className="h-3.5 w-3.5 text-blue-400 animate-pulse" />
-          <span>Draft Saved ({lastSavedTime})</span>
+          <span>Draft Auto-Saved ({lastSavedTime})</span>
         </div>
       )}
 
-      {/* Left Wizard Body */}
-      <div className="bg-white border border-slate-100 rounded-[28px] shadow-sm min-h-[600px] flex flex-col justify-between overflow-hidden relative w-full">
+      {/* Main Wizard Form Card */}
+      <div className="bg-white border border-slate-200/60 rounded-[24px] shadow-sm min-h-[550px] flex flex-col justify-between overflow-hidden relative w-full">
         
-        {/* Sticky top step header */}
-        {currentStep < 7 && (
-          <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-50 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span className="text-[10px] tracking-widest font-extrabold uppercase text-slate-400">
-              Enterprise Wizard Engine v2
+        {/* Sticky Form Step Header Navigation */}
+        {currentStep < 6 && (
+          <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+            <span className="text-[10px] tracking-widest font-black uppercase text-slate-400">
+              DigiConnect Enterprise Wizard
             </span>
-            <div className="flex items-center gap-2 overflow-x-auto max-w-full no-scrollbar pb-1 sm:pb-0">
-              {STEPS.slice(0, 6).map((step, idx) => {
+            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full no-scrollbar pb-1 sm:pb-0">
+              {STEPS.slice(0, 5).map((step, idx) => {
                 const isActive = currentStep === step.id;
                 const isCompleted = currentStep > step.id;
                 return (
@@ -987,22 +1012,24 @@ export function PremiumApplicationWizard({
                     <button
                       onClick={() => isCompleted && setCurrentStep(step.id)}
                       disabled={!isCompleted}
-                      className={`flex items-center gap-1.5 text-xs font-semibold py-1.5 px-2.5 rounded-full transition-all shrink-0 ${
+                      className={cn(
+                        "flex items-center gap-1 py-1 px-2 text-[11px] font-bold rounded-full transition-all shrink-0",
                         isActive
-                          ? "bg-blue-50 text-blue-600 font-bold"
+                          ? "bg-blue-50 text-blue-600"
                           : isCompleted
-                          ? "text-slate-800 hover:bg-slate-50 cursor-pointer"
-                          : "text-slate-300 cursor-not-allowed"
-                      }`}
+                          ? "text-slate-705 hover:bg-slate-50 cursor-pointer"
+                          : "text-slate-355 cursor-not-allowed"
+                      )}
                     >
-                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
+                      <span className={cn(
+                        "w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold",
                         isCompleted ? "bg-blue-600 text-white" : isActive ? "bg-blue-200 text-blue-700" : "bg-slate-100 text-slate-400"
-                      }`}>
+                      )}>
                         {isCompleted ? "✓" : step.id}
                       </span>
                       <span>{step.label}</span>
                     </button>
-                    {idx < 5 && <span className="text-slate-200 text-[10px] shrink-0">➔</span>}
+                    {idx < 4 && <span className="text-slate-200 text-[9px] shrink-0">➔</span>}
                   </React.Fragment>
                 );
               })}
@@ -1010,162 +1037,386 @@ export function PremiumApplicationWizard({
           </div>
         )}
 
-        {/* Content Segment */}
-        <div className="flex-1 p-6 md:p-8">
+        {/* Content Body Pane */}
+        <div className="flex-1 p-5 md:p-7">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
               className="h-full flex flex-col"
             >
               
-              {/* STEP 1: SELECT SERVICE */}
+              {/* STEP 1: MOBILE-FIRST REDESIGNED SERVICES CATALOG */}
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Select Government Service</h2>
-                    <p className="text-sm text-slate-500 mt-1">Central dynamic configuration-driven services selection registry.</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Select Government Services</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Select one or multiple services below to build your submission bundle.</p>
                   </div>
 
-                  <div className="relative max-w-lg bg-slate-50 border border-slate-200 focus-within:border-blue-300 rounded-2xl flex items-center px-4 py-2.5 transition-all">
-                    <Search className="h-5 w-5 text-slate-400 mr-3" />
-                    <input
-                      type="text"
-                      placeholder="Search from 100+ services (Passport, GST, PAN, DL)..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-transparent border-0 outline-none w-full text-sm text-slate-800 placeholder-slate-400"
-                    />
-                    {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-slate-600">
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
+                  {/* Search input and category chip selector */}
+                  <div className="space-y-3">
+                    <div className="relative bg-slate-50 border border-slate-200 focus-within:border-blue-500 rounded-xl flex items-center px-3.5 py-2.5 transition-all">
+                      <Search className="h-4.5 w-4.5 text-slate-400 mr-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Search service title, details, documentation..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-transparent border-0 outline-none w-full text-xs font-semibold text-slate-800 placeholder-slate-400"
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-slate-655">
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {filteredServices.map((srv) => {
-                      const IconComponent = CATEGORY_ICONS[srv.categorySlug] || CreditCard;
-                      const isSelected = selectedService?.slug === srv.slug;
-                      return (
-                        <div
-                          key={srv.slug}
-                          onClick={() => setSelectedService(srv)}
-                          className={`group flex items-start gap-4 p-5 rounded-2xl border text-left cursor-pointer transition-all ${
-                            isSelected
-                              ? "bg-blue-50/50 border-blue-600 shadow-xs ring-1 ring-blue-600/25"
-                              : "bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/30"
-                          }`}
+                    {/* Scrolling Category Chips */}
+                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                      {categoriesList.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={cn(
+                            "px-3.5 py-1.5 rounded-lg border text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                            selectedCategory === cat.id
+                              ? "bg-slate-900 border-slate-950 text-white"
+                              : "bg-white border-slate-200 text-slate-550 hover:bg-slate-50"
+                          )}
                         >
-                          <div className={`p-3 rounded-xl transition-colors shrink-0 ${
-                            isSelected ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-500 group-hover:bg-slate-100"
-                          }`}>
-                            <IconComponent className="h-5 w-5" />
-                          </div>
-                          <div className="space-y-1.5 w-full">
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
-                                {srv.title}
-                              </h3>
-                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                                {srv.priceLabel || `₹${srv.amount}`}
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500 leading-normal line-clamp-2">
-                              {srv.shortDescription}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: DYNAMIC SERVICE DETAILS */}
-              {currentStep === 2 && selectedService && serviceConfig && (
-                <div className="space-y-6">
-                  {/* Feature 2: Smart Service Summary Card */}
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 items-center">
-                    <div>
-                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                        {selectedService.category}
-                      </span>
-                      <h3 className="font-black text-slate-950 text-lg mt-2">{selectedService.title}</h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{selectedService.shortDescription}</p>
-                    </div>
-                    <div className="border-t md:border-t-0 md:border-l border-slate-200/60 pt-4 md:pt-0 md:pl-6 space-y-2 text-xs font-semibold text-slate-700">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Government Fee:</span>
-                        <span>₹{govFee}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Processing Time:</span>
-                        <span>{serviceConfig.processingTime}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Required Documents:</span>
-                        <span className="text-blue-600">{serviceConfig.documents.length} Files</span>
-                      </div>
+                          {cat.name}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Plan Selector if available */}
-                  {serviceConfig.plans && serviceConfig.plans.length > 0 && (
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Available Plan</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {serviceConfig.plans.map((p) => (
+                  {/* Favourite / Recents horizontal row (if populated) */}
+                  {favouriteServices.length > 0 && (
+                    <div className="space-y-2.5">
+                      <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Favourite Services</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {dbServices.filter((s) => favouriteServices.includes(s.slug)).map((srv) => (
                           <div
-                            key={p.id}
-                            onClick={() => setSelectedPlanId(p.id)}
-                            className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
-                              selectedPlanId === p.id
-                                ? "bg-slate-900 border-slate-950 text-white shadow-xs"
-                                : "bg-white border-slate-100 hover:border-slate-200 text-slate-800"
-                            }`}
+                            key={srv.slug}
+                            onClick={() => addToCart(srv)}
+                            className="bg-amber-50/20 border border-amber-100 hover:bg-amber-50/50 p-3.5 rounded-xl text-left cursor-pointer transition-all flex items-center justify-between"
                           >
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="font-extrabold text-sm">{p.name}</span>
-                              <span className={`text-xs font-black ${selectedPlanId === p.id ? "text-blue-400" : "text-blue-600"}`}>
-                                ₹{p.price}
-                              </span>
+                            <div className="overflow-hidden">
+                              <h5 className="font-bold text-xs text-slate-900 truncate">{srv.title}</h5>
+                              <p className="text-[10px] text-slate-400 mt-0.5">₹{srv.customer_fee}</p>
                             </div>
-                            <p className={`text-[11px] leading-relaxed ${selectedPlanId === p.id ? "text-slate-300" : "text-slate-400"}`}>
-                              {p.description}
-                            </p>
+                            <Star className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Dynamic form sections engine */}
-                  <div className="space-y-6">
-                    {serviceConfig.formSections.map((sec) => (
-                      <div key={sec.id} className="space-y-4">
-                        <h4 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-1.5">{sec.title}</h4>
+                  {/* Services Catalog grid */}
+                  {loadingServices ? (
+                    <div className="py-20 flex flex-col items-center justify-center gap-2">
+                      <RefreshCw className="h-6 w-6 text-blue-600 animate-spin" />
+                      <p className="text-xs text-slate-500 font-bold">Synchronizing Supabase services catalog...</p>
+                    </div>
+                  ) : filteredServices.length === 0 ? (
+                    <div className="py-16 text-center text-slate-400 text-xs font-bold border border-dashed border-slate-200 rounded-2xl">
+                      No matching catalog services found.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filteredServices.map((srv) => {
+                        const catLower = (srv.category || "").toLowerCase();
+                        let catKey = "";
+                        if (catLower.includes("tax") || catLower.includes("gst")) catKey = "tax";
+                        else if (catLower.includes("company") || catLower.includes("registration")) catKey = "company";
+                        else if (catLower.includes("bank") || catLower.includes("finance")) catKey = "banking";
+                        else if (catLower.includes("licence") || catLower.includes("license")) catKey = "licence";
+                        else if (catLower.includes("loan") || catLower.includes("cibil")) catKey = "loans";
+                        else if (catLower.includes("insurance")) catKey = "insurance";
+                        else if (catLower.includes("card")) catKey = "cards";
+
+                        const IconComponent = CATEGORY_ICONS[catKey] || CreditCard;
+                        const cartItem = cart.find((item) => item.slug === srv.slug);
+                        const qty = cartItem?.quantity || 0;
+                        const isStarred = favouriteServices.includes(srv.slug);
+
+                        return (
+                          <div
+                            key={srv.slug}
+                            className={cn(
+                              "group flex items-start gap-4.5 p-4.5 rounded-2xl border text-left transition-all",
+                              qty > 0 ? "bg-blue-50/30 border-blue-500/30 shadow-xs" : "bg-white border-slate-200/70 hover:border-slate-350"
+                            )}
+                          >
+                            <div className={cn(
+                              "p-3 rounded-xl transition-colors shrink-0",
+                              qty > 0 ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
+                            )}>
+                              <IconComponent className="h-5 w-5" />
+                            </div>
+
+                            <div className="space-y-1.5 w-full overflow-hidden">
+                              <div className="flex items-start justify-between gap-1">
+                                <h3 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
+                                  {srv.title}
+                                </h3>
+                                <button
+                                  type="button"
+                                  onClick={(e) => toggleFavourite(srv.slug, e)}
+                                  className="text-slate-300 hover:text-amber-505 transition-colors p-0.5 shrink-0"
+                                >
+                                  <Star className={cn("h-4.5 w-4.5", isStarred && "text-amber-550 fill-amber-550")} />
+                                </button>
+                              </div>
+
+                              <p className="text-[11px] text-slate-555 leading-normal line-clamp-2">
+                                {srv.description || "Fully managed digital certificate and government database submission process."}
+                              </p>
+
+                              {/* Price tags & Touch target Quantities adjusters */}
+                              <div className="flex items-center justify-between pt-2">
+                                <div className="space-y-0.5">
+                                  <span className="text-xs font-black text-slate-900 block">
+                                    ₹{srv.customer_fee}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-emerald-605 uppercase tracking-wider block">
+                                    Score: +₹{getServicePayout(srv)} Payout
+                                  </span>
+                                </div>
+
+                                {qty > 0 ? (
+                                  <div className="flex items-center bg-slate-900 text-white rounded-lg p-0.5 shadow-sm text-xs font-bold">
+                                    <button
+                                      onClick={() => removeFromCart(srv.slug)}
+                                      className="px-2 py-1 hover:bg-slate-800 rounded transition-colors text-white"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="px-2">{qty}</span>
+                                    <button
+                                      onClick={() => addToCart(srv)}
+                                      className="px-2 py-1 hover:bg-slate-800 rounded transition-colors text-white"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => addToCart(srv)}
+                                    className="bg-slate-900 hover:bg-slate-805 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    Add Service
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 2: CUSTOMER CONTACTS & DYNAMIC INTEGRATED DETAILS */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Applicant Details & Parameters</h2>
+                    <p className="text-xs text-slate-550 mt-0.5">Provide customer CRM contact details and service-specific parameters.</p>
+                  </div>
+
+                  {/* Customer 360 Record Card */}
+                  {customer360 && (
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3.5">
+                      <div className="flex items-center justify-between border-b border-slate-200/50 pb-2">
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="h-4 w-4 text-blue-600 animate-pulse" />
+                          <h4 className="text-xs font-extrabold text-slate-808">
+                            CRM Record Found: {customer360.name}
+                          </h4>
+                        </div>
+                        <button
+                          onClick={applyCustomer360Autofill}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1 shadow-xs transition-colors cursor-pointer text-center"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          <span>Autofill Profile</span>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-555">
+                        <div className="p-2 bg-white rounded-lg border border-slate-100">
+                          <p className="text-slate-400">Total Cases</p>
+                          <p className="font-extrabold text-slate-800 text-sm mt-0.5">{customer360.totalApplications}</p>
+                        </div>
+                        <div className="p-2 bg-white rounded-lg border border-slate-100">
+                          <p className="text-slate-400">Wallet Credits</p>
+                          <p className="font-extrabold text-blue-600 text-sm mt-0.5">₹{customer360.walletBalance}</p>
+                        </div>
+                        <div className="p-2 bg-white rounded-lg border border-slate-100">
+                          <p className="text-slate-400">Join Date</p>
+                          <p className="font-extrabold text-slate-855 text-sm mt-0.5">{customer360.customerSince}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Customer fields */}
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-5 space-y-4">
+                    <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
+                      Customer Contact Details
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700">Mobile Number *</label>
+                        <input
+                          type="tel"
+                          maxLength={10}
+                          value={profileData.mobile}
+                          onChange={(e) => setProfileData({ ...profileData, mobile: e.target.value.replace(/\D/g, "") })}
+                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                          placeholder="Enter 10-digit mobile"
+                        />
+                        {validationErrors.mobile && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.mobile}</span>}
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700">Full Name *</label>
+                        <input
+                          type="text"
+                          value={profileData.name}
+                          onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                          placeholder="Client's legal name"
+                        />
+                        {validationErrors.name && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.name}</span>}
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700">Email Address</label>
+                        <input
+                          type="email"
+                          value={profileData.email}
+                          onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                          placeholder="client@domain.com"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700">Pincode *</label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={profileData.pincode}
+                          onChange={(e) => setProfileData({ ...profileData, pincode: e.target.value.replace(/\D/g, "") })}
+                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-555 focus:outline-none transition-colors"
+                          placeholder="6-digit Pincode"
+                        />
+                        {validationErrors.pincode && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.pincode}</span>}
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700">City *</label>
+                        <input
+                          type="text"
+                          value={profileData.city}
+                          onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
+                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                          placeholder="City name"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700">State *</label>
+                        <input
+                          type="text"
+                          value={profileData.state}
+                          onChange={(e) => setProfileData({ ...profileData, state: e.target.value })}
+                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                          placeholder="State name"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-slate-700">Full Address *</label>
+                      <textarea
+                        value={profileData.address}
+                        onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                        rows={2}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                        placeholder="Complete street address details"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dynamic Parameter Forms for Cart items */}
+                  <div className="space-y-4">
+                    <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
+                      Service Specific Details
+                    </h3>
+                    
+                    {serviceConfigsList.map(({ service, config, index }) => (
+                      <div key={index} className="space-y-4 border border-slate-150 p-4.5 rounded-2xl bg-slate-50/20">
+                        <h4 className="text-xs font-extrabold text-slate-900 flex items-center justify-between border-b border-slate-200 pb-1.5">
+                          <span>{service.title} (Instance #{index + 1})</span>
+                          <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">
+                            ₹{service.customer_fee}
+                          </span>
+                        </h4>
+
+                        {/* Plan selection within service configs */}
+                        {config?.plans && config.plans.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Available Plan</label>
+                            <div className="flex flex-wrap gap-2">
+                              {config.plans.map((p: any) => {
+                                const planKey = `selectedPlan_${index}`;
+                                const isSelected = serviceDetails[planKey] === p.id || (!serviceDetails[planKey] && p.id === config.plans[0].id);
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => setServiceDetails({ ...serviceDetails, [planKey]: p.id })}
+                                    className={cn(
+                                      "px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer",
+                                      isSelected ? "bg-slate-900 border-slate-950 text-white shadow-xs" : "bg-white border-slate-200 text-slate-655 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    {p.name} (₹{p.price})
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dynamic fields */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {sec.fields.map((f) => {
-                            const hasError = validationErrors[f.name];
-                            const isVal = validatedFields[f.name];
+                          {config?.formSections?.flatMap((sec: any) => sec.fields).map((f: FieldSchema) => {
+                            const fieldKey = `${f.name}_${index}`;
+                            const hasError = validationErrors[fieldKey];
+                            const isVal = validatedFields[fieldKey];
+
                             return (
-                              <div key={f.name} className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-slate-700 tracking-wide">
+                              <div key={f.name} className="flex flex-col gap-1">
+                                <label className="text-xs font-bold text-slate-700">
                                   {f.label} {f.required && <span className="text-red-500">*</span>}
                                 </label>
                                 <div className="relative">
                                   {f.type === "select" ? (
                                     <select
-                                      value={serviceDetails[f.name] || ""}
+                                      value={serviceDetails[fieldKey] || ""}
                                       onChange={(e) => {
-                                        setServiceDetails({ ...serviceDetails, [f.name]: e.target.value });
-                                        handleLiveValidate(f, e.target.value);
+                                        setServiceDetails({ ...serviceDetails, [fieldKey]: e.target.value });
+                                        handleLiveValidateInstance(f, e.target.value, index);
                                       }}
-                                      className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm w-full focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs w-full focus:border-blue-555 focus:outline-none transition-colors"
                                     >
                                       <option value="">Select option...</option>
                                       {f.options?.map((o) => (
@@ -1174,34 +1425,32 @@ export function PremiumApplicationWizard({
                                     </select>
                                   ) : f.type === "textarea" ? (
                                     <textarea
-                                      value={serviceDetails[f.name] || ""}
+                                      value={serviceDetails[fieldKey] || ""}
                                       onChange={(e) => {
-                                        setServiceDetails({ ...serviceDetails, [f.name]: e.target.value });
-                                        handleLiveValidate(f, e.target.value);
+                                        setServiceDetails({ ...serviceDetails, [fieldKey]: e.target.value });
+                                        handleLiveValidateInstance(f, e.target.value, index);
                                       }}
                                       rows={2}
-                                      className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm w-full focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs w-full focus:border-blue-500 focus:outline-none transition-colors"
                                       placeholder={f.placeholder || `Enter ${f.label.toLowerCase()}...`}
                                     />
                                   ) : (
                                     <input
                                       type={f.type}
-                                      value={serviceDetails[f.name] || ""}
+                                      value={serviceDetails[fieldKey] || ""}
                                       onChange={(e) => {
-                                        setServiceDetails({ ...serviceDetails, [f.name]: e.target.value });
-                                        handleLiveValidate(f, e.target.value);
+                                        setServiceDetails({ ...serviceDetails, [fieldKey]: e.target.value });
+                                        handleLiveValidateInstance(f, e.target.value, index);
                                       }}
-                                      className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm w-full focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs w-full focus:border-blue-500 focus:outline-none transition-colors"
                                       placeholder={f.placeholder || `Enter ${f.label.toLowerCase()}...`}
                                     />
                                   )}
-                                  
-                                  {/* Validate icons */}
                                   {isVal && !hasError && (
-                                    <Check className="h-4 w-4 text-emerald-500 absolute right-3 top-3.5" />
+                                    <Check className="h-4 w-4 text-emerald-505 absolute right-3 top-3" />
                                   )}
                                   {hasError && (
-                                    <AlertTriangle className="h-4 w-4 text-red-500 absolute right-3 top-3.5" />
+                                    <AlertTriangle className="h-4 w-4 text-red-500 absolute right-3 top-3" />
                                   )}
                                 </div>
                                 {hasError && <span className="text-[10px] text-red-500 font-semibold">{hasError}</span>}
@@ -1212,384 +1461,119 @@ export function PremiumApplicationWizard({
                       </div>
                     ))}
                   </div>
-
-                  {/* Duplicate warning log */}
-                  {duplicateWarning?.show && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
-                      <div className="flex gap-3">
-                        <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-                        <div>
-                          <h4 className="text-xs font-bold text-amber-950">Active Duplicate Application Detected</h4>
-                          <p className="text-[11px] text-amber-600 font-semibold mt-0.5">
-                            Another active case exists with matches: ID {duplicateWarning.duplicates[0]?.applicationId.slice(0,8)}.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            router.push(`/customer/dashboard`);
-                          }}
-                          className="bg-amber-100 hover:bg-amber-250 text-amber-950 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                        >
-                          View Existing
-                        </button>
-                        <button
-                          onClick={() => setDuplicateWarning(null)}
-                          className="bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-                        >
-                          Ignore & Continue
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* STEP 3: CUSTOMER DETAILS (WITH CUSTOMER 360) */}
+              {/* STEP 3: DOCUMENT UPLOAD CENTER WITH AI SCAN & DIRECT CAMERA Capture */}
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Customer Information</h2>
-                    <p className="text-sm text-slate-500 mt-1">Fill client contacts and check matching records in CRM.</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Upload Required Documents</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Attach documents for each instance. Cameras capture directly to speed verification.</p>
                   </div>
 
-                  {/* Feature 3: Existing Customer 360 Details */}
-                  {customer360 && (
-                    <div className="bg-white border border-slate-100 shadow-xs rounded-2xl p-5 space-y-4">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 pb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 overflow-hidden shrink-0">
-                            {customer360.avatarUrl ? (
-                              <Image src={customer360.avatarUrl} alt="Avatar" className="h-full w-full object-cover" width={40} height={40} unoptimized />
-                            ) : (
-                              <UserCheck className="h-5 w-5 text-blue-600" />
-                            )}
-                          </div>
-                          <div>
-                            <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                              <span>{customer360.name}</span>
-                              <span className="text-[9px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold">Matched Profile</span>
-                            </h3>
-                            <p className="text-[11px] text-slate-400 font-semibold">Client since {customer360.customerSince}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={applyCustomer360Autofill}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
-                          >
-                            <Sparkles className="h-3 w-3" />
-                            <span>1-Click Autofill</span>
-                          </button>
-                          <button
-                            onClick={() => setShowHistoryDrawer(true)}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <ClipboardList className="h-3 w-3" />
-                            <span>View History ({customer360.totalApplications})</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Stat summary grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                        <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Total Cases</p>
-                          <p className="font-black text-slate-900 text-lg mt-0.5">{customer360.totalApplications}</p>
-                        </div>
-                        <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Completed</p>
-                          <p className="font-black text-emerald-600 text-lg mt-0.5">{customer360.completedApplications}</p>
-                        </div>
-                        <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Pending</p>
-                          <p className="font-black text-orange-500 text-lg mt-0.5">{customer360.pendingApplications}</p>
-                        </div>
-                        <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Wallet Balance</p>
-                          <p className="font-black text-blue-600 text-lg mt-0.5">₹{customer360.walletBalance}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="bg-white border border-slate-100 rounded-2xl p-6 space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Mobile */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">Mobile Number *</label>
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            maxLength={10}
-                            value={profileData.mobile}
-                            onChange={(e) => setProfileData({ ...profileData, mobile: e.target.value })}
-                            className="bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-sm w-full focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                            placeholder="Enter 10-digit mobile"
-                          />
-                          {customerLookupStatus === "searching" && (
-                            <RefreshCw className="h-4 w-4 animate-spin text-blue-500 absolute right-3.5 top-3.5" />
-                          )}
-                          {customerLookupStatus === "found" && (
-                            <Check className="h-4 w-4 text-emerald-500 absolute right-3.5 top-3.5" />
-                          )}
-                        </div>
-                        {validationErrors.mobile && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.mobile}</span>}
-                      </div>
-
-                      {/* Name */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">Applicant Full Name *</label>
-                        <input
-                          type="text"
-                          value={profileData.name}
-                          onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                          placeholder="Client's full name"
-                        />
-                        {validationErrors.name && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.name}</span>}
-                      </div>
-
-                      {/* Email */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">Email Address</label>
-                        <input
-                          type="email"
-                          value={profileData.email}
-                          onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                          placeholder="Updates copy email"
-                        />
-                        {validationErrors.email && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.email}</span>}
-                      </div>
-
-                      {/* Alt Mobile */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">Alternate Mobile</label>
-                        <input
-                          type="tel"
-                          maxLength={10}
-                          value={profileData.altMobile}
-                          onChange={(e) => setProfileData({ ...profileData, altMobile: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                          placeholder="Emergency alternative contact"
-                        />
-                      </div>
-
-                      {/* Pincode */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">Pincode *</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            maxLength={6}
-                            value={profileData.pincode}
-                            onChange={(e) => setProfileData({ ...profileData, pincode: e.target.value })}
-                            className="bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-sm w-full focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                            placeholder="6-digit Pincode"
-                          />
-                          {pincodeLookupStatus === "searching" && (
-                            <RefreshCw className="h-4 w-4 animate-spin text-blue-500 absolute right-3.5 top-3.5" />
-                          )}
-                          {pincodeLookupStatus === "found" && (
-                            <MapPin className="h-4 w-4 text-emerald-500 absolute right-3.5 top-3.5" />
-                          )}
-                        </div>
-                        {validationErrors.pincode && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.pincode}</span>}
-                      </div>
-
-                      {/* City */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">City/Town *</label>
-                        <input
-                          type="text"
-                          value={profileData.city}
-                          onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                          placeholder="City name"
-                        />
-                        {validationErrors.city && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.city}</span>}
-                      </div>
-
-                      {/* State */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">State *</label>
-                        <input
-                          type="text"
-                          value={profileData.state}
-                          onChange={(e) => setProfileData({ ...profileData, state: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                          placeholder="State name"
-                        />
-                        {validationErrors.state && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.state}</span>}
-                      </div>
-
-                      {/* District */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700 tracking-wide">District</label>
-                        <input
-                          type="text"
-                          value={profileData.district}
-                          onChange={(e) => setProfileData({ ...profileData, district: e.target.value })}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                          placeholder="District name"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700 tracking-wide">Complete Address *</label>
-                      <textarea
-                        value={profileData.address}
-                        onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                        rows={2}
-                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                        placeholder="Complete street address details"
-                      />
-                      {validationErrors.address && <span className="text-[10px] text-red-500 font-semibold">{validationErrors.address}</span>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: DOCUMENT CENTER & AI VALIDATION */}
-              {currentStep === 4 && serviceConfig && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Document Upload Center</h2>
-                    <p className="text-sm text-slate-500 mt-1">Upload files with automatic AI blur detection and resolution validation checks.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {serviceConfig.documents.map((d) => {
-                      const file = uploadedFiles[d.id];
-                      const progress = uploadProgress[d.id] || 0;
-                      const inputId = `file-wiz-${d.id}`;
-                      const isScanning = ocrScanningSlot === d.id;
-                      const meta = fileMetadata[d.id];
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {documentSlots.map(({ slotId, document: doc, serviceTitle, instanceIndex }) => {
+                      const file = uploadedFiles[slotId];
+                      const progress = uploadProgress[slotId] || 0;
+                      const isScanning = ocrScanningSlot === slotId;
+                      const meta = fileMetadata[slotId];
 
                       return (
                         <div
-                          key={d.id}
-                          className={`border rounded-2xl p-5 flex flex-col justify-between min-h-[220px] relative transition-all ${
-                            file ? "bg-slate-50/20 border-slate-200" : "bg-white border-dashed border-slate-200 hover:border-slate-300"
-                          }`}
+                          key={slotId}
+                          className={cn(
+                            "border rounded-2xl p-4.5 flex flex-col justify-between min-h-[190px] relative transition-all",
+                            file ? "bg-slate-50/30 border-slate-200" : "bg-white border-dashed border-slate-200 hover:border-slate-350"
+                          )}
                         >
-                          <div className="space-y-1.5">
-                            <div className="flex items-start justify-between gap-3">
-                              <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
-                                <span>{d.name}</span>
-                                {d.required && <span className="text-red-500 text-xs">*</span>}
-                              </h3>
+                          <div className="space-y-1">
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div>
+                                <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase">
+                                  Instance #{instanceIndex + 1} ({serviceTitle})
+                                </span>
+                                <h3 className="font-extrabold text-xs text-slate-900 mt-1 flex items-center gap-1">
+                                  <span>{doc.name}</span>
+                                  {doc.required && <span className="text-red-500 text-xs">*</span>}
+                                </h3>
+                              </div>
                               {file && meta && (
-                                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                                <span className={cn(
+                                  "text-[9px] font-black uppercase px-2 py-0.5 rounded-full",
                                   meta.validationPassed ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                                }`}>
-                                  {meta.validationPassed ? "AI Validation Passed" : "AI Verification Failed"}
+                                )}>
+                                  {meta.validationPassed ? "AI Clean" : "AI Quality Alert"}
+                                </span>
+                              )}
+                              {!file && doc.required && (
+                                <span className="text-[9px] font-black text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" /> Required
                                 </span>
                               )}
                             </div>
-                            {d.helpHint && <p className="text-[10px] text-slate-400 font-semibold">{d.helpHint}</p>}
+                            {doc.helpHint && <p className="text-[10px] text-slate-455 leading-normal font-semibold">{doc.helpHint}</p>}
                           </div>
 
-                          {/* File controller pane */}
+                          {/* Upload Actions trigger elements */}
                           <div className="mt-4">
-                            <input
-                              type="file"
-                              id={inputId}
-                              className="hidden"
-                              accept="image/*,application/pdf"
-                              onChange={(e) => e.target.files?.[0] && handleFileChange(d.id, e.target.files[0])}
-                            />
-
                             {file ? (
-                              <div className="space-y-3">
-                                {/* Metadata stats check */}
+                              <div className="space-y-2">
                                 {meta && (
-                                  <div className="bg-white border border-slate-100 rounded-xl p-3 space-y-2 text-[10px] font-semibold text-slate-500 shadow-xs">
+                                  <div className="bg-white border border-slate-105 rounded-xl p-2.5 space-y-1 text-[9px] font-semibold text-slate-500 shadow-xs">
                                     <div className="flex justify-between">
-                                      <span>Resolution Quality:</span>
-                                      <span className={meta.dpi >= 200 ? "text-emerald-600" : "text-red-500"}>
+                                      <span>Quality Resolution:</span>
+                                      <span className={meta.dpi >= 200 ? "text-emerald-600" : "text-amber-500"}>
                                         {meta.dpi} DPI ({meta.dpi >= 200 ? "Pass" : "Low"})
                                       </span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span>Image Blur Check:</span>
-                                      <span className={meta.sharpness.includes("High") ? "text-emerald-600" : "text-red-500"}>
+                                      <span>Blur Check:</span>
+                                      <span className={meta.sharpness.includes("High") ? "text-emerald-600" : "text-amber-500"}>
                                         {meta.sharpness}
                                       </span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span>File Details:</span>
+                                      <span>Details:</span>
                                       <span>{meta.size} • {meta.type.split("/")[1]?.toUpperCase() || "PDF"}</span>
                                     </div>
-                                    {meta.errors.map((e) => (
-                                      <p key={e} className="text-red-500 font-bold text-[9px] mt-1">⚠️ {e}</p>
-                                    ))}
                                   </div>
                                 )}
 
-                                {/* Editor bar */}
-                                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-xl p-2 shadow-xs">
-                                  <div className="flex items-center gap-1.5">
+                                <div className="flex items-center justify-between bg-white border border-slate-150 rounded-xl p-1.5 shadow-xs">
+                                  <div className="flex items-center gap-1">
                                     <button
-                                      onClick={() => handleRotate(d.id)}
-                                      className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-600 transition-colors cursor-pointer"
-                                      title="Rotate Image"
+                                      onClick={() => handleRotate(slotId)}
+                                      className="p-1 text-slate-500 hover:bg-slate-50 rounded cursor-pointer"
+                                      title="Rotate document image"
                                     >
                                       <RotateCw className="h-3.5 w-3.5" />
                                     </button>
                                     <button
-                                      onClick={() => handleZoom(d.id, "in")}
-                                      className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-600 transition-colors cursor-pointer"
-                                      title="Zoom In"
+                                      onClick={() => handleZoom(slotId, "in")}
+                                      className="p-1 text-slate-550 hover:bg-slate-50 rounded cursor-pointer border-none"
                                     >
                                       <ZoomIn className="h-3.5 w-3.5" />
                                     </button>
-                                    <button
-                                      onClick={() => handleZoom(d.id, "out")}
-                                      className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-600 transition-colors cursor-pointer"
-                                      title="Zoom Out"
-                                    >
-                                      <ZoomOut className="h-3.5 w-3.5" />
-                                    </button>
                                   </div>
-
-                                  <div className="flex items-center gap-1.5 px-2">
-                                    {rotateAngle[d.id] ? (
-                                      <span className="text-[9px] text-slate-400 font-bold font-mono bg-slate-50 px-1.5 py-0.5 rounded">{rotateAngle[d.id]}°</span>
-                                    ) : null}
-                                    {zoomScale[d.id] ? (
-                                      <span className="text-[9px] text-slate-400 font-bold font-mono bg-slate-50 px-1.5 py-0.5 rounded">{zoomScale[d.id]}x</span>
-                                    ) : null}
-                                  </div>
-
                                   <div className="flex items-center gap-1">
-                                    {d.ocrType && (
+                                    {doc.ocrType && (
                                       <button
-                                        onClick={() => handleOcrExtraction(d.id)}
-                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                        title="OCR Extract Data"
+                                        onClick={() => handleOcrExtraction(slotId)}
+                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded cursor-pointer flex items-center gap-0.5 text-[10px] font-bold"
                                       >
-                                        <Sparkles className="h-3.5 w-3.5" />
+                                        <Sparkles className="h-3 w-3" /> Scan OCR
                                       </button>
                                     )}
                                     <button
                                       onClick={() => {
                                         setUploadedFiles((prev) => {
                                           const copy = { ...prev };
-                                          delete copy[d.id];
-                                          return copy;
-                                        });
-                                        setFileMetadata((prev) => {
-                                          const copy = { ...prev };
-                                          delete copy[d.id];
+                                          delete copy[slotId];
                                           return copy;
                                         });
                                       }}
-                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Delete Upload"
+                                      className="p-1 text-red-500 hover:bg-rose-50 rounded cursor-pointer"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
@@ -1600,32 +1584,40 @@ export function PremiumApplicationWizard({
                               <div className="flex items-center gap-2">
                                 {progress > 0 && progress < 100 ? (
                                   <div className="w-full space-y-1">
-                                    <div className="flex justify-between text-[10px] text-slate-400 font-extrabold uppercase">
-                                      <span>Uploading File...</span>
+                                    <div className="flex justify-between text-[9px] text-slate-400 font-extrabold uppercase">
+                                      <span>Attaching File...</span>
                                       <span>{progress}%</span>
                                     </div>
-                                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                      <div className="bg-blue-600 h-full transition-all" style={{ width: `${progress}%` }}></div>
+                                    <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                                      <div className="bg-blue-600 h-full" style={{ width: `${progress}%` }}></div>
                                     </div>
                                   </div>
                                 ) : (
                                   <>
                                     <button
-                                      onClick={() => document.getElementById(inputId)?.click()}
-                                      className="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                                      type="button"
+                                      onClick={() => {
+                                        const input = document.createElement("input");
+                                        input.type = "file";
+                                        input.accept = "image/*,application/pdf";
+                                        input.onchange = (e) => {
+                                          const f = (e.target as HTMLInputElement).files?.[0];
+                                          if (f) handleFileChange(slotId, f);
+                                        };
+                                        input.click();
+                                      }}
+                                      className="bg-slate-900 hover:bg-slate-805 text-white text-[10px] font-extrabold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                                     >
                                       <Upload className="h-3.5 w-3.5" />
-                                      <span>Upload Document</span>
+                                      <span>Upload File</span>
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        document.getElementById(inputId)?.setAttribute("capture", "environment");
-                                        document.getElementById(inputId)?.click();
-                                      }}
-                                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer sm:hidden"
+                                      type="button"
+                                      onClick={() => handleCameraCapture(slotId)}
+                                      className="bg-slate-105 hover:bg-slate-205 text-slate-705 text-[10px] font-extrabold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
                                     >
                                       <Camera className="h-3.5 w-3.5" />
-                                      <span>Capture Camera</span>
+                                      <span>Direct Camera</span>
                                     </button>
                                   </>
                                 )}
@@ -1633,11 +1625,11 @@ export function PremiumApplicationWizard({
                             )}
                           </div>
 
-                          {/* Scanning loader */}
+                          {/* Scanning Loader Overlay */}
                           {isScanning && (
                             <div className="absolute inset-0 bg-white/95 rounded-2xl flex flex-col items-center justify-center gap-2 z-10 border border-blue-200">
-                              <Sparkles className="h-6 w-6 text-blue-500 animate-spin" />
-                              <p className="text-xs font-black text-blue-900">⚡ OCR Reading File Data...</p>
+                              <Sparkles className="h-5 w-5 text-blue-500 animate-spin" />
+                              <p className="text-[10px] font-black text-blue-900 uppercase">OCR Extraction scanning...</p>
                             </div>
                           )}
                         </div>
@@ -1645,39 +1637,33 @@ export function PremiumApplicationWizard({
                     })}
                   </div>
 
-                  {/* OCR Extraction Result overlay modal */}
+                  {/* OCR extracted fields popup */}
                   {ocrExtractionResult && (
                     <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-                      <div className="bg-white border border-slate-100 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-xl">
-                        <div className="flex items-center gap-2 border-b border-slate-50 pb-2">
-                          <Sparkles className="h-5 w-5 text-blue-600" />
-                          <h3 className="font-black text-slate-900 text-base">⚡ OCR Data Extraction</h3>
+                      <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-2xl max-w-sm w-full space-y-4">
+                        <div className="flex items-center gap-2 text-blue-600">
+                          <Sparkles className="h-5 w-5" />
+                          <h4 className="font-extrabold text-sm text-slate-905">OCR Scanner Results</h4>
                         </div>
-
-                        <div className="space-y-3">
-                          {ocrExtractionResult.fields.map((f) => (
-                            <div key={f.fieldName} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100/50 text-xs">
-                              <div className="flex justify-between font-bold text-slate-400 text-[9px] uppercase">
-                                <span>{f.fieldName}</span>
-                                <span className="text-blue-600">{f.confidence}% Confidence</span>
-                              </div>
-                              <p className="font-extrabold text-slate-800 mt-0.5">{f.extractedValue}</p>
-                            </div>
-                          ))}
+                        <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">{ocrExtractionResult.fields[0].fieldName}</span>
+                          <p className="font-mono text-xs font-black text-slate-808">{ocrExtractionResult.fields[0].extractedValue}</p>
+                          <span className="text-[8px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-black">
+                            {ocrExtractionResult.fields[0].confidence}% Confidence Match
+                          </span>
                         </div>
-
-                        <div className="flex gap-2 justify-end pt-2">
+                        <div className="flex gap-2 justify-end">
                           <button
                             onClick={() => setOcrExtractionResult(null)}
-                            className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-2 cursor-pointer border-none"
                           >
                             Discard
                           </button>
                           <button
-                            onClick={applyOcrAutofill}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                            onClick={applyOcrValue}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer border-none"
                           >
-                            Autofill Form
+                            Apply Autofill
                           </button>
                         </div>
                       </div>
@@ -1686,92 +1672,80 @@ export function PremiumApplicationWizard({
                 </div>
               )}
 
-              {/* STEP 5: SMART REVIEW SEGMENTS */}
-              {currentStep === 5 && selectedService && serviceConfig && (
+              {/* STEP 4: REVIEW APPLICATIONS DATA & DOCK CHECKLIST */}
+              {currentStep === 4 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Review Verification Summary</h2>
-                    <p className="text-sm text-slate-500 mt-1">Review applicant form sections details prior to secure checkout.</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Review Application Bundle</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Please review the customer contacts and parameters details before submitting.</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Customer */}
-                    <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-5 space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider">Customer Profile</h4>
-                        <button onClick={() => setCurrentStep(3)} className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 hover:underline cursor-pointer">
-                          <Edit2 className="h-3 w-3" />
-                          <span>Edit</span>
-                        </button>
-                      </div>
-                      <div className="space-y-2 text-xs font-semibold text-slate-700">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Name:</span>
-                          <span>{profileData.name}</span>
+                    {/* Contacts summary */}
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4.5 space-y-3.5">
+                      <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                        CRM Customer Profile
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                        <div>
+                          <span className="text-slate-400 font-semibold block">Full Name:</span>
+                          <span className="font-bold text-slate-805">{profileData.name}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Mobile:</span>
-                          <span>{profileData.mobile}</span>
+                        <div>
+                          <span className="text-slate-400 font-semibold block">Mobile Number:</span>
+                          <span className="font-bold text-slate-805">{profileData.mobile}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Email:</span>
-                          <span className="truncate max-w-[150px]">{profileData.email || "N/A"}</span>
+                        <div className="col-span-2">
+                          <span className="text-slate-400 font-semibold block">Email Address:</span>
+                          <span className="font-bold text-slate-805">{profileData.email || "N/A"}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Pincode:</span>
-                          <span>{profileData.pincode} ({profileData.state})</span>
+                        <div className="col-span-2">
+                          <span className="text-slate-400 font-semibold block">Pincode & Address:</span>
+                          <span className="font-bold text-slate-805 leading-normal">{profileData.address}, {profileData.city} - {profileData.pincode}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Service Parameter details */}
-                    <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-5 space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider">Service Details</h4>
-                        <button onClick={() => setCurrentStep(2)} className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 hover:underline cursor-pointer">
-                          <Edit2 className="h-3 w-3" />
-                          <span>Edit</span>
-                        </button>
-                      </div>
-                      <div className="space-y-2 text-xs font-semibold text-slate-700">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Target Service:</span>
-                          <span className="font-bold text-slate-900">{selectedService.title}</span>
-                        </div>
-                        {planDetails && (
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Selected Plan:</span>
-                            <span>{planDetails.name}</span>
-                          </div>
-                        )}
-                        {serviceConfig.formSections.flatMap((s) => s.fields).map((f) => (
-                          <div key={f.name} className="flex justify-between">
-                            <span className="text-slate-400">{f.label}:</span>
-                            <span>{serviceDetails[f.name] || "N/A"}</span>
+                    {/* Cart details and fields */}
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4.5 space-y-3">
+                      <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                        Selected Services & Forms Details
+                      </h4>
+                      <div className="max-h-[220px] overflow-y-auto space-y-3 pr-1 text-xs font-semibold">
+                        {serviceConfigsList.map(({ service, config, index }) => (
+                          <div key={index} className="space-y-1.5 border-b border-slate-200/50 pb-2 last:border-0 last:pb-0">
+                            <p className="font-bold text-slate-900">{service.title} (#{index + 1})</p>
+                            {config?.formSections?.flatMap((s: any) => s.fields).map((f: any) => {
+                              const valKey = `${f.name}_${index}`;
+                              return (
+                                <div key={f.name} className="flex justify-between pl-2.5 text-[11px]">
+                                  <span className="text-slate-400">{f.label}:</span>
+                                  <span className="font-semibold text-slate-705">{serviceDetails[valKey] || "N/A"}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Document Previews */}
-                    <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-5 space-y-4 md:col-span-2">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider">Document Checklist</h4>
-                        <button onClick={() => setCurrentStep(4)} className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 hover:underline cursor-pointer">
-                          <Edit2 className="h-3 w-3" />
-                          <span>Edit</span>
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {serviceConfig.documents.map((d) => {
-                          const file = uploadedFiles[d.id];
+                    {/* Upload docs preview */}
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4.5 space-y-3 md:col-span-2">
+                      <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-1.5">
+                        Attached Documents
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold">
+                        {documentSlots.map(({ slotId, document: d, serviceTitle, instanceIndex }) => {
+                          const file = uploadedFiles[slotId];
                           return (
-                            <div key={d.id} className="bg-white border border-slate-150 p-3 rounded-xl flex justify-between items-center shadow-xs">
-                              <div className="flex items-center gap-2.5 overflow-hidden">
-                                <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                            <div key={slotId} className="bg-white border border-slate-150 p-2.5 rounded-xl flex items-center justify-between shadow-xs">
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <FileText className="h-4 w-4 text-blue-555 shrink-0 animate-none" />
                                 <div className="overflow-hidden">
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase truncate">{d.name}</p>
-                                  <p className="text-xs text-slate-700 font-bold truncate">{file?.name || "Missing Upload"}</p>
+                                  <span className="text-[9px] text-slate-400 block font-bold truncate">
+                                    {d.name} (Instance #{instanceIndex+1})
+                                  </span>
+                                  <p className="font-bold text-slate-808 truncate">{file?.name || "Missing Upload"}</p>
                                 </div>
                               </div>
                             </div>
@@ -1783,277 +1757,231 @@ export function PremiumApplicationWizard({
                 </div>
               )}
 
-              {/* STEP 6: ADVANCED CHECKOUT & SPLIT PAYMENTS */}
-              {currentStep === 6 && selectedService && (
+              {/* STEP 5: SIMPLIFIED GATEWAY CHECKOUT SCREEN */}
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Gateway Checkout</h2>
-                    <p className="text-sm text-slate-500 mt-1">Select transaction route, utilize wallets or choose split-payment options.</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Ecosystem Gateway Checkout</h2>
+                    <p className="text-xs text-slate-550 mt-0.5">Choose checkout route: Wallet, Cash collection, UPI QR, or Razorpay card methods.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-8 items-start">
-                    <div className="space-y-6">
-                      
-                      {/* Coupon input */}
-                      <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-3">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Apply Promo Coupon</label>
-                        {appliedCoupon ? (
-                          <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl flex justify-between items-center text-xs font-bold">
-                            <span className="text-emerald-950 flex items-center gap-1.5">
-                              <Sparkles className="h-4 w-4 text-emerald-600" />
-                              <span>Applied Code: {appliedCoupon.code}</span>
-                            </span>
-                            <button onClick={() => setAppliedCoupon(null)} className="text-red-500 hover:underline cursor-pointer">
-                              Remove
-                            </button>
+                  <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
+                    {/* Method Radio items */}
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Select Payment Channel</label>
+                      <div className="space-y-3">
+                        {/* Razorpay Online */}
+                        <div
+                          onClick={() => {
+                            setPaymentMethod("razorpay");
+                            setUseWallet(false);
+                          }}
+                          className={cn(
+                            "border p-4 rounded-xl flex items-center gap-3.5 cursor-pointer transition-all",
+                            paymentMethod === "razorpay" ? "bg-blue-50/20 border-blue-500/80 shadow-xs" : "bg-white border-slate-200"
+                          )}
+                        >
+                          <span className={cn(
+                            "p-2 rounded-lg shrink-0 border",
+                            paymentMethod === "razorpay" ? "bg-blue-600 border-transparent text-white" : "bg-slate-50 text-slate-400"
+                          )}>
+                            <CreditCard className="h-4.5 w-4.5" />
+                          </span>
+                          <div>
+                            <p className="text-xs font-extrabold text-slate-905">Razorpay / NetBanking / Cards</p>
+                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Pay online securely via Razorpay gateway.</p>
                           </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={couponCode}
-                              onChange={(e) => setCouponCode(e.target.value)}
-                              placeholder="Coupon Code (e.g. WELCOME)"
-                              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm flex-1 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors"
-                            />
-                            <button
-                              onClick={applyCouponCode}
-                              disabled={validatingCoupon}
-                              className="bg-slate-900 text-white px-5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors cursor-pointer"
-                            >
-                              {validatingCoupon ? "Validating..." : "Apply"}
-                            </button>
+                        </div>
+
+                        {/* Direct Wallet Balance payment (if balance exists) */}
+                        {walletBalance > 0 && (
+                          <div
+                            onClick={() => {
+                              setPaymentMethod("wallet");
+                              setUseWallet(true);
+                            }}
+                            className={cn(
+                              "border p-4 rounded-xl flex items-center gap-3.5 cursor-pointer transition-all",
+                              paymentMethod === "wallet" ? "bg-blue-50/20 border-blue-500/80 shadow-xs" : "bg-white border-slate-200"
+                            )}
+                          >
+                            <span className={cn(
+                              "p-2 rounded-lg shrink-0 border",
+                              paymentMethod === "wallet" ? "bg-blue-600 border-transparent text-white" : "bg-slate-50 text-slate-400"
+                            )}>
+                              <Wallet className="h-4.5 w-4.5" />
+                            </span>
+                            <div className="overflow-hidden">
+                              <p className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
+                                <span>Pay using Wallet Credit</span>
+                                <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-black">
+                                  ₹{walletBalance} Balance
+                                </span>
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Deduct amount directly from your wallet balance.</p>
+                            </div>
                           </div>
                         )}
-                      </div>
 
-                      {/* Split Payment checkbox */}
-                      <div className="bg-white border border-slate-100 rounded-2xl p-5 flex items-center justify-between gap-4">
-                        <div className="flex gap-3 items-center">
-                          <div className="bg-slate-50 text-slate-700 p-2.5 rounded-xl border border-slate-100 shrink-0">
-                            <CreditCard className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-800">Split Payment Option</p>
-                            <p className="text-xs text-slate-400 font-semibold">Pay 50% now, pay remaining post-approval.</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setSplitPayment(!splitPayment)}
-                          className={`h-6 w-11 rounded-full p-0.5 transition-colors duration-200 ease-in-out cursor-pointer ${
-                            splitPayment ? "bg-blue-600" : "bg-slate-250"
-                          }`}
+                        {/* Direct Cash collection */}
+                        <div
+                          onClick={() => {
+                            setPaymentMethod("cash");
+                            setUseWallet(false);
+                          }}
+                          className={cn(
+                            "border p-4 rounded-xl flex items-center gap-3.5 cursor-pointer transition-all",
+                            paymentMethod === "cash" ? "bg-blue-50/20 border-blue-500/80 shadow-xs" : "bg-white border-slate-200"
+                          )}
                         >
-                          <div className={`h-5 w-5 rounded-full bg-white shadow-xs transform transition duration-200 ease-in-out ${
-                            splitPayment ? "translate-x-5" : "translate-x-0"
-                          }`} />
-                        </button>
-                      </div>
-
-                      {/* Wallet Redeem */}
-                      {walletBalance > 0 && (
-                        <div className="bg-white border border-slate-100 rounded-2xl p-5 flex items-center justify-between gap-4">
-                          <div className="flex gap-3 items-center">
-                            <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl shrink-0">
-                              <Wallet className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-slate-800">Redeem Wallet Points</p>
-                              <p className="text-xs text-slate-400 font-semibold">Available balance points: ₹{walletBalance}</p>
-                            </div>
+                          <span className={cn(
+                            "p-2 rounded-lg shrink-0 border",
+                            paymentMethod === "cash" ? "bg-blue-600 border-transparent text-white" : "bg-slate-50 text-slate-400"
+                          )}>
+                            <Briefcase className="h-4.5 w-4.5" />
+                          </span>
+                          <div>
+                            <p className="text-xs font-extrabold text-slate-905">Direct Cash Collection</p>
+                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Agent collects physical cash from client.</p>
                           </div>
-                          <button
-                            onClick={() => setUseWallet(!useWallet)}
-                            className={`h-6 w-11 rounded-full p-0.5 transition-colors duration-200 ease-in-out cursor-pointer ${
-                              useWallet ? "bg-blue-600" : "bg-slate-250"
-                            }`}
-                          >
-                            <div className={`h-5 w-5 rounded-full bg-white shadow-xs transform transition duration-200 ease-in-out ${
-                              useWallet ? "translate-x-5" : "translate-x-0"
-                            }`} />
-                          </button>
                         </div>
-                      )}
+
+                        {/* Direct UPI Scan */}
+                        <div
+                          onClick={() => {
+                            setPaymentMethod("upi");
+                            setUseWallet(false);
+                          }}
+                          className={cn(
+                            "border p-4 rounded-xl flex items-center gap-3.5 cursor-pointer transition-all",
+                            paymentMethod === "upi" ? "bg-blue-50/20 border-blue-500/80 shadow-xs" : "bg-white border-slate-200"
+                          )}
+                        >
+                          <span className={cn(
+                            "p-2 rounded-lg shrink-0 border",
+                            paymentMethod === "upi" ? "bg-blue-600 border-transparent text-white" : "bg-slate-50 text-slate-400"
+                          )}>
+                            <QrCode className="h-4.5 w-4.5" />
+                          </span>
+                          <div>
+                            <p className="text-xs font-extrabold text-slate-900">UPI (GPay / PhonePe / QR)</p>
+                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Show UPI QR code to customer for instant transfer.</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Pricing breakdown card */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 space-y-4">
-                      <h3 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
-                        Checkout Summary
+                    {/* Receipt breakdown summary */}
+                    <div className="bg-slate-50 border border-slate-205 rounded-2xl p-5 space-y-4">
+                      <h3 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-200/50 pb-2">
+                        Invoice Receipt Summary
                       </h3>
-
-                      <div className="space-y-3 text-xs font-semibold text-slate-600">
+                      <div className="space-y-2.5 text-xs font-semibold text-slate-655">
                         <div className="flex justify-between">
-                          <span>Government Fee:</span>
-                          <span className="font-bold text-slate-800">₹{govFee}</span>
+                          <span>Government Base Amount:</span>
+                          <span className="font-bold text-slate-805">₹{basePrice}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Dukan Service Fee:</span>
-                          <span className="font-bold text-slate-800">₹{serviceCharge}</span>
+                        <div className="flex justify-between text-[11px] opacity-80 pl-2">
+                          <span>GST (18% Included):</span>
+                          <span>₹{Math.round((basePrice * 0.18) / 1.18)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>GST (18%):</span>
-                          <span className="font-bold text-slate-800">₹{gstAmount}</span>
-                        </div>
-                        {discountAmount > 0 && (
-                          <div className="flex justify-between text-emerald-600">
-                            <span>Promo Discount:</span>
-                            <span>-₹{discountAmount}</span>
-                          </div>
-                        )}
                         {walletRedeemAmount > 0 && (
-                          <div className="flex justify-between text-blue-600">
-                            <span>Wallet Redeem:</span>
+                          <div className="flex justify-between text-blue-605 font-bold">
+                            <span>Wallet Credit Applied:</span>
                             <span>-₹{walletRedeemAmount}</span>
                           </div>
                         )}
                         <div className="border-t border-slate-200 pt-3 flex justify-between text-sm font-black text-slate-900">
-                          <span>Total Payable:</span>
+                          <span>Total Payable Due:</span>
                           <span>₹{totalAmountPayable}</span>
                         </div>
-
-                        {splitPayment && (
-                          <div className="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100 text-[11px] font-bold text-blue-900 space-y-1">
-                            <div className="flex justify-between">
-                              <span>Payable Now (50%):</span>
-                              <span>₹{initialInstallment}</span>
-                            </div>
-                            <div className="flex justify-between text-blue-600">
-                              <span>Pay Later Post-Approval:</span>
-                              <span>₹{payLaterInstallment}</span>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* STEP 7: SUCCESS EXPERIENCE WITH TIMELINE */}
-              {currentStep === 7 && successDetails && (
+              {/* STEP 6: SUBMISSION SUCCESS SCREEN */}
+              {currentStep === 6 && successDetails && (
                 <div className="text-center py-6 space-y-6 max-w-xl mx-auto">
                   <div className="flex flex-col items-center">
                     <div className="h-14 w-14 bg-emerald-50 rounded-full border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm mb-3">
                       <Check className="h-7 w-7" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Application Submitted Successfully</h2>
-                    <p className="text-sm text-slate-500 mt-1">Our processors will update status timeline updates within 24 hours.</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Applications Created Successfully</h2>
+                    <p className="text-xs text-slate-555 mt-0.5">Bundle is registered under workflow scheduler. Expected delivery in {successDetails.processingTime}.</p>
                   </div>
 
-                  {/* Summary details card */}
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-left grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+                  {/* Details card */}
+                  <div className="bg-slate-55 border border-slate-200/60 rounded-2xl p-4.5 text-left grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-705">
                     <div>
-                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Application ID</p>
-                      <p className="font-extrabold text-slate-950 text-sm mt-0.5 select-all">{successDetails.applicationId}</p>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Bundle Primary ID</p>
+                      <p className="font-mono font-extrabold text-slate-905 text-sm mt-0.5 select-all">{successDetails.applicationId}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Government Service</p>
-                      <p className="font-bold text-slate-950 text-sm mt-0.5">{successDetails.serviceTitle}</p>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Services Submitted</p>
+                      <p className="font-bold text-slate-905 text-xs mt-0.5 leading-normal">{successDetails.serviceTitle}</p>
                     </div>
                     <div>
                       <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Paid Amount</p>
-                      <p className="font-bold text-slate-950 text-sm mt-0.5">₹{successDetails.amountPaid} ({successDetails.paymentStatus})</p>
+                      <p className="font-bold text-slate-905 text-sm mt-0.5">₹{successDetails.amountPaid}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Estimated Delivery</p>
-                      <p className="font-bold text-slate-950 text-sm mt-0.5">{successDetails.processingTime}</p>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Payment Channel</p>
+                      <p className="font-bold text-slate-905 text-sm mt-0.5">{successDetails.paymentStatus}</p>
                     </div>
                   </div>
 
-                  {/* Feature 12: Interactive Post-Submission Timeline */}
-                  <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-4 text-left">
-                    <h3 className="font-black text-slate-900 text-xs border-b border-slate-50 pb-1.5 uppercase">
-                      Application Workflow Timeline
+                  {/* Flow chart timeline */}
+                  <div className="bg-white border border-slate-150 rounded-2xl p-4.5 text-left space-y-3.5">
+                    <h3 className="font-black text-slate-805 text-[10px] uppercase border-b border-slate-50 pb-1.5">
+                      Process Workflow Pipeline
                     </h3>
-                    <div className="relative border-l border-slate-100 ml-3 pl-6 space-y-5">
+                    <div className="relative border-l border-slate-100 ml-3 pl-6 space-y-4 text-xs font-semibold">
                       <div className="relative">
                         <div className="absolute -left-[30px] top-1.5 bg-blue-600 rounded-full h-2 w-2 ring-4 ring-blue-50"></div>
-                        <p className="text-xs font-extrabold text-slate-900">Application Submitted</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{new Date().toLocaleString("en-IN")}</p>
+                        <p className="font-extrabold text-slate-900 text-xs">Bundle Submitted</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{new Date().toLocaleString("en-IN")}</p>
                       </div>
-                      <div className="relative">
+                      <div className="relative opacity-65">
                         <div className="absolute -left-[30px] top-1.5 bg-slate-300 rounded-full h-2 w-2"></div>
-                        <p className="text-xs font-bold text-slate-400">Payment Verified</p>
+                        <p className="text-slate-600">Verification check constraints passing</p>
                       </div>
-                      <div className="relative">
+                      <div className="relative opacity-65">
                         <div className="absolute -left-[30px] top-1.5 bg-slate-300 rounded-full h-2 w-2"></div>
-                        <p className="text-xs font-bold text-slate-400">Documents Verification check</p>
+                        <p className="text-slate-600">Processing & Delivery files compilation</p>
                       </div>
-                      <div className="relative">
-                        <div className="absolute -left-[30px] top-1.5 bg-slate-300 rounded-full h-2 w-2"></div>
-                        <p className="text-xs font-bold text-slate-400">Processing & RTO Submission</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Canvas simulated QR Code & Sharing options */}
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white rounded-xl border border-slate-100 shrink-0">
-                        <QrCode className="h-10 w-10 text-slate-900" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-bold text-slate-800">Scan QR Code to Track</p>
-                        <p className="text-[11px] text-slate-400 font-semibold">Track live status on your smartphone.</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          const link = `${window.location.origin}/dashboard/applications/${successDetails.applicationId}`;
-                          navigator.clipboard.writeText(link);
-                          if (toastSuccess) toastSuccess("Link copied to clipboard!");
-                        }}
-                        className="bg-white border border-slate-150 hover:bg-slate-50 p-2 rounded-xl text-slate-700 transition-all cursor-pointer"
-                        title="Copy tracking link"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          const text = encodeURIComponent(`Application submitted! ID: ${successDetails.applicationId}. Track at DigiConnect.`);
-                          window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-                      >
-                        <Share2 className="h-4 w-4" />
-                        <span>Share WhatsApp</span>
-                      </button>
                     </div>
                   </div>
 
                   {/* Actions buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                  <div className="flex flex-wrap gap-2.5 justify-center pt-2 text-xs font-semibold animate-none">
                     {successDetails.invoiceId && (
                       <a
                         href={`/invoice/${successDetails.invoiceId}`}
-                        className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                        className="bg-slate-900 hover:bg-slate-805 text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
                       >
-                        <Download className="h-4 w-4" />
-                        <span>Print Invoice Receipt</span>
+                        <Download className="h-4 w-4" /> Print Invoice
                       </a>
                     )}
                     <button
-                      onClick={() => router.push("/customer/dashboard")}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer"
+                      onClick={() => router.push("/ap/dashboard")}
+                      className="bg-slate-105 hover:bg-slate-205 text-slate-705 font-bold px-4 py-2.5 rounded-xl cursor-pointer border-none"
                     >
                       Return to Dashboard
                     </button>
                     <button
                       onClick={() => {
-                        setSelectedService(null);
+                        setCart([]);
                         setServiceDetails({});
                         setUploadedFiles({});
                         setFileMetadata({});
-                        setAppliedCoupon(null);
                         setUseWallet(false);
-                        setSplitPayment(false);
                         setCurrentStep(1);
                       }}
-                      className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer"
+                      className="bg-blue-55 text-blue-605 hover:bg-blue-105 font-bold px-4 py-2.5 rounded-xl cursor-pointer border-none"
                     >
-                      Start New Application
+                      Create Another Application
                     </button>
                   </div>
                 </div>
@@ -2063,15 +1991,15 @@ export function PremiumApplicationWizard({
           </AnimatePresence>
         </div>
 
-        {/* Action button bar */}
-        {currentStep < 7 && (
-          <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex justify-between items-center z-10">
+        {/* Action Button Navigation Strip */}
+        {currentStep < 6 && (
+          <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-3.5 flex justify-between items-center z-10 font-semibold">
             {currentStep > 1 ? (
               <button
                 type="button"
                 onClick={handlePrevStep}
                 disabled={isSubmitting}
-                className="flex items-center gap-1.5 text-xs font-extrabold text-slate-600 bg-slate-50 hover:bg-slate-100 px-4 py-2.5 rounded-xl border border-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1 text-xs font-black text-slate-660 bg-slate-50 hover:bg-slate-100 px-4 py-2.5 rounded-xl border border-slate-100 transition-colors disabled:opacity-50 cursor-pointer border-none"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back</span>
@@ -2084,21 +2012,21 @@ export function PremiumApplicationWizard({
               type="button"
               disabled={
                 isSubmitting ||
-                (currentStep === 1 && !selectedService) ||
-                (currentStep === 6 && totalAmountPayable > 0 && !isScriptReady)
+                (currentStep === 1 && cart.length === 0) ||
+                (currentStep === 5 && paymentMethod === "razorpay" && totalAmountPayable > 0 && !isScriptReady)
               }
               onClick={handleNextStep}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-xs transition-all disabled:opacity-50 cursor-pointer border-none"
             >
               {isSubmitting ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Processing...</span>
+                  <span>Submitting Bundle...</span>
                 </>
-              ) : currentStep === 6 ? (
+              ) : currentStep === 5 ? (
                 <>
                   <CreditCard className="h-4 w-4" />
-                  <span>{initialInstallment === 0 ? "Submit Application" : "Pay & Submit"}</span>
+                  <span>{totalAmountPayable === 0 ? "Submit Bundle" : "Pay & Submit"}</span>
                 </>
               ) : (
                 <>
@@ -2111,24 +2039,40 @@ export function PremiumApplicationWizard({
         )}
       </div>
 
-      {/* Right Desktop Floating Widget Panel (Sticky Card) */}
-      <div className="w-full lg:sticky lg:top-24 space-y-6">
-        
-        {/* Floating Card */}
-        {selectedService && currentStep < 7 && (
-          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs space-y-4">
-            <h3 className="font-black text-slate-900 text-xs uppercase tracking-wider border-b border-slate-50 pb-2">
-              Application Tracker
+      {/* Right Desktop Floating Widget Cart Summary */}
+      <div className="w-full lg:sticky lg:top-20 space-y-6">
+        {cartItems.length > 0 && currentStep < 6 && (
+          <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-xs space-y-4">
+            <h3 className="font-black text-slate-900 text-xs uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
+              <span>Applications Cart</span>
+              <ShoppingCart className="h-4 w-4 text-slate-400" />
             </h3>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <p className="text-slate-400 font-bold text-[9px] uppercase">Service Type</p>
-                <p className="font-extrabold text-slate-800 mt-0.5">{selectedService.title}</p>
+            {/* List cart items */}
+            <div className="space-y-3 max-h-[220px] overflow-y-auto no-scrollbar border-b border-slate-100 pb-3 pr-1 text-xs font-semibold">
+              {cartItems.map((item) => (
+                <div key={item.service.slug} className="flex justify-between items-start gap-2">
+                  <div className="overflow-hidden">
+                    <p className="font-extrabold text-slate-805 leading-tight truncate">{item.service.title}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">₹{item.service.customer_fee} × {item.quantity}</p>
+                  </div>
+                  <span className="font-black text-slate-900 shrink-0">₹{item.service.customer_fee * item.quantity}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Overall stats */}
+            <div className="space-y-3.5 text-xs font-semibold">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold">Government Fees:</span>
+                <span className="font-black text-slate-808">₹{cartTotalAmount}</span>
               </div>
-              
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold">Total Commission:</span>
+                <span className="font-black text-emerald-600">+₹{totalPayout} Score</span>
+              </div>
               <div>
-                <p className="text-slate-400 font-bold text-[9px] uppercase">Form Progress Score</p>
+                <p className="text-slate-400 font-bold text-[9px] uppercase">Bundle Progress Score</p>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div className="bg-blue-600 h-full rounded-full transition-all" style={{ width: `${completionScore}%` }}></div>
@@ -2136,105 +2080,49 @@ export function PremiumApplicationWizard({
                   <span className="font-extrabold text-[10px] text-blue-600 shrink-0">{completionScore}%</span>
                 </div>
               </div>
-
-              <div>
-                <p className="text-slate-400 font-bold text-[9px] uppercase">Total Cost Estimate</p>
-                <p className="font-black text-slate-950 text-sm mt-0.5">₹{totalAmountPayable}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Feature 13: Simulated Notifications Log panel */}
-        {notificationLogs.length > 0 && (
-          <div className="bg-slate-950 text-white rounded-3xl p-5 space-y-3.5 shadow-md">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-blue-400" />
-                <span>Trigger Notification logs</span>
-              </h4>
-              <button
-                onClick={() => setNotificationLogs([])}
-                className="text-[9px] text-slate-500 hover:text-slate-300 font-bold"
-              >
-                Clear
-              </button>
-            </div>
-            
-            <div className="space-y-2.5 max-h-[220px] overflow-y-auto no-scrollbar">
-              {notificationLogs.map((log, idx) => (
-                <div key={idx} className="text-[10px] space-y-0.5 border-b border-slate-900 pb-2 last:border-b-0">
-                  <div className="flex justify-between font-bold">
-                    <span className={log.type === "WhatsApp" ? "text-emerald-400" : log.type === "Email" ? "text-blue-400" : "text-orange-400"}>
-                      [{log.type}]
-                    </span>
-                    <span className="text-slate-600">{log.timestamp}</span>
-                  </div>
-                  <p className="text-slate-400 font-semibold leading-relaxed">{log.message}</p>
-                </div>
-              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Feature 4: CRM Customer Application History Drawer */}
+      {/* CRM Customer History Dossier drawer */}
       {showHistoryDrawer && customer360 && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex justify-end">
-          <div className="bg-white border-l border-slate-100 w-full max-w-md h-full flex flex-col justify-between p-6 shadow-xl">
-            <div className="space-y-6 flex-1 overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 bg-slate-955/40 backdrop-blur-xs z-50 flex justify-end font-semibold">
+          <div className="bg-white border-l border-slate-205 w-full max-w-md h-full flex flex-col justify-between p-6 shadow-xl">
+            <div className="space-y-6 flex-1 overflow-y-auto no-scrollbar font-semibold">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-950 text-base flex items-center gap-1.5">
+                <h3 className="font-black text-slate-955 text-base flex items-center gap-1.5 font-bold">
                   <ClipboardList className="h-5 w-5 text-blue-600" />
                   <span>Applicant Dossier History</span>
                 </h3>
                 <button
                   onClick={() => setShowHistoryDrawer(false)}
-                  className="text-slate-400 hover:text-slate-600 p-1 bg-slate-50 rounded-lg cursor-pointer"
+                  className="text-slate-400 hover:text-slate-655 p-1 bg-slate-50 rounded-lg cursor-pointer border-none"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4.5 w-4.5" />
                 </button>
               </div>
 
-              {/* History list */}
-              <div className="space-y-4">
+              <div className="space-y-3 font-semibold">
                 {customer360.recentApplications.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center font-bold">No previous submissions records.</p>
                 ) : (
                   customer360.recentApplications.map((app) => (
-                    <div key={app.id} className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black text-slate-400 uppercase select-all">ID: {app.id.slice(0, 8)}</span>
-                        <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                          app.status === "completed" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
-                        }`}>
+                    <div key={app.id} className="bg-slate-50 border border-slate-205/60 rounded-xl p-3.5 space-y-2">
+                      <div className="flex justify-between items-center animate-none">
+                        <span className="text-[9px] font-black text-slate-400 select-all">ID: {app.id.slice(0, 8)}</span>
+                        <span className="text-[9px] bg-blue-50 text-blue-600 font-extrabold px-1.5 py-0.5 rounded">
                           {app.status}
                         </span>
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-slate-800 text-xs">{app.serviceName}</h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Submitted {new Date(app.createdAt).toLocaleDateString("en-IN")}</p>
-                      </div>
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 pt-1.5 border-t border-slate-100/50">
-                        <span>Paid amount: ₹{app.amount}</span>
-                        <span>Assignee: {app.assignedTo}</span>
+                        <h4 className="font-extrabold text-slate-808 text-xs">{app.serviceName}</h4>
+                        <p className="text-[9px] text-slate-455 mt-0.5">{new Date(app.createdAt).toLocaleDateString("en-IN")}</p>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex gap-2">
-              <button
-                onClick={() => {
-                  setShowHistoryDrawer(false);
-                  applyCustomer360Autofill();
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-2.5 rounded-xl w-full shadow-sm transition-all cursor-pointer text-center"
-              >
-                Autofill Contacts from History
-              </button>
             </div>
           </div>
         </div>

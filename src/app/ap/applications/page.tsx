@@ -18,7 +18,10 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-export default async function APApplicationsPage() {
+export default async function APApplicationsPage(props: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
 
   if (!user) {
@@ -34,7 +37,21 @@ export default async function APApplicationsPage() {
     redirect("/unauthorized");
   }
 
-  const applications = await getAPApplications(ap.id);
+  let applications = await getAPApplications(ap.id);
+  
+  const statusFilter = searchParams.status;
+  if (statusFilter) {
+    applications = applications.filter((app) => {
+      if (statusFilter === "draft") return ["draft", "new"].includes(app.status);
+      if (statusFilter === "documents_pending") return ["documents_pending", "document_pending", "documents_required"].includes(app.status);
+      if (statusFilter === "payment_pending") return app.status === "payment_pending";
+      if (statusFilter === "submitted") return app.status === "submitted";
+      if (statusFilter === "processing") return ["processing", "in_process", "in_progress", "assigned_to_agent"].includes(app.status);
+      if (statusFilter === "completed") return ["completed", "delivered", "approved"].includes(app.status);
+      if (statusFilter === "rejected") return ["rejected", "cancelled"].includes(app.status);
+      return true;
+    });
+  }
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">

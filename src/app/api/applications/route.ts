@@ -60,6 +60,8 @@ type ApplicationPayload = {
   walletUsed?: number;
   freshAmount?: number;
   finalAmount?: number;
+  isDraft?: boolean;
+  status?: string;
 };
 
 type RazorpayPaymentDetails = {
@@ -384,7 +386,7 @@ export async function POST(request: Request) {
       return jsonError("Invalid application payload.", 400);
     }
 
-    const serviceSlugs = Array.from(new Set((Array.isArray(body.serviceSlugs) && body.serviceSlugs.length ? body.serviceSlugs : [body.serviceSlug]).map((slug) => String(slug ?? "").trim()).filter(Boolean)));
+    const serviceSlugs = (Array.isArray(body.serviceSlugs) && body.serviceSlugs.length ? body.serviceSlugs : [body.serviceSlug]).map((slug) => String(slug ?? "").trim()).filter(Boolean);
     const services = await Promise.all(serviceSlugs.map((slug) => getPublicServiceBySlug(slug)));
 
     if (!services.length || services.some((service) => !service)) {
@@ -561,14 +563,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const hasVerifiedRazorpayPayment = orderAmount === 0 || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
+    const isDraft = body.isDraft || ["draft", "documents_pending", "payment_pending"].includes(body.status || "");
+    const hasVerifiedRazorpayPayment = orderAmount === 0 || isDraft || isVerifiedRazorpayPayment(body.razorpayPayment, expectedRazorpayAmountPaise);
 
     if (!hasVerifiedRazorpayPayment) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
     }
 
     const razorpayDetails =
-      hasVerifiedRazorpayPayment && body.razorpayPayment?.razorpay_payment_id
+      hasVerifiedRazorpayPayment && !isDraft && body.razorpayPayment?.razorpay_payment_id
         ? await fetchRazorpayPaymentDetails(body.razorpayPayment.razorpay_payment_id)
         : null;
 
@@ -694,38 +697,71 @@ export async function POST(request: Request) {
       }
 
       const existingIds = existingApplications.map((application) => application.id);
-      const { error: updateError } = await supabase
-        .from("applications")
-        .update({
-          form_data: formData,
-          customer_details: customerDetails,
-          service_snapshot: serviceSnapshot,
-          metadata: applicationMetadata,
-          status: "submitted",
-          payment_status: "verified",
-          razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? existingApplications[0]?.razorpay_order_id ?? null,
-          razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? existingApplications[0]?.razorpay_payment_id ?? null,
-          submitted_at: new Date().toISOString(),
-          customer_id: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
-          customer_email: customer.email.toLowerCase(),
-          customer_mobile: customer.mobile.replace(/\D/g, ""),
-          updated_at: new Date().toISOString(),
-        })
-        .in("id", existingIds);
+      for (let index = 0; index < existingApplications.length; index++) {
+        const application = existingApplications[index];
+        const serviceSpecificDetails: Record<string, string> = {};
+        Object.entries(details).forEach(([key, value]) => {
+          const suffix = `_${index}`;
+          if (key.endsWith(suffix)) {
+            const cleanKey = key.slice(0, -suffix.length);
+            serviceSpecificDetails[cleanKey] = String(value ?? "").trim();
+          } else if (!key.match(/_\d+$/)) {
+            serviceSpecificDetails[key] = String(value ?? "").trim();
+          }
+        });
 
-      if (updateError) {
-        console.error("[applications] Existing application finalization failed", {
-          userId: user.id,
-          existingIds,
-          error: updateError,
-        });
-        flowLog("APPLICATION_SUBMIT_FATAL", {
-          userId: user.id,
-          applicationIds: existingIds,
-          reason: "existing_application_update_failed",
-        });
-        return jsonError("Application could not be finalized after payment. Please contact support.", 500);
+        const rowFormData = {
+          service: application.service_name,
+          name: customer.name,
+          mobile: customer.mobile,
+          email: customer.email.toLowerCase(),
+          city: customer.city,
+          message: customer.message,
+          service_slugs: [application.service_slug],
+          payment: {
+            total_amount: application.amount,
+            wallet_redeemed_amount: 0,
+            fresh_payable_amount: application.amount,
+            cashback_eligible_amount: application.amount,
+          },
+          ...serviceSpecificDetails,
+          documents: documents.filter((doc) => doc.document_type.endsWith(`_${index}`) || !doc.document_type.match(/_\d+$/)),
+        };
+
+        const { error: updateError } = await supabase
+          .from("applications")
+          .update({
+            form_data: rowFormData,
+            customer_details: customerDetails,
+            service_snapshot: {
+              title: application.service_name,
+              slug: application.service_slug,
+              price: application.amount,
+            },
+            metadata: applicationMetadata,
+            status: body.status || "submitted",
+            payment_status: hasVerifiedRazorpayPayment && !isDraft ? "verified" : "pending",
+            razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? application.razorpay_order_id ?? null,
+            razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? application.razorpay_payment_id ?? null,
+            submitted_at: isDraft ? null : new Date().toISOString(),
+            customer_id: linkedCustomer?.id ?? application.customer_id ?? null,
+            customer_email: customer.email.toLowerCase(),
+            customer_mobile: customer.mobile.replace(/\D/g, ""),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", application.id);
+
+        if (updateError) {
+          console.error("[applications] Existing application finalization failed", {
+            userId: user.id,
+            id: application.id,
+            error: updateError,
+          });
+          return jsonError("Application could not be finalized after payment. Please contact support.", 500);
+        }
       }
+
+
 
       flowLog("APPLICATION_CREATED", {
         userId: user.id,
@@ -944,6 +980,53 @@ export async function POST(request: Request) {
       remainingWalletForApplications = Math.max(0, remainingWalletForApplications - rowWalletRedeem);
       const rowFreshPayable = Math.max(0, rowAmount - rowWalletRedeem);
 
+      const serviceSpecificDetails: Record<string, string> = {};
+      Object.entries(details).forEach(([key, value]) => {
+        const suffix = `_${index}`;
+        if (key.endsWith(suffix)) {
+          const cleanKey = key.slice(0, -suffix.length);
+          serviceSpecificDetails[cleanKey] = String(value ?? "").trim();
+        } else if (!key.match(/_\d+$/)) {
+          serviceSpecificDetails[key] = String(value ?? "").trim();
+        }
+      });
+
+      const rowFormData = {
+        service: service.title,
+        name: customer.name,
+        mobile: customer.mobile,
+        email: customer.email.toLowerCase(),
+        city: customer.city,
+        message: customer.message,
+        service_slugs: [service.slug],
+        payment: {
+          total_amount: rowAmount,
+          wallet_redeemed_amount: rowWalletRedeem,
+          fresh_payable_amount: rowFreshPayable,
+          cashback_eligible_amount: rowFreshPayable,
+        },
+        ...serviceSpecificDetails,
+        documents: documents.filter((doc) => doc.document_type.endsWith(`_${index}`) || !doc.document_type.match(/_\d+$/)),
+      };
+
+      const rowSnapshot = {
+        title: service.title,
+        slug: service.slug,
+        category: service.category,
+        category_slug: service.categorySlug,
+        price: rowAmount,
+        services: [
+          {
+            title: service.title,
+            slug: service.slug,
+            category: service.category,
+            categorySlug: service.categorySlug,
+            amount: service.amount,
+            documents: service.documents,
+          }
+        ]
+      };
+
       return {
         user_id: user.id,
         customer_id: linkedCustomer?.id ?? null,
@@ -958,14 +1041,22 @@ export async function POST(request: Request) {
         real_payment_amount: rowFreshPayable,
         fresh_payable_amount: rowFreshPayable,
         cashback_eligible_amount: rowFreshPayable,
-        form_data: formData,
+        form_data: rowFormData,
         customer_details: customerDetails,
-        service_snapshot: serviceSnapshot,
-        metadata: applicationMetadata,
-        status: hasVerifiedRazorpayPayment ? "submitted" : "payment_pending",
+        service_snapshot: rowSnapshot,
+        metadata: {
+          ...applicationMetadata,
+          payment: {
+            total_amount: rowAmount,
+            wallet_redeemed_amount: rowWalletRedeem,
+            fresh_payable_amount: rowFreshPayable,
+            cashback_eligible_amount: rowFreshPayable,
+          }
+        },
+        status: body.status || (hasVerifiedRazorpayPayment ? "submitted" : "payment_pending"),
         created_by: user.id,
         source: "online",
-        payment_status: hasVerifiedRazorpayPayment ? "verified" : "pending",
+        payment_status: hasVerifiedRazorpayPayment && !isDraft ? "verified" : "pending",
         submitted_by_role: role,
       };
     });

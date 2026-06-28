@@ -164,9 +164,16 @@ export function APDashboardClient({
 
   useEffect(() => {
     setMounted(true);
-    // Format dynamic login timestamp (simulating auth sign-in time)
     const d = new Date();
     setLoginTime(d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) + ", Today");
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const qStatus = params.get("status");
+      if (qStatus) {
+        setStatusFilter(qStatus);
+      }
+    }
   }, []);
 
   if (!mounted) {
@@ -207,12 +214,32 @@ export function APDashboardClient({
     const matchesSearch = name.includes(searchTerm.toLowerCase()) || service.includes(searchTerm.toLowerCase());
     
     if (statusFilter === "all") return matchesSearch;
-    if (statusFilter === "pending") return matchesSearch && (app.status === "pending" || app.status === "draft");
-    if (statusFilter === "approved") return matchesSearch && (app.status === "approved" || app.status === "completed" || app.status === "delivered");
+    if (statusFilter === "draft") return matchesSearch && ["draft", "new"].includes(app.status);
+    if (statusFilter === "documents_pending") return matchesSearch && ["documents_pending", "document_pending", "documents_required"].includes(app.status);
+    if (statusFilter === "payment_pending") return matchesSearch && app.status === "payment_pending";
+    if (statusFilter === "submitted") return matchesSearch && app.status === "submitted";
+    if (statusFilter === "pending") return matchesSearch && (app.status === "pending" || app.status === "draft" || ["documents_pending", "document_pending", "documents_required", "payment_pending"].includes(app.status));
+    if (statusFilter === "approved" || statusFilter === "completed") return matchesSearch && (app.status === "approved" || app.status === "completed" || app.status === "delivered");
     if (statusFilter === "rejected") return matchesSearch && (app.status === "rejected" || app.status === "cancelled");
-    if (statusFilter === "processing") return matchesSearch && ["in_process", "in_progress", "submitted", "assigned_to_agent"].includes(app.status);
+    if (statusFilter === "processing") return matchesSearch && ["processing", "in_process", "in_progress", "submitted", "assigned_to_agent"].includes(app.status);
     return matchesSearch;
   });
+
+  const draftsCount = recentApps.filter(app => ["draft", "new"].includes(app.status)).length;
+  const pendingDocsCount = recentApps.filter(app => ["documents_pending", "document_pending", "documents_required"].includes(app.status)).length;
+  const pendingPaymentCount = recentApps.filter(app => ["payment_pending"].includes(app.status)).length;
+  const submittedCount = recentApps.filter(app => ["submitted"].includes(app.status)).length;
+  const processingCount = recentApps.filter(app => ["processing", "in_process", "in_progress", "assigned_to_agent"].includes(app.status)).length;
+  const completedCount = recentApps.filter(app => ["completed", "delivered", "approved"].includes(app.status)).length;
+
+  const workflowStages = [
+    { key: "draft", label: "Drafts (Step 2)", count: draftsCount, icon: FileText, tone: "bg-slate-50 text-slate-600 border-slate-200/50" },
+    { key: "documents_pending", label: "Pending Documents (Step 3)", count: pendingDocsCount, icon: Upload, tone: "bg-amber-50 text-amber-600 border-amber-100/50" },
+    { key: "payment_pending", label: "Pending Payment (Step 5)", count: pendingPaymentCount, icon: WalletCards, tone: "bg-rose-50 text-rose-600 border-rose-100/50" },
+    { key: "submitted", label: "Submitted", count: submittedCount, icon: Inbox, tone: "bg-blue-50 text-blue-600 border-blue-100/50" },
+    { key: "processing", label: "Processing", count: processingCount, icon: Activity, tone: "bg-purple-50 text-purple-600 border-purple-100/50" },
+    { key: "completed", label: "Completed", count: completedCount, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-600 border-emerald-100/50" },
+  ];
 
   // Pie chart config for Commission splits
   const commissionPieData = [
@@ -360,6 +387,52 @@ export function APDashboardClient({
           </div>
         </motion.div>
       )}
+
+      {/* WORKFLOW STAGES & DRAFTS CENTER */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Workflow Stages & Drafts</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {workflowStages.map((stage) => {
+            const Icon = stage.icon;
+            const isActive = statusFilter === stage.key;
+            return (
+              <button
+                key={stage.key}
+                onClick={() => setStatusFilter(isActive ? "all" : stage.key)}
+                className={cn(
+                  "p-4 rounded-2xl border text-left flex flex-col justify-between h-28 transition-all duration-200 cursor-pointer select-none",
+                  isActive 
+                    ? "bg-blue-600 border-transparent text-white shadow-md shadow-blue-500/10" 
+                    : "bg-white/70 backdrop-blur-md border-slate-200/50 hover:bg-white hover:border-slate-300 text-slate-800"
+                )}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className={cn(
+                    "p-2 rounded-xl border flex items-center justify-center",
+                    isActive ? "bg-white/10 border-white/20 text-white" : stage.tone
+                  )}>
+                    <Icon className="h-4.5 w-4.5" />
+                  </span>
+                  <span className={cn(
+                    "text-lg font-black tracking-tight",
+                    isActive ? "text-white" : "text-slate-900"
+                  )}>
+                    {stage.count}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <p className={cn(
+                    "text-[10px] font-black uppercase tracking-wider",
+                    isActive ? "text-blue-100" : "text-slate-400"
+                  )}>
+                    {stage.label}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* 2. REAL-TIME BUSINESS METRICS MATRIX */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -630,7 +703,7 @@ export function APDashboardClient({
 
               {/* Status Filters */}
               <div className="flex flex-wrap gap-1">
-                {["all", "pending", "processing", "approved", "rejected"].map((status) => (
+                {["all", "draft", "documents_pending", "payment_pending", "submitted", "processing", "completed", "rejected"].map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
@@ -641,7 +714,7 @@ export function APDashboardClient({
                         : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
                     )}
                   >
-                    {status}
+                    {status.replace(/_/g, " ")}
                   </button>
                 ))}
               </div>

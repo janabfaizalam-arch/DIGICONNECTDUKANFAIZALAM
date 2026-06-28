@@ -479,30 +479,83 @@ export function APPanelNav() {
 
                 {/* 2. Operations Section */}
                 <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Services & Filings</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Workflow Tracker</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5 text-xs font-bold">
                     <Link
                       href="/ap/dashboard"
                       onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
                     >
-                      <LayoutDashboard className="h-4.5 w-4.5 text-blue-500" />
-                      <span>Analytics Console</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                      <LayoutDashboard className="h-4 w-4 text-blue-500" />
+                      <span>Dashboard</span>
                     </Link>
                     <Link
-                      href="/ap/applications"
+                      href="/ap/applications/new"
                       onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
                     >
-                      <FileText className="h-4.5 w-4.5 text-orange-500" />
-                      <span>Applications Log</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                      <Home className="h-4 w-4 text-emerald-500" />
+                      <span>New Application</span>
                     </Link>
+                    <Link
+                      href="/ap/applications?status=draft"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
+                    >
+                      <FileText className="h-4 w-4 text-slate-450" />
+                      <span>Drafts (Step 2)</span>
+                    </Link>
+                    <Link
+                      href="/ap/applications?status=documents_pending"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
+                    >
+                      <FileText className="h-4 w-4 text-amber-500" />
+                      <span>Pending Documents (Step 3)</span>
+                    </Link>
+                    <Link
+                      href="/ap/applications?status=payment_pending"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
+                    >
+                      <FileText className="h-4 w-4 text-rose-500" />
+                      <span>Pending Payment (Step 5)</span>
+                    </Link>
+                    <Link
+                      href="/ap/applications?status=submitted"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
+                    >
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <span>Submitted</span>
+                    </Link>
+                    <Link
+                      href="/ap/applications?status=processing"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
+                    >
+                      <FileText className="h-4 w-4 text-purple-500" />
+                      <span>Processing</span>
+                    </Link>
+                    <Link
+                      href="/ap/applications?status=completed"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
+                    >
+                      <FileText className="h-4 w-4 text-emerald-500" />
+                      <span>Completed</span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 2.5. Catalog & CRM Section */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Services & Filings</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
                     <Link
                       href="/ap/services"
                       onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
                     >
                       <Layers className="h-4.5 w-4.5 text-emerald-500" />
                       <span>Services Catalog</span>
@@ -511,7 +564,7 @@ export function APPanelNav() {
                     <Link
                       href="/ap/customers"
                       onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
                     >
                       <Users className="h-4.5 w-4.5 text-sky-500" />
                       <span>Customers & CRM</span>
