@@ -40,9 +40,9 @@ export async function POST(request: Request) {
 
     if (apps && apps.length > 0) {
       for (const app of apps) {
-        const formData = (app.form_data || {}) as Record<string, any>;
+        const formData = (app.form_data || {}) as Record<string, unknown>;
 
-        for (const [key, val] of Object.entries(identifiers)) {
+        for (const val of Object.values(identifiers)) {
           if (!val) continue;
 
           const cleanVal = String(val).trim().toUpperCase();

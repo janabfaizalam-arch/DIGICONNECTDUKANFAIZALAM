@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   ClipboardList,
   FileClock,
-  GalleryHorizontalEnd,
   IndianRupee,
   Search,
-  ShieldCheck,
   TrendingUp,
   UsersRound,
   RefreshCw,
@@ -19,7 +17,6 @@ import {
   ArrowDownRight,
   Activity,
   Layers,
-  FileText,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 

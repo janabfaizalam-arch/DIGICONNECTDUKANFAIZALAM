@@ -21,11 +21,7 @@ import {
   Settings,
   Compass,
   Landmark,
-  ReceiptText,
-  TrendingUp,
-  Gift,
   Home,
-  LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";

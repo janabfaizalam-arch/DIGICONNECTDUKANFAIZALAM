@@ -8,7 +8,7 @@
 import React from "react";
 import { User, CreditCard, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { SCORE_COLORS, formatCreditDate } from "@/lib/credit/constants";
+import { formatCreditDate } from "@/lib/credit/constants";
 import type { CreditReportRecord, ScoreCategory } from "@/lib/credit/types";
 import { CreditScoreCard } from "./credit-score-card";
 
@@ -17,8 +17,6 @@ interface CreditReportViewerProps {
 }
 
 export function CreditReportViewer({ report }: CreditReportViewerProps) {
-  const category = (report.score_category as ScoreCategory) || "good";
-
   const handleDownload = () => {
     window.open(`/api/credit/download?id=${report.id}`, "_blank");
   };

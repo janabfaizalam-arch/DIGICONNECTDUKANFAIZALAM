@@ -4,11 +4,11 @@ import { type FormEvent, useEffect, useMemo, useState, useRef, useTransition } f
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  CheckCircle2, CreditCard, FileUp, Send, Search, User, UserPlus, 
-  Sparkles, ShieldCheck, Check, AlertTriangle, Trash2, Camera, QrCode, 
-  History, HelpCircle, Phone, Mail, MapPin, Download, Printer, Share2, 
-  Clock, IndianRupee, Layers, FileText, ChevronRight, X, AlertCircle, ArrowLeft,
-  MoreHorizontal, Star, ChevronDown
+  CheckCircle2, FileUp, Send, Search, User, UserPlus, 
+  ShieldCheck, Check, AlertTriangle, Trash2, Camera, 
+  History, HelpCircle, MapPin, Download, Printer, Share2, 
+  Clock, IndianRupee, FileText, ChevronRight, X, AlertCircle, ArrowLeft,
+  MoreHorizontal, Star
 } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
@@ -22,7 +22,6 @@ import {
   usePmVishwakarmaPincodeAutofill,
 } from "@/components/portal/pm-vishwakarma-application-fields";
 import { useToast } from "@/components/providers/toast-provider";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -183,7 +182,6 @@ export function APApplicationForm({
   const finalScore = selectedVariant ? Number(selectedVariant.score) : Number(selectedPayout);
   const calculatedGST = Math.round(finalCustomerFee * 0.18);
   const grossTotal = finalCustomerFee + calculatedGST;
-  const partnerNetMargin = finalScore;
   const payableAmountPaise = Math.round(finalCustomerFee * 100);
 
   const receiptPrefix = `ap-${selectedService?.slug ?? "service"}`;

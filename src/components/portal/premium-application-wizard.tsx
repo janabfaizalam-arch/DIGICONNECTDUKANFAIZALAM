@@ -1,21 +1,23 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
-  Search, Check, Shield, Lock, CreditCard, Wallet, AlertTriangle, ArrowLeft, ArrowRight,
+  type LucideIcon,
+  Search, Check, Shield, CreditCard, Wallet, AlertTriangle, ArrowLeft, ArrowRight,
   Camera, Upload, Trash2, Edit2, Download, Copy, RefreshCw, X, FileText, MapPin,
-  UserCheck, Eye, Sparkles, Building, Briefcase, Car, FileCheck, HeartHandshake,
-  Maximize2, RotateCw, ZoomIn, ZoomOut, CheckCircle2, AlertCircle, Share2, QrCode, ClipboardList
+  UserCheck, Sparkles, Building, Briefcase, Car, FileCheck, HeartHandshake,
+  RotateCw, ZoomIn, ZoomOut, AlertCircle, Share2, QrCode, ClipboardList
 } from "lucide-react";
 import { servicesData, type ServiceItem } from "@/lib/services-data";
-import { getDynamicServiceConfig, type ServiceConfig, type FieldSchema } from "@/lib/services-config";
+import { getDynamicServiceConfig, type FieldSchema } from "@/lib/services-config";
 import { useToast } from "@/components/providers/toast-provider";
 import Script from "next/script";
 
 // Icon mapping for categories
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
   cards: CreditCard,
   loans: HeartHandshake,
   banking: Building,
@@ -45,13 +47,36 @@ export interface PremiumApplicationWizardProps {
   };
 }
 
+interface CustomerApplicationHistoryItem {
+  id: string;
+  serviceName: string;
+  serviceSlug: string;
+  status: string;
+  amount: number;
+  createdAt: string;
+  assignedTo: string;
+}
+
+interface DuplicateMatchItem {
+  applicationId: string;
+  serviceName: string;
+  status: string;
+  createdAt: string;
+  matchedField: string;
+  matchedValue: string;
+}
+
 export function PremiumApplicationWizard({
   initialServiceSlug,
   initialProfileFields
 }: PremiumApplicationWizardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast() as any;
+  const { success: toastSuccess, error: toastError, toast } = useToast();
+
+  const toastWarning = (title: string, description?: string) => {
+    toast({ title, description, variant: "default" });
+  };
 
   // Step state
   const [currentStep, setCurrentStep] = useState(1);
@@ -98,7 +123,7 @@ export function PremiumApplicationWizard({
     completedApplications: number;
     pendingApplications: number;
     recentServices: string[];
-    recentApplications: any[];
+    recentApplications: CustomerApplicationHistoryItem[];
     walletBalance: number;
     customerSince: string;
     lastVisit: string;
@@ -119,8 +144,7 @@ export function PremiumApplicationWizard({
   const [fileMetadata, setFileMetadata] = useState<Record<string, { size: string; type: string; sharpness: string; dpi: number; validationPassed: boolean; errors: string[] }>>({});
   const [rotateAngle, setRotateAngle] = useState<Record<string, number>>({});
   const [zoomScale, setZoomScale] = useState<Record<string, number>>({});
-  const [activeDocPreview, setActiveDocPreview] = useState<string | null>(null);
-  
+
   // OCR scanning state
   const [ocrScanningSlot, setOcrScanningSlot] = useState<string | null>(null);
   const [ocrExtractionResult, setOcrExtractionResult] = useState<{
@@ -131,7 +155,7 @@ export function PremiumApplicationWizard({
   // Duplicate Check warning
   const [duplicateWarning, setDuplicateWarning] = useState<{
     show: boolean;
-    duplicates: any[];
+    duplicates: DuplicateMatchItem[];
   } | null>(null);
 
   // Pricing & Coupon
@@ -141,7 +165,6 @@ export function PremiumApplicationWizard({
   const [walletBalance, setWalletBalance] = useState(0);
   const [useWallet, setUseWallet] = useState(false);
   const [splitPayment, setSplitPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "upi" | "razorpay" | "credit" | "pay_later">("razorpay");
 
   // Notifications Simulation
   const [notificationLogs, setNotificationLogs] = useState<{ type: "WhatsApp" | "Email" | "SMS"; message: string; timestamp: string }[]>([]);
@@ -230,7 +253,7 @@ export function PremiumApplicationWizard({
         console.error("Error restoring draft", e);
       }
     }
-  }, [initialServiceSlug]);
+  }, [initialServiceSlug, toastSuccess]);
 
   // Autosave
   useEffect(() => {
@@ -314,7 +337,7 @@ export function PremiumApplicationWizard({
       setCustomerLookupStatus("idle");
       setCustomer360(null);
     }
-  }, [profileData.mobile]);
+  }, [profileData.mobile, toastSuccess]);
 
   // Live Inline Validation for Dynamic Inputs
   const handleLiveValidate = (field: FieldSchema, value: string) => {
@@ -484,7 +507,6 @@ export function PremiumApplicationWizard({
   const runAiValidation = (docId: string, file: File) => {
     // Generate simulated metadata
     const sizeMb = (file.size / (1024 * 1024)).toFixed(2) + " MB";
-    const integrityCheck = true;
     const sharpness = Math.random() > 0.15 ? "High (92%)" : "Blurry (45%)";
     const dpi = Math.random() > 0.1 ? 300 : 150;
     
@@ -657,7 +679,7 @@ export function PremiumApplicationWizard({
   };
 
   // Submit flow
-  const handleFinalSubmit = async (razorpayDetails?: any) => {
+  const handleFinalSubmit = async (razorpayDetails?: Record<string, unknown> | null) => {
     setIsSubmitting(true);
     try {
       const payload = {
@@ -733,8 +755,9 @@ export function PremiumApplicationWizard({
 
       setCurrentStep(7);
       if (toastSuccess) toastSuccess("Enterprise application submitted successfully!");
-    } catch (err: any) {
-      toastError(err.message || "Submission failed.");
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Submission failed.";
+      toastError(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -792,7 +815,7 @@ export function PremiumApplicationWizard({
           contact: profileData.mobile
         },
         theme: { color: "#2563eb" },
-        handler: async (paymentResponse: any) => {
+        handler: async (paymentResponse: Record<string, unknown>) => {
           try {
             // Verify payment
             const verifyResponse = await fetch("/api/verify-payment", {
@@ -809,15 +832,15 @@ export function PremiumApplicationWizard({
               throw new Error(verifyData.error || "Payment verification failed.");
             }
 
-            // Submit application with verified payment details
             await handleFinalSubmit({
               ...paymentResponse,
-              application_id: orderData.application_id,
-              application_ids: orderData.application_ids,
-              amount_paise: orderData.amount
+              application_id: orderData.application_id as string,
+              application_ids: orderData.application_ids as string[],
+              amount_paise: orderData.amount as number
             });
-          } catch (e: any) {
-            toastError(e.message || "Verification failed.");
+          } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : "Verification failed.";
+            toastError(errorMsg);
             setIsSubmitting(false);
           }
         },
@@ -829,10 +852,11 @@ export function PremiumApplicationWizard({
         }
       };
 
-      const rzpay = new (window as any).Razorpay(options);
+      const rzpay = new (window as unknown as { Razorpay: new (options: Record<string, unknown>) => { open: () => void } }).Razorpay(options);
       rzpay.open();
-    } catch (e: any) {
-      toastError(e.message || "Payment window error.");
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : "Payment window error.";
+      toastError(errorMsg);
       setIsSubmitting(false);
     }
   };
@@ -1237,7 +1261,7 @@ export function PremiumApplicationWizard({
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 overflow-hidden shrink-0">
                             {customer360.avatarUrl ? (
-                              <img src={customer360.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                              <Image src={customer360.avatarUrl} alt="Avatar" className="h-full w-full object-cover" width={40} height={40} unoptimized />
                             ) : (
                               <UserCheck className="h-5 w-5 text-blue-600" />
                             )}
@@ -1530,6 +1554,15 @@ export function PremiumApplicationWizard({
                                     >
                                       <ZoomOut className="h-3.5 w-3.5" />
                                     </button>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 px-2">
+                                    {rotateAngle[d.id] ? (
+                                      <span className="text-[9px] text-slate-400 font-bold font-mono bg-slate-50 px-1.5 py-0.5 rounded">{rotateAngle[d.id]}°</span>
+                                    ) : null}
+                                    {zoomScale[d.id] ? (
+                                      <span className="text-[9px] text-slate-400 font-bold font-mono bg-slate-50 px-1.5 py-0.5 rounded">{zoomScale[d.id]}x</span>
+                                    ) : null}
                                   </div>
 
                                   <div className="flex items-center gap-1">

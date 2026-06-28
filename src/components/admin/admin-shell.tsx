@@ -7,7 +7,6 @@ import {
   BarChart3,
   Bell,
   ClipboardList,
-  ChevronDown,
   FolderCheck,
   LayoutDashboard,
   ListChecks,
@@ -22,7 +21,6 @@ import {
   X,
   LoaderCircle,
   MapPin,
-  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";

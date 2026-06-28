@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     }
 
     // 1. Locate customer profile matching mobile number
-    let { data: profile, error } = await supabaseAdmin
+    const { data: profileData, error } = await supabaseAdmin
       .from("profiles")
       .select("id, full_name, email, mobile, city, address, pincode, state, district, avatar_url, created_at")
       .eq("mobile", mobile)
@@ -27,6 +27,8 @@ export async function GET(request: Request) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
+
+    let profile = profileData;
 
     // Fallback search in customer_profiles table
     if (!profile) {

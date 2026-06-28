@@ -106,7 +106,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application not found." }, { status: 404 });
     }
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
       cashback_enabled: true,
       cashback_amount: null,
@@ -114,7 +114,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (customFormData) {
       updates.form_data = {
-        ...((application.form_data as Record<string, any>) || {}),
+        ...((application.form_data as Record<string, unknown>) || {}),
         ...customFormData,
       };
     }

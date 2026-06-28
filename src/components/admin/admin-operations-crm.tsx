@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useState, useTransition, useMemo } from "react";
+import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  CheckCircle2, Clock, ShieldCheck, HelpCircle, MessageSquare, Plus,
-  Send, User, Trash2, Pin, CheckSquare, Square, AlertTriangle, AlertCircle,
-  Building, Users, Phone, Mail, MapPin, Tag, Heart, CreditCard, ChevronRight, FileText
+  CheckCircle2, Clock, ShieldCheck, MessageSquare, Plus,
+  Send, User, Trash2, Pin, CheckSquare, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -76,7 +74,7 @@ interface CustomerCRMData {
 export interface AdminOperationsCRMProps {
   applicationId: string;
   currentStatus: string;
-  currentPaymentStatus: string;
+  currentPaymentStatus?: string;
   customer: {
     id: string;
     name: string;
@@ -89,35 +87,27 @@ export interface AdminOperationsCRMProps {
     created_at?: string;
   };
   serviceName: string;
-  serviceSlug: string;
-  initialFormData: Record<string, any>;
-  staffOptions?: { id: string; name: string }[];
+  serviceSlug?: string;
+  initialFormData: Record<string, unknown>;
 }
 
 export function AdminOperationsCRM({
   applicationId,
   currentStatus,
-  currentPaymentStatus,
   customer,
   serviceName,
-  serviceSlug,
-  initialFormData,
-  staffOptions = [
-    { id: "staff-1", name: "Faizal Alam" },
-    { id: "staff-2", name: "Amit Kumar" },
-    { id: "staff-3", name: "Priya Sharma" }
-  ]
+  initialFormData
 }: AdminOperationsCRMProps) {
   const router = useRouter();
-  const { success: toastSuccess, error: toastError } = useToast() as any;
-  const [isPending, startTransition] = useTransition();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [, startTransition] = useTransition();
 
   // Active Menu sub-tabs
   const [activeSubTab, setActiveSubTab] = useState<"workflow" | "tasks" | "approvals" | "crm" | "comms" | "audit">("workflow");
 
   // Read persisted CRM values from JSONB form_data, or fall back to defaults
   const [tasks, setTasks] = useState<InternalTask[]>(
-    initialFormData.v3_tasks || [
+    (initialFormData.v3_tasks as InternalTask[]) || [
       { id: "t1", title: "Verify Aadhaar Details", completed: false, priority: "high", assignedTo: "Faizal Alam", dueDate: new Date(Date.now() + 86400000).toISOString().split("T")[0] },
       { id: "t2", title: "Check PAN Legitimacy", completed: false, priority: "medium", assignedTo: "Amit Kumar", dueDate: new Date(Date.now() + 86400000).toISOString().split("T")[0] },
       { id: "t3", title: "Collect Applicant Signature", completed: false, priority: "low", assignedTo: "Unassigned", dueDate: new Date(Date.now() + 172800000).toISOString().split("T")[0] },
@@ -126,7 +116,7 @@ export function AdminOperationsCRM({
   );
 
   const [approvals, setApprovals] = useState<ApprovalLevel[]>(
-    initialFormData.v3_approvals || [
+    (initialFormData.v3_approvals as ApprovalLevel[]) || [
       { level: "Executive", status: "approved", approvedBy: "Faizal Alam", remarks: "All documents matches matching criteria", timestamp: new Date(Date.now() - 3600000 * 2).toLocaleString() },
       { level: "Branch Manager", status: "pending", approvedBy: "", remarks: "", timestamp: "" },
       { level: "Operations Manager", status: "pending", approvedBy: "", remarks: "", timestamp: "" },
@@ -135,20 +125,20 @@ export function AdminOperationsCRM({
   );
 
   const [internalNotes, setInternalNotes] = useState<InternalNote[]>(
-    initialFormData.v3_notes || [
+    (initialFormData.v3_notes as InternalNote[]) || [
       { id: "n1", text: "Customer requested processing updates on WhatsApp.", pinned: true, author: "Faizal Alam", timestamp: new Date(Date.now() - 3600000 * 5).toLocaleString() }
     ]
   );
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(
-    initialFormData.v3_audit || [
+    (initialFormData.v3_audit as AuditLog[]) || [
       { action: "Application Created", user: customer.name, timestamp: new Date(Date.now() - 3600000 * 12).toLocaleString(), ip: "103.88.22.14", device: "Android Phone", browser: "Chrome Mobile" },
       { action: "Payment Confirmed", user: "Razorpay Gateway", timestamp: new Date(Date.now() - 3600000 * 11).toLocaleString(), ip: "13.234.12.80", device: "Server Hook", browser: "Axios client" }
     ]
   );
 
-  const [crmMetadata, setCrmMetadata] = useState<CustomerCRMData>(
-    initialFormData.v3_crm || {
+  const [crmMetadata] = useState<CustomerCRMData>(
+    (initialFormData.v3_crm as CustomerCRMData) || {
       familyMembers: ["Arif Alam (Brother)", "Sofia Alam (Sister)"],
       businessDetails: "Faizal Retail Shop & Digital Solutions",
       favorites: ["GST Registration", "PVC Cards Print"],
@@ -167,7 +157,7 @@ export function AdminOperationsCRM({
   // Form Fields Inputs
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<"high" | "medium" | "low">("medium");
-  const [newTaskAssignee, setNewTaskAssignee] = useState("Unassigned");
+  const [newTaskAssignee] = useState("Unassigned");
   
   const [newNoteText, setNewNoteText] = useState("");
   const [approvalRemarks, setApprovalRemarks] = useState("");
@@ -180,7 +170,7 @@ export function AdminOperationsCRM({
   ];
 
   // Helper trigger to save CRM states to Database JSONB form_data
-  const saveCrmUpdates = (updatesObj: Record<string, any>, successMsg: string) => {
+  const saveCrmUpdates = (updatesObj: Record<string, unknown>, successMsg: string) => {
     startTransition(async () => {
       try {
         const response = await fetch(`/api/admin/applications/${applicationId}`, {
@@ -198,8 +188,9 @@ export function AdminOperationsCRM({
 
         toastSuccess(successMsg);
         router.refresh();
-      } catch (err: any) {
-        toastError(err.message || "Update failed.");
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Update failed.";
+        toastError(errorMsg);
       }
     });
   };
@@ -238,8 +229,9 @@ export function AdminOperationsCRM({
 
         toastSuccess(`Workflow status updated to ${nextStage}!`);
         router.refresh();
-      } catch (err: any) {
-        toastError(err.message || "Transition failed.");
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Transition failed.";
+        toastError(errorMsg);
       }
     });
   };
@@ -372,7 +364,7 @@ export function AdminOperationsCRM({
 
     // Log notification in audit trail
     const commLog: AuditLog = {
-      action: `Dispatched ${template.type}: ${template.title}`,
+      action: `Dispatched ${template.type}: ${template.title} ("${message}")`,
       user: "System Notification Gateway",
       timestamp: new Date().toLocaleString(),
       ip: "127.0.0.1",
@@ -395,19 +387,19 @@ export function AdminOperationsCRM({
         </h3>
         
         {[
-          { id: "workflow", label: "Workflow Timeline", icon: ChevronRight },
-          { id: "tasks", label: "Internal Tasks", icon: CheckSquare },
-          { id: "approvals", label: "Review Approvals", icon: ShieldCheck },
-          { id: "crm", label: "Customer CRM", icon: User },
-          { id: "comms", label: "Comms templates", icon: MessageSquare },
-          { id: "audit", label: "System Audits", icon: Clock }
+          { id: "workflow" as const, label: "Workflow Timeline", icon: ChevronRight },
+          { id: "tasks" as const, label: "Internal Tasks", icon: CheckSquare },
+          { id: "approvals" as const, label: "Review Approvals", icon: ShieldCheck },
+          { id: "crm" as const, label: "Customer CRM", icon: User },
+          { id: "comms" as const, label: "Comms templates", icon: MessageSquare },
+          { id: "audit" as const, label: "System Audits", icon: Clock }
         ].map((item) => {
           const Icon = item.icon;
           const isActive = activeSubTab === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => setActiveSubTab(item.id as any)}
+              onClick={() => setActiveSubTab(item.id)}
               className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition-all ${
                 isActive
                   ? "bg-slate-900 text-white shadow-sm"
@@ -578,7 +570,7 @@ export function AdminOperationsCRM({
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Priority</label>
                   <select
                     value={newTaskPriority}
-                    onChange={(e) => setNewTaskPriority(e.target.value as any)}
+                    onChange={(e) => setNewTaskPriority(e.target.value as "low" | "medium" | "high")}
                     className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs w-full focus:outline-none font-semibold text-slate-700"
                   >
                     <option value="low">Low</option>
