@@ -192,26 +192,6 @@ function iconByName(name?: string | null): LucideIcon {
   return (name && serviceIconMap[name]) || FileText;
 }
 
-function priceOverride(slug: string) {
-  if (slug === "passport" || slug === "passport-assistance") {
-    return { oldPrice: 6499, offerPrice: 2499 };
-  }
-
-  if (slug === "learning-driving-license" || slug === "driving-licence") {
-    return { oldPrice: 2499, offerPrice: 1499 };
-  }
-
-  if (slug === "cibil-report-increase" || slug === "cibil-report-analysis-and-credit-health-consultation" || slug === "cibil-credit-score-guidance") {
-    return { oldPrice: 3200, offerPrice: 2600 };
-  }
-
-  if (slug === "eshram-card" || slug === "eshram-card-registration") {
-    return { oldPrice: 149, offerPrice: 149 };
-  }
-
-  return null;
-}
-
 export const allowedPublicServiceSlugs = new Set([
   "pvc-card",
   "pmegp-loan",
@@ -417,9 +397,8 @@ function categoryFromSlug(categorySlug: string, services: DbService[] = []): Ser
 export function serviceFromDb(service: DbService): ServiceItem {
   const category = service.service_categories ?? undefined;
   const fallback = getFallbackServiceBySlug(service.slug);
-  const override = priceOverride(service.slug);
-  const baseAmount = Number(override?.oldPrice ?? service.base_price ?? service.old_price ?? service.sale_price ?? service.offer_price ?? 0);
-  const saleAmount = Number(override?.offerPrice ?? service.sale_price ?? service.offer_price ?? service.base_price ?? service.old_price ?? 0);
+  const baseAmount = Number(service.base_price ?? service.old_price ?? service.sale_price ?? service.offer_price ?? 0);
+  const saleAmount = Number(service.sale_price ?? service.offer_price ?? service.base_price ?? service.old_price ?? 0);
   const isPaid = service.is_paid ?? saleAmount > 0;
   const offerPrice = isPaid ? formatPrice(saleAmount) : undefined;
   const oldPrice = isPaid ? formatPrice(baseAmount && baseAmount !== saleAmount ? baseAmount : service.old_price) : undefined;
@@ -463,111 +442,6 @@ export function serviceFromDb(service: DbService): ServiceItem {
     seoKeywords: jsonArray<string>(service.seo_keywords, fallback?.seoKeywords ?? []),
     blogContent: service.blog_content || fallback?.blogContent || "",
   };
-
-  if (item.slug === "pm-vishwakarma-yojana") {
-    return {
-      ...item,
-      title: "PM Vishwakarma Yojana Registration",
-      shortDescription: "PM Vishwakarma scheme registration assistance for eligible traditional artisans and skilled workers.",
-      amount: 250,
-      oldPrice: "₹499",
-      offerPrice: "₹250",
-      priceLabel: "₹250",
-      ctaType: "apply",
-      seoTitle: "PM Vishwakarma Yojana Registration | DigiConnect Dukan",
-      seoDescription: "Apply for PM Vishwakarma Yojana with DigiConnect Dukan. Get assistance for registration, documents, toolkit incentive, training stipend, certificate, ID card and business support.",
-      seoKeywords: ["PM Vishwakarma Yojana", "Vishwakarma Registration", "Toolkit Incentive", "Skill Training", "Artisan Scheme", "DigiConnect Dukan"],
-    };
-  }
-
-  if (item.slug === "driving-licence") {
-    return {
-      ...item,
-      amount: 1499,
-      oldPrice: "₹2499",
-      offerPrice: "₹1499",
-      priceLabel: "₹1499",
-      badge: "Save ₹1000",
-      ctaType: "apply",
-    };
-  }
-
-  if (item.slug === "cibil-report-analysis-and-credit-health-consultation" || item.slug === "cibil-credit-score-guidance") {
-    return {
-      ...item,
-      title: "CIBIL Report Analysis & Credit Health Consultation",
-      slug: "cibil-report-analysis-and-credit-health-consultation",
-      shortDescription: "6-month TransUnion CIBIL membership with expert one page credit health analysis.",
-      amount: 2600,
-      oldPrice: "₹3200",
-      offerPrice: "₹2600",
-      priceLabel: "₹2600",
-      badge: "Credit Health",
-      ctaType: "apply",
-      documents: ["Aadhaar", "PAN", "Mobile", "Email"],
-      seoTitle: "CIBIL Report Analysis & Credit Health Consultation | DigiConnect Dukan",
-      seoDescription: "Get 6-month TransUnion CIBIL membership assistance with expert one page CIBIL report analysis, credit health review, dispute guidance, and loan readiness consultation.",
-      seoKeywords: ["CIBIL report analysis", "credit health consultation", "CIBIL membership", "credit score improvement", "loan readiness", "DigiConnect Dukan"],
-    };
-  }
-
-  if (item.slug === "eshram-card-registration") {
-    return {
-      ...item,
-      title: "e-Shram Card Registration Assistance",
-      amount: 149,
-      oldPrice: undefined,
-      offerPrice: "₹149",
-      priceLabel: "₹149",
-      badge: "Quick Registration",
-      ctaType: "apply",
-      seoTitle: "e-Shram Card Registration Assistance | DigiConnect Dukan",
-      seoDescription: "Get e-Shram registration assistance for eligibility check, document guidance, UAN generation, card download, and update support.",
-      seoKeywords: ["e-Shram card registration", "e-Shram UAN card", "unorganised workers", "e-Shram download", "DigiConnect Dukan"],
-    };
-  }
-
-  if (item.slug === "csc-olympiad") {
-    interface CscOlympiadConfig {
-      registrationFee?: {
-        offerPrice?: number;
-        price?: number;
-        oldPrice?: number;
-      };
-      hero?: {
-        title?: string;
-        subtitle?: string;
-      };
-      faqs?: { question: string; answer: string }[];
-      testimonials?: { name: string; role: string; text: string }[];
-    }
-
-    let dbConfig: CscOlympiadConfig = {};
-    if (service.blog_content) {
-      try {
-        dbConfig = JSON.parse(service.blog_content) as CscOlympiadConfig;
-      } catch {
-        // Not JSON
-      }
-    }
-    const saleAmount = Number(dbConfig.registrationFee?.offerPrice ?? dbConfig.registrationFee?.price ?? 100);
-    const baseAmount = Number(dbConfig.registrationFee?.oldPrice ?? dbConfig.registrationFee?.price ?? 150);
-    return {
-      ...item,
-      title: dbConfig.hero?.title ?? "CSC Olympiad Registration 2026",
-      shortDescription: dbConfig.hero?.subtitle ?? "Empowering students from Class 3 to 12 through competitive learning and digital excellence.",
-      amount: saleAmount,
-      oldPrice: baseAmount ? `₹${baseAmount}` : undefined,
-      offerPrice: `₹${saleAmount}`,
-      priceLabel: `₹${saleAmount}`,
-      ctaType: "apply",
-      seoTitle: "CSC Olympiad Registration 2026 | DigiConnect Dukan",
-      seoDescription: "Register for CSC Olympiad online through DigiConnect Dukan. Official registration assistance for Classes 3–12 with multiple subjects, secure application process and dedicated support.",
-      seoKeywords: ["CSC Olympiad", "Olympiad Registration", "Common Service Centres", "Online Olympiad", "DigiConnect Dukan"],
-      faqs: dbConfig.faqs ? dbConfig.faqs.map((f: { question: string; answer: string }) => ({ question: f.question, answer: f.answer })) : item.faqs,
-      reviews: dbConfig.testimonials ? dbConfig.testimonials.map((t: { name: string; role: string; text: string }) => ({ name: t.name, location: t.role, text: t.text })) : item.reviews,
-    };
-  }
 
   return item;
 }
@@ -615,12 +489,7 @@ export async function hasDatabaseServices() {
 export async function getPublicServices() {
   const rows = await fetchPublishedServiceRows();
   const dbServices = rows.filter(activeServiceFilter).map(serviceFromDb);
-  const allowedFallbackServices = servicesData.filter((service) => allowedPublicServiceSlugs.has(service.slug));
-  if (!dbServices.length) return allowedFallbackServices;
-
-  const bySlug = new Map(allowedFallbackServices.map((service) => [service.slug, service]));
-  dbServices.forEach((service) => bySlug.set(service.slug, service));
-  return Array.from(bySlug.values());
+  return dbServices;
 }
 
 export async function getPublicServiceBySlug(slug: string) {
@@ -672,8 +541,7 @@ export async function getPublicServiceBySlug(slug: string) {
       console.error("[services] service lookup failed", error);
     }
   }
-
-  return getFallbackServiceBySlug(normalizedSlug) ?? null;
+  return null;
 }
 
 export async function getPublicServiceRowBySlug(slug: string) {

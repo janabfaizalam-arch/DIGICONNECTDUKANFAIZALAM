@@ -201,6 +201,25 @@ export function PremiumApplicationWizard({
     })();
   }, []);
 
+  // ── Verify Razorpay script is ready ───────────────────────────────────────
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if ((window as any).Razorpay) {
+        setIsScriptReady(true);
+        payLog("ORDER_CREATE", { scriptReady: true, source: "window_detect" });
+      } else {
+        const interval = setInterval(() => {
+          if ((window as any).Razorpay) {
+            setIsScriptReady(true);
+            payLog("ORDER_CREATE", { scriptReady: true, source: "interval_detect" });
+            clearInterval(interval);
+          }
+        }, 500);
+        return () => clearInterval(interval);
+      }
+    }
+  }, []);
+
   // ── localStorage & draft restore ─────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -575,11 +594,19 @@ export function PremiumApplicationWizard({
     }
     setIsSubmitting(true);
     setPaymentError(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.error("[PAY:TIMEOUT] Order creation timed out after 15 seconds.");
+    }, 15000);
+
     try {
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
-      payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile });
+      payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile, stage: "START" });
 
       // No amount sent — server computes authoritative total
+      payLog("ORDER_CREATE", { stage: "SEND_REQUEST" });
       const orderRes = await fetch("/api/create-order", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -602,16 +629,19 @@ export function PremiumApplicationWizard({
             },
           },
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
       const orderData = await orderRes.json();
-      payLog("ORDER_CREATE", { status: orderRes.status, orderId: orderData.order_id, amount: orderData.amount, appIds: orderData.application_ids });
+      payLog("ORDER_CREATE", { status: orderRes.status, orderId: orderData.order_id, amount: orderData.amount, appIds: orderData.application_ids, stage: "RESPONSE_RECEIVED" });
 
       if (!orderRes.ok || !orderData.order_id) {
         const errMsg = orderData.error ?? orderData.message ?? `Order creation failed (HTTP ${orderRes.status})`;
         throw new Error(errMsg);
       }
 
-      payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100 });
+      payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100, stage: "INITIALIZE" });
 
       const rzpOptions = {
         key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -623,10 +653,10 @@ export function PremiumApplicationWizard({
         prefill: { name: customer.name, contact: customer.mobile },
         theme: { color: "#2563eb" },
         handler: async (payRes: Record<string, unknown>) => {
-          payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id });
+          payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id, stage: "SUCCESS" });
           try {
             // Verify signature
-            payLog("VERIFY", { applicationIds: orderData.application_ids });
+            payLog("VERIFY", { applicationIds: orderData.application_ids, stage: "START" });
             const verRes  = await fetch("/api/verify-payment", {
               method:  "POST",
               headers: { "Content-Type": "application/json" },
@@ -637,18 +667,19 @@ export function PremiumApplicationWizard({
               }),
             });
             const verData = await verRes.json();
-            payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback });
+            payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback, stage: "DONE" });
 
             if (!verRes.ok || !verData.success) {
               throw new Error(verData.error ?? verData.message ?? `Verification failed (HTTP ${verRes.status})`);
             }
 
             // Finalize applications
-            payLog("FINALIZE", { applicationIds: orderData.application_ids });
+            payLog("FINALIZE", { applicationIds: orderData.application_ids, stage: "START" });
             await handleFinalSubmit(
               { ...payRes, amount_paise: orderData.amount },
               orderData.application_ids as string[],
             );
+            payLog("FINALIZE", { stage: "COMPLETED" });
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Verification failed.";
             setPaymentError(msg);
@@ -658,6 +689,7 @@ export function PremiumApplicationWizard({
         },
         modal: {
           ondismiss: () => {
+            payLog("RAZORPAY_OPEN", { stage: "CANCELLED" });
             toastError("Payment cancelled.");
             setIsSubmitting(false);
           },
@@ -666,10 +698,19 @@ export function PremiumApplicationWizard({
 
       const rzp = new (window as any).Razorpay(rzpOptions);
       rzp.open();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Payment initialisation error.";
-      setPaymentError(msg);
-      toastError(msg);
+      payLog("RAZORPAY_OPEN", { stage: "OPENED" });
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      let errMsg = "Payment initialisation error.";
+      if (e.name === "AbortError") {
+        errMsg = "Order creation timed out (15s limit). Please check your internet connection and try again.";
+        payLog("ORDER_CREATE", { stage: "TIMEOUT_EXCEEDED" });
+      } else {
+        errMsg = e instanceof Error ? e.message : String(e);
+        payLog("ORDER_CREATE", { stage: "FAILED", error: errMsg });
+      }
+      setPaymentError(errMsg);
+      toastError(errMsg);
       setIsSubmitting(false);
     }
   }, [cartItems, customer, handleFinalSubmit, toastError]);

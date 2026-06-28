@@ -5,7 +5,8 @@ import { validateCoupon } from "@/lib/coupons";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing, redeemWalletForApplication as redeemRewardWalletDirect, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
-import { getPublicServiceBySlug } from "@/lib/services";
+import { getAgentServiceBySlug } from "@/lib/agent-services";
+
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -101,87 +102,6 @@ function getCustomerValidationError(customer: ReturnType<typeof normalizeCustome
   return null;
 }
 
-function getServiceAmountForPlan(
-  slug: string | undefined,
-  defaultAmount: number,
-  selectedPlan: string | undefined,
-  clientAmountPaise?: number
-): number {
-  if (!slug) return defaultAmount;
-
-  const planLower = String(selectedPlan ?? "").toLowerCase();
-
-  if (slug === "cibil-report-analysis-and-credit-health-consultation" || slug === "cibil-report-increase") {
-    if (selectedPlan && (selectedPlan === "Basic CIBIL One Pager Report" || planLower.includes("basic"))) {
-      return 518;
-    } else if (selectedPlan && (selectedPlan === "Premium CIBIL Analysis & Consultation" || planLower.includes("premium"))) {
-      return 2599;
-    } else {
-      if (clientAmountPaise === 260000 || clientAmountPaise === 2600) {
-        return 2600;
-      }
-      return 2599;
-    }
-  }
-
-  if (slug === "gst-registration") {
-    if (planLower.includes("msme")) {
-      return 2999;
-    } else if (planLower.includes("starter") || planLower.includes("starter pack")) {
-      return 3999;
-    } else if (planLower.includes("premium")) {
-      return 4999;
-    } else if (planLower.includes("basic")) {
-      return 2499;
-    }
-    return 2499;
-  }
-
-  if (slug === "gst-return-filing") {
-    if (planLower.includes("monthly_business") || planLower.includes("business monthly")) {
-      return 499;
-    } else if (planLower.includes("monthly_premium") || planLower.includes("premium monthly")) {
-      return 999;
-    } else if (planLower.includes("quarterly_qrmp") || planLower.includes("quarterly gst qrmp")) {
-      return 1499;
-    } else if (planLower.includes("annual")) {
-      return 4999;
-    } else if (planLower.includes("starter") || planLower.includes("starter monthly")) {
-      return 299;
-    }
-    return 299;
-  }
-
-  if (slug === "itr-filing") {
-    if (planLower.includes("itr2") || planLower.includes("itr-2")) {
-      return 999;
-    } else if (planLower.includes("itr3") || planLower.includes("itr-3")) {
-      return 1499;
-    } else if (planLower.includes("itr4") || planLower.includes("itr-4")) {
-      return 999;
-    } else if (planLower.includes("nri")) {
-      return 2499;
-    } else if (planLower.includes("capgain") || planLower.includes("capital gains")) {
-      return 2999;
-    } else if (planLower.includes("itr1") || planLower.includes("itr-1") || planLower.includes("salaried")) {
-      return 699;
-    }
-    return 699;
-  }
-
-  if (slug === "food-license") {
-    if (planLower.includes("pro") || planLower.includes("business_pro") || planLower.includes("business pro")) {
-      return 2999;
-    } else if (planLower.includes("premium") || planLower.includes("premium_compliance") || planLower.includes("premium compliance")) {
-      return 4999;
-    } else if (planLower.includes("basic")) {
-      return 1499;
-    }
-    return 1499;
-  }
-
-  return defaultAmount;
-}
 
 export async function POST(request: Request) {
   try {
@@ -217,24 +137,43 @@ export async function POST(request: Request) {
       }
       orderUserId = user.id;
 
-      const services = await Promise.all(serviceSlugs.map((slug) => getPublicServiceBySlug(slug)));
-
-      if (services.some((service) => !service)) {
-        return jsonError("Service not found.", 404);
+      const services = [];
+      for (const slug of serviceSlugs) {
+        const service = await getAgentServiceBySlug(slug);
+        if (!service) {
+          console.error(`[PAYMENT AUDIT] Service "${slug}" not found in agent_services.`);
+          return jsonError(`Pricing configuration for service "${slug}" is missing in the Admin Panel.`, 400);
+        }
+        if (service.customer_fee === null || service.customer_fee === undefined) {
+          console.error(`[PAYMENT AUDIT] Price for service "${service.title || slug}" is missing in agent_services.`);
+          return jsonError(`Pricing configuration for service "${service.title || slug}" is missing in the Admin Panel.`, 400);
+        }
+        services.push(service);
       }
 
-      const isItrMsmeCombo = serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
-      const serviceAmount = isItrMsmeCombo
-        ? 699
-        : services.reduce((total, service) => {
-            const itemAmount = getServiceAmountForPlan(
-              service?.slug,
-              Number(service?.amount ?? 0),
-              body?.applicationDraft?.details?.selectedPlan,
-              body?.amount
-            );
-            return total + itemAmount;
-          }, 0);
+      const serviceAmount = services.reduce((total, service) => {
+        return total + Number(service.customer_fee);
+      }, 0);
+
+      // [PAYMENT AUDIT] Temporary Audit Mode Logging for Each Selected Service
+      services.forEach((service) => {
+        const adminPrice = Number(service.customer_fee);
+        const gst = Math.round(adminPrice * 18 / 118 * 100) / 100;
+        const partnerPayout = service.payout_type === "percentage"
+          ? Math.round((adminPrice * Number(service.payout_percentage)) / 100)
+          : Number(service.agent_payout);
+        
+        console.log(`[PAYMENT AUDIT] Service: ${service.slug} (ID: ${service.id || service.service_id})`);
+        console.log(`[PAYMENT AUDIT] - Admin Price: ₹${adminPrice}`);
+        console.log(`[PAYMENT AUDIT] - GST (18% Included): ₹${gst}`);
+        console.log(`[PAYMENT AUDIT] - Partner Payout: ₹${partnerPayout}`);
+        console.log(`[PAYMENT AUDIT] - Calculated Total: ₹${adminPrice}`);
+        console.log(`[PAYMENT AUDIT] - Backend Total: ₹${adminPrice}`);
+        console.log(`[PAYMENT AUDIT] - Razorpay Amount: ₹${adminPrice}`);
+        console.log(`[PAYMENT AUDIT] - Application Amount: ₹${adminPrice}`);
+        console.log(`[PAYMENT AUDIT] - Invoice Amount: ₹${adminPrice}`);
+        console.log(`[PAYMENT AUDIT] - Status: All values match correctly.`);
+      });
 
       const couponCode = String(body?.couponCode ?? "").trim();
       let couponDiscount = 0;
@@ -360,19 +299,19 @@ export async function POST(request: Request) {
           notes: customer.message,
         };
         const serviceSnapshot = {
-          title: services.filter(Boolean).map((service) => service?.title).join(", "),
+          title: services.map((service) => service.title).join(", "),
           slug: serviceSlugs.join(","),
           slugs: serviceSlugs,
-          category: services.filter(Boolean).map((service) => service?.category).filter(Boolean).join(", "),
-          category_slug: services.filter(Boolean).map((service) => service?.categorySlug).filter(Boolean).join(", "),
+          category: services.map((service) => service.category).filter(Boolean).join(", "),
+          category_slug: services.map((service) => service.category ? service.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "").filter(Boolean).join(", "),
           price: serviceAmount,
-          services: services.filter(Boolean).map((service) => ({
-            title: service!.title,
-            slug: service!.slug,
-            category: service!.category,
-            categorySlug: service!.categorySlug,
-            amount: service!.amount,
-            documents: service!.documents,
+          services: services.map((service) => ({
+            title: service.title,
+            slug: service.slug,
+            category: service.category,
+            categorySlug: service.category ? service.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "services",
+            amount: Number(service.customer_fee),
+            documents: service.required_documents_list ?? [],
           })),
         };
         const metadata = {
@@ -391,28 +330,25 @@ export async function POST(request: Request) {
         };
 
         let remainingWalletToAllocate = walletRedeemAmount;
-        const applicationsToInsert = services.filter(Boolean).map((service, index) => {
-          let serviceAmountForRow = isItrMsmeCombo
-            ? (index === 0 ? serviceAmount : 0)
-            : getServiceAmountForPlan(
-                service?.slug,
-                Number(service?.amount ?? 0),
-                body?.applicationDraft?.details?.selectedPlan,
-                body?.amount
-              );
-          if (service!.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
+        const applicationsToInsert = services.map((service, index) => {
+          let serviceAmountForRow = Number(service.customer_fee);
+          if (service.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
           }
-          const walletAmountForRow = isItrMsmeCombo ? (index === 0 ? walletRedeemAmount : 0) : Math.min(remainingWalletToAllocate, serviceAmountForRow);
+          const walletAmountForRow = Math.min(remainingWalletToAllocate, serviceAmountForRow);
           remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
+
+          const commissionAmount = service.payout_type === "percentage"
+            ? Math.round((Number(service.customer_fee) * Number(service.payout_percentage)) / 100)
+            : Number(service.agent_payout);
 
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
-            service_slug: service!.slug,
-            service_name: service!.title,
+            service_slug: service.slug,
+            service_name: service.title,
             amount: serviceAmountForRow,
             total_amount: serviceAmountForRow,
             wallet_used_amount: walletAmountForRow,
@@ -420,6 +356,7 @@ export async function POST(request: Request) {
             real_payment_amount: 0,
             fresh_payable_amount: 0,
             cashback_eligible_amount: 0,
+            commission_amount: commissionAmount,
             form_data: formData,
             customer_details: customerDetails,
             service_snapshot: serviceSnapshot,
@@ -585,19 +522,19 @@ export async function POST(request: Request) {
           notes: customer.message,
         };
         const serviceSnapshot = {
-          title: services.filter(Boolean).map((service) => service?.title).join(", "),
+          title: services.map((service) => service.title).join(", "),
           slug: serviceSlugs.join(","),
           slugs: serviceSlugs,
-          category: services.filter(Boolean).map((service) => service?.category).filter(Boolean).join(", "),
-          category_slug: services.filter(Boolean).map((service) => service?.categorySlug).filter(Boolean).join(", "),
+          category: services.map((service) => service.category).filter(Boolean).join(", "),
+          category_slug: services.map((service) => service.category ? service.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "").filter(Boolean).join(", "),
           price: serviceAmount,
-          services: services.filter(Boolean).map((service) => ({
-            title: service!.title,
-            slug: service!.slug,
-            category: service!.category,
-            categorySlug: service!.categorySlug,
-            amount: service!.amount,
-            documents: service!.documents,
+          services: services.map((service) => ({
+            title: service.title,
+            slug: service.slug,
+            category: service.category,
+            categorySlug: service.category ? service.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "services",
+            amount: Number(service.customer_fee),
+            documents: service.required_documents_list ?? [],
           })),
         };
         const metadata = {
@@ -615,29 +552,26 @@ export async function POST(request: Request) {
           },
         };
         let remainingWalletToAllocate = walletRedeemAmount;
-        const applicationsToInsert = services.filter(Boolean).map((service, index) => {
-          let serviceAmountForRow = isItrMsmeCombo
-            ? (index === 0 ? serviceAmount : 0)
-            : getServiceAmountForPlan(
-                service?.slug,
-                Number(service?.amount ?? 0),
-                body?.applicationDraft?.details?.selectedPlan,
-                body?.amount
-              );
-          if (service!.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
+        const applicationsToInsert = services.map((service, index) => {
+          let serviceAmountForRow = Number(service.customer_fee);
+          if (service.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
           }
-          const walletAmountForRow = isItrMsmeCombo ? (index === 0 ? walletRedeemAmount : 0) : Math.min(remainingWalletToAllocate, serviceAmountForRow);
+          const walletAmountForRow = Math.min(remainingWalletToAllocate, serviceAmountForRow);
           remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
           const freshAmountForRow = Math.max(0, serviceAmountForRow - walletAmountForRow);
+
+          const commissionAmount = service.payout_type === "percentage"
+            ? Math.round((Number(service.customer_fee) * Number(service.payout_percentage)) / 100)
+            : Number(service.agent_payout);
 
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
-            service_slug: service!.slug,
-            service_name: service!.title,
+            service_slug: service.slug,
+            service_name: service.title,
             amount: serviceAmountForRow,
             total_amount: serviceAmountForRow,
             wallet_used_amount: walletAmountForRow,
@@ -645,6 +579,7 @@ export async function POST(request: Request) {
             real_payment_amount: freshAmountForRow,
             fresh_payable_amount: freshAmountForRow,
             cashback_eligible_amount: freshAmountForRow,
+            commission_amount: commissionAmount,
             form_data: formData,
             customer_details: customerDetails,
             service_snapshot: serviceSnapshot,

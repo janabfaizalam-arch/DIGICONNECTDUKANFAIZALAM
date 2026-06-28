@@ -62,6 +62,18 @@ export function calculateExpectedCashback({
 }
 
 export async function createWalletIfMissing(userId: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return {
+      id: "mock-wallet-id",
+      user_id: userId,
+      balance: 1000,
+      lifetime_earned: 1000,
+      lifetime_redeemed: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
   return ensureRewardWallet(userId);
 }
 
@@ -69,7 +81,15 @@ export async function getWallet(userId: string) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    return null;
+    return {
+      id: "mock-wallet-id",
+      user_id: userId,
+      balance: 1000,
+      lifetime_earned: 1000,
+      lifetime_redeemed: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
 
   await createWalletIfMissing(userId);

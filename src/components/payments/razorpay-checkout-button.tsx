@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Script from "next/script";
 import { CreditCard } from "lucide-react";
 
@@ -156,6 +156,23 @@ export function RazorpayCheckoutButton({
   const [isPending, setIsPending] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"idle" | "creating" | "opening" | "verifying">("idle");
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const win = window as unknown as { Razorpay?: unknown };
+      if (win.Razorpay) {
+        setIsScriptReady(true);
+      } else {
+        const interval = setInterval(() => {
+          if (win.Razorpay) {
+            setIsScriptReady(true);
+            clearInterval(interval);
+          }
+        }, 500);
+        return () => clearInterval(interval);
+      }
+    }
+  }, []);
+
   async function handleCheckout() {
     if (isPending) {
       return;
@@ -176,8 +193,11 @@ export function RazorpayCheckoutButton({
       return;
     }
 
-    setIsPending(true);
-    setPaymentStep("creating");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.error("[PAY:TIMEOUT] Order creation timed out after 15 seconds.");
+    }, 15000);
 
     try {
       const body: CreateOrderRequestBody = {
@@ -202,7 +222,10 @@ export function RazorpayCheckoutButton({
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
       const order = await readApiResponse<CreateOrderResponse>(orderResponse);
 
       if (!orderResponse.ok || !order.order_id || !order.amount || !order.currency) {
@@ -299,9 +322,16 @@ export function RazorpayCheckoutButton({
 
       checkout.open();
     } catch (error) {
+      clearTimeout(timeoutId);
       setIsPending(false);
       setPaymentStep("idle");
-      toastError(error instanceof Error ? error.message : "Payment could not be started.");
+      let errMsg = "Payment could not be started.";
+      if (error instanceof Error && error.name === "AbortError") {
+        errMsg = "Order creation timed out (15s limit). Please check your connection and try again.";
+      } else {
+        errMsg = error instanceof Error ? error.message : String(error);
+      }
+      toastError(errMsg);
     }
   }
 
