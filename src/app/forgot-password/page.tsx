@@ -7,6 +7,7 @@ import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
+import { WhatsappAuthFlow } from "@/components/auth/whatsapp-auth-flow";
 
 type AuthApiResponse = {
   message?: string;
@@ -119,8 +120,21 @@ export default function ForgotPasswordPage() {
             Reset your password
           </h1>
           <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[300px] mx-auto">
-            Enter your registered email and we will send a secure reset link.
+            Enter your WhatsApp number to securely login without a password.
           </p>
+
+          <div className="text-left w-full">
+            <WhatsappAuthFlow purpose="password_reset" onSuccess={(dest) => window.location.assign(dest)} />
+          </div>
+
+          <div className="relative my-2 w-full">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-[#F8FAFC] px-2 text-slate-500" style={{ background: "rgba(255, 255, 255, 1)" }}>Or via email</span>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="grid gap-4 text-left" aria-busy={isPending}>
             <label className="grid gap-1.5">

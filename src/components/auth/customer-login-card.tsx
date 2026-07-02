@@ -11,13 +11,10 @@ import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ButtonSpinner, FormSubmitButton } from "@/components/ui/loading";
-import {
-  indianMobilePattern,
-  indianPincodePattern,
-  type CustomerOAuthProvider,
-} from "@/lib/customer-oauth";
+import { indianMobilePattern, indianPincodePattern, type CustomerOAuthProvider } from "@/lib/customer-oauth";
 import { trackLogin, trackSignup } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
+import { WhatsappAuthFlow } from "@/components/auth/whatsapp-auth-flow";
 
 type AuthMode = "login" | "signup";
 type FormMessage = { type: "success" | "error"; text: string };
@@ -409,6 +406,22 @@ function CustomerLoginCardInner({
           ))}
         </div>
       ) : null}
+
+      <div className="mt-6">
+        <WhatsappAuthFlow 
+          purpose={mode === "signup" ? "signup" : "login"} 
+          onSuccess={(destination) => window.location.assign(destination)}
+        />
+      </div>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-white px-2 text-slate-500">Or continue with email</span>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-3 text-left" aria-busy={isPending || isGooglePending || isFacebookPending}>
         {mode === "signup" ? (
