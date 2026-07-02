@@ -12,16 +12,7 @@ export async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
 
   if (!supabase) {
-    return {
-      id: "mock-test-user-id",
-      email: "test.customer@example.com",
-      phone: "9999999999",
-      user_metadata: {
-        full_name: "Mock Customer",
-        role: "customer",
-        mobile: "9999999999",
-      },
-    } as unknown as User;
+    return null;
   }
 
   const {
