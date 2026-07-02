@@ -22,9 +22,8 @@ export function verifyOTPHash(otp: string, hashedOTP: string): boolean {
 export async function sendWhatsappOTP(mobile: string, otp: string, purpose: WhatsappTemplatePurpose): Promise<{ success: boolean; error?: string }> {
   try {
     const apiKey = process.env.AISENSY_PROJECT_API_KEY;
-    const baseUrl = process.env.AISENSY_BASE_URL;
 
-    if (!apiKey || !baseUrl) {
+    if (!apiKey) {
       console.error("AiSensy credentials missing in environment variables.");
       return { success: false, error: "AiSensy configuration missing." };
     }
@@ -53,8 +52,7 @@ export async function sendWhatsappOTP(mobile: string, otp: string, purpose: What
       source: "web-auth"
     };
 
-    // Remove trailing slash from base url if present
-    const url = `${baseUrl.replace(/\/$/, "")}`;
+    const url = "https://backend.aisensy.com/campaign/t1/api/v2";
 
     const response = await fetch(url, {
       method: "POST",
@@ -64,15 +62,27 @@ export async function sendWhatsappOTP(mobile: string, otp: string, purpose: What
       body: JSON.stringify(payload)
     });
 
+    const responseBodyText = await response.text();
+    let responseBody;
+    try {
+      responseBody = JSON.parse(responseBodyText);
+    } catch {
+      responseBody = responseBodyText;
+    }
+
+    // Mask secrets for logging
+    const maskedPayload = { ...payload, apiKey: "***MASKED***" };
+    console.log(`[AiSensy] POST ${url} - Status: ${response.status}`);
+    console.log(`[AiSensy] Request Payload:`, JSON.stringify(maskedPayload));
+    console.log(`[AiSensy] Response Body:`, typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody));
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AiSensy API error:", response.status, errorText);
-      return { success: false, error: "Failed to send OTP via WhatsApp." };
+      return { success: false, error: `AiSensy API error: ${response.status} - ${typeof responseBody === 'object' ? JSON.stringify(responseBody) : responseBody}` };
     }
 
     return { success: true };
   } catch (error) {
     console.error("Error sending WhatsApp OTP:", error);
-    return { success: false, error: "Internal error while sending OTP." };
+    return { success: false, error: error instanceof Error ? error.message : "Internal error while sending OTP." };
   }
 }
