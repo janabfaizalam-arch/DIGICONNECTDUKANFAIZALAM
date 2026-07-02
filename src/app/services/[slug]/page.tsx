@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
 import { DynamicServicePage } from "@/components/services/dynamic-service-page";
-import { getPublicCategoryBySlug, getPublicServiceBySlug, getPublicServiceRowBySlug, getPublicServicesByCategory } from "@/lib/services";
+import { getPublicCategoryBySlug, getPublicServiceBySlug, getPublicServiceRowBySlug, getPublicServicesByCategory, rowFromFallback } from "@/lib/services";
 import { serviceFromDb, type DbService } from "@/lib/services";
 import { servicesData, type ServiceItem } from "@/lib/services-data";
 import { getCurrentUser } from "@/lib/auth";
@@ -103,60 +103,6 @@ function buildSchemas(service: ServiceItem) {
   ];
 }
 
-function rowFromFallback(service: ServiceItem): DbService {
-  return {
-    id: service.slug,
-    category_id: null,
-    category: service.categorySlug,
-    title: service.title,
-    slug: service.slug,
-    short_description: service.shortDescription,
-    full_description: service.overview,
-    overview: service.overview,
-    benefits: service.benefits,
-    documents: service.documents,
-    process: service.process,
-    base_price: service.oldPrice ? Number(service.oldPrice.replace(/[^\d]/g, "")) : service.amount,
-    sale_price: service.amount,
-    is_paid: service.ctaType === "apply" && service.amount > 0,
-    is_featured: false,
-    show_on_homepage: false,
-    is_active: true,
-    old_price: service.oldPrice ? Number(service.oldPrice.replace(/[^\d]/g, "")) : null,
-    offer_price: service.amount,
-    price_label: service.priceLabel,
-    cta_type: service.ctaType,
-    badge: service.badge ?? null,
-    icon: "FileText",
-    hero_image_url: null,
-    hero_image_storage_path: null,
-    cta_primary_label: service.ctaType === "apply" ? "Apply Now" : "Enquiry Now",
-    cta_primary_url: service.ctaType === "apply" ? `/apply/${service.slug}` : null,
-    cta_secondary_label: "WhatsApp",
-    cta_secondary_url: null,
-    status: "published",
-    featured: false,
-    sort_order: 0,
-    seo_title: service.seoTitle,
-    seo_description: service.seoDescription,
-    seo_keywords: service.seoKeywords,
-    blog_content: service.blogContent,
-    faqs: service.faqs,
-    reviews: service.reviews,
-    created_at: new Date(0).toISOString(),
-    updated_at: new Date(0).toISOString(),
-    service_categories: {
-      id: service.categorySlug,
-      name: service.category,
-      slug: service.categorySlug,
-      description: null,
-      sort_order: 0,
-      is_active: true,
-      created_at: new Date(0).toISOString(),
-      updated_at: new Date(0).toISOString(),
-    },
-  };
-}
 
 export default async function ServiceDetailPage({ params }: PageProps) {
   const [{ slug }, user] = await Promise.all([params, getCurrentUser()]);
