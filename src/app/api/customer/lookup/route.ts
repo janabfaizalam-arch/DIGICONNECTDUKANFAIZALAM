@@ -1,10 +1,31 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { normalizeAppRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const metadataRole = normalizeAppRole(user.user_metadata?.role);
+    let role = metadataRole;
+    if (!role) {
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      role = normalizeAppRole(profile?.role);
+    }
+
+    if (role !== "agency_partner" && role !== "admin") {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const mobile = String(searchParams.get("mobile") ?? "").trim().replace(/\D/g, "");
 

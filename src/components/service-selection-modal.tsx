@@ -33,7 +33,27 @@ async function getApplyHref(slug: string) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  return session?.user ? applyPath : `/login/customer?redirect=${encodeURIComponent(applyPath)}`;
+  if (!session?.user) {
+    return `/login/customer?redirect=${encodeURIComponent(applyPath)}`;
+  }
+
+  const user = session.user;
+  let rawRole = user.user_metadata?.role;
+  if (!rawRole) {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    rawRole = profile?.role;
+  }
+
+  const role = String(rawRole ?? "").toLowerCase();
+
+  if (role === "admin" || role === "super_admin" || role === "staff") {
+    return "/admin";
+  }
+  if (role === "agency_partner" || role === "agent") {
+    return `/ap/applications/new?serviceId=${slug}`;
+  }
+
+  return applyPath;
 }
 
 export function ServiceSelectionModal({ open, onOpenChange }: ServiceSelectionModalProps) {

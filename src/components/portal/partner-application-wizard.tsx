@@ -102,7 +102,7 @@ function payLog(stage: PaymentStage, detail: Record<string, unknown>) {
   console.info(`[PAY:${stage}]`, detail);
 }
 
-export interface PremiumApplicationWizardProps {
+export interface PartnerApplicationWizardProps {
   initialServiceSlug?:    string;
   initialProfileFields?: { mobile?: string; pincode?: string; city?: string; state?: string; };
 }
@@ -110,10 +110,10 @@ export interface PremiumApplicationWizardProps {
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
-export function PremiumApplicationWizard({
+export function PartnerApplicationWizard({
   initialServiceSlug,
   initialProfileFields,
-}: PremiumApplicationWizardProps) {
+}: PartnerApplicationWizardProps) {
   const searchParams = useSearchParams();
   const { success: toastSuccess, error: toastError } = useToast();
 

@@ -72,16 +72,15 @@ function isAllowedForPath(pathname: string, role: AppRole) {
     return role === "admin";
   }
 
-  if (matchesRoute(pathname, "/ap")) {
+  if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
     return role === "agency_partner";
   }
 
-  // Legacy agent routes — only AP role
-  if (matchesRoute(pathname, "/agent")) {
-    return role === "agency_partner";
-  }
-
-  if (matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer")) {
+  if (
+    matchesRoute(pathname, "/dashboard") ||
+    matchesRoute(pathname, "/customer") ||
+    matchesRoute(pathname, "/apply")
+  ) {
     return role === "customer";
   }
 
@@ -318,6 +317,18 @@ export async function middleware(request: NextRequest) {
 
   if (user && isProtectedRoute && !isAllowedForPath(pathname, role)) {
     const url = request.nextUrl.clone();
+
+    // Secure smart redirect for agency partners attempting to access customer apply workflow
+    if (role === "agency_partner" && matchesRoute(pathname, "/apply")) {
+      const slug = pathname.replace("/apply/", "").replace("/apply", "");
+      url.pathname = "/ap/applications/new";
+      url.search = "";
+      if (slug) {
+        url.searchParams.set("serviceId", slug);
+      }
+      return NextResponse.redirect(url);
+    }
+
     url.pathname = (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) ? "/unauthorized" : getRoleHome(role);
     return NextResponse.redirect(url);
   }

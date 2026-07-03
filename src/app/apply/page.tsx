@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { PremiumApplicationWizard } from "@/components/portal/premium-application-wizard";
+import { CustomerApplicationWizard } from "@/components/portal/customer-application-wizard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export default async function ApplyIndexPage() {
 
   return (
     <main className="min-h-screen bg-slate-50/30 px-4 pb-12 pt-8 md:px-8">
-      <PremiumApplicationWizard
+      <CustomerApplicationWizard
         initialProfileFields={{
           mobile: userProfile?.mobile ?? "",
           pincode: userProfile?.pincode ?? "",

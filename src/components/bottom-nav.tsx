@@ -8,10 +8,11 @@ import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/browser";
 
-type AppRole = "admin" | "agent" | "customer";
+type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
-const roleValues = ["admin", "agent", "customer"];
+const roleValues = ["admin", "agent", "customer", "agency_partner"];
 const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
+const apRoleAliases = new Set(["agent", "agency_partner"]);
 
 function isAppRole(role: string): role is AppRole {
   return roleValues.includes(role);
@@ -21,6 +22,7 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   if (!user) return null;
   const metadataRole = String(user.user_metadata.role ?? "").toLowerCase();
   if (adminRoleAliases.has(metadataRole)) return "admin";
+  if (apRoleAliases.has(metadataRole)) return "agency_partner";
   if (isAppRole(metadataRole)) return metadataRole;
 
   const email = (user.email ?? "").toLowerCase();
@@ -38,11 +40,13 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
     const profileRole = String(profile?.role ?? "").toLowerCase();
     if (adminRoleAliases.has(profileRole)) return "admin";
+    if (apRoleAliases.has(profileRole)) return "agency_partner";
     if (isAppRole(profileRole)) return profileRole;
 
     const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
     const portalRole = String(portalUser?.role ?? "").toLowerCase();
     if (adminRoleAliases.has(portalRole)) return "admin";
+    if (apRoleAliases.has(portalRole)) return "agency_partner";
     return isAppRole(portalRole) ? portalRole : "customer";
   } catch {
     return "customer";
@@ -141,7 +145,7 @@ export function BottomNav() {
       walletHref = "/admin/wallet";
       rewardsHref = "/admin";
       dashboardHref = "/admin";
-    } else if (role === "agent") {
+    } else if (role === "agent" || role === "agency_partner") {
       applicationsHref = "/ap/applications";
       walletHref = "/ap/wallet";
       rewardsHref = "/ap/dashboard";

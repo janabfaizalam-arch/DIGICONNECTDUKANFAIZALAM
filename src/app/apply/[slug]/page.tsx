@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { portalServices } from "@/lib/portal-data";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { PremiumApplicationWizard } from "@/components/portal/premium-application-wizard";
+import { CustomerApplicationWizard } from "@/components/portal/customer-application-wizard";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -66,7 +66,7 @@ export default async function ApplySlugPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-slate-50/30 px-4 pb-12 pt-8 md:px-8">
-      <PremiumApplicationWizard
+      <CustomerApplicationWizard
         initialServiceSlug={slug}
         initialProfileFields={{
           mobile: userProfile?.mobile ?? "",

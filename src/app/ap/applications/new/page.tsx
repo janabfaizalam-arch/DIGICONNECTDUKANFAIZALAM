@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-import { PremiumApplicationWizard } from "@/components/portal/premium-application-wizard";
+import { PartnerApplicationWizard } from "@/components/portal/partner-application-wizard";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function NewAPApplicationPage({
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Link>
-        <PremiumApplicationWizard
+        <PartnerApplicationWizard
           initialServiceSlug={params.serviceId}
           initialProfileFields={{
             mobile: params.mobile ?? "",
