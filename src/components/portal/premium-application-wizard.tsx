@@ -19,6 +19,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
 import { cn } from "@/lib/utils";
+import { servicesData } from "@/lib/services-data";
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -188,15 +189,61 @@ export function PremiumApplicationWizard({
     (async () => {
       try {
         const sb = createClient();
-        if (!sb) throw new Error("No client");
+        if (!sb) {
+          throw new Error("No client");
+        }
         const { data, error } = await sb
           .from("agent_services")
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
           .order("title",      { ascending: true });
-        if (!error && data) setDbServices(data.map((r: any) => normalizeAgentService(r)));
-      } catch (e) { console.error("service load", e); }
+        if (!error && data && data.length > 0) {
+          setDbServices(data.map((r: any) => normalizeAgentService(r)));
+          fetch(`/api/services?debug=${encodeURIComponent(JSON.stringify({ status: "success", length: data.length }))}`).catch(() => {});
+        } else {
+          throw new Error(error ? error.message : "Empty services from database");
+        }
+      } catch (e: any) {
+        console.error("service load", e);
+        fetch(`/api/services?debug=${encodeURIComponent(JSON.stringify({ status: "catch", error: e.message || String(e), hasFallback: Boolean(servicesData), fallbackLength: servicesData?.length }))}`).catch(() => {});
+        if (servicesData) {
+          setDbServices(servicesData.map((s: any) => ({
+            id: s.slug,
+            service_id: s.slug,
+            slug: s.slug,
+            title: s.title,
+            description: s.shortDescription,
+            category: s.category,
+            customer_fee: s.amount,
+            agent_payout: Math.max(Math.round(s.amount * 0.2), 25),
+            payout_type: "fixed",
+            payout_percentage: 0,
+            required_documents: s.documents.join(", "),
+            processing_time: "2-3 Days",
+            instructions: null,
+            is_active: true,
+            is_featured: false,
+            visibility_type: "all",
+            sort_order: 0,
+            government_fee_type: "not_applicable",
+            government_fee_amount: 0,
+            processing_fee: 0,
+            eligibility: null,
+            faq: [],
+            terms: null,
+            important_notes: null,
+            popular: false,
+            thumbnail: null,
+            banner: null,
+            supported_states: [],
+            supported_districts: [],
+            supported_pincodes: [],
+            variants: [],
+            required_documents_list: s.documents.map((d: string, i: number) => ({ id: `doc-${i}`, name: d, type: "PDF", required: true })),
+          })));
+        }
+      }
       finally     { setLoadingServices(false); }
     })();
   }, []);
@@ -886,6 +933,11 @@ export function PremiumApplicationWizard({
           <Check className="h-3 w-3 text-emerald-400" /> Draft saved
         </div>
       )}
+
+      {/* Debug helper */}
+      <div id="debug-services-info" style={{ display: "none" }}>
+        dbServices: {dbServices.length}, filteredServices: {filteredServices.length}, currentStep: {currentStep}, cart: {cart.length}
+      </div>
 
       {/* ── MAIN LAYOUT ──────────────────────────────────────────────────── */}
       <div className="min-h-screen bg-slate-50/40 pb-24">

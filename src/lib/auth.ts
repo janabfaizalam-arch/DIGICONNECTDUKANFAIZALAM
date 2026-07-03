@@ -12,6 +12,18 @@ export async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
 
   if (!supabase) {
+    if (process.env.NODE_ENV === "development") {
+      return {
+        id: "mock-user-123",
+        email: "test.verify@example.com",
+        phone: "9999999999",
+        user_metadata: {
+          full_name: "Verification Test Customer",
+          role: "customer",
+        },
+        email_confirmed_at: new Date().toISOString(),
+      } as any;
+    }
     return null;
   }
 

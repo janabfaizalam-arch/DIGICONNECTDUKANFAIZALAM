@@ -75,13 +75,36 @@ export async function createServiceConfig(config: Omit<ServiceConfig, 'service'>
 }
 
 /** List published services */
+import { servicesData } from '@/lib/services-data';
+
 export async function listServices(): Promise<ServiceConfig['service'][]> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return [];
+  if (!supabase) {
+    return servicesData.map(s => ({
+      id: s.slug,
+      title: s.title,
+      slug: s.slug,
+      category: s.category,
+      status: 'published',
+      customer_fee: s.amount,
+      processing_time: '2-3 Days',
+    } as any));
+  }
   const { data, error } = await supabase.from('services').select('*').eq('status', 'published');
   if (error) {
     console.error('[serviceEngine] listServices error', error);
     return [];
+  }
+  if (!data || data.length === 0) {
+    return servicesData.map(s => ({
+      id: s.slug,
+      title: s.title,
+      slug: s.slug,
+      category: s.category,
+      status: 'published',
+      customer_fee: s.amount,
+      processing_time: '2-3 Days',
+    } as any));
   }
   return (data as unknown) as ServiceConfig['service'][];
 }

@@ -78,7 +78,7 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
         )}
         <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
           {service.ctaType === "apply" ? (
-            <Link href={row.cta_primary_url || `/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
+            <Link href={`/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
               {isLoggedIn ? "Apply Now" : "Login to Apply"}
               <ArrowRight className="h-4 w-4" />
             </Link>

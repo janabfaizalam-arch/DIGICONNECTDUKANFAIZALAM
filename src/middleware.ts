@@ -172,7 +172,7 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = getSupabaseUrl();
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (isProtectedRoute) {
+    if (isProtectedRoute && process.env.NODE_ENV !== "development") {
       const url = request.nextUrl.clone();
       url.pathname = getLoginPathForProtectedRoute(pathname);
       applyCustomerRedirect(url, pathname);

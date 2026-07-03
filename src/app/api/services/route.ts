@@ -4,7 +4,13 @@ import { NextResponse } from 'next/server';
 import { createServiceConfig, listServices, updateServiceConfig, deleteServiceConfig } from '@/lib/serviceEngineInline';
 import type { ServiceConfig } from '@/types/service';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const debugVal = searchParams.get("debug");
+  if (debugVal) {
+    console.log("=== WIZARD DEBUG INFO ===", debugVal);
+    return NextResponse.json({ ok: true });
+  }
   const services = await listServices();
   return NextResponse.json(services);
 }

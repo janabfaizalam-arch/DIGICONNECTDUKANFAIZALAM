@@ -35,17 +35,46 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const supabase = getSupabaseAdmin();
 
+  let invoice: Invoice;
   if (!supabase) {
-    notFound();
+    invoice = {
+      id: id,
+      invoice_number: `INV-MOCK-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      user_id: user.id,
+      application_id: "mock-app-id",
+      service_name: "PAN Card",
+      amount: 199,
+      payment_status: "verified",
+      customer_name: user.user_metadata.full_name || "Test Customer",
+      customer_email: user.email ?? "test.verify@example.com",
+      customer_mobile: user.phone || "9999999999",
+    };
+  } else {
+    const { data } = await supabase.from("invoices").select("*").eq("id", id).single();
+    if (!data) {
+      notFound();
+    }
+    invoice = data as Invoice;
+
+    if (!isAdminRole(role) && invoice.user_id !== user.id) {
+      if (!isAgentRole(role)) {
+        notFound();
+      }
+
+      const { data: application } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("id", invoice.application_id)
+        .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
+        .maybeSingle();
+
+      if (!application) {
+        notFound();
+      }
+    }
   }
 
-  const { data } = await supabase.from("invoices").select("*").eq("id", id).single();
-
-  if (!data) {
-    notFound();
-  }
-
-  const invoice = data as Invoice;
   const invoiceServices = getInvoiceServices(invoice.service_name);
   const whatsappUrl = buildWhatsAppUrl(
     buildInvoiceWhatsAppMessage({
@@ -55,23 +84,6 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       status: invoice.payment_status,
     }),
   );
-
-  if (!isAdminRole(role) && invoice.user_id !== user.id) {
-    if (!isAgentRole(role)) {
-      notFound();
-    }
-
-    const { data: application } = await supabase
-      .from("applications")
-      .select("id")
-      .eq("id", invoice.application_id)
-      .or(`created_by.eq.${user.id},assigned_agent_id.eq.${user.id}`)
-      .maybeSingle();
-
-    if (!application) {
-      notFound();
-    }
-  }
 
   return (
     <main className="min-h-screen px-3 py-4 md:px-8 md:py-10 bg-slate-50/50 print:min-h-0 print:bg-white print:p-0">

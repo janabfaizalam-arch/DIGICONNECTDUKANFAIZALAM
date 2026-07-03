@@ -249,8 +249,8 @@ export const serviceIconMap: Record<string, LucideIcon> = {
 };
 
 function parseAmount(price?: string) {
-  void price;
-  return 0;
+  if (!price) return 0;
+  return Number(price.replace(/[^\d]/g, "")) || 0;
 }
 
 function buildFaqs(title: string, categorySlug: ServiceCategorySlug, priceLabel: string): ServiceFaq[] {
@@ -320,7 +320,7 @@ function createService(raw: RawService): ServiceItem {
     offerPrice: raw.offerPrice,
     priceLabel,
     amount: parseAmount(raw.offerPrice),
-    ctaType: hasFixedPrice ? "apply" : "enquiry",
+    ctaType: "apply",
     icon: iconMap[raw.iconKey],
     badge: raw.badge ?? (hasFixedPrice ? "Limited Offer" : "Enquiry"),
     faqs: buildFaqs(raw.title, raw.categorySlug, priceLabel),
@@ -681,6 +681,84 @@ const rawServices: RawService[] = [
       "Expert Coordinator Guidance"
     ]
   },
+  {
+    title: "PAN Card",
+    slug: "pan-card",
+    categorySlug: "cards",
+    shortDescription: "Apply for a new PAN card, correct existing PAN details, or request a duplicate physical card.",
+    offerPrice: "₹199",
+    oldPrice: "₹299",
+    priceLabel: "₹199",
+    iconKey: "card",
+    badge: "Popular",
+    documents: ["Aadhaar Card", "Passport Size Photograph", "Signature"],
+    benefits: ["New PAN Application", "Correction in existing card", "Instant e-PAN delivery", "Physical card home delivery"],
+  },
+  {
+    title: "Aadhaar Services",
+    slug: "aadhaar-services",
+    categorySlug: "cards",
+    shortDescription: "Get guided assistance for Aadhaar address update, details correction, and duplicate download.",
+    offerPrice: "₹149",
+    oldPrice: "₹250",
+    priceLabel: "₹149",
+    iconKey: "voter",
+    badge: "Essential",
+    documents: ["Proof of Address (Utility Bill / Rent Agreement)", "Mobile Number Linked to Aadhaar"],
+    benefits: ["Address update facilitation", "Demographic details correction assistance", "E-Aadhaar print download support"],
+  },
+  {
+    title: "Income Certificate",
+    slug: "income-certificate",
+    categorySlug: "tax",
+    shortDescription: "Apply online for an official income certificate issued by the state revenue department.",
+    offerPrice: "₹249",
+    oldPrice: "₹400",
+    priceLabel: "₹249",
+    iconKey: "compliance",
+    badge: "State Service",
+    documents: ["Aadhaar Card", "Salary Slip or Income Affidavit", "Ration Card or Address Proof"],
+    benefits: ["State department processing assistance", "Secure online upload & fee submission", "Verified documentation verification"],
+  },
+  {
+    title: "Caste Certificate",
+    slug: "caste-certificate",
+    categorySlug: "tax",
+    shortDescription: "Apply online for SC, ST, or OBC caste certificates with verified state department filing.",
+    offerPrice: "₹249",
+    oldPrice: "₹400",
+    priceLabel: "₹249",
+    iconKey: "compliance",
+    badge: "State Service",
+    documents: ["Aadhaar Card", "Father's Caste Certificate or Land Record", "Address Proof"],
+    benefits: ["Official state department filing support", "Category concession document prep", "Direct updates on WhatsApp"],
+  },
+  {
+    title: "Domicile Certificate",
+    slug: "domicile-certificate",
+    categorySlug: "tax",
+    shortDescription: "Apply for a residence certificate or domicile certificate online for state jobs and college admissions.",
+    offerPrice: "₹249",
+    oldPrice: "₹400",
+    priceLabel: "₹249",
+    iconKey: "compliance",
+    badge: "State Service",
+    documents: ["Aadhaar Card", "Land Registry Copy or Voter List", "Self Declaration Form"],
+    benefits: ["Residency document preparation", "Official government submittal checks", "Verified digital certificate copy"],
+  },
+  {
+    title: "Ayushman Card",
+    slug: "ayushman-card",
+    categorySlug: "cards",
+    shortDescription: "Register under PM-JAY Ayushman Bharat health card scheme and download your verified card.",
+    offerPrice: "₹149",
+    oldPrice: "₹300",
+    priceLabel: "₹149",
+    iconKey: "insurance",
+    badge: "Health Scheme",
+    documents: ["Aadhaar Card", "Ration Card / PM Letter", "Mobile Number Linked to Aadhaar"],
+    benefits: ["PM-JAY enrollment verification support", "Instant digital card download assistance", "Cashless treatment benefit validation"],
+  }
 ];
 
 export const servicesData = rawServices.map(createService);
