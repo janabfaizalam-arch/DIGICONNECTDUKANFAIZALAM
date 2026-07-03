@@ -22,7 +22,7 @@ export async function getCurrentUser() {
           role: "customer",
         },
         email_confirmed_at: new Date().toISOString(),
-      } as any;
+      } as unknown as User;
     }
     return null;
   }

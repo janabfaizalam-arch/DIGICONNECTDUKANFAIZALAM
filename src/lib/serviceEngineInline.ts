@@ -88,7 +88,7 @@ export async function listServices(): Promise<ServiceConfig['service'][]> {
       status: 'published',
       customer_fee: s.amount,
       processing_time: '2-3 Days',
-    } as any));
+    } as unknown as ServiceConfig['service']));
   }
   const { data, error } = await supabase.from('services').select('*').eq('status', 'published');
   if (error) {
@@ -104,7 +104,7 @@ export async function listServices(): Promise<ServiceConfig['service'][]> {
       status: 'published',
       customer_fee: s.amount,
       processing_time: '2-3 Days',
-    } as any));
+    } as unknown as ServiceConfig['service']));
   }
   return (data as unknown) as ServiceConfig['service'][];
 }
