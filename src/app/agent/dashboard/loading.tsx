@@ -1,14 +1,5 @@
-import { PageLoader, SkeletonCard } from "@/components/ui/loading";
+import { UniversalLoader } from "@/components/ui/universal-loader";
 
 export default function AgentDashboardLoading() {
-  return (
-    <main className="container-shell py-10">
-      <PageLoader label="Loading agent dashboard" />
-      <div className="grid gap-4 md:grid-cols-3">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-    </main>
-  );
+  return <UniversalLoader />;
 }

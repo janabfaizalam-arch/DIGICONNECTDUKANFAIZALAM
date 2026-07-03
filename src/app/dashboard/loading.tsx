@@ -1,5 +1,5 @@
-import { PageLoader } from "@/components/ui/loading";
+import { UniversalLoader } from "@/components/ui/universal-loader";
 
 export default function DashboardLoading() {
-  return <PageLoader label="Loading DigiConnect Dukan dashboard" />;
+  return <UniversalLoader />;
 }

@@ -166,6 +166,12 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => matchesRoute(pathname, route)) &&
                            !authRoutes.some((route) => matchesRoute(pathname, route));
   const isAuthRoute = authRoutes.some((route) => matchesRoute(pathname, route));
+
+  // Bypass session lookup and DB queries for public pages to optimize page load speeds
+  if (!isProtectedRoute && !isAuthRoute) {
+    return response;
+  }
+
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   const supabaseUrl = getSupabaseUrl();
