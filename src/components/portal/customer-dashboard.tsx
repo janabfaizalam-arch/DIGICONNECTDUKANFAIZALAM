@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutDashboard,
@@ -174,6 +174,7 @@ export function CustomerDashboard({
   user
 }: CustomerDashboardProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { success: toastSuccess, error: toastError } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -223,16 +224,13 @@ export function CustomerDashboard({
 
   // Reactively track tab parameter changes in URL
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get("tab");
-      if (tabParam && ["dashboard", "applications", "wallet", "referral", "documents", "support", "profile", "vault"].includes(tabParam)) {
-        setActiveTab(tabParam as Tab);
-      } else {
-        setActiveTab("dashboard");
-      }
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["dashboard", "applications", "wallet", "referral", "documents", "support", "profile", "vault"].includes(tabParam)) {
+      setActiveTab(tabParam as Tab);
+    } else {
+      setActiveTab("dashboard");
     }
-  }, []);
+  }, [searchParams]);
 
   const navigateToTab = (tab: Tab) => {
     setActiveTab(tab);

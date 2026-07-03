@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Home, FileText, Wallet, Gift, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
@@ -61,18 +61,13 @@ function shouldHide(pathname: string) {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [navHidden, setNavHidden] = useState(false);
-  const [currentTabParam, setCurrentTabParam] = useState("");
   const lastScrollYRef = useRef(0);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      setCurrentTabParam(params.get("tab") || "");
-    }
-  }, [pathname]);
+  const currentTabParam = searchParams.get("tab") || "";
 
   // Sync auth state & resolve role
   useEffect(() => {
@@ -209,8 +204,7 @@ export function BottomNav() {
       variants={navVariants}
       animate={navHidden ? "hidden" : "visible"}
       initial="visible"
-      className="fixed bottom-0 inset-x-0 z-[50] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/60 backdrop-blur-2xl border-t border-white/40 shadow-[0_-2px_16px_rgba(15,23,42,0.04)] pb-safe-bottom print:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed bottom-5 left-4 right-4 max-w-md md:hidden mx-auto z-[50] flex items-center justify-around h-16 px-3 bg-white/75 backdrop-blur-2xl border border-slate-200/40 rounded-[24px] shadow-[0_12px_36px_-6px_rgba(15,23,42,0.08),0_4px_16px_-4px_rgba(15,23,42,0.04)] print:hidden"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -219,16 +213,22 @@ export function BottomNav() {
           <Link
             key={tab.label}
             href={tab.href}
-            className={`flex flex-col items-center justify-center flex-1 h-full relative text-slate-400 hover:text-slate-600 transition-colors ${
-              isActive ? "text-blue-600 font-semibold" : "font-medium"
+            className={`flex flex-col items-center justify-center flex-1 h-full relative transition-all duration-300 ${
+              isActive ? "text-blue-600 font-semibold scale-105" : "text-slate-400 hover:text-slate-650"
             }`}
           >
-            <div className="flex flex-col items-center justify-center gap-0.5">
-              <Icon className="h-4.5 w-4.5 stroke-[1.8]" />
-              <span className="text-[10px] tracking-wide">{tab.label}</span>
+            <div className="flex flex-col items-center justify-center gap-0.5 relative z-10">
+              <Icon className={`h-4.5 w-4.5 transition-all duration-300 ${
+                isActive ? "stroke-[2.2] scale-110 drop-shadow-[0_0_8px_rgba(37,99,235,0.25)]" : "stroke-[1.8]"
+              }`} />
+              <span className="text-[9px] tracking-wide font-bold">{tab.label}</span>
             </div>
             {isActive && (
-              <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-blue-600" />
+              <motion.span
+                layoutId="activeTabIndicator"
+                className="absolute inset-0 bg-blue-50/60 rounded-[18px] border border-blue-100/20 -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
             )}
           </Link>
         );

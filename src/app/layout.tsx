@@ -10,7 +10,6 @@ import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
 import { BottomNav } from "@/components/bottom-nav";
-import { LiveNotificationFeed } from "@/components/live-notification-feed";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -148,7 +147,6 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <BottomNav />
           </Suspense>
-          <LiveNotificationFeed />
           <PwaInstallPrompt />
           <Script id="organization-schema" type="application/ld+json">
             {JSON.stringify(organizationSchema)}

@@ -52,35 +52,45 @@ export default async function Home() {
   return (
     <>
       <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
-        {/* Section 1 — Hero Slides */}
-        <HeroSearchSection />
-
         {/* Section 2 — Smart Search Hub */}
         <SmartSearchHub />
 
+        {/* Section 1 — Hero Slides */}
+        <HeroSearchSection />
+
         {/* Prominent Smart Print QR Service Button */}
         <ScrollReveal>
-          <div className="px-4 py-3 max-w-2xl mx-auto text-center relative z-20">
+          <div className="px-4 py-2.5 max-w-2xl mx-auto relative z-20">
             <Link
               href="/print"
-              className="group flex items-center justify-between glass-liquid-premium p-4 md:p-5 rounded-2xl border border-white/50 text-slate-800 hover:text-blue-600 transition-all shadow-md select-none cursor-pointer"
+              className="group relative block overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent p-[1.2px] shadow-sm hover:shadow-md transition-all duration-300 select-none cursor-pointer"
             >
-              <div className="flex items-center gap-4 text-left">
-                <div className="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Printer className="h-6 w-6 stroke-[2] animate-pulse" />
+              {/* Outer border glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/15 to-amber-500/15 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              {/* Inner card container */}
+              <div className="relative flex items-center justify-between bg-white/80 backdrop-blur-xl p-3.5 sm:p-4 rounded-[15px] border border-white/40">
+                <div className="flex items-center gap-3.5 text-left">
+                  {/* Icon with double gradient ring */}
+                  <div className="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-500 p-[1.5px] shadow-sm shrink-0 flex items-center justify-center">
+                    <div className="w-full h-full rounded-[10px] bg-white flex items-center justify-center">
+                      <Printer className="h-5 w-5 text-orange-600 stroke-[2] group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900 leading-tight">
+                      Smart Print
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-normal font-semibold">
+                      Scan QR & print instantly. Upload PDFs or photos securely.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm md:text-base font-black text-slate-800 leading-tight">
-                    Smart Print
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1 font-semibold leading-normal">
-                    Scan QR, upload PDFs/images, pay securely and print instantly at the shop.
-                  </p>
-                </div>
+                {/* Micro-animated CTA button */}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-50 group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500 text-orange-600 group-hover:text-white shadow-xs group-hover:translate-x-0.5 transition-all duration-300">
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </span>
               </div>
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-50 group-hover:bg-blue-600 group-hover:text-white text-slate-400 transition-all">
-                <ArrowRight className="h-4 w-4" />
-              </span>
             </Link>
           </div>
         </ScrollReveal>

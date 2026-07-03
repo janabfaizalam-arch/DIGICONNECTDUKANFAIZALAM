@@ -206,27 +206,27 @@ export function SmartSearchHub() {
   };
 
   return (
-    <section id="search-hub" className="relative z-20 px-4 mt-4 max-w-2xl mx-auto">
+    <section id="search-hub" className="relative z-20 px-4 pt-6 pb-2.5 max-w-2xl mx-auto">
       {/* Search Input Box */}
       <div className="relative">
-        <div className="relative flex items-center rounded-2xl bg-white/70 border border-slate-200/50 shadow-sm focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100/50 transition-all duration-300">
-          <Search className="pointer-events-none absolute left-4 h-5 w-5 text-slate-400" />
+        <div className="relative flex items-center rounded-full bg-white/75 backdrop-blur-xl border border-slate-200/40 shadow-[0_8px_30px_rgba(15,23,42,0.03)] focus-within:shadow-[0_12px_36px_rgba(37,99,235,0.06)] focus-within:border-blue-500/50 focus-within:scale-[1.01] transition-all duration-300">
+          <Search className="pointer-events-none absolute left-5 h-4.5 w-4.5 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search services, schemes, forms…"
-            className="h-12 w-full rounded-2xl bg-transparent pl-12 pr-14 text-sm font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
+            className="h-13 w-full rounded-full bg-transparent pl-[52px] pr-[60px] text-sm font-bold text-slate-800 placeholder:text-slate-400 outline-none"
           />
-          <div className="absolute right-2 flex items-center">
+          <div className="absolute right-3 flex items-center">
             <button
               type="button"
               onClick={toggleVoiceSearch}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 active:scale-95 ${
+              className={`flex h-8.5 w-8.5 items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${
                 isListening
                   ? "bg-red-500 text-white animate-pulse"
-                  : "bg-slate-100/80 hover:bg-slate-200/60 text-slate-500"
+                  : "bg-slate-100 hover:bg-slate-200/60 text-slate-500"
               }`}
               title="Voice Search"
             >
