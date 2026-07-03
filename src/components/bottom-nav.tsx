@@ -53,7 +53,11 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   }
 }
 
+<<<<<<< HEAD
 const hiddenPrefixes = ["/admin", "/agent", "/login", "/signup", "/ap", "/forgot-password", "/reset-password", "/staff", "/customer-login"];
+=======
+const hiddenPrefixes = ["/admin", "/agent", "/login", "/signup", "/ap", "/forgot-password", "/reset-password", "/staff", "/customer-login", "/apply"];
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
 
 function shouldHide(pathname: string) {
   return hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -204,7 +208,11 @@ export function BottomNav() {
       variants={navVariants}
       animate={navHidden ? "hidden" : "visible"}
       initial="visible"
+<<<<<<< HEAD
       className="fixed bottom-5 left-4 right-4 max-w-md md:hidden mx-auto z-[50] flex items-center justify-around h-16 px-3 bg-white/75 backdrop-blur-2xl border border-slate-200/40 rounded-[24px] shadow-[0_12px_36px_-6px_rgba(15,23,42,0.08),0_4px_16px_-4px_rgba(15,23,42,0.04)] print:hidden"
+=======
+      className="bottom-nav-container fixed bottom-5 left-4 right-4 max-w-md md:hidden mx-auto z-[50] flex items-center justify-around h-16 px-3 bg-white/75 backdrop-blur-2xl border border-slate-200/40 rounded-[24px] shadow-[0_12px_36px_-6px_rgba(15,23,42,0.08),0_4px_16px_-4px_rgba(15,23,42,0.04)] print:hidden"
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;

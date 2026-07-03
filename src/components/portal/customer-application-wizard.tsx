@@ -87,6 +87,160 @@ function payLog(stage: PaymentStage, detail: Record<string, unknown>) {
   console.info(`[PAY:${stage}]`, detail);
 }
 
+<<<<<<< HEAD
+=======
+interface UploadSlotProps {
+  slot: { id: DocSlotId; label: string; hint: string; icon: LucideIcon };
+  file: File | null;
+  progress: number;
+  error?: string | null;
+  onFileSelect: (file: File) => void;
+  onRemove: () => void;
+  onCameraClick: () => void;
+}
+
+function DocumentUploadSlot({
+  slot,
+  file,
+  progress,
+  error,
+  onFileSelect,
+  onRemove,
+  onCameraClick,
+}: UploadSlotProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (file && file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    if (!file && !progress) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const isUploading = progress > 0 && progress < 100;
+
+  return (
+    <div
+      onClick={handleCardClick}
+      className={cn(
+        "relative border rounded-2xl p-4 flex flex-col justify-between min-h-[180px] transition-all duration-300 group cursor-pointer",
+        file 
+          ? "bg-emerald-50/20 border-emerald-300 shadow-sm" 
+          : error 
+          ? "bg-red-50/20 border-red-300 shadow-xs"
+          : isUploading
+          ? "bg-blue-50/10 border-blue-300"
+          : "bg-white border-dashed border-slate-200 hover:border-slate-350 hover:bg-slate-50/30"
+      )}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFileSelect(f);
+        }}
+      />
+
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className={cn(
+            "inline-flex p-2 rounded-xl mb-1.5 transition-colors",
+            file ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
+          )}>
+            <slot.icon className="h-4 w-4" />
+          </div>
+          <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+            {slot.label}
+          </h3>
+          <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{slot.hint}</p>
+        </div>
+
+        {file && (
+          <button
+            onClick={onRemove}
+            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors shrink-0"
+            title="Remove File"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="my-3 flex-1 flex flex-col justify-center text-left">
+        {file ? (
+          <div className="flex items-center gap-2 bg-white/80 border border-slate-100 rounded-xl p-2 backdrop-blur-xs">
+            {previewUrl ? (
+              <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-100">
+                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-slate-150 flex items-center justify-center shrink-0 border border-slate-100">
+                <FileText className="h-5 w-5 text-slate-400" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-700 truncate leading-snug">{file.name}</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            </div>
+          </div>
+        ) : isUploading ? (
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[9px] font-bold text-blue-600">
+              <span>Uploading...</span><span>{progress}%</span>
+            </div>
+            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        ) : error ? (
+          <p className="text-[10px] font-semibold text-red-500 bg-red-50/50 p-2 rounded-lg border border-red-100">{error}</p>
+        ) : null}
+      </div>
+
+      <div className="mt-1">
+        {file ? (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full bg-white hover:bg-slate-50 text-slate-750 text-[10px] font-bold py-2 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-xs"
+          >
+            <RefreshCw className="h-3 w-3" /> Replace File
+          </button>
+        ) : !isUploading ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+            >
+              <Upload className="h-3.5 w-3.5" /> Upload File
+            </button>
+            <button
+              onClick={onCameraClick}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-md shadow-blue-500/10"
+            >
+              <Camera className="h-3.5 w-3.5" /> Use Camera
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
 export interface CustomerApplicationWizardProps {
   initialServiceSlug?:    string;
   initialProfileFields?: { mobile?: string; pincode?: string; city?: string; state?: string; };
@@ -127,6 +281,98 @@ export function CustomerApplicationWizard({
   const [uploadProgress, setUploadProgress] = useState<Record<DocSlotId, number>>({
     aadhaar: 0, pan: 0, other: 0,
   });
+<<<<<<< HEAD
+=======
+  const [uploadErrors, setUploadErrors] = useState<Record<DocSlotId, string | null>>({
+    aadhaar: null, pan: null, other: null,
+  });
+
+  // Dynamic layout heights measurement using ResizeObserver
+  useEffect(() => {
+    const update = () => {
+      const header = document.querySelector(".site-header");
+      const stepper = document.querySelector(".wizard-stepper");
+      const bottomNav = document.querySelector(".bottom-nav-container");
+      const stickyActions = document.querySelector(".wizard-sticky-actions");
+
+      const root = document.documentElement;
+
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const stepperHeight = stepper ? stepper.getBoundingClientRect().height : 0;
+      const isBottomNavVisible = bottomNav && window.getComputedStyle(bottomNav).display !== "none";
+      const bottomNavHeight = isBottomNavVisible ? bottomNav.getBoundingClientRect().height : 0;
+      const stickyActionsHeight = stickyActions ? stickyActions.getBoundingClientRect().height : 0;
+
+      root.style.setProperty("--site-header-height", `${headerHeight}px`);
+      root.style.setProperty("--stepper-height", `${stepperHeight}px`);
+      root.style.setProperty("--bottom-nav-height", `${bottomNavHeight}px`);
+      root.style.setProperty("--sticky-action-bar-height", `${stickyActionsHeight}px`);
+    };
+
+    update();
+
+    const observer = new ResizeObserver(() => update());
+    
+    const header = document.querySelector(".site-header");
+    const stepper = document.querySelector(".wizard-stepper");
+    const bottomNav = document.querySelector(".bottom-nav-container");
+    const stickyActions = document.querySelector(".wizard-sticky-actions");
+
+    if (header) observer.observe(header);
+    if (stepper) observer.observe(stepper);
+    if (bottomNav) observer.observe(bottomNav);
+    if (stickyActions) observer.observe(stickyActions);
+
+    window.addEventListener("resize", update);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [currentStep]);
+
+  // Visual viewport height adjusting bottom actions for soft keyboard on mobile devices
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleVisualViewportResize = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const stickyActions = document.querySelector(".wizard-sticky-actions") as HTMLElement;
+      if (stickyActions) {
+        const keyboardHeight = window.innerHeight - vv.height;
+        if (keyboardHeight > 60) {
+          stickyActions.style.bottom = `${keyboardHeight}px`;
+        } else {
+          stickyActions.style.bottom = "0px";
+        }
+      }
+    };
+
+    window.visualViewport.addEventListener("resize", handleVisualViewportResize);
+    window.visualViewport.addEventListener("scroll", handleVisualViewportResize);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleVisualViewportResize);
+      window.visualViewport?.removeEventListener("scroll", handleVisualViewportResize);
+    };
+  }, []);
+
+  // Keyboard scroll assistance: auto-scroll inputs into center of view upon focus
+  useEffect(() => {
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 250);
+      }
+    };
+
+    document.addEventListener("focusin", handleFocus);
+    return () => document.removeEventListener("focusin", handleFocus);
+  }, []);
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -392,6 +638,18 @@ export function CustomerApplicationWizard({
   }, [customer]);
 
   const handleFileChange = useCallback((slotId: DocSlotId, file: File) => {
+<<<<<<< HEAD
+=======
+    // Check if file is too large (> 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadErrors(p => ({ ...p, [slotId]: "File size exceeds 5MB limit. Please upload a smaller file." }));
+      setUploadProgress(p => ({ ...p, [slotId]: 0 }));
+      setDocFiles(p => ({ ...p, [slotId]: null }));
+      return;
+    }
+
+    setUploadErrors(p => ({ ...p, [slotId]: null }));
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
     setUploadProgress(p => ({ ...p, [slotId]: 0 }));
     let pct = 0;
     const iv = setInterval(() => {
@@ -699,7 +957,11 @@ export function CustomerApplicationWizard({
 
       {/* Viewfinder camera modal */}
       {cameraSlot && (
+<<<<<<< HEAD
         <div className="fixed inset-0 z-[200] bg-black flex flex-col" style={{ touchAction: "none" }}>
+=======
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex flex-col" style={{ touchAction: "none" }}>
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
           <div className="relative flex items-center justify-between px-5 pt-10 pb-4 bg-gradient-to-b from-black/80 to-transparent shrink-0">
             <button
               onClick={closeCamera}
@@ -810,6 +1072,7 @@ export function CustomerApplicationWizard({
         </div>
       )}
 
+<<<<<<< HEAD
       <div className="min-h-screen bg-slate-50/40 pb-24">
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">
           {currentStep < 6 && (
@@ -834,6 +1097,43 @@ export function CustomerApplicationWizard({
                     <div className={cn(
                       "flex-1 h-0.5 min-w-[6px] rounded-full",
                       currentStep > step.id ? "bg-emerald-300" : "bg-slate-200"
+=======
+      <div 
+        className="min-h-screen bg-slate-50/40 transition-all duration-300"
+        style={{
+          paddingTop: "calc(var(--site-header-height, 0px) + 16px + env(safe-area-inset-top))",
+          paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">
+          {currentStep < 6 && (
+            <div className="wizard-stepper bg-white border border-slate-200 rounded-2xl px-4 py-2.5 flex items-center justify-between w-full gap-1 sm:gap-2">
+              {STEPS.filter(s => s.id < 6).map((step, i) => (
+                <React.Fragment key={step.id}>
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0",
+                    currentStep === step.id
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : currentStep > step.id
+                        ? "text-emerald-650"
+                        : "text-slate-400"
+                  )}>
+                    {currentStep > step.id
+                      ? <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                      : <span className="text-[9px] font-black opacity-70">{step.id}</span>
+                    }
+                    <span className={cn(
+                      "text-[10px] font-bold md:inline-block",
+                      currentStep === step.id ? "inline-block" : "hidden"
+                    )}>
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < 4 && (
+                    <div className={cn(
+                      "flex-1 h-0.5 min-w-[6px] rounded-full transition-all duration-300",
+                      currentStep > step.id ? "bg-emerald-350" : "bg-slate-200"
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
                     )} />
                   )}
                 </React.Fragment>
@@ -845,7 +1145,14 @@ export function CustomerApplicationWizard({
             {/* Step 1: Services selection */}
             {currentStep === 1 && (
               <div>
+<<<<<<< HEAD
                 <div className="sticky top-0 bg-white z-10 border-b border-slate-100 p-4 space-y-3">
+=======
+                <div 
+                  className="sticky bg-white z-10 border-b border-slate-100 p-4 space-y-3 transition-all duration-305"
+                  style={{ top: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top))" }}
+                >
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
@@ -1132,7 +1439,11 @@ export function CustomerApplicationWizard({
               </div>
             )}
 
+<<<<<<< HEAD
             {/* Step 3: Documents */}
+=======
+             {/* Step 3: Documents */}
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
             {currentStep === 3 && (
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
@@ -1141,6 +1452,7 @@ export function CustomerApplicationWizard({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<<<<<<< HEAD
                   {DOC_SLOTS.map(slot => {
                     const file    = docFiles[slot.id];
                     const prog    = uploadProgress[slot.id];
@@ -1225,6 +1537,29 @@ export function CustomerApplicationWizard({
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-blue-500" />
                   Documents are optional here. Per-service requirements are managed from Admin Panel.
+=======
+                  {DOC_SLOTS.map(slot => (
+                    <DocumentUploadSlot
+                      key={slot.id}
+                      slot={slot}
+                      file={docFiles[slot.id]}
+                      progress={uploadProgress[slot.id]}
+                      error={uploadErrors[slot.id]}
+                      onFileSelect={(f) => handleFileChange(slot.id, f)}
+                      onRemove={() => {
+                        setDocFiles(p => ({ ...p, [slot.id]: null }));
+                        setUploadProgress(p => ({ ...p, [slot.id]: 0 }));
+                        setUploadErrors(p => ({ ...p, [slot.id]: null }));
+                      }}
+                      onCameraClick={() => openCamera(slot.id)}
+                    />
+                  ))}
+                </div>
+
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-750 font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-blue-500" />
+                  Documents are optional for initial submission.
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
                 </div>
               </div>
             )}
@@ -1416,7 +1751,17 @@ export function CustomerApplicationWizard({
 
       {/* Sticky Bottom Actions Bar */}
       {currentStep < 6 && (
+<<<<<<< HEAD
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 flex items-center gap-3">
+=======
+        <div 
+          className="wizard-sticky-actions fixed bottom-0 left-0 right-0 z-40 bg-white/70 backdrop-blur-xl border-t border-slate-200/50 px-4 py-3 flex items-center gap-3 transition-all duration-300"
+          style={{
+            boxShadow: "0 -8px 30px rgba(15, 23, 42, 0.05)",
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+          }}
+        >
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
           {currentStep > 1 && (
             <button
               onClick={handlePrev}

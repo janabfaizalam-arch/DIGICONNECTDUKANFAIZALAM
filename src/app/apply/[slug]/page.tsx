@@ -65,7 +65,17 @@ export default async function ApplySlugPage({ params }: PageProps) {
   }
 
   return (
+<<<<<<< HEAD
     <main className="min-h-screen bg-slate-50/30 px-4 pb-12 pt-8 md:px-8">
+=======
+    <main 
+      className="min-h-screen bg-slate-50/30 px-4 md:px-8 transition-all duration-300"
+      style={{
+        paddingTop: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top) + 16px)",
+        paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
+      }}
+    >
+>>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
       <CustomerApplicationWizard
         initialServiceSlug={slug}
         initialProfileFields={{
