@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const mobileRaw = String(body.mobile || "").trim();
     const purpose = String(body.purpose || "login") as WhatsappTemplatePurpose;
 
-    const mobile = mobileRaw.replace(/\D/g, "").slice(0, 10);
+    const mobile = mobileRaw.replace(/\D/g, "").slice(-10);
     
     if (!indianMobilePattern.test(mobile)) {
       return NextResponse.json({ error: "Invalid Indian mobile number." }, { status: 400 });
