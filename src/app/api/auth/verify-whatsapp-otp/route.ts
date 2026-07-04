@@ -146,9 +146,15 @@ export async function POST(request: Request) {
       userId = existingUser.id;
       userEmail = existingUser.email || userEmail;
       
-      console.info(`[WhatsApp Auth Debug] User exists. Updating password for login: "${userId}"`);
+      console.info(`[WhatsApp Auth Debug] User exists. ID: "${userId}", Email: "${userEmail}", Mobile: "${mobile}". Updating password for login.`);
       const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, { 
-        password: temporaryPassword 
+        password: temporaryPassword,
+        email_confirm: true
+      });
+      
+      console.info(`[WhatsApp Auth Debug] updateUserById response:`, { 
+        data: updateData ? { id: updateData.user?.id, email: updateData.user?.email } : null, 
+        error: updateError 
       });
       
       if (updateError) {
@@ -169,6 +175,11 @@ export async function POST(request: Request) {
           phone: mobile,
           full_name: "WhatsApp User"
         }
+      });
+      
+      console.info(`[WhatsApp Auth Debug] createUser response:`, { 
+        data: authData ? { id: authData.user?.id, email: authData.user?.email } : null, 
+        error: authError 
       });
       
       if (authError || !authData.user) {
@@ -195,20 +206,65 @@ export async function POST(request: Request) {
     }
 
     // 7. Establish Session
-    console.info(`[WhatsApp Auth Debug] Signing in to establish session for email: "${userEmail}"`);
+    console.info(`[WhatsApp Auth Debug] Signing in to establish session for email: "${userEmail}" with temporary password: "${temporaryPassword.substring(0, 5)}..."`);
     const { data: sessionData, error: sessionError } = await supabaseRoute.auth.signInWithPassword({
       email: userEmail,
       password: temporaryPassword
     });
 
-    if (sessionError || !sessionData.session) {
-      console.error("[WhatsApp Auth Debug] signInWithPassword failed:", sessionError);
-      return NextResponse.json({ 
-        error: `Supabase login session creation failed: ${sessionError?.message || "Session establishment error. Please try again."}` 
-      }, { status: 500 });
+    console.info(`[WhatsApp Auth Debug] signInWithPassword response:`, { 
+      hasSession: !!sessionData?.session, 
+      userId: sessionData?.session?.user?.id, 
+      error: sessionError 
+    });
+
+    let activeSession = sessionData?.session;
+
+    if (sessionError || !activeSession) {
+      console.warn("[WhatsApp Auth Debug] signInWithPassword failed. Attempting magiclink fallback to create session...", sessionError);
+      
+      // Try magiclink generation and verification
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: userEmail
+      });
+      
+      console.info(`[WhatsApp Auth Debug] generateLink response:`, { 
+        hasHashedToken: !!linkData?.properties?.hashed_token, 
+        error: linkError 
+      });
+      
+      if (linkError || !linkData.properties?.hashed_token) {
+        console.error("[WhatsApp Auth Debug] Magiclink generation failed:", linkError);
+        return NextResponse.json({ 
+          error: `Supabase login session creation failed: ${sessionError?.message || "Invalid login credentials"}. Fallback magiclink: ${linkError?.message || "Generation failed"}` 
+        }, { status: 500 });
+      }
+      
+      console.info(`[WhatsApp Auth Debug] Verifying OTP token hash programmatically`);
+      const { data: verifyData, error: verifyError } = await supabaseRoute.auth.verifyOtp({
+        token_hash: linkData.properties.hashed_token,
+        type: 'magiclink'
+      });
+      
+      console.info(`[WhatsApp Auth Debug] verifyOtp response:`, { 
+        hasSession: !!verifyData?.session, 
+        userId: verifyData?.session?.user?.id, 
+        error: verifyError 
+      });
+      
+      if (verifyError || !verifyData.session) {
+        console.error("[WhatsApp Auth Debug] verifyOtp failed:", verifyError);
+        return NextResponse.json({ 
+          error: `Supabase login session creation failed: ${sessionError?.message || "Invalid login credentials"}. Fallback magiclink verification: ${verifyError?.message || "Verification failed"}` 
+        }, { status: 500 });
+      }
+      
+      console.info(`[WhatsApp Auth Debug] Session established successfully via magiclink fallback. User ID: "${verifyData.session.user.id}"`);
+      activeSession = verifyData.session;
     }
 
-    console.info(`[WhatsApp Auth Debug] Session established successfully. User ID: "${sessionData.session.user.id}"`);
+    console.info(`[WhatsApp Auth Debug] Session established successfully. User ID: "${activeSession.user.id}"`);
 
     const finalResponse = { 
       message: isNewUser ? "Account created successfully." : "Logged in successfully.",
