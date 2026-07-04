@@ -251,8 +251,14 @@ export function CustomerApplicationWizard({
 
   const [dbServices,      setDbServices]      = useState<AgentService[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [cart, setCart] = useState<CartEntry[]>([]);
+  const [currentStep, setCurrentStep] = useState<number>(() => {
+    const slug = initialServiceSlug || searchParams?.get("service") || "";
+    return slug ? 2 : 1;
+  });
+  const [cart, setCart] = useState<CartEntry[]>(() => {
+    const slug = initialServiceSlug || searchParams?.get("service") || "";
+    return slug ? [{ slug, quantity: 1 }] : [];
+  });
   const [searchQuery,       setSearchQuery]       = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState("all");
   const [recentServices,    setRecentServices]    = useState<string[]>([]);
@@ -487,7 +493,13 @@ export function CustomerApplicationWizard({
     const slug = initialServiceSlug ?? searchParams.get("service");
     if (slug && dbServices.length > 0) {
       const found = dbServices.find(s => s.slug === slug);
-      if (found) { setCart([{ slug, quantity: 1 }]); setCurrentStep(2); }
+      if (found) {
+        setCart(prev => {
+          if (prev.length === 1 && prev[0].slug === slug) return prev;
+          return [{ slug, quantity: 1 }];
+        });
+        setCurrentStep(prev => prev === 1 ? 2 : prev);
+      }
     }
   }, [initialServiceSlug, searchParams, dbServices]);
 
@@ -1070,9 +1082,9 @@ export function CustomerApplicationWizard({
       )}
 
       <div className="w-full">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">
+        <div className="max-w-4xl mx-auto w-full px-0 sm:px-4 py-0 sm:py-4 space-y-0 sm:space-y-4">
           {currentStep < 6 && (
-            <div className="wizard-stepper sticky top-[calc(var(--site-header-height,0px)+env(safe-area-inset-top))] z-30 bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl p-3 flex flex-col items-center w-full shadow-xs">
+            <div className="wizard-stepper sticky top-[calc(var(--site-header-height,0px)+env(safe-area-inset-top))] z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/60 sm:border sm:rounded-2xl p-3 flex flex-col items-center w-full shadow-xs">
               <div className="relative flex items-center justify-between w-full max-w-md">
                 {/* Connecting line */}
                 <div className="absolute left-4 right-4 top-[14px] sm:top-4 h-[2px] bg-slate-100 z-0">
@@ -1128,7 +1140,10 @@ export function CustomerApplicationWizard({
 
           <div 
             key={currentStep} 
-            className={cn("bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xs transition-all duration-300 animate-[reveal-in_300ms_cubic-bezier(0.16,1,0.3,1)]", currentStep === 1 ? "overflow-visible" : "overflow-hidden")}
+            className={cn(
+              "w-full bg-white sm:bg-white/80 sm:backdrop-blur-md border-0 sm:border border-slate-200 sm:rounded-2xl sm:shadow-xs p-0 transition-all duration-300 animate-[reveal-in_300ms_cubic-bezier(0.16,1,0.3,1)]", 
+              currentStep === 1 ? "overflow-visible" : "overflow-hidden"
+            )}
           >
             {/* Step 1: Services selection */}
             {currentStep === 1 && (
