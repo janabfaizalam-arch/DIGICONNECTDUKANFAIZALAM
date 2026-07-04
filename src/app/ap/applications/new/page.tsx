@@ -25,9 +25,6 @@ export default async function NewAPApplicationPage({
   const params = await searchParams;
 
   return (
-<<<<<<< HEAD
-    <main className="min-h-screen bg-[#F7F8FA] text-slate-800 px-3 py-3 md:px-8 md:py-6 pb-36">
-=======
     <main 
       className="min-h-screen bg-[#F7F8FA] text-slate-800 px-3 md:px-8 transition-all duration-300"
       style={{
@@ -35,7 +32,6 @@ export default async function NewAPApplicationPage({
         paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
       }}
     >
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
       <div className="mx-auto max-w-7xl">
         <Link href="/ap/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700 hover:text-blue-900 transition mb-5">
           <ArrowLeft className="h-4 w-4" />

@@ -107,8 +107,6 @@ export interface PartnerApplicationWizardProps {
   initialProfileFields?: { mobile?: string; pincode?: string; city?: string; state?: string; };
 }
 
-<<<<<<< HEAD
-=======
 interface UploadSlotProps {
   slot: { id: DocSlotId; label: string; hint: string; icon: LucideIcon };
   file: File | null;
@@ -259,8 +257,6 @@ function DocumentUploadSlot({
     </div>
   );
 }
-
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -310,8 +306,6 @@ export function PartnerApplicationWizard({
   const [uploadProgress, setUploadProgress] = useState<Record<DocSlotId, number>>({
     aadhaar: 0, pan: 0, other: 0,
   });
-<<<<<<< HEAD
-=======
   const [uploadErrors, setUploadErrors] = useState<Record<DocSlotId, string | null>>({
     aadhaar: null, pan: null, other: null,
   });
@@ -401,7 +395,6 @@ export function PartnerApplicationWizard({
     document.addEventListener("focusin", handleFocus);
     return () => document.removeEventListener("focusin", handleFocus);
   }, []);
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
 
   // Inline camera
   const videoRef    = useRef<HTMLVideoElement>(null);
@@ -722,8 +715,6 @@ export function PartnerApplicationWizard({
 
   // ── File handler ──────────────────────────────────────────────────────────
   const handleFileChange = useCallback((slotId: DocSlotId, file: File) => {
-<<<<<<< HEAD
-=======
     // Check if file is too large (> 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setUploadErrors(p => ({ ...p, [slotId]: "File size exceeds 5MB limit. Please upload a smaller file." }));
@@ -733,7 +724,6 @@ export function PartnerApplicationWizard({
     }
 
     setUploadErrors(p => ({ ...p, [slotId]: null }));
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
     setUploadProgress(p => ({ ...p, [slotId]: 0 }));
     let pct = 0;
     const iv = setInterval(() => {
@@ -1067,11 +1057,7 @@ export function PartnerApplicationWizard({
 
       {/* ══ PREMIUM CAMERA MODAL ════════════════════════════════════════════ */}
       {cameraSlot && (
-<<<<<<< HEAD
-        <div className="fixed inset-0 z-[200] bg-black flex flex-col" style={{ touchAction: "none" }}>
-=======
         <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex flex-col" style={{ touchAction: "none" }}>
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
 
           {/* Top bar */}
           <div className="relative flex items-center justify-between px-5 pt-10 pb-4 bg-gradient-to-b from-black/80 to-transparent shrink-0">
@@ -1202,9 +1188,6 @@ export function PartnerApplicationWizard({
       </div>
 
       {/* ── MAIN LAYOUT ──────────────────────────────────────────────────── */}
-<<<<<<< HEAD
-      <div className="min-h-screen bg-slate-50/40 pb-24">
-=======
       <div 
         className="min-h-screen bg-slate-50/40 transition-all duration-300"
         style={{
@@ -1212,34 +1195,10 @@ export function PartnerApplicationWizard({
           paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
         }}
       >
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">
 
           {/* Step progress bar */}
           {currentStep < 6 && (
-<<<<<<< HEAD
-            <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {STEPS.filter(s => s.id < 6).map((step, i) => (
-                <React.Fragment key={step.id}>
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0",
-                    currentStep === step.id
-                      ? "bg-blue-600 text-white"
-                      : currentStep > step.id
-                        ? "text-emerald-600"
-                        : "text-slate-400"
-                  )}>
-                    {currentStep > step.id
-                      ? <Check className="h-3 w-3" />
-                      : <span className="text-[9px] font-black opacity-70">{step.id}</span>
-                    }
-                    {step.label}
-                  </div>
-                  {i < 4 && (
-                    <div className={cn(
-                      "flex-1 h-0.5 min-w-[6px] rounded-full",
-                      currentStep > step.id ? "bg-emerald-300" : "bg-slate-200"
-=======
             <div className="wizard-stepper bg-white border border-slate-200 rounded-2xl px-4 py-2.5 flex items-center justify-between w-full gap-1 sm:gap-2">
               {STEPS.filter(s => s.id < 6).map((step, i) => (
                 <React.Fragment key={step.id}>
@@ -1266,7 +1225,6 @@ export function PartnerApplicationWizard({
                     <div className={cn(
                       "flex-1 h-0.5 min-w-[6px] rounded-full transition-all duration-300",
                       currentStep > step.id ? "bg-emerald-350" : "bg-slate-200"
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
                     )} />
                   )}
                 </React.Fragment>
@@ -1281,14 +1239,10 @@ export function PartnerApplicationWizard({
             {currentStep === 1 && (
               <div>
                 {/* Sticky header */}
-<<<<<<< HEAD
-                <div className="sticky top-0 bg-white z-10 border-b border-slate-100 p-4 space-y-3">
-=======
                 <div 
                   className="sticky bg-white z-10 border-b border-slate-100 p-4 space-y-3 transition-all duration-305"
                   style={{ top: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top))" }}
                 >
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
                   {/* Search */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -1685,11 +1639,7 @@ export function PartnerApplicationWizard({
               </div>
             )}
 
-<<<<<<< HEAD
-            {/* ══ STEP 3: DOCUMENTS ════════════════════════════════════════ */}
-=======
              {/* ══ STEP 3: DOCUMENTS ════════════════════════════════════════ */}
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
             {currentStep === 3 && (
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
@@ -1698,92 +1648,6 @@ export function PartnerApplicationWizard({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-<<<<<<< HEAD
-                  {DOC_SLOTS.map(slot => {
-                    const file    = docFiles[slot.id];
-                    const prog    = uploadProgress[slot.id];
-                    const loading = prog > 0 && prog < 100;
-                    const Icon    = slot.icon;
-
-                    return (
-                      <div
-                        key={slot.id}
-                        className={cn(
-                          "border rounded-2xl p-4 flex flex-col gap-3 min-h-[168px] transition-all",
-                          file ? "bg-emerald-50/40 border-emerald-200" : "bg-white border-dashed border-slate-200"
-                        )}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className={cn(
-                              "inline-flex p-2 rounded-xl mb-1.5",
-                              file ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
-                            )}>
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <h3 className="text-xs font-extrabold text-slate-900">{slot.label}</h3>
-                            <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{slot.hint}</p>
-                          </div>
-                          {file && (
-                            <button
-                              onClick={() => setDocFiles(p => ({ ...p, [slot.id]: null }))}
-                              className="text-red-400 hover:text-red-600 p-1 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="mt-auto">
-                          {file ? (
-                            <div className="flex items-center gap-1.5 bg-white border border-emerald-100 rounded-xl p-2">
-                              <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                              <span className="text-[10px] font-bold text-slate-700 truncate">{file.name}</span>
-                            </div>
-                          ) : loading ? (
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-[9px] font-bold text-slate-400">
-                                <span>Attaching...</span><span>{prog}%</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                <div className="bg-blue-600 h-full transition-all duration-150" style={{ width: `${prog}%` }} />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  const i = document.createElement("input");
-                                  i.type = "file";
-                                  i.accept = "image/*,application/pdf";
-                                  i.onchange = (e) => {
-                                    const f = (e.target as HTMLInputElement).files?.[0];
-                                    if (f) handleFileChange(slot.id, f);
-                                  };
-                                  i.click();
-                                }}
-                                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
-                              >
-                                <Upload className="h-3.5 w-3.5" /> Upload
-                              </button>
-                              <button
-                                onClick={() => openCamera(slot.id)}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
-                              >
-                                <Camera className="h-3.5 w-3.5" /> Camera
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-blue-500" />
-                  Documents are optional here. Per-service requirements are managed from Admin Panel.
-=======
                   {DOC_SLOTS.map(slot => (
                     <DocumentUploadSlot
                       key={slot.id}
@@ -1805,7 +1669,6 @@ export function PartnerApplicationWizard({
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-750 font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-blue-500" />
                   Documents are optional for initial submission.
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
                 </div>
               </div>
             )}
@@ -2001,9 +1864,6 @@ export function PartnerApplicationWizard({
 
       {/* ── STICKY BOTTOM ACTION BAR ────────────────────────────────────────── */}
       {currentStep < 6 && (
-<<<<<<< HEAD
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 flex items-center gap-3">
-=======
         <div 
           className="wizard-sticky-actions fixed bottom-0 left-0 right-0 z-40 bg-white/70 backdrop-blur-xl border-t border-slate-200/50 px-4 py-3 flex items-center gap-3 transition-all duration-300"
           style={{
@@ -2011,7 +1871,6 @@ export function PartnerApplicationWizard({
             paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
           }}
         >
->>>>>>> 8e743fc (feat(platform): customer portal isolation, premium UI overhaul, performance optimization and application wizard improvements)
           {currentStep > 1 && (
             <button
               onClick={handlePrev}
