@@ -264,6 +264,9 @@ export function CustomerApplicationWizard({
   const [recentServices,    setRecentServices]    = useState<string[]>([]);
   const [favouriteServices, setFavouriteServices] = useState<string[]>([]);
 
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [keyboardHeight,    setKeyboardHeight]    = useState(0);
+
   const [customer, setCustomer] = useState<CustomerForm>({
     name:      "",
     mobile:    initialProfileFields?.mobile   ?? "",
@@ -502,6 +505,58 @@ export function CustomerApplicationWizard({
       }
     }
   }, [initialServiceSlug, searchParams, dbServices]);
+
+  // Detect virtual keyboard and manage layout scrolling spacing
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        setIsKeyboardVisible(true);
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 150);
+      }
+    };
+
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
+          setIsKeyboardVisible(false);
+        }
+      }, 100);
+    };
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const isKeyboard = window.innerHeight - vv.height > 120;
+      setIsKeyboardVisible(isKeyboard);
+      if (isKeyboard) {
+        setKeyboardHeight(window.innerHeight - vv.height);
+      } else {
+        setKeyboardHeight(0);
+      }
+    };
+
+    document.addEventListener("focusin", handleFocusIn);
+    document.addEventListener("focusout", handleFocusOut);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleViewportChange);
+      window.visualViewport.addEventListener("scroll", handleViewportChange);
+    }
+
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn);
+      document.removeEventListener("focusout", handleFocusOut);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleViewportChange);
+        window.visualViewport.removeEventListener("scroll", handleViewportChange);
+      }
+    };
+  }, []);
 
   // Auto-save draft
   useEffect(() => {
@@ -1144,6 +1199,9 @@ export function CustomerApplicationWizard({
               "w-full bg-white sm:bg-white/80 sm:backdrop-blur-md border-0 sm:border border-slate-200 sm:rounded-2xl sm:shadow-xs p-0 transition-all duration-300 animate-[reveal-in_300ms_cubic-bezier(0.16,1,0.3,1)]", 
               currentStep === 1 ? "overflow-visible" : "overflow-hidden"
             )}
+            style={{
+              paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 48}px` : undefined
+            }}
           >
             {/* Step 1: Services selection */}
             {currentStep === 1 && (
@@ -1672,7 +1730,12 @@ export function CustomerApplicationWizard({
       {/* Sticky Bottom Actions Bar */}
       {currentStep < 6 && (
         <div 
-          className="wizard-sticky-actions fixed bottom-0 left-0 right-0 z-40 bg-white/70 backdrop-blur-xl border-t border-slate-200/50 px-4 py-3 flex items-center gap-3 transition-all duration-300"
+          className={cn(
+            "wizard-sticky-actions fixed bottom-0 left-0 right-0 z-40 bg-white/70 backdrop-blur-xl border-t border-slate-200/50 px-4 py-3 flex items-center gap-3 transition-all duration-500 ease-in-out",
+            isKeyboardVisible 
+              ? "opacity-0 pointer-events-none translate-y-full sm:opacity-100 sm:pointer-events-auto sm:translate-y-0" 
+              : "opacity-100 pointer-events-auto translate-y-0"
+          )}
           style={{
             boxShadow: "0 -8px 30px rgba(15, 23, 42, 0.05)",
             paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
