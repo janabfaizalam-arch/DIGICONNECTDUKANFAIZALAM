@@ -49,7 +49,20 @@ export async function sendWhatsappOTP(mobile: string, otp: string, purpose: What
       destination: mobile,
       userName: "User", // generic since we might not know their name
       templateParams: [otp], // The approved templates expect a single parameter for the OTP
-      source: "web-auth"
+      source: "web-auth",
+      buttons: [
+        {
+          type: "button",
+          sub_type: "url",
+          index: 0,
+          parameters: [
+            {
+              type: "text",
+              text: otp
+            }
+          ]
+        }
+      ]
     };
 
     const url = "https://backend.aisensy.com/campaign/t1/api/v2";
