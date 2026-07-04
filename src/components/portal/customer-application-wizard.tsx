@@ -938,6 +938,17 @@ export function CustomerApplicationWizard({
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient-shift 3s ease infinite;
+        }
+      `}} />
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="afterInteractive"
@@ -1058,55 +1069,73 @@ export function CustomerApplicationWizard({
         </div>
       )}
 
-      <div 
-        className="min-h-screen bg-slate-50/40 transition-all duration-300"
-        style={{
-          paddingTop: "calc(var(--site-header-height, 0px) + 16px + env(safe-area-inset-top))",
-          paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
-        }}
-      >
+      <div className="w-full">
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">
           {currentStep < 6 && (
-            <div className="wizard-stepper bg-white border border-slate-200 rounded-2xl px-4 py-2.5 flex items-center justify-between w-full gap-1 sm:gap-2">
-              {STEPS.filter(s => s.id < 6).map((step, i) => (
-                <React.Fragment key={step.id}>
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0",
-                    currentStep === step.id
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : currentStep > step.id
-                        ? "text-emerald-655"
-                        : "text-slate-400"
-                  )}>
-                    {currentStep > step.id
-                      ? <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-                      : <span className="text-[9px] font-black opacity-70">{step.id}</span>
-                    }
-                    <span className={cn(
-                      "text-[10px] font-bold md:inline-block",
-                      currentStep === step.id ? "inline-block" : "hidden"
-                    )}>
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < 4 && (
-                    <div className={cn(
-                      "flex-1 h-0.5 min-w-[6px] rounded-full transition-all duration-300",
-                      currentStep > step.id ? "bg-emerald-350" : "bg-slate-200"
-                    )} />
-                  )}
-                </React.Fragment>
-              ))}
+            <div className="wizard-stepper sticky top-[calc(var(--site-header-height,0px)+env(safe-area-inset-top))] z-30 bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl p-3 flex flex-col items-center w-full shadow-xs">
+              <div className="relative flex items-center justify-between w-full max-w-md">
+                {/* Connecting line */}
+                <div className="absolute left-4 right-4 top-[14px] sm:top-4 h-[2px] bg-slate-100 z-0">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-blue-600 transition-all duration-500 ease-out"
+                    style={{ width: `${((Math.min(currentStep, 5) - 1) / 4) * 100}%` }}
+                  />
+                </div>
+                
+                {STEPS.filter(s => s.id < 6).map((step) => {
+                  const isActive = currentStep === step.id;
+                  const isCompleted = currentStep > step.id;
+                  return (
+                    <div key={step.id} className="relative z-10 flex flex-col items-center flex-1">
+                      <button
+                        onClick={() => {
+                          if (step.id < currentStep) {
+                            setCurrentStep(step.id);
+                          }
+                        }}
+                        disabled={step.id >= currentStep}
+                        className={cn(
+                          "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
+                          isCompleted 
+                            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20 cursor-pointer" 
+                            : isActive 
+                            ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 animate-gradient text-white shadow-md shadow-blue-500/25 scale-110" 
+                            : "bg-white text-slate-400 border-2 border-slate-200 cursor-not-allowed"
+                        )}
+                      >
+                        {isCompleted ? (
+                          <Check className="h-4 w-4 stroke-[3]" />
+                        ) : (
+                          <span>{step.id}</span>
+                        )}
+                      </button>
+                      <span className={cn(
+                        "text-[8px] xs:text-[9px] sm:text-[10px] font-bold mt-1.5 transition-all duration-300 text-center tracking-tight leading-tight max-w-[56px] xs:max-w-[60px] sm:max-w-[70px] break-words",
+                        isActive 
+                          ? "text-blue-600 font-black scale-105" 
+                          : isCompleted 
+                          ? "text-slate-700 font-bold" 
+                          : "text-slate-450 font-medium"
+                      )}>
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <div 
+            key={currentStep} 
+            className={cn("bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xs transition-all duration-300 animate-[reveal-in_300ms_cubic-bezier(0.16,1,0.3,1)]", currentStep === 1 ? "overflow-visible" : "overflow-hidden")}
+          >
             {/* Step 1: Services selection */}
             {currentStep === 1 && (
               <div>
                 <div 
-                  className="sticky bg-white z-10 border-b border-slate-100 p-4 space-y-3 transition-all duration-305"
-                  style={{ top: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top))" }}
+                  className="sticky z-20 bg-white/90 backdrop-blur-md border-b border-slate-200/50 px-3.5 py-2 space-y-2 transition-all duration-300"
+                  style={{ top: "calc(var(--site-header-height, 0px) + var(--stepper-height, 0px) + env(safe-area-inset-top))" }}
                 >
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -1115,19 +1144,19 @@ export function CustomerApplicationWizard({
                       placeholder="Search services..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
+                      className="w-full pl-8 pr-4 py-1.5 bg-slate-100/60 focus:bg-white border border-slate-200/60 focus:border-blue-500 rounded-xl text-xs placeholder:text-slate-450 focus:shadow-sm focus:shadow-blue-500/5 transition-all"
                     />
                   </div>
-                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
                     {CATEGORIES.map(cat => (
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id)}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg border text-xs font-bold whitespace-nowrap transition-all shrink-0",
+                          "px-3 py-1 rounded-full border text-[11px] font-bold whitespace-nowrap transition-all duration-200 shrink-0",
                           selectedCategory === cat.id
-                            ? "bg-slate-900 border-slate-900 text-white"
-                            : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                            ? "bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-500/15"
+                            : "bg-slate-100 border-slate-200/50 text-slate-655 hover:bg-slate-200/50"
                         )}
                       >
                         {cat.name}
@@ -1139,7 +1168,7 @@ export function CustomerApplicationWizard({
                 <div className="p-4 space-y-4">
                   {favouriteServices.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">⭐ Favourites</p>
+                      <p className="text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">⭐ Favourites</p>
                       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         {dbServices
                           .filter(s => favouriteServices.includes(s.slug))
@@ -1147,10 +1176,10 @@ export function CustomerApplicationWizard({
                             <button
                               key={srv.slug}
                               onClick={() => addToCart(srv.slug)}
-                              className="flex-shrink-0 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-left hover:bg-amber-100 transition-colors"
+                              className="flex-shrink-0 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 text-left hover:bg-amber-100 transition-colors"
                             >
                               <p className="text-xs font-bold text-slate-900 whitespace-nowrap">{srv.title}</p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">₹{srv.customer_fee}</p>
+                              <p className="text-[10px] text-slate-505 mt-0.5">₹{srv.customer_fee}</p>
                             </button>
                           ))}
                       </div>
@@ -1159,7 +1188,7 @@ export function CustomerApplicationWizard({
 
                   {recentServices.length > 0 && !searchQuery.trim() && (
                     <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">🕐 Recent</p>
+                      <p className="text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">🕐 Recent</p>
                       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         {dbServices
                           .filter(s => recentServices.includes(s.slug))
@@ -1170,14 +1199,14 @@ export function CustomerApplicationWizard({
                                 key={srv.slug}
                                 onClick={() => addToCart(srv.slug)}
                                 className={cn(
-                                  "flex-shrink-0 border rounded-xl px-3 py-2 text-left transition-colors",
+                                  "flex-shrink-0 border rounded-xl px-2.5 py-1.5 text-left transition-colors",
                                   inCart
                                     ? "bg-blue-50 border-blue-300"
                                     : "bg-slate-50 border-slate-200 hover:bg-slate-100"
                                 )}
                               >
                                 <p className="text-xs font-bold text-slate-900 whitespace-nowrap">{srv.title}</p>
-                                <p className="text-[10px] text-slate-500 mt-0.5">₹{srv.customer_fee}</p>
+                                <p className="text-[10px] text-slate-505 mt-0.5">₹{srv.customer_fee}</p>
                               </button>
                             );
                           })}
@@ -1193,7 +1222,7 @@ export function CustomerApplicationWizard({
                   ) : filteredServices.length === 0 ? (
                     <div className="py-12 text-center text-slate-400 text-sm">No services match your search.</div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {filteredServices.map(srv => {
                         const Icon   = getCategoryIcon(srv.category);
                         const entry  = cart.find(e => e.slug === srv.slug);
@@ -1204,67 +1233,79 @@ export function CustomerApplicationWizard({
                           <div
                             key={srv.slug}
                             className={cn(
-                              "border rounded-xl p-3.5 flex items-start gap-3 transition-all",
+                              "border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 relative overflow-hidden min-h-[155px] sm:min-h-[170px]",
                               qty > 0
-                                ? "bg-blue-50/50 border-blue-300"
-                                : "bg-white border-slate-200 hover:border-slate-300"
+                                ? "bg-gradient-to-br from-blue-50/60 to-indigo-50/40 border-blue-400 shadow-md shadow-blue-500/5 ring-1 ring-blue-400/20 scale-[1.01]"
+                                : "bg-white border-slate-200/80 hover:border-slate-355 hover:shadow-sm"
                             )}
                           >
-                            <div className={cn(
-                              "p-2.5 rounded-xl shrink-0 mt-0.5",
-                              qty > 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
-                            )}>
-                              <Icon className="h-4 w-4" />
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-1 mb-1">
-                                <p className="text-xs font-bold text-slate-900 leading-tight">{srv.title}</p>
-                                <button
-                                  onClick={e => { e.stopPropagation(); toggleFavourite(srv.slug); }}
-                                  className="shrink-0 hover:scale-110 transition-transform"
-                                >
-                                  <Star className={cn("h-3.5 w-3.5", isFav ? "fill-amber-400 text-amber-400" : "text-slate-300")} />
-                                </button>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-900">₹{srv.customer_fee}</span>
-                                {srv.processing_time && (
-                                  <span className="text-[10px] text-slate-400">{srv.processing_time}</span>
-                                )}
+                            <div className="flex items-start gap-3">
+                              <div className={cn(
+                                "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300",
+                                qty > 0 
+                                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                                  : "bg-slate-100 text-slate-500 border border-slate-200/50"
+                              )}>
+                                <Icon className="h-5 w-5" />
                               </div>
 
-                              {qty === 0 ? (
-                                <button
-                                  onClick={() => addToCart(srv.slug)}
-                                  className="mt-2 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-colors active:scale-95"
-                                >
-                                  + Add to Cart
-                                </button>
-                              ) : (
-                                <div className="mt-2 flex items-center gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h3 className="text-xs sm:text-sm font-bold text-slate-800 leading-snug tracking-tight">
+                                    {srv.title}
+                                  </h3>
                                   <button
-                                    onClick={() => updateQty(srv.slug, -1)}
-                                    className="w-6 h-6 rounded-lg bg-slate-200 hover:bg-slate-300 flex items-center justify-center transition-colors"
+                                    onClick={e => { e.stopPropagation(); toggleFavourite(srv.slug); }}
+                                    className="shrink-0 hover:scale-110 transition-transform p-0.5 rounded-lg hover:bg-slate-100/50"
+                                    title={isFav ? "Remove from favourites" : "Add to favourites"}
                                   >
-                                    <Minus className="h-3 w-3" />
-                                  </button>
-                                  <span className="text-xs font-black text-blue-700 w-5 text-center">{qty}</span>
-                                  <button
-                                    onClick={() => updateQty(srv.slug, 1)}
-                                    className="w-6 h-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => removeFromCart(srv.slug)}
-                                    className="ml-1 text-red-400 hover:text-red-600 transition-colors"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <Star className={cn("h-4 w-4 transition-all duration-200", isFav ? "fill-amber-400 text-amber-400 scale-105" : "text-slate-300 hover:text-slate-455")} />
                                   </button>
                                 </div>
-                              )}
+
+                                <div className="flex items-baseline gap-1.5 mt-1">
+                                  <span className="text-sm sm:text-base font-black text-blue-600">₹{srv.customer_fee}</span>
+                                </div>
+
+                                {srv.processing_time && (
+                                  <div className="flex items-center gap-1.5 text-[10px] text-slate-550 font-semibold mt-1">
+                                    <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                                    <span>{srv.processing_time}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
+
+                            {qty === 0 ? (
+                              <button
+                                onClick={() => addToCart(srv.slug)}
+                                className="w-full mt-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-xl transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1.5 shadow-xs"
+                              >
+                                <Plus className="h-3.5 w-3.5" /> Add to Cart
+                              </button>
+                            ) : (
+                              <div className="w-full mt-4 flex items-center justify-between bg-blue-100/30 border border-blue-200/50 rounded-xl p-1 gap-1.5">
+                                <button
+                                  onClick={() => updateQty(srv.slug, -1)}
+                                  className="w-7 h-7 rounded-lg bg-white border border-blue-200/50 hover:bg-blue-50 text-blue-600 flex items-center justify-center transition-all active:scale-90"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </button>
+                                <span className="text-xs font-black text-blue-700 w-5 text-center">{qty}</span>
+                                <button
+                                  onClick={() => updateQty(srv.slug, 1)}
+                                  className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-all active:scale-90 shadow-xs"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => removeFromCart(srv.slug)}
+                                  className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-all active:scale-90 ml-auto"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1634,12 +1675,14 @@ export function CustomerApplicationWizard({
 
           <button
             onClick={handleNext}
-            disabled={isSubmitting || (currentStep === 5 && !isScriptReady)}
+            disabled={isSubmitting || (currentStep === 1 && totalItemCount === 0) || (currentStep === 5 && !isScriptReady)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 text-sm font-black text-white py-3.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60",
-              currentStep === 5
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-slate-900 hover:bg-slate-800"
+              "flex-1 flex items-center justify-center gap-2 text-sm font-bold py-3.5 rounded-xl transition-all duration-300 active:scale-[0.98]",
+              currentStep === 1 && totalItemCount === 0
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                : currentStep === 5
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
+                : "bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10"
             )}
           >
             {isSubmitting ? (
@@ -1648,11 +1691,17 @@ export function CustomerApplicationWizard({
                 {currentStep === 5 ? "Processing Payment..." : "Please wait..."}
               </>
             ) : currentStep === 1 ? (
-              <>
-                <ShoppingCart className="h-4 w-4" />
-                Proceed with {totalItemCount} item{totalItemCount !== 1 ? "s" : ""}
-                {totalItemCount > 0 && <span className="ml-1 opacity-80">— ₹{cartTotal}</span>}
-              </>
+              <span className="flex items-center gap-2 transition-all duration-300">
+                {totalItemCount === 0 ? (
+                  "Select a service to continue"
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4 animate-pulse" />
+                    Proceed ({totalItemCount} {totalItemCount === 1 ? "item" : "items"})
+                    <span className="ml-1 opacity-90">— ₹{cartTotal}</span>
+                  </>
+                )}
+              </span>
             ) : currentStep === 5 ? (
               <>
                 <CreditCard className="h-4 w-4" />
