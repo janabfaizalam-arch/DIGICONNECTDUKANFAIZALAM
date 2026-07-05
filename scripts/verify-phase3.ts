@@ -108,7 +108,7 @@ async function run() {
       creditsBatch.push({
         wallet_id: walletId,
         user_id: testUser.id,
-        type: "signup_referral_bonus",
+        type: "admin_adjustment",
         direction: "credit",
         amount: 1.50,
         idempotency_key: `test_credit_${walletId}_${i}_${Date.now()}`,
@@ -294,7 +294,7 @@ async function run() {
         service_slug: "gst-registration",
         status: "in_progress",
         amount: 1999.00,
-        agency_partner_id: walletId, // Mocking AP relation
+        agency_partner_id: null,
         created_by: testUser.id,
       })
       .select()

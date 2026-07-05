@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { cookies } from "next/headers";
 
 import { createAdminNotifications, type CreateAdminNotificationInput } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
@@ -976,6 +977,44 @@ export async function POST(request: Request) {
       });
     }
 
+    // Read referral details from request cookie or payload
+    const referralToken = (body as ApplicationPayload & { referralToken?: string }).referralToken || null;
+    let referrerApId: string | null = null;
+    let referrerUserId: string | null = null;
+    let referralId: string | null = null;
+    let clickId: string | null = null;
+
+    let finalToken = referralToken;
+    let cookieClickId = null;
+    try {
+      const cookieStore = await cookies();
+      const referralCookie = cookieStore.get("dcd_referral")?.value;
+      if (referralCookie) {
+        const refData = JSON.parse(referralCookie);
+        if (refData.token) {
+          if (!finalToken) finalToken = refData.token;
+          cookieClickId = refData.clickId || null;
+        }
+      }
+    } catch (err) {
+      console.error("[applications] Failed to parse referral cookie:", err);
+    }
+
+    if (finalToken) {
+      const { data: referralRecord } = await supabase
+        .from("service_referrals")
+        .select("id, partner_id, agency_partners(user_id)")
+        .eq("token", finalToken)
+        .maybeSingle();
+
+      if (referralRecord) {
+        referralId = referralRecord.id;
+        referrerApId = referralRecord.partner_id;
+        referrerUserId = (referralRecord.agency_partners as unknown as Record<string, unknown> | null)?.user_id as string | null || null;
+        clickId = cookieClickId || null;
+      }
+    }
+
     let remainingWalletForApplications = walletRedeemAmount;
     flowLog("APPLICATION_CREATE_START", {
       userId: user.id,
@@ -1066,6 +1105,8 @@ export async function POST(request: Request) {
         source: "online",
         payment_status: hasVerifiedRazorpayPayment && !isDraft ? "verified" : "pending",
         submitted_by_role: role,
+        agent_id: referrerUserId || null,
+        agency_partner_id: referrerApId || null,
       };
     });
 
@@ -1084,6 +1125,27 @@ export async function POST(request: Request) {
         reason: "application_insert_failed",
       });
       return jsonError("Application submission failed.", 500);
+    }
+
+    if (referralId && referrerApId) {
+      try {
+        await Promise.all(
+          applications.map((app) =>
+            supabase
+              .from("partner_conversion_logs")
+              .insert({
+                referral_id: referralId,
+                partner_id: referrerApId,
+                customer_id: user.id,
+                application_id: app.id,
+                click_id: clickId,
+                commission_status: "pending",
+              })
+          )
+        );
+      } catch (err) {
+        console.error("[applications] Failed to write conversion log:", err);
+      }
     }
 
     flowLog("APPLICATION_CREATED", {

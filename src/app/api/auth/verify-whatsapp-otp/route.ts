@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import crypto from "crypto";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -6,6 +7,7 @@ import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { verifyOTPHash, type WhatsappTemplatePurpose, hashOTP } from "@/lib/whatsapp-auth";
 import { indianMobilePattern } from "@/lib/customer-oauth";
 import { findAuthUserByEmailOrMobile, completeCustomerAccount } from "@/lib/customer-identity";
+import { verifyReferralSignature, recordAttribution } from "@/lib/referrals";
 
 export async function POST(request: Request) {
   try {
@@ -265,6 +267,54 @@ export async function POST(request: Request) {
     }
 
     console.info(`[WhatsApp Auth Debug] Session established successfully. User ID: "${activeSession.user.id}"`);
+
+    // Preserve referral across login and registration
+    try {
+      const cookieStore = await cookies();
+      const referralCookie = cookieStore.get("dcd_referral")?.value;
+      if (referralCookie) {
+        const refData = JSON.parse(referralCookie);
+        const { token, clickId, timestamp, signature } = refData;
+        const isValid = verifyReferralSignature(token, clickId, timestamp, signature);
+        if (isValid && activeSession.user.id) {
+          const { data: referral } = await supabaseAdmin
+            .from("service_referrals")
+            .select("partner_id")
+            .eq("token", token)
+            .maybeSingle();
+
+          if (referral) {
+            let utm: Record<string, string | null> = {};
+            if (clickId) {
+              const { data: click } = await supabaseAdmin
+                .from("referral_clicks")
+                .select("utm_source, utm_medium, utm_campaign, utm_term, utm_content, user_agent")
+                .eq("id", clickId)
+                .maybeSingle();
+              if (click) {
+                utm = click;
+              }
+            }
+
+            await recordAttribution({
+              token,
+              partnerId: referral.partner_id,
+              customerId: activeSession.user.id,
+              deviceId: utm.user_agent || null,
+              source: utm.utm_source || "whatsapp_login",
+              utmSource: utm.utm_source,
+              utmMedium: utm.utm_medium,
+              utmCampaign: utm.utm_campaign,
+              utmTerm: utm.utm_term,
+              utmContent: utm.utm_content
+            });
+            console.info(`[WhatsApp Auth] Referral attribution saved successfully for user ${activeSession.user.id}`);
+          }
+        }
+      }
+    } catch (cookieErr) {
+      console.error("[WhatsApp Auth] Failed to process referral cookie during signup/login:", cookieErr);
+    }
 
     const finalResponse = { 
       message: isNewUser ? "Account created successfully." : "Logged in successfully.",

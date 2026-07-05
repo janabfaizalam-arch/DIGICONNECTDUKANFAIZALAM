@@ -3,6 +3,7 @@ import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
+import { logCommissionStatusChange } from "@/lib/ap-commission-engine";
 
 interface DBWorkflowStep {
   id: string;
@@ -328,22 +329,34 @@ export async function POST(
             }
           } else if (commTx?.id) {
             // 6b. Record legacy commission (for backward compatibility with old dashboard & screens)
-            const { error: legacyErr } = await supabase.from("ap_commissions").insert({
-              agency_partner_id: ap.id,
-              application_id: id,
-              commission_rule_id: ruleUsedId,
-              service_slug: application.service_slug,
-              service_name: application.service_name,
-              sale_amount: Number(application.amount),
-              commission_type: ruleUsedType,
-              commission_value: commissionAmount,
-              commission_rate: 0,
-              calculated_amount: commissionAmount,
-              status: "approved"
-            });
+            const { data: insertedComm, error: legacyErr } = await supabase
+              .from("ap_commissions")
+              .insert({
+                agency_partner_id: ap.id,
+                application_id: id,
+                commission_rule_id: ruleUsedId,
+                service_slug: application.service_slug,
+                service_name: application.service_name,
+                sale_amount: Number(application.amount),
+                commission_type: ruleUsedType,
+                commission_value: commissionAmount,
+                commission_rate: 0,
+                calculated_amount: commissionAmount,
+                status: "approved"
+              })
+              .select("id")
+              .maybeSingle();
 
             if (legacyErr && legacyErr.code !== "23505") {
               console.error("[transition] Legacy commission insert failed:", legacyErr);
+            }
+
+            if (insertedComm?.id) {
+              try {
+                await logCommissionStatusChange(insertedComm.id, null, "approved", user.id, "Commission created and approved on application completion");
+              } catch (auditErr) {
+                console.error("[transition] Audit logging failed:", auditErr);
+              }
             }
 
             // 6c. Fetch latest wallet balance to record the ledger credit

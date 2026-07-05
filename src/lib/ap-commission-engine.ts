@@ -239,5 +239,42 @@ export async function createCommissionForApplication(params: {
     return { ok: false, error: error.message };
   }
 
+  // Record audit log entry
+  try {
+    await logCommissionStatusChange(data.id, null, "pending", null, "Initial commission reservation");
+  } catch (auditErr) {
+    console.error("[ap-commission] Failed to log status change:", auditErr);
+  }
+
   return { ok: true, commissionId: data.id as string, amount: calc.amount };
 }
+
+export async function logCommissionStatusChange(
+  commissionId: string,
+  oldStatus: string | null,
+  newStatus: string,
+  changedBy: string | null,
+  notes?: string
+) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("commission_audit_logs")
+    .insert({
+      commission_id: commissionId,
+      old_status: oldStatus,
+      new_status: newStatus,
+      changed_by: changedBy,
+      notes: notes || `Status updated from ${oldStatus ?? "NULL"} to ${newStatus}`
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[ap-commission-engine] Log status change failed:", error);
+  }
+
+  return data;
+}
+

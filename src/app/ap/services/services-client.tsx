@@ -2,23 +2,264 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Star, ArrowRight, FileText, Sparkles, Layers, History } from "lucide-react";
+import { Search, Star, ArrowRight, FileText, Sparkles, Layers, History, Copy, MessageSquare, QrCode, X, Download, Loader2, AlertCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/portal-data";
 import type { AgentService } from "@/lib/agent-services";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/providers/toast-provider";
 
 interface PartnerServicesClientProps {
   initialServices: AgentService[];
+  partnerName?: string;
+  businessName?: string;
 }
 
-export function PartnerServicesClient({ initialServices }: PartnerServicesClientProps) {
+export function PartnerServicesClient({ initialServices, partnerName, businessName }: PartnerServicesClientProps) {
+  const { error: toastError, success: toastSuccess } = useToast();
+  
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentSlugs, setRecentSlugs] = useState<string[]>([]);
   const [showScore, setShowScore] = useState(false);
+
+  // Sharing states
+  const [sharingService, setSharingService] = useState<{ slug: string; title: string; price: number } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [refLink, setRefLink] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [posterSize, setPosterSize] = useState<"a4" | "square">("a4");
+
+  const getReferralLink = async (slug: string) => {
+    try {
+      setTokenLoading(true);
+      const res = await fetch("/api/referrals/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceSlug: slug }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        const link = `${window.location.origin}/s/${slug}?ref=${data.token}`;
+        setRefLink(link);
+        setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(link)}`);
+        return link;
+      } else {
+        toastError(data.error || "Failed to generate referral link.");
+        return "";
+      }
+    } catch (err) {
+      toastError("Failed to fetch referral token.");
+      return "";
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const handleCopyReferral = async (slug: string) => {
+    const link = await getReferralLink(slug);
+    if (link) {
+      navigator.clipboard.writeText(link);
+      toastSuccess("Referral link copied to clipboard!");
+    }
+  };
+
+  const handleWhatsAppShare = async (slug: string, title: string) => {
+    const link = await getReferralLink(slug);
+    if (link) {
+      const text = `Apply for ${title} easily through my digital store link:\n\n${link}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    }
+  };
+
+  const handleOpenQRModal = async (slug: string, title: string, price: number) => {
+    setSharingService({ slug, title, price });
+    await getReferralLink(slug);
+  };
+
+  const handlePrintPoster = () => {
+    if (!sharingService || !refLink) return;
+    
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const partnerLabel = businessName || partnerName || "Verified Partner Store";
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Poster - ${sharingService.title}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+          <style>
+            body {
+              font-family: 'Inter', sans-serif;
+              margin: 0;
+              padding: 0;
+              background-color: #ffffff;
+              color: #1e293b;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              box-sizing: border-box;
+            }
+            .poster-container {
+              border: 6px solid #2563eb;
+              border-radius: 32px;
+              padding: 40px;
+              text-align: center;
+              box-sizing: border-box;
+              background: radial-gradient(circle at top left, #f8fafc, #ffffff);
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .a4 {
+              width: 210mm;
+              height: 297mm;
+              max-width: 700px;
+              max-height: 990px;
+              padding: 60px 40px;
+            }
+            .square {
+              width: 600px;
+              height: 600px;
+              padding: 40px;
+            }
+            .brand-header {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+            }
+            .brand-logo {
+              font-size: 28px;
+              font-weight: 900;
+              color: #2563eb;
+              letter-spacing: -0.5px;
+            }
+            .partner-tag {
+              font-size: 14px;
+              font-weight: 700;
+              color: #64748b;
+              background: #f1f5f9;
+              padding: 6px 16px;
+              border-radius: 12px;
+              text-transform: uppercase;
+            }
+            .service-title {
+              font-size: ${posterSize === "a4" ? "42px" : "32px"};
+              font-weight: 900;
+              color: #0f172a;
+              margin: 20px 0 10px 0;
+              line-height: 1.15;
+            }
+            .price-box {
+              background: #eff6ff;
+              border: 1px solid #bfdbfe;
+              border-radius: 20px;
+              padding: 16px 28px;
+              margin: 15px 0;
+              display: inline-block;
+            }
+            .price-value {
+              font-size: 36px;
+              font-weight: 900;
+              color: #1d4ed8;
+            }
+            .price-gst {
+              font-size: 11px;
+              font-weight: 700;
+              color: #60a5fa;
+              text-transform: uppercase;
+              margin-top: 2px;
+            }
+            .qr-box {
+              border: 3px dashed #cbd5e1;
+              border-radius: 24px;
+              padding: 20px;
+              background: #ffffff;
+              margin: 20px 0;
+              display: inline-block;
+            }
+            .qr-img {
+              width: ${posterSize === "a4" ? "240px" : "180px"};
+              height: ${posterSize === "a4" ? "240px" : "180px"};
+            }
+            .cta-text {
+              font-size: 16px;
+              font-weight: 800;
+              color: #334155;
+              margin-bottom: 5px;
+            }
+            .instruction-text {
+              font-size: 12px;
+              font-weight: 600;
+              color: #64748b;
+              max-width: 80%;
+              margin: 0 auto;
+            }
+            .footer-note {
+              font-size: 11px;
+              font-weight: 600;
+              color: #94a3b8;
+              border-top: 1px solid #e2e8f0;
+              width: 100%;
+              padding-top: 15px;
+              margin-top: 20px;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .poster-container {
+                border-color: #2563eb;
+                box-shadow: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="poster-container ${posterSize}">
+            <div class="brand-header">
+              <div class="brand-logo">DigiConnect Dukan</div>
+              <div class="partner-tag">${partnerLabel}</div>
+            </div>
+            
+            <div>
+              <div class="service-title">${sharingService.title}</div>
+              <div class="price-box">
+                <div class="price-value">₹${sharingService.price.toLocaleString("en-IN")}</div>
+                <div class="price-gst">GST Inclusive Pricing</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="qr-box">
+                <img class="qr-img" src="${qrUrl}" alt="QR Code" />
+              </div>
+              <div class="cta-text">Scan QR Code to Apply</div>
+              <div class="instruction-text">Open your phone camera or scanner, scan the code, and complete your registration instantly.</div>
+            </div>
+
+            <div class="footer-note">
+              Powered by DigiConnect Service Ecosystem • Secure & Verified Transactions
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   // Load favorites, recents, and score toggle from localStorage
   useEffect(() => {
@@ -275,8 +516,36 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
                   )}
                 </div>
 
+                {/* Referral Sharing Row */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Share Service:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => { e.preventDefault(); handleCopyReferral(srv.slug); }}
+                      title="Copy Link"
+                      className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-blue-600 transition flex items-center justify-center shadow-sm"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.preventDefault(); handleWhatsAppShare(srv.slug, srv.title); }}
+                      title="WhatsApp Share"
+                      className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-green-600 transition flex items-center justify-center shadow-sm"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.preventDefault(); handleOpenQRModal(srv.slug, srv.title, srv.customer_fee); }}
+                      title="QR Code & Poster"
+                      className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-indigo-600 transition flex items-center justify-center shadow-sm"
+                    >
+                      <QrCode className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
                 {/* Apply & Details Buttons */}
-                <div className="mt-5 pt-3.5 border-t border-slate-100 flex gap-2">
+                <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex gap-2">
                   <Link
                     href={`/ap/services/${srv.slug}`}
                     className="flex-1 flex h-10 items-center justify-center gap-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs transition duration-150 border border-slate-200"
@@ -305,6 +574,112 @@ export function PartnerServicesClient({ initialServices }: PartnerServicesClient
           </div>
         )}
       </div>
+      {/* QR Code & Poster Modal */}
+      {sharingService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-100 shadow-2xl p-6 relative flex flex-col gap-6 scale-in-center">
+            <button
+              onClick={() => setSharingService(null)}
+              className="absolute top-4 right-4 h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition border border-slate-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="text-center">
+              <h3 className="text-xl font-extrabold text-slate-900 leading-tight font-sans">Service Referral Assets</h3>
+              <p className="text-slate-500 text-xs mt-1 font-semibold">{sharingService.title}</p>
+            </div>
+
+            {tokenLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <p className="text-xs text-slate-500 font-semibold">Generating assets...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* QR Code Preview */}
+                <div className="flex justify-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                  {qrUrl ? (
+                    <img src={qrUrl} alt="QR Code" className="h-48 w-48 object-contain rounded-lg shadow-sm" />
+                  ) : (
+                    <div className="h-48 w-48 bg-slate-100 rounded-lg flex items-center justify-center">
+                      <AlertCircle className="h-8 w-8 text-slate-300" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Link input */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Referral URL</span>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      value={refLink}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-20 text-xs font-semibold text-slate-600 outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(refLink);
+                        toastSuccess("Referral link copied!");
+                      }}
+                      className="absolute right-2 top-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase px-3 py-1.5 rounded-lg transition"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                {/* Poster Size Selector */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Poster Layout Format</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setPosterSize("a4")}
+                      className={`h-9 rounded-xl text-xs font-bold border transition ${
+                        posterSize === "a4"
+                          ? "bg-blue-50 border-blue-500 text-blue-600 shadow-sm"
+                          : "bg-white border-slate-250 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      A4 Flyer
+                    </button>
+                    <button
+                      onClick={() => setPosterSize("square")}
+                      className={`h-9 rounded-xl text-xs font-bold border transition ${
+                        posterSize === "square"
+                          ? "bg-blue-50 border-blue-500 text-blue-600 shadow-sm"
+                          : "bg-white border-slate-250 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      Square Social
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <a
+                    href={qrUrl}
+                    download={`${sharingService.slug}-qr.png`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-800 font-bold text-xs transition"
+                  >
+                    <Download className="h-4 w-4" /> Download QR
+                  </a>
+                  <button
+                    onClick={handlePrintPoster}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-lg shadow-blue-500/15"
+                  >
+                    <QrCode className="h-4 w-4" /> Print Poster
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

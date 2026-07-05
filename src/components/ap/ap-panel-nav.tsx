@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Share2,
   Settings,
   Compass,
   Landmark,
@@ -231,6 +232,7 @@ export function APPanelNav() {
     { href: "/ap/customers", label: "Customers", icon: Users, color: "bg-sky-500" },
     { href: "/ap/wallet", label: "Wallet", icon: WalletCards, color: "bg-teal-500" },
     { href: "/ap/commissions", label: "Earnings", icon: HandCoins, color: "bg-amber-500" },
+    { href: "/ap/referrals", label: "Referrals", icon: Share2, color: "bg-indigo-500" },
     { href: "/ap/support", label: "Support", icon: Headphones, color: "bg-indigo-500" },
   ];
 
@@ -568,6 +570,15 @@ export function APPanelNav() {
                     >
                       <Users className="h-4.5 w-4.5 text-sky-500" />
                       <span>Customers & CRM</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/referrals"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Share2 className="h-4.5 w-4.5 text-indigo-500" />
+                      <span>Referrals & Links</span>
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                   </div>

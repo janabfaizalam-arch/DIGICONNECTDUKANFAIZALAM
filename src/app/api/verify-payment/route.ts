@@ -9,6 +9,7 @@ import { redeemWalletForApplication } from "@/lib/wallet";
 import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
+import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 
 type VerifyPaymentBody = {
   razorpay_payment_id?: string;
@@ -207,6 +208,83 @@ export async function POST(request: Request) {
         });
         return jsonError("Payment verified, but application update failed. Please contact support.", 500);
       }
+    }
+
+    // 1. Process payment links status if any matching links exist
+    try {
+      await Promise.all(
+        applications.map(async (app) => {
+          const { data: link } = await supabase
+            .from("payment_links")
+            .select("id, status")
+            .eq("application_id", app.id)
+            .eq("status", "pending")
+            .maybeSingle();
+
+          if (link) {
+            await supabase
+              .from("payment_links")
+              .update({
+                status: "paid",
+                paid_at: paidAt,
+                razorpay_order_id: orderId,
+                razorpay_payment_id: paymentId,
+                updated_at: paidAt,
+              })
+              .eq("id", link.id);
+          }
+        })
+      );
+    } catch (err) {
+      console.error("[razorpay/verify-payment] Failed to update payment link status:", err);
+    }
+
+    // 2. Reserve partner commissions for referred/partner applications
+    try {
+      await Promise.all(
+        applications.map(async (app) => {
+          // Fetch full application to get agency_partner_id
+          const { data: fullApp } = await supabase
+            .from("applications")
+            .select("id, agency_partner_id, service_slug, service_name, amount")
+            .eq("id", app.id)
+            .single();
+
+          if (fullApp?.agency_partner_id) {
+            // Get partner tier details and service record
+            const [partnerRes, serviceRes] = await Promise.all([
+              supabase
+                .from("agency_partners")
+                .select("id, tier_id")
+                .eq("id", fullApp.agency_partner_id)
+                .maybeSingle(),
+              supabase
+                .from("services")
+                .select("id")
+                .eq("slug", fullApp.service_slug)
+                .maybeSingle()
+            ]);
+
+            const partner = partnerRes.data;
+            const service = serviceRes.data;
+
+            if (partner) {
+              const commissionRes = await createCommissionForApplication({
+                agencyPartnerId: partner.id,
+                applicationId: fullApp.id,
+                serviceSlug: fullApp.service_slug,
+                serviceName: fullApp.service_name,
+                saleAmount: Number(fullApp.amount),
+                tierId: partner.tier_id,
+                serviceId: service?.id || null,
+              });
+              console.info("[razorpay/verify-payment] Commission reserved:", commissionRes);
+            }
+          }
+        })
+      );
+    } catch (err) {
+      console.error("[razorpay/verify-payment] Failed to calculate/reserve partner commission:", err);
     }
 
     const { data: existingPayment } = await supabase
