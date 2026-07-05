@@ -3,7 +3,6 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { CheckCircle2, ShieldCheck, AlertCircle, ArrowLeft, Receipt, Loader2 } from "lucide-react";
-import { useToast } from "@/components/providers/toast-provider";
 import { WhatsappAuthFlow } from "@/components/auth/whatsapp-auth-flow";
 import { RazorpayCheckoutButton } from "@/components/payments/razorpay-checkout-button";
 
@@ -26,7 +25,6 @@ type PaymentLinkDetails = {
 
 export default function CustomerPaymentPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
-  const { error: toastError, success: toastSuccess } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<PaymentLinkDetails | null>(null);
@@ -38,7 +36,7 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/payment-links/details?code=${code}`);
@@ -52,12 +50,12 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
           setTimeLeft(data.remainingSeconds);
         }
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Failed to connect to server. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [code]);
 
   const checkAuth = async () => {
     try {
@@ -71,7 +69,7 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
         setIsAuthenticated(false);
         setCurrentUser(null);
       }
-    } catch (err) {
+    } catch {
       setIsAuthenticated(false);
     } finally {
       setCheckingAuth(false);
@@ -81,7 +79,7 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
   useEffect(() => {
     fetchDetails();
     checkAuth();
-  }, [code]);
+  }, [code, fetchDetails]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;

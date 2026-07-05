@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import crypto from "crypto";
 import { getSupabaseUrl } from "@/lib/supabase/config";
 import { signAccessToken, signRefreshToken } from "./jwt";
-import { setAuthCookies, clearAuthCookies, getDeviceId, generateNewDeviceId } from "./cookies";
+import { setAuthCookies, getDeviceId, generateNewDeviceId } from "./cookies";
 
 // Creates a supabase client using the service role key to bypass RLS for auth operations
 export function getAuthSupabase() {
@@ -124,7 +124,7 @@ export async function rotateSession(oldRefreshToken: string, userAgent: string, 
   if (error || !session) throw new Error("Invalid session.");
 
   // If session is revoked or expired, or customer inactive, deny refresh
-  if (session.is_revoked || new Date(session.expires_at) < new Date() || !(session.customers as any).is_active) {
+  if (session.is_revoked || new Date(session.expires_at) < new Date() || !(session.customers as { mobile: string; is_active: boolean }).is_active) {
     throw new Error("Session invalid or expired.");
   }
 
@@ -135,7 +135,7 @@ export async function rotateSession(oldRefreshToken: string, userAgent: string, 
     .eq("id", session.id);
 
   // 3. Issue new tokens
-  const payload = { sub: session.customer_id, mobile: (session.customers as any).mobile, role: "customer" as const, device_id: session.device_id };
+  const payload = { sub: session.customer_id, mobile: (session.customers as { mobile: string; is_active: boolean }).mobile, role: "customer" as const, device_id: session.device_id };
   const accessToken = await signAccessToken(payload);
   const refreshToken = await signRefreshToken(payload);
   const refreshTokenHash = hashToken(refreshToken);

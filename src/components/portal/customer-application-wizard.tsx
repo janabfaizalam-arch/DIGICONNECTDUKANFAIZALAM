@@ -13,8 +13,7 @@ import {
   ArrowLeft, ArrowRight, Camera, Upload, Trash2, RefreshCw, X,
   FileText, UserCheck, Building, Briefcase, Car, FileCheck,
   HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
-  SwitchCamera, Zap, ZapOff, Clock, Wallet, CheckCircle2, History,
-  ChevronRight, Phone, MapPin, User, TrendingUp, Award,
+  SwitchCamera, Zap, ZapOff, Clock,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
@@ -980,7 +979,7 @@ export function CustomerApplicationWizard({
       toastError(errMsg);
       setIsSubmitting(false);
     }
-  }, [cartItems, customer, handleFinalSubmit, toastError]);
+  }, [cartItems, customer, cartTotal, handleFinalSubmit, toastError, walletBalance]);
 
   // Step navigation
   const handleNext = useCallback(() => {

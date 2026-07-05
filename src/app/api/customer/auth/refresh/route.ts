@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
     const { accessToken } = await rotateSession(refreshToken, userAgent, ipAddress);
 
     return NextResponse.json({ success: true, accessToken });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Refresh Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to refresh session." }, { status: 401 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to refresh session." }, { status: 401 });
   }
 }

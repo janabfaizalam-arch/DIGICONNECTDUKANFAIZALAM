@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const supabase = getAuthSupabase();
 
     // Check rate limit by looking at recent OTP requests for this mobile
-    const { count, error: rateLimitError } = await supabase
+    const { count } = await supabase
       .from("otp_codes")
       .select("*", { count: "exact", head: true })
       .eq("mobile", mobile)

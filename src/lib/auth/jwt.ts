@@ -1,6 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "super_secret_fallback_key";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (!JWT_SECRET) {
+  throw new Error("Missing JWT configuration");
+}
 const ENCODED_SECRET = new TextEncoder().encode(JWT_SECRET);
 
 export interface CustomerJWTPayload {
@@ -38,7 +41,7 @@ export async function verifyJWT(token: string): Promise<CustomerJWTPayload | nul
   try {
     const { payload } = await jwtVerify(token, ENCODED_SECRET);
     return payload as unknown as CustomerJWTPayload;
-  } catch (error) {
+  } catch {
     // Token is invalid or expired
     return null;
   }

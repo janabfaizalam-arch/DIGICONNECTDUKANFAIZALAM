@@ -3,12 +3,10 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowRight, Smartphone, KeyRound, MapPin, User, CheckCircle2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 type FlowState = "login" | "signup_mobile" | "signup_otp" | "signup_details" | "forgot_mobile" | "forgot_otp" | "forgot_reset";
 
 export function CustomerAuthUI({ redirectUrl, initialRef }: { redirectUrl: string, initialRef: string }) {
-  const router = useRouter();
   const [flow, setFlow] = useState<FlowState>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -61,8 +59,8 @@ export function CustomerAuthUI({ redirectUrl, initialRef }: { redirectUrl: strin
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send OTP");
       setFlow(purpose === "signup" ? "signup_otp" : "forgot_otp");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
@@ -81,8 +79,8 @@ export function CustomerAuthUI({ redirectUrl, initialRef }: { redirectUrl: strin
       if (!res.ok) throw new Error(data.error || "Invalid OTP");
       setFlow(purpose === "signup" ? "signup_details" : "forgot_reset");
       setOtp(""); // clear
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
@@ -101,8 +99,8 @@ export function CustomerAuthUI({ redirectUrl, initialRef }: { redirectUrl: strin
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
       window.location.href = redirectUrl;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
@@ -121,8 +119,8 @@ export function CustomerAuthUI({ redirectUrl, initialRef }: { redirectUrl: strin
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Signup failed");
       window.location.href = redirectUrl;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
@@ -142,8 +140,8 @@ export function CustomerAuthUI({ redirectUrl, initialRef }: { redirectUrl: strin
       if (!res.ok) throw new Error(data.error || "Reset failed");
       setFlow("login");
       setPin("");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }

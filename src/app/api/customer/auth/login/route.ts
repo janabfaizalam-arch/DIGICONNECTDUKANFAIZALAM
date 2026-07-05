@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get("user-agent") || "unknown";
 
     // 1. Check Brute Force (Limit to 5 failed attempts in 15 mins)
-    const { count, error: bruteForceError } = await supabase
+    const { count } = await supabase
       .from("customer_login_logs")
       .select("*", { count: "exact", head: true })
       .eq("mobile", mobile)
