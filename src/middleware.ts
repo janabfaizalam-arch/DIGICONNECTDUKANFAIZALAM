@@ -172,6 +172,43 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Handle custom JWT authentication for Customers
+  const isCustomerRoute = matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer") || matchesRoute(pathname, "/apply");
+  const isCustomerAuthRoute = matchesRoute(pathname, "/login/customer") || matchesRoute(pathname, "/customer-login");
+
+  if (isCustomerRoute || isCustomerAuthRoute) {
+    const { verifyJWT } = await import("@/lib/auth/jwt");
+    const accessToken = request.cookies.get("customer_access_token")?.value;
+    let customerPayload = null;
+
+    if (accessToken) {
+      customerPayload = await verifyJWT(accessToken);
+    }
+
+    if (!customerPayload && isCustomerRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login/customer";
+      applyCustomerRedirect(url, pathname);
+      return NextResponse.redirect(url);
+    }
+
+    if (customerPayload && isCustomerAuthRoute) {
+      const url = request.nextUrl.clone();
+      const redirectTo = request.nextUrl.searchParams.get("redirect");
+      if (redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
+        const target = new URL(redirectTo, request.url);
+        url.pathname = target.pathname;
+        url.search = target.search;
+      } else {
+        url.pathname = "/dashboard"; // Standardize on /dashboard for customers
+        url.search = "";
+      }
+      return NextResponse.redirect(url);
+    }
+
+    return response;
+  }
+
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   const supabaseUrl = getSupabaseUrl();

@@ -1,56 +1,73 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import crypto from "crypto";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
-import { verifyOTPHash, type WhatsappTemplatePurpose, hashOTP } from "@/lib/whatsapp-auth";
+import { verifyOTPHash, type WhatsappTemplatePurpose } from "@/lib/whatsapp-auth";
 import { indianMobilePattern } from "@/lib/customer-oauth";
-import { findAuthUserByEmailOrMobile, completeCustomerAccount } from "@/lib/customer-identity";
+import { completeCustomerAccount, findAuthUserByEmailOrMobile, normalizeCustomerMobile } from "@/lib/customer-identity";
 import { verifyReferralSignature, recordAttribution } from "@/lib/referrals";
+
+function getWhatsAppFallbackEmail(mobile: string) {
+  return `whatsapp_${mobile}@rnos.in`;
+}
+
+function getSupabaseAuthSessionBlockedResponse() {
+  return NextResponse.json(
+    {
+      error:
+        "OTP verified and customer linked, but Supabase session creation is blocked by the current constraints. Supabase Auth sessions require a Supabase-issued access token and refresh token from a supported sign-in flow.",
+      code: "WHATSAPP_SESSION_CREATION_UNSUPPORTED",
+    },
+    { status: 501 },
+  );
+}
 
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    
-    // IP-based rate limiting
-    const ipLimit = checkRateLimit(`verify_otp_ip_${ip}`, 20, 60 * 60 * 1000); // 20 per hour
+
+    const ipLimit = checkRateLimit(`verify_otp_ip_${ip}`, 20, 60 * 60 * 1000);
     if (!ipLimit.ok) return rateLimitResponse(ipLimit.retryAfter);
 
     const body = await request.json().catch(() => ({}));
     const mobileRaw = String(body.mobile || "").trim();
-    const otp = String(body.otp || "").trim();
+    const otp = String(body.otp || "").replace(/\D/g, "").slice(0, 6);
     const purpose = String(body.purpose || "login") as WhatsappTemplatePurpose;
+    const mobile = mobileRaw.replace(/\D/g, "").slice(-10);
+    const searchMobile = `91${mobile}`;
+    const fallbackEmail = getWhatsAppFallbackEmail(mobile);
 
-    const mobile = mobileRaw.replace(/\D/g, "").slice(0, 10);
-    
-    console.info(`[WhatsApp Auth Debug] Verify OTP request received. Raw mobile: "${mobileRaw}", Clean mobile: "${mobile}", OTP: "${otp}", Purpose: "${purpose}"`);
+    console.info("[WhatsApp Auth] AiSensy OTP verification requested", {
+      mobile,
+      searchMobile,
+      purpose,
+      otpLength: otp.length,
+      ip,
+    });
 
     if (!indianMobilePattern.test(mobile)) {
-      console.warn(`[WhatsApp Auth Debug] Validation failed: Invalid Indian mobile number format: "${mobile}"`);
+      console.warn("[WhatsApp Auth] OTP verify validation failed: invalid mobile", { mobile });
       return NextResponse.json({ error: `Invalid Indian mobile number format: ${mobile}` }, { status: 400 });
     }
 
-    if (!otp || otp.length !== 6) {
-      console.warn(`[WhatsApp Auth Debug] Validation failed: Invalid OTP format (must be 6 digits): "${otp}"`);
+    if (otp.length !== 6) {
+      console.warn("[WhatsApp Auth] OTP verify validation failed: invalid OTP format", { otpLength: otp.length });
       return NextResponse.json({ error: "Invalid OTP format. It must be exactly 6 digits." }, { status: 400 });
     }
 
-    const mobileLimit = checkRateLimit(`verify_otp_mobile_${mobile}`, 10, 10 * 60 * 1000); 
+    const mobileLimit = checkRateLimit(`verify_otp_mobile_${mobile}`, 10, 10 * 60 * 1000);
     if (!mobileLimit.ok) return rateLimitResponse(mobileLimit.retryAfter);
 
     const supabaseAdmin = getSupabaseAdmin();
-    const supabaseRoute = await getSupabaseRouteHandlerClient();
-
-    if (!supabaseAdmin || !supabaseRoute) {
-      console.error(`[WhatsApp Auth Debug] Initialization error: Supabase clients not initialized.`);
+    if (!supabaseAdmin) {
+      console.error("[WhatsApp Auth] Supabase admin client not initialized");
       return NextResponse.json({ error: "Internal server error. Database connection failure." }, { status: 500 });
     }
 
-    // 1. Fetch the latest OTP for this mobile and purpose
-    const searchMobile = `91${mobile}`;
-    console.info(`[WhatsApp Auth Debug] Querying auth_otps table. Mobile: "${searchMobile}", Purpose: "${purpose}"`);
-
+    console.info("[WhatsApp Auth] Looking up latest stored AiSensy OTP", {
+      mobile: searchMobile,
+      purpose,
+    });
     const { data: otps, error: fetchError } = await supabaseAdmin
       .from("auth_otps")
       .select("*")
@@ -59,224 +76,190 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: false });
 
     if (fetchError) {
-      console.error(`[WhatsApp Auth Debug] Database query error:`, fetchError);
+      console.error("[WhatsApp Auth] OTP lookup failed", {
+        mobile: searchMobile,
+        purpose,
+        message: fetchError.message,
+        code: fetchError.code,
+      });
       return NextResponse.json({ error: `Database error querying OTP: ${fetchError.message}` }, { status: 500 });
     }
 
     if (!otps || otps.length === 0) {
-      // Check if there are ANY records for this mobile (to detect purpose mismatches)
       const { data: allOtps } = await supabaseAdmin
         .from("auth_otps")
         .select("purpose, expires_at, created_at")
         .eq("mobile", searchMobile);
 
-      console.warn(`[WhatsApp Auth Debug] No matching OTP record found for mobile "${searchMobile}" and purpose "${purpose}".`, {
-        allRecordsForMobile: allOtps
+      console.warn("[WhatsApp Auth] No matching OTP record found", {
+        mobile: searchMobile,
+        purpose,
+        allRecordsForMobile: allOtps ?? [],
       });
 
-      const mismatchReason = allOtps && allOtps.length > 0 
-        ? `OTP exists but with a different purpose or type (found: ${allOtps.map(r => r.purpose).join(", ")}, requested: ${purpose})`
-        : `No OTP record generated for this mobile number.`;
-
-      return NextResponse.json({ error: `OTP lookup failed: ${mismatchReason}. Please request a new OTP.` }, { status: 400 });
+      return NextResponse.json({ error: "OTP not found. Please request a new OTP." }, { status: 400 });
     }
 
-    // Use the latest OTP record
     const otpRecord = otps[0];
-    console.info(`[WhatsApp Auth Debug] OTP record found:`, {
+    console.info("[WhatsApp Auth] OTP record found", {
       id: otpRecord.id,
       mobile: otpRecord.mobile,
       purpose: otpRecord.purpose,
       attempts: otpRecord.attempts,
-      expires_at: otpRecord.expires_at,
-      created_at: otpRecord.created_at,
-      recordCount: otps.length
+      expiresAt: otpRecord.expires_at,
+      recordCount: otps.length,
     });
 
-    // 2. Check Expiry
     const now = new Date();
     const expiresAt = new Date(otpRecord.expires_at);
     if (now > expiresAt) {
-      console.warn(`[WhatsApp Auth Debug] OTP expired. Current time: ${now.toISOString()}, Expires at: ${expiresAt.toISOString()}`);
-      return NextResponse.json({ error: `OTP has expired at ${expiresAt.toLocaleTimeString()}. Please request a new one.` }, { status: 400 });
+      console.warn("[WhatsApp Auth] OTP expired", {
+        id: otpRecord.id,
+        now: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      });
+      return NextResponse.json({ error: "OTP has expired. Please request a new one." }, { status: 400 });
     }
 
-    // 3. Check Attempts
     if (otpRecord.attempts >= 3) {
-      console.warn(`[WhatsApp Auth Debug] Maximum verification attempts exceeded. Attempts count: ${otpRecord.attempts}`);
+      console.warn("[WhatsApp Auth] OTP max attempts exceeded", {
+        id: otpRecord.id,
+        attempts: otpRecord.attempts,
+      });
       return NextResponse.json({ error: "Too many failed attempts. Please request a new OTP." }, { status: 400 });
     }
 
-    // 4. Verify Hash
-    const computedHash = hashOTP(otp);
     const isValid = verifyOTPHash(otp, otpRecord.otp_hash);
-    console.info(`[WhatsApp Auth Debug] Hashing comparison:`, {
-      submittedOtp: otp,
-      computedHash: computedHash,
-      storedHash: otpRecord.otp_hash,
-      isValid: isValid
+    console.info("[WhatsApp Auth] OTP hash verification completed", {
+      id: otpRecord.id,
+      isValid,
     });
 
     if (!isValid) {
       const nextAttempts = otpRecord.attempts + 1;
-      await supabaseAdmin
-        .from("auth_otps")
-        .update({ attempts: nextAttempts })
-        .eq("id", otpRecord.id);
+      await supabaseAdmin.from("auth_otps").update({ attempts: nextAttempts }).eq("id", otpRecord.id);
 
-      console.warn(`[WhatsApp Auth Debug] Hash mismatch. Incrementing attempts to ${nextAttempts}.`);
+      console.warn("[WhatsApp Auth] OTP verification failed", {
+        id: otpRecord.id,
+        nextAttempts,
+      });
       return NextResponse.json({ error: `Incorrect OTP. Please try again (Attempt ${nextAttempts}/3).` }, { status: 400 });
     }
 
-    // 5. OTP is valid, delete it to prevent reuse
-    console.info(`[WhatsApp Auth Debug] OTP verified. Deleting record ID: ${otpRecord.id}`);
+    console.info("[WhatsApp Auth] OTP verified. Deleting single-use OTP record", { id: otpRecord.id });
     await supabaseAdmin.from("auth_otps").delete().eq("id", otpRecord.id);
 
-    // 6. Handle User Account (Login / Signup)
-    let userEmail = `whatsapp_${mobile}@rnos.in`; // fallback email
-    let isNewUser = false;
-    let userId: string | null = null;
-    
-    console.info(`[WhatsApp Auth Debug] Finding auth user for mobile: "${mobile}" and email: "${userEmail}"`);
-    const existingUser = await findAuthUserByEmailOrMobile(supabaseAdmin, userEmail, mobile);
-    console.info(`[WhatsApp Auth Debug] Auth user lookup result:`, existingUser ? { id: existingUser.id, email: existingUser.email } : "User not found");
-    
-    // Create random secure password for session generation
-    const temporaryPassword = crypto.randomBytes(32).toString("hex") + "A1!"; 
-    
+    console.info("[WhatsApp Auth] Auth user lookup started", {
+      email: fallbackEmail,
+      mobile,
+    });
+    const existingUser = await findAuthUserByEmailOrMobile(supabaseAdmin, fallbackEmail, mobile);
+    const isNewUser = !existingUser;
+
+    let userId = existingUser?.id ?? null;
+    let userEmail = existingUser?.email || fallbackEmail;
+    const fullName = String(existingUser?.user_metadata?.full_name ?? existingUser?.user_metadata?.name ?? "WhatsApp User");
+
     if (existingUser) {
-      userId = existingUser.id;
-      userEmail = existingUser.email || userEmail;
-      
-      console.info(`[WhatsApp Auth Debug] User exists. ID: "${userId}", Email: "${userEmail}", Mobile: "${mobile}". Updating password for login.`);
-      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, { 
-        password: temporaryPassword,
-        email_confirm: true
+      console.info("[WhatsApp Auth] Auth user lookup succeeded", {
+        userId: existingUser.id,
+        email: existingUser.email ?? null,
+        mobile: normalizeCustomerMobile(String(existingUser.phone ?? existingUser.user_metadata?.mobile ?? existingUser.user_metadata?.phone ?? "")),
       });
-      
-      console.info(`[WhatsApp Auth Debug] updateUserById response:`, { 
-        data: updateData ? { id: updateData.user?.id, email: updateData.user?.email } : null, 
-        error: updateError 
-      });
-      
-      if (updateError) {
-        console.error(`[WhatsApp Auth Debug] Password update failed:`, updateError);
-        return NextResponse.json({ error: `Auth credential update failed: ${updateError.message}` }, { status: 500 });
-      }
-      console.info(`[WhatsApp Auth Debug] User credentials updated successfully.`);
-    } else {
-      isNewUser = true;
-      console.info(`[WhatsApp Auth Debug] User does not exist. Creating new user with email: "${userEmail}"`);
-      
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: userEmail,
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
         email_confirm: true,
-        password: temporaryPassword,
         user_metadata: {
-          mobile: mobile,
+          ...existingUser.user_metadata,
+          mobile,
           phone: mobile,
-          full_name: "WhatsApp User"
-        }
+          role: existingUser.user_metadata?.role ?? "customer",
+          auth_provider: "whatsapp_aisensy",
+        },
       });
-      
-      console.info(`[WhatsApp Auth Debug] createUser response:`, { 
-        data: authData ? { id: authData.user?.id, email: authData.user?.email } : null, 
-        error: authError 
-      });
-      
-      if (authError || !authData.user) {
-        console.error("[WhatsApp Auth Debug] User signup creation failed:", authError);
-        return NextResponse.json({ error: `User registration failed: ${authError?.message || "Unknown auth error"}` }, { status: 500 });
-      }
-      
-      userId = authData.user.id;
-      console.info(`[WhatsApp Auth Debug] User created successfully. ID: "${userId}". Syncing profile...`);
-      
-      try {
-        await completeCustomerAccount(supabaseAdmin, {
-          userId: userId,
-          fullName: "WhatsApp User",
-          email: userEmail,
-          mobile: mobile,
-          source: "online",
-          skipCustomers: true
+
+      if (updateError) {
+        console.error("[WhatsApp Auth] Existing Auth user metadata update failed", {
+          userId: existingUser.id,
+          message: updateError.message,
         });
-        console.info(`[WhatsApp Auth Debug] Profile sync completed.`);
-      } catch (profileError) {
-        console.error(`[WhatsApp Auth Debug] Profile sync warning:`, profileError);
+        return NextResponse.json({ error: `Auth user update failed: ${updateError.message}` }, { status: 500 });
       }
+    } else {
+      console.info("[WhatsApp Auth] Auth user not found. Creating Auth user without password", {
+        email: fallbackEmail,
+        mobile,
+      });
+      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: fallbackEmail,
+        email_confirm: true,
+        user_metadata: {
+          mobile,
+          phone: mobile,
+          full_name: "WhatsApp User",
+          role: "customer",
+          auth_provider: "whatsapp_aisensy",
+        },
+      });
+
+      if (createError || !createData.user) {
+        console.error("[WhatsApp Auth] Auth user creation failed", {
+          message: createError?.message ?? "No user returned",
+        });
+        return NextResponse.json({ error: `User registration failed: ${createError?.message || "Unknown auth error"}` }, { status: 500 });
+      }
+
+      userId = createData.user.id;
+      userEmail = createData.user.email || fallbackEmail;
+      console.info("[WhatsApp Auth] Auth user created", {
+        userId,
+        email: userEmail,
+        mobile,
+      });
     }
 
-    // 7. Establish Session
-    console.info(`[WhatsApp Auth Debug] Signing in to establish session for email: "${userEmail}" with temporary password: "${temporaryPassword.substring(0, 5)}..."`);
-    const { data: sessionData, error: sessionError } = await supabaseRoute.auth.signInWithPassword({
+    if (!userId) {
+      console.error("[WhatsApp Auth] Auth user id missing after lookup/create", { email: userEmail, mobile });
+      return NextResponse.json({ error: "Auth user resolution failed." }, { status: 500 });
+    }
+
+    console.info("[WhatsApp Auth] Customer lookup/link started", {
+      userId,
       email: userEmail,
-      password: temporaryPassword
+      mobile,
+    });
+    await completeCustomerAccount(supabaseAdmin, {
+      userId,
+      fullName,
+      email: userEmail,
+      mobile,
+      source: "online",
+    });
+    console.info("[WhatsApp Auth] Customer lookup/link completed", {
+      userId,
+      email: userEmail,
+      mobile,
     });
 
-    console.info(`[WhatsApp Auth Debug] signInWithPassword response:`, { 
-      hasSession: !!sessionData?.session, 
-      userId: sessionData?.session?.user?.id, 
-      error: sessionError 
-    });
-
-    let activeSession = sessionData?.session;
-
-    if (sessionError || !activeSession) {
-      console.warn("[WhatsApp Auth Debug] signInWithPassword failed. Attempting magiclink fallback to create session...", sessionError);
-      
-      // Try magiclink generation and verification
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email: userEmail
-      });
-      
-      console.info(`[WhatsApp Auth Debug] generateLink response:`, { 
-        hasHashedToken: !!linkData?.properties?.hashed_token, 
-        error: linkError 
-      });
-      
-      if (linkError || !linkData.properties?.hashed_token) {
-        console.error("[WhatsApp Auth Debug] Magiclink generation failed:", linkError);
-        return NextResponse.json({ 
-          error: `Supabase login session creation failed: ${sessionError?.message || "Invalid login credentials"}. Fallback magiclink: ${linkError?.message || "Generation failed"}` 
-        }, { status: 500 });
-      }
-      
-      console.info(`[WhatsApp Auth Debug] Verifying OTP token hash programmatically`);
-      const { data: verifyData, error: verifyError } = await supabaseRoute.auth.verifyOtp({
-        token_hash: linkData.properties.hashed_token,
-        type: 'magiclink'
-      });
-      
-      console.info(`[WhatsApp Auth Debug] verifyOtp response:`, { 
-        hasSession: !!verifyData?.session, 
-        userId: verifyData?.session?.user?.id, 
-        error: verifyError 
-      });
-      
-      if (verifyError || !verifyData.session) {
-        console.error("[WhatsApp Auth Debug] verifyOtp failed:", verifyError);
-        return NextResponse.json({ 
-          error: `Supabase login session creation failed: ${sessionError?.message || "Invalid login credentials"}. Fallback magiclink verification: ${verifyError?.message || "Verification failed"}` 
-        }, { status: 500 });
-      }
-      
-      console.info(`[WhatsApp Auth Debug] Session established successfully via magiclink fallback. User ID: "${verifyData.session.user.id}"`);
-      activeSession = verifyData.session;
-    }
-
-    console.info(`[WhatsApp Auth Debug] Session established successfully. User ID: "${activeSession.user.id}"`);
-
-    // Preserve referral across login and registration
     try {
       const cookieStore = await cookies();
       const referralCookie = cookieStore.get("dcd_referral")?.value;
+      console.info("[WhatsApp Auth] Referral cookie checked", {
+        hasReferralCookie: Boolean(referralCookie),
+        userId,
+      });
+
       if (referralCookie) {
         const refData = JSON.parse(referralCookie);
         const { token, clickId, timestamp, signature } = refData;
-        const isValid = verifyReferralSignature(token, clickId, timestamp, signature);
-        if (isValid && activeSession.user.id) {
+        const isValidReferral = verifyReferralSignature(token, clickId, timestamp, signature);
+        console.info("[WhatsApp Auth] Referral signature checked", {
+          token: token ?? null,
+          clickId: clickId ?? null,
+          isValidReferral,
+        });
+
+        if (isValidReferral) {
           const { data: referral } = await supabaseAdmin
             .from("service_referrals")
             .select("partner_id")
@@ -299,34 +282,42 @@ export async function POST(request: Request) {
             await recordAttribution({
               token,
               partnerId: referral.partner_id,
-              customerId: activeSession.user.id,
+              customerId: userId,
               deviceId: utm.user_agent || null,
               source: utm.utm_source || "whatsapp_login",
               utmSource: utm.utm_source,
               utmMedium: utm.utm_medium,
               utmCampaign: utm.utm_campaign,
               utmTerm: utm.utm_term,
-              utmContent: utm.utm_content
+              utmContent: utm.utm_content,
             });
-            console.info(`[WhatsApp Auth] Referral attribution saved successfully for user ${activeSession.user.id}`);
+            console.info("[WhatsApp Auth] Referral attribution saved", { userId });
           }
         }
       }
     } catch (cookieErr) {
-      console.error("[WhatsApp Auth] Failed to process referral cookie during signup/login:", cookieErr);
+      console.error("[WhatsApp Auth] Referral processing failed:", cookieErr);
     }
 
-    const finalResponse = { 
-      message: isNewUser ? "Account created successfully." : "Logged in successfully.",
-      isNewUser,
-      destination: isNewUser ? "/customer/dashboard?onboarding=true" : "/customer/dashboard"
-    };
+    const destination = isNewUser ? "/customer/dashboard?onboarding=true" : "/customer/dashboard";
+    console.error("[WhatsApp Auth] Session creation blocked by supported Supabase Auth constraints", {
+      userId,
+      email: userEmail,
+      mobile,
+      destination,
+      cookiesWritten: false,
+      redirectIssued: false,
+      blockedReason:
+        "AiSensy OTP verification is outside Supabase Auth. Existing app session architecture requires Supabase-issued access and refresh tokens from OAuth exchange, password sign-in, signup, or another supported Supabase Auth sign-in flow.",
+      requestProhibitedSessionWorkarounds: true,
+    });
 
-    console.info(`[WhatsApp Auth Debug] Success! Final response payload:`, finalResponse);
-    return NextResponse.json(finalResponse);
-
+    return getSupabaseAuthSessionBlockedResponse();
   } catch (error) {
-    console.error("Verify OTP endpoint error:", error);
-    return NextResponse.json({ error: `Internal server error during verification: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
+    console.error("[WhatsApp Auth] Verify OTP endpoint error:", error);
+    return NextResponse.json(
+      { error: `Internal server error during verification: ${error instanceof Error ? error.message : String(error)}` },
+      { status: 500 },
+    );
   }
 }
