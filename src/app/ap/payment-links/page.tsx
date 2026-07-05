@@ -54,5 +54,5 @@ export default async function APPaymentLinksPage() {
     console.error("Error fetching payment links:", error);
   }
 
-  return <APPaymentLinksClient links={links || []} />;
+  return <APPaymentLinksClient links={(links as unknown) as import("./client").PaymentLink[]} />;
 }

@@ -979,7 +979,7 @@ export function CustomerApplicationWizard({
       toastError(errMsg);
       setIsSubmitting(false);
     }
-  }, [cartItems, customer, cartTotal, handleFinalSubmit, toastError, walletBalance]);
+  }, [cartItems, customer, cartTotal, handleFinalSubmit, toastError]);
 
   // Step navigation
   const handleNext = useCallback(() => {

@@ -5,7 +5,25 @@ import { Link2, Clock, CheckCircle2, Copy, XCircle, MoreVertical } from "lucide-
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 
-export function APPaymentLinksClient({ links }: { links: any[] }) {
+export interface PaymentLink {
+  id: string;
+  code: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  expires_at: string;
+  paid_at: string | null;
+  applications?: {
+    service_name: string;
+    customer_details: Record<string, unknown>;
+  } | null;
+  profiles?: {
+    full_name: string;
+    mobile: string;
+  } | null;
+}
+
+export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
   const { success: toastSuccess, error: toastError } = useToast();
   
   const copyLink = (code: string) => {
@@ -99,7 +117,7 @@ export function APPaymentLinksClient({ links }: { links: any[] }) {
               <div className="text-center py-12">
                 <Link2 className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-slate-800">No Payment Links</h3>
-                <p className="text-sm text-slate-500 mt-1">You haven't generated any payment links yet.</p>
+                <p className="text-slate-400 mt-2 text-sm">You haven&apos;t generated any payment links yet.</p>
               </div>
             )}
           </div>

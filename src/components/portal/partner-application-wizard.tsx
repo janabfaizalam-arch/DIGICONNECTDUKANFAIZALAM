@@ -1867,7 +1867,7 @@ export function PartnerApplicationWizard({
                   onClick={() => setPaymentMethodType("link")}
                   className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "link" ? "border-blue-500 shadow-sm" : "border-slate-200 opacity-70 hover:opacity-100")}>
                   <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "link" ? "bg-blue-600" : "bg-slate-200")}>
-                    <Link className={cn("h-5 w-5", paymentMethodType === "link" ? "text-white" : "text-slate-500")} />
+                    <Link2 className={cn("h-5 w-5", paymentMethodType === "link" ? "text-white" : "text-slate-500")} />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-extrabold text-slate-900">Generate Payment Link</p>
