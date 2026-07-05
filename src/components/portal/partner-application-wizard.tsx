@@ -13,7 +13,7 @@ import {
   FileText, UserCheck, Building, Briefcase, Car, FileCheck,
   HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
   SwitchCamera, Zap, ZapOff, Clock, Wallet, CheckCircle2, History,
-  ChevronRight, Phone, MapPin, User, TrendingUp, Award,
+  ChevronRight, Phone, MapPin, User, TrendingUp, Award, Link2,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
@@ -412,6 +412,9 @@ export function PartnerApplicationWizard({
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [isScriptReady, setIsScriptReady] = useState(false);
   const [paymentError,  setPaymentError]  = useState<string | null>(null);
+  const [paymentMethodType, setPaymentMethodType] = useState<"immediate" | "link">("immediate");
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+  const [paymentLinkMessage, setPaymentLinkMessage] = useState<string | null>(null);
 
   // Camera extras
   const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
@@ -881,6 +884,75 @@ export function PartnerApplicationWizard({
     }
   }, [cartItems, cartTotal, customer, docFiles, toastSuccess, toastError]);
 
+  const triggerPaymentLinkGeneration = useCallback(async () => {
+    setIsSubmitting(true);
+    setPaymentError(null);
+    try {
+      const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
+      
+      const orderRes = await fetch("/api/create-order", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceSlugs: slugs,
+          currency:     "INR",
+          receipt:      `wiz-${Date.now()}`,
+          applicationDraft: {
+            customer: {
+              name:   customer.name,
+              mobile: customer.mobile,
+              email:  customer.altMobile || "",
+              city:   customer.district || customer.state,
+            },
+            details: {
+              address:  customer.address,
+              pincode:  customer.pincode,
+              state:    customer.state,
+              district: customer.district,
+            },
+          },
+        }),
+      });
+
+      const orderData = await orderRes.json();
+      if (!orderRes.ok || !orderData.application_ids?.length) {
+        throw new Error(orderData.error ?? orderData.message ?? `Order creation failed (HTTP ${orderRes.status})`);
+      }
+
+      // Generate payment link
+      const linkRes = await fetch("/api/payment-links/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: orderData.application_ids[0],
+        }),
+      });
+      const linkData = await linkRes.json();
+
+      if (!linkRes.ok) {
+        throw new Error(linkData.error ?? "Failed to generate payment link");
+      }
+
+      setPaymentLinkUrl(linkData.url);
+      setPaymentLinkMessage(linkData.whatsAppMessage);
+
+      setSuccessDetails({
+        applicationIds: orderData.application_ids,
+        customerName:   customer.name,
+        serviceTitle:   cartItems.map(i => `${i.service.title} ×${i.quantity}`).join(", "),
+        amountPaid:     cartTotal,
+      });
+      setCurrentStep(6);
+      toastSuccess?.("Payment link generated!");
+    } catch (e: any) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      setPaymentError(errMsg);
+      toastError?.(errMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [cartItems, customer, toastError, toastSuccess, cartTotal]);
+
   // ── Razorpay checkout — server is SOLE source of amount ──────────────────
   const triggerRazorpayCheckout = useCallback(async () => {
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
@@ -1034,9 +1106,13 @@ export function PartnerApplicationWizard({
     } else if (currentStep === 4) {
       setCurrentStep(5);
     } else if (currentStep === 5) {
-      triggerRazorpayCheckout();
+      if (paymentMethodType === "immediate") {
+        triggerRazorpayCheckout();
+      } else {
+        triggerPaymentLinkGeneration();
+      }
     }
-  }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, toastError]);
+  }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, triggerPaymentLinkGeneration, paymentMethodType, toastError]);
 
   const handlePrev = useCallback(() => {
     if (currentStep > 1 && currentStep < 6) setCurrentStep(p => p - 1);
@@ -1771,9 +1847,11 @@ export function PartnerApplicationWizard({
                 </div>
 
                 {/* Razorpay method card */}
-                <div className="flex items-center gap-3 bg-white border-2 border-blue-500 rounded-xl p-4">
-                  <div className="p-2.5 bg-blue-600 rounded-xl shrink-0">
-                    <CreditCard className="h-5 w-5 text-white" />
+                <div 
+                  onClick={() => setPaymentMethodType("immediate")}
+                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "immediate" ? "border-blue-500 shadow-sm" : "border-slate-200 opacity-70 hover:opacity-100")}>
+                  <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "immediate" ? "bg-blue-600" : "bg-slate-200")}>
+                    <CreditCard className={cn("h-5 w-5", paymentMethodType === "immediate" ? "text-white" : "text-slate-500")} />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-extrabold text-slate-900">Razorpay Secure Checkout</p>
@@ -1781,7 +1859,23 @@ export function PartnerApplicationWizard({
                       Cards • UPI • NetBanking • Wallets
                     </p>
                   </div>
-                  <Check className="h-5 w-5 text-blue-600" />
+                  {paymentMethodType === "immediate" && <Check className="h-5 w-5 text-blue-600" />}
+                </div>
+                
+                {/* Payment Link method card */}
+                <div 
+                  onClick={() => setPaymentMethodType("link")}
+                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "link" ? "border-blue-500 shadow-sm" : "border-slate-200 opacity-70 hover:opacity-100")}>
+                  <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "link" ? "bg-blue-600" : "bg-slate-200")}>
+                    <Link className={cn("h-5 w-5", paymentMethodType === "link" ? "text-white" : "text-slate-500")} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-extrabold text-slate-900">Generate Payment Link</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                      Send a secure link to the customer
+                    </p>
+                  </div>
+                  {paymentMethodType === "link" && <Check className="h-5 w-5 text-blue-600" />}
                 </div>
 
                 {!isScriptReady && (
@@ -1815,6 +1909,39 @@ export function PartnerApplicationWizard({
                   <span className="font-bold text-emerald-700">Services: </span>
                   <span className="text-emerald-600">{successDetails.serviceTitle}</span>
                 </div>
+                {paymentMethodType === "link" && paymentLinkUrl && (
+                  <div className="w-full space-y-3 pt-3 border-t border-slate-100">
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center">
+                      <p className="text-xs font-bold text-blue-800 mb-2">Payment Link Generated</p>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={paymentLinkUrl}
+                        className="w-full text-center text-xs font-mono bg-white border border-blue-200 rounded-lg py-2 px-3 focus:outline-none"
+                      />
+                      <div className="flex gap-2 mt-3 w-full">
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(paymentLinkUrl);
+                            toastSuccess?.("Link copied!");
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-blue-200 text-blue-700 font-bold py-2 rounded-lg text-xs hover:bg-blue-50"
+                        >
+                          <Copy className="h-3.5 w-3.5" /> Copy
+                        </button>
+                        <a 
+                          href={`https://wa.me/?text=${encodeURIComponent(paymentLinkMessage || paymentLinkUrl)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white font-bold py-2 rounded-lg text-xs hover:bg-green-700"
+                        >
+                          <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a5.8 5.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                          WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={() => window.location.reload()}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors active:scale-95"
@@ -1904,8 +2031,8 @@ export function PartnerApplicationWizard({
               </>
             ) : currentStep === 5 ? (
               <>
-                <CreditCard className="h-4 w-4" />
-                Pay with Razorpay
+                {paymentMethodType === "immediate" ? <CreditCard className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                {paymentMethodType === "immediate" ? "Pay with Razorpay" : "Generate Link"}
               </>
             ) : (
               <>Continue <ArrowRight className="h-4 w-4" /></>

@@ -23,6 +23,7 @@ import {
   Compass,
   Landmark,
   Home,
+  Link as LinkIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -228,6 +229,7 @@ export function APPanelNav() {
   const navItems = [
     { href: "/ap/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "bg-blue-500" },
     { href: "/ap/applications", label: "Applications", icon: FileText, color: "bg-orange-500" },
+    { href: "/ap/payment-links", label: "Payment Links", icon: LinkIcon, color: "bg-purple-500" },
     { href: "/ap/services", label: "Services", icon: Layers, color: "bg-emerald-500" },
     { href: "/ap/customers", label: "Customers", icon: Users, color: "bg-sky-500" },
     { href: "/ap/wallet", label: "Wallet", icon: WalletCards, color: "bg-teal-500" },

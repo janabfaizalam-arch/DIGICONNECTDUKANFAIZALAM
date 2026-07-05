@@ -10,15 +10,12 @@ import { getCurrentUser } from "@/lib/auth";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export const dynamic = "force-dynamic";
 
-export function generateStaticParams() {
-  return servicesData.map((service) => ({
-    slug: service.slug,
-  }));
-}
+// generateStaticParams removed because force-dynamic conflicts with it when query params exist
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -104,8 +101,11 @@ function buildSchemas(service: ServiceItem) {
 }
 
 
-export default async function ServiceDetailPage({ params }: PageProps) {
+export default async function ServiceDetailPage({ params, searchParams }: PageProps) {
   const [{ slug }, user] = await Promise.all([params, getCurrentUser()]);
+
+  // Read searchParams (e.g., ref) so Next.js treats this page as fully dynamic without caching issues
+  await searchParams;
 
   if (slug === "cibil-credit-score-guidance") {
     redirect("/services/cibil-report-analysis-and-credit-health-consultation");

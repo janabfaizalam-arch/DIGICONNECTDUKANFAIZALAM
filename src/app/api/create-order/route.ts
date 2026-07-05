@@ -7,6 +7,7 @@ import { createWalletIfMissing, redeemWalletForApplication as redeemRewardWallet
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getAgentServiceBySlug } from "@/lib/agent-services";
 import { servicesData } from "@/lib/services-data";
+import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
@@ -135,6 +136,7 @@ export async function POST(request: Request) {
         return jsonError("Please login to create a Razorpay order.", 401);
       }
       orderUserId = user.id;
+      const ap = await getAgencyPartnerByUserId(user.id).catch(() => null);
 
       const services = [];
       for (const slug of serviceSlugs) {
@@ -397,6 +399,7 @@ export async function POST(request: Request) {
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
+            agency_partner_id: ap?.id ?? null,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
             service_slug: service.slug,
@@ -647,6 +650,7 @@ export async function POST(request: Request) {
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
+            agency_partner_id: ap?.id ?? null,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
             service_slug: service.slug,

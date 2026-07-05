@@ -3,6 +3,7 @@ import { ArrowRight, MessageCircle } from "lucide-react";
 
 import { formatCurrency } from "@/lib/portal-data";
 import { type ServiceItem } from "@/lib/services-data";
+import { ShareServiceMenu } from "@/components/share-service-menu";
 
 export function ServicePrice({ service, className = "", compact = false }: { service: ServiceItem; className?: string; compact?: boolean }) {
   if (service.slug === "pvc-card-printing") {
@@ -35,9 +36,12 @@ export function ServiceCard({ service, compact = false }: { service: ServiceItem
         <div className={`${compact ? "h-9 w-9" : "h-11 w-11"} flex shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700`}>
           <Icon className={`${compact ? "h-4.5 w-4.5" : "h-5 w-5"}`} />
         </div>
-        <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[9px] font-extrabold uppercase leading-none tracking-[0.04em] text-orange-700 md:text-[10px]">
-          {service.badge}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <ShareServiceMenu serviceName={service.title} serviceSlug={service.slug} compact={compact} />
+          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[9px] font-extrabold uppercase leading-none tracking-[0.04em] text-orange-700 md:text-[10px]">
+            {service.badge}
+          </span>
+        </div>
       </div>
 
       <h3 className={`${compact ? "mt-3 min-h-8 text-xs" : "mt-4 min-h-10 text-sm md:text-base"} break-words font-extrabold leading-snug text-slate-950`}>{service.title}</h3>

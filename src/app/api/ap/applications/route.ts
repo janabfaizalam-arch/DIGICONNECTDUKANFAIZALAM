@@ -167,6 +167,7 @@ export async function POST(request: Request) {
       termsAccepted: formData.get("termsAccepted") === "true" ? "true" : "",
       address,
     };
+    const paymentMode = String(formData.get("payment_mode") ?? "").trim();
     const razorpayPaymentId = String(formData.get("razorpay_payment_id") ?? "").trim();
     const razorpayOrderId = String(formData.get("razorpay_order_id") ?? "").trim();
     const razorpaySignature = String(formData.get("razorpay_signature") ?? "").trim();
@@ -286,6 +287,7 @@ export async function POST(request: Request) {
     const expectedAmountPaise = Math.round(finalCustomerFee * 100);
 
     if (
+      paymentMode !== "link" &&
       expectedAmountPaise > 0 &&
       !isVerifiedRazorpayPayment({
         orderId: razorpayOrderId,
@@ -298,9 +300,9 @@ export async function POST(request: Request) {
       return jsonError("Please complete Razorpay checkout before submitting.", 400);
     }
 
-    const razorpayDetails = razorpayPaymentId ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
+    const razorpayDetails = paymentMode !== "link" && razorpayPaymentId ? await fetchRazorpayPaymentDetails(razorpayPaymentId) : null;
 
-    if (expectedAmountPaise > 0) {
+    if (paymentMode !== "link" && expectedAmountPaise > 0) {
       if (!razorpayDetails) {
         return jsonError("Razorpay payment could not be verified on the server.", 400);
       }
@@ -454,8 +456,8 @@ export async function POST(request: Request) {
           message,
           invoiceNumber,
         },
-        status: "submitted",
-        payment_status: "verified",
+        status: paymentMode === "link" ? "payment_pending" : "submitted",
+        payment_status: paymentMode === "link" ? "pending" : "verified",
         source: "agency_partner_pos",
         commission_amount: commissionAmount,
         submitted_by_role: "agency_partner",
@@ -484,42 +486,45 @@ export async function POST(request: Request) {
       application_id: application.id,
       user_id: user.id,
       amount: finalCustomerFee,
-      status: "verified",
+      status: paymentMode === "link" ? "pending" : "verified",
       razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
       razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,
       razorpay_signature: razorpaySignature || null,
-      razorpay_status: razorpayDetails?.status ?? "verified",
+      razorpay_status: razorpayDetails?.status ?? (paymentMode === "link" ? "pending" : "verified"),
       payment_method: razorpayDetails?.method ?? null,
-      paid_at: paidAt,
+      paid_at: paymentMode === "link" ? null : paidAt,
     });
 
-    const invoice = await createInvoiceForApplication({
-      applicationId: application.id,
-      customerId: resolvedCustomerId,
-      customerName: customer.full_name,
-      customerEmail: customer.email,
-      customerMobile: customer.mobile,
-      serviceName: serviceNameWithVariant,
-      amount: finalCustomerFee,
-      paymentStatus: "verified",
-    });
+    let invoice = null;
+    if (paymentMode !== "link") {
+      invoice = await createInvoiceForApplication({
+        applicationId: application.id,
+        customerId: resolvedCustomerId,
+        customerName: customer.full_name,
+        customerEmail: customer.email,
+        customerMobile: customer.mobile,
+        serviceName: serviceNameWithVariant,
+        amount: finalCustomerFee,
+        paymentStatus: "verified",
+      });
 
-    // Commission Engine calculation & insert
-    await createCommissionForApplication({
-      agencyPartnerId: ap.id,
-      applicationId: application.id,
-      serviceSlug: service.slug,
-      serviceName: serviceNameWithVariant,
-      saleAmount: finalCustomerFee,
-      tierId: ap.tier_id,
-      serviceId: service.service_id || null,
-    });
+      // Commission Engine calculation & insert
+      await createCommissionForApplication({
+        agencyPartnerId: ap.id,
+        applicationId: application.id,
+        serviceSlug: service.slug,
+        serviceName: serviceNameWithVariant,
+        saleAmount: finalCustomerFee,
+        tierId: ap.tier_id,
+        serviceId: service.service_id || null,
+      });
+    }
 
     await supabase.from("status_logs").insert({
       application_id: application.id,
       changed_by: user.id,
-      new_status: "in_process",
-      note: "Application created by Agency Partner after Razorpay payment.",
+      new_status: paymentMode === "link" ? "payment_pending" : "in_process",
+      note: paymentMode === "link" ? "Application created by Agency Partner. Pending remote payment link." : "Application created by Agency Partner after Razorpay payment.",
     });
 
     // Check if there is an existing customer auth user matching this mobile number,
@@ -561,7 +566,7 @@ export async function POST(request: Request) {
 
     try {
       await triggerWhatsAppNotification("application_created", application.id);
-      if (expectedAmountPaise > 0) {
+      if (paymentMode !== "link" && expectedAmountPaise > 0) {
         await triggerWhatsAppNotification("payment_success", application.id, {
           paymentId: razorpayPaymentId
         });

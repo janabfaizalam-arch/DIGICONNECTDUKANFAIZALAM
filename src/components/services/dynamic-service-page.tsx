@@ -6,6 +6,7 @@ import { ServicePrice } from "@/components/service-card";
 import type { DbService, DbServiceSection } from "@/lib/services";
 import { serviceFromDb } from "@/lib/services";
 import { buildServiceWhatsAppMessage, buildWhatsAppUrl, isCibilOrFinanceService } from "@/lib/whatsapp";
+import { ShareServiceMenu } from "@/components/share-service-menu";
 
 function stringItems(value: unknown) {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
@@ -92,6 +93,7 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
             <MessageCircle className="h-4 w-4 text-emerald-600" />
             {row.cta_secondary_label || "WhatsApp Help"}
           </a>
+          <ShareServiceMenu serviceName={service.title} serviceSlug={service.slug} />
         </div>
       </div>
 
