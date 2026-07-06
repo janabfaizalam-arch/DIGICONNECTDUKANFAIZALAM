@@ -32,8 +32,9 @@ export default function ServiceReferralTrackerPage({ params }: { params: Promise
         }
       }
       
-      // Redirect to main service details page
-      router.replace(`/services/${slug}`);
+      // Redirect to Customer Application Wizard
+      const refParam = refToken ? `?ref=${encodeURIComponent(refToken)}` : "";
+      router.replace(`/apply/${slug}${refParam}`);
     };
 
     recordClickAndRedirect();

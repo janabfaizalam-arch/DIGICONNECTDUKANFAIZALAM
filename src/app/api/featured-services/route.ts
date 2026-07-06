@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPublicServiceBySlug } from "@/lib/services";
-import { getServiceBySlug } from "@/lib/services-data";
+import { getAgentServiceBySlug } from "@/lib/agent-services";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +21,12 @@ export async function GET() {
     const servicesDataResolved = await Promise.all(
       slugs.map(async (slug) => {
         try {
-          const dbService = await getPublicServiceBySlug(slug);
+          const dbService = await getAgentServiceBySlug(slug);
           if (dbService) return dbService;
         } catch (err) {
-          console.warn(`Failed to fetch db service ${slug}:`, err);
+          console.warn(`Failed to fetch agent service ${slug}:`, err);
         }
-        return getServiceBySlug(slug) || null;
+        return null;
       })
     );
 
@@ -39,10 +38,10 @@ export async function GET() {
           title: s.title,
           slug: s.slug,
           category: s.category || "",
-          categorySlug: s.categorySlug || "",
-          shortDescription: s.shortDescription || "",
-          amount: s.amount || 0,
-          badge: s.badge || ""
+          categorySlug: s.category || "",
+          shortDescription: s.description || "",
+          amount: s.customer_fee || 0,
+          badge: s.popular ? "Popular" : ""
         };
       })
       .filter(Boolean);

@@ -19,7 +19,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
 import { cn } from "@/lib/utils";
-import { servicesData } from "@/lib/services-data";
+// Removed legacy static servicesData fallback
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -410,43 +410,8 @@ export function CustomerApplicationWizard({
           throw new Error(error ? error.message : "Empty services from database");
         }
       } catch (e: any) {
-        console.error("service load", e);
-        if (servicesData) {
-          setDbServices(servicesData.map((s: any) => ({
-            id: s.slug,
-            service_id: s.slug,
-            slug: s.slug,
-            title: s.title,
-            description: s.shortDescription,
-            category: s.category,
-            customer_fee: s.amount,
-            agent_payout: 0,
-            payout_type: "fixed",
-            payout_percentage: 0,
-            required_documents: s.documents.join(", "),
-            processing_time: "2-3 Days",
-            instructions: null,
-            is_active: true,
-            is_featured: false,
-            visibility_type: "all",
-            sort_order: 0,
-            government_fee_type: "not_applicable",
-            government_fee_amount: 0,
-            processing_fee: 0,
-            eligibility: null,
-            faq: [],
-            terms: null,
-            important_notes: null,
-            popular: false,
-            thumbnail: null,
-            banner: null,
-            supported_states: [],
-            supported_districts: [],
-            supported_pincodes: [],
-            variants: [],
-            required_documents_list: s.documents.map((d: string, i: number) => ({ id: `doc-${i}`, name: d, type: "PDF", required: true })),
-          })));
-        }
+        console.error("service load error:", e);
+        setPaymentError("Failed to load available services. Please try refreshing the page.");
       }
       finally     { setLoadingServices(false); }
     })();

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 import { getCurrentUser } from "@/lib/auth";
 import { validateCoupon } from "@/lib/coupons";
@@ -129,6 +130,8 @@ export async function POST(request: Request) {
       .map((slug) => String(slug ?? "").trim())
       .filter(Boolean);
 
+    console.log(`[CREATE-ORDER] Incoming service slugs:`, serviceSlugs);
+
     if (serviceSlugs.length) {
       const user = await getCurrentUser();
 
@@ -136,83 +139,71 @@ export async function POST(request: Request) {
         return jsonError("Please login to create a Razorpay order.", 401);
       }
       orderUserId = user.id;
+
+      const supabase = getSupabaseAdmin();
+      if (!supabase) {
+        return jsonError("Database connection failed.", 500);
+      }
+
+      // Read referral details from request cookie or payload
+      let referralTokenFromCookie = null;
+      try {
+        const cookieStore = await cookies();
+        const referralCookie = cookieStore.get("dcd_referral")?.value;
+        if (referralCookie) {
+          const refData = JSON.parse(referralCookie);
+          referralTokenFromCookie = refData.token || null;
+        }
+      } catch (err) {
+        console.error("[CREATE-ORDER] Failed to parse referral cookie:", err);
+      }
+
+      const resolvedReferralToken = body?.applicationDraft?.details?.referralToken || referralTokenFromCookie || null;
+      let referrerApId = null;
+
+      if (resolvedReferralToken) {
+        const { data: referralRecord, error: referralErr } = await supabase
+          .from("service_referrals")
+          .select("id, partner_id")
+          .eq("token", resolvedReferralToken)
+          .maybeSingle();
+
+        if (referralErr) {
+          console.error(`[CREATE-ORDER] Supabase error querying referral token:`, referralErr);
+        } else if (referralRecord) {
+          referrerApId = referralRecord.partner_id;
+        }
+      }
+
       const ap = await getAgencyPartnerByUserId(user.id).catch(() => null);
+      const resolvedAgentOrReferralId = referrerApId || ap?.id || null;
+
+      console.log(`[CREATE-ORDER] Resolved Agent/Referral ID:`, resolvedAgentOrReferralId);
 
       const services = [];
       for (const slug of serviceSlugs) {
-        let service = await getAgentServiceBySlug(slug);
+        const service = await getAgentServiceBySlug(slug);
         if (!service) {
-          const fallback = servicesData.find((s) => s.slug === slug);
-          if (fallback) {
-            service = {
-              id: fallback.slug,
-              service_id: fallback.slug,
-              slug: fallback.slug,
-              title: fallback.title,
-              description: fallback.shortDescription,
-              category: fallback.category,
-              customer_fee: fallback.amount,
-              agent_payout: Math.max(Math.round(fallback.amount * 0.2), 25),
-              payout_type: "fixed",
-              payout_percentage: 0,
-              required_documents: fallback.documents.join(", "),
-              processing_time: "2-3 Days",
-              instructions: null,
-              is_active: true,
-              is_featured: false,
-              visibility_type: "all",
-              sort_order: 0,
-              government_fee_type: "not_applicable",
-              government_fee_amount: 0,
-              processing_fee: 0,
-              eligibility: null,
-              faq: [],
-              terms: null,
-              important_notes: null,
-              popular: false,
-              thumbnail: null,
-              banner: null,
-              supported_states: [],
-              supported_districts: [],
-              supported_pincodes: [],
-              variants: [],
-              required_documents_list: fallback.documents.map((d, i) => ({ id: `doc-${i}`, name: d, type: "PDF", required: true })),
-            };
-          }
-        }
-        if (!service) {
-          console.error(`[PAYMENT AUDIT] Service "${slug}" not found in agent_services.`);
+          console.error(`[CREATE-ORDER] Service "${slug}" not found in agent_services.`);
           return jsonError("Service pricing is not configured in Admin Panel.", 400);
         }
         if (service.customer_fee === null || service.customer_fee === undefined) {
-          console.error(`[PAYMENT AUDIT] Price for service "${service.title || slug}" is missing in agent_services.`);
+          console.error(`[CREATE-ORDER] Price for service "${service.title || slug}" is missing in agent_services.`);
           return jsonError("Service pricing is not configured in Admin Panel.", 400);
         }
         services.push(service);
       }
 
+      console.log(`[CREATE-ORDER] Resolved service IDs:`, services.map((s) => s.id));
+
       const serviceAmount = services.reduce((total, service) => {
         return total + Number(service.customer_fee);
       }, 0);
 
-      // [PAYMENT AUDIT] Temporary Audit Mode Logging for Each Selected Service
+      // Log details for verifying unified pricing
       services.forEach((service) => {
         const adminPrice = Number(service.customer_fee);
-        const gst = Math.round(adminPrice * 18 / 118 * 100) / 100;
-        const partnerPayout = service.payout_type === "percentage"
-          ? Math.round((adminPrice * Number(service.payout_percentage)) / 100)
-          : Number(service.agent_payout);
-        
-        console.log(`[PAYMENT AUDIT] Service: ${service.slug} (ID: ${service.id || service.service_id})`);
-        console.log(`[PAYMENT AUDIT] - Admin Price: ₹${adminPrice}`);
-        console.log(`[PAYMENT AUDIT] - GST (18% Included): ₹${gst}`);
-        console.log(`[PAYMENT AUDIT] - Partner Payout: ₹${partnerPayout}`);
-        console.log(`[PAYMENT AUDIT] - Calculated Total: ₹${adminPrice}`);
-        console.log(`[PAYMENT AUDIT] - Backend Total: ₹${adminPrice}`);
-        console.log(`[PAYMENT AUDIT] - Razorpay Amount: ₹${adminPrice}`);
-        console.log(`[PAYMENT AUDIT] - Application Amount: ₹${adminPrice}`);
-        console.log(`[PAYMENT AUDIT] - Invoice Amount: ₹${adminPrice}`);
-        console.log(`[PAYMENT AUDIT] - Status: All values match correctly.`);
+        console.log(`[CREATE-ORDER] Service: ${service.slug} (ID: ${service.id || service.service_id}) resolved customer fee: ₹${adminPrice}`);
       });
 
       const couponCode = String(body?.couponCode ?? "").trim();
@@ -399,7 +390,7 @@ export async function POST(request: Request) {
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
-            agency_partner_id: ap?.id ?? null,
+            agency_partner_id: resolvedAgentOrReferralId,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
             service_slug: service.slug,
@@ -421,19 +412,23 @@ export async function POST(request: Request) {
             paid_at: paidAt,
             submitted_at: paidAt,
             created_by: user.id,
-            application_source: body.applicationDraft?.details?.applicationSource || (ap?.id ? "partner_assisted" : "customer_self"),
-            referral_source: body.applicationDraft?.details?.referralSource || null,
-            referral_token: body.applicationDraft?.details?.referralToken || null,
+            application_source: body.applicationDraft?.details?.applicationSource || (resolvedAgentOrReferralId ? "partner_assisted" : "customer_self"),
+            referral_source: body.applicationDraft?.details?.referralSource || (resolvedReferralToken ? "partner_link" : null),
+            referral_token: resolvedReferralToken,
             payment_link_id: body.applicationDraft?.details?.paymentLinkId || null,
             source: ap?.id ? "agency_partner" : "online",
             submitted_by_role: ap?.id ? "agency_partner" : "customer",
           };
         });
 
+        console.log(`[CREATE-ORDER] Inserting wallet-only applications:`, applicationsToInsert);
+
         const { data: applications, error: appError } = await supabase
           .from("applications")
           .insert(applicationsToInsert)
           .select("id");
+
+        console.log(`[CREATE-ORDER] Wallet-only applications insert result:`, { applications, error: appError });
 
         if (appError || !applications?.length) {
           console.error("[razorpay/create-order] Wallet-only application creation failed", appError);
@@ -654,7 +649,7 @@ export async function POST(request: Request) {
           return {
             user_id: user.id,
             customer_id: linkedCustomer?.id ?? null,
-            agency_partner_id: ap?.id ?? null,
+            agency_partner_id: resolvedAgentOrReferralId,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
             service_slug: service.slug,
@@ -674,19 +669,23 @@ export async function POST(request: Request) {
             status: "payment_pending",
             payment_status: "pending",
             created_by: user.id,
-            application_source: body.applicationDraft?.details?.applicationSource || (ap?.id ? "partner_assisted" : "customer_self"),
-            referral_source: body.applicationDraft?.details?.referralSource || null,
-            referral_token: body.applicationDraft?.details?.referralToken || null,
+            application_source: body.applicationDraft?.details?.applicationSource || (resolvedAgentOrReferralId ? "partner_assisted" : "customer_self"),
+            referral_source: body.applicationDraft?.details?.referralSource || (resolvedReferralToken ? "partner_link" : null),
+            referral_token: resolvedReferralToken,
             payment_link_id: body.applicationDraft?.details?.paymentLinkId || null,
             source: ap?.id ? "agency_partner" : "online",
             submitted_by_role: ap?.id ? "agency_partner" : "customer",
           };
         });
 
+        console.log(`[CREATE-ORDER] Inserting normal applications:`, applicationsToInsert);
+
         const { data: applications, error: applicationError } = await supabase
           .from("applications")
           .insert(applicationsToInsert)
           .select("id");
+
+        console.log(`[CREATE-ORDER] Normal applications insert result:`, { applications, error: applicationError });
 
         if (applicationError || !applications?.length) {
           console.error("[razorpay/create-order] Payment-pending application creation failed", applicationError);
@@ -773,11 +772,13 @@ export async function POST(request: Request) {
       return jsonError("Razorpay is not configured on the server.", 500);
     }
 
+    console.log(`[CREATE-ORDER] Requesting Razorpay order creation for amount: ${amount} paise, currency: ${currency}, receipt: ${receipt}`);
     const order = await razorpay.orders.create({
       amount,
       currency,
       receipt,
     });
+    console.log(`[CREATE-ORDER] Razorpay order creation result:`, order);
 
     if (applicationIds.length) {
       const supabase = getSupabaseAdmin();

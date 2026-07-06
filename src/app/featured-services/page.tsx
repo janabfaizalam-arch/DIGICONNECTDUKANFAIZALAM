@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicServiceBySlug } from "@/lib/services";
-import { getServiceBySlug } from "@/lib/services-data";
+import { getAgentServiceBySlug } from "@/lib/agent-services";
 import { FeaturedServicesClient } from "@/components/featured-services-client";
 
 export const metadata: Metadata = {
@@ -54,12 +53,12 @@ export default async function FeaturedServicesPage() {
   const servicesDataResolved = await Promise.all(
     slugs.map(async (slug) => {
       try {
-        const dbService = await getPublicServiceBySlug(slug);
+        const dbService = await getAgentServiceBySlug(slug);
         if (dbService) return dbService;
       } catch (err) {
-        console.warn(`Failed to fetch db service ${slug}:`, err);
+        console.warn(`Failed to fetch agent service ${slug}:`, err);
       }
-      return getServiceBySlug(slug) || null;
+      return null;
     })
   );
 
@@ -70,11 +69,11 @@ export default async function FeaturedServicesPage() {
       return {
         title: s.title,
         slug: s.slug,
-        category: s.category,
-        categorySlug: s.categorySlug,
-        shortDescription: s.shortDescription,
-        amount: s.amount,
-        badge: s.badge || ""
+        category: s.category || "",
+        categorySlug: s.category || "",
+        shortDescription: s.description || "",
+        amount: s.customer_fee || 0,
+        badge: s.popular ? "Popular" : ""
       };
     })
     .filter((s): s is SimpleService => s !== null);
