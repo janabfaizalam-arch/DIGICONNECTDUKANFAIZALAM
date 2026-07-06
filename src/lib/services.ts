@@ -194,6 +194,42 @@ function iconByName(name?: string | null): LucideIcon {
 
 // Removed allowedPublicServiceSlugs to support fully dynamic services
 
+const slugAliases: Record<string, string> = {
+  msme: "msme-registration",
+  "msme-certificate": "msme-registration",
+  "food-license": "food-license",
+  "food-license-fssai": "food-license",
+  passport: "passport",
+  "passport-assistance": "passport",
+  "pvc-card-printing": "pvc-card",
+  "eshram-card-registration": "eshram-card",
+  "labour-card-e-shram-card": "labour-card",
+  "driving-licence": "learning-driving-license",
+  "gst-registration-filing": "gst-registration",
+  "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
+  "cibil-credit-score-guidance": "cibil-report-increase",
+  "credit-cards-all-banks": "credit-cards",
+  "credit-cards---all-banks": "credit-cards",
+  "savings-account-opening": "saving-account-opening",
+  "savings-account": "saving-account-opening",
+  "saving-account": "saving-account-opening",
+  "bike-insurance": "insurance",
+  "car-insurance": "insurance",
+  "commercial-vehicle-insurance": "insurance",
+  "insurance-renewal": "insurance",
+  "income-certificate": "income-certificate",
+  "caste-certificate": "caste-certificate",
+  "domicile-certificate": "domicile-certificate",
+  "ayushman-card": "ayushman-card",
+  "ayushman": "ayushman-card",
+  "pan-card": "pan-card",
+  "aadhaar-services": "aadhaar-services"
+};
+
+function resolveSlug(slug: string): string {
+  return slugAliases[slug] ?? slug;
+}
+
 function categorySlugFromService(service: DbService) {
   const rawCat = service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
   const catAliases: Record<string, string> = {
@@ -206,38 +242,6 @@ function categorySlugFromService(service: DbService) {
 }
 
 function activeServiceFilter(service: DbService) {
-  const aliases: Record<string, string> = {
-    msme: "msme-registration",
-    "msme-certificate": "msme-registration",
-    "food-license": "food-license",
-    "food-license-fssai": "food-license",
-    passport: "passport",
-    "passport-assistance": "passport",
-    "pvc-card-printing": "pvc-card",
-    "eshram-card-registration": "eshram-card",
-    "labour-card-e-shram-card": "labour-card",
-    "driving-licence": "learning-driving-license",
-    "gst-registration-filing": "gst-registration",
-    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
-    "cibil-credit-score-guidance": "cibil-report-increase",
-    "credit-cards-all-banks": "credit-cards",
-    "credit-cards---all-banks": "credit-cards",
-    "savings-account-opening": "saving-account-opening",
-    "savings-account": "saving-account-opening",
-    "saving-account": "saving-account-opening",
-    "bike-insurance": "insurance",
-    "car-insurance": "insurance",
-    "commercial-vehicle-insurance": "insurance",
-    "insurance-renewal": "insurance",
-    "income-certificate": "income-certificate",
-    "caste-certificate": "caste-certificate",
-    "domicile-certificate": "domicile-certificate",
-    "ayushman-card": "ayushman-card",
-    "ayushman": "ayushman-card",
-    "pan-card": "pan-card",
-    "aadhaar-services": "aadhaar-services"
-  };
-  const normalizedSlug = aliases[service.slug] ?? service.slug;
   return (service.is_active ?? service.status === "published") && service.status === "published";
 }
 
@@ -527,36 +531,13 @@ export async function getPublicServices() {
 }
 
 export async function getPublicServiceBySlug(slug: string) {
-  const aliases: Record<string, string> = {
-    msme: "msme-registration",
-    "msme-certificate": "msme-registration",
-    "food-license": "food-license",
-    "food-license-fssai": "food-license",
-    passport: "passport",
-    "passport-assistance": "passport",
-    "pvc-card-printing": "pvc-card",
-    "eshram-card-registration": "eshram-card",
-    "labour-card-e-shram-card": "labour-card",
-    "driving-licence": "learning-driving-license",
-    "gst-registration-filing": "gst-registration",
-    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
-    "cibil-credit-score-guidance": "cibil-report-increase",
-    "credit-cards-all-banks": "credit-cards",
-    "credit-cards---all-banks": "credit-cards",
-    "savings-account-opening": "saving-account-opening",
-    "savings-account": "saving-account-opening",
-    "saving-account": "saving-account-opening",
-    "bike-insurance": "insurance",
-    "car-insurance": "insurance",
-    "commercial-vehicle-insurance": "insurance",
-    "insurance-renewal": "insurance",
-  };
-  const normalizedSlug = aliases[slug] ?? slug;
+  const normalizedSlug = resolveSlug(slug);
 
   const supabase = getSupabaseAdmin();
 
   if (supabase) {
     try {
+      // Try normalized slug first
       const { data, error } = await supabase
         .from("services")
         .select(serviceSelect)
@@ -566,9 +547,23 @@ export async function getPublicServiceBySlug(slug: string) {
         .maybeSingle();
 
       if (!error && data) return serviceFromDb(normalizeServiceRow(data as Record<string, unknown>));
+
+      // If normalized slug differs from original, try original slug against DB
+      if (!data && normalizedSlug !== slug) {
+        const { data: originalData, error: originalError } = await supabase
+          .from("services")
+          .select(serviceSelect)
+          .eq("slug", slug)
+          .eq("status", "published")
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!originalError && originalData) return serviceFromDb(normalizeServiceRow(originalData as Record<string, unknown>));
+      }
+
       if (error && isSchemaMismatch(error)) {
         const rows = await fetchLegacyPublishedServiceRows();
-        const service = rows.find((item) => item.slug === normalizedSlug);
+        const service = rows.find((item) => item.slug === normalizedSlug || item.slug === slug);
         return service ? serviceFromDb(service) : null;
       }
     } catch (error) {
@@ -577,45 +572,22 @@ export async function getPublicServiceBySlug(slug: string) {
   }
   
   // Fallback to static service data when DB has no match or Supabase is unconfigured
-  const staticFallback = getFallbackServiceBySlug(normalizedSlug);
+  const staticFallback = getFallbackServiceBySlug(normalizedSlug) || getFallbackServiceBySlug(slug);
   return staticFallback || null;
 }
 
 export async function getPublicServiceRowBySlug(slug: string) {
-  const aliases: Record<string, string> = {
-    msme: "msme-registration",
-    "msme-certificate": "msme-registration",
-    "food-license": "food-license",
-    "food-license-fssai": "food-license",
-    passport: "passport",
-    "passport-assistance": "passport",
-    "pvc-card-printing": "pvc-card",
-    "eshram-card-registration": "eshram-card",
-    "labour-card-e-shram-card": "labour-card",
-    "driving-licence": "learning-driving-license",
-    "gst-registration-filing": "gst-registration",
-    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
-    "cibil-credit-score-guidance": "cibil-report-increase",
-    "credit-cards-all-banks": "credit-cards",
-    "credit-cards---all-banks": "credit-cards",
-    "savings-account-opening": "saving-account-opening",
-    "savings-account": "saving-account-opening",
-    "saving-account": "saving-account-opening",
-    "bike-insurance": "insurance",
-    "car-insurance": "insurance",
-    "commercial-vehicle-insurance": "insurance",
-    "insurance-renewal": "insurance",
-  };
-  const normalizedSlug = aliases[slug] ?? slug;
+  const normalizedSlug = resolveSlug(slug);
 
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    const staticService = getFallbackServiceBySlug(normalizedSlug);
+    const staticService = getFallbackServiceBySlug(normalizedSlug) || getFallbackServiceBySlug(slug);
     return staticService ? rowFromFallback(staticService) : null;
   }
 
   try {
+    // Try normalized slug first
     const { data, error } = await supabase
       .from("services")
       .select(serviceSelect)
@@ -627,7 +599,7 @@ export async function getPublicServiceRowBySlug(slug: string) {
     if (error) {
       if (isSchemaMismatch(error)) {
         const rows = await fetchLegacyPublishedServiceRows();
-        return rows.find((service) => service.slug === normalizedSlug) ?? null;
+        return rows.find((service) => service.slug === normalizedSlug || service.slug === slug) ?? null;
       }
       console.error("[services] service page lookup failed", error.message);
       return null;
@@ -637,8 +609,23 @@ export async function getPublicServiceRowBySlug(slug: string) {
       return normalizeServiceRow(data as Record<string, unknown>);
     }
 
+    // If normalized slug differs from original, try original slug against DB
+    if (normalizedSlug !== slug) {
+      const { data: originalData, error: originalError } = await supabase
+        .from("services")
+        .select(serviceSelect)
+        .eq("slug", slug)
+        .eq("status", "published")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!originalError && originalData) {
+        return normalizeServiceRow(originalData as Record<string, unknown>);
+      }
+    }
+
     // DB returned nothing, fallback to static data
-    const staticService = getFallbackServiceBySlug(normalizedSlug);
+    const staticService = getFallbackServiceBySlug(normalizedSlug) || getFallbackServiceBySlug(slug);
     return staticService ? rowFromFallback(staticService) : null;
   } catch (error) {
     console.error("[services] service page lookup failed", error);

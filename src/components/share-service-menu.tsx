@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, MessageCircle, QrCode, Share2, X, Download } from "lucide-react";
-import { getShareReferralCode } from "@/lib/share-actions";
+import { Copy, MessageCircle, Share2, X, Loader2 } from "lucide-react";
 
 type ShareServiceMenuProps = {
   serviceName: string;
@@ -14,26 +13,46 @@ type ShareServiceMenuProps = {
 
 export function ShareServiceMenu({ serviceName, serviceSlug, triggerClassName, compact }: ShareServiceMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [partnerCode, setPartnerCode] = useState<string | null>(null);
+  const [refToken, setRefToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && partnerCode === null) {
-      getShareReferralCode().then(setPartnerCode).catch(() => setPartnerCode(null));
+  const fetchReferralToken = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/referrals/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceSlug }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        setRefToken(data.token);
+      } else {
+        // User may not be an agency partner — share without referral
+        setRefToken(null);
+      }
+    } catch {
+      setRefToken(null);
+    } finally {
+      setLoading(false);
     }
-  }, [isOpen, partnerCode]);
+  }, [serviceSlug]);
+
+  useEffect(() => {
+    if (isOpen && refToken === null && !loading) {
+      fetchReferralToken();
+    }
+  }, [isOpen, refToken, loading, fetchReferralToken]);
 
   const getShareUrl = () => {
-    let url = "";
-    if (typeof window !== "undefined") {
-      url = `${window.location.origin}/services/${serviceSlug}`;
-    } else {
-      url = `https://rnos.in/services/${serviceSlug}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://rnos.in";
+    // Route through /s/{slug} tracker for proper referral click tracking
+    if (refToken) {
+      return `${origin}/s/${serviceSlug}?ref=${refToken}`;
     }
-    if (partnerCode) {
-      url += `?ref=${partnerCode}`;
-    }
-    return url;
+    // Fallback: direct link without referral
+    return `${origin}/services/${serviceSlug}`;
   };
 
   const handleCopy = async () => {
@@ -89,24 +108,32 @@ export function ShareServiceMenu({ serviceName, serviceSlug, triggerClassName, c
 
             <p className="mt-2 text-sm font-semibold text-slate-500 line-clamp-1">{serviceName}</p>
 
-            <div className="mt-6 flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 p-4">
-              <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100">
-                <QRCodeSVG
-                  value={getShareUrl()}
-                  size={140}
-                  level="Q"
-                  includeMargin={false}
-                  bgColor="#ffffff"
-                  fgColor="#020617"
-                />
+            {loading ? (
+              <div className="mt-6 flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <p className="mt-3 text-xs font-bold text-slate-400">Generating share link...</p>
               </div>
-              <p className="mt-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase">Scan to Apply</p>
-            </div>
+            ) : (
+              <div className="mt-6 flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100">
+                  <QRCodeSVG
+                    value={getShareUrl()}
+                    size={140}
+                    level="Q"
+                    includeMargin={false}
+                    bgColor="#ffffff"
+                    fgColor="#020617"
+                  />
+                </div>
+                <p className="mt-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase">Scan to Apply</p>
+              </div>
+            )}
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 onClick={shareWhatsApp}
-                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-700 transition hover:bg-emerald-100"
+                disabled={loading}
+                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
               >
                 <MessageCircle className="h-6 w-6" />
                 <span className="text-xs font-extrabold">WhatsApp</span>
@@ -114,16 +141,17 @@ export function ShareServiceMenu({ serviceName, serviceSlug, triggerClassName, c
               
               <button
                 onClick={handleCopy}
-                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-blue-50 border border-blue-100 p-4 text-blue-700 transition hover:bg-blue-100"
+                disabled={loading}
+                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-blue-50 border border-blue-100 p-4 text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
               >
                 <Copy className="h-6 w-6" />
                 <span className="text-xs font-extrabold">{copied ? "Copied!" : "Copy Link"}</span>
               </button>
             </div>
 
-            {partnerCode && (
+            {refToken && (
               <p className="mt-6 text-center text-xs font-bold text-slate-400">
-                Sharing as Partner: <span className="text-blue-600">{partnerCode}</span>
+                Referral tracking: <span className="text-blue-600">Active</span>
               </p>
             )}
           </div>
