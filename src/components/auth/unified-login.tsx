@@ -960,17 +960,19 @@ export function UnifiedLoginExperience({
                 </form>
 
                 {/* WhatsApp Sign In */}
-                <div className="space-y-3 pt-4 border-t border-slate-100/80 mt-4 relative">
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F8FAFC] px-3 text-[10px] font-bold text-[#64748B] uppercase tracking-wider bg-white">
-                    Or Continue With
+                {process.env.NEXT_PUBLIC_ENABLE_WHATSAPP_AUTH === 'true' && (
+                  <div className="space-y-3 pt-4 border-t border-slate-100/80 mt-4 relative">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F8FAFC] px-3 text-[10px] font-bold text-[#64748B] uppercase tracking-wider bg-white">
+                      Or Continue With
+                    </div>
+                    <div className="mt-6 w-full">
+                      <WhatsappAuthFlow 
+                        purpose={userMode === "signup" ? "signup" : "login"} 
+                        onSuccess={(destination) => window.location.assign(destination)}
+                      />
+                    </div>
                   </div>
-                  <div className="mt-6 w-full">
-                    <WhatsappAuthFlow 
-                      purpose={userMode === "signup" ? "signup" : "login"} 
-                      onSuccess={(destination) => window.location.assign(destination)}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Google Sign In Only */}
                 {!oauthProvider && (
