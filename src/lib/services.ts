@@ -261,7 +261,10 @@ function normalizeServiceRow(row: Record<string, unknown>): DbService {
   const fallback = getFallbackServiceBySlug(slug);
   const title = String(row.title ?? row.name ?? row.service_name ?? fallback?.title ?? slug.replace(/-/g, " "));
   const amount = Number(row.offer_price ?? row.sale_price ?? row.amount ?? 0);
-  const active = row.is_active ?? row.active ?? (row.status ? row.status === "published" : true);
+  const hasDbActive = (row.is_active !== undefined && row.is_active !== null) || (row.active !== undefined && row.active !== null);
+  const active = hasDbActive 
+    ? (row.is_active === true || row.active === true)
+    : (row.status ? row.status === "published" : true);
 
   return {
     ...row,
@@ -434,8 +437,7 @@ async function fetchPublishedServiceRows() {
     const { data, error } = await supabase
       .from("services")
       .select(serviceSelect)
-      .eq("status", "published")
-      .eq("is_active", true)
+      .or("is_active.eq.true,active.eq.true")
       .order("sort_order", { ascending: true });
 
     if (error) {
@@ -542,8 +544,7 @@ export async function getPublicServiceBySlug(slug: string) {
         .from("services")
         .select(serviceSelect)
         .eq("slug", normalizedSlug)
-        .eq("status", "published")
-        .eq("is_active", true)
+        .or("is_active.eq.true,active.eq.true")
         .maybeSingle();
 
       if (!error && data) return serviceFromDb(normalizeServiceRow(data as Record<string, unknown>));
@@ -554,8 +555,7 @@ export async function getPublicServiceBySlug(slug: string) {
           .from("services")
           .select(serviceSelect)
           .eq("slug", slug)
-          .eq("status", "published")
-          .eq("is_active", true)
+          .or("is_active.eq.true,active.eq.true")
           .maybeSingle();
 
         if (!originalError && originalData) return serviceFromDb(normalizeServiceRow(originalData as Record<string, unknown>));
@@ -581,56 +581,48 @@ export async function getPublicServiceRowBySlug(slug: string) {
 
   const supabase = getSupabaseAdmin();
 
-  if (!supabase) {
-    const staticService = getFallbackServiceBySlug(normalizedSlug) || getFallbackServiceBySlug(slug);
-    return staticService ? rowFromFallback(staticService) : null;
-  }
-
-  try {
-    // Try normalized slug first
-    const { data, error } = await supabase
-      .from("services")
-      .select(serviceSelect)
-      .eq("slug", normalizedSlug)
-      .eq("status", "published")
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (error) {
-      if (isSchemaMismatch(error)) {
-        const rows = await fetchLegacyPublishedServiceRows();
-        return rows.find((service) => service.slug === normalizedSlug || service.slug === slug) ?? null;
-      }
-      console.error("[services] service page lookup failed", error.message);
-      return null;
-    }
-
-    if (data) {
-      return normalizeServiceRow(data as Record<string, unknown>);
-    }
-
-    // If normalized slug differs from original, try original slug against DB
-    if (normalizedSlug !== slug) {
-      const { data: originalData, error: originalError } = await supabase
+  if (supabase) {
+    try {
+      // Try normalized slug first
+      const { data, error } = await supabase
         .from("services")
         .select(serviceSelect)
-        .eq("slug", slug)
-        .eq("status", "published")
-        .eq("is_active", true)
+        .eq("slug", normalizedSlug)
+        .or("is_active.eq.true,active.eq.true")
         .maybeSingle();
 
-      if (!originalError && originalData) {
-        return normalizeServiceRow(originalData as Record<string, unknown>);
+      if (error) {
+        if (isSchemaMismatch(error)) {
+          const rows = await fetchLegacyPublishedServiceRows();
+          const matched = rows.find((service) => service.slug === normalizedSlug || service.slug === slug);
+          if (matched) return matched;
+        }
+        console.error("[services] service page lookup failed", error.message);
+      } else if (data) {
+        return normalizeServiceRow(data as Record<string, unknown>);
       }
-    }
 
-    // DB returned nothing, fallback to static data
-    const staticService = getFallbackServiceBySlug(normalizedSlug) || getFallbackServiceBySlug(slug);
-    return staticService ? rowFromFallback(staticService) : null;
-  } catch (error) {
-    console.error("[services] service page lookup failed", error);
-    return null;
+      // If normalized slug differs from original, try original slug against DB
+      if (!data && normalizedSlug !== slug) {
+        const { data: originalData, error: originalError } = await supabase
+          .from("services")
+          .select(serviceSelect)
+          .eq("slug", slug)
+          .or("is_active.eq.true,active.eq.true")
+          .maybeSingle();
+
+        if (!originalError && originalData) {
+          return normalizeServiceRow(originalData as Record<string, unknown>);
+        }
+      }
+    } catch (error) {
+      console.error("[services] service page lookup failed", error);
+    }
   }
+
+  // DB returned nothing, fallback to static data
+  const staticService = getFallbackServiceBySlug(normalizedSlug) || getFallbackServiceBySlug(slug);
+  return staticService ? rowFromFallback(staticService) : null;
 }
 
 export async function getPublicCategoriesWithCounts() {
