@@ -7,7 +7,6 @@ import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib
 import { createWalletIfMissing, redeemWalletForApplication as redeemRewardWalletDirect, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getAgentServiceBySlug } from "@/lib/agent-services";
-import { servicesData } from "@/lib/services-data";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -375,7 +374,7 @@ export async function POST(request: Request) {
         };
 
         let remainingWalletToAllocate = walletRedeemAmount;
-        const applicationsToInsert = services.map((service, index) => {
+        const applicationsToInsert = services.map((service) => {
           let serviceAmountForRow = Number(service.customer_fee);
           if (service.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
@@ -633,7 +632,7 @@ export async function POST(request: Request) {
           },
         };
         let remainingWalletToAllocate = walletRedeemAmount;
-        const applicationsToInsert = services.map((service, index) => {
+        const applicationsToInsert = services.map((service) => {
           let serviceAmountForRow = Number(service.customer_fee);
           if (service.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;

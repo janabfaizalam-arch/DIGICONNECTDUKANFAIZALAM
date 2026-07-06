@@ -7,6 +7,7 @@ import React, {
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import Link from "next/link";
+import Image from "next/image";
 import {
   type LucideIcon,
   Search, Check, Shield, CreditCard, AlertTriangle,
@@ -182,7 +183,7 @@ function DocumentUploadSlot({
           <div className="flex items-center gap-2 bg-white/80 border border-slate-100 rounded-xl p-2 backdrop-blur-xs">
             {previewUrl ? (
               <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-100">
-                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                <Image src={previewUrl} alt="Preview" className="w-full h-full object-cover" width={40} height={40} unoptimized />
               </div>
             ) : (
               <div className="w-10 h-10 rounded-lg bg-slate-150 flex items-center justify-center shrink-0 border border-slate-100">
@@ -962,7 +963,7 @@ export function CustomerApplicationWizard({
     } else if (currentStep === 5) {
       triggerRazorpayCheckout();
     }
-  }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, toastError]);
+  }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, toastError, isSubmitting]);
 
   const handlePrev = useCallback(() => {
     if (currentStep > 1 && currentStep < 6) setCurrentStep(p => p - 1);
@@ -1023,10 +1024,13 @@ export function CustomerApplicationWizard({
             <div className="flex-1 flex flex-col items-center justify-between pb-10 px-6 gap-6">
               <p className="text-white/60 text-xs font-semibold tracking-wider uppercase">Preview</p>
               <div className="flex-1 flex items-center justify-center w-full">
-                <img
+                <Image
                   src={capturedFrame}
                   alt="Preview"
                   className="max-h-[62vh] max-w-full rounded-2xl object-contain ring-2 ring-white/10 shadow-2xl"
+                  width={600}
+                  height={600}
+                  unoptimized
                 />
               </div>
               <div className="flex gap-4 w-full max-w-xs">
@@ -1074,10 +1078,13 @@ export function CustomerApplicationWizard({
               <div className="relative z-10 flex items-center justify-center gap-10 mb-2">
                 <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
                   {docFiles[cameraSlot!] ? (
-                    <img
+                    <Image
                       src={URL.createObjectURL(docFiles[cameraSlot!]!)}
                       alt=""
                       className="w-full h-full object-cover"
+                      width={48}
+                      height={48}
+                      unoptimized
                     />
                   ) : <Camera className="h-5 w-5 text-white/40" />}
                 </div>

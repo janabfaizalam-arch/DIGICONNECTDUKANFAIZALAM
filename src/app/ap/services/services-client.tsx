@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Search, Star, ArrowRight, FileText, Sparkles, Layers, History, Copy, MessageSquare, QrCode, X, Download, Loader2, AlertCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -50,7 +51,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
         toastError(data.error || "Failed to generate referral link.");
         return "";
       }
-    } catch (err) {
+    } catch {
       toastError("Failed to fetch referral token.");
       return "";
     } finally {
@@ -600,7 +601,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
                 {/* QR Code Preview */}
                 <div className="flex justify-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
                   {qrUrl ? (
-                    <img src={qrUrl} alt="QR Code" className="h-48 w-48 object-contain rounded-lg shadow-sm" />
+                    <Image src={qrUrl} alt="QR Code" className="h-48 w-48 object-contain rounded-lg shadow-sm" width={192} height={192} unoptimized />
                   ) : (
                     <div className="h-48 w-48 bg-slate-100 rounded-lg flex items-center justify-center">
                       <AlertCircle className="h-8 w-8 text-slate-300" />

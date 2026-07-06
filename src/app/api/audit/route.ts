@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getAgentServiceBySlug } from "@/lib/agent-services";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type AuditRequestBody = {
   serviceSlugs?: string[];

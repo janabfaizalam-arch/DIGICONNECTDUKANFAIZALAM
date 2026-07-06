@@ -16,7 +16,6 @@ import {
   FileText,
   BadgePercent,
   CheckCircle,
-  HelpCircle,
   Users,
   Award,
   Zap,
@@ -26,7 +25,6 @@ import {
   Briefcase,
   AlertCircle,
   Compass,
-  ArrowUpRight,
   HeartHandshake
 } from "lucide-react";
 import { OfferCountdown } from "./offer-countdown";
@@ -51,7 +49,6 @@ function Counter({ value, suffix = "", duration = 1500 }: { value: number; suffi
 
   useEffect(() => {
     if (!isInView) return;
-    let start = 0;
     const end = value;
     const totalSteps = 60;
     const stepTime = duration / totalSteps;
@@ -89,7 +86,6 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
   // States
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
 
   // Auto scroll logic for testimonials
   useEffect(() => {
@@ -97,15 +93,6 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Track window scroll for header CTA visibility
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 500);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const whatsappNumber = "917007595931";

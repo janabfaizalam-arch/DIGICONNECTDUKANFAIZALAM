@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Compass, Plus, Settings, Sparkles, X, ChevronRight } from "lucide-react";
 import type { AdminService } from "@/lib/services";
@@ -54,13 +54,13 @@ export function AdminCommandPalette({
   }, [isOpen, onClose]);
 
   // Command items definition
-  const navigationItems = [
+  const navigationItems = useMemo(() => [
     { label: "Go to Dashboard", path: "/dashboard", icon: Compass },
     { label: "Go to Applications Manager", path: "/admin/applications", icon: Sparkles },
     { label: "Go to Services Listing", path: "/admin/services", icon: Settings },
-  ];
+  ], []);
 
-  const actions = [
+  const actions = useMemo(() => [
     {
       label: "Create New Service Wizard",
       action: () => {
@@ -69,43 +69,21 @@ export function AdminCommandPalette({
       },
       icon: Plus,
     },
-  ];
+  ], [onClose, router]);
 
-  const filteredServices = query.trim()
-    ? services.filter(
-        (s) =>
-          s.title.toLowerCase().includes(query.toLowerCase()) ||
-          s.slug.toLowerCase().includes(query.toLowerCase())
-      )
-    : services.slice(0, 5);
+  const filteredServices = useMemo(() => {
+    return query.trim()
+      ? services.filter(
+          (s) =>
+            s.title.toLowerCase().includes(query.toLowerCase()) ||
+            s.slug.toLowerCase().includes(query.toLowerCase())
+        )
+      : services.slice(0, 5);
+  }, [query, services]);
 
   const totalItems = navigationItems.length + actions.length + filteredServices.length;
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      onClose();
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % totalItems);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      executeItem(selectedIndex);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, selectedIndex, query]);
-
-  const executeItem = (index: number) => {
+  const executeItem = useCallback((index: number) => {
     let currentIdx = 0;
 
     // Navigation
@@ -136,7 +114,31 @@ export function AdminCommandPalette({
       }
       currentIdx++;
     }
-  };
+  }, [navigationItems, actions, filteredServices, onClose, onSelectService, router]);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % totalItems);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      executeItem(selectedIndex);
+    }
+  }, [onClose, totalItems, selectedIndex, executeItem]);
+
+  useEffect(() => {
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 

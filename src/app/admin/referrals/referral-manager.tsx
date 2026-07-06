@@ -2,25 +2,14 @@
 
 import { useState } from "react";
 import { 
-  Briefcase, 
-  MousePointerClick, 
   Trash2, 
-  Share2, 
   X, 
-  UserPlus, 
   ArrowLeftRight, 
-  Clock, 
-  TrendingUp, 
-  CheckCircle, 
   AlertCircle, 
-  Users, 
-  FileSpreadsheet, 
   ClipboardCheck, 
-  ShieldCheck, 
   Loader2 
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
-import { formatCurrency } from "@/lib/portal-data";
 
 type ReferralRow = {
   id: string;
@@ -103,8 +92,8 @@ export function AdminReferralManager({
   
   const [referrals, setReferrals] = useState(initialReferrals);
   const [paymentLinks, setPaymentLinks] = useState(initialPaymentLinks);
-  const [commissions, setCommissions] = useState(initialCommissions);
-  const [auditLogs, setAuditLogs] = useState(initialAuditLogs);
+  const [commissions] = useState(initialCommissions);
+  const [auditLogs] = useState(initialAuditLogs);
   
   // Modals & Action States
   const [transferringRef, setTransferringRef] = useState<ReferralRow | null>(null);
@@ -144,7 +133,7 @@ export function AdminReferralManager({
       } else {
         toastError(data.error || "Failed to transfer ownership.");
       }
-    } catch (err) {
+    } catch {
       toastError("Failed to connect to backend server.");
     } finally {
       setIsTransferring(false);
@@ -168,7 +157,7 @@ export function AdminReferralManager({
       } else {
         toastError(data.error || "Failed to delete referral.");
       }
-    } catch (err) {
+    } catch {
       toastError("Network error. Please try again.");
     } finally {
       setIsDeleting(false);
@@ -192,7 +181,7 @@ export function AdminReferralManager({
       } else {
         toastError(data.error || "Failed to cancel payment link.");
       }
-    } catch (err) {
+    } catch {
       toastError("Network error. Please try again.");
     } finally {
       setIsCancelling(false);
@@ -217,7 +206,7 @@ export function AdminReferralManager({
       } else {
         toastError(data.error || "Failed to merge customer profiles.");
       }
-    } catch (err) {
+    } catch {
       toastError("Failed to connect to backend server.");
     } finally {
       setIsMerging(false);

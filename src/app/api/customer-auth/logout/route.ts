@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     try {
       const body = await request.json();
       allDevices = body?.allDevices === true;
-    } catch (e) {
+    } catch {
       // Ignore if body is empty or not JSON
     }
 

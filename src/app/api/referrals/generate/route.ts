@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     // Check if referral token already exists for this partner & service
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing } = await supabase
       .from("service_referrals")
       .select("token")
       .eq("partner_id", ap.id)

@@ -12,7 +12,7 @@ export async function hashPin(pin: string): Promise<string> {
 export async function verifyPin(pin: string, hash: string): Promise<boolean> {
   try {
     return await argon2.verify(hash, pin);
-  } catch (_error) {
+  } catch {
     return false;
   }
 }

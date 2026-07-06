@@ -31,7 +31,7 @@ export async function verifyAccessToken(token: string): Promise<CustomerJWTPaylo
       audience: 'customer',
     });
     return payload as CustomerJWTPayload;
-  } catch (_error) {
+  } catch {
     return null;
   }
 }

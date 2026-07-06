@@ -42,7 +42,7 @@ export default function CustomerSetPinV2Page() {
         setCity(po.Block || po.District);
         setState(po.State);
       }
-    } catch (e) {
+    } catch {
       console.log("Failed to fetch pincode");
     }
   };

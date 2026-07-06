@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import {
   MousePointerClick,
   Users,
@@ -11,13 +11,9 @@ import {
   MessageSquare,
   QrCode,
   X,
-  ExternalLink,
   Share2,
   AlertCircle,
-  Calendar,
   Clock,
-  ArrowRight,
-  TrendingDown,
   DollarSign,
   Briefcase,
   FileSpreadsheet,
@@ -102,7 +98,7 @@ export default function PartnerReferralAnalyticsPage() {
       } else {
         toastError(resData.error || "Failed to extend link.");
       }
-    } catch (err) {
+    } catch {
       toastError("Network error. Please try again.");
     } finally {
       setIsExtending(false);
@@ -129,7 +125,7 @@ export default function PartnerReferralAnalyticsPage() {
     setWaShareDetails(null);
   };
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/ap/referrals/analytics");
@@ -139,16 +135,16 @@ export default function PartnerReferralAnalyticsPage() {
       } else {
         toastError("Failed to fetch analytics statistics.");
       }
-    } catch (err) {
+    } catch {
       toastError("Failed to connect to backend server.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [toastError]);
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [fetchAnalytics]);
 
   const handleOpenQRModal = (code: string) => {
     const url = `${window.location.origin}/pay/${code}`;
@@ -163,11 +159,7 @@ export default function PartnerReferralAnalyticsPage() {
     toastSuccess("Payment link copied to clipboard!");
   };
 
-  const handleWhatsAppLink = (code: string, customerName: string, serviceName: string, amount: number) => {
-    const url = `${window.location.origin}/pay/${code}`;
-    const text = `Hello ${customerName},\n\nYour application is ready.\n\nService: ${serviceName}\nAmount: ₹${amount}\n\nComplete payment securely:\n${url}\n\nThank you\nDigiConnect Dukan`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  };
+
 
   const handleCancelLink = async (code: string) => {
     try {
@@ -185,7 +177,7 @@ export default function PartnerReferralAnalyticsPage() {
       } else {
         toastError(resData.error || "Failed to cancel link.");
       }
-    } catch (err) {
+    } catch {
       toastError("Network error. Please try again.");
     } finally {
       setIsCancelling(false);
@@ -462,7 +454,7 @@ export default function PartnerReferralAnalyticsPage() {
             </div>
 
             <div className="flex justify-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
-              <img src={qrUrl} alt="QR Code" className="h-48 w-48 object-contain rounded-lg shadow-sm" />
+              <Image src={qrUrl} alt="QR Code" className="h-48 w-48 object-contain rounded-lg shadow-sm" width={192} height={192} unoptimized />
             </div>
 
             <div className="space-y-1 text-left">

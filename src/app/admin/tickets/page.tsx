@@ -1,20 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import {
-  Ticket,
   Search,
-  MessageSquare,
   Send,
-  User,
   Clock,
-  CheckCircle,
-  AlertTriangle,
-  ArrowLeft,
-  ChevronsUpDown,
   BookOpen,
-  UserCheck,
 } from "lucide-react";
 import { AdminPageHeader, AdminEmptyState } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -249,7 +240,6 @@ export default function AdminTicketsPage() {
               {filteredTickets.length > 0 ? (
                 filteredTickets.map((t) => {
                   const active = t.id === selectedTicketId;
-                  const isUnread = t.status === "Open";
                   return (
                     <button
                       key={t.id}

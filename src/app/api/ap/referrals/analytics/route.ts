@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user) {

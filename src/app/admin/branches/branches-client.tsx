@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Search, Download, Landmark, ArrowUpRight, Users, Activity, Wallet } from "lucide-react";
+import { Search, Download, Landmark, ArrowUpRight, Users, Wallet } from "lucide-react";
 import { AdminEmptyState, AdminStatCard } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

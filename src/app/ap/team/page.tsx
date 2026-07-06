@@ -6,7 +6,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   Users,
   UserPlus2,
-  ChevronRight,
   ShieldCheck,
   MapPin,
   Crown,

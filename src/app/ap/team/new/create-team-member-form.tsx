@@ -2,8 +2,7 @@
 
 import { type FormEvent, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CheckCircle2, UserPlus2, ArrowLeft } from "lucide-react";
+import { CheckCircle2, UserPlus2 } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
@@ -20,7 +19,6 @@ type CreateTeamResult = {
 
 export function CreateTeamMemberForm() {
   const { success, error: toastError } = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [mobile, setMobile] = useState("");
   const [whatsapp, setWhatsapp] = useState("");

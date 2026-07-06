@@ -11,9 +11,7 @@ import {
   ArrowRight,
   Bell,
   ChevronRight,
-  Info,
   DollarSign,
-  MessageSquare,
   Search,
   HandCoins,
   Inbox,
@@ -22,9 +20,7 @@ import {
   Receipt,
   Activity,
   CheckCircle2,
-  XCircle,
   TrendingUp,
-  User,
   ShieldCheck,
   MapPin,
   Clock,
@@ -46,10 +42,9 @@ import {
   Cell,
   CartesianGrid,
   BarChart,
-  Bar,
-  Legend
+  Bar
 } from "recharts";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface AgencyPartner {
@@ -204,9 +199,6 @@ export function APDashboardClient({
   const revenueCollected = stats.revenueCollected ?? 0;
   const todayApps = stats.todayApplications ?? 0;
   
-  // Custom expected commission calculation
-  const expectedCommission = stats.commissionPending + stats.commissionApproved;
-
   // Filter application rows
   const filteredApps = recentApps.filter(app => {
     const name = (app.customerName || app.customer_name || "").toLowerCase();

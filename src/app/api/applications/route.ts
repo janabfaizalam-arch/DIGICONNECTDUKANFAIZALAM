@@ -109,10 +109,6 @@ function getCustomerValidationError(customer: ReturnType<typeof normalizeCustome
   return null;
 }
 
-function isItrMsmeCombo(serviceSlugs: string[]) {
-  return serviceSlugs.includes("itr-filing") && serviceSlugs.includes("msme-certificate");
-}
-
 function devInfo(message: string, details?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "development") {
     console.info(message, details ?? {});
@@ -435,7 +431,6 @@ export async function POST(request: Request) {
 
     const finalAmountBeforeWallet = orderAmount - couponDiscount;
 
-    const comboOrder = isItrMsmeCombo(resolvedServices.map((service) => service.slug));
     const orderAmountAdjusted = finalAmountBeforeWallet;
     const requestedWalletAmount = Math.max(0, Math.round(Number(body.walletUseAmount ?? 0)));
     const rewardRule = await getRewardRuleForOrder(resolvedServices.map((service) => service.slug));
@@ -516,7 +511,6 @@ export async function POST(request: Request) {
 
     const details = body.details ?? {};
     const documents = Array.isArray(body.documents) ? body.documents : [];
-    const documentFileCount = documents.length + submissionFiles.length;
 
     if (isEshramApplication) {
       const requiredDetailKeys = ["pincode", "district", "state", "maritalStatus", "serviceType", "consentAccepted"];
@@ -598,23 +592,6 @@ export async function POST(request: Request) {
         ? new Date().toISOString()
         : null;
 
-    const formData = {
-      service: resolvedServices.map((service) => service.title).join(", "),
-      name: customer.name,
-      mobile: customer.mobile,
-      email: customer.email.toLowerCase(),
-      city: customer.city,
-      message: customer.message,
-      service_slugs: resolvedServices.map((service) => service.slug),
-      payment: {
-        total_amount: orderAmount,
-        wallet_redeemed_amount: walletRedeemAmount,
-        fresh_payable_amount: realPaymentAmount,
-        cashback_eligible_amount: realPaymentAmount,
-      },
-      ...Object.fromEntries(Object.entries(details).map(([key, value]) => [key, String(value ?? "").trim()])),
-      documents,
-    };
     const customerDetails = {
       name: customer.name,
       mobile: customer.mobile,
@@ -622,22 +599,6 @@ export async function POST(request: Request) {
       city: customer.city,
       address: String(details.address ?? "").trim(),
       notes: customer.message,
-    };
-    const serviceSnapshot = {
-      title: resolvedServices.map((service) => service.title).join(", "),
-      slug: resolvedServices.map((service) => service.slug).join(","),
-      slugs: resolvedServices.map((service) => service.slug),
-      category: resolvedServices.map((service) => service.category).filter(Boolean).join(", "),
-      category_slug: resolvedServices.map((service) => service.category ? service.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "").filter(Boolean).join(", "),
-      price: orderAmount,
-      services: resolvedServices.map((service) => ({
-        title: service.title,
-        slug: service.slug,
-        category: service.category,
-        categorySlug: service.category ? service.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "services",
-        amount: Number(service.customer_fee),
-        documents: service.required_documents_list ?? [],
-      })),
     };
     const applicationMetadata = {
       source: "customer_service_application",

@@ -4,8 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { CategoryServicesPage } from "@/components/category-services-page";
 import { DynamicServicePage } from "@/components/services/dynamic-service-page";
 import { getPublicCategoryBySlug, getPublicServiceBySlug, getPublicServiceRowBySlug, getPublicServicesByCategory, rowFromFallback } from "@/lib/services";
-import { serviceFromDb, type DbService } from "@/lib/services";
-import { servicesData, type ServiceItem } from "@/lib/services-data";
+import { serviceFromDb } from "@/lib/services";
+import { type ServiceItem } from "@/lib/services-data";
 import { getCurrentUser } from "@/lib/auth";
 
 type PageProps = {

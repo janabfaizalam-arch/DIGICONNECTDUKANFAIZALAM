@@ -87,7 +87,7 @@ export default function CustomerSignupV3Wizard() {
         setCity(po.Block || po.District);
         setState(po.State);
       }
-    } catch (e) {
+    } catch {
       console.log("Failed to fetch pincode");
     }
   };

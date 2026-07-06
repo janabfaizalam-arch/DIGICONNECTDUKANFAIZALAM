@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, MapPin, Home, Navigation, Map, Loader2, Save, Camera } from "lucide-react";
+import { User, MapPin, Loader2, Save, Camera } from "lucide-react";
+import Image from "next/image";
 
 export default function ProfilePage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,7 +92,7 @@ export default function ProfilePage() {
           <div className="relative group cursor-pointer shrink-0">
             <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
               {profile?.photo_url ? (
-                <img src={profile.photo_url} alt="Profile" className="w-full h-full object-cover" />
+                <Image src={profile.photo_url} alt="Profile" className="w-full h-full object-cover" width={96} height={96} unoptimized />
               ) : (
                 <User className="w-10 h-10 text-white/30" />
               )}

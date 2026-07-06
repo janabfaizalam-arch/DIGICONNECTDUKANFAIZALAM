@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Link2, Clock, CheckCircle2, Copy, XCircle, MoreVertical } from "lucide-react";
+import { Link2, Clock, CheckCircle2, Copy, XCircle } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 
@@ -24,7 +23,7 @@ export interface PaymentLink {
 }
 
 export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { success: toastSuccess } = useToast();
   
   const copyLink = (code: string) => {
     const url = `${window.location.origin}/pay/${code}`;
