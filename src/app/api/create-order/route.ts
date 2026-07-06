@@ -421,8 +421,12 @@ export async function POST(request: Request) {
             paid_at: paidAt,
             submitted_at: paidAt,
             created_by: user.id,
-            source: "online",
-            submitted_by_role: "customer",
+            application_source: body.applicationDraft?.details?.applicationSource || (ap?.id ? "partner_assisted" : "customer_self"),
+            referral_source: body.applicationDraft?.details?.referralSource || null,
+            referral_token: body.applicationDraft?.details?.referralToken || null,
+            payment_link_id: body.applicationDraft?.details?.paymentLinkId || null,
+            source: ap?.id ? "agency_partner" : "online",
+            submitted_by_role: ap?.id ? "agency_partner" : "customer",
           };
         });
 
@@ -670,8 +674,12 @@ export async function POST(request: Request) {
             status: "payment_pending",
             payment_status: "pending",
             created_by: user.id,
-            source: "online",
-            submitted_by_role: "customer",
+            application_source: body.applicationDraft?.details?.applicationSource || (ap?.id ? "partner_assisted" : "customer_self"),
+            referral_source: body.applicationDraft?.details?.referralSource || null,
+            referral_token: body.applicationDraft?.details?.referralToken || null,
+            payment_link_id: body.applicationDraft?.details?.paymentLinkId || null,
+            source: ap?.id ? "agency_partner" : "online",
+            submitted_by_role: ap?.id ? "agency_partner" : "customer",
           };
         });
 

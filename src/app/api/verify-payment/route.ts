@@ -9,6 +9,7 @@ import { redeemWalletForApplication } from "@/lib/wallet";
 import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
+import { createInvoiceForApplication } from "@/lib/crm";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 
 type VerifyPaymentBody = {
@@ -162,6 +163,7 @@ export async function POST(request: Request) {
     const serviceAmount = applications.reduce((total, application) => total + Number(application.total_amount ?? application.amount ?? 0), 0);
     const walletRedeemedAmount = applications.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? 0), 0);
     const freshPayableAmount = applications.reduce((total, application) => total + Number(application.fresh_payable_amount ?? application.amount ?? 0), 0);
+    let cashbackResult: { processed?: boolean; cashback_amount?: number; first_service?: boolean; cashback_transaction_id?: string | null; referrer_transaction_id?: string | null } | null = null;
     const wallet = await createWalletIfMissing(user.id);
     const redeemLimit = calculateWalletRedeemBreakdown({
       serviceAmount,
@@ -208,7 +210,6 @@ export async function POST(request: Request) {
         });
         return jsonError("Payment verified, but application update failed. Please contact support.", 500);
       }
-    }
 
     // 1. Process payment links status if any matching links exist
     try {
@@ -351,7 +352,6 @@ export async function POST(request: Request) {
     }
 
     // Credit cashback and referral rewards immediately after payment verification
-    let cashbackResult: { processed?: boolean; cashback_amount?: number; first_service?: boolean; cashback_transaction_id?: string | null; referrer_transaction_id?: string | null } | null = null;
     try {
       cashbackResult = await processRewardsOnPaymentVerified(primaryApplication.id, user.id);
       devInfo("[razorpay/verify-payment] Cashback processed", {
@@ -382,6 +382,33 @@ export async function POST(request: Request) {
       });
     } catch (waError) {
       console.error("WhatsApp trigger error for payment verification:", waError);
+    }
+
+    try {
+      // Auto-create invoice
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const appData = primaryApplication as any;
+      const customerName = (appData.customer_details as {name?: string})?.name || "Customer";
+      const customerEmail = appData.customer_email || "no-reply@digiconnect.in";
+      const customerMobile = appData.customer_mobile || "0000000000";
+      const serviceName = applications.map((a) => a.service_name).join(", ");
+      await createInvoiceForApplication({
+        applicationId: appData.id,
+        userId: user.id,
+        customerId: appData.customer_id || null,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerMobile: customerMobile,
+        serviceName: serviceName,
+        amount: applications.reduce((total, application) => total + Number(application.amount ?? 0), 0),
+        paymentStatus: "verified",
+      });
+    } catch (invoiceErr) {
+      console.error("[razorpay/verify-payment] Invoice creation failed:", invoiceErr);
+    }
+
+    } else {
+      console.info("[razorpay/verify-payment] Order already verified. Skipping side-effects.", { orderId, paymentId });
     }
 
     return NextResponse.json({

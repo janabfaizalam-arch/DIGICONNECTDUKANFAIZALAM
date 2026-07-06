@@ -173,21 +173,21 @@ export async function middleware(request: NextRequest) {
   }
 
   // Handle custom JWT authentication for Customers
-  const isCustomerRoute = matchesRoute(pathname, "/dashboard") || matchesRoute(pathname, "/customer") || matchesRoute(pathname, "/apply");
-  const isCustomerAuthRoute = matchesRoute(pathname, "/login/customer") || matchesRoute(pathname, "/customer-login");
+  const isCustomerRoute = matchesRoute(pathname, "/customer-v2");
+  const isCustomerAuthRoute = matchesRoute(pathname, "/customer-auth-v2/login") || matchesRoute(pathname, "/customer-auth-v2/signup") || matchesRoute(pathname, "/customer-auth-v2/forgot-pin") || matchesRoute(pathname, "/customer-auth-v2/set-pin");
 
   if (isCustomerRoute || isCustomerAuthRoute) {
-    const { verifyJWT } = await import("@/lib/auth/jwt");
-    const accessToken = request.cookies.get("customer_access_token")?.value;
+    const { verifyAccessToken } = await import("@/lib/auth-v2/jwt");
+    const accessToken = request.cookies.get('v2_customer_access_token')?.value;
     let customerPayload = null;
 
     if (accessToken) {
-      customerPayload = await verifyJWT(accessToken);
+      customerPayload = await verifyAccessToken(accessToken);
     }
 
     if (!customerPayload && isCustomerRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login/customer";
+      url.pathname = "/customer-auth-v2/login";
       applyCustomerRedirect(url, pathname);
       return NextResponse.redirect(url);
     }
@@ -200,7 +200,7 @@ export async function middleware(request: NextRequest) {
         url.pathname = target.pathname;
         url.search = target.search;
       } else {
-        url.pathname = "/dashboard"; // Standardize on /dashboard for customers
+        url.pathname = "/customer-v2/dashboard"; // Standardize on /dashboard for customers
         url.search = "";
       }
       return NextResponse.redirect(url);

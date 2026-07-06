@@ -983,6 +983,7 @@ export function CustomerApplicationWizard({
 
   // Step navigation
   const handleNext = useCallback(() => {
+    if (isSubmitting) return;
     if (currentStep === 1) {
       if (cart.length === 0) { toastError("Select at least one service."); return; }
       setCurrentStep(2);

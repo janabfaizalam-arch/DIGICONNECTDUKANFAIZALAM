@@ -192,44 +192,7 @@ function iconByName(name?: string | null): LucideIcon {
   return (name && serviceIconMap[name]) || FileText;
 }
 
-export const allowedPublicServiceSlugs = new Set([
-  "pvc-card",
-  "pmegp-loan",
-  "mudra-loan",
-  "pm-vishwakarma-yojana",
-  "startup-india-assistance",
-  "cm-yuva-entrepreneur-loan-assistance",
-  "credit-cards",
-  "saving-account-opening",
-  "current-account-opening",
-  "cibil-report-increase",
-  "passport",
-  "learning-driving-license",
-  "voter-id",
-  "eshram-card",
-  "labour-card",
-  "gst-registration-filing",
-  "gst-registration",
-  "gst-return-filing",
-  "itr-filing",
-  "private-limited-registration",
-  "private-limited-compliance",
-  "opc-registration",
-  "dsc",
-  "msme-registration",
-  "iso-certification",
-  "insurance",
-  "csc-olympiad",
-  "food-license",
-  "income-certificate",
-  "caste-certificate",
-  "domicile-certificate",
-  "ayushman-card",
-  "ayushman",
-  "pan-card",
-  "aadhaar-services",
-  "driving-licence"
-]);
+// Removed allowedPublicServiceSlugs to support fully dynamic services
 
 function categorySlugFromService(service: DbService) {
   const rawCat = service.category || service.service_categories?.slug || getFallbackServiceBySlug(service.slug)?.categorySlug || "services";
@@ -275,7 +238,7 @@ function activeServiceFilter(service: DbService) {
     "aadhaar-services": "aadhaar-services"
   };
   const normalizedSlug = aliases[service.slug] ?? service.slug;
-  return allowedPublicServiceSlugs.has(normalizedSlug) && (service.is_active ?? service.status === "published") && service.status === "published";
+  return (service.is_active ?? service.status === "published") && service.status === "published";
 }
 
 const serviceSelect =
@@ -353,8 +316,7 @@ async function fetchLegacyPublishedServiceRows() {
 
   if (!legacyResult.error) {
     return (legacyResult.data ?? [])
-      .map((row) => normalizeServiceRow(row as Record<string, unknown>))
-      .filter((service) => allowedPublicServiceSlugs.has(service.slug));
+      .map((row) => normalizeServiceRow(row as Record<string, unknown>));
   }
 
   if (!isSchemaMismatch(legacyResult.error)) {
@@ -373,8 +335,7 @@ async function fetchLegacyPublishedServiceRows() {
   }
 
   return (catalogResult.data ?? [])
-    .map((row) => normalizeServiceRow(row as Record<string, unknown>))
-    .filter((service) => allowedPublicServiceSlugs.has(service.slug));
+    .map((row) => normalizeServiceRow(row as Record<string, unknown>));
 }
 
 function categoryFromDb(category: DbServiceCategory, services: DbService[] = []): ServiceCategoryWithCount {
@@ -591,7 +552,7 @@ export async function getPublicServiceBySlug(slug: string) {
     "insurance-renewal": "insurance",
   };
   const normalizedSlug = aliases[slug] ?? slug;
-  if (!allowedPublicServiceSlugs.has(normalizedSlug)) return null;
+
   const supabase = getSupabaseAdmin();
 
   if (supabase) {
@@ -646,7 +607,7 @@ export async function getPublicServiceRowBySlug(slug: string) {
     "insurance-renewal": "insurance",
   };
   const normalizedSlug = aliases[slug] ?? slug;
-  if (!allowedPublicServiceSlugs.has(normalizedSlug)) return null;
+
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {

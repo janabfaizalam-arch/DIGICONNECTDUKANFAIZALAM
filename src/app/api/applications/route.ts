@@ -757,6 +757,10 @@ export async function POST(request: Request) {
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
             updated_at: new Date().toISOString(),
+            ...(details.applicationSource && { application_source: details.applicationSource }),
+            ...(details.referralSource && { referral_source: details.referralSource }),
+            ...(details.referralToken && { referral_token: details.referralToken }),
+            ...(details.paymentLinkId && { payment_link_id: details.paymentLinkId }),
           })
           .eq("id", application.id);
 
@@ -1102,7 +1106,11 @@ export async function POST(request: Request) {
         },
         status: body.status || (hasVerifiedRazorpayPayment ? "submitted" : "payment_pending"),
         created_by: user.id,
-        source: "online",
+        application_source: details.applicationSource || (referrerApId ? "referral" : "customer_self"),
+        referral_source: details.referralSource || null,
+        referral_token: (typeof finalToken !== "undefined" ? finalToken : null) || details.referralToken || null,
+        payment_link_id: details.paymentLinkId || null,
+        source: referrerApId ? "referral" : "online",
         payment_status: hasVerifiedRazorpayPayment && !isDraft ? "verified" : "pending",
         submitted_by_role: role,
         agent_id: referrerUserId || null,
