@@ -10,6 +10,9 @@ import {
   ShieldCheck,
   Smartphone,
   Eye,
+  Globe,
+  TrendingUp,
+  Sliders,
 } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
@@ -59,6 +62,30 @@ const settingsLinks: SettingItem[] = [
     badge: "Finance Core",
     icon: RefreshCw,
     tone: "green",
+  },
+  {
+    href: "/admin/settings/saas",
+    title: "SaaS Tenant Console",
+    description: "Map custom domains, upload white-label branding, select primary/secondary themes colors, and preview in real-time.",
+    badge: "White Label",
+    icon: Globe,
+    tone: "blue",
+  },
+  {
+    href: "/admin/leads/pipeline",
+    title: "CRM Leads & Sales Pipeline",
+    description: "Manage citizen enquiries, view pipelines, follow up tasks scheduler, calculate CLV, and monitor qualification scores.",
+    badge: "CRM Sales",
+    icon: TrendingUp,
+    tone: "orange",
+  },
+  {
+    href: "/admin/settings/core-config",
+    title: "Core Configuration Cockpit",
+    description: "Centrally manage email/WhatsApp messaging templates, dynamic placeholder tags, and AI prompts rules visually.",
+    badge: "System Core",
+    icon: Sliders,
+    tone: "purple",
   },
 ];
 

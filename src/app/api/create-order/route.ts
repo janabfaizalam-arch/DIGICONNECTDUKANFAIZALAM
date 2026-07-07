@@ -6,7 +6,7 @@ import { validateCoupon } from "@/lib/coupons";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing, redeemWalletForApplication as redeemRewardWalletDirect, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
-import { getAgentServiceBySlug } from "@/lib/agent-services";
+import { getAgentServiceBySlug, type AgentService } from "@/lib/agent-services";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -21,6 +21,8 @@ type CreateOrderBody = {
   walletUseAmount?: number;
   couponCode?: string;
   applicationId?: string;
+  variantSlug?: string;
+  packageSlug?: string;
   applicationDraft?: {
     customer?: {
       name?: string;
@@ -179,31 +181,71 @@ export async function POST(request: Request) {
 
       console.log(`[CREATE-ORDER] Resolved Agent/Referral ID:`, resolvedAgentOrReferralId);
 
-      const services = [];
-      for (const slug of serviceSlugs) {
-        const service = await getAgentServiceBySlug(slug);
-        if (!service) {
-          console.error(`[CREATE-ORDER] Service "${slug}" not found in agent_services.`);
-          return jsonError("Service pricing is not configured in Admin Panel.", 400);
+      let serviceAmount = 0;
+      const services: AgentService[] = [];
+
+      if (body?.packageSlug) {
+        const { data: pkgRow } = await supabase
+          .from("service_packages")
+          .select("selling_price, items")
+          .eq("slug", body.packageSlug)
+          .maybeSingle();
+        if (pkgRow) {
+          serviceAmount = Number(pkgRow.selling_price);
+          console.log(`[CREATE-ORDER] Package resolved price: ₹${serviceAmount} for slug: ${body.packageSlug}`);
+          
+          const items = Array.isArray(pkgRow.items) ? pkgRow.items : [];
+          for (const item of items) {
+            const itemObj = item as Record<string, unknown>;
+            const sSlug = (itemObj.service_slug || itemObj.slug) as string | undefined;
+            if (sSlug) {
+              const service = await getAgentServiceBySlug(sSlug);
+              if (service) {
+                services.push({
+                  ...service,
+                  customer_fee: Number(pkgRow.selling_price) / items.length,
+                });
+              }
+            }
+          }
+        } else {
+          return jsonError("Package bundle not found.", 400);
         }
-        if (service.customer_fee === null || service.customer_fee === undefined) {
-          console.error(`[CREATE-ORDER] Price for service "${service.title || slug}" is missing in agent_services.`);
-          return jsonError("Service pricing is not configured in Admin Panel.", 400);
+      } else {
+        for (const slug of serviceSlugs) {
+          const service = await getAgentServiceBySlug(slug);
+          if (!service) {
+            console.error(`[CREATE-ORDER] Service "${slug}" not found in agent_services.`);
+            return jsonError("Service pricing is not configured in Admin Panel.", 400);
+          }
+          if (service.customer_fee === null || service.customer_fee === undefined) {
+            console.error(`[CREATE-ORDER] Price for service "${service.title || slug}" is missing in agent_services.`);
+            return jsonError("Service pricing is not configured in Admin Panel.", 400);
+          }
+          services.push(service);
         }
-        services.push(service);
+
+        console.log(`[CREATE-ORDER] Resolved service IDs:`, services.map((s) => s.id));
+
+        if (body?.variantSlug && services.length === 1) {
+          const serviceId = services[0].id || services[0].service_id;
+          const { data: vRow } = await supabase
+            .from("service_variants")
+            .select("offer_price, selling_price")
+            .eq("service_id", serviceId)
+            .eq("slug", body.variantSlug)
+            .maybeSingle();
+          if (vRow) {
+            serviceAmount = Number(vRow.offer_price || vRow.selling_price);
+            services[0].customer_fee = serviceAmount;
+            console.log(`[CREATE-ORDER] Variant resolved price: ₹${serviceAmount} for slug: ${body.variantSlug}`);
+          } else {
+            serviceAmount = services.reduce((total, service) => total + Number(service.customer_fee), 0);
+          }
+        } else {
+          serviceAmount = services.reduce((total, service) => total + Number(service.customer_fee), 0);
+        }
       }
-
-      console.log(`[CREATE-ORDER] Resolved service IDs:`, services.map((s) => s.id));
-
-      const serviceAmount = services.reduce((total, service) => {
-        return total + Number(service.customer_fee);
-      }, 0);
-
-      // Log details for verifying unified pricing
-      services.forEach((service) => {
-        const adminPrice = Number(service.customer_fee);
-        console.log(`[CREATE-ORDER] Service: ${service.slug} (ID: ${service.id || service.service_id}) resolved customer fee: ₹${adminPrice}`);
-      });
 
       const couponCode = String(body?.couponCode ?? "").trim();
       let couponDiscount = 0;

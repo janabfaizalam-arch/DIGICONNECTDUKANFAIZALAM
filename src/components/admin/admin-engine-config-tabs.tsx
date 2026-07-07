@@ -14,7 +14,8 @@ import {
   GitFork,
   AlertCircle,
   Check,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AdminService, DbServiceCategory } from "@/lib/services";
 import { ServiceField, ServiceWorkflow, ValidationRule } from "@/lib/services-engine";
 import { AdminServiceWizard } from "./admin-service-wizard";
+import { AdminServicePageBuilder } from "./admin-service-page-builder";
 
 interface AdminEngineConfigTabsProps {
   service: AdminService;
@@ -66,7 +68,7 @@ export function AdminEngineConfigTabs({
   initialFields,
   initialWorkflows
 }: AdminEngineConfigTabsProps) {
-  const [activeTab, setActiveTab] = useState<"cms" | "configs" | "fields" | "workflows">("cms");
+  const [activeTab, setActiveTab] = useState<"cms" | "configs" | "fields" | "workflows" | "sections">("cms");
   const [baseCustomerFee, setBaseCustomerFee] = useState<number>(Number(service.base_customer_fee ?? 0));
   const [tatHours, setTatHours] = useState<number>(Number(service.tat_hours ?? 48));
   const [metadataStr, setMetadataStr] = useState<string>(
@@ -409,6 +411,18 @@ export function AdminEngineConfigTabs({
           <GitFork className="h-4 w-4" />
           Workflow Transitions
         </button>
+
+        <button
+          onClick={() => setActiveTab("sections")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            activeTab === "sections"
+              ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
+          Section Builder (CMS V5)
+        </button>
       </div>
 
       {/* Tabs panels */}
@@ -427,6 +441,23 @@ export function AdminEngineConfigTabs({
               </div>
             </div>
             <AdminServiceWizard service={service} categories={categories} />
+          </div>
+        )}
+
+        {activeTab === "sections" && (
+          <div className="space-y-4">
+            <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-2xl flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-850">Enterprise CMS: Visual Page Builder</h4>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                  Configure, drag-and-drop, and reorder sections (Overview, FAQ, reviews, stats) for the dynamic V5 citizen marketplace.
+                </p>
+              </div>
+            </div>
+            <AdminServicePageBuilder service={service} />
           </div>
         )}
 

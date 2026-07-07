@@ -80,6 +80,64 @@ export type DbService = {
   service_testimonials?: DbServiceTestimonial[] | null;
   created_by_profile?: { id: string; full_name: string; role: string } | null;
   updated_by_profile?: { id: string; full_name: string; role: string } | null;
+  service_variants?: DbServiceVariant[] | null;
+  service_comparisons?: DbServiceComparison[] | null;
+};
+
+export type DbServiceVariant = {
+  id: string;
+  service_id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  original_price: number;
+  selling_price: number;
+  offer_price: number;
+  agent_cost: number;
+  partner_payout: number;
+  wallet_cashback: number;
+  wallet_redeem_allowed: boolean;
+  gst_included: boolean;
+  gst_percentage: number;
+  timeline: string | null;
+  government_fees: number;
+  professional_fees: number;
+  required_documents: { id: string; name: string; type: string; required: boolean }[] | null;
+  form_fields: Record<string, unknown>[] | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type DbServiceComparison = {
+  id: string;
+  service_id: string;
+  title: string;
+  description: string | null;
+  headers: string[];
+  rows: Record<string, unknown>[];
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type DbServicePackage = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  items: { service_slug: string; variant_slug?: string }[];
+  original_price: number;
+  selling_price: number;
+  agent_cost: number;
+  partner_payout: number;
+  wallet_cashback: number;
+  wallet_redeem_allowed: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type AdminService = Omit<DbService, "category"> & {
@@ -246,7 +304,7 @@ function activeServiceFilter(service: DbService) {
 }
 
 const serviceSelect =
-  "*, service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*), created_by_profile:created_by(id, full_name, role), updated_by_profile:updated_by(id, full_name, role)";
+  "*, service_sections(*), service_media(*), service_faqs(*), service_documents_required(*), service_process_steps(*), service_testimonials(*), service_variants(*), service_comparisons(*), created_by_profile:created_by(id, full_name, role), updated_by_profile:updated_by(id, full_name, role)";
 
 const legacyServiceSelect = "*";
 const serviceCatalogSelect = "id, slug, name, description, amount, commission_amount, required_documents, active, created_at, updated_at";
@@ -766,6 +824,34 @@ export async function getAdminServiceById(id: string) {
     } as AdminService;
   } catch (error) {
     console.error("[services] admin service lookup failed", error);
+    return null;
+  }
+}
+
+export async function getServicePackages() {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [] as DbServicePackage[];
+
+  try {
+    const { data, error } = await supabase.from("service_packages").select("*").eq("is_active", true);
+    if (error) return [] as DbServicePackage[];
+    return (data ?? []) as DbServicePackage[];
+  } catch (error) {
+    console.error("[services] getServicePackages failed", error);
+    return [] as DbServicePackage[];
+  }
+}
+
+export async function getServicePackageBySlug(slug: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase.from("service_packages").select("*").eq("slug", slug).maybeSingle();
+    if (error) return null;
+    return data as DbServicePackage;
+  } catch (error) {
+    console.error("[services] getServicePackageBySlug failed", error);
     return null;
   }
 }

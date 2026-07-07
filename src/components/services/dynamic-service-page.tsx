@@ -1,12 +1,21 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star, UserCheck } from "lucide-react";
 
 import { ServicePrice } from "@/components/service-card";
-import type { DbService, DbServiceSection } from "@/lib/services";
+import type { DbService, DbServiceSection, DbServiceVariant } from "@/lib/services";
 import { serviceFromDb } from "@/lib/services";
 import { buildServiceWhatsAppMessage, buildWhatsAppUrl, isCibilOrFinanceService } from "@/lib/whatsapp";
 import { ShareServiceMenu } from "@/components/share-service-menu";
+import { ServiceVariantSelector } from "@/components/services/service-variant-selector";
+import { ServiceComparisonTabs } from "@/components/services/service-comparison-tabs";
+import { ServicePackageCrossSell } from "@/components/services/service-package-cross-sell";
+import { AIServiceHelper } from "@/components/services/ai-service-helper";
+import { CommandPalette } from "@/components/ui/command-palette";
+import { safeCurrency } from "@/lib/admin-format";
 
 function stringItems(value: unknown) {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
@@ -38,14 +47,26 @@ function serviceWhatsAppNumber(slug: string, title?: string) {
   return isCibilOrFinanceService(slug, title) ? cibilExpertWhatsAppNumber : undefined;
 }
 
-function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean }) {
-  const service = serviceFromDb(row);
+function ServiceHero({
+  row,
+  isLoggedIn,
+  selectedVariant,
+  service,
+}: {
+  row: DbService;
+  isLoggedIn: boolean;
+  selectedVariant: DbServiceVariant | null;
+  service: ReturnType<typeof serviceFromDb>;
+}) {
   const isCibilOrFinance = isCibilOrFinanceService(service.slug, service.title);
   const whatsappHref = buildWhatsAppUrl(
     buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: service.ctaType === "apply" ? "apply" : "enquiry", page: `/services/${service.slug}` }),
     serviceWhatsAppNumber(service.slug, service.title),
   );
   const heroImage = row.hero_image_url;
+  const applyHref = selectedVariant
+    ? `/apply/${service.slug}?variant=${selectedVariant.slug}`
+    : `/apply/${service.slug}`;
 
   return (
     <section className="mt-4 grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-stretch">
@@ -79,7 +100,7 @@ function ServiceHero({ row, isLoggedIn }: { row: DbService; isLoggedIn: boolean 
         )}
         <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
           {service.ctaType === "apply" ? (
-            <Link href={`/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
+            <Link href={applyHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-6 text-sm font-extrabold text-white shadow-md shadow-blue-500/10 transition duration-150 active:scale-[0.98] sm:min-w-44">
               {isLoggedIn ? "Apply Now" : "Login to Apply"}
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -305,25 +326,145 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
 }
 
 export function DynamicServicePage({ row, isLoggedIn = false }: { row: DbService; isLoggedIn?: boolean }) {
-  const service = serviceFromDb(row);
+  const [selectedVariant, setSelectedVariant] = useState<DbServiceVariant | null>(null);
+
+  useEffect(() => {
+    if (row.service_variants && row.service_variants.length > 0) {
+      setSelectedVariant(row.service_variants[0]);
+    } else {
+      setSelectedVariant(null);
+    }
+  }, [row]);
+
+  // Track page view to analytics API
+  useEffect(() => {
+    fetch("/api/services/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_slug: row.slug,
+        click_type: "view",
+      }),
+    }).catch((err) => console.error("Tracking view failed", err));
+  }, [row.slug]);
+
+  const baseService = serviceFromDb(row);
+  const service = selectedVariant ? {
+    ...baseService,
+    oldPrice: selectedVariant.original_price ? safeCurrency(selectedVariant.original_price) : baseService.oldPrice,
+    offerPrice: selectedVariant.offer_price ? safeCurrency(selectedVariant.offer_price) : baseService.offerPrice,
+    amount: selectedVariant.offer_price || selectedVariant.selling_price || baseService.amount,
+    priceLabel: selectedVariant.name,
+    documents: selectedVariant.required_documents ? (selectedVariant.required_documents as Array<{ name: string }>).map((d) => d.name) : baseService.documents,
+  } : baseService;
+
   const sections = (row.service_sections?.length ? row.service_sections : legacySections(service))
     .filter((section) => section.is_active && section.section_type !== "hero")
     .sort((a, b) => a.sort_order - b.sort_order);
+
   const whatsappHref = buildWhatsAppUrl(
     buildServiceWhatsAppMessage({ serviceName: service.title, category: service.category, action: "support", page: `/services/${service.slug}` }),
     serviceWhatsAppNumber(service.slug, service.title),
   );
 
+  const applyHref = selectedVariant
+    ? `/apply/${service.slug}?variant=${selectedVariant.slug}`
+    : `/apply/${service.slug}`;
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Service",
+        "name": service.title,
+        "description": service.shortDescription,
+        "provider": {
+          "@type": "GovernmentService",
+          "name": "DigiConnect Dukan",
+          "url": "https://digiconnectdukan.com"
+        },
+        "areaServed": "IN",
+        "offers": {
+          "@type": "Offer",
+          "price": service.amount,
+          "priceCurrency": "INR"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://digiconnectdukan.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Services",
+            "item": "https://digiconnectdukan.com/services"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": service.title,
+            "item": `https://digiconnectdukan.com/services/${service.slug}`
+          }
+        ]
+      },
+      ...(service.faqs && service.faqs.length > 0 ? [{
+        "@type": "FAQPage",
+        "mainEntity": service.faqs.map((faq) => ({
+          "@type": "Question",
+          "name": faq.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": faq.answer
+          }
+        }))
+      }] : [])
+    ]
+  };
+
   return (
     <main className="min-h-screen px-3 py-6 md:px-8 md:py-10 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
-      <div className="mx-auto max-w-5xl">
-        <ServiceHero row={row} isLoggedIn={isLoggedIn} />
-        <div className="mt-8 grid gap-6">
+      {/* SEO Engine Schemas */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
+      {/* Search command palette & AI floating widget */}
+      <CommandPalette />
+      <AIServiceHelper service={row} />
+
+      <div className="mx-auto max-w-5xl space-y-8">
+        <ServiceHero row={row} isLoggedIn={isLoggedIn} selectedVariant={selectedVariant} service={service} />
+        
+        {/* Variants selector if available */}
+        {row.service_variants && row.service_variants.length > 0 && (
+          <ServiceVariantSelector
+            variants={row.service_variants}
+            selectedVariant={selectedVariant}
+            onSelect={setSelectedVariant}
+          />
+        )}
+
+        {/* Packages bundle cross-sell */}
+        <ServicePackageCrossSell currentServiceSlug={service.slug} />
+
+        <div className="grid gap-6">
           {sections.map((section) => <RenderSection key={section.id} section={section} service={service} />)}
         </div>
+
+        {/* Comparisons tab if available */}
+        {row.service_comparisons && row.service_comparisons.length > 0 && (
+          <ServiceComparisonTabs comparisons={row.service_comparisons} />
+        )}
         
         {/* Streamlined Visual Footer Apply Card */}
-        <section className="mt-8 overflow-hidden rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl shadow-soft p-6 md:p-8 relative">
+        <section className="overflow-hidden rounded-3xl border border-white/60 bg-white/72 backdrop-blur-xl shadow-soft p-6 md:p-8 relative">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_80%,rgba(249,115,22,0.06),transparent_35%)]" />
           <div className="relative z-10 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
             <div>
@@ -334,7 +475,7 @@ export function DynamicServicePage({ row, isLoggedIn = false }: { row: DbService
             </div>
             <div className="flex flex-col gap-2.5 sm:flex-row">
               {service.ctaType === "apply" ? (
-                <Link href={`/apply/${service.slug}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-extrabold text-white shadow-md hover:bg-blue-700 transition duration-150 active:scale-[0.98]">
+                <Link href={applyHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-extrabold text-white shadow-md hover:bg-blue-700 transition duration-150 active:scale-[0.98]">
                   {isLoggedIn ? "Apply Now" : "Login to Apply"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
