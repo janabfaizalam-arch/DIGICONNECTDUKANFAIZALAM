@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { AdminCustomerAuthActions } from "@/components/admin/admin-customer-auth-actions";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -19,8 +20,8 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
-  if (!user) redirect("/login");
-  if (!isAdminRole(role)) redirect("/dashboard");
+  if (!user) redirect("/admin/login");
+  if (!isAdminRole(role)) redirect("/admin");
 
   const { id } = await params;
   const supabase = getSupabaseAdmin();
@@ -28,6 +29,14 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
   let customer: Customer | null = null;
   let applications: Pick<Application, "id" | "service_name" | "status" | "payment_status" | "amount" | "created_at">[] = [];
   let notes: { id: string; note: string; created_at: string }[] = [];
+  let authProfile: {
+    id: string;
+    phone: string | null;
+    phone_verified: boolean | null;
+    account_status: string | null;
+    failed_login_attempts: number | null;
+    last_login_at: string | null;
+  } | null = null;
 
   if (supabase) {
     try {
@@ -44,6 +53,27 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
       customer = customerResult.error ? null : (customerResult.data as Customer | null);
       applications = applicationsResult.error ? [] : (applicationsResult.data ?? []) as typeof applications;
       notes = notesResult.error ? [] : (notesResult.data ?? []) as typeof notes;
+
+      if (customer) {
+        const linkedUserId = (customer as Customer & { user_id?: string | null }).user_id;
+        const mobile = String(customer.mobile ?? "").replace(/\D/g, "").slice(-10);
+        if (linkedUserId) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("id, phone, phone_verified, account_status, failed_login_attempts, last_login_at")
+            .eq("id", linkedUserId)
+            .maybeSingle();
+          authProfile = data;
+        } else if (mobile) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("id, phone, phone_verified, account_status, failed_login_attempts, last_login_at")
+            .eq("phone", mobile)
+            .eq("role", "customer")
+            .maybeSingle();
+          authProfile = data;
+        }
+      }
     } catch (error) {
       console.error("[admin-customer-detail] Failed to load customer", error);
     }
@@ -77,11 +107,19 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
         <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-slate-950">Profile</h2>
           <div className="mt-4 grid gap-3 text-sm text-slate-600">
-            <p>Mobile: <span className="font-semibold text-slate-900">{customerRecord.mobile || "-"}</span></p>
-            <p>Email: <span className="font-semibold text-slate-900">{customerRecord.email || "-"}</span></p>
+            <p>WhatsApp: <span className="font-semibold text-slate-900">{customerRecord.mobile || "-"}</span></p>
+            <p>Phone verified: <span className="font-semibold text-slate-900">{authProfile?.phone_verified ? "Yes" : "No"}</span></p>
+            <p>Account status: <span className="font-semibold text-slate-900">{authProfile?.account_status || "-"}</span></p>
+            <p>Failed login attempts: <span className="font-semibold text-slate-900">{authProfile?.failed_login_attempts ?? 0}</span></p>
+            <p>Last login: <span className="font-semibold text-slate-900">{authProfile?.last_login_at ? formatDate(authProfile.last_login_at) : "-"}</span></p>
             <p>Address: <span className="font-semibold text-slate-900">{customerRecord.address || "-"}</span></p>
-            <p>Notes: <span className="font-semibold text-slate-900">{customerRecord.notes || "-"}</span></p>
             <p>Created: <span className="font-semibold text-slate-900">{formatDate(customerRecord.created_at)}</span></p>
+          </div>
+          <div className="mt-4">
+            <AdminCustomerAuthActions
+              userId={authProfile?.id}
+              phone={authProfile?.phone || customerRecord.mobile}
+            />
           </div>
         </div>
 

@@ -24,6 +24,8 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
   const [partnerCode, setPartnerCode] = useState(defaultPartnerCode);
   const [partnerType, setPartnerType] = useState("field_executive");
   const [commissionType, setCommissionType] = useState("fixed");
+  const [kycStatus, setKycStatus] = useState("pending");
+  const [accountStatus, setAccountStatus] = useState("pending");
   const [formError, setFormError] = useState("");
   const [createdAP, setCreatedAP] = useState<CreateAPResult | null>(null);
 
@@ -46,32 +48,20 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
     const formData = new FormData(form);
     
     const fullName = String(formData.get("fullName") ?? "").trim();
+    const username = String(formData.get("username") ?? "").trim().toLowerCase();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
-    const businessName = String(formData.get("businessName") ?? "").trim();
-    const address = String(formData.get("address") ?? "").trim();
-    const district = String(formData.get("district") ?? "").trim();
-    const state = String(formData.get("state") ?? "").trim();
-    const pin = String(formData.get("pin") ?? "").replace(/\D/g, "");
-    
-    const aadhaarNumber = String(formData.get("aadhaarNumber") ?? "").replace(/\D/g, "");
-    const panNumber = String(formData.get("panNumber") ?? "").trim().toUpperCase();
-    const gstin = String(formData.get("gstin") ?? "").trim().toUpperCase();
-    
-    const bankAccountName = String(formData.get("bankAccountName") ?? "").trim();
-    const bankAccountNumber = String(formData.get("bankAccountNumber") ?? "").trim();
-    const bankIfsc = String(formData.get("bankIfsc") ?? "").trim().toUpperCase();
-    const bankName = String(formData.get("bankName") ?? "").trim();
-    const upiId = String(formData.get("upiId") ?? "").trim();
-    
-    const emergencyContact = String(formData.get("emergencyContact") ?? "").trim();
-    const nomineeName = String(formData.get("nomineeName") ?? "").trim();
-    const nomineeRelation = String(formData.get("nomineeRelation") ?? "").trim();
-    const referralSource = String(formData.get("referralSource") ?? "").trim();
     const commissionValue = Number(formData.get("commissionValue") ?? 0);
 
-    if (!fullName || !mobile || !email || !partnerCode || !password || !address) {
-      const msg = "Name, Mobile, Email, Code, Password, and Address are required.";
+    if (!fullName || !username || !mobile || !partnerCode || !password) {
+      const msg = "Name, Username, Mobile, Partner Code, and Temporary Password are required.";
+      setFormError(msg);
+      toastError(msg);
+      return;
+    }
+
+    if (!/^[a-z0-9._-]{3,64}$/.test(username)) {
+      const msg = "Username: 3-64 chars, letters/numbers/._- only.";
       setFormError(msg);
       toastError(msg);
       return;
@@ -85,7 +75,7 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
     }
 
     if (password.length < 8) {
-      const msg = "Password must be at least 8 characters.";
+      const msg = "Temporary password must be at least 8 characters.";
       setFormError(msg);
       toastError(msg);
       return;
@@ -93,36 +83,20 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
 
     const payload = {
       fullName,
-      email,
-      password,
-      partnerCode,
-      partnerType,
+      username,
       mobile,
-      whatsapp,
-      businessName,
-      address,
-      district,
-      state,
-      pin,
-      aadhaarNumber,
-      panNumber,
-      gstin,
-      bankAccountName,
-      bankAccountNumber,
-      bankIfsc,
-      bankName,
-      upiId,
-      emergencyContact,
-      nomineeName,
-      nomineeRelation,
-      referralSource,
+      email,
+      temporaryPassword: password,
+      partnerCode,
       commissionType,
       commissionValue,
+      kycStatus,
+      accountStatus,
     };
 
     startTransition(async () => {
       try {
-        const response = await fetch("/api/admin/agency-partners", {
+        const response = await fetch("/api/admin/agency-partners/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -130,17 +104,22 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
           body: JSON.stringify(payload),
         });
 
-        const result = (await response.json().catch(() => ({}))) as CreateAPResult;
+        const result = (await response.json().catch(() => ({}))) as CreateAPResult & { error?: string; ok?: boolean };
 
-        if (!response.ok || !result.partnerId) {
-          throw new Error(result.message ?? "Agency Partner could not be created.");
+        if (!response.ok) {
+          throw new Error(result.error ?? result.message ?? "Agency Partner could not be created.");
         }
 
         success(result.message ?? "Agency Partner registered successfully!");
-        setCreatedAP(result);
+        setCreatedAP({
+          message: result.message,
+          partnerId: result.partnerId,
+          partnerCode: result.partnerCode ?? partnerCode,
+        });
         form.reset();
         setMobile("");
         setWhatsapp("");
+        setPartnerCode(defaultPartnerCode);
       } catch (error) {
         setFormError(error instanceof Error ? error.message : "Error onboarding AP.");
         toastError(error instanceof Error ? error.message : "Error onboarding AP.");
@@ -191,12 +170,42 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
                 />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-bold text-slate-700">Email Address *</span>
-                <Input name="email" placeholder="partner@business.com" type="email" required />
+                <span className="text-xs font-bold text-slate-700">Username *</span>
+                <Input name="username" placeholder="ap1001" autoComplete="off" required />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-bold text-slate-700">Login Password *</span>
-                <Input name="password" placeholder="Min 8 chars login password" type="password" minLength={8} required />
+                <span className="text-xs font-bold text-slate-700">Email (optional)</span>
+                <Input name="email" placeholder="partner@business.com" type="email" />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-bold text-slate-700">Temporary Password *</span>
+                <Input name="password" placeholder="Min 8 chars — must change on first login" type="password" minLength={8} required />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-bold text-slate-700">KYC Status</span>
+                <Select value={kycStatus} onValueChange={setKycStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="KYC" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-bold text-slate-700">Account Status</span>
+                <Select value={accountStatus} onValueChange={setAccountStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-slate-700">Partner Code *</span>
@@ -244,21 +253,21 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
                 </Select>
               </label>
               <label className="grid gap-1 sm:col-span-2">
-                <span className="text-xs font-bold text-slate-700">Detailed Address *</span>
-                <Input name="address" placeholder="Shop/Building address, area, or street name" required />
+                <span className="text-xs font-bold text-slate-700">Detailed Address</span>
+                <Input name="address" placeholder="Shop/Building address, area, or street name" />
               </label>
               <div className="grid gap-3 grid-cols-3 sm:col-span-2">
                 <label className="grid gap-1">
-                  <span className="text-xs font-bold text-slate-700">District *</span>
-                  <Input name="district" placeholder="City / District" required />
+                  <span className="text-xs font-bold text-slate-700">District</span>
+                  <Input name="district" placeholder="City / District" />
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-xs font-bold text-slate-700">State *</span>
-                  <Input name="state" placeholder="State" required />
+                  <span className="text-xs font-bold text-slate-700">State</span>
+                  <Input name="state" placeholder="State" />
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-xs font-bold text-slate-700">Pincode *</span>
-                  <Input name="pin" placeholder="6-digit PIN" maxLength={6} required />
+                  <span className="text-xs font-bold text-slate-700">Pincode</span>
+                  <Input name="pin" placeholder="6-digit PIN" maxLength={6} />
                 </label>
               </div>
             </div>

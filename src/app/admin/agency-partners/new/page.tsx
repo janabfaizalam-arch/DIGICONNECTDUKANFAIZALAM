@@ -13,8 +13,8 @@ export default async function NewAPOnboardingPage() {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
-  if (!user) redirect("/login");
-  if (!isAdminRole(role)) redirect("/dashboard");
+  if (!user) redirect("/admin/login");
+  if (!isAdminRole(role)) redirect("/admin");
 
   const defaultPartnerCode = await getNextPartnerCode();
 

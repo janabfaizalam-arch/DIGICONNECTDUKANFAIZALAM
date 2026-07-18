@@ -56,8 +56,8 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
-  if (!user) redirect("/login");
-  if (!isAdminRole(role)) redirect("/dashboard");
+  if (!user) redirect("/admin/login");
+  if (!isAdminRole(role)) redirect("/admin");
 
   const params = await searchParams;
   const result = await getAdminCustomers({ filter: params?.filter });
