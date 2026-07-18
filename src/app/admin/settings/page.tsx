@@ -11,7 +11,6 @@ import {
   Smartphone,
   Eye,
   Globe,
-  TrendingUp,
   Sliders,
 } from "lucide-react";
 
@@ -70,14 +69,6 @@ const settingsLinks: SettingItem[] = [
     badge: "White Label",
     icon: Globe,
     tone: "blue",
-  },
-  {
-    href: "/admin/leads/pipeline",
-    title: "CRM Leads & Sales Pipeline",
-    description: "Manage citizen enquiries, view pipelines, follow up tasks scheduler, calculate CLV, and monitor qualification scores.",
-    badge: "CRM Sales",
-    icon: TrendingUp,
-    tone: "orange",
   },
   {
     href: "/admin/settings/core-config",

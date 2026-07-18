@@ -25,14 +25,9 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   if (apRoleAliases.has(metadataRole)) return "agency_partner";
   if (isAppRole(metadataRole)) return metadataRole;
 
-  const email = (user.email ?? "").toLowerCase();
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((adminEmail) => adminEmail.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (adminEmails.includes(email)) return "admin";
-
+  // Note: admin email allowlists are server-only (ADMIN_EMAILS). The client
+  // resolves roles from metadata and database rows only; this is display
+  // logic, and server-side middleware remains the authorization boundary.
   const supabase = createClient();
   if (!supabase) return "customer";
 

@@ -37,7 +37,7 @@ export function LeadForm() {
     formData.set("message", form.message);
 
     startTransition(async () => {
-      const response = await fetch("/api/lead", {
+      const response = await fetch("/api/enquiry", {
         method: "POST",
         body: formData,
       });

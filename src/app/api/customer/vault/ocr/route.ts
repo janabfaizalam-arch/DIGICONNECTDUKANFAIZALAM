@@ -69,6 +69,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // The extraction below is a mock/simulation (hard-coded sample values).
+    // It must never run in production: fabricated identity data written into
+    // a customer's vault is misleading and dangerous. Enable only after a
+    // real OCR provider is integrated.
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { message: "Document data extraction is not available yet." },
+        { status: 503 },
+      );
+    }
+
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });

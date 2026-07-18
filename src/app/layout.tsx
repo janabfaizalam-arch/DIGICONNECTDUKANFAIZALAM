@@ -79,11 +79,12 @@ export const metadata: Metadata = {
   },
 };
 
+// Note: maximumScale is intentionally NOT set — blocking pinch-zoom is a
+// WCAG 1.4.4 failure and hurts low-vision users on mobile.
 export const viewport: Viewport = {
   themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
 };
 
@@ -143,8 +144,14 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <NavigationProgress />
           </Suspense>
+          <a
+            href="#main-content"
+            className="sr-only z-[100] rounded-xl bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-lg focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          >
+            Skip to main content
+          </a>
           <SiteHeader />
-          {children}
+          <div id="main-content">{children}</div>
           <Suspense fallback={null}>
             <BottomNav />
           </Suspense>

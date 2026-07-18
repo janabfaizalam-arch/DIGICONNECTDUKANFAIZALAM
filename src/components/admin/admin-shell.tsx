@@ -22,7 +22,6 @@ import {
   LoaderCircle,
   MapPin,
   Globe,
-  TrendingUp,
   Sliders,
   type LucideIcon,
 } from "lucide-react";
@@ -51,7 +50,6 @@ const navItems: AdminNavItem[] = [
   { href: "/admin/documents", label: "Documents", description: "Vault storage audit", icon: FolderCheck },
   { href: "/admin/tickets", label: "Tickets", description: "Support requests queue", icon: Ticket },
   { href: "/admin/branches", label: "Branches", description: "Regional analytics", icon: MapPin },
-  { href: "/admin/leads/pipeline", label: "CRM Pipeline", description: "Leads & follow-ups", icon: TrendingUp },
   { href: "/admin/settings/saas", label: "SaaS Tenant", description: "Branding customizer", icon: Globe },
   { href: "/admin/settings/core-config", label: "Core Config", description: "Variables cockpit", icon: Sliders },
   { href: "/admin/notifications", label: "Notifications", description: "Alarms & system events", icon: Bell },

@@ -105,8 +105,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: "Agent login successful.",
-      destination: "/agent/dashboard",
+      message: "Partner login successful.",
+      destination: "/ap/dashboard",
     });
   } catch (error) {
     console.error("[agent-login] Login failed.", error);

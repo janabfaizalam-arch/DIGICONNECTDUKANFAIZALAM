@@ -71,9 +71,37 @@
   --electric-blue: #2563eb;
   --premium-orange: #f97316;
 
+  /* Status colors — use these for success/warning/error/info states so all
+     badges, alerts, and toasts stay consistent across the app. */
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --error: #dc2626;
+  --error-soft: #fef2f2;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
+
+  /* Focus ring */
+  --focus-ring: rgba(37, 99, 235, 0.5);
+
+  /* Motion scale */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 400ms;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
   /* Layout */
   --header-height: 64px;
   --bottom-nav-height: 60px;
+}
+
+/* Consistent, visible keyboard focus everywhere. Mouse/touch interactions
+   are unaffected (:focus-visible only matches keyboard-driven focus). */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 * {

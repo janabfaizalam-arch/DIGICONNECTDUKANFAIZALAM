@@ -7,7 +7,8 @@ import { getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
 import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
-import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkRateLimitDurable } from "@/lib/rate-limit-durable";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
@@ -47,7 +48,7 @@ function devInfo(message: string, details?: Record<string, unknown>) {
 
 export async function POST(request: Request) {
   try {
-    const rateLimit = checkRateLimit(`verify-payment:${getClientIp(request)}`, 30, 60_000);
+    const rateLimit = await checkRateLimitDurable(`verify-payment:${getClientIp(request)}`, 30, 60_000);
 
     if (!rateLimit.ok) {
       return rateLimitResponse(rateLimit.retryAfter);

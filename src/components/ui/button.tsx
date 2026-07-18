@@ -12,9 +12,11 @@ const buttonVariants = cva(
         secondary: "bg-[var(--secondary)] text-[var(--secondary-foreground)] md:hover:-translate-y-0.5",
         outline: "border bg-white/80 text-slate-900 hover:bg-slate-50",
         ghost: "text-[var(--primary)] hover:bg-white/70",
+        destructive: "bg-[var(--error)] text-white md:hover:-translate-y-0.5",
       },
       size: {
         default: "h-11 px-5",
+        sm: "h-9 px-4 text-xs",
         lg: "h-12 px-6 text-base",
         icon: "h-11 w-11",
       },

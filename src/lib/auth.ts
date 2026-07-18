@@ -34,19 +34,32 @@ export async function getCurrentUser() {
   return user;
 }
 
+// Server-only admin email allowlist. Authorization must never read the
+// NEXT_PUBLIC_ variant: public env vars ship in the client bundle and are
+// not a trustworthy authorization input.
+export function getAdminEmailAllowlist(): string[] {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+// Role claim that only the server can set (service-role admin API / SQL).
+// user_metadata is intentionally NOT consulted for privilege decisions:
+// any logged-in user can rewrite their own user_metadata via
+// supabase.auth.updateUser({ data: { role: "admin" } }).
+export function getServerMetadataRole(user: User | null) {
+  return normalizeAppRole((user?.app_metadata as Record<string, unknown> | undefined)?.role);
+}
+
 export function isAdminUser(user: User | null) {
   if (!user) {
     return false;
   }
 
-  const adminEmails = (process.env.ADMIN_EMAILS ?? process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-  const role = normalizeAppRole(user.user_metadata.role);
   const email = (user.email ?? "").toLowerCase();
 
-  return role === "admin" || adminEmails.includes(email);
+  return getServerMetadataRole(user) === "admin" || getAdminEmailAllowlist().includes(email);
 }
 
 export type AppRole = "admin" | "agency_partner" | "customer";
@@ -235,10 +248,20 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   }
 
   const supabaseAdmin = getSupabaseAdmin();
-  const metadataRole = normalizeAppRole(user.user_metadata.role);
+  // Only the server-controlled app_metadata claim is trusted here.
+  // user_metadata.role is rewritable by the logged-in user themselves and
+  // must never decide authorization; database rows are the source of truth.
+  const metadataRole = getServerMetadataRole(user);
 
   if (metadataRole) {
     return metadataRole;
+  }
+
+  // Fast path: a self-claim of the LOWEST privilege is safe to trust
+  // (worst case is a self-downgrade), and it saves DB round-trips for the
+  // vast majority of requests, which come from customers.
+  if (normalizeAppRole(user.user_metadata?.role) === "customer") {
+    return "customer";
   }
 
   if (isAdminUser(user)) {

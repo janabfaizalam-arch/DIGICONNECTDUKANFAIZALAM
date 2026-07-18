@@ -45,16 +45,9 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
     return metadataRole;
   }
 
-  const email = (user.email ?? "").toLowerCase();
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((adminEmail) => adminEmail.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (adminEmails.includes(email)) {
-    return "admin";
-  }
-
+  // Note: admin email allowlists are server-only (ADMIN_EMAILS). The client
+  // resolves roles from metadata and database rows only; this is display
+  // logic, and server-side middleware remains the authorization boundary.
   const supabase = createClient();
 
   if (!supabase) {
@@ -666,10 +659,10 @@ export function SiteHeader() {
           {agentShell && (
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
               {[
-                ["/agent/dashboard", "Dashboard"],
-                ["/agent/applications/new", "New Application"],
-                ["/agent/applications", "Applications"],
-                ["/agent/commissions", "Commissions"],
+                ["/ap/dashboard", "Dashboard"],
+                ["/ap/applications/new", "New Application"],
+                ["/ap/applications", "Applications"],
+                ["/ap/commissions", "Commissions"],
               ].map(([href, label]) => {
                 const isActive = pathname === href;
                 return (
@@ -1072,7 +1065,7 @@ export function SiteHeader() {
                         {partnerResults.leads.map((item) => (
                           <Link
                             key={item.id}
-                            href={`/ap/leads?search=${item.name}`}
+                            href={`/ap/applications?search=${encodeURIComponent(item.name)}`}
                             onClick={() => setSearchOpen(false)}
                             className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-amber-500/30 hover:bg-slate-900 transition-all group"
                           >

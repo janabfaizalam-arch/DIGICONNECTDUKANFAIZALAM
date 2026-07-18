@@ -34,6 +34,12 @@ export function RecentSuccessStories() {
     return () => clearInterval(interval);
   }, [loadData]);
 
+  // The API returns only real applications. When there is no genuine recent
+  // activity, render nothing rather than fabricated entries.
+  if (!loading && items.length === 0) {
+    return null;
+  }
+
   function getRelativeTime(dateStr: string) {
     try {
       const date = new Date(dateStr);

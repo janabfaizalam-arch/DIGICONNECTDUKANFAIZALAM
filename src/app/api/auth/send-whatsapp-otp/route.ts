@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkRateLimitDurable } from "@/lib/rate-limit-durable";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { generateOTP, hashOTP, sendWhatsappOTP, type WhatsappTemplatePurpose } from "@/lib/whatsapp-auth";
 import { indianMobilePattern } from "@/lib/customer-oauth";
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
 
-    const ipLimit = checkRateLimit(`send_otp_ip_${ip}`, 10, 60 * 60 * 1000);
+    const ipLimit = await checkRateLimitDurable(`send_otp_ip_${ip}`, 10, 60 * 60 * 1000);
     if (!ipLimit.ok) return rateLimitResponse(ipLimit.retryAfter);
 
     const body = await request.json().catch(() => ({}));
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid purpose." }, { status: 400 });
     }
 
-    const mobileLimit = checkRateLimit(`send_otp_mobile_${mobile}`, 3, 10 * 60 * 1000);
+    const mobileLimit = await checkRateLimitDurable(`send_otp_mobile_${mobile}`, 3, 10 * 60 * 1000);
     if (!mobileLimit.ok) return rateLimitResponse(mobileLimit.retryAfter);
 
     const supabase = getSupabaseAdmin();

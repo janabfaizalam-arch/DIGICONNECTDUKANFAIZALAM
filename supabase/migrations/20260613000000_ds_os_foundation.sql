@@ -157,15 +157,20 @@ DROP POLICY IF EXISTS "Public read service workflows" ON public.service_workflow
 CREATE POLICY "Public read service workflows" ON public.service_workflows
   FOR SELECT USING (true);
 
--- Vault documents readable by the customer themselves or the managing partner
+-- Vault documents: customer_id references public.customers.id (not auth.users).
+-- Legacy customers.agent_id does not exist; ownership is customers.user_id.
+-- Agent/AP vault access is intentionally omitted (least privilege); app APIs
+-- use the service role for partner workflows. Admins use is_admin_role().
 DROP POLICY IF EXISTS "Vault access rule" ON public.customer_vault_documents;
 CREATE POLICY "Vault access rule" ON public.customer_vault_documents
   FOR SELECT USING (
-    auth.uid() = customer_id OR
     EXISTS (
-      SELECT 1 FROM public.customers c
-      WHERE c.id = customer_id AND c.agent_id = auth.uid()
+      SELECT 1
+      FROM public.customers c
+      WHERE c.id = customer_vault_documents.customer_id
+        AND c.user_id = auth.uid()
     )
+    OR public.is_admin_role()
   );
 
 -- Application field values readable by associated customer or partner

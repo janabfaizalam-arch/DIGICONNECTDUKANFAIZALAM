@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, MessageSquare, Mail, Sparkles, Sliders, Settings, Code, Plus, Trash2, ArrowRight } from "lucide-react";
+import { ArrowLeft, Save, MessageSquare, Sparkles, Sliders, Settings } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 
 interface TemplateItem {
@@ -15,7 +15,7 @@ interface TemplateItem {
 
 export default function AdminCoreConfigurationPage() {
   const router = useRouter();
-  const { success, error } = useToast();
+  const { success } = useToast();
   const [saving, setSaving] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"templates" | "ai" | "constants">("templates");
 
@@ -60,7 +60,6 @@ export default function AdminCoreConfigurationPage() {
     const endPos = textarea.selectionEnd;
     const text = textarea.value;
 
-    const activeTpl = templates[activeTemplateIdx];
     const newBody = text.substring(0, startPos) + tag + text.substring(endPos);
 
     setTemplates(

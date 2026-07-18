@@ -357,7 +357,7 @@ export function CscOlympiadInteractive({
         formData.set("service", "CSC Olympiad Portal Lead");
         formData.set("message", `Query: ${contactForm.queryType}\nEmail: ${contactForm.email}\nMessage: ${contactForm.message}`);
 
-        const response = await fetch("/api/lead", {
+        const response = await fetch("/api/enquiry", {
           method: "POST",
           body: formData,
         });

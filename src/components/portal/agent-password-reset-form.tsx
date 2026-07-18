@@ -3,6 +3,7 @@
 import { type FormEvent, useState, useTransition } from "react";
 import { KeyRound } from "lucide-react";
 
+import { resetPartnerPasswordAction } from "@/app/admin/agency-partners/[id]/actions";
 import { useToast } from "@/components/providers/toast-provider";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
@@ -32,23 +33,12 @@ export function AgentPasswordResetForm({ agentId }: { agentId: string }) {
       return;
     }
 
-    formData.set("action", "reset_password");
-
     startTransition(async () => {
       try {
-        const response = await fetch(`/api/admin/agents/${agentId}`, {
-          method: "PATCH",
-          body: formData,
-        });
-        const result = (await response.json().catch(() => ({}))) as { message?: string };
-
-        if (!response.ok) {
-          throw new Error(result.message || "Password could not be updated.");
-        }
-
+        const result = await resetPartnerPasswordAction(agentId, password);
         form.reset();
         setMessage("");
-        success(result.message || "Agent password updated successfully.");
+        success(result.message || "Partner password updated successfully.");
       } catch (error) {
         const safeMessage = error instanceof Error ? error.message : "Password could not be updated.";
         setMessage(safeMessage);

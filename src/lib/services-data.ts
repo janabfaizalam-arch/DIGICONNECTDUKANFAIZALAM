@@ -638,26 +638,6 @@ const rawServices: RawService[] = [
     badge: "Secure",
   },
   {
-    title: "CSC Olympiad",
-    slug: "csc-olympiad",
-    categorySlug: "loans",
-    shortDescription: "Official CSC Olympiad online registration assistance for students of Class 3 to 12.",
-    
-    
-    
-    iconKey: "compliance",
-    badge: "Olympiad 2026",
-    documents: ["Student Name", "DOB", "School Name", "Class", "Parent Mobile", "Email", "Passport Photo"],
-    benefits: [
-      "Competitive learning path",
-      "Digital skill improvement",
-      "National recognition & ranking",
-      "Digital merit certificates",
-      "Detailed performance analytics",
-      "Confidence & academic growth"
-    ]
-  },
-  {
     title: "Food License (FSSAI)",
     slug: "food-license",
     categorySlug: "company",

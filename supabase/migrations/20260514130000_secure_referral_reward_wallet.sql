@@ -95,7 +95,15 @@ create table if not exists public.reward_audit_logs (
 
 create index if not exists reward_wallets_balance_idx on public.reward_wallets (balance desc);
 create index if not exists wallet_transactions_user_created_idx on public.wallet_transactions (user_id, created_at desc);
+alter table public.wallet_transactions
+  add column if not exists type text,
+  add column if not exists referred_user_id uuid references public.profiles(id) on delete set null,
+  add column if not exists referrer_user_id uuid references public.profiles(id) on delete set null;
+
 create index if not exists wallet_transactions_application_idx on public.wallet_transactions (application_id) where application_id is not null;
+alter table public.wallet_transactions
+  add column if not exists type text;
+
 create index if not exists wallet_transactions_type_idx on public.wallet_transactions (type, created_at desc);
 create index if not exists referral_events_referrer_idx on public.referral_events (referrer_user_id, created_at desc);
 create index if not exists referral_events_risk_idx on public.referral_events (risk_score desc, created_at desc);
@@ -783,3 +791,4 @@ grant execute on function public.attach_referral_on_signup(uuid, text, text, tex
 grant execute on function public.redeem_reward_wallet_for_application(uuid, uuid, numeric, numeric, uuid, uuid) to service_role;
 grant execute on function public.process_rewards_on_application_completed(uuid, uuid) to service_role;
 grant execute on function public.reverse_reward_wallet_transaction(uuid, text, uuid) to service_role;
+

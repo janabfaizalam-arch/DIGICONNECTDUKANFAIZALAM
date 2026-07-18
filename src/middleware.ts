@@ -139,20 +139,59 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Legacy agent route redirects (before auth check)
+  // Legacy agent UI → Agency Partner (canonical). Keeps bookmarks working.
   const legacyRedirect = getLegacyAgentRedirect(pathname);
   if (legacyRedirect && !matchesRoute(pathname, "/agent-login")) {
-    // Only redirect actual agent routes, not the agent-login (handled separately)
     const url = request.nextUrl.clone();
     url.pathname = legacyRedirect;
     return NextResponse.redirect(url);
   }
 
-  // Agent-login redirect
-  if (pathname === "/agent-login" || matchesRoute(pathname, "/agent-login")) {
+  if (pathname === "/agent-login" || matchesRoute(pathname, "/agent-login") || matchesRoute(pathname, "/login/agent")) {
     const url = request.nextUrl.clone();
     url.pathname = "/ap/login";
     url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // Legacy admin "agents" CRM → Agency Partners admin (single partner model).
+  if (matchesRoute(pathname, "/admin/agents")) {
+    const url = request.nextUrl.clone();
+    if (pathname === "/admin/agents" || pathname === "/admin/agents/") {
+      url.pathname = "/admin/agency-partners";
+    } else if (pathname === "/admin/agents/new") {
+      url.pathname = "/admin/agency-partners/new";
+    } else {
+      const id = pathname.replace(/^\/admin\/agents\//, "").split("/")[0];
+      url.pathname = id ? `/admin/agency-partners/${id}` : "/admin/agency-partners";
+    }
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // Retired Leads / CRM Pipeline UI — permanent redirects away from the module.
+  // Public enquiry ingestion lives at /api/enquiry (not a dashboard).
+  if (
+    matchesRoute(pathname, "/admin/leads") ||
+    matchesRoute(pathname, "/ap/leads")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = matchesRoute(pathname, "/ap/leads") ? "/ap/dashboard" : "/admin";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // Customer JWT v2 UI is retired. Canonical auth is Supabase Auth at
+  // /login/customer + /customer/*. No jose / JWT verification runs on Edge.
+  if (matchesRoute(pathname, "/customer-v2") || matchesRoute(pathname, "/customer-auth-v2")) {
+    const url = request.nextUrl.clone();
+    if (matchesRoute(pathname, "/customer-auth-v2")) {
+      url.pathname = "/login/customer";
+      url.search = "";
+    } else {
+      url.pathname = "/customer/dashboard";
+      url.search = "";
+    }
     return NextResponse.redirect(url);
   }
 
@@ -167,45 +206,9 @@ export async function middleware(request: NextRequest) {
                            !authRoutes.some((route) => matchesRoute(pathname, route));
   const isAuthRoute = authRoutes.some((route) => matchesRoute(pathname, route));
 
-  // Bypass session lookup and DB queries for public pages to optimize page load speeds
+  // Bypass session lookup and DB queries for public pages to optimize page load speeds.
+  // Edge middleware must not import jose, argon2, Node crypto, or session stores.
   if (!isProtectedRoute && !isAuthRoute) {
-    return response;
-  }
-
-  // Handle custom JWT authentication for Customers
-  const isCustomerRoute = matchesRoute(pathname, "/customer-v2");
-  const isCustomerAuthRoute = matchesRoute(pathname, "/customer-auth-v2/login") || matchesRoute(pathname, "/customer-auth-v2/signup") || matchesRoute(pathname, "/customer-auth-v2/forgot-pin") || matchesRoute(pathname, "/customer-auth-v2/set-pin");
-
-  if (isCustomerRoute || isCustomerAuthRoute) {
-    const { verifyAccessToken } = await import("@/lib/auth-v2/jwt");
-    const accessToken = request.cookies.get('v2_customer_access_token')?.value;
-    let customerPayload = null;
-
-    if (accessToken) {
-      customerPayload = await verifyAccessToken(accessToken);
-    }
-
-    if (!customerPayload && isCustomerRoute) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/customer-auth-v2/login";
-      applyCustomerRedirect(url, pathname);
-      return NextResponse.redirect(url);
-    }
-
-    if (customerPayload && isCustomerAuthRoute) {
-      const url = request.nextUrl.clone();
-      const redirectTo = request.nextUrl.searchParams.get("redirect");
-      if (redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
-        const target = new URL(redirectTo, request.url);
-        url.pathname = target.pathname;
-        url.search = target.search;
-      } else {
-        url.pathname = "/customer-v2/dashboard"; // Standardize on /dashboard for customers
-        url.search = "";
-      }
-      return NextResponse.redirect(url);
-    }
-
     return response;
   }
 
@@ -250,11 +253,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  let role = normalizeAppRole(user?.user_metadata.role) ?? "customer";
+  // Only app_metadata is trusted for the fast-path role claim: user_metadata
+  // can be rewritten by the logged-in user via supabase.auth.updateUser and
+  // must never influence authorization. A self-claim of "customer" (the
+  // lowest privilege) is also accepted to spare DB lookups; anything higher
+  // must be proven by app_metadata or database rows below.
+  const trustedMetadataRole =
+    normalizeAppRole((user?.app_metadata as Record<string, unknown> | undefined)?.role) ??
+    (normalizeAppRole(user?.user_metadata.role) === "customer" ? ("customer" as AppRole) : null);
+  let role = trustedMetadataRole ?? "customer";
   let profile: ProfileAuthShape | null = null;
 
-  if (user && !normalizeAppRole(user.user_metadata.role)) {
-    const adminEmails = (process.env.ADMIN_EMAILS ?? process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+  if (user && !trustedMetadataRole) {
+    // Server-only allowlist. NEXT_PUBLIC_ADMIN_EMAILS is intentionally not
+    // consulted: public env vars must never influence authorization.
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
       .split(",")
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean);
@@ -326,13 +339,6 @@ export async function middleware(request: NextRequest) {
 
   // AP login route
   if (user && matchesRoute(pathname, "/ap/login")) {
-    const url = request.nextUrl.clone();
-    url.pathname = role === "agency_partner" && isAPActive ? "/ap/dashboard" : "/unauthorized";
-    return NextResponse.redirect(url);
-  }
-
-  // Legacy agent login route
-  if (user && matchesRoute(pathname, "/login/agent")) {
     const url = request.nextUrl.clone();
     url.pathname = role === "agency_partner" && isAPActive ? "/ap/dashboard" : "/unauthorized";
     return NextResponse.redirect(url);

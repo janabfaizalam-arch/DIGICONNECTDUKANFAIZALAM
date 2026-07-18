@@ -156,3 +156,31 @@ export async function reviewKycDocumentAction(
     revalidatePath(`/admin/agency-partners/${doc.agency_partner_id}`);
   }
 }
+
+export async function resetPartnerPasswordAction(userId: string, password: string) {
+  await verifyAdmin();
+  const supabase = getSupabaseAdmin();
+  if (!supabase) throw new Error("Database client is offline.");
+
+  if (!userId) throw new Error("Partner user id is required.");
+  if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+
+  // Confirm the user belongs to an agency partner before resetting credentials.
+  const { data: partner } = await supabase
+    .from("agency_partners")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!partner) {
+    throw new Error("No agency partner account found for this user.");
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, { password });
+  if (error) {
+    throw new Error(error.message || "Password could not be updated.");
+  }
+
+  revalidatePath(`/admin/agency-partners/${partner.id}`);
+  return { message: "Partner password updated successfully." };
+}

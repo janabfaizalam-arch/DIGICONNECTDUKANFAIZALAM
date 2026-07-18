@@ -21,13 +21,47 @@ Navigating online portals can be challenging due to strict guidelines, complex d
 
 When you apply via DigiConnect Dukan, our specialists verify your forms, double-check spellings, verify database credentials, and contact you via WhatsApp for immediate support. This cuts down on friction and reduces the risk of rejection from official safety departments.';
 
-  -- 2. Insert into service_catalog if table exists
+  -- 2. Insert into service_catalog if table exists (column-aware: no status column in baseline schema)
   if to_regclass('public.service_catalog') is not null
     and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'slug')
   then
-    execute 'insert into public.service_catalog (slug, name, description, amount, required_documents, active, status, updated_at) ' ||
-      'values (''food-license'', ''Food License (FSSAI)'', ''Apply for FSSAI Registration, State License or Central License with expert assistance.'', 1499, array[''Aadhaar Card'', ''PAN Card'', ''Passport Photograph'', ''Address Proof (NOC/Electric Bill)''], true, ''published'', now()) ' ||
-      'on conflict (slug) do update set name = ''Food License (FSSAI)'', amount = 1499, updated_at = now()';
+    v_cols := 'slug, name';
+    v_vals := quote_literal('food-license') || ', ' || quote_literal('Food License (FSSAI)');
+    v_set := 'name = excluded.name';
+
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'description') then
+      v_cols := v_cols || ', description';
+      v_vals := v_vals || ', ' || quote_literal('Apply for FSSAI Registration, State License or Central License with expert assistance.');
+      v_set := v_set || ', description = excluded.description';
+    end if;
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'amount') then
+      v_cols := v_cols || ', amount';
+      v_vals := v_vals || ', 1499';
+      v_set := v_set || ', amount = excluded.amount';
+    end if;
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'required_documents') then
+      v_cols := v_cols || ', required_documents';
+      v_vals := v_vals || ', array[''Aadhaar Card'', ''PAN Card'', ''Passport Photograph'', ''Address Proof (NOC/Electric Bill)'']';
+      v_set := v_set || ', required_documents = excluded.required_documents';
+    end if;
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'active') then
+      v_cols := v_cols || ', active';
+      v_vals := v_vals || ', true';
+      v_set := v_set || ', active = excluded.active';
+    end if;
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'status') then
+      v_cols := v_cols || ', status';
+      v_vals := v_vals || ', ' || quote_literal('published');
+      v_set := v_set || ', status = excluded.status';
+    end if;
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'service_catalog' and column_name = 'updated_at') then
+      v_cols := v_cols || ', updated_at';
+      v_vals := v_vals || ', now()';
+      v_set := v_set || ', updated_at = now()';
+    end if;
+
+    execute 'insert into public.service_catalog (' || v_cols || ') values (' || v_vals || ') ' ||
+      'on conflict (slug) do update set ' || v_set;
   end if;
 
   -- 3. Insert/update services table

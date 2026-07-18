@@ -404,15 +404,10 @@ export async function POST(request: Request) {
       resolvedServices.push(svc);
     }
 
-    const orderAmount = resolvedServices.reduce((total, service) => {
-      let itemAmount = Number(service.customer_fee ?? 0);
-      if (service.slug === "csc-olympiad") {
-        const selectedSubjectsStr = body.details?.selectedSubjects || "";
-        const numSubjects = selectedSubjectsStr.split(",").filter(Boolean).length || 1;
-        itemAmount = itemAmount * numSubjects;
-      }
-      return total + itemAmount;
-    }, 0);
+    const orderAmount = resolvedServices.reduce(
+      (total, service) => total + Number(service.customer_fee ?? 0),
+      0,
+    );
     const couponCode = String(body.couponCode ?? "").trim();
     let couponDiscount = 0;
     if (couponCode) {

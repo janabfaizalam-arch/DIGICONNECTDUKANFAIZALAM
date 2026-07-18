@@ -10,7 +10,8 @@ import { getAgentServiceBySlug, type AgentService } from "@/lib/agent-services";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkRateLimitDurable } from "@/lib/rate-limit-durable";
 
 type CreateOrderBody = {
   amount?: number;
@@ -109,7 +110,7 @@ function getCustomerValidationError(customer: ReturnType<typeof normalizeCustome
 
 export async function POST(request: Request) {
   try {
-    const rateLimit = checkRateLimit(`create-order:${getClientIp(request)}`, 20, 60_000);
+    const rateLimit = await checkRateLimitDurable(`create-order:${getClientIp(request)}`, 20, 60_000);
 
     if (!rateLimit.ok) {
       return rateLimitResponse(rateLimit.retryAfter);

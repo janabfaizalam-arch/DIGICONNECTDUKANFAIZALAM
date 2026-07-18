@@ -1,10 +1,14 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-if (!JWT_SECRET) {
-  throw new Error("Missing JWT configuration");
+// The signing secret must be a private, server-only value. Falling back to a
+// public value (like the Supabase anon key) would let anyone forge tokens.
+function getEncodedSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is missing. Customer authentication cannot run securely.");
+  }
+  return new TextEncoder().encode(secret);
 }
-const ENCODED_SECRET = new TextEncoder().encode(JWT_SECRET);
 
 export interface CustomerJWTPayload {
   sub: string; // customer_id
@@ -22,7 +26,7 @@ export async function signAccessToken(payload: CustomerJWTPayload): Promise<stri
     .setExpirationTime(exp)
     .setIssuedAt(iat)
     .setSubject(payload.sub)
-    .sign(ENCODED_SECRET);
+    .sign(getEncodedSecret());
 }
 
 export async function signRefreshToken(payload: CustomerJWTPayload): Promise<string> {
@@ -34,12 +38,12 @@ export async function signRefreshToken(payload: CustomerJWTPayload): Promise<str
     .setExpirationTime(exp)
     .setIssuedAt(iat)
     .setSubject(payload.sub)
-    .sign(ENCODED_SECRET);
+    .sign(getEncodedSecret());
 }
 
 export async function verifyJWT(token: string): Promise<CustomerJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, ENCODED_SECRET);
+    const { payload } = await jwtVerify(token, getEncodedSecret());
     return payload as unknown as CustomerJWTPayload;
   } catch {
     // Token is invalid or expired

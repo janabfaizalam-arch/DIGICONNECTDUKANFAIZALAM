@@ -1,33 +1,17 @@
-import { NextResponse } from "next/server";
+import { goneResponse } from "@/lib/http/gone";
 
-import { getAgentAccessStatus, getCurrentUser } from "@/lib/auth";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  const access = await getAgentAccessStatus(user);
+  return goneResponse(
+    "Legacy agent-access probe is retired. Agency Partners use /ap/login.",
+    "LEGACY_AGENT_ACCESS_GONE",
+  );
+}
 
-  if (!access.ok) {
-    return NextResponse.json(
-      {
-        ok: false,
-        reason: access.reason,
-        role: access.role ?? null,
-        message:
-          access.reason === "inactive_profile"
-            ? "Agent profile is inactive."
-            : access.reason === "missing_profile"
-              ? "Agent profile was not found for this user ID."
-              : access.reason === "wrong_role"
-                ? "This account is not assigned the agent role."
-                : "Agent access is not available.",
-      },
-      { status: access.reason === "missing_user" ? 401 : 403 },
-    );
-  }
-
-  return NextResponse.json({
-    ok: true,
-    reason: access.reason,
-    message: "Agent access verified.",
-  });
+export async function POST() {
+  return goneResponse(
+    "Legacy agent-access probe is retired. Agency Partners use /ap/login.",
+    "LEGACY_AGENT_ACCESS_GONE",
+  );
 }

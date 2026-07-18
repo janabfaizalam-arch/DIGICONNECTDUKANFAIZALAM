@@ -169,7 +169,7 @@ export function AdminApplications({
             <h1 className="text-3xl font-bold text-slate-950">Applications</h1>
             <p className="mt-1 text-sm text-slate-600">Search, filter, assign, invoice, and open customer applications.</p>
           </div>
-          <Link href="/agent/applications/new" className="inline-flex h-10 items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
+          <Link href="/ap/applications/new" className="inline-flex h-10 items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
             New Application
           </Link>
         </div>

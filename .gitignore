@@ -10,3 +10,34 @@ yarn-debug.log*
 yarn-error.log*
 coverage
 dist
+# Local build and verification outputs
+build-output.txt
+lint-output.txt
+type-check-output.txt
+tsconfig.tsbuildinfo
+
+# Supabase local state and backups
+supabase/.temp/
+supabase/.branches/
+supabase-backup/
+supabase/migration-audit-backup/
+supabase/disabled-migrations/
+supabase/config.toml.backup-*
+
+# Local build and verification outputs
+build-output.txt
+lint-output.txt
+type-check-output.txt
+tsconfig.tsbuildinfo
+
+# Supabase local state and backups
+supabase/.temp/
+supabase/.branches/
+supabase-backup/
+supabase/migration-audit-backup/
+supabase/disabled-migrations/
+supabase/config.toml.backup-*
+
+.env
+.env.local
+.env.production
