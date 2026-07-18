@@ -1,122 +1,52 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  getAgencyPartnerByUserId,
-  getAPDashboardStats,
-  getAPApplications,
-  getPartnerAnalytics,
-  getActiveAnnouncements,
-  getAPWalletLedger,
-  getMonthlyChartData,
-} from "@/lib/ap-data";
-import { getCurrentUser, isActiveAgent, isCeoPartnerType } from "@/lib/auth";
+
+import { getCurrentUser, getCurrentUserRole, isAgencyPartnerRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { APDashboardClient } from "./dashboard-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function APDashboardPage() {
+export default async function ApDashboardPage() {
   const user = await getCurrentUser();
+  if (!user) redirect("/ap/login");
+  const role = await getCurrentUserRole(user);
+  if (!isAgencyPartnerRole(role)) redirect("/unauthorized");
 
-  if (!user) {
-    redirect("/ap/login");
-  }
+  const supabase = getSupabaseAdmin();
+  const { data: partner } = supabase
+    ? await supabase.from("agency_partners").select("id, business_name, status").eq("user_id", user.id).maybeSingle()
+    : { data: null };
 
-  const active = await isActiveAgent(user);
-  if (!active) {
-    redirect("/unauthorized");
-  }
-
-  const ap = await getAgencyPartnerByUserId(user.id);
-  if (!ap) {
-    redirect("/unauthorized");
-  }
-
-  const [stats, applications, announcements, analytics, transactions, chartData] = await Promise.all([
-    getAPDashboardStats(ap.id),
-    getAPApplications(ap.id, 5),
-    getActiveAnnouncements(ap.id, ap.tier_id),
-    getPartnerAnalytics(ap.id),
-    getAPWalletLedger(ap.id, 5),
-    getMonthlyChartData(ap.id),
-  ]);
-
-  // Fetch team member data for CEO partners
-  let teamMemberCount = 0;
-  let teamMembers: { id: string; full_name: string; partner_type: string; status: string; partner_code: string }[] = [];
-
-  if (isCeoPartnerType(ap.partner_type)) {
-    const supabase = getSupabaseAdmin();
-    if (supabase) {
-      const { data: members, count } = await supabase
-        .from("agency_partners")
-        .select("id, full_name, partner_type, status, partner_code", { count: "exact" })
-        .eq("created_by_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      teamMemberCount = count ?? 0;
-      teamMembers = (members ?? []).map((m) => ({
-        id: m.id,
-        full_name: m.full_name,
-        partner_type: m.partner_type,
-        status: m.status,
-        partner_code: m.partner_code,
-      }));
-    }
-  }
-
-  const recentApps = applications.slice(0, 5).map((app) => ({
-    id: app.id,
-    customerName: app.customerName ?? undefined,
-    customer_name: app.customer_name ?? undefined,
-    service_name: app.service_name,
-    application_code: app.application_code ?? undefined,
-    status: app.status,
-  }));
-
-  const mappedAnnouncements = announcements.map((ann) => ({
-    id: ann.id,
-    announcement_type: ann.announcement_type,
-    published_at: ann.published_at ?? undefined,
-    title: ann.title,
-    body: ann.body,
-  }));
-
-  const mappedTransactions = transactions.map((tx) => ({
-    id: tx.id,
-    title: tx.description || tx.entry_type.replace(/_/g, " "),
-    amount: Number(tx.amount),
-    type: ["commission_credit", "manual_credit", "bonus"].includes(tx.entry_type) ? ("credit" as const) : ("debit" as const),
-    status: "success" as const,
-    date: tx.created_at,
-  }));
+  const { count } = supabase && partner
+    ? await supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .eq("agency_partner_id", partner.id)
+    : { count: 0 };
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <APDashboardClient
-          ap={ap as unknown as {
-            id: string;
-            full_name: string;
-            partner_code: string;
-            partner_type: string;
-            kyc_status: string;
-            status: string;
-            district?: string | null;
-            state?: string | null;
-            tier?: { name: string };
-          }}
-          stats={stats}
-          recentApps={recentApps}
-          announcements={mappedAnnouncements}
-          analytics={analytics}
-          dbTransactions={mappedTransactions}
-          chartData={chartData}
-          teamMemberCount={teamMemberCount}
-          teamMembers={teamMembers}
-        />
-      </div>
-    </main>
+    <div className="container-narrow py-12">
+      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Agency Partner</h1>
+      <p className="mt-2 text-[var(--muted)]">
+        {partner?.business_name || "Partner"} · {partner?.status || "pending"}
+      </p>
+      <p className="mt-6 text-sm">Applications: {count ?? 0}</p>
+      <ul className="mt-8 grid gap-2 sm:grid-cols-2">
+        {[
+          ["/ap/customers", "Customers"],
+          ["/ap/applications", "Applications"],
+          ["/ap/applications/new", "Submit application"],
+          ["/ap/commissions", "Commissions"],
+          ["/ap/wallet", "Wallet & payouts"],
+          ["/ap/support", "Support"],
+        ].map(([href, label]) => (
+          <li key={href}>
+            <Link href={href} className="block rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
-

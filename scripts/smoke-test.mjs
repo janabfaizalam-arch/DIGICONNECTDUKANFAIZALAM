@@ -11,7 +11,7 @@ const publicRoutes = [
   "/services/gst-registration",
   "/apply/gst-registration",
   "/login/customer",
-  "/login/agent",
+  "/ap/login",
   "/admin-login",
   "/unauthorized",
 ];
@@ -19,8 +19,19 @@ const publicRoutes = [
 const protectedRoutes = [
   "/admin",
   "/admin/applications",
-  "/agent/dashboard",
+  "/ap/dashboard",
   "/customer/dashboard",
+];
+
+// Legacy / retired routes that must redirect or stay unavailable to anonymous users.
+const legacyRedirectRoutes = [
+  "/login/agent",
+  "/agent/dashboard",
+  "/admin/agents",
+  "/admin/leads",
+  "/ap/leads",
+  "/customer-v2/dashboard",
+  "/customer-auth-v2/login",
 ];
 
 let server;
@@ -87,6 +98,37 @@ async function run() {
       console.log(`${route} -> ${response.status}`);
       if (![302, 303, 307, 308].includes(response.status)) {
         failures.push(`${route} should redirect unauthenticated users, got ${response.status}`);
+      }
+    } catch (error) {
+      failures.push(`${route} failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  for (const route of legacyRedirectRoutes) {
+    try {
+      const response = await request(route, "manual");
+      console.log(`${route} (legacy) -> ${response.status}`);
+      if (![301, 302, 303, 307, 308, 404, 410].includes(response.status)) {
+        failures.push(`${route} should redirect or be unavailable, got ${response.status}`);
+      }
+    } catch (error) {
+      failures.push(`${route} failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Retired JWT auth APIs must return 410 Gone.
+  for (const route of ["/api/customer-auth/login", "/api/customer/auth/login", "/api/lead", "/api/ap/debug/seed"]) {
+    try {
+      const response = await fetch(`${baseUrl}${route}`, {
+        method: route.includes("debug") ? "GET" : "POST",
+        redirect: "manual",
+        signal: AbortSignal.timeout(15_000),
+      });
+      console.log(`${route} -> ${response.status}`);
+      if (route.includes("debug") && response.status !== 404) {
+        failures.push(`${route} should return 404, got ${response.status}`);
+      } else if (!route.includes("debug") && response.status !== 410) {
+        failures.push(`${route} should return 410, got ${response.status}`);
       }
     } catch (error) {
       failures.push(`${route} failed: ${error instanceof Error ? error.message : String(error)}`);

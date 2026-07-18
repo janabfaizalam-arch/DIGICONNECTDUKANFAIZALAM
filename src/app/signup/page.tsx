@@ -1,34 +1,23 @@
+import Link from "next/link";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
-import { UnifiedLoginExperience } from "@/components/auth/unified-login";
-import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
+import { SignupForm } from "@/components/auth/signup-form";
 
-export const metadata: Metadata = {
-  title: "Welcome to RNOS | Signup",
-  description: "Create a verified account and get your reward wallet.",
-};
+export const metadata: Metadata = { title: "Sign up" };
 
-export default async function SignupPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ ref?: string }>;
-}) {
-  const query = await searchParams;
-  const user = await getCurrentUser();
-
-  if (user) {
-    const role = await getCurrentUserRole(user);
-    redirect(isCustomerRole(role) ? "/customer/dashboard" : getRoleHome(role));
-  }
-
-  const referralCode = String(query?.ref ?? "").trim().toUpperCase();
-
+export default function SignupPage() {
   return (
-    <UnifiedLoginExperience
-      initialTab="user"
-      initialMode="signup"
-      referralCode={referralCode}
-    />
+    <div className="container-narrow py-16">
+      <div className="mx-auto max-w-md">
+        <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Create account</h1>
+        <p className="mt-2 text-sm text-[var(--muted)]">One account per email and mobile. WhatsApp OTP available after signup.</p>
+        <div className="mt-8">
+          <SignupForm />
+        </div>
+        <p className="mt-6 text-sm text-[var(--muted)]">
+          Already registered? <Link href="/login" className="underline">Login</Link>
+        </p>
+      </div>
+    </div>
   );
 }

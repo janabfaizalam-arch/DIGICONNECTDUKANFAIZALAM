@@ -141,11 +141,32 @@ export async function attachReferralOnSignup(newUserId: string, referralCode: st
   return data;
 }
 
-const REFERRAL_SIGNING_SECRET = process.env.REFERRAL_SIGNING_SECRET || "default_referral_signing_secret_key";
+// Referral signatures gate real money (referrer rewards), so the HMAC key must
+// never be a publicly known literal. Preference order:
+// 1. REFERRAL_SIGNING_SECRET (dedicated secret)
+// 2. Derived from the Supabase service-role key (already a server-only secret)
+// 3. Development-only literal, never allowed in production
+function getReferralSigningSecret(): string {
+  const configured = process.env.REFERRAL_SIGNING_SECRET;
+  if (configured) {
+    return configured;
+  }
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey) {
+    return crypto.createHash("sha256").update(`referral-signing:${serviceRoleKey}`).digest("hex");
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "dev_only_referral_signing_secret";
+  }
+
+  throw new Error("REFERRAL_SIGNING_SECRET (or SUPABASE_SERVICE_ROLE_KEY) must be configured in production.");
+}
 
 export function signReferralToken(token: string, clickId: string, timestamp: number): string {
   return crypto
-    .createHmac("sha256", REFERRAL_SIGNING_SECRET)
+    .createHmac("sha256", getReferralSigningSecret())
     .update(`${token}:${clickId || ""}:${timestamp}`)
     .digest("hex");
 }

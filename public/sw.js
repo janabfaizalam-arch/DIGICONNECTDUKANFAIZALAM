@@ -1,4 +1,4 @@
-const CACHE_NAME = "digiconnect-static-v1";
+const CACHE_NAME = "digiconnect-static-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
@@ -13,7 +13,9 @@ const PRIVATE_PATH_PREFIXES = [
   "/api/",
   "/admin",
   "/agent",
+  "/ap",
   "/customer",
+  "/customer-auth-v2",
   "/dashboard",
   "/login",
   "/signup",
@@ -22,6 +24,9 @@ const PRIVATE_PATH_PREFIXES = [
   "/auth/",
   "/invoice/",
   "/insurance-quotation/",
+  "/pay/",
+  "/apply",
+  "/print",
 ];
 
 function isSameOrigin(url) {

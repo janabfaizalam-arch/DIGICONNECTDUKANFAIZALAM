@@ -1,49 +1,45 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
-import { PartnerApplicationWizard } from "@/components/portal/partner-application-wizard";
-import { getCurrentUser, isActiveAgent } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserRole, isAgencyPartnerRole } from "@/lib/auth";
+import { listPublicServices } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewAPApplicationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ customerId?: string; serviceId?: string; name?: string; mobile?: string }>;
-}) {
+export default async function ApNewApplicationPage() {
   const user = await getCurrentUser();
+  if (!user) redirect("/ap/login");
+  const role = await getCurrentUserRole(user);
+  if (!isAgencyPartnerRole(role)) redirect("/unauthorized");
 
-  if (!user) {
-    redirect("/ap/login");
-  }
-
-  if (!(await isActiveAgent(user))) {
-    redirect("/unauthorized");
-  }
-
-  const params = await searchParams;
+  const services = await listPublicServices();
 
   return (
-    <main 
-      className="min-h-screen bg-[#F7F8FA] text-slate-800 px-3 md:px-8 transition-all duration-300"
-      style={{
-        paddingTop: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top) + 12px)",
-        paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
-      }}
-    >
-      <div className="mx-auto max-w-7xl">
-        <Link href="/ap/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700 hover:text-blue-900 transition mb-5">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </Link>
-        <PartnerApplicationWizard
-          initialServiceSlug={params.serviceId}
-          initialProfileFields={{
-            mobile: params.mobile ?? "",
-          }}
-        />
-      </div>
-    </main>
+    <div className="container-narrow py-12">
+      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Submit application</h1>
+      <p className="mt-2 text-[var(--muted)]">Create a customer application for one of the seven services.</p>
+      <form action="/api/ap/applications" method="post" className="mt-8 max-w-lg space-y-4">
+        <label className="block text-sm">
+          Customer name
+          <input name="full_name" required className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2" />
+        </label>
+        <label className="block text-sm">
+          Mobile
+          <input name="mobile" required className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2" />
+        </label>
+        <label className="block text-sm">
+          Service
+          <select name="service_slug" required className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2">
+            {services.map((service) => (
+              <option key={service.slug} value={service.slug}>
+                {service.title} — ₹{service.amount}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className="btn btn-primary">
+          Create
+        </button>
+      </form>
+    </div>
   );
 }
