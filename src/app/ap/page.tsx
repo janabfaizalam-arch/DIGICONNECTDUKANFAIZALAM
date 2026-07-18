@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function APRootPage() {
+export default function ApIndexPage() {
   redirect("/ap/dashboard");
 }

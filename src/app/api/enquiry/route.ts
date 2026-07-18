@@ -1,28 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { validateFileSignature } from "@/lib/file-validation";
 import { checkRateLimitDurable } from "@/lib/rate-limit-durable";
 import { getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
-const maxFileSize = 5 * 1024 * 1024;
-
-function cleanFileName(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
-}
-
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message, message }, { status });
-}
-
-/**
- * Public service enquiry ingestion (formerly /api/lead).
- * Persists into the historical `leads` table for continuity; the CRM/Leads
- * dashboard module has been removed from the product UI.
- */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
@@ -31,83 +14,51 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
     if (!supabase) {
-      return jsonError("Service temporarily unavailable.", 500);
+      return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 500 });
     }
 
-    const formData = await request.formData();
-    const name = String(formData.get("name") ?? "").trim();
-    const mobile = String(formData.get("mobile") ?? "").trim();
-    const service = String(formData.get("service") ?? "").trim();
-    const message = String(formData.get("message") ?? "").trim();
-    const file = formData.get("file");
+    const contentType = request.headers.get("content-type") ?? "";
+    let name = "";
+    let mobile = "";
+    let email = "";
+    let service = "";
+    let message = "";
 
-    if (!name || !mobile || !service) {
-      return jsonError("Name, mobile number, and service are required.", 400);
+    if (contentType.includes("application/json")) {
+      const body = (await request.json()) as Record<string, unknown>;
+      name = String(body.name ?? "").trim();
+      mobile = String(body.mobile ?? "").trim();
+      email = String(body.email ?? "").trim();
+      service = String(body.service ?? "").trim();
+      message = String(body.message ?? "").trim();
+    } else {
+      const formData = await request.formData();
+      name = String(formData.get("name") ?? "").trim();
+      mobile = String(formData.get("mobile") ?? "").trim();
+      email = String(formData.get("email") ?? "").trim();
+      service = String(formData.get("service") ?? "").trim();
+      message = String(formData.get("message") ?? "").trim();
     }
 
-    let fileMetadata: {
-      file_name: string | null;
-      file_url: string | null;
-      file_type: string | null;
-      storage_path: string | null;
-    } = {
-      file_name: null,
-      file_url: null,
-      file_type: null,
-      storage_path: null,
-    };
-
-    if (file instanceof File && file.size > 0) {
-      const validationResult = await validateFileSignature(file, allowedFileTypes);
-      if (!validationResult.valid) {
-        return jsonError(validationResult.error || "File must be uploaded in PDF, JPG, or PNG format.", 400);
-      }
-
-      if (file.size > maxFileSize) {
-        return jsonError("File must be smaller than 5MB.", 400);
-      }
-
-      const storagePath = `public-enquiries/${Date.now()}-${cleanFileName(file.name)}`;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-      if (uploadError) {
-        return jsonError(uploadError.message, 500);
-      }
-
-      const { data } = supabase.storage.from("documents").getPublicUrl(storagePath);
-      fileMetadata = {
-        file_name: file.name,
-        file_url: data.publicUrl,
-        file_type: file.type,
-        storage_path: storagePath,
-      };
+    if (!name || !mobile) {
+      return NextResponse.json({ error: "Name and mobile are required." }, { status: 400 });
     }
 
-    // Table name retained for migration/history; product surface is "enquiry".
-    const { error } = await supabase.from("leads").insert({
+    const { error } = await supabase.from("enquiries").insert({
       name,
       mobile,
+      email,
       service,
       message,
       status: "new",
-      source: "website",
-      ...fileMetadata,
     });
 
     if (error) {
-      console.error("[api/enquiry] insert failed", error.message);
-      return jsonError("Enquiry could not be saved. Please try again.", 500);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({
-      message: "Thank you. Our team will contact you shortly.",
-      ok: true,
-    });
-  } catch (error) {
-    console.error("[api/enquiry] Unhandled error", error);
-    return jsonError("Enquiry submission failed.", 500);
+    return NextResponse.redirect(new URL("/contact?sent=1", request.url), 303);
+  } catch {
+    return NextResponse.json({ error: "Unable to submit enquiry." }, { status: 500 });
   }
 }

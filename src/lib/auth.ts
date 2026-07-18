@@ -107,44 +107,6 @@ export type AgentAccessResult =
   | { ok: true; reason: "active_approved_agent" | "active_approved_ap" }
   | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "kyc_not_approved" | "missing_server_config" | "ap_not_active"; role?: AppRole | string | null };
 
-type SupabaseAdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
-
-function isMissingActiveColumn(errorMessage: string) {
-  const normalized = errorMessage.toLowerCase();
-
-  return normalized.includes("active") && (normalized.includes("does not exist") || normalized.includes("could not find"));
-}
-
-async function readOptionalProfileBoolean(
-  supabaseAdmin: SupabaseAdminClient,
-  userId: string,
-  column: "active" | "is_active",
-) {
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select(column)
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    if (isMissingActiveColumn(error.message)) {
-      return { exists: false, value: null };
-    }
-
-    console.error("[agent-auth] Agent active status lookup failed.", {
-      userId,
-      column,
-      error: error.message,
-    });
-    return { exists: true, value: false };
-  }
-
-  return {
-    exists: true,
-    value: Boolean((data as Record<string, unknown> | null)?.[column]),
-  };
-}
-
 export async function getAgentAccessStatus(user: User | null): Promise<AgentAccessResult> {
   if (!user) {
     console.error("[agent-auth] Missing authenticated user.");
@@ -165,71 +127,39 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
     return { ok: false, reason: "missing_server_config", role };
   }
 
-  // First check agency_partners table (new system)
   const { data: apRecord } = await supabaseAdmin
     .from("agency_partners")
-    .select("id, status, kyc_status")
+    .select("id, status")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (apRecord) {
-    const ap = apRecord as { id: string; status: string; kyc_status: string };
-    if (ap.status !== "active") {
-      console.error("[ap-auth] AP is not active.", { userId: user.id, status: ap.status });
+    if (apRecord.status !== "active") {
       return { ok: false, reason: "ap_not_active", role };
-    }
-    if (ap.kyc_status !== "approved") {
-      console.error("[ap-auth] AP KYC is not approved.", { userId: user.id, kycStatus: ap.kyc_status });
-      return { ok: false, reason: "kyc_not_approved", role };
     }
     return { ok: true, reason: "active_approved_ap" };
   }
 
-  // Fallback: check legacy profiles table
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, role, kyc_status")
+    .select("id, role, active")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (error) {
-    console.error("[agent-auth] Agent profile lookup failed.", { userId: user.id, error: error.message });
-    return { ok: false, reason: "missing_profile", role };
-  }
-
-  if (!profile) {
-    console.error("[agent-auth] Agent profile is missing.", { userId: user.id });
+  if (error || !profile) {
     return { ok: false, reason: "missing_profile", role };
   }
 
   const profileRole = String(profile.role ?? "").toLowerCase();
-
-  if (profileRole !== "agent" && profileRole !== "agency_partner") {
-    console.error("[agent-auth] Profile has wrong role.", { userId: user.id, profileRole });
+  if (profileRole !== "agency_partner" && profileRole !== "agent") {
     return { ok: false, reason: "wrong_role", role: profileRole };
   }
 
-  if (String(profile.kyc_status ?? "").toLowerCase() !== "approved") {
-    console.error("[agent-auth] Agent KYC is not approved.", { userId: user.id, kycStatus: profile.kyc_status });
-    return { ok: false, reason: "kyc_not_approved", role };
-  }
-
-  const [activeStatus, isActiveStatus] = await Promise.all([
-    readOptionalProfileBoolean(supabaseAdmin, user.id, "active"),
-    readOptionalProfileBoolean(supabaseAdmin, user.id, "is_active"),
-  ]);
-  const activeChecks = [activeStatus, isActiveStatus].filter((status) => status.exists);
-
-  if (activeChecks.some((status) => status.value !== true)) {
-    console.error("[agent-auth] Agent profile is inactive.", {
-      userId: user.id,
-      active: activeStatus.exists ? activeStatus.value : "missing",
-      is_active: isActiveStatus.exists ? isActiveStatus.value : "missing",
-    });
+  if (profile.active === false) {
     return { ok: false, reason: "inactive_profile", role };
   }
 
-  return { ok: true, reason: "active_approved_agent" };
+  return { ok: true, reason: "active_approved_ap" };
 }
 
 export async function isActiveAgent(user: User | null) {
@@ -278,14 +208,6 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
 
   if (profileRole) {
     return profileRole;
-  }
-
-  const { data: portalUser } = await supabaseAdmin.from("users").select("role").eq("id", user.id).maybeSingle();
-
-  const portalRole = normalizeAppRole(portalUser?.role);
-
-  if (portalRole) {
-    return portalRole;
   }
 
   return "customer";

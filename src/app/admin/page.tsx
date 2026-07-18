@@ -1,113 +1,65 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AdminDashboard, type DashboardKpi } from "@/components/admin/admin-dashboard";
-import { getAdminDashboardStats } from "@/lib/admin/admin-dashboard";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+const links = [
+  ["Customers", "/admin/customers"],
+  ["Applications", "/admin/applications"],
+  ["Services", "/admin/services"],
+  ["Payments", "/admin/payments"],
+  ["Agency Partners", "/admin/agency-partners"],
+  ["Coupons", "/admin/coupons"],
+  ["Wallet", "/admin/wallet"],
+  ["Notifications", "/admin/notifications"],
+  ["Website Settings", "/admin/settings"],
+  ["Reports", "/admin/reports"],
+] as const;
+
+export default async function AdminHomePage() {
   const user = await getCurrentUser();
-  const role = await getCurrentUserRole(user);
-
   if (!user) redirect("/login");
-  if (!isAdminRole(role)) redirect("/dashboard");
+  const role = await getCurrentUserRole(user);
+  if (!isAdminRole(role)) redirect("/unauthorized");
 
-  const stats = await getAdminDashboardStats();
-
-  const formatter = new Intl.DateTimeFormat("en-IN", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const todayLabel = formatter.format(new Date());
-
-  const kpis: DashboardKpi[] = [
-    {
-      title: "Total Revenue",
-      value: `₹${Math.round(stats.totalPaidAmount).toLocaleString("en-IN")}`,
-      change: "+14.8%",
-      isPositive: true,
-      href: "/admin/payments",
-      icon: "revenue",
-    },
-    {
-      title: "Applications Today",
-      value: stats.todayApplications,
-      change: "+28.2%",
-      isPositive: true,
-      href: "/admin/applications?range=today",
-      icon: "application",
-    },
-    {
-      title: "Pending Applications",
-      value: stats.pendingApplications,
-      change: "-5.4%",
-      isPositive: true, // a drop in pending is positive
-      href: "/admin/applications?status=payment_pending",
-      icon: "pending",
-    },
-    {
-      title: "Active Partners",
-      value: stats.activeAgents,
-      change: "+4.1%",
-      isPositive: true,
-      href: "/admin/agency-partners",
-      icon: "customers",
-    },
-    {
-      title: "Wallet Liability",
-      value: `₹${Math.round(stats.walletTotalBalance).toLocaleString("en-IN")}`,
-      change: "+2.5%",
-      isPositive: true,
-      href: "/admin/wallet",
-      icon: "wallet",
-    },
-    {
-      title: "Monthly Growth",
-      value: `${stats.monthlyGrowth > 0 ? "+" : ""}${stats.monthlyGrowth}%`,
-      change: "+3.8%",
-      isPositive: stats.monthlyGrowth >= 0,
-      href: "/admin/reports",
-      icon: "growth",
-    },
-    {
-      title: "Conversion Rate",
-      value: `${stats.conversionRate}%`,
-      change: "+1.9%",
-      isPositive: true,
-      href: "/admin/reports",
-      icon: "conversion",
-    },
-    {
-      title: "Completed Filings",
-      value: stats.completedApplications,
-      change: "+12.4%",
-      isPositive: true,
-      href: "/admin/applications?status=completed",
-      icon: "completed",
-    },
-  ];
+  const supabase = getSupabaseAdmin();
+  const [customers, applications, payments] = supabase
+    ? await Promise.all([
+        supabase.from("customers").select("id", { count: "exact", head: true }),
+        supabase.from("applications").select("id", { count: "exact", head: true }),
+        supabase.from("payments").select("id", { count: "exact", head: true }).eq("status", "paid"),
+      ])
+    : [{ count: 0 }, { count: 0 }, { count: 0 }];
 
   return (
-    <AdminDashboard
-      todayLabel={todayLabel}
-      kpis={kpis}
-      charts={stats.charts}
-      newApplications={stats.recentlySubmittedApplications.map((app) => ({
-        id: app.id,
-        customerName: app.customerName,
-        mobile: app.customerMobile,
-        service: app.serviceName,
-        status: app.status,
-        paymentStatus: app.paymentStatus,
-        assignedAgent: "N/A",
-        date: new Date(app.createdAt).toLocaleDateString("en-IN"),
-        href: app.href,
-      }))}
-      latestCustomers={stats.latestCustomers}
-      recentInsuranceQuotations={stats.recentInsuranceQuotations}
-    />
+    <div className="container-narrow py-12">
+      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Admin</h1>
+      <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+        <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
+          <p className="text-2xl font-semibold">{customers.count ?? 0}</p>
+          <p className="text-sm text-[var(--muted)]">Customers</p>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
+          <p className="text-2xl font-semibold">{applications.count ?? 0}</p>
+          <p className="text-sm text-[var(--muted)]">Applications</p>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-white p-4">
+          <p className="text-2xl font-semibold">{payments.count ?? 0}</p>
+          <p className="text-sm text-[var(--muted)]">Paid</p>
+        </div>
+      </div>
+      <ul className="mt-10 grid gap-2 sm:grid-cols-2">
+        {links.map(([label, href]) => (
+          <li key={href}>
+            <Link href={href} className="block rounded-xl border border-[var(--border)] bg-white px-4 py-3 hover:border-[var(--fg)]">
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

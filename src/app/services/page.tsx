@@ -1,41 +1,37 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
-import { ServicesDirectoryClient } from "@/components/services-directory-client";
-import { getPublicServices } from "@/lib/services";
+import { listPublicServices } from "@/lib/services";
 
 export const metadata: Metadata = {
-  title: "All Digital Services | DigiConnect Dukan",
-  description:
-    "Apply online with guided support and verified assistance. Explore Cards & PVC Printing, Loans & Government Schemes, Banking, Passport, Licences, Tax, GST, and corporate registrations.",
-  keywords: [
-    "DigiConnect Dukan services",
-    "Tax and Business services",
-    "All Vehicle Insurance",
-    "Government subsidy loans",
-    "Gov ID form submission",
-    "PVC card printing",
-    "CIBIL analysis",
-    "passport assistance",
-    "business registration"
-  ],
-  alternates: {
-    canonical: "/services",
-  },
+  title: "Services",
 };
 
-export const dynamic = "force-dynamic";
-
 export default async function ServicesPage() {
-  const rawServices = await getPublicServices();
-  const services = rawServices.map((s) => {
-    const clean = { ...s };
-    delete (clean as { icon?: unknown }).icon;
-    return clean;
-  });
+  const services = await listPublicServices();
 
   return (
-    <main className="min-h-screen px-2 py-4 md:px-6 md:py-8 bg-[#fcfcfd]">
-      <ServicesDirectoryClient initialServices={services} />
-    </main>
+    <div className="container-narrow py-12">
+      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Services</h1>
+      <p className="mt-2 text-[var(--muted)]">Choose a service to start your application.</p>
+      <ul className="mt-10 divide-y divide-[var(--border)]">
+        {services.map((service) => (
+          <li key={service.slug} className="py-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">{service.title}</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">{service.shortDescription}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="font-medium">₹{service.amount}</span>
+                <Link href={`/services/${service.slug}`} className="btn btn-primary">
+                  View
+                </Link>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

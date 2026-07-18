@@ -1,45 +1,25 @@
+import Link from "next/link";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
-import { UnifiedLoginExperience } from "@/components/auth/unified-login";
-import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
+import { LoginForm } from "@/components/auth/login-form";
 
-export const metadata: Metadata = {
-  title: "Welcome to RNOS | Login",
-  description:
-    "Login to track your digital service applications, upload documents and manage your account workspace.",
-};
+export const metadata: Metadata = { title: "Login" };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ redirect?: string; next?: string; reset?: string; error?: string; ref?: string }>;
-}) {
-  const user = await getCurrentUser();
-
-  if (user) {
-    const role = await getCurrentUserRole(user);
-    redirect(isCustomerRole(role) ? "/customer/dashboard" : getRoleHome(role));
-  }
-
-  const query = await searchParams;
-  const initialMessage =
-    query?.reset === "success"
-      ? "Password updated successfully. Please login with your new password."
-      : query?.error === "oauth_signup_details"
-      ? "New Google or Facebook signup needs mobile number and PIN details. Switch to Sign Up and continue."
-      : query?.error === "oauth"
-      ? "Social login could not be completed. Please try again."
-      : undefined;
-
-  const referralCode = String(query?.ref ?? "").trim().toUpperCase();
-
+export default function LoginPage() {
   return (
-    <UnifiedLoginExperience
-      initialTab="user"
-      initialMode="login"
-      initialMessage={initialMessage}
-      referralCode={referralCode}
-    />
+    <div className="container-narrow py-16">
+      <div className="mx-auto max-w-md">
+        <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Login</h1>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Customers, admins and agency partners use the same Supabase Auth login.
+        </p>
+        <div className="mt-8">
+          <LoginForm />
+        </div>
+        <p className="mt-6 text-sm text-[var(--muted)]">
+          No account? <Link href="/signup" className="underline">Sign up</Link>
+        </p>
+      </div>
+    </div>
   );
 }

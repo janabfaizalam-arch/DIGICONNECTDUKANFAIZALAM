@@ -1,32 +1,22 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser, isActiveAgent } from "@/lib/auth";
-import { getAgencyPartnerByUserId } from "@/lib/ap-data";
-import { SupportClient } from "./support-client";
+
+import { getCurrentUser, getCurrentUserRole, isAgencyPartnerRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function APSupportPage() {
+export default async function ApSupportPage() {
   const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/ap/login");
-  }
-
-  if (!(await isActiveAgent(user))) {
-    redirect("/unauthorized");
-  }
-
-  const ap = await getAgencyPartnerByUserId(user.id);
-  if (!ap) {
-    redirect("/unauthorized");
-  }
+  if (!user) redirect("/ap/login");
+  const role = await getCurrentUserRole(user);
+  if (!isAgencyPartnerRole(role)) redirect("/unauthorized");
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <SupportClient partnerName={ap.full_name || "Partner"} />
-      </div>
-    </main>
+    <div className="container-narrow py-12">
+      <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Support</h1>
+      <p className="mt-4 text-[var(--muted)]">
+        Email <a className="underline" href="mailto:partners@digiconnectdukan.com">partners@digiconnectdukan.com</a> for
+        Agency Partner support.
+      </p>
+    </div>
   );
 }
-
