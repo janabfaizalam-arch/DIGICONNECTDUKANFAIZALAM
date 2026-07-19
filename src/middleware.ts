@@ -9,6 +9,7 @@ const authRoutes = [
   "/login/agent",
   "/login/customer",
   "/admin-login",
+  "/admin/login",
   "/agent-login",
   "/customer-login",
   "/customer/login",
