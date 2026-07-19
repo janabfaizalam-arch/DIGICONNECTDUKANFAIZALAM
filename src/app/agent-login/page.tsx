@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function AgentLoginRedirectPage() {
-  redirect("/login/agent");
+export default function AgentLoginAliasRedirectPage() {
+  redirect("/ap/login");
 }

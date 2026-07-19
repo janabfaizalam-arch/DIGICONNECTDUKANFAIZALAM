@@ -34,23 +34,49 @@ async function resolveAgentEmail(identifier: string) {
     return null;
   }
 
-  const { data, error } = await supabaseAdmin
+  const code = identifier.trim();
+
+  // Legacy agent_code on profiles (agent or agency_partner)
+  const { data: profileByCode, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("email")
-    .eq("agent_code", identifier)
-    .eq("role", "agent")
+    .select("email, role")
+    .eq("agent_code", code)
+    .in("role", ["agent", "agency_partner"])
     .maybeSingle();
 
-  if (error) {
+  if (profileError) {
     console.error("[agent-login] Agent username lookup failed.", {
       identifier,
-      error: error.message,
+      error: profileError.message,
     });
-    return null;
+  } else {
+    const email = String(profileByCode?.email ?? "").trim().toLowerCase();
+    if (isValidEmail(email)) return email;
   }
 
-  const email = String(data?.email ?? "").trim().toLowerCase();
-  return isValidEmail(email) ? email : null;
+  // Agency partner codes / usernames
+  const normalizedCode = code.toLowerCase();
+  const { data: byPartnerCode } = await supabaseAdmin
+    .from("agency_partners")
+    .select("user_id")
+    .eq("partner_code", code)
+    .maybeSingle();
+  const { data: byUsername } = byPartnerCode
+    ? { data: null }
+    : await supabaseAdmin.from("agency_partners").select("user_id").eq("username", normalizedCode).maybeSingle();
+
+  const partnerUserId = byPartnerCode?.user_id ?? byUsername?.user_id;
+  if (partnerUserId) {
+    const { data: partnerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", partnerUserId)
+      .maybeSingle();
+    const email = String(partnerProfile?.email ?? "").trim().toLowerCase();
+    if (isValidEmail(email)) return email;
+  }
+
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -106,7 +132,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: "Agent login successful.",
-      destination: "/agent/dashboard",
+      destination: "/ap/dashboard",
     });
   } catch (error) {
     console.error("[agent-login] Login failed.", error);
