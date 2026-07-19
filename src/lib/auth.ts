@@ -1,4 +1,5 @@
 import { User } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { attachReferralOnSignup, ensureReferralCodeForUser } from "@/lib/referrals";
@@ -7,31 +8,64 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { creditSignupBonus } from "@/lib/wallet-ledger";
 import { syncCustomerIdentity } from "@/lib/customer-identity";
 import type { PendingCustomerOAuthData } from "@/lib/customer-oauth";
+import { ACCESS_TOKEN_COOKIE } from "@/lib/auth-v2/session";
+import { verifyAccessToken } from "@/lib/auth-v2/jwt";
+
+async function getCustomerJwtUser(): Promise<User | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+    if (!token) return null;
+    const payload = await verifyAccessToken(token);
+    if (!payload?.sub || payload.role !== "customer") return null;
+
+    return {
+      id: payload.sub,
+      email: undefined,
+      phone: payload.mobile,
+      app_metadata: { role: "customer", provider: "customer_pin" },
+      user_metadata: {
+        role: "customer",
+        mobile: payload.mobile,
+        phone: payload.mobile,
+        full_name: "Customer",
+      },
+      aud: "customer",
+      created_at: new Date().toISOString(),
+    } as unknown as User;
+  } catch {
+    return null;
+  }
+}
 
 export async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
 
-  if (!supabase) {
-    if (process.env.NODE_ENV === "development") {
-      return {
-        id: "mock-user-123",
-        email: "test.verify@example.com",
-        phone: "9999999999",
-        user_metadata: {
-          full_name: "Verification Test Customer",
-          role: "customer",
-        },
-        email_confirmed_at: new Date().toISOString(),
-      } as unknown as User;
-    }
-    return null;
+  if (supabase) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) return user;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Legacy / production customer PIN sessions (customers.hashed_pin + JWT)
+  const jwtUser = await getCustomerJwtUser();
+  if (jwtUser) return jwtUser;
 
-  return user;
+  if (!supabase && process.env.NODE_ENV === "development") {
+    return {
+      id: "mock-user-123",
+      email: "test.verify@example.com",
+      phone: "9999999999",
+      user_metadata: {
+        full_name: "Verification Test Customer",
+        role: "customer",
+      },
+      email_confirmed_at: new Date().toISOString(),
+    } as unknown as User;
+  }
+
+  return null;
 }
 
 export function isAdminUser(user: User | null) {

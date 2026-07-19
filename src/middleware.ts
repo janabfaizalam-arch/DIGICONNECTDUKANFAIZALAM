@@ -49,7 +49,6 @@ type ProfileAuthShape = {
   kyc_status?: string | null;
   active?: boolean | null;
   is_active?: boolean | null;
-  account_status?: string | null;
   mobile?: string | null;
   pincode?: string | null;
 };
@@ -206,7 +205,16 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Optional legacy customer-v2 JWT stack (keep if routes still exist)
+  // Customer PIN JWT sessions (customers.hashed_pin) — /customer and legacy /customer-v2
+  const isCustomerPortalRoute =
+    matchesRoute(pathname, "/customer") &&
+    !matchesRoute(pathname, "/customer/login") &&
+    !matchesRoute(pathname, "/customer/signup") &&
+    !matchesRoute(pathname, "/customer/forgot-pin");
+  const isCustomerAuthPage =
+    matchesRoute(pathname, "/customer/login") ||
+    matchesRoute(pathname, "/customer/signup") ||
+    matchesRoute(pathname, "/customer/forgot-pin");
   const isCustomerV2Route = matchesRoute(pathname, "/customer-v2");
   const isCustomerV2AuthRoute =
     matchesRoute(pathname, "/customer-auth-v2/login") ||
@@ -214,13 +222,27 @@ export async function middleware(request: NextRequest) {
     matchesRoute(pathname, "/customer-auth-v2/forgot-pin") ||
     matchesRoute(pathname, "/customer-auth-v2/set-pin");
 
-  if (isCustomerV2Route || isCustomerV2AuthRoute) {
+  if (isCustomerPortalRoute || isCustomerAuthPage || isCustomerV2Route || isCustomerV2AuthRoute) {
     const { verifyAccessToken } = await import("@/lib/auth-v2/jwt");
     const accessToken = request.cookies.get("v2_customer_access_token")?.value;
     let customerPayload = null;
 
     if (accessToken) {
       customerPayload = await verifyAccessToken(accessToken);
+    }
+
+    if (customerPayload && (isCustomerAuthPage || isCustomerV2AuthRoute)) {
+      const url = request.nextUrl.clone();
+      const redirectTo = request.nextUrl.searchParams.get("redirect");
+      if (redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
+        const target = new URL(redirectTo, request.url);
+        url.pathname = target.pathname;
+        url.search = target.search;
+      } else {
+        url.pathname = isCustomerV2AuthRoute ? "/customer-v2/dashboard" : "/customer/dashboard";
+        url.search = "";
+      }
+      return NextResponse.redirect(url);
     }
 
     if (!customerPayload && isCustomerV2Route) {
@@ -230,21 +252,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    if (customerPayload && isCustomerV2AuthRoute) {
-      const url = request.nextUrl.clone();
-      const redirectTo = request.nextUrl.searchParams.get("redirect");
-      if (redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
-        const target = new URL(redirectTo, request.url);
-        url.pathname = target.pathname;
-        url.search = target.search;
-      } else {
-        url.pathname = "/customer-v2/dashboard";
-        url.search = "";
-      }
-      return NextResponse.redirect(url);
+    // PIN JWT is enough for /customer portal pages (no Supabase Auth user required)
+    if (customerPayload && isCustomerPortalRoute) {
+      return response;
     }
 
-    return response;
+    if (isCustomerV2Route || isCustomerV2AuthRoute) {
+      return response;
+    }
+    // Fall through to Supabase Auth for /customer when no PIN JWT (legacy sessions)
   }
 
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -296,7 +312,7 @@ export async function middleware(request: NextRequest) {
   if (user) {
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("role, kyc_status, active, is_active, account_status, mobile, pincode")
+      .select("role, kyc_status, active, is_active, mobile, pincode")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -312,10 +328,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Blocked / suspended customer or partner accounts
+  // Inactive accounts (production profiles use active / is_active — not account_status)
   if (user && isProtectedRoute) {
-    const status = String(profile?.account_status ?? "active").toLowerCase();
-    if (status === "blocked" || status === "suspended" || profile?.active === false) {
+    const inactive =
+      profile?.active === false || profile?.is_active === false;
+    if (inactive) {
       await supabase.auth.signOut();
       const url = request.nextUrl.clone();
       url.pathname = getLoginPathForProtectedRoute(pathname);
