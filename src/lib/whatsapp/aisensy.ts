@@ -1,19 +1,49 @@
 /**
  * AiSensy WhatsApp Campaign API — delivery only.
  * OTP generation/verification stays on our server (auth_otp_requests).
+ *
+ * Live campaigns (do not create new ones):
+ * - signup_otp
+ * - password_reset
+ * - login_otp
+ *
+ * Never use DCD_NEW_WORK_CONFIRMATION for authentication.
  */
+
+import { randomUUID } from "crypto";
 
 const DEFAULT_AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
 const REQUEST_TIMEOUT_MS = 15_000;
 const DUPLICATE_SEND_WINDOW_MS = 5_000;
 
+const DEFAULT_SIGNUP_CAMPAIGN = "signup_otp";
+const DEFAULT_PASSWORD_RESET_CAMPAIGN = "password_reset";
+const DEFAULT_LOGIN_CAMPAIGN = "login_otp";
+const FORBIDDEN_AUTH_CAMPAIGN = "DCD_NEW_WORK_CONFIRMATION";
+
+/** Safe message returned to clients — never expose AiSensy API errors. */
+export const AISENSY_USER_FACING_SEND_ERROR =
+  "Unable to send OTP. Please try again in a few minutes.";
+
+export type AisensyOtpPurpose =
+  | "customer_signup"
+  | "signup"
+  | "forgot_pin"
+  | "forgot_password"
+  | "create_pin"
+  | "legacy_pin_activation"
+  | "password_reset"
+  | "login"
+  | "login_otp"
+  | "change_phone"
+  | "security_verification";
+
 export type AisensySendResult =
-  | { ok: true; provider: "aisensy"; destination: string; campaignName: string }
-  | { ok: false; provider: "aisensy"; error: string; code?: string };
+  | { ok: true; provider: "aisensy"; destination: string; campaignName: string; requestId: string }
+  | { ok: false; provider: "aisensy"; error: string; code?: string; requestId?: string; campaignName?: string };
 
 type AisensyConfig = {
   apiKey: string;
-  campaignName: string;
   apiUrl: string;
 };
 
@@ -24,15 +54,68 @@ export function getWhatsappProvider(): string {
   return (process.env.WHATSAPP_PROVIDER ?? "aisensy").trim().toLowerCase();
 }
 
+/**
+ * Select the existing AiSensy LIVE campaign for an OTP purpose.
+ * Defaults match dashboard campaign names when env vars are unset.
+ */
+export function getCampaignName(purpose: string): string {
+  const normalized = String(purpose ?? "")
+    .trim()
+    .toLowerCase();
+
+  let campaign: string;
+
+  switch (normalized) {
+    case "customer_signup":
+    case "signup":
+      campaign = process.env.AISENSY_SIGNUP_CAMPAIGN?.trim() || DEFAULT_SIGNUP_CAMPAIGN;
+      break;
+
+    case "forgot_pin":
+    case "forgot_password":
+    case "create_pin":
+    case "legacy_pin_activation":
+    case "password_reset":
+    case "change_phone":
+    case "security_verification":
+      campaign =
+        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() || DEFAULT_PASSWORD_RESET_CAMPAIGN;
+      break;
+
+    case "login":
+    case "login_otp":
+      campaign = process.env.AISENSY_LOGIN_CAMPAIGN?.trim() || DEFAULT_LOGIN_CAMPAIGN;
+      break;
+
+    default:
+      console.warn("[aisensy] unknown_purpose_using_password_reset", { purpose: normalized });
+      campaign =
+        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() || DEFAULT_PASSWORD_RESET_CAMPAIGN;
+      break;
+  }
+
+  if (campaign === FORBIDDEN_AUTH_CAMPAIGN) {
+    console.error("[aisensy] forbidden_campaign_blocked", {
+      purpose: normalized,
+      campaign,
+    });
+    return DEFAULT_PASSWORD_RESET_CAMPAIGN;
+  }
+
+  return campaign;
+}
+
 export function redactSecrets(value: string, apiKey?: string): string {
   let out = value;
   const key = apiKey?.trim();
   if (key && key.length >= 8) {
     out = out.split(key).join("[REDACTED_API_KEY]");
   }
-  // Common env leak patterns
   out = out.replace(/("apiKey"\s*:\s*")[^"]+(")/gi, "$1[REDACTED_API_KEY]$2");
   out = out.replace(/(apiKey=)[^\s&]+/gi, "$1[REDACTED_API_KEY]");
+  // Never leak OTP digits from accidental payload dumps
+  out = out.replace(/("templateParams"\s*:\s*\[\s*")\d{4,8}(")/gi, "$1[REDACTED_OTP]$2");
+  out = out.replace(/("text"\s*:\s*")\d{4,8}(")/gi, "$1[REDACTED_OTP]$2");
   return out;
 }
 
@@ -56,6 +139,11 @@ export function normalizeAisensyDestination(
   return { ok: true, destination: `91${local}`, local };
 }
 
+function maskPhoneLocal(local: string): string {
+  if (local.length !== 10) return "91XXXXXXXXXX";
+  return `91${local.slice(0, 2)}******${local.slice(-2)}`;
+}
+
 export function loadAisensyConfig():
   | { ok: true; config: AisensyConfig }
   | { ok: false; error: string; code: string } {
@@ -69,21 +157,13 @@ export function loadAisensyConfig():
   }
 
   const apiKey = process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim();
-  const campaignName = process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim();
   const apiUrl = (process.env.AISENSY_API_URL?.trim() || DEFAULT_AISENSY_API_URL).replace(/\/$/, "");
 
   if (!apiKey) {
     return { ok: false, error: "AISENSY_API_KEY is not configured.", code: "missing_api_key" };
   }
-  if (!campaignName) {
-    return {
-      ok: false,
-      error: "AISENSY_OTP_CAMPAIGN_NAME is not configured.",
-      code: "missing_campaign",
-    };
-  }
 
-  return { ok: true, config: { apiKey, campaignName, apiUrl } };
+  return { ok: true, config: { apiKey, apiUrl } };
 }
 
 /** Exported for unit tests — validates provider response beyond bare HTTP 200. */
@@ -99,12 +179,10 @@ export function isAisensySuccessResponse(status: number, body: unknown): boolean
     if (lower.includes("error") || lower.includes("fail") || lower.includes("invalid")) {
       return false;
     }
-    // Plain success tokens / message ids
     if (lower === "success" || lower === "ok" || lower === "true") return true;
     try {
       return isAisensySuccessResponse(status, JSON.parse(trimmed));
     } catch {
-      // Non-JSON non-error body with content — treat as success only if looks like an id
       return /^[a-z0-9_-]{8,}$/i.test(trimmed);
     }
   }
@@ -115,7 +193,6 @@ export function isAisensySuccessResponse(status: number, body: unknown): boolean
   if (record.success === false || record.ok === false) return false;
 
   const errorField = record.error ?? record.Error ?? record.message_error ?? record.err;
-  // Any explicit error field means failure (even on HTTP 200)
   if (typeof errorField === "string" && errorField.trim()) return false;
   if (errorField && typeof errorField === "object") return false;
 
@@ -135,7 +212,6 @@ export function isAisensySuccessResponse(status: number, body: unknown): boolean
     return true;
   }
 
-  // Reject empty objects / unknown shapes even on HTTP 200
   return false;
 }
 
@@ -175,6 +251,7 @@ export function __resetAisensySendDedupeForTests() {
 export type SendAisensyOtpOptions = {
   phone: string;
   otp: string;
+  purpose: AisensyOtpPurpose | string;
   userName?: string;
   source?: string;
   /** Injected for tests */
@@ -183,44 +260,90 @@ export type SendAisensyOtpOptions = {
 };
 
 /**
- * Deliver OTP via AiSensy Authentication-category campaign.
+ * Deliver OTP via the AiSensy campaign selected for `purpose`.
  * Does not verify OTP — our DB is source of truth.
+ * Never logs the OTP value.
  */
 export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<AisensySendResult> {
+  const requestId = randomUUID();
+  const purpose = String(options.purpose ?? "").trim() || "password_reset";
+  const campaignName = getCampaignName(purpose);
+
   const loaded = loadAisensyConfig();
   if (!loaded.ok) {
-    console.error("[aisensy] config_error", { code: loaded.code, error: loaded.error });
-    return { ok: false, provider: "aisensy", error: loaded.error, code: loaded.code };
+    console.error("[aisensy] config_error", {
+      purpose,
+      campaign: campaignName,
+      requestId,
+      code: loaded.code,
+      error: loaded.error,
+    });
+    return {
+      ok: false,
+      provider: "aisensy",
+      error: AISENSY_USER_FACING_SEND_ERROR,
+      code: loaded.code,
+      requestId,
+      campaignName,
+    };
   }
 
   const { config } = loaded;
   const phone = normalizeAisensyDestination(options.phone);
   if (!phone.ok) {
-    console.error("[aisensy] invalid_phone");
-    return { ok: false, provider: "aisensy", error: phone.error, code: "invalid_phone" };
-  }
-
-  if (!/^\d{6}$/.test(options.otp)) {
-    return { ok: false, provider: "aisensy", error: "OTP must be 6 digits.", code: "invalid_otp" };
-  }
-
-  if (!claimSendSlot(phone.destination, config.campaignName)) {
-    console.warn("[aisensy] duplicate_send_blocked", { destination: phone.destination.slice(0, 4) + "******" });
+    console.error("[aisensy] invalid_phone", { purpose, campaign: campaignName, requestId });
     return {
       ok: false,
       provider: "aisensy",
-      error: "Duplicate OTP send blocked. Please wait a few seconds.",
-      code: "duplicate_send",
+      error: phone.error,
+      code: "invalid_phone",
+      requestId,
+      campaignName,
     };
   }
 
+  if (!/^\d{6}$/.test(options.otp)) {
+    return {
+      ok: false,
+      provider: "aisensy",
+      error: AISENSY_USER_FACING_SEND_ERROR,
+      code: "invalid_otp",
+      requestId,
+      campaignName,
+    };
+  }
+
+  if (!claimSendSlot(phone.destination, campaignName)) {
+    console.warn("[aisensy] duplicate_send_blocked", {
+      purpose,
+      campaign: campaignName,
+      phone: maskPhoneLocal(phone.local),
+      requestId,
+    });
+    return {
+      ok: false,
+      provider: "aisensy",
+      error: AISENSY_USER_FACING_SEND_ERROR,
+      code: "duplicate_send",
+      requestId,
+      campaignName,
+    };
+  }
+
+  console.info("[aisensy] send_start", {
+    Purpose: purpose,
+    Campaign: campaignName,
+    Phone: maskPhoneLocal(phone.local),
+    "Request Id": requestId,
+  });
+
   const payload = {
     apiKey: config.apiKey,
-    campaignName: config.campaignName,
+    campaignName,
     destination: phone.destination,
     userName: options.userName?.trim() || "Customer",
     templateParams: [options.otp],
-    source: options.source ?? "digiconnect-auth",
+    source: options.source ?? `digiconnect-auth:${purpose}`,
     buttons: [
       {
         type: "button",
@@ -236,12 +359,6 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    console.info("[aisensy] send_start", {
-      url: config.apiUrl,
-      campaignName: config.campaignName,
-      destination: `91${phone.local.slice(0, 2)}******${phone.local.slice(-2)}`,
-    });
-
     const response = await fetchImpl(config.apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -256,34 +373,38 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
       config.apiKey,
     );
 
-    if (!isAisensySuccessResponse(response.status, body)) {
-      console.error("[aisensy] send_failed", {
-        httpStatus: response.status,
-        body: safeBody.slice(0, 500),
-      });
-      // Allow retry after failure
-      recentSendKeys.delete(sendDedupeKey(phone.destination, config.campaignName));
+    const success = isAisensySuccessResponse(response.status, body);
+
+    console.info("[aisensy] send_result", {
+      Campaign: campaignName,
+      "HTTP Status": response.status,
+      "Success/Failure": success ? "Success" : "Failure",
+      "AiSensy Response": safeBody.slice(0, 500),
+      Purpose: purpose,
+      "Request Id": requestId,
+    });
+
+    if (!success) {
+      recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
       return {
         ok: false,
         provider: "aisensy",
-        error: "AiSensy OTP delivery failed.",
+        error: AISENSY_USER_FACING_SEND_ERROR,
         code: "provider_rejected",
+        requestId,
+        campaignName,
       };
     }
-
-    console.info("[aisensy] send_ok", {
-      httpStatus: response.status,
-      campaignName: config.campaignName,
-    });
 
     return {
       ok: true,
       provider: "aisensy",
       destination: phone.destination,
-      campaignName: config.campaignName,
+      campaignName,
+      requestId,
     };
   } catch (error) {
-    recentSendKeys.delete(sendDedupeKey(phone.destination, config.campaignName));
+    recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
     const aborted = error instanceof Error && error.name === "AbortError";
     const message = aborted
       ? "AiSensy request timed out."
@@ -291,16 +412,22 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
         ? redactSecrets(error.message, config.apiKey)
         : "AiSensy request failed.";
 
-    console.error("[aisensy] send_exception", {
-      code: aborted ? "timeout" : "network_error",
-      error: message,
+    console.error("[aisensy] send_result", {
+      Campaign: campaignName,
+      "HTTP Status": aborted ? "timeout" : "network_error",
+      "Success/Failure": "Failure",
+      "AiSensy Response": message,
+      Purpose: purpose,
+      "Request Id": requestId,
     });
 
     return {
       ok: false,
       provider: "aisensy",
-      error: message,
+      error: AISENSY_USER_FACING_SEND_ERROR,
       code: aborted ? "timeout" : "network_error",
+      requestId,
+      campaignName,
     };
   } finally {
     clearTimeout(timer);

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   __resetAisensySendDedupeForTests,
+  getCampaignName,
   isAisensySuccessResponse,
   loadAisensyConfig,
   normalizeAisensyDestination,
@@ -14,6 +15,9 @@ const ENV_KEYS = [
   "AISENSY_API_KEY",
   "AISENSY_PROJECT_API_KEY",
   "AISENSY_OTP_CAMPAIGN_NAME",
+  "AISENSY_SIGNUP_CAMPAIGN",
+  "AISENSY_PASSWORD_RESET_CAMPAIGN",
+  "AISENSY_LOGIN_CAMPAIGN",
   "AISENSY_API_URL",
 ] as const;
 
@@ -49,9 +53,12 @@ beforeEach(() => {
   setEnv({
     WHATSAPP_PROVIDER: "aisensy",
     AISENSY_API_KEY: "test-api-key-abcdef123456",
-    AISENSY_OTP_CAMPAIGN_NAME: "auth_otp_campaign",
     AISENSY_API_URL: "https://backend.aisensy.com/campaign/t1/api/v2",
     AISENSY_PROJECT_API_KEY: undefined,
+    AISENSY_OTP_CAMPAIGN_NAME: undefined,
+    AISENSY_SIGNUP_CAMPAIGN: undefined,
+    AISENSY_PASSWORD_RESET_CAMPAIGN: undefined,
+    AISENSY_LOGIN_CAMPAIGN: undefined,
   });
 });
 
@@ -59,6 +66,42 @@ afterEach(() => {
   restoreEnv();
   __resetAisensySendDedupeForTests();
   vi.restoreAllMocks();
+});
+
+describe("getCampaignName", () => {
+  it("maps signup purposes to signup_otp by default", () => {
+    expect(getCampaignName("customer_signup")).toBe("signup_otp");
+    expect(getCampaignName("signup")).toBe("signup_otp");
+  });
+
+  it("maps forgot/create/reset PIN purposes to password_reset by default", () => {
+    expect(getCampaignName("forgot_pin")).toBe("password_reset");
+    expect(getCampaignName("forgot_password")).toBe("password_reset");
+    expect(getCampaignName("create_pin")).toBe("password_reset");
+    expect(getCampaignName("legacy_pin_activation")).toBe("password_reset");
+    expect(getCampaignName("password_reset")).toBe("password_reset");
+  });
+
+  it("maps login purposes to login_otp by default", () => {
+    expect(getCampaignName("login")).toBe("login_otp");
+    expect(getCampaignName("login_otp")).toBe("login_otp");
+  });
+
+  it("uses environment overrides when set", () => {
+    setEnv({
+      AISENSY_SIGNUP_CAMPAIGN: "signup_otp",
+      AISENSY_PASSWORD_RESET_CAMPAIGN: "password_reset",
+      AISENSY_LOGIN_CAMPAIGN: "login_otp",
+    });
+    expect(getCampaignName("customer_signup")).toBe("signup_otp");
+    expect(getCampaignName("forgot_pin")).toBe("password_reset");
+    expect(getCampaignName("login")).toBe("login_otp");
+  });
+
+  it("never returns DCD_NEW_WORK_CONFIRMATION for auth", () => {
+    setEnv({ AISENSY_SIGNUP_CAMPAIGN: "DCD_NEW_WORK_CONFIRMATION" });
+    expect(getCampaignName("customer_signup")).toBe("password_reset");
+  });
 });
 
 describe("normalizeAisensyDestination", () => {
@@ -80,8 +123,8 @@ describe("normalizeAisensyDestination", () => {
 });
 
 describe("loadAisensyConfig", () => {
-  it("fails when environment variables are missing", () => {
-    setEnv({ AISENSY_API_KEY: undefined, AISENSY_OTP_CAMPAIGN_NAME: undefined });
+  it("fails when API key is missing", () => {
+    setEnv({ AISENSY_API_KEY: undefined });
     const result = loadAisensyConfig();
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -89,13 +132,10 @@ describe("loadAisensyConfig", () => {
     }
   });
 
-  it("fails when campaign name is missing", () => {
+  it("succeeds without legacy AISENSY_OTP_CAMPAIGN_NAME", () => {
     setEnv({ AISENSY_OTP_CAMPAIGN_NAME: undefined });
     const result = loadAisensyConfig();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.code).toBe("missing_campaign");
-    }
+    expect(result.ok).toBe(true);
   });
 });
 
@@ -124,8 +164,8 @@ describe("redactSecrets", () => {
   });
 });
 
-describe("sendAisensyOtp", () => {
-  it("returns ok for valid API response", async () => {
+describe("sendAisensyOtp campaign selection", () => {
+  it("signup sends using signup_otp", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(JSON.stringify({ submitted_message_id: "msg_12345678" }), { status: 200 }),
     ) as unknown as typeof fetch;
@@ -133,28 +173,67 @@ describe("sendAisensyOtp", () => {
     const result = await sendAisensyOtp({
       phone: "9876543210",
       otp: "482913",
+      purpose: "customer_signup",
       fetchImpl,
     });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.campaignName).toBe("signup_otp");
       expect(result.destination).toBe("919876543210");
-      expect(result.campaignName).toBe("auth_otp_campaign");
     }
 
     const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as {
-      destination: string;
-      apiKey: string;
       campaignName: string;
       templateParams: string[];
     };
-    expect(body.destination).toBe("919876543210");
-    expect(body.campaignName).toBe("auth_otp_campaign");
+    expect(body.campaignName).toBe("signup_otp");
     expect(body.templateParams).toEqual(["482913"]);
-    expect(body.apiKey).toBe("test-api-key-abcdef123456");
   });
 
-  it("returns provider failure when AiSensy rejects", async () => {
+  it("forgot/create PIN sends using password_reset", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ submitted_message_id: "msg_abcdef12" }), { status: 200 }),
+    ) as unknown as typeof fetch;
+
+    const result = await sendAisensyOtp({
+      phone: "9876543210",
+      otp: "482913",
+      purpose: "forgot_pin",
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.campaignName).toBe("password_reset");
+    }
+
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as { campaignName: string };
+    expect(body.campaignName).toBe("password_reset");
+  });
+
+  it("login OTP sends using login_otp", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ submitted_message_id: "msg_login123" }), { status: 200 }),
+    ) as unknown as typeof fetch;
+
+    const result = await sendAisensyOtp({
+      phone: "9876543210",
+      otp: "482913",
+      purpose: "login_otp",
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.campaignName).toBe("login_otp");
+    }
+
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as { campaignName: string };
+    expect(body.campaignName).toBe("login_otp");
+  });
+
+  it("returns generic user-facing error when AiSensy rejects", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(JSON.stringify({ success: false, error: "Campaign not live" }), { status: 200 }),
     ) as unknown as typeof fetch;
@@ -162,12 +241,15 @@ describe("sendAisensyOtp", () => {
     const result = await sendAisensyOtp({
       phone: "9876543210",
       otp: "482913",
+      purpose: "forgot_pin",
       fetchImpl,
     });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("provider_rejected");
+      expect(result.error).toBe("Unable to send OTP. Please try again in a few minutes.");
+      expect(result.error).not.toContain("Campaign not live");
     }
   });
 
@@ -181,12 +263,14 @@ describe("sendAisensyOtp", () => {
     const result = await sendAisensyOtp({
       phone: "9876543210",
       otp: "482913",
+      purpose: "customer_signup",
       fetchImpl,
     });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("timeout");
+      expect(result.error).toBe("Unable to send OTP. Please try again in a few minutes.");
     }
   });
 
@@ -195,6 +279,7 @@ describe("sendAisensyOtp", () => {
     const result = await sendAisensyOtp({
       phone: "123",
       otp: "482913",
+      purpose: "login",
       fetchImpl,
     });
     expect(result.ok).toBe(false);
@@ -204,12 +289,13 @@ describe("sendAisensyOtp", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("fails fast when env vars are missing", async () => {
-    setEnv({ AISENSY_API_KEY: undefined, AISENSY_OTP_CAMPAIGN_NAME: undefined });
+  it("fails fast when API key is missing", async () => {
+    setEnv({ AISENSY_API_KEY: undefined });
     const fetchImpl = vi.fn() as unknown as typeof fetch;
     const result = await sendAisensyOtp({
       phone: "9876543210",
       otp: "482913",
+      purpose: "customer_signup",
       fetchImpl,
     });
     expect(result.ok).toBe(false);

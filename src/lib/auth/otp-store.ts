@@ -104,8 +104,16 @@ export async function createAndSendOtp(input: {
         metadata: { ...(input.metadata ?? {}), delivery_status: "failed", provider: sendResult.provider },
       })
       .eq("id", inserted.id);
-    console.error("[otp] provider_send_failed", { purpose: input.purpose, provider: sendResult.provider });
-    return { ok: false, error: "WhatsApp OTP bhej nahi paye. Thodi der baad try karein.", status: 502 };
+    console.error("[otp] provider_send_failed", {
+      purpose: input.purpose,
+      provider: sendResult.provider,
+      campaign: sendResult.campaignName,
+    });
+    return {
+      ok: false,
+      error: "Unable to send OTP. Please try again in a few minutes.",
+      status: 502,
+    };
   }
 
   await supabase

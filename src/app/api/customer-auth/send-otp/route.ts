@@ -79,8 +79,11 @@ export async function POST(request: Request) {
     const sendResult = await sendWhatsappOTP(mobile, otp, purpose as WhatsappTemplatePurpose);
     
     if (!sendResult.success) {
-      console.error("[Auth V2] AiSensy delivery failed:", sendResult.error);
-      return NextResponse.json({ error: "Failed to send WhatsApp message." }, { status: 500 });
+      console.error("[Auth V2] AiSensy delivery failed");
+      return NextResponse.json(
+        { error: "Unable to send OTP. Please try again in a few minutes." },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true, message: "OTP sent successfully." });
