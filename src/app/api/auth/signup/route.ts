@@ -11,6 +11,7 @@ import {
 } from "@/lib/customer-identity";
 import { creditSignupBonus } from "@/lib/wallet-ledger";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { derivePinPassword, validateCustomerPin } from "@/lib/auth/pin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type SignupBody = {
@@ -19,6 +20,9 @@ type SignupBody = {
   email?: string;
   mobile?: string;
   phone?: string;
+  /** Customer 6-digit login PIN (preferred). */
+  pin?: string;
+  /** @deprecated Use `pin` — accepted only as a transitional alias. */
   password?: string;
   pincode?: string;
   city?: string;
@@ -46,12 +50,11 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-function getPasswordValidationMessage(password: string) {
-  if (password.length < 6) {
-    return "Password must be at least 6 characters.";
-  }
-
-  return "";
+function getCustomerPinFromBody(body: SignupBody | null): string {
+  const pin = String(body?.pin ?? "").replace(/\D/g, "");
+  if (pin) return pin.slice(0, 6);
+  // Transitional: older clients may still send the PIN in `password`
+  return String(body?.password ?? "").replace(/\D/g, "").slice(0, 6);
 }
 
 function getSiteUrl(request: Request) {
@@ -217,14 +220,15 @@ export async function POST(request: Request) {
     const fullName = String(body?.fullName ?? body?.name ?? "").trim();
     const mobile = String(body?.mobile ?? body?.phone ?? "").replace(/\D/g, "").trim();
     const email = String(body?.email ?? "").trim().toLowerCase();
-    const password = String(body?.password ?? "");
-    const pincode = String(body?.pincode ?? "").trim();
+    const pin = getCustomerPinFromBody(body);
+    const pincode = String(body?.pincode ?? "").replace(/\D/g, "").trim();
     const city = String(body?.city ?? "").trim();
     const state = String(body?.state ?? "").trim();
     const referredBy = String(body?.referred_by ?? body?.referralCode ?? "").trim().toUpperCase();
 
     devInfo("[auth/signup] Request details", {
       emailDomain: email ? getEmailDomain(email) : "missing",
+      hasPin: Boolean(pin),
       hasPincode: Boolean(pincode),
       hasCity: Boolean(city),
       hasState: Boolean(state),
@@ -253,25 +257,24 @@ export async function POST(request: Request) {
       return jsonSignupError("Please enter a valid email address.", 400, envDebug);
     }
 
-    const passwordValidationMessage = getPasswordValidationMessage(password);
-
-    if (passwordValidationMessage) {
-      console.warn("[auth/signup] Validation failed", { field: "password", reason: passwordValidationMessage });
-      return jsonSignupError(passwordValidationMessage, 400, envDebug);
+    const pinCheck = validateCustomerPin(pin, mobile);
+    if (!pinCheck.ok) {
+      console.warn("[auth/signup] Validation failed", { field: "pin", reason: pinCheck.error });
+      return jsonSignupError(pinCheck.error, 400, envDebug);
     }
 
-    if (!/^\d{6}$/.test(pincode)) {
+    // Postal pincode is optional on the simplified signup form.
+    if (pincode && !/^\d{6}$/.test(pincode)) {
       console.warn("[auth/signup] Validation failed", { field: "pincode", hasPincode: Boolean(pincode) });
-      return jsonSignupError("A valid 6 digit PIN code is required.", 400, envDebug);
+      return jsonSignupError("A valid 6 digit postal pincode is required.", 400, envDebug);
     }
 
-    if (!city || !state) {
-      console.warn("[auth/signup] Validation failed", {
-        field: "city/state",
-        hasCity: Boolean(city),
-        hasState: Boolean(state),
-      });
-      return jsonSignupError("City and state are required. Enter them manually if PIN lookup failed.", 400, envDebug);
+    let authPassword: string;
+    try {
+      authPassword = derivePinPassword(mobile, pin);
+    } catch {
+      console.error("[auth/signup] AUTH_HMAC_SECRET missing or invalid");
+      return jsonSignupError("Signup is not configured on the server.", 503, envDebug);
     }
 
     if (referredBy) {
@@ -350,7 +353,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabase.auth.signUp({
       email,
-      password,
+      password: authPassword,
       options: {
         emailRedirectTo: `${getSiteUrl(request)}/auth/callback?next=${encodeURIComponent("/customer/dashboard")}`,
         data: {
@@ -361,6 +364,7 @@ export async function POST(request: Request) {
           city,
           state,
           referred_by: referredBy || undefined,
+          role: "customer",
         },
       },
     });

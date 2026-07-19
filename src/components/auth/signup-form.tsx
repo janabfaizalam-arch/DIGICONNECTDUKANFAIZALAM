@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const PIN_REGEX = /^\d{6}$/;
+
 export function SignupForm() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,10 +20,22 @@ export function SignupForm() {
     setLoading(true);
     setError(null);
 
+    if (!PIN_REGEX.test(pin)) {
+      setError("PIN exactly 6 digits hona chahiye.");
+      setLoading(false);
+      return;
+    }
+
+    if (pin !== confirmPin) {
+      setError("PIN aur Confirm PIN match nahi karte.");
+      setLoading(false);
+      return;
+    }
+
     const response = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, email, mobile, password }),
+      body: JSON.stringify({ fullName, email, mobile, pin }),
     });
 
     const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -30,7 +45,7 @@ export function SignupForm() {
       return;
     }
 
-    router.push("/login?verified=pending");
+    router.push("/customer/login");
   }
 
   return (
@@ -52,6 +67,7 @@ export function SignupForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2"
+          autoComplete="email"
         />
       </label>
       <label className="block text-sm">
@@ -59,25 +75,55 @@ export function SignupForm() {
         <input
           required
           value={mobile}
-          onChange={(event) => setMobile(event.target.value)}
+          onChange={(event) => setMobile(event.target.value.replace(/\D/g, "").slice(0, 10))}
+          className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2"
+          inputMode="numeric"
+          placeholder="9876543210"
+          autoComplete="tel"
+        />
+      </label>
+      <label className="block text-sm">
+        Create 6-digit PIN
+        <input
+          type="password"
+          required
+          inputMode="numeric"
+          pattern="[0-9]{6}"
+          minLength={6}
+          maxLength={6}
+          autoComplete="new-password"
+          placeholder="Enter 6-digit PIN"
+          value={pin}
+          onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 6))}
           className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2"
         />
       </label>
       <label className="block text-sm">
-        Password
+        Confirm PIN
         <input
           type="password"
           required
-          minLength={8}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          inputMode="numeric"
+          pattern="[0-9]{6}"
+          minLength={6}
+          maxLength={6}
+          autoComplete="new-password"
+          placeholder="Re-enter 6-digit PIN"
+          value={confirmPin}
+          onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 6))}
           className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2"
         />
       </label>
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
-      <button type="submit" className="btn btn-primary w-full" disabled={loading}>
+      <button type="submit" className="btn btn-primary w-full" disabled={loading || pin.length !== 6 || confirmPin.length !== 6}>
         {loading ? "Creating…" : "Sign up"}
       </button>
+      <p className="text-center text-xs text-[var(--muted)]">
+        Prefer WhatsApp OTP signup?{" "}
+        <a href="/customer/signup" className="underline">
+          /customer/signup
+        </a>
+      </p>
     </form>
   );
 }

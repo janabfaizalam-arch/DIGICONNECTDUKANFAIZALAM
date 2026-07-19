@@ -10,7 +10,13 @@ export default function SignupPage() {
     <div className="container-narrow py-16">
       <div className="mx-auto max-w-md">
         <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight">Create account</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">One account per email and mobile. WhatsApp OTP available after signup.</p>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Create account with email, mobile, and a 6-digit login PIN. Prefer WhatsApp OTP? Use{" "}
+          <Link href="/customer/signup" className="underline">
+            customer signup
+          </Link>
+          .
+        </p>
         <div className="mt-8">
           <SignupForm />
         </div>

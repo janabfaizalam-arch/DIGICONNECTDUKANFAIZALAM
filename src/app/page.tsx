@@ -19,7 +19,7 @@ export default async function HomePage() {
             <Link href="/services" className="btn bg-white text-[var(--hero-from)]">
               Browse services
             </Link>
-            <Link href="/signup" className="btn border border-white/30 text-white">
+            <Link href="/customer/signup" className="btn border border-white/30 text-white">
               Create account
             </Link>
           </div>

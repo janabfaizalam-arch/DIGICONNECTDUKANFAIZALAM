@@ -17,7 +17,7 @@ export default function LoginPage() {
           <LoginForm />
         </div>
         <p className="mt-6 text-sm text-[var(--muted)]">
-          No account? <Link href="/signup" className="underline">Sign up</Link>
+          No account? <Link href="/customer/signup" className="underline">Sign up</Link>
         </p>
       </div>
     </div>

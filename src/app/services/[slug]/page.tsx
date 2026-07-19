@@ -32,7 +32,7 @@ export default async function ServiceDetailPage({ params }: Props) {
       <p className="mt-6 text-2xl font-semibold">₹{service.amount}</p>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href={`/signup?service=${service.slug}`} className="btn btn-primary">
+        <Link href={`/customer/signup?service=${service.slug}`} className="btn btn-primary">
           Apply now
         </Link>
         <Link href="/contact" className="btn btn-secondary">
