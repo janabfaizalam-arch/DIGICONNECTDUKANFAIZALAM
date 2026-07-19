@@ -24,6 +24,10 @@ import {
   Landmark,
   Home,
   Link as LinkIcon,
+  UsersRound,
+  Target,
+  BookOpen,
+  ClipboardList,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -229,12 +233,18 @@ export function APPanelNav() {
   const navItems = [
     { href: "/ap/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "bg-blue-500" },
     { href: "/ap/applications", label: "Applications", icon: FileText, color: "bg-orange-500" },
+    { href: "/ap/assigned-work", label: "Assigned Work", icon: ClipboardList, color: "bg-rose-500" },
     { href: "/ap/payment-links", label: "Payment Links", icon: LinkIcon, color: "bg-purple-500" },
     { href: "/ap/services", label: "Services", icon: Layers, color: "bg-emerald-500" },
     { href: "/ap/customers", label: "Customers", icon: Users, color: "bg-sky-500" },
+    { href: "/ap/team", label: "Team", icon: UsersRound, color: "bg-cyan-500" },
+    { href: "/ap/leads", label: "Leads", icon: Target, color: "bg-pink-500" },
     { href: "/ap/wallet", label: "Wallet", icon: WalletCards, color: "bg-teal-500" },
     { href: "/ap/commissions", label: "Earnings", icon: HandCoins, color: "bg-amber-500" },
     { href: "/ap/referrals", label: "Referrals", icon: Share2, color: "bg-indigo-500" },
+    { href: "/ap/knowledge", label: "Knowledge", icon: BookOpen, color: "bg-lime-500" },
+    { href: "/ap/notifications", label: "Notifications", icon: Bell, color: "bg-rose-500" },
+    { href: "/ap/profile", label: "Profile", icon: UserCog, color: "bg-slate-500" },
     { href: "/ap/support", label: "Support", icon: Headphones, color: "bg-indigo-500" },
   ];
 
@@ -581,6 +591,51 @@ export function APPanelNav() {
                     >
                       <Share2 className="h-4.5 w-4.5 text-indigo-500" />
                       <span>Referrals & Links</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/assigned-work"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <ClipboardList className="h-4.5 w-4.5 text-rose-500" />
+                      <span>Assigned Work</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/team"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <UsersRound className="h-4.5 w-4.5 text-cyan-500" />
+                      <span>Team Members</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/leads"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Target className="h-4.5 w-4.5 text-pink-500" />
+                      <span>Leads Pipeline</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/knowledge"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <BookOpen className="h-4.5 w-4.5 text-lime-500" />
+                      <span>Knowledge Base</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/payment-links"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <LinkIcon className="h-4.5 w-4.5 text-purple-500" />
+                      <span>Payment Links</span>
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                   </div>

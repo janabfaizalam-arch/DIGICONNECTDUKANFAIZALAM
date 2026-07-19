@@ -523,7 +523,7 @@ export function UnifiedLoginExperience({
       if (response.ok) {
         trackLogin("agent_email");
         toastSuccess("Agent workspace ready!");
-        window.location.assign(result.destination || "/agent/dashboard");
+        window.location.assign(result.destination || "/ap/dashboard");
         return;
       }
       
