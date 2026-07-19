@@ -12,7 +12,9 @@ export default function AdminLoginPage() {
         DigiConnect Dukan
       </Link>
       <h1 className="text-center text-2xl font-semibold">Admin Login</h1>
-      <p className="mt-2 text-center text-sm text-slate-600">Admin email aur password se login karein.</p>
+      <p className="mt-2 text-center text-sm text-slate-600">
+        Faiz Alam — email + password ya mobile + PIN se login karein.
+      </p>
       <div className="mt-8">
         <AdminLoginForm />
       </div>

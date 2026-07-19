@@ -10,6 +10,39 @@ import { syncCustomerIdentity } from "@/lib/customer-identity";
 import type { PendingCustomerOAuthData } from "@/lib/customer-oauth";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/auth-v2/session";
 import { verifyAccessToken } from "@/lib/auth-v2/jwt";
+import { ADMIN_ACCESS_TOKEN_COOKIE, verifyAdminAccessToken } from "@/lib/auth/admin-session";
+import {
+  isAllowlistedAdminEmail,
+  isDemotedAdminEmail,
+  PRIMARY_ADMIN,
+} from "@/lib/auth/primary-admin";
+
+async function getAdminJwtUser(): Promise<User | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(ADMIN_ACCESS_TOKEN_COOKIE)?.value;
+    if (!token) return null;
+    const payload = await verifyAdminAccessToken(token);
+    if (!payload?.sub || payload.role !== "admin") return null;
+
+    return {
+      id: payload.sub,
+      email: payload.email,
+      phone: payload.mobile,
+      app_metadata: { role: "admin", provider: "admin_pin" },
+      user_metadata: {
+        role: "admin",
+        mobile: payload.mobile,
+        phone: payload.mobile,
+        full_name: payload.full_name ?? PRIMARY_ADMIN.fullName,
+      },
+      aud: "admin",
+      created_at: new Date().toISOString(),
+    } as unknown as User;
+  } catch {
+    return null;
+  }
+}
 
 async function getCustomerJwtUser(): Promise<User | null> {
   try {
@@ -48,6 +81,9 @@ export async function getCurrentUser() {
     if (user) return user;
   }
 
+  const adminJwtUser = await getAdminJwtUser();
+  if (adminJwtUser) return adminJwtUser;
+
   // Legacy / production customer PIN sessions (customers.hashed_pin + JWT)
   const jwtUser = await getCustomerJwtUser();
   if (jwtUser) return jwtUser;
@@ -73,14 +109,20 @@ export function isAdminUser(user: User | null) {
     return false;
   }
 
-  const adminEmails = (process.env.ADMIN_EMAILS ?? process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-  const role = normalizeAppRole(user.user_metadata.role);
   const email = (user.email ?? "").toLowerCase();
+  if (isDemotedAdminEmail(email)) {
+    return false;
+  }
 
-  return role === "admin" || adminEmails.includes(email);
+  const role =
+    normalizeAppRole(user.user_metadata?.role) ??
+    normalizeAppRole((user.app_metadata as Record<string, unknown> | undefined)?.role);
+
+  if (role === "admin") {
+    return true;
+  }
+
+  return isAllowlistedAdminEmail(email);
 }
 
 export type AppRole = "admin" | "agency_partner" | "customer";
@@ -276,6 +318,14 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   }
 
   if (isAdminUser(user)) {
+    return "admin";
+  }
+
+  const email = String(user.email ?? "").toLowerCase();
+  if (email === "dgcntdkn@gmail.com") {
+    return "customer";
+  }
+  if (email === "janabfaizalam@gmail.com") {
     return "admin";
   }
 

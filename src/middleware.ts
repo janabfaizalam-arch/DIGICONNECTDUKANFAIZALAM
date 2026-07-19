@@ -205,6 +205,30 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Admin PIN JWT sessions (mobile + PIN for primary admin)
+  const isAdminPortalRoute =
+    matchesRoute(pathname, "/admin") && !matchesRoute(pathname, "/admin/login");
+  const isAdminLoginPage = matchesRoute(pathname, "/admin/login");
+  if (isAdminPortalRoute || isAdminLoginPage) {
+    const { verifyAdminAccessToken } = await import("@/lib/auth/admin-session");
+    const adminToken = request.cookies.get("v2_admin_access_token")?.value;
+    let adminPayload = null;
+    if (adminToken) {
+      adminPayload = await verifyAdminAccessToken(adminToken);
+    }
+
+    if (adminPayload && isAdminLoginPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    if (adminPayload && isAdminPortalRoute) {
+      return response;
+    }
+  }
+
   // Customer PIN JWT sessions (customers.hashed_pin) — /customer and legacy /customer-v2
   const isCustomerPortalRoute =
     matchesRoute(pathname, "/customer") &&
@@ -325,6 +349,16 @@ export async function middleware(request: NextRequest) {
       if (apProbe) {
         role = "agency_partner";
       }
+    }
+
+    // Hard demotion: former admin emails never keep admin access
+    const userEmail = String(user.email ?? "").toLowerCase();
+    if (userEmail === "dgcntdkn@gmail.com" && role === "admin") {
+      role = "customer";
+    }
+    // Primary admin email always resolves to admin when authenticated
+    if (userEmail === "janabfaizalam@gmail.com") {
+      role = "admin";
     }
   }
 
