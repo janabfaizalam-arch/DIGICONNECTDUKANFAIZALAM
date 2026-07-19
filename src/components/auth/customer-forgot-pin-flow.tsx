@@ -65,6 +65,15 @@ export function CustomerForgotPinFlow() {
   }
 
   async function resetPin() {
+    if (!/^\d{6}$/.test(pin) || !/^\d{6}$/.test(confirmPin)) {
+      setError("PIN exactly 6 digits hona chahiye.");
+      return;
+    }
+    if (pin !== confirmPin) {
+      setError("PIN aur Confirm PIN match nahi karte.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const response = await fetch("/api/auth/customer/forgot-pin/reset", {
@@ -72,13 +81,13 @@ export function CustomerForgotPinFlow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, verificationToken, pin, confirmPin }),
     });
-    const data = (await response.json()) as { error?: string; redirectTo?: string };
+    const data = (await response.json()) as { error?: string; redirectTo?: string; message?: string };
     setLoading(false);
     if (!response.ok) {
       setError(data.error ?? "PIN reset failed");
       return;
     }
-    router.push(data.redirectTo || "/customer/login");
+    router.push(data.redirectTo || "/customer/login?pinCreated=1");
   }
 
   return (
@@ -86,12 +95,14 @@ export function CustomerForgotPinFlow() {
       {step === "phone" ? (
         <>
           <label className="block text-sm">
-            WhatsApp Mobile Number
+            Registered Mobile Number
             <div className="mt-1 flex overflow-hidden rounded-xl border border-slate-300 bg-white">
               <span className="bg-slate-50 px-3 py-2 text-sm">+91</span>
               <input
+                inputMode="numeric"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="9876543210"
                 className="w-full px-3 py-2 outline-none"
               />
             </div>
@@ -102,7 +113,7 @@ export function CustomerForgotPinFlow() {
             onClick={sendOtp}
             className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {loading ? "Sending…" : "Send OTP"}
+            {loading ? "Sending…" : "Send WhatsApp OTP"}
           </button>
         </>
       ) : null}
@@ -128,30 +139,36 @@ export function CustomerForgotPinFlow() {
       {step === "pin" ? (
         <>
           <label className="block text-sm">
-            New 6-Digit PIN
+            Create 6-digit PIN
             <input
               type="password"
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 tracking-widest"
             />
           </label>
           <label className="block text-sm">
-            Confirm PIN
+            Confirm 6-digit PIN
             <input
               type="password"
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 tracking-widest"
             />
           </label>
           <button
             type="button"
-            disabled={loading || pin.length !== 6}
+            disabled={loading || pin.length !== 6 || confirmPin.length !== 6}
             onClick={resetPin}
             className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
-            Reset PIN
+            {loading ? "Saving…" : "Create PIN"}
           </button>
         </>
       ) : null}

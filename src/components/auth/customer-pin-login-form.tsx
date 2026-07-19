@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
-export function CustomerPinLoginForm() {
+function CustomerPinLoginFormInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pinCreated = searchParams.get("pinCreated") === "1";
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -35,6 +37,12 @@ export function CustomerPinLoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {pinCreated ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          PIN successfully created. Login with mobile and PIN.
+        </p>
+      ) : null}
+
       <label className="block text-sm">
         WhatsApp Mobile Number
         <div className="mt-1 flex overflow-hidden rounded-xl border border-slate-300 bg-white">
@@ -79,14 +87,25 @@ export function CustomerPinLoginForm() {
         {loading ? "Logging in…" : "Login"}
       </button>
 
-      <div className="flex justify-between text-sm text-slate-600">
-        <Link href="/customer/forgot-pin" className="underline">
-          Forgot PIN
-        </Link>
-        <Link href="/customer/signup" className="underline">
-          New Customer Signup
-        </Link>
+      <div className="space-y-2 text-sm text-slate-600">
+        <div className="flex justify-between">
+          <Link href="/customer/forgot-pin" className="underline">
+            Forgot / Create PIN
+          </Link>
+          <Link href="/customer/signup" className="underline">
+            New Customer Signup
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500">Existing customers can create their PIN using WhatsApp OTP.</p>
       </div>
     </form>
+  );
+}
+
+export function CustomerPinLoginForm() {
+  return (
+    <Suspense fallback={<div className="text-sm text-slate-500">Loading…</div>}>
+      <CustomerPinLoginFormInner />
+    </Suspense>
   );
 }

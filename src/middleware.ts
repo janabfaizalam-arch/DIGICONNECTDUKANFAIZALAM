@@ -163,6 +163,9 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/signup") {
     return NextResponse.redirect(new URL("/customer/signup", request.url));
   }
+  if (pathname === "/forgot-password" || pathname.startsWith("/forgot-password/")) {
+    return NextResponse.redirect(new URL("/customer/forgot-pin", request.url));
+  }
   if (pathname === "/admin-login") {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }

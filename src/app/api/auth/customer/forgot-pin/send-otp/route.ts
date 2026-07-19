@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { findExistingCustomerByMobile } from "@/lib/auth/customer-lookup";
 import { createAndSendOtp } from "@/lib/auth/otp-store";
 import { normalizeIndianPhone } from "@/lib/auth/phone";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
 import { logAuthSecurityEvent } from "@/lib/auth/security-log";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -24,37 +24,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: phone.error }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
-    if (!supabase) {
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role, account_status")
-      .eq("phone", phone.local)
-      .eq("role", "customer")
-      .maybeSingle();
-
+    const lookup = await findExistingCustomerByMobile(phone.local);
     const ip = getClientIp(request);
     const userAgent = getUserAgent(request);
 
-    if (profile && profile.account_status !== "blocked") {
+    if (!lookup.ok && lookup.reason === "ambiguous") {
+      return NextResponse.json({ error: lookup.message }, { status: 409 });
+    }
+
+    if (!lookup.ok && lookup.reason === "no_auth_user") {
+      return NextResponse.json({ error: lookup.message }, { status: 409 });
+    }
+
+    if (!lookup.ok && lookup.reason === "service_unavailable") {
+      return NextResponse.json({ error: lookup.message }, { status: 503 });
+    }
+
+    if (lookup.ok && lookup.accountStatus !== "blocked" && lookup.accountStatus !== "suspended") {
       const result = await createAndSendOtp({
         phoneE164: phone.e164,
         phoneLocal: phone.local,
         purpose: "forgot_pin",
         ip,
         userAgent,
-        metadata: { userId: profile.id },
+        metadata: { userId: lookup.profileId, customerId: lookup.customerId },
       });
 
       if (!result.ok && result.status === 429) {
         return NextResponse.json({ error: result.error }, { status: 429 });
       }
 
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
+      }
+
       await logAuthSecurityEvent({
-        userId: profile.id as string,
+        userId: lookup.profileId,
         phone: phone.local,
         eventType: "forgot_pin_otp_sent",
         ip,
@@ -66,6 +71,7 @@ export async function POST(request: Request) {
         eventType: "forgot_pin_otp_probe",
         ip,
         userAgent,
+        details: { reason: lookup.ok ? "inactive" : lookup.reason },
       });
     }
 
@@ -74,6 +80,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid phone" }, { status: 400 });
     }
+    console.error("[forgot-pin/send-otp]", error);
     return NextResponse.json({ error: "Unable to process request" }, { status: 500 });
   }
 }

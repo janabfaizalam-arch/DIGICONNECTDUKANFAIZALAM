@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { findExistingCustomerByMobile } from "@/lib/auth/customer-lookup";
 import { customerInternalEmail, normalizeIndianPhone } from "@/lib/auth/phone";
 import { derivePinPassword, isValidPinFormat } from "@/lib/auth/pin";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
@@ -34,13 +35,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
+    const genericError = "WhatsApp number ya PIN galat hai.";
+    const lookup = await findExistingCustomerByMobile(phone.local);
+
+    if (!lookup.ok) {
+      if (lookup.reason === "ambiguous") {
+        return NextResponse.json({ error: lookup.message }, { status: 409 });
+      }
+      await logAuthSecurityEvent({
+        phone: phone.local,
+        eventType: "login_failed_unknown_phone",
+        ip: getClientIp(request),
+        userAgent: getUserAgent(request),
+      });
+      return NextResponse.json({ error: genericError }, { status: 401 });
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role, account_status, failed_login_attempts, locked_until, phone_verified")
-      .eq("phone", phone.local)
+      .eq("id", lookup.profileId)
       .maybeSingle();
-
-    const genericError = "WhatsApp number ya PIN galat hai.";
 
     if (!profile) {
       await logAuthSecurityEvent({
@@ -62,7 +77,7 @@ export async function POST(request: Request) {
 
     if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) {
       return NextResponse.json(
-        { error: "Bahut galat attempts. Account thodi der ke liye lock hai. Forgot PIN try karein." },
+        { error: "Bahut galat attempts. Account thodi der ke liye lock hai. Forgot / Create PIN try karein." },
         { status: 423 },
       );
     }

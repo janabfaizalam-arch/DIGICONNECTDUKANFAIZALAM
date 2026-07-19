@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { CustomerForgotPinFlow } from "@/components/auth/customer-forgot-pin-flow";
 
-export const metadata: Metadata = { title: "Forgot PIN" };
+export const metadata: Metadata = { title: "Forgot / Create PIN" };
 
 export default function CustomerForgotPinPage() {
   return (
@@ -11,8 +11,10 @@ export default function CustomerForgotPinPage() {
       <Link href="/" className="mb-8 text-center text-xl font-semibold tracking-tight">
         DigiConnect Dukan
       </Link>
-      <h1 className="text-center text-2xl font-semibold">Forgot PIN</h1>
-      <p className="mt-2 text-center text-sm text-slate-600">WhatsApp OTP se naya PIN set karein.</p>
+      <h1 className="text-center text-2xl font-semibold">Forgot / Create PIN</h1>
+      <p className="mt-2 text-center text-sm text-slate-600">
+        Existing customers can create their PIN using WhatsApp OTP.
+      </p>
       <div className="mt-8">
         <CustomerForgotPinFlow />
       </div>

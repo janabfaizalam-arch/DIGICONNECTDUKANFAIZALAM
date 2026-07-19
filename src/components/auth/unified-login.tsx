@@ -837,10 +837,13 @@ export function UnifiedLoginExperience({
                   />
 
                   {userMode === "login" && (
-                    <div className="flex justify-end pr-1.5">
-                      <Link href="/forgot-password" className="text-[10px] font-bold text-[#2563EB] hover:underline outline-none">
-                        Forgot Password?
+                    <div className="flex flex-col items-end gap-1 pr-1.5">
+                      <Link href="/customer/forgot-pin" className="text-[10px] font-bold text-[#2563EB] hover:underline outline-none">
+                        Forgot / Create PIN
                       </Link>
+                      <p className="max-w-[220px] text-right text-[9px] font-medium text-[#64748B]">
+                        Existing customers can create their PIN using WhatsApp OTP.
+                      </p>
                     </div>
                   )}
 
@@ -1193,10 +1196,10 @@ export function UnifiedLoginExperience({
                   </div>
                 </form>
 
-                {/* Footer links: Forgot Password, Partner Support, Apply for Partnership */}
+                {/* Footer links: Partner password recovery, Support, Apply for Partnership */}
                 <div className="flex flex-col gap-2 items-center pt-2.5 border-t border-slate-100/80 text-center">
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs font-semibold text-[#64748B]">
-                    <Link href="/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
+                    <Link href="/ap/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
                       Forgot Password?
                     </Link>
                     <span className="hidden sm:inline text-slate-200">|</span>

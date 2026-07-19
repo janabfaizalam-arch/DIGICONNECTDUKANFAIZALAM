@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { customerMobileAlreadyRegistered } from "@/lib/auth/customer-lookup";
 import { createAndSendOtp } from "@/lib/auth/otp-store";
 import { normalizeIndianPhone } from "@/lib/auth/phone";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
@@ -31,15 +32,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("phone", phone.local)
-      .maybeSingle();
-
-    if (existing) {
+    if (await customerMobileAlreadyRegistered(phone.local)) {
       return NextResponse.json(
-        { error: "Is WhatsApp number se account pehle se registered hai. Please login karein." },
+        {
+          error:
+            "Is WhatsApp number se account pehle se registered hai. Login karein ya Forgot / Create PIN use karein.",
+          redirectTo: "/customer/forgot-pin",
+        },
         { status: 409 },
       );
     }
