@@ -21,7 +21,7 @@ import {
   adjustWalletBalanceAction,
   reviewKycDocumentAction,
 } from "./actions";
-import { AgentPasswordResetForm } from "@/components/portal/agent-password-reset-form";
+import { PartnerPasswordResetForm } from "@/components/admin/partner-password-reset-form";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -555,7 +555,7 @@ export function PartnerCrmClient({
                 <p className="text-[10px] text-slate-500">Reset partner account login passwords directly on Supabase Auth.</p>
               </div>
               <div className="max-w-md pt-2">
-                <AgentPasswordResetForm agentId={ap.user_id} />
+                <PartnerPasswordResetForm userId={ap.user_id} partnerCode={ap.partner_code} />
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-xs font-semibold text-slate-600">
                 <p>Login status: {loginStatus}</p>
