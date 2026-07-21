@@ -275,7 +275,7 @@ export async function getAPCommissions(apId: string, limit = 200): Promise<APCom
 
   const { data, error } = await supabase
     .from("ap_commissions")
-    .select("*")
+    .select("*, application:applications(id, service_name, amount, created_at, customer_name)")
     .eq("agency_partner_id", apId)
     .order("created_at", { ascending: false })
     .limit(limit);

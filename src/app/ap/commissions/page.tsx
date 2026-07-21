@@ -1,156 +1,50 @@
 import { redirect } from "next/navigation";
-import { HandCoins, TrendingUp, CheckCircle } from "lucide-react";
+import { CheckCircle2, HandCoins, Hourglass, RotateCcw } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
-import { getAPCommissions, getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { CommissionsLedgerClient } from "@/components/ap/commissions-ledger-client";
+import { MetricCard, PageHeader } from "@/components/ap/ui";
+import { summarizeCommissions } from "@/lib/ap/finance";
+import { formatCount, formatINR } from "@/lib/ap/format";
+import { getAgencyPartnerByUserId, getAPCommissions } from "@/lib/ap-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
-import { formatCurrency } from "@/lib/portal-data";
 
 export const dynamic = "force-dynamic";
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(date));
-}
-
 export default async function APCommissionsPage() {
   const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/ap/login");
-  }
-
-  if (!(await isActiveAgent(user))) {
-    redirect("/unauthorized");
-  }
+  if (!user) redirect("/ap/login");
+  if (!(await isActiveAgent(user))) redirect("/unauthorized");
 
   const ap = await getAgencyPartnerByUserId(user.id);
-  if (!ap) {
-    redirect("/unauthorized");
-  }
+  if (!ap) redirect("/unauthorized");
 
-  const commissions = await getAPCommissions(ap.id);
-
-  const totalCommission = commissions.reduce(
-    (total, c) => total + Number(c.calculated_amount ?? 0),
-    0
-  );
-  const pendingCommission = commissions
-    .filter((c) => c.status === "pending" || c.status === "earned" || c.status === "approved")
-    .reduce((total, c) => total + Number(c.calculated_amount ?? 0),
-    0
-  );
-  const paidCommission = commissions
-    .filter((c) => c.status === "paid")
-    .reduce((total, c) => total + Number(c.calculated_amount ?? 0),
-    0
-  );
-
-  const commissionStats = [
-    {
-      label: "Total Commission",
-      value: totalCommission,
-      icon: HandCoins,
-      gradient: "from-blue-500/10 to-cyan-500/10 text-blue-600 border-blue-200",
-    },
-    {
-      label: "Pending Verification",
-      value: pendingCommission,
-      icon: TrendingUp,
-      gradient: "from-amber-500/10 to-orange-500/10 text-amber-600 border-amber-200",
-    },
-    {
-      label: "Total Paid Out",
-      value: paidCommission,
-      icon: CheckCircle,
-      gradient: "from-emerald-500/10 to-teal-500/10 text-emerald-600 border-emerald-200",
-    },
-  ];
+  // Full partner set for trusted aggregates (not a partial page window).
+  const commissions = await getAPCommissions(ap.id, 10_000);
+  const summary = summarizeCommissions(commissions);
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
-            DigiPartner Ecosystem
-          </div>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
-            My Commissions
-          </h1>
-          <p className="mt-2 text-slate-500 max-w-2xl text-sm font-medium">
-            Review your earnings, rule overrides, and commission statuses calculated by the hierarchical commission engine.
-          </p>
-        </div>
+    <main className="relative min-h-screen overflow-x-hidden bg-[#F6F8FC] pb-24 text-[#0F172A] md:pb-10">
+      <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
+        <PageHeader
+          eyebrow="Finance"
+          title="Commissions"
+          description="Earnings ledger for eligible applications. Totals are computed from your complete commission history."
+        />
 
-        {/* Commission Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {commissionStats.map(({ label, value, icon: Icon, gradient }) => (
-            <Card
-              key={label}
-              className="border border-slate-200/50 bg-white/70 p-5 backdrop-blur-md rounded-2xl shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-500">{label}</p>
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white border bg-gradient-to-br ${gradient}`}>
-                  <Icon className="h-4.5 w-4.5" />
-                </span>
-              </div>
-              <p className="mt-4 text-2xl font-black tracking-tight text-slate-900">
-                {formatCurrency(value)}
-              </p>
-            </Card>
-          ))}
-        </div>
+        <section aria-label="Commission metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <MetricCard label="Total earned" value={formatINR(summary.totalEarned)} icon={<HandCoins className="h-4 w-4" />} />
+          <MetricCard label="Pending" value={formatINR(summary.pending)} icon={<Hourglass className="h-4 w-4" />} hint="Pending + earned" />
+          <MetricCard label="Approved" value={formatINR(summary.approved)} icon={<CheckCircle2 className="h-4 w-4" />} />
+          <MetricCard label="Paid" value={formatINR(summary.paid)} />
+          <MetricCard
+            label="Reversed"
+            value={formatINR(summary.reversed)}
+            icon={<RotateCcw className="h-4 w-4" />}
+            hint={`${formatCount(summary.eligibleCount)} eligible rows`}
+          />
+        </section>
 
-        {/* Commission History */}
-        <Card className="border border-slate-200/50 bg-white/70 backdrop-blur-md rounded-3xl p-5 md:p-7 overflow-hidden shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Earning Logs</h2>
-          <div className="space-y-3">
-            {commissions.length ? (
-              commissions.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex flex-col gap-4 rounded-xl border border-slate-200/50 bg-white/50 p-4 transition-all duration-150 hover:bg-white hover:border-slate-300 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="space-y-1">
-                    <p className="font-extrabold text-slate-900 text-sm">
-                      {c.service_name || "Premium Digital Service"}
-                    </p>
-                    <p className="font-mono text-xs text-slate-400 font-semibold">
-                      Rule Type: <span className="capitalize text-slate-650 font-bold">{c.commission_type}</span>
-                      {c.commission_rate ? ` (${c.commission_rate}%)` : ""}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-4 shrink-0 justify-between md:justify-end">
-                    <p className="text-lg font-black text-slate-900">{formatCurrency(c.calculated_amount)}</p>
-                    
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold capitalize border ${
-                        c.status === "paid"
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                          : c.status === "approved"
-                          ? "bg-blue-50 border-blue-200 text-blue-700"
-                          : "bg-amber-50 border-amber-200 text-amber-700"
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-
-                    <p className="text-xs text-slate-400 font-mono font-semibold">{formatDate(c.created_at)}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-400 font-semibold bg-white/50">
-                No commission transactions recorded yet.
-              </p>
-            )}
-          </div>
-        </Card>
+        <CommissionsLedgerClient commissions={commissions} />
       </div>
     </main>
   );

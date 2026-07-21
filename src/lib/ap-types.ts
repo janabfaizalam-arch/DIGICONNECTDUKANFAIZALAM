@@ -229,7 +229,13 @@ export type APCommission = {
 
   // Joined
   agency_partner?: Pick<AgencyPartner, "full_name" | "email" | "mobile" | "partner_code"> | null;
-  application?: { id: string; service_name: string; amount: number; created_at: string } | null;
+  application?: {
+    id: string;
+    service_name: string;
+    amount: number;
+    created_at: string;
+    customer_name?: string | null;
+  } | null;
 };
 
 // ── Wallet Ledger ──────────────────────────────────────────────────────────
