@@ -17,6 +17,8 @@ const servicesLinks = [
 
 const companyLinks = [
   { label: "About RNOS", href: "https://www.rnos.in", external: true },
+  { label: "Become a Digi Partner", href: "/digi-partner" },
+  { label: "Digi Partner Login", href: "/ap/login" },
   { label: "Contact Us", href: "/#support" },
   { label: "Support Desk", href: "/#support" },
   { label: "FAQ Center", href: "/#faq" },

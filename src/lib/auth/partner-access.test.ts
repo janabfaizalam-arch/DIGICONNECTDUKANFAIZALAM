@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DIGI_PARTNER_BECOME_CTA_LABEL,
   DIGI_PARTNER_DASHBOARD_ROUTE,
+  DIGI_PARTNER_LANDING_ROUTE,
   DIGI_PARTNER_LOGIN_ROUTE,
   PARTNER_LOGIN_ALIASES,
   normalizePartnerRole,
@@ -13,10 +15,13 @@ describe("canonical routes", () => {
   it("uses /ap/login as the single canonical partner login route", () => {
     expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/ap/login");
     expect(DIGI_PARTNER_DASHBOARD_ROUTE).toBe("/ap/dashboard");
+    expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/digi-partner");
+    expect(DIGI_PARTNER_BECOME_CTA_LABEL).toBe("Become a Digi Partner");
   });
 
   it("never lists the canonical route as an alias (prevents redirect loops)", () => {
     expect(PARTNER_LOGIN_ALIASES).not.toContain(DIGI_PARTNER_LOGIN_ROUTE);
+    expect(PARTNER_LOGIN_ALIASES).not.toContain(DIGI_PARTNER_LANDING_ROUTE);
   });
 });
 

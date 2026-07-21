@@ -8,6 +8,9 @@
  *     and legacy route redirects — never shown in new public UI.
  */
 
+/** Public Digi Partner marketing / onboarding landing page. */
+export const DIGI_PARTNER_LANDING_ROUTE = "/digi-partner";
+
 /** The one canonical Digi Partner login route. */
 export const DIGI_PARTNER_LOGIN_ROUTE = "/ap/login";
 
@@ -17,8 +20,11 @@ export const DIGI_PARTNER_DASHBOARD_ROUTE = "/ap/dashboard";
 /** Public label shown in navbars, footers, menus, and CTAs. */
 export const DIGI_PARTNER_LABEL = "Digi Partner";
 
-/** Public CTA label. */
+/** Public CTA label for signing in. */
 export const DIGI_PARTNER_CTA_LABEL = "Digi Partner Login";
+
+/** Public CTA label for becoming a partner. */
+export const DIGI_PARTNER_BECOME_CTA_LABEL = "Become a Digi Partner";
 
 /**
  * Legacy / alternate partner login URLs that must permanently redirect to the

@@ -7,13 +7,14 @@ import { useEffect, useRef } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
-import { DIGI_PARTNER_CTA_LABEL, DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
+import { DIGI_PARTNER_BECOME_CTA_LABEL, DIGI_PARTNER_CTA_LABEL, DIGI_PARTNER_LANDING_ROUTE, DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 
 const menuLinks = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/about", label: "About" },
-  { href: "/customer/dashboard#applications", label: "Track Application" },
+  { href: "/customer/login", label: "Track Application" },
+  { href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL },
   { href: "/#support", label: "Contact" },
   { href: "/download-app", label: "Download App", icon: Download },
 ];

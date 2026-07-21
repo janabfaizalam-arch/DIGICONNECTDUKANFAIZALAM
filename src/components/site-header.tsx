@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck } from "lucide-react";
+import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck, ChevronDown, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -10,7 +10,12 @@ import type { User } from "@supabase/supabase-js";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
-import { DIGI_PARTNER_CTA_LABEL, DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
+import {
+  DIGI_PARTNER_BECOME_CTA_LABEL,
+  DIGI_PARTNER_CTA_LABEL,
+  DIGI_PARTNER_LANDING_ROUTE,
+  DIGI_PARTNER_LOGIN_ROUTE,
+} from "@/lib/auth/partner-access";
 
 type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
@@ -645,21 +650,49 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          {/* CENTER — AI Search Trigger (Desktop) */}
+          {/* CENTER — Public nav (desktop guests) or AI Search */}
           {!agentShell && (
-            <div className="hidden flex-1 items-center justify-center px-8 md:flex lg:px-16">
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="flex h-10 w-full max-w-md items-center gap-2.5 rounded-2xl border border-slate-200/40 bg-white/40 px-4 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-350 hover:bg-white hover:shadow-sm"
-              >
-                <Search className="h-4 w-4 text-slate-400" />
-                <span className="flex items-center gap-1">
-                  AI Search services, FAQs, schemes...
-                </span>
-                <kbd className="ml-auto hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-405 lg:inline-block">
-                  ⌘K
-                </kbd>
-              </button>
+            <div className="hidden flex-1 items-center justify-center gap-1 px-4 md:flex lg:px-10">
+              {!isLoggedIn ? (
+                <nav aria-label="Primary" className="flex items-center gap-0.5">
+                  {[
+                    { href: "/", label: "Home" },
+                    { href: "/services", label: "Services" },
+                    { href: "/customer/login", label: "Track Application" },
+                    { href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL },
+                  ].map((item) => {
+                    const active =
+                      item.href === "/"
+                        ? pathname === "/"
+                        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "rounded-xl px-3 py-2 text-xs font-bold transition",
+                          active
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-800",
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              ) : (
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="flex h-10 w-full max-w-md items-center gap-2.5 rounded-2xl border border-slate-200/40 bg-white/40 px-4 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-350 hover:bg-white hover:shadow-sm"
+                >
+                  <Search className="h-4 w-4 text-slate-400" />
+                  <span className="flex items-center gap-1">AI Search services, FAQs, schemes...</span>
+                  <kbd className="ml-auto hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-405 lg:inline-block">
+                    ⌘K
+                  </kbd>
+                </button>
+              )}
             </div>
           )}
 
@@ -667,10 +700,10 @@ export function SiteHeader() {
           {agentShell && (
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
               {[
-                ["/agent/dashboard", "Dashboard"],
-                ["/agent/applications/new", "New Application"],
-                ["/agent/applications", "Applications"],
-                ["/agent/commissions", "Commissions"],
+                ["/ap/dashboard", "Dashboard"],
+                ["/ap/applications/new", "New Application"],
+                ["/ap/applications", "Applications"],
+                ["/ap/commissions", "Commissions"],
               ].map(([href, label]) => {
                 const isActive = pathname === href;
                 return (
@@ -896,30 +929,60 @@ export function SiteHeader() {
                 href={DIGI_PARTNER_LOGIN_ROUTE}
                 aria-label={DIGI_PARTNER_CTA_LABEL}
                 title={DIGI_PARTNER_CTA_LABEL}
-                className="hidden h-9 items-center gap-1.5 rounded-xl border border-indigo-200/70 bg-white/60 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-800 active:scale-[0.98] md:inline-flex"
+                className="hidden h-9 items-center gap-1.5 rounded-xl border border-indigo-200/70 bg-white/60 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-800 active:scale-[0.98] lg:inline-flex"
               >
                 <BadgeCheck className="h-3.5 w-3.5" />
-                {DIGI_PARTNER_CTA_LABEL}
+                Digi Partner
               </Link>
             )}
 
-            {/* Dashboard / Login */}
-            <Link
-              href={dashboardHref}
-              className="hidden h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] md:inline-flex"
-            >
-              {isLoggedIn ? (
-                <>
-                  <LayoutDashboard className="h-3.5 w-3.5" />
-                  Dashboard
-                </>
-              ) : (
-                <>
+            {/* Dashboard (logged in) or Login menu (guest) */}
+            {isLoggedIn ? (
+              <Link
+                href={dashboardHref}
+                className="hidden h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] md:inline-flex"
+              >
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                Dashboard
+              </Link>
+            ) : (
+              <details className="relative hidden md:block">
+                <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] [&::-webkit-details-marker]:hidden">
                   <LogIn className="h-3.5 w-3.5" />
                   Login
-                </>
-              )}
-            </Link>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+                </summary>
+                <div
+                  role="menu"
+                  aria-label="Choose login type"
+                  className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl"
+                >
+                  {[
+                    { href: "/customer/login", label: "Customer", icon: UserRound, hint: "Mobile + PIN" },
+                    { href: DIGI_PARTNER_LOGIN_ROUTE, label: "Digi Partner", icon: BadgeCheck, hint: "Username + password" },
+                    { href: "/admin/login", label: "Admin", icon: ShieldCheck, hint: "Email or mobile + PIN" },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        role="menuitem"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-slate-50"
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 text-left">
+                          <span className="block text-xs font-bold text-slate-800">{item.label}</span>
+                          <span className="block text-[10px] font-semibold text-slate-400">{item.hint}</span>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
 
             {/* Profile / Logout (desktop) */}
             {isLoggedIn && !agentShell && (
@@ -942,8 +1005,9 @@ export function SiteHeader() {
 
             {/* Mobile Login/Dashboard */}
             <Link
-              href={dashboardHref}
+              href={isLoggedIn ? dashboardHref : "/customer/login"}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 active:scale-95 md:hidden"
+              aria-label={isLoggedIn ? "Dashboard" : "Customer Login"}
             >
               {isLoggedIn ? (
                 <UserRound className="h-[18px] w-[18px]" />
