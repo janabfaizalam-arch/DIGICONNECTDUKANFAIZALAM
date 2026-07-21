@@ -1427,6 +1427,137 @@ textarea {
   }
 }
 
+/* ===== Auth Experience — Apple Liquid Glass ===== */
+
+/* Slow-drifting aurora mesh behind the auth card */
+@keyframes auth-aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(3%, -2%, 0) scale(1.06); }
+  66% { transform: translate3d(-2%, 3%, 0) scale(0.98); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Floating glass blobs */
+@keyframes auth-blob-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -26px, 0); }
+}
+
+/* Rising ambient particles */
+@keyframes auth-particle-rise {
+  0% { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.6); }
+  20% { opacity: 0.7; }
+  80% { opacity: 0.5; }
+  100% { opacity: 0; transform: translate3d(0, -42px, 0) scale(1); }
+}
+
+/* Invalid input shake */
+@keyframes auth-shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* Button press ripple */
+@keyframes auth-ripple {
+  from { transform: scale(0); opacity: 0.45; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* Success check draw */
+@keyframes auth-check-draw {
+  from { stroke-dashoffset: 26; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes auth-pop-in {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.auth-aurora {
+  animation: auth-aurora-drift 22s ease-in-out infinite;
+  will-change: transform;
+}
+.auth-blob {
+  animation: auth-blob-float 16s ease-in-out infinite;
+  will-change: transform;
+}
+.auth-blob-delay {
+  animation-delay: -8s;
+}
+.auth-particle {
+  animation: auth-particle-rise 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.auth-shake {
+  animation: auth-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+.auth-ripple-dot {
+  animation: auth-ripple 0.6s ease-out forwards;
+}
+.auth-check-path {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  animation: auth-check-draw 0.5s cubic-bezier(0.65, 0, 0.35, 1) 0.1s forwards;
+}
+.auth-pop-in {
+  animation: auth-pop-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Premium glass auth card */
+.auth-glass-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(30px) saturate(1.9);
+  -webkit-backdrop-filter: blur(30px) saturate(1.9);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 24px 70px rgba(15, 23, 42, 0.12),
+    0 2px 8px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Diagonal glass reflection sweep on the card */
+.auth-glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(130deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 42%);
+  z-index: 0;
+}
+
+.auth-field-caret {
+  caret-color: var(--electric-blue);
+}
+
+@media (max-width: 767px) {
+  .auth-glass-card {
+    backdrop-filter: blur(18px) saturate(1.7);
+    -webkit-backdrop-filter: blur(18px) saturate(1.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-aurora,
+  .auth-blob,
+  .auth-particle,
+  .auth-shake,
+  .auth-ripple-dot,
+  .auth-check-path,
+  .auth-pop-in {
+    animation: none !important;
+  }
+  .auth-check-path {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Autofill Premium Styling overrides */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 

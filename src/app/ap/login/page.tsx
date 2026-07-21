@@ -1,12 +1,10 @@
-"use client";
-
-import { UnifiedLoginExperience } from "@/components/auth/unified-login";
+import { AuthScene } from "@/components/auth/ui";
+import { ApLoginForm } from "@/components/auth/ap-login-form";
 
 export default function APLoginPage() {
   return (
-    <UnifiedLoginExperience
-      initialTab="partner"
-      initialMode="login"
-    />
+    <AuthScene eyebrow="Partner Network">
+      <ApLoginForm />
+    </AuthScene>
   );
 }

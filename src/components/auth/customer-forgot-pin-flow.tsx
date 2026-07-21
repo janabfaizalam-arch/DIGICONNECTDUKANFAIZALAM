@@ -1,15 +1,30 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { OtpInput } from "@/components/auth/otp-input";
+import { useToast } from "@/components/providers/toast-provider";
+import {
+  AuthButton,
+  AuthHeading,
+  AuthSuccess,
+  CountdownRing,
+  GlassCard,
+  OtpField,
+  PhoneField,
+  PinField,
+} from "@/components/auth/ui";
+import { messageFor, postJson } from "@/components/auth/ui/request";
+import { stepTransition } from "@/components/auth/ui/motion";
 
 type Step = "phone" | "otp" | "pin";
 
 export function CustomerForgotPinFlow() {
-  const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const { error: toastError } = useToast();
+
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -20,6 +35,7 @@ export function CustomerForgotPinFlow() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -28,157 +44,158 @@ export function CustomerForgotPinFlow() {
   }, [cooldown]);
 
   async function sendOtp() {
-    setLoading(true);
+    if (loading) return;
     setError(null);
-    const response = await fetch("/api/auth/customer/forgot-pin/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }),
-    });
-    const data = (await response.json()) as { error?: string; message?: string };
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "Request failed");
+    if (phone.length !== 10) {
+      setError("Enter a valid 10-digit mobile number.");
       return;
     }
-    setMessage(data.message ?? "Agar is number se account registered hai, to WhatsApp par OTP bhej diya gaya hai.");
-    setCooldown(60);
-    setStep("otp");
+    setLoading(true);
+    try {
+      const result = await postJson<{ error?: string; message?: string }>("/api/auth/customer/forgot-pin/send-otp", { phone });
+      if (!result.ok) {
+        const msg = messageFor(result, "Request failed.");
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      setMessage(result.data.message ?? "If this number is registered, an OTP has been sent on WhatsApp.");
+      setCooldown(60);
+      setOtp("");
+      setStep("otp");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function verifyOtp() {
-    setLoading(true);
+    if (loading) return;
     setError(null);
-    const response = await fetch("/api/auth/customer/forgot-pin/verify-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, otp }),
-    });
-    const data = (await response.json()) as { error?: string; verificationToken?: string };
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "OTP verify failed");
-      return;
+    setLoading(true);
+    try {
+      const result = await postJson<{ error?: string; verificationToken?: string }>("/api/auth/customer/forgot-pin/verify-otp", {
+        phone,
+        otp,
+      });
+      if (!result.ok) {
+        const msg = messageFor(result, "OTP verification failed.");
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      setVerificationToken(result.data.verificationToken ?? "");
+      setStep("pin");
+    } finally {
+      setLoading(false);
     }
-    setVerificationToken(data.verificationToken ?? "");
-    setStep("pin");
   }
 
   async function resetPin() {
+    if (loading) return;
+    setError(null);
     if (!/^\d{6}$/.test(pin) || !/^\d{6}$/.test(confirmPin)) {
-      setError("PIN exactly 6 digits hona chahiye.");
+      setError("PIN must be exactly 6 digits.");
       return;
     }
     if (pin !== confirmPin) {
-      setError("PIN aur Confirm PIN match nahi karte.");
+      setError("PIN and Confirm PIN do not match.");
       return;
     }
-
     setLoading(true);
-    setError(null);
-    const response = await fetch("/api/auth/customer/forgot-pin/reset", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, verificationToken, pin, confirmPin }),
-    });
-    const data = (await response.json()) as { error?: string; redirectTo?: string; message?: string };
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "PIN reset failed");
-      return;
+    try {
+      const result = await postJson<{ error?: string; redirectTo?: string }>("/api/auth/customer/forgot-pin/reset", {
+        phone,
+        verificationToken,
+        pin,
+        confirmPin,
+      });
+      if (!result.ok) {
+        const msg = messageFor(result, "PIN reset failed.");
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      setDone(true);
+      window.setTimeout(() => window.location.replace(result.data.redirectTo || "/customer/login?pinCreated=1"), 900);
+    } finally {
+      setLoading(false);
     }
-    router.push(data.redirectTo || "/customer/login?pinCreated=1");
+  }
+
+  if (done) {
+    return (
+      <GlassCard>
+        <AuthSuccess title="PIN updated" message="You can now login with your new PIN." redirectSeconds={2} />
+      </GlassCard>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {step === "phone" ? (
-        <>
-          <label className="block text-sm">
-            Registered Mobile Number
-            <div className="mt-1 flex overflow-hidden rounded-xl border border-slate-300 bg-white">
-              <span className="bg-slate-50 px-3 py-2 text-sm">+91</span>
-              <input
-                inputMode="numeric"
+    <GlassCard>
+      <AuthHeading title="Forgot / Create PIN" subtitle="Verify your registered WhatsApp number to set a new PIN." />
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          variants={reduceMotion ? undefined : stepTransition}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="flex flex-col gap-4"
+        >
+          {step === "phone" ? (
+            <>
+              <PhoneField
+                label="Registered mobile number"
+                icon={<Smartphone className="h-4 w-4" />}
                 value={phone}
+                disabled={loading}
+                success={phone.length === 10}
+                error={error}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="9876543210"
-                className="w-full px-3 py-2 outline-none"
               />
-            </div>
-          </label>
-          <button
-            type="button"
-            disabled={loading || phone.length !== 10}
-            onClick={sendOtp}
-            className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Sending…" : "Send WhatsApp OTP"}
-          </button>
-        </>
-      ) : null}
+              <AuthButton loading={loading} loadingText="Sending OTP…" onClick={() => void sendOtp()} disabled={phone.length !== 10}>
+                Send WhatsApp OTP
+              </AuthButton>
+            </>
+          ) : null}
 
-      {step === "otp" ? (
-        <>
-          {message ? <p className="text-sm text-slate-600">{message}</p> : null}
-          <OtpInput value={otp} onChange={setOtp} disabled={loading} />
-          <button
-            type="button"
-            disabled={loading || otp.length !== 6}
-            onClick={verifyOtp}
-            className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            Verify OTP
-          </button>
-          <button type="button" disabled={cooldown > 0} onClick={sendOtp} className="w-full text-sm underline disabled:opacity-50">
-            {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
-          </button>
-        </>
-      ) : null}
+          {step === "otp" ? (
+            <>
+              {message ? <p className="text-center text-sm text-slate-500">{message}</p> : null}
+              <OtpField value={otp} onChange={setOtp} disabled={loading} error={error} onComplete={() => void verifyOtp()} />
+              <AuthButton loading={loading} loadingText="Verifying…" onClick={() => void verifyOtp()} disabled={otp.length !== 6}>
+                Verify OTP
+              </AuthButton>
+              <button
+                type="button"
+                disabled={cooldown > 0 || loading}
+                onClick={() => void sendOtp()}
+                className="mx-auto inline-flex items-center gap-2 text-sm font-semibold text-blue-600 outline-none disabled:text-slate-400"
+              >
+                {cooldown > 0 ? <CountdownRing seconds={cooldown} total={60} /> : null}
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
+              </button>
+            </>
+          ) : null}
 
-      {step === "pin" ? (
-        <>
-          <label className="block text-sm">
-            Create 6-digit PIN
-            <input
-              type="password"
-              inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 tracking-widest"
-            />
-          </label>
-          <label className="block text-sm">
-            Confirm 6-digit PIN
-            <input
-              type="password"
-              inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
-              value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 tracking-widest"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={loading || pin.length !== 6 || confirmPin.length !== 6}
-            onClick={resetPin}
-            className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Saving…" : "Create PIN"}
-          </button>
-        </>
-      ) : null}
+          {step === "pin" ? (
+            <>
+              <PinField label="Create new PIN" value={pin} onChange={setPin} disabled={loading} autoFocus />
+              <PinField label="Confirm new PIN" value={confirmPin} onChange={setConfirmPin} disabled={loading} error={error} />
+              <AuthButton loading={loading} loadingText="Saving…" onClick={() => void resetPin()} disabled={pin.length !== 6 || confirmPin.length !== 6}>
+                Create PIN
+              </AuthButton>
+            </>
+          ) : null}
+        </motion.div>
+      </AnimatePresence>
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <p className="text-center text-sm">
-        <Link href="/customer/login" className="underline">
+        <Link href="/customer/login" className="font-semibold text-blue-600 hover:underline">
           Back to login
         </Link>
       </p>
-    </div>
+    </GlassCard>
   );
 }

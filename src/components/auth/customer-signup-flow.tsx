@@ -1,15 +1,33 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { MapPin, Smartphone, UserRound, Home, Building2, Map as MapIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { OtpInput } from "@/components/auth/otp-input";
+import { useToast } from "@/components/providers/toast-provider";
+import {
+  AuthButton,
+  AuthHeading,
+  AuthSuccess,
+  CountdownRing,
+  GlassCard,
+  OtpField,
+  PhoneField,
+  PinField,
+  TextField,
+} from "@/components/auth/ui";
+import { messageFor, postJson } from "@/components/auth/ui/request";
+import { stepTransition } from "@/components/auth/ui/motion";
 
 type Step = "details" | "otp" | "pin";
+const STEPS: Step[] = ["details", "otp", "pin"];
+const STEP_LABELS: Record<Step, string> = { details: "Details", otp: "Verify", pin: "Set PIN" };
 
 export function CustomerSignupFlow() {
-  const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const { error: toastError, success: toastSuccess } = useToast();
+
   const [step, setStep] = useState<Step>("details");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -26,6 +44,7 @@ export function CustomerSignupFlow() {
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -34,187 +53,208 @@ export function CustomerSignupFlow() {
   }, [cooldown]);
 
   async function sendOtp() {
-    setLoading(true);
+    if (loading) return;
     setError(null);
-    const response = await fetch("/api/auth/customer/send-signup-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    if (!fullName.trim() || phone.length !== 10 || !address.trim() || pincode.length !== 6 || !district.trim() || !stateName.trim()) {
+      setError("Please complete all details.");
+      return;
+    }
+    if (!acceptedTerms) {
+      setError("Please accept the Terms and Privacy Policy.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await postJson<{ error?: string; maskedPhone?: string }>("/api/auth/customer/send-signup-otp", {
         fullName,
         phone,
         address,
         pincode,
         district,
         state: stateName,
-      }),
-    });
-    const data = (await response.json()) as { error?: string; maskedPhone?: string };
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "OTP send failed");
-      return;
+      });
+      if (!result.ok) {
+        const msg = messageFor(result, "OTP send failed.");
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      setMaskedPhone(result.data.maskedPhone ?? "");
+      setCooldown(60);
+      setOtp("");
+      setStep("otp");
+    } finally {
+      setLoading(false);
     }
-    setMaskedPhone(data.maskedPhone ?? "");
-    setCooldown(60);
-    setStep("otp");
   }
 
   async function verifyOtp() {
-    setLoading(true);
+    if (loading) return;
     setError(null);
-    const response = await fetch("/api/auth/customer/verify-signup-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, otp }),
-    });
-    const data = (await response.json()) as { error?: string; verificationToken?: string };
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "OTP verify failed");
-      return;
+    setLoading(true);
+    try {
+      const result = await postJson<{ error?: string; verificationToken?: string }>("/api/auth/customer/verify-signup-otp", {
+        phone,
+        otp,
+      });
+      if (!result.ok) {
+        const msg = messageFor(result, "OTP verification failed.");
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      setVerificationToken(result.data.verificationToken ?? "");
+      setStep("pin");
+    } finally {
+      setLoading(false);
     }
-    setVerificationToken(data.verificationToken ?? "");
-    setStep("pin");
   }
 
   async function completeSignup() {
-    setLoading(true);
+    if (loading) return;
     setError(null);
-    const response = await fetch("/api/auth/customer/complete-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    if (pin.length !== 6 || confirmPin.length !== 6) {
+      setError("PIN must be exactly 6 digits.");
+      return;
+    }
+    if (pin !== confirmPin) {
+      setError("PIN and Confirm PIN do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await postJson<{ error?: string; redirectTo?: string }>("/api/auth/customer/complete-signup", {
         phone,
         verificationToken,
         pin,
         confirmPin,
         acceptedTerms: true,
-      }),
-    });
-    const data = (await response.json()) as { error?: string; redirectTo?: string };
-    setLoading(false);
-    if (!response.ok && response.status !== 201) {
-      setError(data.error ?? "Signup failed");
-      return;
+      });
+      if (!result.ok) {
+        const msg = messageFor(result, "Signup failed.");
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      toastSuccess("Account created successfully!");
+      setDone(true);
+      window.setTimeout(() => window.location.replace(result.data.redirectTo || "/customer/dashboard"), 900);
+    } finally {
+      setLoading(false);
     }
-    router.refresh();
-    router.push(data.redirectTo || "/customer/dashboard");
   }
 
+  if (done) {
+    return (
+      <GlassCard>
+        <AuthSuccess title="Account created" message="Taking you to your dashboard." redirectSeconds={2} />
+      </GlassCard>
+    );
+  }
+
+  const activeIndex = STEPS.indexOf(step);
+
   return (
-    <div className="space-y-4">
-      {step === "details" ? (
-        <>
-          <Field label="Full Name" value={fullName} onChange={setFullName} />
-          <label className="block text-sm">
-            WhatsApp Mobile Number
-            <div className="mt-1 flex overflow-hidden rounded-xl border border-slate-300 bg-white">
-              <span className="bg-slate-50 px-3 py-2 text-sm text-slate-600">+91</span>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                className="w-full px-3 py-2 outline-none"
-                placeholder="9876543210"
-                required
-              />
-            </div>
-          </label>
-          <Field label="Full Address" value={address} onChange={setAddress} />
-          <Field label="Pincode" value={pincode} onChange={(v) => setPincode(v.replace(/\D/g, "").slice(0, 6))} />
-          <Field label="District" value={district} onChange={setDistrict} />
-          <Field label="State" value={stateName} onChange={setStateName} />
-          <label className="flex items-start gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} />
-            <span>
-              I agree to the <Link href="/terms-and-conditions" className="underline">Terms</Link> and{" "}
-              <Link href="/privacy-policy" className="underline">Privacy Policy</Link>.
+    <GlassCard>
+      <AuthHeading title="Create your account" subtitle="Verify your WhatsApp number, then set a 6-digit PIN." />
+
+      {/* Step indicator */}
+      <div className="flex items-center gap-2" aria-hidden>
+        {STEPS.map((s, i) => (
+          <div key={s} className="flex flex-1 flex-col gap-1.5">
+            <div className={`h-1 rounded-full transition-colors duration-300 ${i <= activeIndex ? "bg-blue-500" : "bg-slate-200"}`} />
+            <span className={`text-[10px] font-semibold ${i <= activeIndex ? "text-blue-600" : "text-slate-400"}`}>
+              {STEP_LABELS[s]}
             </span>
-          </label>
-          <button
-            type="button"
-            disabled={loading || !acceptedTerms || phone.length !== 10}
-            onClick={sendOtp}
-            className="w-full rounded-full bg-teal-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Sending…" : "Send WhatsApp OTP"}
-          </button>
-        </>
-      ) : null}
+          </div>
+        ))}
+      </div>
 
-      {step === "otp" ? (
-        <>
-          <p className="text-center text-sm text-slate-600">OTP bheja gaya: {maskedPhone}</p>
-          <OtpInput value={otp} onChange={setOtp} disabled={loading} />
-          <button
-            type="button"
-            disabled={loading || otp.length !== 6}
-            onClick={verifyOtp}
-            className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Verifying…" : "Verify OTP"}
-          </button>
-          <button
-            type="button"
-            disabled={cooldown > 0 || loading}
-            onClick={sendOtp}
-            className="w-full text-sm text-slate-600 underline disabled:no-underline disabled:opacity-50"
-          >
-            {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
-          </button>
-        </>
-      ) : null}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          variants={reduceMotion ? undefined : stepTransition}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="flex flex-col gap-4"
+        >
+          {step === "details" ? (
+            <>
+              <TextField label="Full name" icon={<UserRound className="h-4 w-4" />} value={fullName} disabled={loading} onChange={(e) => setFullName(e.target.value)} />
+              <PhoneField label="WhatsApp mobile number" icon={<Smartphone className="h-4 w-4" />} value={phone} disabled={loading} success={phone.length === 10} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} />
+              <TextField label="Full address" icon={<Home className="h-4 w-4" />} value={address} disabled={loading} onChange={(e) => setAddress(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Pincode" icon={<MapPin className="h-4 w-4" />} inputMode="numeric" value={pincode} disabled={loading} success={pincode.length === 6} onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+                <TextField label="District" icon={<Building2 className="h-4 w-4" />} value={district} disabled={loading} onChange={(e) => setDistrict(e.target.value)} />
+              </div>
+              <TextField label="State" icon={<MapIcon className="h-4 w-4" />} value={stateName} disabled={loading} onChange={(e) => setStateName(e.target.value)} />
 
-      {step === "pin" ? (
-        <>
-          <p className="text-sm text-slate-600">6-digit login PIN set karein (OTP ke baad har baar OTP nahi chahiye).</p>
-          <Field label="6-Digit PIN" value={pin} onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 6))} type="password" />
-          <Field
-            label="Confirm PIN"
-            value={confirmPin}
-            onChange={(v) => setConfirmPin(v.replace(/\D/g, "").slice(0, 6))}
-            type="password"
-          />
-          <button
-            type="button"
-            disabled={loading || pin.length !== 6 || confirmPin.length !== 6}
-            onClick={completeSignup}
-            className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Creating account…" : "Create account & login"}
-          </button>
-        </>
-      ) : null}
+              <label className="flex items-start gap-2.5 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  disabled={loading}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  I agree to the <Link href="/terms-and-conditions" className="font-semibold text-blue-600 hover:underline">Terms</Link> and{" "}
+                  <Link href="/privacy-policy" className="font-semibold text-blue-600 hover:underline">Privacy Policy</Link>.
+                </span>
+              </label>
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+              {error ? <p className="pl-1 text-xs font-semibold text-rose-600">{error}</p> : null}
 
-      <p className="text-center text-sm text-slate-600">
-        Already registered? <Link href="/customer/login" className="underline">Login</Link>
+              <AuthButton loading={loading} loadingText="Sending OTP…" onClick={() => void sendOtp()} disabled={!acceptedTerms || phone.length !== 10}>
+                Send WhatsApp OTP
+              </AuthButton>
+            </>
+          ) : null}
+
+          {step === "otp" ? (
+            <>
+              <p className="text-center text-sm text-slate-500">
+                OTP sent to <span className="font-semibold text-slate-700">{maskedPhone || "your WhatsApp"}</span>
+              </p>
+              <OtpField value={otp} onChange={setOtp} disabled={loading} error={error} onComplete={() => void verifyOtp()} />
+
+              <AuthButton loading={loading} loadingText="Verifying…" onClick={() => void verifyOtp()} disabled={otp.length !== 6}>
+                Verify OTP
+              </AuthButton>
+
+              <button
+                type="button"
+                disabled={cooldown > 0 || loading}
+                onClick={() => void sendOtp()}
+                className="mx-auto inline-flex items-center gap-2 text-sm font-semibold text-blue-600 outline-none disabled:text-slate-400"
+              >
+                {cooldown > 0 ? <CountdownRing seconds={cooldown} total={60} /> : null}
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
+              </button>
+            </>
+          ) : null}
+
+          {step === "pin" ? (
+            <>
+              <p className="text-sm text-slate-500">Set a 6-digit login PIN. You won&apos;t need OTP for future logins.</p>
+              <PinField label="Create PIN" value={pin} onChange={setPin} disabled={loading} autoFocus />
+              <PinField label="Confirm PIN" value={confirmPin} onChange={setConfirmPin} disabled={loading} error={error} />
+
+              <AuthButton loading={loading} loadingText="Creating account…" status={done ? "success" : "idle"} onClick={() => void completeSignup()} disabled={pin.length !== 6 || confirmPin.length !== 6}>
+                Create account &amp; login
+              </AuthButton>
+            </>
+          ) : null}
+        </motion.div>
+      </AnimatePresence>
+
+      <p className="text-center text-sm text-slate-500">
+        Already registered?{" "}
+        <Link href="/customer/login" className="font-semibold text-blue-600 hover:underline">
+          Login
+        </Link>
       </p>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  return (
-    <label className="block text-sm">
-      {label}
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        required
-        className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
-      />
-    </label>
+    </GlassCard>
   );
 }
