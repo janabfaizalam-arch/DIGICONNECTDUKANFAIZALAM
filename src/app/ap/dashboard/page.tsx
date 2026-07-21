@@ -92,8 +92,17 @@ export default async function APDashboardPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#F6F8FC] text-[#0F172A]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px]"
+        style={{
+          background:
+            "radial-gradient(90% 60% at 50% -10%, rgba(79,70,229,0.10), transparent 60%)," +
+            "radial-gradient(60% 40% at 100% 0%, rgba(37,99,235,0.08), transparent 55%)",
+        }}
+      />
+      <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <APDashboardClient
           ap={ap as unknown as {
             id: string;
@@ -102,6 +111,7 @@ export default async function APDashboardPage() {
             partner_type: string;
             kyc_status: string;
             status: string;
+            business_name?: string | null;
             district?: string | null;
             state?: string | null;
             tier?: { name: string };

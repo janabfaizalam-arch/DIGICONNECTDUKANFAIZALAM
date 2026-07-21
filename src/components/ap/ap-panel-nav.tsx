@@ -283,19 +283,26 @@ export function APPanelNav() {
             </span>
           </div>
 
-          {/* CENTER: Desktop navigation links */}
-          <nav className="hidden flex-1 items-center justify-center gap-1.5 md:flex">
-            {navItems.map((item) => {
+          {/* CENTER: Desktop primary navigation */}
+          <nav aria-label="Digi Partner primary" className="hidden flex-1 items-center justify-center gap-1 md:flex">
+            {[
+              { href: "/ap/dashboard", label: "Home" },
+              { href: "/ap/applications", label: "Applications" },
+              { href: "/ap/customers", label: "Customers" },
+              { href: "/ap/wallet", label: "Wallet" },
+              { href: "/ap/commissions", label: "Earnings" },
+            ].map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "rounded-xl px-3 py-1.5 text-xs font-semibold tracking-wide transition-all duration-150 outline-none",
+                    "rounded-xl px-3 py-1.5 text-xs font-semibold tracking-wide transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                     active
-                      ? "bg-blue-600 text-white shadow-sm shadow-blue-500/10"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                      ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/10"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800",
                   )}
                 >
                   {item.label}
@@ -385,40 +392,35 @@ export function APPanelNav() {
       </header>
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
-      <nav className={cn("fixed bottom-0 inset-x-0 z-[49] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_rgba(15,23,42,0.04)] pb-safe-bottom transition-transform duration-300 ease-out", (!navVisible || keyboardOpen) && "translate-y-full")}>
+      <nav
+        aria-label="Digi Partner primary"
+        className={cn(
+          "fixed bottom-0 inset-x-0 z-[49] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_rgba(15,23,42,0.04)] pb-[max(0.35rem,env(safe-area-inset-bottom))] transition-transform duration-300 ease-out",
+          (!navVisible || keyboardOpen) && "translate-y-full",
+        )}
+      >
         {[
           { label: "Home", href: "/ap/dashboard", icon: Home },
           { label: "Applications", href: "/ap/applications", icon: FileText },
           { label: "Customers", href: "/ap/customers", icon: Users },
           { label: "Wallet", href: "/ap/wallet", icon: WalletCards },
-          { label: "More", href: "#more", icon: Menu, action: () => setDrawerOpen(true) }
+          { label: "Account", href: "/ap/profile", icon: UserCog },
         ].map((item) => {
           const Icon = item.icon;
-          const isActive = item.href !== "#more" && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-          return item.action ? (
-            <button
-              key={item.label}
-              onClick={item.action}
-              className="flex flex-col items-center justify-center flex-1 h-full text-slate-450 hover:text-slate-700 transition-colors border-none bg-transparent"
-            >
-              <Icon className="h-5 w-5 stroke-[1.8]" />
-              <span className="text-[10px] font-bold mt-1 tracking-wide">{item.label}</span>
-            </button>
-          ) : (
+          return (
             <Link
               key={item.label}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full relative transition-colors",
-                isActive ? "text-blue-600 font-extrabold" : "text-slate-450 hover:text-slate-700 font-bold"
+                "flex min-h-[44px] flex-1 flex-col items-center justify-center relative transition-colors",
+                isActive ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-700 font-bold",
               )}
             >
-              <Icon className="h-5 w-5 stroke-[1.8]" />
-              <span className="text-[10px] mt-1 tracking-wide">{item.label}</span>
-              {isActive && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-600" />
-              )}
+              <Icon className="h-5 w-5 stroke-[1.8]" aria-hidden />
+              <span className="mt-1 text-[10px] tracking-wide">{item.label}</span>
+              {isActive ? <span className="absolute bottom-1 h-1 w-1 rounded-full bg-indigo-600" aria-hidden /> : null}
             </Link>
           );
         })}

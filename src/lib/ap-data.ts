@@ -113,7 +113,20 @@ export async function getAdminAgencyPartnerList(): Promise<APListItem[]> {
 
 // ── AP Dashboard Stats ─────────────────────────────────────────────────────
 
-export async function getAPDashboardStats(apId: string): Promise<APDashboardStats & { todayApplications: number; revenueCollected: number; conversionRate: number }> {
+export async function getAPDashboardStats(apId: string): Promise<
+  APDashboardStats & {
+    todayApplications: number;
+    revenueCollected: number;
+    conversionRate: number;
+    todayEarnings: number;
+    yesterdayApplications: number;
+    lastWeekApplications: number;
+    lastMonthApplications: number;
+    yesterdayEarnings: number;
+    lastWeekEarnings: number;
+    lastMonthEarnings: number;
+  }
+> {
   const supabase = getSupabaseAdmin();
   const empty = {
     totalApplications: 0,
@@ -130,17 +143,39 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     todayApplications: 0,
     revenueCollected: 0,
     conversionRate: 0,
+    todayEarnings: 0,
+    yesterdayApplications: 0,
+    lastWeekApplications: 0,
+    lastMonthApplications: 0,
+    yesterdayEarnings: 0,
+    lastWeekEarnings: 0,
+    lastMonthEarnings: 0,
   };
 
   if (!supabase) return empty;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfLastWeek = new Date(startOfToday);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+  const endOfLastWeek = new Date(startOfToday);
+  endOfLastWeek.setDate(endOfLastWeek.getDate() - 6);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+  const startOfTodayIso = startOfToday.toISOString();
+  const startOfYesterdayIso = startOfYesterday.toISOString();
+  const startOfLastWeekIso = startOfLastWeek.toISOString();
+  const endOfLastWeekIso = endOfLastWeek.toISOString();
+  const startOfLastMonthIso = startOfLastMonth.toISOString();
+  const endOfLastMonthIso = endOfLastMonth.toISOString();
 
   const [appsResult, commissionsResult, walletResult, payoutsResult, customersResult, monthlyResult] = await Promise.all([
     supabase.from("applications").select("id, status, created_at, amount").eq("agency_partner_id", apId),
-    supabase.from("ap_commissions").select("calculated_amount, status").eq("agency_partner_id", apId),
+    supabase.from("ap_commissions").select("calculated_amount, status, created_at").eq("agency_partner_id", apId),
     supabase.from("ap_wallet_ledger").select("amount, entry_type").eq("agency_partner_id", apId),
     supabase.from("ap_payouts").select("amount, status").eq("agency_partner_id", apId),
     supabase.from("applications").select("customer_mobile_normalized").eq("agency_partner_id", apId).not("customer_mobile_normalized", "is", null),
@@ -148,7 +183,7 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
   ]);
 
   const apps = (appsResult.data ?? []) as { id: string; status: string; created_at: string; amount: number }[];
-  const commissions = (commissionsResult.data ?? []) as { calculated_amount: number; status: string }[];
+  const commissions = (commissionsResult.data ?? []) as { calculated_amount: number; status: string; created_at: string }[];
   const walletEntries = (walletResult.data ?? []) as { amount: number; entry_type: string }[];
   const payouts = (payoutsResult.data ?? []) as { amount: number; status: string }[];
   const customerMobiles = (customersResult.data ?? []) as { customer_mobile_normalized: string }[];
@@ -160,7 +195,24 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     return total;
   }, 0);
 
-  const todayApplications = apps.filter((a) => a.created_at && a.created_at >= startOfToday).length;
+  const sumCommissionInRange = (from: string, to?: string) =>
+    commissions
+      .filter((c) => c.created_at && c.created_at >= from && (!to || c.created_at < to))
+      .reduce((t, c) => t + safeNumber(c.calculated_amount), 0);
+
+  const countAppsInRange = (from: string, to?: string) =>
+    apps.filter((a) => a.created_at && a.created_at >= from && (!to || a.created_at < to)).length;
+
+  const todayApplications = countAppsInRange(startOfTodayIso);
+  const yesterdayApplications = countAppsInRange(startOfYesterdayIso, startOfTodayIso);
+  const lastWeekApplications = countAppsInRange(startOfLastWeekIso, endOfLastWeekIso);
+  const lastMonthApplications = countAppsInRange(startOfLastMonthIso, endOfLastMonthIso);
+
+  const todayEarnings = sumCommissionInRange(startOfTodayIso);
+  const yesterdayEarnings = sumCommissionInRange(startOfYesterdayIso, startOfTodayIso);
+  const lastWeekEarnings = sumCommissionInRange(startOfLastWeekIso, endOfLastWeekIso);
+  const lastMonthEarnings = sumCommissionInRange(startOfLastMonthIso, endOfLastMonthIso);
+
   const revenueCollected = apps
     .filter((a) => ["completed", "approved", "submitted", "in_process", "in_progress"].includes(a.status))
     .reduce((sum, a) => sum + safeNumber(a.amount), 0);
@@ -189,6 +241,13 @@ export async function getAPDashboardStats(apId: string): Promise<APDashboardStat
     todayApplications,
     revenueCollected,
     conversionRate,
+    todayEarnings,
+    yesterdayApplications,
+    lastWeekApplications,
+    lastMonthApplications,
+    yesterdayEarnings,
+    lastWeekEarnings,
+    lastMonthEarnings,
   };
 }
 
