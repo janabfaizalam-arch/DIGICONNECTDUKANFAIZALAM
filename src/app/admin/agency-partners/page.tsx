@@ -3,6 +3,10 @@ import { redirect } from "next/navigation";
 import { ExternalLink, Eye, Search, UserPlus } from "lucide-react";
 
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
+import {
+  ADMIN_AGENCY_PARTNERS_NEW_ROUTE,
+  adminAgencyPartnerDetailPath,
+} from "@/lib/admin/agency-partner-routes";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
@@ -70,7 +74,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
               <ExternalLink className="h-4 w-4 text-indigo-500" />
               Open Partner Portal
             </a>
-            <Link href="/admin/agency-partners/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
+            <Link href={ADMIN_AGENCY_PARTNERS_NEW_ROUTE} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
               <UserPlus className="h-4 w-4" />
               Onboard AP
             </Link>
@@ -162,7 +166,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                       </TableCell>
                       <TableCell className="font-bold">{safeCurrency(ap.pendingCommission)}</TableCell>
                       <TableCell>
-                        <Link href={`/admin/agency-partners/${ap.id}`} className="inline-flex h-9 items-center justify-center gap-2 rounded-full border bg-white px-3.5 text-xs font-bold text-slate-900 shadow-sm hover:bg-slate-50">
+                        <Link href={adminAgencyPartnerDetailPath(ap.id)} className="inline-flex h-9 items-center justify-center gap-2 rounded-full border bg-white px-3.5 text-xs font-bold text-slate-900 shadow-sm hover:bg-slate-50">
                           <Eye className="h-3.5 w-3.5 text-blue-500" />
                           View/Verify
                         </Link>
@@ -209,7 +213,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                   </div>
                 </div>
                 <div className="pt-2 border-t flex justify-end">
-                  <Link href={`/admin/agency-partners/${ap.id}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border bg-white px-4 text-xs font-bold text-slate-900 shadow-sm">
+                  <Link href={adminAgencyPartnerDetailPath(ap.id)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border bg-white px-4 text-xs font-bold text-slate-900 shadow-sm">
                     <Eye className="h-3.5 w-3.5 text-blue-500" />
                     Manage AP
                   </Link>

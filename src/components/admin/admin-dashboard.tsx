@@ -24,6 +24,7 @@ import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ADMIN_AGENCY_PARTNERS_NEW_ROUTE } from "@/lib/admin/agency-partner-routes";
 import { cn } from "@/lib/utils";
 
 export type DashboardKpi = {
@@ -181,7 +182,7 @@ export function AdminDashboard({
         {/* Quick Actions Panel */}
         <div className="mt-6 flex flex-wrap gap-2.5 border-t border-slate-100 pt-5">
           <Link
-            href="/admin/agency-partners/new"
+            href={ADMIN_AGENCY_PARTNERS_NEW_ROUTE}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition active:scale-98"
           >
             Onboard Partner

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAPWalletBalance } from "@/lib/ap-data";
+import { adminAgencyPartnerDetailPath, ADMIN_AGENCY_PARTNERS_ROUTE } from "@/lib/admin/agency-partner-routes";
 import type { APStatus, APKycStatus, APWalletEntryType } from "@/lib/ap-types";
 
 // Helper to check admin session
@@ -77,7 +78,8 @@ export async function updatePartnerStatusAction(
       .eq("id", partner.user_id);
   }
 
-  revalidatePath(`/admin/agency-partners/${apId}`);
+  revalidatePath(ADMIN_AGENCY_PARTNERS_ROUTE);
+  revalidatePath(adminAgencyPartnerDetailPath(apId));
 }
 
 export async function adjustWalletBalanceAction(
@@ -119,7 +121,8 @@ export async function adjustWalletBalanceAction(
     throw new Error(`Failed to write wallet ledger: ${error.message}`);
   }
 
-  revalidatePath(`/admin/agency-partners/${apId}`);
+  revalidatePath(ADMIN_AGENCY_PARTNERS_ROUTE);
+  revalidatePath(adminAgencyPartnerDetailPath(apId));
 }
 
 export async function reviewKycDocumentAction(
@@ -153,6 +156,7 @@ export async function reviewKycDocumentAction(
     .single();
 
   if (doc?.agency_partner_id) {
-    revalidatePath(`/admin/agency-partners/${doc.agency_partner_id}`);
+    revalidatePath(ADMIN_AGENCY_PARTNERS_ROUTE);
+    revalidatePath(adminAgencyPartnerDetailPath(doc.agency_partner_id));
   }
 }

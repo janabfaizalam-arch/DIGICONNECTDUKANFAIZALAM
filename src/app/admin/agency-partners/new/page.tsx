@@ -6,6 +6,7 @@ import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getNextPartnerCode } from "@/lib/ap-data";
 import { CreateAPForm } from "@/components/admin/create-ap-form";
+import { ADMIN_AGENCY_PARTNERS_ROUTE } from "@/lib/admin/agency-partner-routes";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function NewAPOnboardingPage() {
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-3xl space-y-5">
-        <Link href="/admin/agency-partners" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)] hover:underline">
+        <Link href={ADMIN_AGENCY_PARTNERS_ROUTE} className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)] hover:underline">
           <ArrowLeft className="h-4 w-4" />
           Back to Agency Partners
         </Link>

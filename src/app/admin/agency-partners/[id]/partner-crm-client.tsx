@@ -1,6 +1,7 @@
 "use client";
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   User,
   ClipboardList,
@@ -11,7 +12,9 @@ import {
   FileCheck,
   FileX,
   PlusCircle,
-  Unlock,
+  FileText,
+  Activity,
+  Settings,
 } from "lucide-react";
 import {
   updatePartnerStatusAction,
@@ -26,12 +29,17 @@ import { Button } from "@/components/ui/button";
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { safeCurrency } from "@/lib/admin-format";
+import {
+  adminAgencyPartnerDetailPath,
+  type AdminPartnerDetailTab,
+} from "@/lib/admin/agency-partner-routes";
 import type { Application } from "@/lib/portal-types";
 import {
   AP_PARTNER_TYPE_LABELS,
   type AgencyPartner,
   type APCommission,
   type APKycDocument,
+  type APPayout,
   type APWalletEntry,
   type APStatus,
   type APKycStatus,
@@ -40,8 +48,6 @@ import {
 } from "@/lib/ap-types";
 import { cn } from "@/lib/utils";
 
-type TabKey = "profile" | "kyc" | "wallet" | "commissions" | "applications" | "security";
-
 export function PartnerCrmClient({
   ap,
   applications,
@@ -49,8 +55,10 @@ export function PartnerCrmClient({
   balance,
   kycDocuments,
   walletLedger,
+  payouts = [],
   loginStatus,
   lastSignIn,
+  initialTab = "overview",
 }: {
   ap: AgencyPartner;
   applications: Application[];
@@ -58,11 +66,23 @@ export function PartnerCrmClient({
   balance: number;
   kycDocuments: APKycDocument[];
   walletLedger: APWalletEntry[];
+  payouts?: APPayout[];
   loginStatus: string;
   lastSignIn: string;
+  initialTab?: AdminPartnerDetailTab;
 }) {
-  const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<AdminPartnerDetailTab>(initialTab);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  const selectTab = (tab: AdminPartnerDetailTab) => {
+    setActiveTab(tab);
+    router.replace(adminAgencyPartnerDetailPath(ap.id, { tab }), { scroll: false });
+  };
 
   // Status & Notes form states
   const [status, setStatus] = useState<APStatus>(ap.status);
@@ -134,33 +154,64 @@ export function PartnerCrmClient({
     return Math.max(10, Math.min(100, 100 - rejectionRate * 1.5 + successRate * 0.2));
   }, [applications]);
 
+  const activityFeed = useMemo(() => {
+    const items: { id: string; label: string; at: string }[] = [];
+    for (const row of walletLedger.slice(0, 20)) {
+      items.push({
+        id: `w-${row.id}`,
+        label: `Wallet · ${row.description || row.entry_type} · ${safeCurrency(row.amount)}`,
+        at: row.created_at,
+      });
+    }
+    for (const p of payouts.slice(0, 10)) {
+      items.push({
+        id: `p-${p.id}`,
+        label: `Payout · ${p.status} · ${safeCurrency(p.amount)}`,
+        at: p.requested_at || p.created_at,
+      });
+    }
+    for (const app of applications.slice(0, 10)) {
+      items.push({
+        id: `a-${app.id}`,
+        label: `Application · ${app.service_name || "Service"} · ${app.status}`,
+        at: app.created_at,
+      });
+    }
+    return items.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 30);
+  }, [walletLedger, payouts, applications]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_380px] items-start">
       <div className="space-y-6">
         {/* Horizontal Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
+        <div role="tablist" aria-label="Partner detail sections" className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
           {[
-            { key: "profile", label: "Overview", icon: User },
-            { key: "kyc", label: "KYC Vault", icon: FolderLock, badge: kycDocuments.length },
-            { key: "wallet", label: "Wallet & Ledger", icon: Wallet, badge: walletLedger.length },
-            { key: "commissions", label: "Commissions", icon: BadgePercent, badge: commissions.length },
-            { key: "applications", label: "Submissions", icon: ClipboardList, badge: applications.length },
-            { key: "security", label: "Security & Credentials", icon: Unlock },
+            { key: "overview" as const, label: "Overview", icon: User },
+            { key: "applications" as const, label: "Applications", icon: ClipboardList, badge: applications.length },
+            { key: "wallet" as const, label: "Wallet", icon: Wallet, badge: walletLedger.length },
+            { key: "commissions" as const, label: "Commissions", icon: BadgePercent, badge: commissions.length },
+            { key: "documents" as const, label: "Documents", icon: FileText, badge: kycDocuments.length },
+            { key: "kyc" as const, label: "KYC", icon: FolderLock, badge: kycDocuments.length },
+            { key: "activity" as const, label: "Activity", icon: Activity },
+            { key: "settings" as const, label: "Settings", icon: Settings },
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as TabKey)}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => selectTab(tab.key)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition",
+                  "inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                   active
                     ? "bg-blue-50 text-blue-700 shadow-xs border border-blue-100"
                     : "text-slate-500 hover:text-slate-800"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden />
                 {tab.label}
                 {tab.badge !== undefined && (
                   <span className={cn(
@@ -177,8 +228,8 @@ export function PartnerCrmClient({
 
         {/* Dynamic Tab Body */}
         <Card className="p-5 md:p-6 glass-liquid-premium">
-          {/* TAB 1: Overview & Profile */}
-          {activeTab === "profile" && (
+          {/* TAB: Overview */}
+          {activeTab === "overview" && (
             <div className="space-y-6">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 font-heading">Core Profile Details</h3>
@@ -497,7 +548,7 @@ export function PartnerCrmClient({
           )}
 
           {/* TAB 6: Security & Credentials */}
-          {activeTab === "security" && (
+          {activeTab === "settings" && (
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 font-heading">Account Credentials</h3>
@@ -506,6 +557,72 @@ export function PartnerCrmClient({
               <div className="max-w-md pt-2">
                 <AgentPasswordResetForm agentId={ap.user_id} />
               </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-xs font-semibold text-slate-600">
+                <p>Login status: {loginStatus}</p>
+                <p className="mt-1">Last sign-in: {lastSignIn}</p>
+                <p className="mt-1 font-mono text-[10px] text-slate-400">Auth user: {ap.user_id || "—"}</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "documents" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 font-heading">Partner documents</h3>
+                <p className="text-[10px] text-slate-500">KYC files linked to this partner only. Use the KYC tab to approve or reject.</p>
+              </div>
+              {kycDocuments.length === 0 ? (
+                <AdminEmptyState title="No documents uploaded" description="Partner KYC files will appear here after upload." />
+              ) : (
+                <div className="space-y-2">
+                  {kycDocuments.map((doc) => (
+                    <div key={doc.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold uppercase tracking-wide text-slate-900">
+                          {doc.document_type.replace(/_/g, " ")}
+                        </p>
+                        <p className="truncate font-mono text-[10px] text-slate-400">{doc.file_name}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <AdminStatusBadge status={doc.status} />
+                        {doc.file_url ? (
+                          <a
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-9 items-center rounded-full border bg-white px-3 text-[11px] font-bold text-indigo-700"
+                          >
+                            Open
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "activity" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 font-heading">Activity timeline</h3>
+                <p className="text-[10px] text-slate-500">Recent wallet, payout and application events for this partner.</p>
+              </div>
+              {activityFeed.length === 0 ? (
+                <AdminEmptyState title="No activity yet" description="Ledger, payout and application events will appear here." />
+              ) : (
+                <ul className="space-y-2">
+                  {activityFeed.map((item) => (
+                    <li key={item.id} className="rounded-xl border border-slate-100 bg-white px-4 py-3 text-xs font-semibold text-slate-700">
+                      <p>{item.label}</p>
+                      <p className="mt-1 text-[10px] font-medium text-slate-400">
+                        {item.at ? new Date(item.at).toLocaleString("en-IN") : "—"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </Card>
