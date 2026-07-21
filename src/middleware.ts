@@ -437,6 +437,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && isAuthRoute) {
+    // /admin/login stays public for non-admin sessions so the primary admin
+    // can always log in even with a stale customer session cookie present.
+    if (matchesRoute(pathname, "/admin/login") && role !== "admin") {
+      return response;
+    }
     const url = request.nextUrl.clone();
     url.pathname = getRoleHome(role);
     return NextResponse.redirect(url);
