@@ -15,7 +15,6 @@ import {
   Bell,
   UserCog,
   Search,
-  Menu,
   X,
   ChevronRight,
   Share2,
@@ -28,8 +27,9 @@ import {
   Target,
   BookOpen,
   ClipboardList,
+  Megaphone,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ interface NotificationItem {
 export function APPanelNav() {
   const pathname = usePathname();
   const supabase = createClient();
+  const reduceMotion = useReducedMotion();
 
   // Navigation states
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -70,6 +71,7 @@ export function APPanelNav() {
   const lastScrollY = useRef(0);
 
   const notifRef = useRef<HTMLDivElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
 
   // Sync user notifications and partner tier
   useEffect(() => {
@@ -152,6 +154,29 @@ export function APPanelNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Escape closes overlays; focus close control when drawer opens
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (drawerOpen) setDrawerOpen(false);
+      if (searchOpen) setSearchOpen(false);
+      if (notifOpen) setNotifOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen, searchOpen, notifOpen]);
+
+  useEffect(() => {
+    if (drawerOpen) {
+      drawerCloseRef.current?.focus();
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+  }, [drawerOpen]);
+
   // Scroll direction detection for bottom nav
   useEffect(() => {
     const handleScroll = () => {
@@ -229,25 +254,7 @@ export function APPanelNav() {
     setUnreadCount(0);
   };
 
-  // Primary Navigation items
-  const navItems = [
-    { href: "/ap/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "bg-blue-500" },
-    { href: "/ap/applications", label: "Applications", icon: FileText, color: "bg-orange-500" },
-    { href: "/ap/assigned-work", label: "Assigned Work", icon: ClipboardList, color: "bg-rose-500" },
-    { href: "/ap/payment-links", label: "Payment Links", icon: LinkIcon, color: "bg-purple-500" },
-    { href: "/ap/services", label: "Services", icon: Layers, color: "bg-emerald-500" },
-    { href: "/ap/customers", label: "Customers", icon: Users, color: "bg-sky-500" },
-    { href: "/ap/team", label: "Team", icon: UsersRound, color: "bg-cyan-500" },
-    { href: "/ap/leads", label: "Leads", icon: Target, color: "bg-pink-500" },
-    { href: "/ap/wallet", label: "Wallet", icon: WalletCards, color: "bg-teal-500" },
-    { href: "/ap/commissions", label: "Earnings", icon: HandCoins, color: "bg-amber-500" },
-    { href: "/ap/referrals", label: "Referrals", icon: Share2, color: "bg-indigo-500" },
-    { href: "/ap/knowledge", label: "Knowledge", icon: BookOpen, color: "bg-lime-500" },
-    { href: "/ap/notifications", label: "Notifications", icon: Bell, color: "bg-rose-500" },
-    { href: "/ap/profile", label: "Profile", icon: UserCog, color: "bg-slate-500" },
-    { href: "/ap/support", label: "Support", icon: Headphones, color: "bg-indigo-500" },
-  ];
-
+  // Auth pages skip chrome
   if (
     pathname === "/ap/login" ||
     pathname === "/ap/forgot-password" ||
@@ -286,11 +293,12 @@ export function APPanelNav() {
           {/* CENTER: Desktop primary navigation */}
           <nav aria-label="Digi Partner primary" className="hidden flex-1 items-center justify-center gap-1 md:flex">
             {[
-              { href: "/ap/dashboard", label: "Home" },
+              { href: "/ap/dashboard", label: "Dashboard" },
               { href: "/ap/applications", label: "Applications" },
               { href: "/ap/customers", label: "Customers" },
               { href: "/ap/wallet", label: "Wallet" },
-              { href: "/ap/commissions", label: "Earnings" },
+              { href: "/ap/commissions", label: "Commissions" },
+              { href: "/ap/payouts", label: "Payouts" },
             ].map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
@@ -316,33 +324,39 @@ export function APPanelNav() {
             
             {/* Search Icon */}
             <button
+              type="button"
               onClick={() => setSearchOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
-              title="Search Services & CRM"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label="Search services, customers and applications"
             >
-              <Search className="h-4.5 w-4.5" />
+              <Search className="h-4.5 w-4.5" aria-hidden />
             </button>
 
             {/* Notifications Panel */}
             <div className="relative" ref={notifRef}>
               <button
+                type="button"
                 onClick={() => setNotifOpen(!notifOpen)}
-                className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
-                title="Notifications"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+                aria-expanded={notifOpen}
+                aria-haspopup="dialog"
               >
-                <Bell className="h-4.5 w-4.5" />
+                <Bell className="h-4.5 w-4.5" aria-hidden />
                 {unreadCount > 0 && (
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white motion-safe:animate-pulse" aria-hidden />
                 )}
               </button>
 
               <AnimatePresence>
                 {notifOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    role="dialog"
+                    aria-label="Notifications"
+                    initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.15 }}
                     className="absolute right-0 mt-2 w-80 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-xl ring-1 ring-black/5 z-50 flex flex-col gap-2"
                   >
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -377,9 +391,12 @@ export function APPanelNav() {
 
             {/* Settings Drawer Button (Profile Badging) */}
             <button
+              type="button"
               onClick={() => setDrawerOpen(true)}
-              className="flex h-9 items-center justify-center rounded-xl px-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 gap-1.5 cursor-pointer"
-              title="Menu Drawer"
+              className="flex h-11 items-center justify-center rounded-xl px-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label="Open account menu"
+              aria-expanded={drawerOpen}
+              aria-haspopup="dialog"
             >
               <div className="h-6 w-6 rounded-full bg-blue-100 border border-blue-200/50 flex items-center justify-center text-blue-700 text-xs font-bold font-mono">
                 {partnerCode ? partnerCode.slice(-2) : "AP"}
@@ -413,8 +430,9 @@ export function APPanelNav() {
             <Link
               key={item.label}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex min-h-[44px] flex-1 flex-col items-center justify-center relative transition-colors",
+                "flex min-h-[44px] flex-1 flex-col items-center justify-center relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                 isActive ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-700 font-bold",
               )}
             >
@@ -429,22 +447,26 @@ export function APPanelNav() {
       {/* SLIDE-OUT DRAWER MENU (RIGHT SIDE, Liquid Glass Theme) */}
       <AnimatePresence>
         {drawerOpen && (
-          <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
             {/* Backdrop Overlay */}
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={reduceMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
               className="absolute inset-0 bg-slate-900/20 backdrop-blur-xs"
+              aria-hidden
             />
 
             {/* Right Drawer Container */}
             <motion.div
-              initial={{ x: "100%" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Account and more"
+              initial={reduceMotion ? false : { x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 26, stiffness: 240 }}
+              exit={reduceMotion ? undefined : { x: "100%" }}
+              transition={reduceMotion ? { duration: 0 } : { type: "spring", damping: 26, stiffness: 240 }}
               className="relative flex h-full w-[85%] max-w-sm flex-col bg-white/90 backdrop-blur-xl shadow-2xl border-l border-slate-200/50 pb-safe-bottom"
             >
               {/* Drawer Header */}
@@ -459,10 +481,13 @@ export function APPanelNav() {
                   </div>
                 </div>
                 <button
+                  ref={drawerCloseRef}
+                  type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/50 hover:text-slate-800 transition cursor-pointer"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/50 hover:text-slate-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-label="Close menu"
                 >
-                  <X className="h-4.5 w-4.5" />
+                  <X className="h-4.5 w-4.5" aria-hidden />
                 </button>
               </div>
 
@@ -482,12 +507,21 @@ export function APPanelNav() {
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                     <Link
-                      href="/ap/profile"
+                      href="/ap/settings"
                       onClick={() => setDrawerOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
                     >
                       <Settings className="h-4.5 w-4.5 text-slate-500" />
-                      <span>Workspace Settings</span>
+                      <span>Settings</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/documents"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <ClipboardList className="h-4.5 w-4.5 text-slate-500" />
+                      <span>Documents</span>
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                   </div>
@@ -623,21 +657,46 @@ export function APPanelNav() {
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                     <Link
-                      href="/ap/knowledge"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <BookOpen className="h-4.5 w-4.5 text-lime-500" />
-                      <span>Knowledge Base</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
                       href="/ap/payment-links"
                       onClick={() => setDrawerOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
                     >
                       <LinkIcon className="h-4.5 w-4.5 text-purple-500" />
                       <span>Payment Links</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Growth: Marketing, Training, Support */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Growth</h4>
+                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
+                    <Link
+                      href="/ap/marketing"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Megaphone className="h-4.5 w-4.5 text-pink-500" />
+                      <span>Marketing</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/training"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <BookOpen className="h-4.5 w-4.5 text-lime-500" />
+                      <span>Training</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/support"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Headphones className="h-4.5 w-4.5 text-indigo-650" />
+                      <span>Support</span>
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                   </div>
@@ -657,21 +716,21 @@ export function APPanelNav() {
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                     <Link
-                      href="/ap/wallet"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Landmark className="h-4.5 w-4.5 text-indigo-500" />
-                      <span>Payout Requests</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
                       href="/ap/commissions"
                       onClick={() => setDrawerOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
                     >
                       <HandCoins className="h-4.5 w-4.5 text-amber-500" />
-                      <span>Earning Reports</span>
+                      <span>Commissions</span>
+                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
+                    </Link>
+                    <Link
+                      href="/ap/payouts"
+                      onClick={() => setDrawerOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
+                    >
+                      <Landmark className="h-4.5 w-4.5 text-indigo-500" />
+                      <span>Payouts</span>
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                   </div>
@@ -688,15 +747,6 @@ export function APPanelNav() {
                     >
                       <Bell className="h-4.5 w-4.5 text-rose-500" />
                       <span>Updates & Bulletins</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/support"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Headphones className="h-4.5 w-4.5 text-indigo-650" />
-                      <span>Help Support Desk</span>
                       <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
                     </Link>
                   </div>

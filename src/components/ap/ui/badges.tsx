@@ -36,6 +36,7 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
         style,
         className,
       )}
+      aria-label={`Status: ${text}`}
     >
       {text}
     </span>
