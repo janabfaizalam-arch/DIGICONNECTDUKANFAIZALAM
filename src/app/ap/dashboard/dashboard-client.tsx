@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   Bell,
+  BookOpen,
   FileText,
   HandCoins,
   Headphones,
@@ -113,7 +114,8 @@ const QUICK_ACTIONS = [
   { href: "/ap/wallet", label: "Add Wallet Balance", description: "Review balance & payouts", icon: <WalletCards className="h-4 w-4" /> },
   { href: "/ap/commissions", label: "View Commission", description: "Open earnings ledger", icon: <HandCoins className="h-4 w-4" /> },
   { href: "/ap/support", label: "Raise Support Ticket", description: "Get help from the desk", icon: <Headphones className="h-4 w-4" /> },
-  { href: "/ap/knowledge", label: "Marketing Material", description: "Guides and creatives", icon: <Megaphone className="h-4 w-4" /> },
+  { href: "/ap/marketing", label: "Marketing Material", description: "Captions and creatives", icon: <Megaphone className="h-4 w-4" /> },
+  { href: "/ap/training", label: "Training", description: "Guides and checklist", icon: <BookOpen className="h-4 w-4" /> },
 ];
 
 function nextActionForStatus(status: string): string {
