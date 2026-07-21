@@ -593,12 +593,30 @@ export function CustomerDashboard({
 
   const handleLogout = async () => {
     try {
-      const supabase = createClient();
-      if (!supabase) return;
-      await supabase.auth.signOut();
-      router.push("/");
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        body: JSON.stringify({ portal: "customer" }),
+        credentials: "same-origin",
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        redirectTo?: string;
+        message?: string;
+        error?: string;
+      };
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || result.message || "Failed to logout.");
+      }
+      try {
+        const supabase = createClient();
+        await supabase?.auth.signOut({ scope: "local" });
+      } catch {
+        // Server already cleared httpOnly cookies.
+      }
+      toastSuccess(result.message || "Signed out successfully.");
+      router.replace(result.redirectTo || "/customer/login?loggedOut=1");
       router.refresh();
-      toastSuccess("Logged out successfully.");
     } catch {
       toastError("Failed to logout.");
     }

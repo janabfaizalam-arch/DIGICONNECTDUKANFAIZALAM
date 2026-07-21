@@ -149,7 +149,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="px-2">
-            <LogoutButton className="h-11 w-full justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-sm transition-all active:scale-[0.98] duration-200" />
+            <LogoutButton
+              portal="admin"
+              className="h-11 w-full justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-sm transition-all active:scale-[0.98] duration-200"
+            />
           </div>
         </aside>
 
@@ -191,7 +194,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
                 <div className="pt-4 border-t border-slate-100">
-                  <LogoutButton className="h-11 w-full justify-center rounded-xl font-bold text-sm shadow-sm" onLoggedOut={() => setMobileOpen(false)} />
+                  <LogoutButton
+                    portal="admin"
+                    className="h-11 w-full justify-center rounded-xl font-bold text-sm shadow-sm"
+                    onLoggedOut={() => setMobileOpen(false)}
+                  />
                 </div>
               </motion.aside>
             </div>

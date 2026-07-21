@@ -221,6 +221,7 @@ export async function middleware(request: NextRequest) {
   const isAdminPortalRoute =
     matchesRoute(pathname, "/admin") && !matchesRoute(pathname, "/admin/login");
   const isAdminLoginPage = matchesRoute(pathname, "/admin/login");
+  const loggedOutIntent = request.nextUrl.searchParams.get("loggedOut") === "1";
   if (isAdminPortalRoute || isAdminLoginPage) {
     const { verifyAdminAccessToken } = await import("@/lib/auth/admin-session");
     const adminToken = request.cookies.get("v2_admin_access_token")?.value;
@@ -229,7 +230,8 @@ export async function middleware(request: NextRequest) {
       adminPayload = await verifyAdminAccessToken(adminToken);
     }
 
-    if (adminPayload && isAdminLoginPage) {
+    // After logout, never bounce back to /admin solely because a stale cookie lingered one tick.
+    if (adminPayload && isAdminLoginPage && !loggedOutIntent) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       url.search = "";
@@ -267,7 +269,7 @@ export async function middleware(request: NextRequest) {
       customerPayload = await verifyAccessToken(accessToken);
     }
 
-    if (customerPayload && (isCustomerAuthPage || isCustomerV2AuthRoute)) {
+    if (customerPayload && (isCustomerAuthPage || isCustomerV2AuthRoute) && !loggedOutIntent) {
       const url = request.nextUrl.clone();
       const redirectTo = request.nextUrl.searchParams.get("redirect");
       if (redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
@@ -425,7 +427,8 @@ export async function middleware(request: NextRequest) {
   //   - inactive agency partner -> /unauthorized
   //   - admin                  -> /admin
   //   - customer               -> allowed to view (page shows a switch notice)
-  if (user && matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE)) {
+  //   - loggedOut=1            -> stay on login (do not auto-bounce)
+  if (user && matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE) && !loggedOutIntent) {
     if (role === "agency_partner") {
       const url = request.nextUrl.clone();
       url.pathname = isAPActive ? "/ap/dashboard" : "/unauthorized";
@@ -443,6 +446,7 @@ export async function middleware(request: NextRequest) {
   // Customer auth pages — keep signed-in users out of login/signup/forgot-pin
   if (
     user &&
+    !loggedOutIntent &&
     (matchesRoute(pathname, "/customer/login") ||
       matchesRoute(pathname, "/customer/signup") ||
       matchesRoute(pathname, "/customer/forgot-pin"))
@@ -460,7 +464,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  if (user && isAuthRoute && !loggedOutIntent) {
     // /admin/login stays public for non-admin sessions so the primary admin
     // can always log in even with a stale customer session cookie present.
     if (matchesRoute(pathname, "/admin/login") && role !== "admin") {

@@ -7,22 +7,36 @@ import { DIGI_PARTNER_DASHBOARD_ROUTE } from "@/lib/auth/partner-access";
 
 export const dynamic = "force-dynamic";
 
-export default async function APLoginPage() {
-  const user = await getCurrentUser();
-  const role = user ? await getCurrentUserRole(user) : null;
+type PageProps = {
+  searchParams?: Promise<{ loggedOut?: string }>;
+};
 
-  // Smart, role-aware entry: partners and admins are sent to their home;
-  // customers stay here and see a friendly "switch account" notice.
-  if (role === "agency_partner") {
-    redirect(DIGI_PARTNER_DASHBOARD_ROUTE);
-  }
-  if (role === "admin") {
-    redirect("/admin");
+export default async function APLoginPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const loggedOut = params?.loggedOut === "1";
+
+  // After an explicit logout, never auto-bounce to dashboard — show the login form.
+  if (!loggedOut) {
+    const user = await getCurrentUser();
+    const role = user ? await getCurrentUserRole(user) : null;
+
+    if (role === "agency_partner") {
+      redirect(DIGI_PARTNER_DASHBOARD_ROUTE);
+    }
+    if (role === "admin") {
+      redirect("/admin");
+    }
+
+    return (
+      <AuthScene eyebrow="Digi Partner Network">
+        <ApLoginForm customerSignedIn={role === "customer"} />
+      </AuthScene>
+    );
   }
 
   return (
     <AuthScene eyebrow="Digi Partner Network">
-      <ApLoginForm customerSignedIn={role === "customer"} />
+      <ApLoginForm customerSignedIn={false} />
     </AuthScene>
   );
 }

@@ -36,3 +36,25 @@ describe("partner login alias redirects", () => {
     }
   });
 });
+
+describe("loggedOut login pages stay public", () => {
+  it("does not create a redirect loop on /ap/login?loggedOut=1 for guests", async () => {
+    const res = await middleware(requestFor("/ap/login?loggedOut=1"));
+    if (res.status >= 300 && res.status < 400) {
+      const location = new URL(res.headers.get("location") as string);
+      expect(location.pathname).not.toBe("/ap/dashboard");
+      expect(location.pathname).not.toBe("/ap/login");
+    } else {
+      expect(res.status).toBeLessThan(300);
+    }
+  });
+
+  it("does not bounce guests from /admin/login?loggedOut=1 to /admin", async () => {
+    const res = await middleware(requestFor("/admin/login?loggedOut=1"));
+    if (res.status >= 300 && res.status < 400) {
+      expect(new URL(res.headers.get("location") as string).pathname).not.toBe("/admin");
+    } else {
+      expect(res.status).toBeLessThan(300);
+    }
+  });
+});

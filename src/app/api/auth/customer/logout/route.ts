@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-import { signOutCookies } from "@/lib/auth/session-cookies";
+import { performServerLogout } from "@/lib/auth/logout";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
-  await signOutCookies();
-  return NextResponse.json({ ok: true });
+/** @deprecated Prefer POST /api/auth/logout — kept as a thin alias. */
+export async function POST(request: NextRequest) {
+  const { response } = await performServerLogout({ request, portal: "customer" });
+  return response;
 }

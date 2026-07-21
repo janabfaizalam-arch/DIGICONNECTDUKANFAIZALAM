@@ -756,6 +756,7 @@ export function APPanelNav() {
               {/* Drawer Footer with Apple settings layout Logout */}
               <div className="p-4 border-t border-slate-100 bg-slate-50/40">
                 <LogoutButton
+                  portal="ap"
                   variant="ghost"
                   className="w-full justify-start h-11 text-slate-600 hover:bg-rose-50 hover:text-rose-600 rounded-xl px-4 text-xs font-bold transition-colors duration-150 outline-none flex items-center gap-3"
                   onLoggedOut={() => setDrawerOpen(false)}
