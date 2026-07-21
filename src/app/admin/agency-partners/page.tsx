@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Eye, Search, UserPlus } from "lucide-react";
+import { ExternalLink, Eye, Search, UserPlus } from "lucide-react";
+
+import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
@@ -57,10 +59,22 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
         title="AP Ecosystem Console"
         description="Verify KYC uploads, configure partner tiers, manage hierarchical commissions, and audit financial wallets."
         action={
-          <Link href="/admin/agency-partners/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
-            <UserPlus className="h-4 w-4" />
-            Onboard AP
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={DIGI_PARTNER_LOGIN_ROUTE}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open the Digi Partner sign-in portal in a new tab"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <ExternalLink className="h-4 w-4 text-indigo-500" />
+              Open Partner Portal
+            </a>
+            <Link href="/admin/agency-partners/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
+              <UserPlus className="h-4 w-4" />
+              Onboard AP
+            </Link>
+          </div>
         }
       />
 

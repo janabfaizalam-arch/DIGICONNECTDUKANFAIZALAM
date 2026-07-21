@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseUrl } from "@/lib/supabase/config";
+import { DIGI_PARTNER_LOGIN_ROUTE, resolvePartnerLoginAlias } from "@/lib/auth/partner-access";
 
 const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/ap", "/apply"];
 const authRoutes = [
@@ -43,7 +44,7 @@ type AppRole = "admin" | "agency_partner" | "customer";
 
 const appRoles: AppRole[] = ["admin", "agency_partner", "customer"];
 const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
-const apRoleAliases = new Set(["agent", "agency_partner"]);
+const apRoleAliases = new Set(["agent", "agency_partner", "ap"]);
 
 type ProfileAuthShape = {
   role?: string | null;
@@ -171,6 +172,16 @@ export async function middleware(request: NextRequest) {
   }
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     return NextResponse.redirect(new URL("/customer/dashboard", request.url));
+  }
+
+  // Canonical Digi Partner login — permanently redirect every legacy/alternate
+  // partner login URL to /ap/login so no partner CTA can ever hit a 404.
+  const partnerLoginAlias = resolvePartnerLoginAlias(pathname);
+  if (partnerLoginAlias) {
+    const url = request.nextUrl.clone();
+    url.pathname = partnerLoginAlias;
+    url.search = "";
+    return NextResponse.redirect(url, 308);
   }
 
   // Legacy agent route redirects (before auth check)
@@ -409,11 +420,24 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // AP login route — signed-in partners go to dashboard when active
-  if (user && matchesRoute(pathname, "/ap/login")) {
-    const url = request.nextUrl.clone();
-    url.pathname = role === "agency_partner" && isAPActive ? "/ap/dashboard" : role === "agency_partner" ? "/unauthorized" : getRoleHome(role);
-    return NextResponse.redirect(url);
+  // Digi Partner login route — smart, role-aware behavior:
+  //   - active agency partner  -> /ap/dashboard
+  //   - inactive agency partner -> /unauthorized
+  //   - admin                  -> /admin
+  //   - customer               -> allowed to view (page shows a switch notice)
+  if (user && matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE)) {
+    if (role === "agency_partner") {
+      const url = request.nextUrl.clone();
+      url.pathname = isAPActive ? "/ap/dashboard" : "/unauthorized";
+      return NextResponse.redirect(url);
+    }
+    if (role === "admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      return NextResponse.redirect(url);
+    }
+    // Customer stays on /ap/login; the page renders the "signed in as customer" notice.
+    return response;
   }
 
   // Customer auth pages — keep signed-in users out of login/signup/forgot-pin

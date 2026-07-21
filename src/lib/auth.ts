@@ -129,7 +129,7 @@ export type AppRole = "admin" | "agency_partner" | "customer";
 
 const appRoles: AppRole[] = ["admin", "agency_partner", "customer"];
 const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
-const apRoleAliases = new Set(["agent", "agency_partner"]);
+const apRoleAliases = new Set(["agent", "agency_partner", "ap"]);
 
 export function normalizeAppRole(role: unknown): AppRole | null {
   const value = String(role ?? "").toLowerCase();

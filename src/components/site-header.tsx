@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox } from "lucide-react";
+import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -10,6 +10,7 @@ import type { User } from "@supabase/supabase-js";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
+import { DIGI_PARTNER_CTA_LABEL, DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 
 type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
@@ -889,6 +890,19 @@ export function SiteHeader() {
               </Link>
             )}
 
+            {/* Digi Partner Login — secondary CTA (guests only, desktop) */}
+            {!isLoggedIn && (
+              <Link
+                href={DIGI_PARTNER_LOGIN_ROUTE}
+                aria-label={DIGI_PARTNER_CTA_LABEL}
+                title={DIGI_PARTNER_CTA_LABEL}
+                className="hidden h-9 items-center gap-1.5 rounded-xl border border-indigo-200/70 bg-white/60 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-800 active:scale-[0.98] md:inline-flex"
+              >
+                <BadgeCheck className="h-3.5 w-3.5" />
+                {DIGI_PARTNER_CTA_LABEL}
+              </Link>
+            )}
+
             {/* Dashboard / Login */}
             <Link
               href={dashboardHref}
@@ -912,6 +926,18 @@ export function SiteHeader() {
               <div className="hidden md:block">
                 <LogoutButton showLabel={false} className="h-9 w-9 rounded-xl p-0" />
               </div>
+            )}
+
+            {/* Digi Partner Login — compact icon (guests only, mobile) */}
+            {!isLoggedIn && (
+              <Link
+                href={DIGI_PARTNER_LOGIN_ROUTE}
+                aria-label={DIGI_PARTNER_CTA_LABEL}
+                title={DIGI_PARTNER_CTA_LABEL}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-200/70 bg-white/60 text-indigo-700 transition hover:bg-indigo-50/70 active:scale-95 md:hidden"
+              >
+                <BadgeCheck className="h-[18px] w-[18px]" />
+              </Link>
             )}
 
             {/* Mobile Login/Dashboard */}

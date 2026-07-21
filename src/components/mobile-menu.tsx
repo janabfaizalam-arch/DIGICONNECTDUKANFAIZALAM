@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Download, FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle, UserRound } from "lucide-react";
+import { BadgeCheck, Download, FileCheck2, LayoutDashboard, LogIn, Menu, MessageCircle } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { DIGI_PARTNER_CTA_LABEL, DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 
 const menuLinks = [
   { href: "/", label: "Home" },
@@ -132,12 +133,13 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
                 Login
               </Link>
               <Link
-                href="/ap/login"
+                href={DIGI_PARTNER_LOGIN_ROUTE}
                 onClick={closeMenu}
+                aria-label={DIGI_PARTNER_CTA_LABEL}
                 className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-700 to-indigo-600 px-4 text-sm font-extrabold text-white shadow-md shadow-indigo-700/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
               >
-                <UserRound className="h-4 w-4" />
-                AP Login
+                <BadgeCheck className="h-4 w-4" />
+                {DIGI_PARTNER_CTA_LABEL}
               </Link>
               <a
                 href={whatsappUrl}

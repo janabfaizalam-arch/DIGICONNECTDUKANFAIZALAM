@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Lock, UserRound, ArrowUpRight } from "lucide-react";
+import { Lock, UserRound, ArrowUpRight, Info } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { useToast } from "@/components/providers/toast-provider";
@@ -16,13 +16,14 @@ import { createClient } from "@/lib/supabase/browser";
  *   2) fallback to Supabase password auth for agency partners
  * Only the presentation is redesigned; the API contract is unchanged.
  */
-export function ApLoginForm() {
+export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: boolean }) {
   const { error: toastError, success: toastSuccess } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
   const submittingRef = useRef(false);
 
   function fail(message: string) {
@@ -102,7 +103,38 @@ export function ApLoginForm() {
 
   return (
     <GlassCard>
-      <AuthHeading title="Partner Login" subtitle="Access your DigiConnect Partner dashboard." />
+      <AuthHeading title="Digi Partner Login" subtitle="Access applications, commissions, wallet and support." />
+
+      {customerSignedIn && !noticeDismissed && (
+        <div
+          role="status"
+          className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-3.5 text-left"
+        >
+          <div className="flex items-start gap-2.5">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+            <div className="space-y-2.5">
+              <p className="text-xs font-semibold leading-relaxed text-slate-600">
+                You are currently signed in as a customer.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/customer/dashboard"
+                  className="inline-flex h-8 items-center rounded-lg bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700"
+                >
+                  Continue as Customer
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setNoticeDismissed(true)}
+                  className="inline-flex h-8 items-center rounded-lg border border-indigo-200 bg-white px-3 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
+                >
+                  Switch to Digi Partner Login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form
         className="flex flex-col gap-5"
