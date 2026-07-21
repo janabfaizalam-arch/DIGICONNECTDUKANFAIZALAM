@@ -44,6 +44,7 @@ describe("loggedOut login pages stay public", () => {
       const location = new URL(res.headers.get("location") as string);
       expect(location.pathname).not.toBe("/ap/dashboard");
       expect(location.pathname).not.toBe("/ap/login");
+      expect(location.pathname).not.toBe("/unauthorized");
     } else {
       expect(res.status).toBeLessThan(300);
     }
@@ -53,8 +54,27 @@ describe("loggedOut login pages stay public", () => {
     const res = await middleware(requestFor("/admin/login?loggedOut=1"));
     if (res.status >= 300 && res.status < 400) {
       expect(new URL(res.headers.get("location") as string).pathname).not.toBe("/admin");
+      expect(new URL(res.headers.get("location") as string).pathname).not.toBe("/unauthorized");
     } else {
       expect(res.status).toBeLessThan(300);
     }
+  });
+
+  it("sends guests away from /unauthorized to a login page", async () => {
+    const res = await middleware(requestFor("/unauthorized"));
+    expect(res.status).toBeGreaterThanOrEqual(300);
+    expect(res.status).toBeLessThan(400);
+    const location = new URL(res.headers.get("location") as string);
+    expect(location.pathname).not.toBe("/unauthorized");
+    expect(["/login", "/ap/login", "/admin/login", "/customer/login"]).toContain(location.pathname);
+  });
+
+  it("sends logged-out guests from /ap/dashboard to /ap/login, not /unauthorized", async () => {
+    const res = await middleware(requestFor("/ap/dashboard"));
+    expect(res.status).toBeGreaterThanOrEqual(300);
+    expect(res.status).toBeLessThan(400);
+    const location = new URL(res.headers.get("location") as string);
+    expect(location.pathname).toBe("/ap/login");
+    expect(location.pathname).not.toBe("/unauthorized");
   });
 });

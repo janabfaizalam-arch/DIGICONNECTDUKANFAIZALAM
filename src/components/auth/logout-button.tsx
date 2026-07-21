@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { LoaderCircle, LogOut } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { inferLogoutPortal } from "@/lib/auth/logout-destinations";
+import { AUTH_LOGOUT_EVENT, inferLogoutPortal } from "@/lib/auth/logout-destinations";
 import { createClient } from "@/lib/supabase/browser";
 
 type LogoutButtonProps = {
@@ -25,15 +25,15 @@ export function LogoutButton({
   showLabel = true,
   portal,
 }: LogoutButtonProps) {
-  const router = useRouter();
   const pathname = usePathname();
-  const { success, error: toastError } = useToast();
+  const { error: toastError } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
 
+    // Capture portal BEFORE cookies are wiped — never re-derive from post-logout auth state.
     const resolvedPortal = portal ?? inferLogoutPortal(pathname);
 
     try {
@@ -58,20 +58,27 @@ export function LogoutButton({
         throw new Error(result.error || result.message || "Logout failed. Please try again.");
       }
 
-      // Best-effort: clear any non-httpOnly browser Supabase remnants after server wipe.
+      // Best-effort: clear any browser-visible Supabase remnants.
       try {
         const supabase = createClient();
         await supabase?.auth.signOut({ scope: "local" });
       } catch {
-        // Server already cleared httpOnly cookies — ignore client residuals.
+        // Server already cleared httpOnly cookies.
+      }
+
+      try {
+        window.dispatchEvent(new CustomEvent(AUTH_LOGOUT_EVENT, { detail: { portal: resolvedPortal } }));
+      } catch {
+        // ignore
       }
 
       onLoggedOut?.();
-      success(result.message || "Signed out successfully.");
 
       const destination = result.redirectTo || "/login?loggedOut=1";
-      router.replace(destination);
-      router.refresh();
+
+      // Hard navigation — soft replace+refresh can re-render the protected page and
+      // incorrectly send a half-cleared session to /unauthorized via isActiveAgent.
+      window.location.replace(destination);
     } catch (error) {
       setIsLoggingOut(false);
       toastError(error instanceof Error ? error.message : "Logout failed. Please try again.");

@@ -614,9 +614,7 @@ export function CustomerDashboard({
       } catch {
         // Server already cleared httpOnly cookies.
       }
-      toastSuccess(result.message || "Signed out successfully.");
-      router.replace(result.redirectTo || "/customer/login?loggedOut=1");
-      router.refresh();
+      window.location.replace(result.redirectTo || "/customer/login?loggedOut=1");
     } catch {
       toastError("Failed to logout.");
     }

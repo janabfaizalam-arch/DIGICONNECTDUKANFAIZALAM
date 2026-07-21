@@ -9,7 +9,7 @@ import {
   detectPortalFromRequestCookies,
   listSupabaseAuthCookieNames,
 } from "@/lib/auth/logout";
-import { inferLogoutPortal, resolveLogoutRedirect } from "@/lib/auth/logout-destinations";
+import { inferLogoutPortal, resolveLogoutRedirect, getLoginDestinationForPortal } from "@/lib/auth/logout-destinations";
 
 describe("logout destinations", () => {
   it("maps each portal to a loggedOut login URL (replace, not home)", () => {
@@ -24,6 +24,14 @@ describe("logout destinations", () => {
     expect(inferLogoutPortal("/ap/dashboard")).toBe("ap");
     expect(inferLogoutPortal("/customer/dashboard")).toBe("customer");
     expect(inferLogoutPortal("/")).toBe("auto");
+  });
+
+  it("maps guests to login pages, never /unauthorized", () => {
+    expect(getLoginDestinationForPortal("/ap/dashboard")).toBe("/ap/login");
+    expect(getLoginDestinationForPortal("/admin")).toBe("/admin/login");
+    expect(getLoginDestinationForPortal("/customer/dashboard")).toBe("/customer/login");
+    expect(getLoginDestinationForPortal("/unauthorized")).toBe("/login");
+    expect(getLoginDestinationForPortal("/ap/wallet")).not.toContain("unauthorized");
   });
 });
 

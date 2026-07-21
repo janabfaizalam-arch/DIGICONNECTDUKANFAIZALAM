@@ -1,4 +1,4 @@
-/** Client-safe logout portal helpers (no Next/server imports). */
+/** Client-safe auth destination helpers (no Next/server imports). */
 
 export type LogoutPortal = "admin" | "ap" | "customer" | "auto";
 
@@ -28,3 +28,23 @@ export function inferLogoutPortal(pathname: string | null | undefined): LogoutPo
   }
   return "auto";
 }
+
+/**
+ * Role-aware login destination for guests (missing/expired session).
+ * Never returns /unauthorized — that is only for authenticated denials.
+ */
+export function getLoginDestinationForPortal(pathname: string | null | undefined): string {
+  switch (inferLogoutPortal(pathname)) {
+    case "admin":
+      return "/admin/login";
+    case "ap":
+      return "/ap/login";
+    case "customer":
+      return "/customer/login";
+    default:
+      return "/login";
+  }
+}
+
+/** Broadcast so client shells can drop stale auth UI in the same tab. */
+export const AUTH_LOGOUT_EVENT = "digiconnect:auth-logout";

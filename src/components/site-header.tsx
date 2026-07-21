@@ -16,6 +16,7 @@ import {
   DIGI_PARTNER_LANDING_ROUTE,
   DIGI_PARTNER_LOGIN_ROUTE,
 } from "@/lib/auth/partner-access";
+import { AUTH_LOGOUT_EVENT } from "@/lib/auth/logout-destinations";
 
 type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
@@ -261,7 +262,7 @@ export function SiteHeader() {
     };
   }, []);
 
-  // Auth sync — identical to existing logic
+  // Auth sync — never trust a stale client session after logout
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -280,19 +281,49 @@ export function SiteHeader() {
       if (isMounted) setRole(nextRole);
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      void syncUser(data.session?.user || null);
+    // Force guest UI immediately after logout in the same document (before hard reload).
+    const onLogout = () => {
+      setUser(null);
+      setRole(null);
+      setWalletBalance(null);
+      setNotifications([]);
+      setUnreadCount(0);
+    };
+    window.addEventListener(AUTH_LOGOUT_EVENT, onLogout);
+
+    // loggedOut=1 means treat as guest even if a stale getSession() briefly returns data.
+    const loggedOutIntent = new URLSearchParams(window.location.search).get("loggedOut") === "1";
+    if (loggedOutIntent) {
+      onLogout();
+    }
+
+    // Prefer getUser() over getSession() — validates against the auth server when possible.
+    void supabase.auth.getUser().then(({ data }) => {
+      if (loggedOutIntent) {
+        onLogout();
+        return;
+      }
+      void syncUser(data.user ?? null);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session?.user) {
+        onLogout();
+        return;
+      }
+      if (new URLSearchParams(window.location.search).get("loggedOut") === "1") {
+        onLogout();
+        return;
+      }
+      void syncUser(session.user);
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      window.removeEventListener(AUTH_LOGOUT_EVENT, onLogout);
     };
   }, [supabase]);
 

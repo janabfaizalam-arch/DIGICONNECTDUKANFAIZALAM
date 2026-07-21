@@ -118,7 +118,11 @@ function getLoginPathForProtectedRoute(pathname: string) {
     return "/customer/login";
   }
 
-  return "/customer/login";
+  return "/login";
+}
+
+function isUnauthorizedPath(pathname: string) {
+  return matchesRoute(pathname, "/unauthorized");
 }
 
 function applyCustomerRedirect(url: URL, pathname: string) {
@@ -213,7 +217,8 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some((route) => matchesRoute(pathname, route));
 
   // Bypass session lookup and DB queries for public pages
-  if (!isProtectedRoute && !isAuthRoute) {
+  // /unauthorized is session-sensitive: guests must be sent to login, not this page.
+  if (!isProtectedRoute && !isAuthRoute && !isUnauthorizedPath(pathname)) {
     return response;
   }
 
@@ -305,6 +310,18 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = getSupabaseUrl();
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    // Without Supabase we can still keep guests off /unauthorized when no JWT cookies exist.
+    if (isUnauthorizedPath(pathname)) {
+      const hasAdminJwt = Boolean(request.cookies.get("v2_admin_access_token")?.value);
+      const hasCustomerJwt = Boolean(request.cookies.get("v2_customer_access_token")?.value);
+      if (!hasAdminJwt && !hasCustomerJwt) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        url.search = "loggedOut=1";
+        return NextResponse.redirect(url);
+      }
+    }
+
     if (isProtectedRoute && process.env.NODE_ENV !== "development") {
       const url = request.nextUrl.clone();
       url.pathname = getLoginPathForProtectedRoute(pathname);
@@ -338,6 +355,21 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = getLoginPathForProtectedRoute(pathname);
     applyCustomerRedirect(url, pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Guests must never see /unauthorized — that page is for authenticated denials only.
+  if (!user && isUnauthorizedPath(pathname)) {
+    const url = request.nextUrl.clone();
+    const referer = request.headers.get("referer");
+    let hint = "/";
+    try {
+      if (referer) hint = new URL(referer).pathname;
+    } catch {
+      hint = "/";
+    }
+    url.pathname = getLoginPathForProtectedRoute(hint);
+    url.search = "loggedOut=1";
     return NextResponse.redirect(url);
   }
 
