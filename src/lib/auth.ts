@@ -16,6 +16,7 @@ import {
   isDemotedAdminEmail,
   PRIMARY_ADMIN,
 } from "@/lib/auth/primary-admin";
+import { getPartnerMembership } from "@/lib/auth/memberships";
 
 async function getAdminJwtUser(): Promise<User | null> {
   try {
@@ -168,7 +169,20 @@ export function isCeoPartnerType(partnerType: string | null | undefined): boolea
 
 export type AgentAccessResult =
   | { ok: true; reason: "active_approved_agent" | "active_approved_ap" }
-  | { ok: false; reason: "missing_user" | "wrong_role" | "missing_profile" | "inactive_profile" | "kyc_not_approved" | "missing_server_config" | "ap_not_active"; role?: AppRole | string | null };
+  | {
+      ok: false;
+      reason:
+        | "missing_user"
+        | "wrong_role"
+        | "admin_portal_only"
+        | "missing_profile"
+        | "inactive_profile"
+        | "kyc_not_approved"
+        | "missing_server_config"
+        | "ap_not_active"
+        | "not_linked";
+      role?: AppRole | string | null;
+    };
 
 type SupabaseAdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
@@ -208,6 +222,10 @@ async function readOptionalProfileBoolean(
   };
 }
 
+/**
+ * Digi Partner access: agency_partners membership is canonical.
+ * An admin profiles.role must NOT block a valid active+approved partner row.
+ */
 export async function getAgentAccessStatus(user: User | null): Promise<AgentAccessResult> {
   if (!user) {
     console.error("[agent-auth] Missing authenticated user.");
@@ -215,12 +233,21 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
   }
 
   const role = await getCurrentUserRole(user);
+  const membership = await getPartnerMembership(user.id);
 
-  if (!isOnlyAgentRole(role) && !isAgencyPartnerRole(role)) {
-    console.error("[agent-auth] User is not an agent/AP.", { userId: user.id, role });
-    return { ok: false, reason: "wrong_role", role };
+  if (membership.ok) {
+    return { ok: true, reason: "active_approved_ap" };
   }
 
+  if (membership.reason === "ap_not_active" || membership.reason === "kyc_not_approved") {
+    return { ok: false, reason: membership.reason, role };
+  }
+
+  if (membership.reason === "missing_server_config") {
+    return { ok: false, reason: "missing_server_config", role };
+  }
+
+  // No agency_partners row — legacy profiles path (agent / agency_partner only)
   const supabaseAdmin = getSupabaseAdmin();
 
   if (!supabaseAdmin) {
@@ -228,27 +255,6 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
     return { ok: false, reason: "missing_server_config", role };
   }
 
-  // First check agency_partners table (new system)
-  const { data: apRecord } = await supabaseAdmin
-    .from("agency_partners")
-    .select("id, status, kyc_status")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (apRecord) {
-    const ap = apRecord as { id: string; status: string; kyc_status: string };
-    if (ap.status !== "active") {
-      console.error("[ap-auth] AP is not active.", { userId: user.id, status: ap.status });
-      return { ok: false, reason: "ap_not_active", role };
-    }
-    if (ap.kyc_status !== "approved") {
-      console.error("[ap-auth] AP KYC is not approved.", { userId: user.id, kycStatus: ap.kyc_status });
-      return { ok: false, reason: "kyc_not_approved", role };
-    }
-    return { ok: true, reason: "active_approved_ap" };
-  }
-
-  // Fallback: check legacy profiles table
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
     .select("id, role, kyc_status")
@@ -261,11 +267,19 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
   }
 
   if (!profile) {
+    if (isAdminRole(role)) {
+      return { ok: false, reason: "admin_portal_only", role };
+    }
     console.error("[agent-auth] Agent profile is missing.", { userId: user.id });
-    return { ok: false, reason: "missing_profile", role };
+    return { ok: false, reason: "not_linked", role };
   }
 
   const profileRole = String(profile.role ?? "").toLowerCase();
+
+  if (profileRole === "admin" || isAdminRole(role)) {
+    console.warn("[agent-auth] Admin identity has no Digi Partner membership.", { userId: user.id });
+    return { ok: false, reason: "admin_portal_only", role: profileRole || role };
+  }
 
   if (profileRole !== "agent" && profileRole !== "agency_partner") {
     console.error("[agent-auth] Profile has wrong role.", { userId: user.id, profileRole });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAgentAccessStatus } from "@/lib/auth";
+import { PORTAL_CONTEXT_COOKIE, partnerAccessPublicMessage } from "@/lib/auth/memberships";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
@@ -12,16 +13,20 @@ type AgentLoginBody = {
 };
 
 const invalidCredentialsMessage = "Invalid username/email or password.";
-const accessDeniedMessage = "Access denied. Please contact admin.";
 
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ message }, { status });
+function jsonError(message: string, status: number, extra?: Record<string, unknown>) {
+  return NextResponse.json({ message, ...extra }, { status });
 }
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+/**
+ * Resolve login email for Digi Partner identifiers.
+ * Prefer auth.users.email over profiles.email so a corrupted profile email
+ * (e.g. admin promotion overwrite) cannot sign into the wrong Auth user.
+ */
 async function resolveAgentEmail(identifier: string) {
   if (isValidEmail(identifier)) {
     return identifier.toLowerCase();
@@ -39,7 +44,7 @@ async function resolveAgentEmail(identifier: string) {
   // Legacy agent_code on profiles (agent or agency_partner)
   const { data: profileByCode, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("email, role")
+    .select("id, email, role")
     .eq("agent_code", code)
     .in("role", ["agent", "agency_partner"])
     .maybeSingle();
@@ -49,24 +54,39 @@ async function resolveAgentEmail(identifier: string) {
       identifier,
       error: profileError.message,
     });
-  } else {
-    const email = String(profileByCode?.email ?? "").trim().toLowerCase();
+  } else if (profileByCode?.id) {
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(profileByCode.id);
+    const authEmail = String(authUser.user?.email ?? "").trim().toLowerCase();
+    if (isValidEmail(authEmail)) return authEmail;
+    const email = String(profileByCode.email ?? "").trim().toLowerCase();
     if (isValidEmail(email)) return email;
   }
 
-  // Agency partner codes / usernames
-  const normalizedCode = code.toLowerCase();
+  // Agency partner codes (and optional username column when present)
   const { data: byPartnerCode } = await supabaseAdmin
     .from("agency_partners")
     .select("user_id")
     .eq("partner_code", code)
     .maybeSingle();
-  const { data: byUsername } = byPartnerCode
-    ? { data: null }
-    : await supabaseAdmin.from("agency_partners").select("user_id").eq("username", normalizedCode).maybeSingle();
 
-  const partnerUserId = byPartnerCode?.user_id ?? byUsername?.user_id;
+  let partnerUserId = byPartnerCode?.user_id as string | undefined;
+
+  if (!partnerUserId) {
+    const { data: byUsername, error: usernameError } = await supabaseAdmin
+      .from("agency_partners")
+      .select("user_id")
+      .eq("username", code.toLowerCase())
+      .maybeSingle();
+    if (!usernameError) {
+      partnerUserId = byUsername?.user_id as string | undefined;
+    }
+  }
+
   if (partnerUserId) {
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(partnerUserId);
+    const authEmail = String(authUser.user?.email ?? "").trim().toLowerCase();
+    if (isValidEmail(authEmail)) return authEmail;
+
     const { data: partnerProfile } = await supabaseAdmin
       .from("profiles")
       .select("email")
@@ -77,6 +97,17 @@ async function resolveAgentEmail(identifier: string) {
   }
 
   return null;
+}
+
+function setPortalCookie(response: NextResponse) {
+  response.cookies.set(PORTAL_CONTEXT_COOKIE, "ap", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  return response;
 }
 
 export async function POST(request: Request) {
@@ -105,7 +136,7 @@ export async function POST(request: Request) {
     const email = await resolveAgentEmail(identifier);
 
     if (!email) {
-      return jsonError(invalidCredentialsMessage, 401);
+      return jsonError(invalidCredentialsMessage, 401, { code: "invalid_credentials" });
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -115,7 +146,7 @@ export async function POST(request: Request) {
         identifierType: isValidEmail(identifier) ? "email" : "username",
         errorCode: error?.code ?? null,
       });
-      return jsonError(invalidCredentialsMessage, 401);
+      return jsonError(invalidCredentialsMessage, 401, { code: "invalid_credentials" });
     }
 
     const access = await getAgentAccessStatus(data.user);
@@ -127,15 +158,18 @@ export async function POST(request: Request) {
         role: access.role ?? null,
       });
       await supabase.auth.signOut();
-      return jsonError(accessDeniedMessage, 403);
+      const message = partnerAccessPublicMessage(access.reason);
+      return jsonError(message, 403, { code: access.reason });
     }
 
-    return NextResponse.json({
-      message: "Agent login successful.",
+    const response = NextResponse.json({
+      message: "Digi Partner login successful.",
       destination: "/ap/dashboard",
+      redirectTo: "/ap/dashboard",
     });
+    return setPortalCookie(response);
   } catch (error) {
     console.error("[agent-login] Login failed.", error);
-    return jsonError("Agent login failed. Please try again.", 500);
+    return jsonError("Digi Partner login failed. Please try again.", 500);
   }
 }

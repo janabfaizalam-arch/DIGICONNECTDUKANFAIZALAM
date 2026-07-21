@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAgentAccessStatus, getCurrentUser } from "@/lib/auth";
+import { partnerAccessPublicMessage } from "@/lib/auth/memberships";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -12,14 +13,7 @@ export async function GET() {
         ok: false,
         reason: access.reason,
         role: access.role ?? null,
-        message:
-          access.reason === "inactive_profile"
-            ? "Agent profile is inactive."
-            : access.reason === "missing_profile"
-              ? "Agent profile was not found for this user ID."
-              : access.reason === "wrong_role"
-                ? "This account is not assigned the agent role."
-                : "Agent access is not available.",
+        message: partnerAccessPublicMessage(access.reason),
       },
       { status: access.reason === "missing_user" ? 401 : 403 },
     );
@@ -28,6 +22,6 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     reason: access.reason,
-    message: "Agent access verified.",
+    message: "Digi Partner access verified.",
   });
 }

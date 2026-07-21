@@ -10,6 +10,7 @@ import {
   parseAgencyPartnerIdParam,
 } from "@/lib/admin/agency-partner-routes";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { buildIdentityLinkageHealth } from "@/lib/auth/memberships";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   getAgencyPartnerById,
@@ -84,11 +85,31 @@ export default async function AdminAPDetailPage({ params, searchParams }: PagePr
 
   let loginStatus = "Auth user unavailable";
   let lastSignIn = "-";
+  const authUser = authResult.data.user;
 
-  if (authResult.data.user) {
-    loginStatus = authResult.data.user.email_confirmed_at ? "Email confirmed" : "Email pending";
-    lastSignIn = formatDate(authResult.data.user.last_sign_in_at);
+  if (authUser) {
+    loginStatus = authUser.email_confirmed_at ? "Email confirmed" : "Email pending";
+    lastSignIn = formatDate(authUser.last_sign_in_at);
   }
+
+  const { data: linkedProfile } = ap.user_id
+    ? await supabase.from("profiles").select("id, role, email, mobile").eq("id", ap.user_id).maybeSingle()
+    : { data: null };
+
+  const identityLinkage = buildIdentityLinkageHealth({
+    partnerId: ap.id,
+    authUserId: ap.user_id,
+    partnerStatus: ap.status,
+    partnerKycStatus: ap.kyc_status,
+    profile: linkedProfile,
+    authUser: authUser
+      ? {
+          email: authUser.email,
+          phone: authUser.phone,
+          last_sign_in_at: authUser.last_sign_in_at,
+        }
+      : null,
+  });
 
   return (
     <div className="space-y-6">
@@ -116,6 +137,7 @@ export default async function AdminAPDetailPage({ params, searchParams }: PagePr
         payouts={payouts}
         loginStatus={loginStatus}
         lastSignIn={lastSignIn}
+        identityLinkage={identityLinkage}
         initialTab={initialTab}
       />
     </div>

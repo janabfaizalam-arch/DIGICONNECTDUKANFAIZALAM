@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { isSupabaseAuthCookieName } from "@/lib/auth/admin-login-core";
 import { ADMIN_ACCESS_TOKEN_COOKIE } from "@/lib/auth/admin-session";
+import { PORTAL_CONTEXT_COOKIE } from "@/lib/auth/memberships";
 import {
   inferLogoutPortal,
   resolveLogoutRedirect,
@@ -28,6 +29,7 @@ export const AUTH_COOKIE_CLEAR_SPECS: ReadonlyArray<{
   sameSite: "lax" | "strict";
 }> = [
   { name: ADMIN_ACCESS_TOKEN_COOKIE, path: "/", sameSite: "lax" },
+  { name: PORTAL_CONTEXT_COOKIE, path: "/", sameSite: "lax" },
   { name: V2_CUSTOMER_ACCESS, path: "/", sameSite: "strict" },
   { name: V2_CUSTOMER_REFRESH, path: "/api/customer-auth/refresh", sameSite: "strict" },
   { name: LEGACY_CUSTOMER_ACCESS_COOKIE, path: "/", sameSite: "lax" },

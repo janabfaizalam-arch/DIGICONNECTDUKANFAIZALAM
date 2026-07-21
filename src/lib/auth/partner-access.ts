@@ -90,19 +90,30 @@ export type PartnerCtaResult = {
 
 /**
  * Smart destination for the "Digi Partner Login" CTA / route based on the
- * visitor's current session role.
+ * visitor's current session role / memberships.
  *
  *   guest            -> /ap/login
  *   agency_partner   -> /ap/dashboard
- *   admin            -> /admin
+ *   admin + partner  -> /ap/dashboard (portal context: Digi Partner CTA)
+ *   admin only       -> /ap/login (explicit switch; do not trap on /admin)
  *   customer         -> /ap/login (allowed, with a switch notice)
+ *
+ * Pass `hasPartnerMembership` when known so dual-role admins are not sent to /admin.
  */
-export function resolvePartnerCtaDestination(role: PartnerCtaRole): PartnerCtaResult {
+export function resolvePartnerCtaDestination(
+  role: PartnerCtaRole,
+  options?: { hasPartnerMembership?: boolean },
+): PartnerCtaResult {
+  const hasPartner = options?.hasPartnerMembership === true;
+
+  if (role === "agency_partner" || hasPartner) {
+    return { href: DIGI_PARTNER_DASHBOARD_ROUTE, showCustomerNotice: false };
+  }
+
   switch (role) {
-    case "agency_partner":
-      return { href: DIGI_PARTNER_DASHBOARD_ROUTE, showCustomerNotice: false };
     case "admin":
-      return { href: "/admin", showCustomerNotice: false };
+      // Admin-only users must explicitly use Digi Partner login (separate identity or membership).
+      return { href: DIGI_PARTNER_LOGIN_ROUTE, showCustomerNotice: false };
     case "customer":
       return { href: DIGI_PARTNER_LOGIN_ROUTE, showCustomerNotice: true };
     case "guest":

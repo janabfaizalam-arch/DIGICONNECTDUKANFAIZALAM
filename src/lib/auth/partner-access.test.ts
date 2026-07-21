@@ -88,9 +88,16 @@ describe("resolvePartnerCtaDestination", () => {
     });
   });
 
-  it("sends admins to the admin console", () => {
+  it("sends admins without partner membership to Digi Partner login (explicit switch)", () => {
     expect(resolvePartnerCtaDestination("admin")).toEqual({
-      href: "/admin",
+      href: "/ap/login",
+      showCustomerNotice: false,
+    });
+  });
+
+  it("sends admins with partner membership to the Digi Partner dashboard", () => {
+    expect(resolvePartnerCtaDestination("admin", { hasPartnerMembership: true })).toEqual({
+      href: "/ap/dashboard",
       showCustomerNotice: false,
     });
   });

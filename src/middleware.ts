@@ -85,12 +85,18 @@ function getRoleHome(role: AppRole) {
   return "/customer/dashboard";
 }
 
-function isAllowedForPath(pathname: string, role: AppRole) {
+function isAllowedForPath(
+  pathname: string,
+  role: AppRole,
+  options?: { partnerActive?: boolean; adminMembership?: boolean },
+) {
   if (matchesRoute(pathname, "/admin")) {
-    return role === "admin";
+    return options?.adminMembership === true || role === "admin";
   }
 
   if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
+    // Digi Partner access is membership-based, not profiles.role alone.
+    if (options?.partnerActive) return true;
     return role === "agency_partner";
   }
 
@@ -378,6 +384,10 @@ export async function middleware(request: NextRequest) {
     normalizeAppRole(user?.user_metadata?.role) ??
     "customer";
   let profile: ProfileAuthShape | null = null;
+  let partnerActive = false;
+  let partnerLinked = false;
+  let partnerInactiveOrUnapproved = false;
+  let adminMembership = false;
 
   if (user) {
     const { data: profileRow } = await supabase
@@ -397,33 +407,22 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Hard demotion: former admin emails never keep admin access
     const userEmail = String(user.email ?? "").toLowerCase();
+    // Hard demotion: former admin emails never keep admin access
     if (userEmail === "dgcntdkn@gmail.com" && role === "admin") {
       role = "customer";
     }
-    // Primary admin email always resolves to admin when authenticated
-    if (userEmail === "janabfaizalam@gmail.com") {
-      role = "admin";
+
+    // Admin membership (email allowlist / profile) — does NOT alone grant /ap
+    if (userEmail === "janabfaizalam@gmail.com" || role === "admin") {
+      adminMembership = true;
+      // Keep primary role as admin for non-AP redirects, but do not erase partner membership.
+      if (userEmail === "janabfaizalam@gmail.com") {
+        role = "admin";
+      }
     }
-  }
 
-  // Inactive accounts (production profiles use active / is_active — not account_status)
-  if (user && isProtectedRoute) {
-    const inactive =
-      profile?.active === false || profile?.is_active === false;
-    if (inactive) {
-      await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = getLoginPathForProtectedRoute(pathname);
-      return NextResponse.redirect(url);
-    }
-  }
-
-  // AP active + KYC check
-  let isAPActive = true;
-
-  if (user && role === "agency_partner") {
+    // Canonical Digi Partner membership probe (independent of profiles.role)
     const { data: apRecord } = await supabase
       .from("agency_partners")
       .select("id, status, kyc_status")
@@ -431,47 +430,73 @@ export async function middleware(request: NextRequest) {
       .maybeSingle();
 
     if (apRecord) {
+      partnerLinked = true;
       const ap = apRecord as { id: string; status: string; kyc_status: string };
-      isAPActive = ap.status === "active" && ap.kyc_status === "approved";
-    } else {
-      if (!profile) {
-        const profileResult = await supabase
-          .from("profiles")
-          .select("role, kyc_status, active, is_active")
-          .eq("id", user.id)
-          .maybeSingle();
-        profile = (profileResult.data as ProfileAuthShape | null) ?? null;
+      partnerActive = ap.status === "active" && ap.kyc_status === "approved";
+      partnerInactiveOrUnapproved = !partnerActive;
+      // When visiting AP portal with valid membership, treat request context as agency_partner
+      // even if profiles.role was incorrectly set to admin (e.g. shared-mobile admin promotion).
+      if (partnerActive && (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent"))) {
+        role = "agency_partner";
       }
-
+    } else if (role === "agency_partner") {
+      // Legacy profiles-only agents
       if (!profile) {
-        isAPActive = false;
+        partnerInactiveOrUnapproved = true;
       } else if (String(profile.kyc_status ?? "").toLowerCase() !== "approved") {
-        isAPActive = false;
+        partnerInactiveOrUnapproved = true;
       } else {
         const activeChecks = [profile.active, profile.is_active].filter((value) => typeof value === "boolean");
-        isAPActive = activeChecks.length === 0 || activeChecks.every((value) => value === true);
+        partnerActive = activeChecks.length === 0 || activeChecks.every((value) => value === true);
+        partnerInactiveOrUnapproved = !partnerActive;
       }
     }
   }
 
-  // Digi Partner login route — smart, role-aware behavior:
-  //   - active agency partner  -> /ap/dashboard
-  //   - inactive agency partner -> /unauthorized
-  //   - admin                  -> /admin
-  //   - customer               -> allowed to view (page shows a switch notice)
-  //   - loggedOut=1            -> stay on login (do not auto-bounce)
-  if (user && matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE) && !loggedOutIntent) {
-    if (role === "agency_partner") {
+  // Inactive accounts (production profiles use active / is_active — not account_status)
+  if (user && isProtectedRoute) {
+    const inactive =
+      profile?.active === false || profile?.is_active === false;
+    // Do not sign out dual-role admins solely because a partner profile flag is odd;
+    // partner inactivity is handled by partnerActive below.
+    if (inactive && !adminMembership && !partnerActive) {
+      await supabase.auth.signOut();
       const url = request.nextUrl.clone();
-      url.pathname = isAPActive ? "/ap/dashboard" : "/unauthorized";
+      url.pathname = getLoginPathForProtectedRoute(pathname);
       return NextResponse.redirect(url);
     }
-    if (role === "admin") {
+  }
+
+  // Digi Partner login route — portal-aware (membership over single profiles.role):
+  //   - active partner membership -> /ap/dashboard
+  //   - linked but inactive/unapproved -> /unauthorized?reason=
+  //   - admin-only (no partner membership) -> /admin
+  //   - customer -> stay (switch notice)
+  //   - loggedOut=1 -> stay on login
+  if (user && matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE) && !loggedOutIntent) {
+    if (partnerActive) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/ap/dashboard";
+      return NextResponse.redirect(url);
+    }
+    if (partnerLinked && partnerInactiveOrUnapproved) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/unauthorized";
+      url.search = "reason=ap_not_active";
+      return NextResponse.redirect(url);
+    }
+    if (adminMembership && !partnerLinked) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
-    // Customer stays on /ap/login; the page renders the "signed in as customer" notice.
+    if (role === "agency_partner" && partnerInactiveOrUnapproved) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/unauthorized";
+      url.search = "reason=kyc_not_approved";
+      return NextResponse.redirect(url);
+    }
+    // Customer / dual-role admin without active membership stays on /ap/login.
     return response;
   }
 
@@ -507,11 +532,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isProtectedRoute && !isAllowedForPath(pathname, role)) {
+  if (user && isProtectedRoute && !isAllowedForPath(pathname, role, { partnerActive, adminMembership })) {
     const url = request.nextUrl.clone();
 
     // Partner-friendly redirect for customer apply workflow
-    if (role === "agency_partner" && matchesRoute(pathname, "/apply")) {
+    if ((role === "agency_partner" || partnerActive) && matchesRoute(pathname, "/apply")) {
       const slug = pathname.replace("/apply/", "").replace("/apply", "");
       url.pathname = "/ap/applications/new";
       url.search = "";
@@ -521,13 +546,34 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    url.pathname = matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent") ? "/unauthorized" : getRoleHome(role);
+    if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
+      url.pathname = "/unauthorized";
+      if (adminMembership && !partnerLinked) {
+        url.search = "reason=admin_portal_only";
+      } else if (partnerLinked && partnerInactiveOrUnapproved) {
+        url.search = "reason=ap_not_active";
+      } else if (!partnerLinked) {
+        url.search = "reason=not_linked";
+      } else {
+        url.search = "reason=wrong_role";
+      }
+      return NextResponse.redirect(url);
+    }
+
+    url.pathname = getRoleHome(role);
     return NextResponse.redirect(url);
   }
 
-  if (user && matchesRoute(pathname, "/ap") && !matchesRoute(pathname, "/ap/login") && !isAPActive) {
+  if (
+    user &&
+    matchesRoute(pathname, "/ap") &&
+    !matchesRoute(pathname, "/ap/login") &&
+    partnerInactiveOrUnapproved &&
+    (partnerLinked || role === "agency_partner")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/unauthorized";
+    url.search = "reason=ap_not_active";
     return NextResponse.redirect(url);
   }
 

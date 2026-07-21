@@ -47,6 +47,7 @@ import {
   type APPartnerType,
 } from "@/lib/ap-types";
 import { cn } from "@/lib/utils";
+import type { IdentityLinkageHealth } from "@/lib/auth/memberships";
 
 export function PartnerCrmClient({
   ap,
@@ -58,6 +59,7 @@ export function PartnerCrmClient({
   payouts = [],
   loginStatus,
   lastSignIn,
+  identityLinkage,
   initialTab = "overview",
 }: {
   ap: AgencyPartner;
@@ -69,6 +71,7 @@ export function PartnerCrmClient({
   payouts?: APPayout[];
   loginStatus: string;
   lastSignIn: string;
+  identityLinkage?: IdentityLinkageHealth | null;
   initialTab?: AdminPartnerDetailTab;
 }) {
   const router = useRouter();
@@ -562,6 +565,34 @@ export function PartnerCrmClient({
                 <p className="mt-1">Last sign-in: {lastSignIn}</p>
                 <p className="mt-1 font-mono text-[10px] text-slate-400">Auth user: {ap.user_id || "—"}</p>
               </div>
+
+              {identityLinkage ? (
+                <div
+                  className={cn(
+                    "rounded-xl border p-4 text-xs font-semibold space-y-2",
+                    identityLinkage.healthy
+                      ? "border-emerald-100 bg-emerald-50/50 text-emerald-900"
+                      : "border-amber-200 bg-amber-50/70 text-amber-950",
+                  )}
+                >
+                  <p className="text-[11px] font-bold uppercase tracking-wide">Identity linkage</p>
+                  <p>Partner record ID: <span className="font-mono text-[10px]">{identityLinkage.partnerId}</span></p>
+                  <p>Auth user ID: <span className="font-mono text-[10px]">{identityLinkage.authUserId || "—"}</span></p>
+                  <p>Profile role: {identityLinkage.profileRole || "—"}</p>
+                  <p>Auth email: {identityLinkage.authEmail || "—"}</p>
+                  <p>Profile email: {identityLinkage.profileEmail || "—"}</p>
+                  <p>AP status / KYC: {identityLinkage.partnerStatus} / {identityLinkage.partnerKycStatus}</p>
+                  <p>Last AP login: {identityLinkage.lastApLogin ? new Date(identityLinkage.lastApLogin).toLocaleString("en-IN") : "—"}</p>
+                  <p>Linkage health: {identityLinkage.healthy ? "Healthy" : "Needs review"}</p>
+                  {identityLinkage.warnings.length > 0 ? (
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] font-medium text-amber-800">
+                      {identityLinkage.warnings.map((warning) => (
+                        <li key={warning}>{warning.replace(/_/g, " ")}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
 
