@@ -119,10 +119,11 @@ begin
             insert into public.customers (mobile, name, email, is_active)
             values ('7007595931', 'Faiz Alam', 'janabfaizalam@gmail.com', true)
           $sql$;
-        exception when not_null_violation then
-          raise notice 'customers insert skipped — hashed_pin required; set PIN via ensure-primary-admin.mjs, not this migration.';
-        exception when others then
-          raise notice 'customers insert skipped: %', sqlerrm;
+        exception
+          when not_null_violation then
+            raise notice 'customers insert skipped — hashed_pin required; set PIN via ensure-primary-admin.mjs, not this migration.';
+          when others then
+            raise notice 'customers insert skipped: %', sqlerrm;
         end;
       else
         insert into public.customers (mobile, name, email, is_active)
