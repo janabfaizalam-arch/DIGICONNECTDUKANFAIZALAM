@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getCurrentUser } from "@/lib/auth";
-import { getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { getPartnerMembership } from "@/lib/auth/memberships";
+import { getAgencyPartnerById, getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 function generatePaymentCode(): string {
@@ -20,13 +21,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized. Please log in." }, { status: 401 });
     }
 
-    const ap = await getAgencyPartnerByUserId(user.id);
+    const membership = await getPartnerMembership(user.id);
+    const ap =
+      (membership.ok ? await getAgencyPartnerById(membership.partnerId) : null) ??
+      (await getAgencyPartnerByUserId(user.id));
+
     if (!ap) {
       return NextResponse.json({ error: "Agency Partner profile not found." }, { status: 403 });
     }
 
-    if (ap.status !== "active") {
-      return NextResponse.json({ error: "Agency Partner profile is not active." }, { status: 403 });
+    if (!membership.ok || ap.status !== "active") {
+      return NextResponse.json(
+        {
+          error:
+            membership.reason === "kyc_not_approved"
+              ? "Your KYC approval is pending."
+              : membership.reason === "ap_not_active"
+                ? "Your Digi Partner account is inactive."
+                : "Agency Partner profile is not active.",
+        },
+        { status: 403 },
+      );
     }
 
     const { applicationId, expiryHours = 24 } = await request.json();

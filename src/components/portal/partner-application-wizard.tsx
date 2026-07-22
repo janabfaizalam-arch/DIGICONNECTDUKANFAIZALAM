@@ -910,6 +910,8 @@ export function PartnerApplicationWizard({
               pincode:  customer.pincode,
               state:    customer.state,
               district: customer.district,
+              portal:   "ap",
+              applicationSource: "partner_assisted",
             },
           },
         }),
@@ -973,7 +975,7 @@ export function PartnerApplicationWizard({
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
       payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile, stage: "START" });
 
-      // No amount sent — server computes authoritative total
+      // No client amount — server computes authoritative total. Mark Digi Partner portal for membership checks.
       payLog("ORDER_CREATE", { stage: "SEND_REQUEST" });
       const orderRes = await fetch("/api/create-order", {
         method:  "POST",
@@ -994,6 +996,8 @@ export function PartnerApplicationWizard({
               pincode:  customer.pincode,
               state:    customer.state,
               district: customer.district,
+              portal:   "ap",
+              applicationSource: "partner_assisted",
             },
           },
         }),
@@ -1005,19 +1009,25 @@ export function PartnerApplicationWizard({
       payLog("ORDER_CREATE", { status: orderRes.status, orderId: orderData.order_id, amount: orderData.amount, appIds: orderData.application_ids, stage: "RESPONSE_RECEIVED" });
 
       if (!orderRes.ok || !orderData.order_id) {
+        if (orderRes.status === 503 || orderData.code === "razorpay_not_configured") {
+          throw new Error("Online payment is temporarily unavailable.");
+        }
+        if (orderData.code === "already_paid") {
+          throw new Error("Payment already completed.");
+        }
         const errMsg = orderData.error ?? orderData.message ?? `Order creation failed (HTTP ${orderRes.status})`;
         throw new Error(errMsg);
       }
 
-      // Verify amounts match exactly
-      const reviewTotal = cartTotal;
-      const backendTotal = Number(orderData.servicePrice);
+      // Server is the sole source of truth for checkout amount — do not block on cart display drift.
+      const backendTotal = Number(orderData.finalPayable ?? orderData.servicePrice);
       const razorpayAmount = Number(orderData.amount) / 100;
-
-      if (reviewTotal !== backendTotal || backendTotal !== razorpayAmount) {
-        const mismatchMsg = "Payment amount mismatch detected. Please refresh cart.";
-        console.error("[PAY:MISMATCH]", { reviewTotal, backendTotal, razorpayAmount });
-        throw new Error(mismatchMsg);
+      if (Number.isFinite(backendTotal) && Math.abs(backendTotal - razorpayAmount) > 0.009) {
+        console.error("[PAY:MISMATCH]", { backendTotal, razorpayAmount, cartTotal });
+        throw new Error("Payment amount mismatch detected. Please refresh and try again.");
+      }
+      if (Math.abs(cartTotal - razorpayAmount) > 0.009) {
+        console.warn("[PAY:CART_DRIFT]", { cartTotal, razorpayAmount, servicePrice: orderData.servicePrice });
       }
 
       payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100, stage: "INITIALIZE" });
@@ -2018,7 +2028,7 @@ export function PartnerApplicationWizard({
 
           <button
             onClick={handleNext}
-            disabled={isSubmitting || (currentStep === 5 && !isScriptReady)}
+            disabled={isSubmitting || (currentStep === 5 && paymentMethodType === "immediate" && !isScriptReady)}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 text-sm font-black text-white py-3.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60",
               currentStep === 5
@@ -2029,7 +2039,9 @@ export function PartnerApplicationWizard({
             {isSubmitting ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                {currentStep === 5 ? "Processing Payment..." : "Please wait..."}
+                {currentStep === 5
+                  ? (paymentMethodType === "immediate" ? "Preparing secure payment…" : "Generating payment link…")
+                  : "Please wait..."}
               </>
             ) : currentStep === 1 ? (
               <>
@@ -2106,13 +2118,31 @@ export function PartnerApplicationWizard({
 
       {/* ── PAYMENT ERROR BANNER ─────────────────────────────────────────────── */}
       {paymentError && currentStep === 5 && (
-        <div className="fixed bottom-20 left-4 right-4 z-50 bg-red-600 text-white rounded-2xl px-4 py-3 flex items-start gap-3 shadow-xl">
+        <div
+          className="fixed left-4 right-4 z-50 bg-red-600 text-white rounded-2xl px-4 py-3 flex items-start gap-3 shadow-xl"
+          style={{ bottom: "calc(5.75rem + env(safe-area-inset-bottom))" }}
+          role="alert"
+        >
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black">Payment Error</p>
             <p className="text-[11px] font-medium mt-0.5 leading-snug">{paymentError}</p>
+            <button
+              onClick={() => {
+                setPaymentError(null);
+                if (paymentMethodType === "immediate") {
+                  void triggerRazorpayCheckout();
+                } else {
+                  void triggerPaymentLinkGeneration();
+                }
+              }}
+              disabled={isSubmitting}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-[11px] font-black hover:bg-white/25 transition disabled:opacity-50"
+            >
+              <RefreshCw className="h-3 w-3" /> Retry Payment
+            </button>
           </div>
-          <button onClick={() => setPaymentError(null)} className="shrink-0 p-1 hover:bg-white/20 rounded-lg transition">
+          <button onClick={() => setPaymentError(null)} aria-label="Dismiss payment error" className="shrink-0 p-1 hover:bg-white/20 rounded-lg transition">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

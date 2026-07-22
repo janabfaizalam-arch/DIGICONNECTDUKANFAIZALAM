@@ -1071,7 +1071,10 @@ export async function POST(request: Request) {
         referral_source: details.referralSource || null,
         referral_token: (typeof finalToken !== "undefined" ? finalToken : null) || details.referralToken || null,
         payment_link_id: details.paymentLinkId || null,
-        source: referrerApId ? "referral" : "online",
+        // applications.source is the Postgres enum application_source ('online','offline','agent_pos').
+        // 'referral' is NOT an enum value — referral intent lives in source_channel/referral_token.
+        source: "online",
+        source_channel: referrerApId ? "referral" : "online",
         payment_status: hasVerifiedRazorpayPayment && !isDraft ? "verified" : "pending",
         submitted_by_role: role,
         agent_id: referrerUserId || null,

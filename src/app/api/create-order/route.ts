@@ -11,6 +11,8 @@ import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { resolveApplicationSourceEnum, resolveSourceChannel, rupeesToPaise } from "@/lib/payments/application-source";
+import { getPartnerMembership } from "@/lib/auth/memberships";
 
 type CreateOrderBody = {
   amount?: number;
@@ -37,8 +39,8 @@ type CreateOrderBody = {
 
 type ApplicationDraftCustomer = NonNullable<NonNullable<CreateOrderBody["applicationDraft"]>["customer"]>;
 
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message, message }, { status });
+function jsonError(message: string, status: number, code?: string) {
+  return NextResponse.json({ error: message, message, ...(code ? { code } : {}) }, { status });
 }
 
 function jsonCustomerValidationError(message: string, customer: ReturnType<typeof normalizeCustomer>) {
@@ -177,7 +179,30 @@ export async function POST(request: Request) {
       }
 
       const ap = await getAgencyPartnerByUserId(user.id).catch(() => null);
-      const resolvedAgentOrReferralId = referrerApId || ap?.id || null;
+      const partnerMembership = await getPartnerMembership(user.id).catch(() => null);
+      const portalHint = String(body?.applicationDraft?.details?.portal ?? "").toLowerCase();
+      const isPartnerPortalRequest = portalHint === "ap" || portalHint === "agency_partner";
+
+      if (isPartnerPortalRequest && (!partnerMembership || !partnerMembership.ok)) {
+        console.warn("[razorpay/create-order] partner_portal_membership_denied", {
+          userId: user.id,
+          reason: partnerMembership && "reason" in partnerMembership ? partnerMembership.reason : "unknown",
+        });
+        return jsonError(
+          partnerMembership && "reason" in partnerMembership && partnerMembership.reason === "ap_not_active"
+            ? "Your Digi Partner account is inactive."
+            : partnerMembership && "reason" in partnerMembership && partnerMembership.reason === "kyc_not_approved"
+              ? "Your KYC approval is pending."
+              : "Digi Partner membership is required to prepare this payment.",
+          403,
+          partnerMembership && "reason" in partnerMembership ? String(partnerMembership.reason) : "partner_required",
+        );
+      }
+
+      const partnerIdFromMembership =
+        partnerMembership && partnerMembership.ok ? partnerMembership.partnerId : null;
+      const resolvedAgentOrReferralId = referrerApId || ap?.id || partnerIdFromMembership || null;
+      const isPartnerFlow = Boolean(ap?.id || partnerIdFromMembership);
 
       console.log(`[CREATE-ORDER] Resolved Agent/Referral ID:`, resolvedAgentOrReferralId);
 
@@ -274,7 +299,7 @@ export async function POST(request: Request) {
       });
       walletRedeemAmount = redeem.walletRedeem;
       const freshPayableAmount = redeem.freshPayable;
-      const expectedAmount = Math.round(freshPayableAmount * 100);
+      const expectedAmount = rupeesToPaise(freshPayableAmount);
 
       if (redeem.wasClamped) {
         console.warn("[razorpay/create-order] Wallet redeem clamped to 50% cap", redeem);
@@ -424,9 +449,10 @@ export async function POST(request: Request) {
           const walletAmountForRow = Math.min(remainingWalletToAllocate, serviceAmountForRow);
           remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
 
-          const commissionAmount = service.payout_type === "percentage"
+          const commissionRaw = service.payout_type === "percentage"
             ? Math.round((Number(service.customer_fee) * Number(service.payout_percentage)) / 100)
             : Number(service.agent_payout);
+          const commissionAmount = Number.isFinite(commissionRaw) ? commissionRaw : 0;
 
           return {
             user_id: user.id,
@@ -457,22 +483,29 @@ export async function POST(request: Request) {
             referral_source: body.applicationDraft?.details?.referralSource || (resolvedReferralToken ? "partner_link" : null),
             referral_token: resolvedReferralToken,
             payment_link_id: body.applicationDraft?.details?.paymentLinkId || null,
-            source: ap?.id ? "agency_partner" : "online",
-            submitted_by_role: ap?.id ? "agency_partner" : "customer",
+            // applications.source is the Postgres enum application_source — only enum-safe values here.
+            source: resolveApplicationSourceEnum(isPartnerFlow),
+            source_channel: resolveSourceChannel({ isPartnerFlow, isReferral: Boolean(resolvedReferralToken) }),
+            submitted_by_role: isPartnerFlow ? "agency_partner" : "customer",
           };
         });
-
-        console.log(`[CREATE-ORDER] Inserting wallet-only applications:`, applicationsToInsert);
 
         const { data: applications, error: appError } = await supabase
           .from("applications")
           .insert(applicationsToInsert)
           .select("id");
 
-        console.log(`[CREATE-ORDER] Wallet-only applications insert result:`, { applications, error: appError });
-
         if (appError || !applications?.length) {
-          console.error("[razorpay/create-order] Wallet-only application creation failed", appError);
+          console.error("[razorpay/create-order] wallet_only_application_insert_failed", {
+            operation: "wallet_only_application_insert",
+            userId: user.id,
+            agencyPartnerId: ap?.id ?? partnerIdFromMembership ?? null,
+            serviceSlugs,
+            supabaseCode: appError?.code ?? null,
+            supabaseMessage: appError?.message ?? null,
+            supabaseDetails: appError?.details ?? null,
+            supabaseHint: appError?.hint ?? null,
+          });
           return jsonError("Application could not be created with wallet payment.", 500);
         }
 
@@ -683,9 +716,10 @@ export async function POST(request: Request) {
           remainingWalletToAllocate = Math.max(0, remainingWalletToAllocate - walletAmountForRow);
           const freshAmountForRow = Math.max(0, serviceAmountForRow - walletAmountForRow);
 
-          const commissionAmount = service.payout_type === "percentage"
+          const commissionRaw = service.payout_type === "percentage"
             ? Math.round((Number(service.customer_fee) * Number(service.payout_percentage)) / 100)
             : Number(service.agent_payout);
+          const commissionAmount = Number.isFinite(commissionRaw) ? commissionRaw : 0;
 
           return {
             user_id: user.id,
@@ -714,23 +748,45 @@ export async function POST(request: Request) {
             referral_source: body.applicationDraft?.details?.referralSource || (resolvedReferralToken ? "partner_link" : null),
             referral_token: resolvedReferralToken,
             payment_link_id: body.applicationDraft?.details?.paymentLinkId || null,
-            source: ap?.id ? "agency_partner" : "online",
-            submitted_by_role: ap?.id ? "agency_partner" : "customer",
+            // applications.source is the Postgres enum application_source — only enum-safe values here.
+            source: resolveApplicationSourceEnum(isPartnerFlow),
+            source_channel: resolveSourceChannel({ isPartnerFlow, isReferral: Boolean(resolvedReferralToken) }),
+            submitted_by_role: isPartnerFlow ? "agency_partner" : "customer",
           };
         });
-
-        console.log(`[CREATE-ORDER] Inserting normal applications:`, applicationsToInsert);
 
         const { data: applications, error: applicationError } = await supabase
           .from("applications")
           .insert(applicationsToInsert)
           .select("id");
 
-        console.log(`[CREATE-ORDER] Normal applications insert result:`, { applications, error: applicationError });
-
         if (applicationError || !applications?.length) {
-          console.error("[razorpay/create-order] Payment-pending application creation failed", applicationError);
-          return jsonError("Application could not be prepared for payment.", 500);
+          console.error("[razorpay/create-order] payment_pending_application_insert_failed", {
+            operation: "payment_pending_application_insert",
+            userId: user.id,
+            agencyPartnerId: ap?.id ?? partnerIdFromMembership ?? null,
+            serviceSlugs,
+            amountPaise: amount,
+            supabaseCode: applicationError?.code ?? null,
+            supabaseMessage: applicationError?.message ?? null,
+            supabaseDetails: applicationError?.details ?? null,
+            supabaseHint: applicationError?.hint ?? null,
+          });
+          const isSchemaMismatch =
+            applicationError?.code === "22P02" ||
+            applicationError?.code === "PGRST204" ||
+            applicationError?.code === "23514";
+          return jsonError(
+            isSchemaMismatch
+              ? "Application could not be prepared for payment. Please contact support (configuration error)."
+              : "Application could not be prepared for payment.",
+            500,
+            applicationError?.code === "22P02"
+              ? "application_source_enum_mismatch"
+              : applicationError?.code === "23514"
+                ? "application_constraint_violation"
+                : "application_prepare_failed",
+          );
         }
 
         applicationIds = applications.map((application) => application.id);
@@ -759,12 +815,12 @@ export async function POST(request: Request) {
         return jsonError("Application not found.", 404);
       }
 
-      if (application.payment_status === "verified") {
-        return jsonError("This application has already been paid.", 400);
+      if (application.payment_status === "verified" || application.payment_status === "paid") {
+        return jsonError("Payment already completed.", 400, "already_paid");
       }
 
       const freshPayableAmount = Number(application.fresh_payable_amount ?? application.real_payment_amount ?? application.amount ?? 0);
-      const expectedAmount = Math.round(freshPayableAmount * 100);
+      const expectedAmount = rupeesToPaise(freshPayableAmount);
 
       if (body?.amount && Math.round(body.amount) !== expectedAmount) {
         return jsonError(`Razorpay amount does not match the server-side payable amount. Client: ${body.amount}, Expected: ${expectedAmount}`, 400);
@@ -810,7 +866,7 @@ export async function POST(request: Request) {
         hasKeyId: Boolean(getRazorpayKeyId()),
         hasKeySecret: Boolean(getRazorpayKeySecret()),
       });
-      return jsonError("Razorpay is not configured on the server.", 500);
+      return jsonError("Online payment is temporarily unavailable.", 503, "razorpay_not_configured");
     }
 
     console.log(`[CREATE-ORDER] Requesting Razorpay order creation for amount: ${amount} paise, currency: ${currency}, receipt: ${receipt}`);

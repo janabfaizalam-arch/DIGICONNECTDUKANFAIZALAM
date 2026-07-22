@@ -368,7 +368,6 @@ export async function POST(request: Request) {
           city,
           pincode,
           state,
-          source: "agency_partner_pos",
           created_by: user.id,
           assigned_agent_id: user.id,
         })
@@ -458,7 +457,8 @@ export async function POST(request: Request) {
         },
         status: paymentMode === "link" ? "payment_pending" : "submitted",
         payment_status: paymentMode === "link" ? "pending" : "verified",
-        source: "agency_partner_pos",
+        // applications.source enum only allows 'online'|'offline'|'agent_pos'; partner channel is source_channel.
+        source: "agent_pos",
         commission_amount: commissionAmount,
         submitted_by_role: "agency_partner",
       })
