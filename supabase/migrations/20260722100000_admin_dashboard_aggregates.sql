@@ -16,28 +16,28 @@ as $$
     'verified_sum_rupees', coalesce((
       select sum(coalesce(real_payment_amount, amount, 0))::numeric
       from public.payments
-      where lower(coalesce(status, '')) in ('verified', 'paid')
+      where lower(coalesce(status::text, '')) in ('verified', 'paid')
         and (p_from is null or created_at >= p_from)
         and (p_to is null or created_at < p_to)
     ), 0),
     'pending_count', coalesce((
       select count(*)::bigint
       from public.payments
-      where lower(coalesce(status, '')) in ('pending', 'unpaid')
+      where lower(coalesce(status::text, '')) in ('pending', 'unpaid')
         and (p_from is null or created_at >= p_from)
         and (p_to is null or created_at < p_to)
     ), 0),
     'failed_count', coalesce((
       select count(*)::bigint
       from public.payments
-      where lower(coalesce(status, '')) in ('failed', 'cancelled', 'canceled')
+      where lower(coalesce(status::text, '')) in ('failed', 'cancelled', 'canceled')
         and (p_from is null or created_at >= p_from)
         and (p_to is null or created_at < p_to)
     ), 0),
     'verified_count', coalesce((
       select count(*)::bigint
       from public.payments
-      where lower(coalesce(status, '')) in ('verified', 'paid')
+      where lower(coalesce(status::text, '')) in ('verified', 'paid')
         and (p_from is null or created_at >= p_from)
         and (p_to is null or created_at < p_to)
     ), 0)
@@ -64,11 +64,11 @@ as $$
   select coalesce((
     select sum(coalesce(calculated_amount, 0))::numeric
     from public.ap_commissions
-    where lower(coalesce(status, '')) in ('pending', 'earned', 'approved', 'reserved')
+    where lower(coalesce(status::text, '')) in ('pending', 'earned', 'approved', 'reserved')
   ), (
     select sum(coalesce(amount, 0))::numeric
     from public.commissions
-    where lower(coalesce(status, '')) not in ('paid', 'settled', 'reversed', 'cancelled')
+    where lower(coalesce(status::text, '')) not in ('paid', 'settled', 'reversed', 'cancelled')
   ), 0);
 $$;
 
@@ -86,7 +86,7 @@ as $$
     (created_at at time zone 'Asia/Kolkata')::date as day,
     sum(coalesce(real_payment_amount, amount, 0))::numeric as revenue
   from public.payments
-  where lower(coalesce(status, '')) in ('verified', 'paid')
+  where lower(coalesce(status::text, '')) in ('verified', 'paid')
     and created_at >= p_from
     and created_at < p_to
   group by 1
