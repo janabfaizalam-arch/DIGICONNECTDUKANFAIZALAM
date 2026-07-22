@@ -35,14 +35,60 @@ begin
 end
 $$;
 
--- Unique phone for non-empty values
-create unique index if not exists profiles_phone_unique_idx
-  on public.profiles (phone)
-  where phone is not null and btrim(phone) <> '';
+-- Unique phone / username for non-empty values.
+-- Preconditions: resolve duplicate phone/username manually if index creation fails.
+-- Do not auto-merge identities in this migration.
+do $$
+declare
+  v_dup_phone integer;
+  v_dup_user integer;
+begin
+  select count(*) into v_dup_phone
+  from (
+    select phone
+    from public.profiles
+    where phone is not null and btrim(phone) <> ''
+    group by phone
+    having count(*) > 1
+  ) d;
 
-create unique index if not exists profiles_username_unique_idx
-  on public.profiles (username)
-  where username is not null and btrim(username) <> '';
+  select count(*) into v_dup_user
+  from (
+    select username
+    from public.profiles
+    where username is not null and btrim(username) <> ''
+    group by username
+    having count(*) > 1
+  ) d;
+
+  if v_dup_phone > 0 then
+    raise warning 'profiles.phone has % duplicate group(s) — unique index may be skipped.', v_dup_phone;
+  end if;
+  if v_dup_user > 0 then
+    raise warning 'profiles.username has % duplicate group(s) — unique index may be skipped.', v_dup_user;
+  end if;
+
+  begin
+    execute $sql$
+      create unique index if not exists profiles_phone_unique_idx
+        on public.profiles (phone)
+        where phone is not null and btrim(phone) <> ''
+    $sql$;
+  exception when others then
+    raise warning 'profiles_phone_unique_idx skipped: %', sqlerrm;
+  end;
+
+  begin
+    execute $sql$
+      create unique index if not exists profiles_username_unique_idx
+        on public.profiles (username)
+        where username is not null and btrim(username) <> ''
+    $sql$;
+  exception when others then
+    raise warning 'profiles_username_unique_idx skipped: %', sqlerrm;
+  end;
+end
+$$;
 
 do $$
 begin
@@ -155,7 +201,13 @@ begin
 end;
 $$;
 
+revoke all on function public.cleanup_expired_auth_otps() from public;
+revoke all on function public.cleanup_expired_auth_otps() from anon;
+revoke all on function public.cleanup_expired_auth_otps() from authenticated;
 grant execute on function public.cleanup_expired_auth_otps() to service_role;
+
+-- Preconditions: duplicate non-empty profiles.phone values will block profiles_phone_unique_idx.
+-- Do not auto-merge identities; resolve duplicates manually before re-applying if index creation fails.
 
 -- Ensure customers.mobile uniqueness for CRM sync (if table/column exist)
 do $$

@@ -1,15 +1,18 @@
--- Repair Digi Partner profile corrupted by primary-admin mobile-wide promotion.
--- Context: migration 20260719190000 set role=admin for ALL profiles sharing mobile 7007595931,
--- including the Auth user linked to agency_partners.partner_code = CEO-DCD-AD-0001.
--- That left a valid active+approved partner blocked by profiles.role / wrong Auth email resolution.
+-- Defensive Digi Partner / primary-admin role repair.
 --
--- Policy preserved:
---   - Primary admin Auth user (janabfaizalam@gmail.com) stays admin.
---   - Digi Partner Auth user linked to CEO-DCD-AD-0001 is restored to agency_partner.
---   - agency_partners.id and financial data are untouched.
---   - Only agency_partners.user_id linkage is verified; user_id is NOT changed.
+-- Context: older builds of 20260719190000 (and/or manual scripts) promoted admin by
+-- shared mobile 7007595931, which could set Digi Partner profiles to role=admin.
+-- The corrected primary-admin migration promotes only by Auth email and excludes
+-- agency_partners — so this file no longer repairs damage that migration creates.
+-- It remains as a harmless, idempotent safety net for pre-existing production drift.
+--
+-- Guarantees:
+--   * Never demotes Auth user janabfaizalam@gmail.com from admin.
+--   * Never changes agency_partners.user_id, balances, or financial tables.
+--   * Only restores partner profile roles when an active+approved AP membership exists
+--     and the profile is incorrectly role=admin (and is not the primary admin Auth email).
 
--- 1) Restore partner profile role + sync email to auth.users for the CEO-DCD-AD-0001 membership
+-- 1) Restore Digi Partner profiles wrongly stuck as admin (defensive)
 update public.profiles p
 set
   role = 'agency_partner',
@@ -25,18 +28,22 @@ set
   updated_at = now()
 from public.agency_partners ap
 where ap.user_id = p.id
-  and ap.partner_code = 'CEO-DCD-AD-0001'
   and ap.status = 'active'
   and ap.kyc_status = 'approved'
-  and lower(coalesce(p.role::text, '')) = 'admin';
+  and lower(coalesce(p.role::text, '')) = 'admin'
+  and not exists (
+    select 1
+    from auth.users u
+    where u.id = p.id
+      and lower(coalesce(u.email, '')) = 'janabfaizalam@gmail.com'
+  );
 
--- 2) Ensure primary admin Auth user profile remains admin (by Auth email, not by shared mobile)
+-- 2) Ensure primary admin Auth user profile remains admin (email-only; never AP-linked)
 update public.profiles p
 set
   role = 'admin',
   email = 'janabfaizalam@gmail.com',
   full_name = coalesce(nullif(btrim(p.full_name), ''), 'Faiz Alam'),
-  mobile = coalesce(nullif(btrim(p.mobile), ''), '7007595931'),
   active = true,
   is_active = true,
   updated_at = now()
@@ -49,20 +56,42 @@ where u.id = p.id
     where ap.user_id = p.id
   );
 
--- 3) Safety notice: any other active partners still stuck as admin due to shared-mobile promotion
+-- 3) Validation notices (non-destructive)
 do $$
 declare
-  v_count integer;
+  v_ceo_ok integer;
+  v_stuck integer;
+  v_admin_ok integer;
 begin
-  select count(*) into v_count
+  select count(*) into v_ceo_ok
+  from public.agency_partners ap
+  join public.profiles p on p.id = ap.user_id
+  where ap.partner_code = 'CEO-DCD-AD-0001'
+    and lower(coalesce(p.role::text, '')) = 'agency_partner';
+
+  if v_ceo_ok > 0 then
+    raise notice 'CEO-DCD-AD-0001 profile role is agency_partner (healthy).';
+  end if;
+
+  select count(*) into v_stuck
   from public.profiles p
   join public.agency_partners ap on ap.user_id = p.id
   where lower(coalesce(p.role::text, '')) = 'admin'
     and ap.status = 'active'
     and ap.kyc_status = 'approved';
 
-  if v_count > 0 then
-    raise notice 'Found % active approved partner profile(s) still role=admin — review manually.', v_count;
+  if v_stuck > 0 then
+    raise warning 'Found % active approved partner profile(s) still role=admin after repair — review manually.', v_stuck;
+  end if;
+
+  select count(*) into v_admin_ok
+  from auth.users u
+  join public.profiles p on p.id = u.id
+  where lower(coalesce(u.email, '')) = 'janabfaizalam@gmail.com'
+    and lower(coalesce(p.role::text, '')) = 'admin';
+
+  if v_admin_ok = 0 then
+    raise warning 'Primary admin Auth email profile is not role=admin after repair — review manually.';
   end if;
 end
 $$;
