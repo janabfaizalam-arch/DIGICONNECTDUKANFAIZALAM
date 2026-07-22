@@ -35,9 +35,37 @@ describe("pending auth migrations — production safety contracts", () => {
     expect(primaryAdmin).toMatch(/is distinct from 'agency_partner'/i);
   });
 
-  it("primary-admin migration keeps demotion of former admin email", () => {
+  it("primary-admin migration demotes former admin by Auth email, not drifted profile email", () => {
     expect(primaryAdmin).toMatch(/dgcntdkn@gmail\.com/);
     expect(primaryAdmin).toMatch(/role\s*=\s*'customer'/i);
+    expect(primaryAdmin).toMatch(/email\s*=\s*lower\(u\.email\)/i);
+    // Must join auth.users for demotion (drift: profile email may equal primary-admin email)
+    expect(primaryAdmin).toMatch(
+      /update public\.profiles p[\s\S]*from auth\.users u[\s\S]*u\.email[\s\S]*dgcntdkn@gmail\.com/i,
+    );
+    // Must not demote solely by profiles.email = dgcntdkn (misses drifted rows)
+    expect(primaryAdmin).not.toMatch(
+      /update public\.profiles\s*\n\s*set[\s\S]*where lower\(coalesce\(email, ''\)\) = 'dgcntdkn@gmail\.com'/i,
+    );
+    expect(primaryAdmin).toMatch(/agency_partners/);
+  });
+
+  it("documents the exact former-admin email-drift scenario the demotion must fix", () => {
+    // Scenario (production observed):
+    //   Auth email = dgcntdkn@gmail.com
+    //   Profile email incorrectly = janabfaizalam@gmail.com
+    //   Profile role = admin
+    // Demotion keyed only on profile email would miss this row; Auth join repairs it.
+    const demotesViaAuth = /from auth\.users u[\s\S]*dgcntdkn@gmail\.com[\s\S]*email\s*=\s*lower\(u\.email\)/i.test(
+      primaryAdmin,
+    );
+    const restoresAuthEmail = /email\s*=\s*lower\(u\.email\)/i.test(primaryAdmin);
+    const excludesPartners = /not exists\s*\([\s\S]*agency_partners[\s\S]*user_id\s*=\s*p\.id/i.test(primaryAdmin);
+    expect(demotesViaAuth).toBe(true);
+    expect(restoresAuthEmail).toBe(true);
+    expect(excludesPartners).toBe(true);
+    expect(primaryAdmin).toContain("janabfaizalam@gmail.com");
+    expect(primaryAdmin).toContain("dgcntdkn@gmail.com");
   });
 
   it("whatsapp auth cleanup function revokes public/anon/authenticated", () => {

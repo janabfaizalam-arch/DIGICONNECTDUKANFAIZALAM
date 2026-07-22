@@ -12,13 +12,33 @@
 --   * That Auth user is NOT linked in agency_partners
 --   * Shared mobile across admin + Digi Partner profiles is OK and must not trigger promotion
 
--- 1) Demote former admin profile(s) — business rule: DEMOTED_ADMIN_EMAILS
-update public.profiles
+-- 1) Demote former admin by Auth identity (handles profile-email drift).
+--    Business rule: DEMOTED_ADMIN_EMAILS / dgcntdkn@gmail.com → customer.
+--    NEVER demote by profiles.email alone (may incorrectly equal primary-admin email).
+--    NEVER touch primary-admin Auth UUID or any agency_partners-linked profile.
+update public.profiles p
 set
   role = 'customer',
+  email = lower(u.email),
   updated_at = now()
-where lower(coalesce(email, '')) = 'dgcntdkn@gmail.com'
-  and lower(coalesce(role::text, '')) in ('admin', 'super_admin');
+from auth.users u
+where u.id = p.id
+  and lower(coalesce(u.email, '')) = 'dgcntdkn@gmail.com'
+  and not exists (
+    select 1
+    from auth.users primary_admin
+    where primary_admin.id = p.id
+      and lower(coalesce(primary_admin.email, '')) = 'janabfaizalam@gmail.com'
+  )
+  and not exists (
+    select 1
+    from public.agency_partners ap
+    where ap.user_id = p.id
+  )
+  and (
+    lower(coalesce(p.email, '')) is distinct from lower(u.email)
+    or lower(coalesce(p.role::text, '')) is distinct from 'customer'
+  );
 
 -- 2) Promote exactly the Auth user with primary admin email (exclude Digi Partner memberships)
 update public.profiles p
@@ -117,23 +137,36 @@ begin
 end
 $$;
 
--- 5) Portal users table (if present) — email-only; never promote AP-linked ids
+-- 5) Portal users table (if present) — demote/promote by Auth-linked identity only
 do $$
 begin
   if to_regclass('public.users') is not null then
-    update public.users
-    set role = 'customer'
-    where lower(coalesce(email, '')) = 'dgcntdkn@gmail.com'
-      and lower(coalesce(role::text, '')) in ('admin', 'super_admin');
+    update public.users usr
+    set
+      role = 'customer',
+      email = lower(u.email)
+    from auth.users u
+    where u.id = usr.id
+      and lower(coalesce(u.email, '')) = 'dgcntdkn@gmail.com'
+      and not exists (
+        select 1 from public.agency_partners ap where ap.user_id = usr.id
+      )
+      and (
+        lower(coalesce(usr.email, '')) is distinct from lower(u.email)
+        or lower(coalesce(usr.role::text, '')) is distinct from 'customer'
+      );
 
     update public.users usr
     set role = 'admin'
-    where lower(coalesce(usr.email, '')) = 'janabfaizalam@gmail.com'
+    from auth.users u
+    where u.id = usr.id
+      and lower(coalesce(u.email, '')) = 'janabfaizalam@gmail.com'
       and not exists (
         select 1 from public.agency_partners ap where ap.user_id = usr.id
       )
       and lower(coalesce(usr.role::text, '')) is distinct from 'agency_partner'
-      and lower(coalesce(usr.role::text, '')) is distinct from 'agent';
+      and lower(coalesce(usr.role::text, '')) is distinct from 'agent'
+      and lower(coalesce(usr.role::text, '')) is distinct from 'admin';
   end if;
 end
 $$;
