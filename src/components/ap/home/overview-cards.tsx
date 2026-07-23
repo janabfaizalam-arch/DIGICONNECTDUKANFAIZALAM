@@ -8,44 +8,44 @@ type OverviewCardsProps = {
 };
 
 function toneClass(tone: PartnerOverviewCard["tone"]) {
-  if (tone === "pending") return "border-amber-200 bg-amber-50/40";
-  if (tone === "success") return "border-emerald-200 bg-emerald-50/40";
-  if (tone === "urgent") return "border-rose-200 bg-rose-50/40";
-  return "border-slate-200/80 bg-white";
+  if (tone === "pending") return "border-amber-200/80 bg-amber-50/50";
+  if (tone === "success") return "border-emerald-200/80 bg-emerald-50/50";
+  if (tone === "urgent") return "border-rose-200/80 bg-rose-50/50";
+  return "border-slate-200/70 bg-white";
 }
 
 export function OverviewCards({ cards }: OverviewCardsProps) {
   if (!cards.length) return null;
 
   return (
-    <section aria-label="Overview" className="space-y-3 px-4 md:px-6">
-      <h2 className="text-sm font-extrabold text-slate-900">Overview</h2>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <section aria-label="Overview" className="space-y-2.5 px-4 md:px-6">
+      <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Overview</h2>
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3">
         {cards.map((card) => {
           const body = (
             <div
               className={cn(
-                "h-full rounded-2xl border p-3.5 shadow-sm transition",
+                "h-full rounded-[16px] border p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200",
                 toneClass(card.tone),
-                card.href && "hover:border-blue-300 hover:shadow-md",
+                card.href && "hover:border-blue-200 hover:shadow-[0_8px_20px_-12px_rgba(37,99,235,0.28)]",
               )}
             >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{card.label}</p>
-              <p className="mt-1.5 truncate text-xl font-extrabold tabular-nums text-slate-950">{card.value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{card.label}</p>
+              <p className="mt-1 truncate text-lg font-bold tabular-nums tracking-tight text-slate-950 md:text-xl">
+                {card.value}
+              </p>
             </div>
           );
 
           if (!card.href) {
-            return (
-              <div key={card.key}>{body}</div>
-            );
+            return <div key={card.key}>{body}</div>;
           }
 
           return (
             <Link
               key={card.key}
               href={card.href}
-              className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 rounded-2xl"
+              className="block rounded-[16px] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
             >
               {body}
             </Link>

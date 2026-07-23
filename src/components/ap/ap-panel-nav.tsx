@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { ApMobileBottomNav } from "@/components/ap/ap-mobile-bottom-nav";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
@@ -64,11 +65,6 @@ export function APPanelNav() {
   const [partnerTier, setPartnerTier] = useState("Partner Workspace");
   const [partnerCode, setPartnerCode] = useState("");
   const [partnerName, setPartnerName] = useState("");
-
-  // Scroll-aware bottom nav
-  const [navVisible, setNavVisible] = useState(true);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const lastScrollY = useRef(0);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const drawerCloseRef = useRef<HTMLButtonElement>(null);
@@ -177,39 +173,6 @@ export function APPanelNav() {
     }
   }, [drawerOpen]);
 
-  // Scroll direction detection for bottom nav
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-      const delta = currentY - lastScrollY.current;
-
-      if (delta > 8) {
-        setNavVisible(false);
-      } else if (delta < -8) {
-        setNavVisible(true);
-      }
-
-      lastScrollY.current = currentY;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Keyboard detection: hide nav when virtual keyboard opens
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const handleResize = () => {
-      const threshold = window.innerHeight * 0.75;
-      setKeyboardOpen(vv.height < threshold);
-    };
-
-    vv.addEventListener("resize", handleResize);
-    return () => vv.removeEventListener("resize", handleResize);
-  }, []);
-
   // Search handler
   const handleSearch = async (val: string) => {
     setSearchQuery(val);
@@ -266,13 +229,13 @@ export function APPanelNav() {
   return (
     <>
       {/* Sleek, responsive white glassmorphism header row */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-100/80 bg-white/70 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-100/70 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-4 md:h-14 md:px-6 lg:px-8">
           
           {/* LEFT: Logo + Workspace Badge */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
             <Link href="/ap/dashboard" className="flex shrink-0 items-center gap-2">
-              <span className="flex h-6 w-24 items-center">
+              <span className="flex h-5 w-[88px] items-center md:h-6 md:w-24">
                 <Image
                   src="/logo-navbar.png"
                   alt="DigiConnect Logo"
@@ -284,7 +247,7 @@ export function APPanelNav() {
               </span>
             </Link>
 
-            <span className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 md:inline-flex border border-slate-200/50">
+            <span className="hidden items-center gap-1.5 rounded-full border border-slate-200/50 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 md:inline-flex">
               <Compass className="h-3 w-3 text-slate-500" />
               {partnerTier}
             </span>
@@ -326,7 +289,7 @@ export function APPanelNav() {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:h-11 md:w-11"
               aria-label="Search services, customers and applications"
             >
               <Search className="h-4.5 w-4.5" aria-hidden />
@@ -337,7 +300,7 @@ export function APPanelNav() {
               <button
                 type="button"
                 onClick={() => setNotifOpen(!notifOpen)}
-                className="relative flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:h-11 md:w-11"
                 aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
                 aria-expanded={notifOpen}
                 aria-haspopup="dialog"
@@ -393,7 +356,7 @@ export function APPanelNav() {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="flex h-11 items-center justify-center rounded-xl px-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl px-1.5 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:h-11 md:px-2"
               aria-label="Open account menu"
               aria-expanded={drawerOpen}
               aria-haspopup="dialog"
@@ -408,41 +371,8 @@ export function APPanelNav() {
         </div>
       </header>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR */}
-      <nav
-        aria-label="Digi Partner primary"
-        className={cn(
-          "fixed bottom-0 inset-x-0 z-[49] flex md:hidden items-center justify-around h-[60px] px-2 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_rgba(15,23,42,0.04)] pb-[max(0.35rem,env(safe-area-inset-bottom))] transition-transform duration-300 ease-out",
-          (!navVisible || keyboardOpen) && "translate-y-full",
-        )}
-      >
-        {[
-          { label: "Home", href: "/ap/dashboard", icon: Home },
-          { label: "Applications", href: "/ap/applications", icon: FileText },
-          { label: "Customers", href: "/ap/customers", icon: Users },
-          { label: "Wallet", href: "/ap/wallet", icon: WalletCards },
-          { label: "Account", href: "/ap/profile", icon: UserCog },
-        ].map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "flex min-h-[44px] flex-1 flex-col items-center justify-center relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                isActive ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-700 font-bold",
-              )}
-            >
-              <Icon className="h-5 w-5 stroke-[1.8]" aria-hidden />
-              <span className="mt-1 text-[10px] tracking-wide">{item.label}</span>
-              {isActive ? <span className="absolute bottom-1 h-1 w-1 rounded-full bg-indigo-600" aria-hidden /> : null}
-            </Link>
-          );
-        })}
-      </nav>
+      {/* MOBILE BOTTOM NAVIGATION DOCK */}
+      <ApMobileBottomNav />
 
       {/* SLIDE-OUT DRAWER MENU (RIGHT SIDE, Liquid Glass Theme) */}
       <AnimatePresence>

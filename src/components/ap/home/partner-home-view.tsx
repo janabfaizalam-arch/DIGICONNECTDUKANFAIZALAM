@@ -20,7 +20,7 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
     data.partnerType === "business_partner" || data.partnerType === "field_executive";
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 pb-10">
+    <div className="mx-auto w-full max-w-6xl space-y-5 pb-4 md:space-y-6 md:pb-8">
       <AnnouncementSlider banners={data.banners} />
       <QuickActions partnerType={data.partnerType} />
       <OverviewCards cards={data.overview} />
