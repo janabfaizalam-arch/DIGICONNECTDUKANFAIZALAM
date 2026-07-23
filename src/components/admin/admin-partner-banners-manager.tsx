@@ -23,22 +23,26 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
 
   async function refresh() {
     const res = await fetch("/api/admin/partner-banners");
-    const data = await res.json();
+    const data = await readJsonSafe(res);
     if (res.ok && Array.isArray(data.banners)) {
-      setBanners(data.banners);
+      setBanners(data.banners as PartnerAnnouncementBanner[]);
     }
   }
 
   async function onCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setBusy(true);
     setError("");
     try {
-      const form = new FormData(event.currentTarget);
-      const res = await fetch("/api/admin/partner-banners", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Create failed");
-      event.currentTarget.reset();
+      const body = new FormData(form);
+      const res = await fetch("/api/admin/partner-banners", { method: "POST", body });
+      const data = await readJsonSafe(res);
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data, `Create failed (${res.status})`));
+      }
+      // Capture form before await; only reset after success so failures keep input values.
+      resetCreateForm(form);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
@@ -49,13 +53,16 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
 
   async function onUpdate(event: FormEvent<HTMLFormElement>, id: string) {
     event.preventDefault();
+    const form = event.currentTarget;
     setBusy(true);
     setError("");
     try {
-      const form = new FormData(event.currentTarget);
-      const res = await fetch(`/api/admin/partner-banners/${id}`, { method: "PATCH", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Update failed");
+      const body = new FormData(form);
+      const res = await fetch(`/api/admin/partner-banners/${id}`, { method: "PATCH", body });
+      const data = await readJsonSafe(res);
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data, `Update failed (${res.status})`));
+      }
       setEditingId(null);
       await refresh();
     } catch (err) {
@@ -71,8 +78,10 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
     setError("");
     try {
       const res = await fetch(`/api/admin/partner-banners/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Delete failed");
+      const data = await readJsonSafe(res);
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data, `Delete failed (${res.status})`));
+      }
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
@@ -242,4 +251,45 @@ function toLocalInput(value?: string | null) {
   if (Number.isNaN(date.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  try {
+    const data = await res.json();
+    return data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function apiErrorMessage(data: Record<string, unknown>, fallback: string) {
+  const message = data.message;
+  const error = data.error;
+  if (typeof message === "string" && message.trim()) return message;
+  if (typeof error === "string" && error.trim()) return error;
+  return fallback;
+}
+
+/** Reset create form after success — never call after a failed request. */
+function resetCreateForm(form: HTMLFormElement) {
+  form.reset();
+
+  const desktopImage = form.elements.namedItem("image");
+  if (desktopImage instanceof HTMLInputElement) desktopImage.value = "";
+
+  const mobileImage = form.elements.namedItem("mobile_image");
+  if (mobileImage instanceof HTMLInputElement) mobileImage.value = "";
+
+  const sortOrder = form.elements.namedItem("sort_order");
+  if (sortOrder instanceof HTMLInputElement) sortOrder.value = "0";
+
+  const active = form.elements.namedItem("is_active");
+  if (active instanceof HTMLInputElement) active.checked = true;
+
+  for (const type of DIGI_PARTNER_TYPE_VALUES) {
+    const boxes = form.querySelectorAll<HTMLInputElement>(`input[name="partner_types"][value="${type}"]`);
+    boxes.forEach((box) => {
+      box.checked = false;
+    });
+  }
 }
