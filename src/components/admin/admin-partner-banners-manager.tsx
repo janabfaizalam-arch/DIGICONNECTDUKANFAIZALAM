@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useState } from "react";
+import { type ChangeEvent, FormEvent, useState } from "react";
 import { ImagePlus, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AP_PARTNER_TYPE_LABELS, DIGI_PARTNER_TYPE_VALUES } from "@/lib/ap/partner-type";
+import {
+  PARTNER_MOBILE_BANNER_SIZE_HINT,
+  partnerMobileBannerRatioWarning,
+  readImageDimensions,
+} from "@/lib/ap/partner-banner-aspect";
 import type { PartnerAnnouncementBanner } from "@/lib/ap/home-types";
 
 type ManagerProps = {
@@ -20,6 +25,7 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [createFormKey, setCreateFormKey] = useState(0);
 
   async function refresh() {
     const res = await fetch("/api/admin/partner-banners");
@@ -43,6 +49,7 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
       }
       // Capture form before await; only reset after success so failures keep input values.
       resetCreateForm(form);
+      setCreateFormKey((key) => key + 1);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
@@ -99,7 +106,7 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
           <ImagePlus className="h-4 w-4 text-blue-700" />
           Create Digi Partner banner
         </h2>
-        <form onSubmit={onCreate} className="grid gap-4">
+        <form key={createFormKey} onSubmit={onCreate} className="grid gap-4">
           <BannerFields disabled={busy} />
           <Button type="submit" disabled={busy} className="w-fit">
             {busy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -167,16 +174,47 @@ function BannerFields({
   banner?: PartnerAnnouncementBanner;
   disabled?: boolean;
 }) {
+  const [mobileRatioWarning, setMobileRatioWarning] = useState<string | null>(null);
+
+  async function onMobileImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setMobileRatioWarning(null);
+      return;
+    }
+    const dims = await readImageDimensions(file);
+    if (!dims) {
+      setMobileRatioWarning(null);
+      return;
+    }
+    setMobileRatioWarning(partnerMobileBannerRatioWarning(dims.width, dims.height));
+  }
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Desktop image {banner ? "(optional replace)" : "*"}</span>
           <Input name="image" type="file" accept="image/jpeg,image/png,image/webp" required={!banner} disabled={disabled} />
+          <span className="text-xs text-slate-500">Recommended: ~1920×823 px (21:9) for desktop.</span>
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Mobile image</span>
-          <Input name="mobile_image" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled} />
+          <Input
+            name="mobile_image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={disabled}
+            onChange={onMobileImageChange}
+          />
+          <span className="text-xs text-slate-500">
+            Mobile image recommended size: {PARTNER_MOBILE_BANNER_SIZE_HINT}
+          </span>
+          {mobileRatioWarning ? (
+            <span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800">
+              {mobileRatioWarning}
+            </span>
+          ) : null}
         </label>
       </div>
 

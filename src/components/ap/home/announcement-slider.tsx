@@ -15,6 +15,10 @@ function isExternalUrl(url: string) {
   return /^https?:\/\//i.test(url);
 }
 
+function mobileBannerSrc(banner: PartnerAnnouncementBanner) {
+  return banner.mobile_image_url || banner.image_url;
+}
+
 export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -40,42 +44,55 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
 
   const current = banners[index];
   const href = current.button_url?.trim() || null;
+  const mobileSrc = mobileBannerSrc(current);
+  const desktopSrc = current.image_url;
+  const alt = current.title || "Digi Partner announcement";
+
+  const overlay =
+    current.title || current.description || current.button_text ? (
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/70 via-slate-950/25 to-transparent p-4 sm:p-6">
+        {current.title ? (
+          <p className="text-sm font-extrabold text-white sm:text-lg">{current.title}</p>
+        ) : null}
+        {current.description ? (
+          <p className="mt-1 line-clamp-2 text-xs font-medium text-white/85 sm:text-sm">{current.description}</p>
+        ) : null}
+        {current.button_text && href ? (
+          <span className="mt-3 inline-flex rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
+            {current.button_text}
+          </span>
+        ) : null}
+      </div>
+    ) : null;
 
   const slideInner = (
-    <div className="relative aspect-[21/9] w-full min-h-[140px] overflow-hidden bg-slate-100 sm:min-h-[180px] md:min-h-[220px]">
-      <Image
-        src={current.image_url}
-        alt={current.title || "Partner announcement"}
-        fill
-        priority={index === 0}
-        sizes="100vw"
-        className={cn("object-cover", current.mobile_image_url ? "hidden md:block" : "block")}
-      />
-      {current.mobile_image_url ? (
+    <>
+      {/* Mobile: locked 7:3 — no desktop aspect / fixed heights */}
+      <div className="relative aspect-[7/3] w-full overflow-hidden bg-slate-100 md:hidden">
         <Image
-          src={current.mobile_image_url}
-          alt={current.title || "Partner announcement"}
+          src={mobileSrc}
+          alt={alt}
           fill
           sizes="100vw"
-          className="object-cover md:hidden"
+          className="object-cover"
+          priority={index === 0}
         />
-      ) : null}
-      {(current.title || current.description || current.button_text) && (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/70 via-slate-950/25 to-transparent p-4 sm:p-6">
-          {current.title ? (
-            <p className="text-sm font-extrabold text-white sm:text-lg">{current.title}</p>
-          ) : null}
-          {current.description ? (
-            <p className="mt-1 line-clamp-2 text-xs font-medium text-white/85 sm:text-sm">{current.description}</p>
-          ) : null}
-          {current.button_text && href ? (
-            <span className="mt-3 inline-flex rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
-              {current.button_text}
-            </span>
-          ) : null}
-        </div>
-      )}
-    </div>
+        {overlay}
+      </div>
+
+      {/* Desktop: wider hero ratio */}
+      <div className="relative hidden aspect-[21/9] w-full overflow-hidden bg-slate-100 md:block">
+        <Image
+          src={desktopSrc}
+          alt={alt}
+          fill
+          sizes="100vw"
+          className="object-cover"
+          priority={index === 0}
+        />
+        {overlay}
+      </div>
+    </>
   );
 
   return (

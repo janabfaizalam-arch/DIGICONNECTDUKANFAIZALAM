@@ -1,0 +1,43 @@
+[33mcommit 3d1698231e9e43d4032aa7331090ce5494959eda[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Faiz Alam <janabfaizalam@gmail.com>
+Date:   Thu Jul 23 11:29:55 2026 +0530
+
+    feat(ap): redesign Digi Partner home dashboard
+    
+    - replace legacy welcome dashboard with action-first home
+    - add role-aware quick actions for all partner types
+    - add admin-managed partner announcement banners
+    - add overview, pending work, recent applications and commission sections
+    - add company partner team summary and office staff work section
+    - add payment, customer and offline invoice route aliases
+    - add banner migration, APIs, admin UI and tests
+
+ src/app/admin/partner-banners/page.tsx             |  28 [32m++[m
+ src/app/ap/customers/new/page.tsx                  |   6 [32m+[m
+ src/app/ap/dashboard/dashboard-client.tsx          | 414 [31m---------------------[m
+ src/app/ap/dashboard/page.tsx                      | 116 [32m+[m[31m-----[m
+ src/app/ap/invoices/offline/page.tsx               |  69 [32m++++[m
+ src/app/ap/payments/collect/page.tsx               |   6 [32m+[m
+ src/app/api/admin/partner-banners/[id]/route.ts    | 172 [32m+++++++++[m
+ src/app/api/admin/partner-banners/route.ts         | 176 [32m+++++++++[m
+ .../admin/admin-partner-banners-manager.tsx        | 245 [32m++++++++++++[m
+ src/components/ap/home/announcement-slider.tsx     | 132 [32m+++++++[m
+ src/components/ap/home/collection-commission.tsx   |  97 [32m+++++[m
+ src/components/ap/home/company-team-summary.tsx    |  55 [32m+++[m
+ src/components/ap/home/dashboard-empty-state.tsx   |  21 [32m++[m
+ src/components/ap/home/dashboard-skeleton.tsx      |  17 [32m+[m
+ src/components/ap/home/office-work-summary.tsx     |  61 [32m+++[m
+ src/components/ap/home/overview-cards.tsx          |  57 [32m+++[m
+ src/components/ap/home/partner-home-view.tsx       |  39 [32m++[m
+ src/components/ap/home/pending-work.tsx            |  44 [32m+++[m
+ src/components/ap/home/quick-actions.tsx           |  76 [32m++++[m
+ src/components/ap/home/recent-applications.tsx     |  96 [32m+++++[m
+ src/components/ap/home/standard-ops-footer.tsx     |  77 [32m++++[m
+ src/lib/admin/nav.ts                               |   1 [32m+[m
+ src/lib/ap/home-config.test.ts                     |  73 [32m++++[m
+ src/lib/ap/home-config.ts                          | 117 [32m++++++[m
+ src/lib/ap/home-data.ts                            | 395 [32m++++++++++++++++++++[m
+ src/lib/ap/home-types.ts                           | 124 [32m++++++[m
+ src/lib/ap/partner-banners.ts                      | 124 [32m++++++[m
+ ...20260723140000_partner_announcement_banners.sql |  90 [32m+++++[m
+ 28 files changed, 2405 insertions(+), 523 deletions(-)
