@@ -35,7 +35,6 @@ import {
 } from "@/lib/admin/agency-partner-routes";
 import type { Application } from "@/lib/portal-types";
 import {
-  AP_PARTNER_TYPE_LABELS,
   type AgencyPartner,
   type APCommission,
   type APKycDocument,
@@ -44,8 +43,8 @@ import {
   type APStatus,
   type APKycStatus,
   type APWalletEntryType,
-  type APPartnerType,
 } from "@/lib/ap-types";
+import { partnerTypeDisplayLabel } from "@/lib/ap/partner-type";
 import { cn } from "@/lib/utils";
 import type { IdentityLinkageHealth } from "@/lib/auth/memberships";
 
@@ -240,13 +239,16 @@ export function PartnerCrmClient({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <InfoTile label="Partner ID / Code" value={ap.partner_code} mono />
-                <InfoTile label="Partner Type" value={AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")} />
+                <InfoTile label="Partner Type" value={partnerTypeDisplayLabel(ap.partner_type)} />
                 <InfoTile label="Mobile" value={ap.mobile} mono />
                 <InfoTile label="WhatsApp" value={ap.whatsapp || "—"} mono />
                 <InfoTile label="Email" value={ap.email} />
                 <InfoTile label="District / State" value={`${ap.district || "—"}, ${ap.state || "—"}`} />
                 <InfoTile label="Pincode" value={ap.pin || "—"} mono />
                 <InfoTile label="Full Address" value={ap.address || "—"} />
+                <InfoTile label="Department" value={ap.department || "—"} />
+                <InfoTile label="Territory" value={ap.territory || "—"} />
+                <InfoTile label="Joining Date" value={ap.joining_date || "—"} />
               </div>
 
               <div className="border-t border-slate-100 pt-5">

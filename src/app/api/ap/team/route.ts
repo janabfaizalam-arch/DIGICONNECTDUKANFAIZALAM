@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, getCurrentUserRole, isAgencyPartnerRole, isCeoPartnerType } from "@/lib/auth";
+import {
+  canManagePartnerTeam,
+  isTeamCreatablePartnerType,
+  normalizePartnerType,
+  teamCreatablePartnerTypes,
+} from "@/lib/ap/partner-type";
+import { getCurrentUser, getCurrentUserRole, isAgencyPartnerRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 function jsonError(message: string, status: number) {
@@ -17,7 +23,7 @@ function normalizeMobile(value: string) {
 
 // ── Helper: get the current user's AP record ────────────────────────────────
 
-async function getAuthenticatedCeo() {
+async function getAuthenticatedTeamManager() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -50,8 +56,12 @@ async function getAuthenticatedCeo() {
     return { error: jsonError("Partner account is not active.", 403), user: null, ap: null };
   }
 
-  if (!isCeoPartnerType(ap.partner_type)) {
-    return { error: jsonError("Only CEO partners can manage team members.", 403), user: null, ap: null };
+  if (!canManagePartnerTeam(ap.partner_type)) {
+    return {
+      error: jsonError("Only Company Partners can manage team members.", 403),
+      user: null,
+      ap: null,
+    };
   }
 
   return { error: null, user, ap, supabase };
@@ -61,7 +71,7 @@ async function getAuthenticatedCeo() {
 
 export async function GET() {
   try {
-    const auth = await getAuthenticatedCeo();
+    const auth = await getAuthenticatedTeamManager();
 
     if (auth.error) {
       return auth.error;
@@ -76,7 +86,7 @@ export async function GET() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[ceo-team] Team list query failed:", error.message);
+      console.error("[partner-team] Team list query failed:", error.message);
       return jsonError("Failed to load team members.", 500);
     }
 
@@ -100,16 +110,16 @@ export async function GET() {
       count: teamWithStats.length,
     });
   } catch (error) {
-    console.error("[ceo-team] GET error:", error);
+    console.error("[partner-team] GET error:", error);
     return jsonError("Internal error.", 500);
   }
 }
 
-// ── POST: Create a new team member (Shop Owner or Field Executive) ──────────
+// ── POST: Create a team member (Business Partner / Field Executive / Office Staff)
 
 export async function POST(request: Request) {
   try {
-    const auth = await getAuthenticatedCeo();
+    const auth = await getAuthenticatedTeamManager();
 
     if (auth.error) {
       return auth.error;
@@ -122,7 +132,8 @@ export async function POST(request: Request) {
     const fullName = String(body.fullName ?? "").trim();
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
-    const partnerType = String(body.partnerType ?? "field_executive");
+    const partnerTypeRaw = String(body.partnerType ?? "field_executive");
+    const partnerType = normalizePartnerType(partnerTypeRaw);
     const mobile = normalizeMobile(String(body.mobile ?? ""));
     const whatsapp = normalizeMobile(String(body.whatsapp ?? ""));
     const businessName = String(body.businessName ?? "").trim();
@@ -149,9 +160,12 @@ export async function POST(request: Request) {
       return jsonError("Password must be at least 8 characters.", 400);
     }
 
-    // CEO can only create Shop Owners or Field Executives — NOT other CEOs
-    if (!["shop_owner", "field_executive"].includes(partnerType)) {
-      return jsonError("Team members can only be Shop Owner or Field Executive.", 400);
+    // Company Partners may create Business Partner / Field Executive / Office Staff — not Company Partner
+    if (!partnerType || !isTeamCreatablePartnerType(partnerType)) {
+      return jsonError(
+        `Team members can only be: ${teamCreatablePartnerTypes().join(", ")}.`,
+        400,
+      );
     }
 
     // ── Uniqueness checks ───────────────────────────────────────────────
@@ -175,8 +189,8 @@ export async function POST(request: Request) {
       .eq("created_by_user_id", user!.id);
 
     const sequence = String((teamCount ?? 0) + 1).padStart(3, "0");
-    const ceoCode = ap!.partner_code;
-    const partnerCode = `${ceoCode}-T${sequence}`;
+    const managerCode = ap!.partner_code;
+    const partnerCode = `${managerCode}-T${sequence}`;
 
     // ── Get default tier ────────────────────────────────────────────────
 
@@ -201,7 +215,7 @@ export async function POST(request: Request) {
     });
 
     if (createError || !created.user) {
-      console.error("[ceo-team] Auth creation failed:", createError?.message);
+      console.error("[partner-team] Auth creation failed:", createError?.message);
       return jsonError("Team member credentials could not be registered.", 500);
     }
 
@@ -226,7 +240,7 @@ export async function POST(request: Request) {
       commission_rate: 0,
       status: "active",
       kyc_status: "approved",
-      created_by_user_id: user!.id,  // ← CEO team scoping
+      created_by_user_id: user!.id, // Company Partner team scoping
     };
 
     const profilePayload = {
@@ -266,15 +280,15 @@ export async function POST(request: Request) {
 
     if (apRes.error || profileRes.error || userRes.error) {
       const errMsg = apRes.error?.message || profileRes.error?.message || userRes.error?.message;
-      console.error("[ceo-team] Record sync failed:", errMsg);
+      console.error("[partner-team] Record sync failed:", errMsg);
       // Rollback auth user
       await supabase!.auth.admin.deleteUser(created.user.id);
       return jsonError("Team member creation failed: " + errMsg, 500);
     }
 
-    console.log("[ceo-team] Team member created:", {
-      ceoId: user!.id,
-      ceoCode,
+    console.log("[partner-team] Team member created:", {
+      managerId: user!.id,
+      managerCode,
       memberId: created.user.id,
       memberCode: partnerCode,
       partnerType,
@@ -287,7 +301,7 @@ export async function POST(request: Request) {
       partnerType,
     });
   } catch (error) {
-    console.error("[ceo-team] POST error:", error);
+    console.error("[partner-team] POST error:", error);
     return jsonError(error instanceof Error ? error.message : "Internal error.", 500);
   }
 }

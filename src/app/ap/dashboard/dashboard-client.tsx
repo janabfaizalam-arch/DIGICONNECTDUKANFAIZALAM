@@ -27,6 +27,7 @@ import {
   VerifiedBadge,
 } from "@/components/ap/ui";
 import { formatCount, formatINR, formatPercentDelta, partnerInitials } from "@/lib/ap/format";
+import { partnerTypeDisplayLabel } from "@/lib/ap/partner-type";
 import { cn } from "@/lib/utils";
 
 type AgencyPartnerView = {
@@ -193,7 +194,7 @@ export function APDashboardClient({
           <p className="text-[11px] font-semibold text-slate-500">
             {[ap.district, ap.state].filter(Boolean).join(", ") || "Service area not set"}
             {" · "}
-            <span className="capitalize">{ap.partner_type.replace(/_/g, " ")}</span>
+            <span>{partnerTypeDisplayLabel(ap.partner_type)}</span>
           </p>
         </div>
         <Link href="/ap/profile" className="text-xs font-bold text-indigo-700 hover:underline">

@@ -3,6 +3,9 @@
 // DigiConnect Dukan — AP Ecosystem
 // ============================================================================
 
+import type { DigiPartnerType } from "@/lib/ap/partner-type";
+import { AP_PARTNER_TYPE_LABELS as PARTNER_TYPE_LABELS } from "@/lib/ap/partner-type";
+
 // ── Partner Tiers ──────────────────────────────────────────────────────────
 
 export type APTier = {
@@ -23,10 +26,10 @@ export type APTier = {
 
 // ── Agency Partner ─────────────────────────────────────────────────────────
 
-export type APPartnerType =
-  | "ceo"
-  | "shop_owner"
-  | "field_executive";
+/** @deprecated Prefer DigiPartnerType from @/lib/ap/partner-type */
+export type APPartnerType = DigiPartnerType;
+
+export type { DigiPartnerType };
 
 export type APStatus =
   | "draft"
@@ -113,6 +116,12 @@ export type AgencyPartner = {
 
   // Team hierarchy
   created_by_user_id: string | null;
+
+  // Optional profile fields (partner_types_v2)
+  department?: string | null;
+  reporting_to_partner_id?: string | null;
+  territory?: string | null;
+  joining_date?: string | null;
 
   // Joined data
   tier?: APTier | null;
@@ -446,11 +455,7 @@ export const AP_KYC_STATUS_LABELS: Record<APKycStatus, string> = {
   resubmit_required: "Resubmit Required",
 };
 
-export const AP_PARTNER_TYPE_LABELS: Record<APPartnerType, string> = {
-  ceo: "CEO",
-  shop_owner: "Shop Owner",
-  field_executive: "Field Executive",
-};
+export const AP_PARTNER_TYPE_LABELS: Record<APPartnerType, string> = PARTNER_TYPE_LABELS;
 
 export const AP_KYC_DOCUMENT_TYPE_LABELS: Record<APKycDocumentType, string> = {
   aadhaar_front: "Aadhaar Front",

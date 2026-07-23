@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentUser, isActiveAgent, isCeoPartnerType } from "@/lib/auth";
+import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import {
+  canManagePartnerTeam,
+  normalizePartnerType,
+  partnerTypeDisplayLabel,
+} from "@/lib/ap/partner-type";
 import {
   Users,
   UserPlus2,
@@ -14,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function CEOTeamPage() {
+export default async function PartnerTeamPage() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -27,7 +32,7 @@ export default async function CEOTeamPage() {
   }
 
   const ap = await getAgencyPartnerByUserId(user.id);
-  if (!ap || !isCeoPartnerType(ap.partner_type)) {
+  if (!ap || !canManagePartnerTeam(ap.partner_type)) {
     redirect("/ap/dashboard");
   }
 
@@ -56,6 +61,16 @@ export default async function CEOTeamPage() {
     teamMembers = data ?? [];
   }
 
+  const businessPartnerCount = teamMembers.filter(
+    (m) => normalizePartnerType(m.partner_type) === "business_partner",
+  ).length;
+  const fieldExecutiveCount = teamMembers.filter(
+    (m) => normalizePartnerType(m.partner_type) === "field_executive",
+  ).length;
+  const officeStaffCount = teamMembers.filter(
+    (m) => normalizePartnerType(m.partner_type) === "office_staff",
+  ).length;
+
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A] px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -68,7 +83,7 @@ export default async function CEOTeamPage() {
               <h1 className="text-2xl font-black tracking-tight text-slate-900">My Team</h1>
             </div>
             <p className="text-sm text-slate-500 font-medium">
-              Manage your team of Shop Owners and Field Executives
+              Manage Business Partners, Field Executives, and Office Staff on your team
             </p>
           </div>
           <Link
@@ -81,22 +96,22 @@ export default async function CEOTeamPage() {
         </div>
 
         {/* Stats Strip */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="rounded-[20px] bg-white border border-slate-200/50 p-4 shadow-sm">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Members</span>
             <p className="text-2xl font-black text-slate-900 mt-1">{teamMembers.length}</p>
           </div>
           <div className="rounded-[20px] bg-white border border-slate-200/50 p-4 shadow-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Shop Owners</span>
-            <p className="text-2xl font-black text-slate-900 mt-1">
-              {teamMembers.filter(m => m.partner_type === "shop_owner").length}
-            </p>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Business Partners</span>
+            <p className="text-2xl font-black text-slate-900 mt-1">{businessPartnerCount}</p>
           </div>
           <div className="rounded-[20px] bg-white border border-slate-200/50 p-4 shadow-sm">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Field Executives</span>
-            <p className="text-2xl font-black text-slate-900 mt-1">
-              {teamMembers.filter(m => m.partner_type === "field_executive").length}
-            </p>
+            <p className="text-2xl font-black text-slate-900 mt-1">{fieldExecutiveCount}</p>
+          </div>
+          <div className="rounded-[20px] bg-white border border-slate-200/50 p-4 shadow-sm">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Office Staff</span>
+            <p className="text-2xl font-black text-slate-900 mt-1">{officeStaffCount}</p>
           </div>
         </div>
 
@@ -106,7 +121,7 @@ export default async function CEOTeamPage() {
             <Users className="mx-auto h-12 w-12 text-slate-300 mb-4" />
             <h3 className="text-sm font-extrabold text-slate-800">No team members yet</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Start building your team by creating Shop Owners and Field Executives.
+              Start building your team by creating Business Partners, Field Executives, or Office Staff.
             </p>
             <Link
               href="/ap/team/new"
@@ -145,8 +160,8 @@ export default async function CEOTeamPage() {
 
                   {/* Role */}
                   <div className="sm:col-span-2">
-                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md capitalize">
-                      {member.partner_type.replace(/_/g, " ")}
+                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                      {partnerTypeDisplayLabel(member.partner_type)}
                     </span>
                   </div>
 

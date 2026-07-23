@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DIGI_PARTNER_TYPES, DIGI_PARTNER_TYPE_VALUES, partnerTypeSelectOptions } from "@/lib/ap/partner-type";
 
 type CreateAPResult = {
   message?: string;
@@ -16,13 +17,15 @@ type CreateAPResult = {
   partnerCode?: string;
 };
 
+const PARTNER_TYPE_OPTIONS = partnerTypeSelectOptions(DIGI_PARTNER_TYPE_VALUES);
+
 export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: string }) {
   const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
   const [mobile, setMobile] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [partnerCode, setPartnerCode] = useState(defaultPartnerCode);
-  const [partnerType, setPartnerType] = useState("field_executive");
+  const [partnerType, setPartnerType] = useState("business_partner");
   const [commissionType, setCommissionType] = useState("fixed");
   const [kycStatus, setKycStatus] = useState("pending");
   const [accountStatus, setAccountStatus] = useState("pending");
@@ -246,11 +249,16 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ceo">CEO</SelectItem>
-                    <SelectItem value="shop_owner">Shop Owner</SelectItem>
-                    <SelectItem value="field_executive">Field Executive</SelectItem>
+                    {PARTNER_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <span className="text-[11px] text-slate-500">
+                  {DIGI_PARTNER_TYPES[partnerType as keyof typeof DIGI_PARTNER_TYPES]?.description}
+                </span>
               </label>
               <label className="grid gap-1 sm:col-span-2">
                 <span className="text-xs font-bold text-slate-700">Detailed Address</span>

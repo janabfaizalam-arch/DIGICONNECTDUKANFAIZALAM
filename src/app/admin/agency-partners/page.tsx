@@ -15,12 +15,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { safeCurrency } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminAgencyPartnerList } from "@/lib/ap-data";
-import { AP_PARTNER_TYPE_LABELS, type APListItem, type APPartnerType } from "@/lib/ap-types";
+import { AP_PARTNER_TYPE_LABELS, type APListItem } from "@/lib/ap-types";
+import {
+  DIGI_PARTNER_TYPE_VALUES,
+  normalizePartnerType,
+  partnerTypeDisplayLabel,
+} from "@/lib/ap/partner-type";
 
 export const dynamic = "force-dynamic";
 
 type AdminAPPageProps = {
-  searchParams?: Promise<{ q?: string }>;
+  searchParams?: Promise<{ q?: string; type?: string }>;
 };
 
 function matchesAPSearch(ap: APListItem, query: string) {
@@ -33,6 +38,7 @@ function matchesAPSearch(ap: APListItem, query: string) {
     ap.address,
     ap.district,
     ap.state,
+    partnerTypeDisplayLabel(ap.partner_type),
   ]
     .join(" ")
     .toLowerCase();
@@ -49,9 +55,14 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
 
   const params = await searchParams;
   const query = String(params?.q ?? "").trim();
+  const typeFilter = normalizePartnerType(String(params?.type ?? "").trim());
   const partners = await getAdminAgencyPartnerList();
 
-  const visiblePartners = query ? partners.filter((ap) => matchesAPSearch(ap, query)) : partners;
+  const visiblePartners = partners.filter((ap) => {
+    if (typeFilter && normalizePartnerType(ap.partner_type) !== typeFilter) return false;
+    if (query && !matchesAPSearch(ap, query)) return false;
+    return true;
+  });
 
   const totalCommissions = partners.reduce((total, ap) => total + ap.pendingCommission + ap.totalPaidCommission, 0);
   const pendingCommissions = partners.reduce((total, ap) => total + ap.pendingCommission, 0);
@@ -95,6 +106,19 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input name="q" defaultValue={query} placeholder="Search partner name, mobile, email, shop name, or code..." className="pl-11" />
           </div>
+          <select
+            name="type"
+            defaultValue={typeFilter ?? ""}
+            aria-label="Filter by partner type"
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+          >
+            <option value="">All partner types</option>
+            {DIGI_PARTNER_TYPE_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {AP_PARTNER_TYPE_LABELS[value]}
+              </option>
+            ))}
+          </select>
           <button type="submit" className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-bold text-white">
             Search
           </button>
@@ -137,7 +161,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                       <TableCell className="font-mono text-xs font-semibold text-indigo-600">{ap.partner_code}</TableCell>
                       <TableCell className="text-xs font-semibold capitalize">
                         <span className="text-amber-600">{ap.tier?.name || "AP Starter"}</span>
-                        <div className="text-[10px] text-slate-400 font-normal">{AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")}</div>
+                        <div className="text-[10px] text-slate-400 font-normal">{partnerTypeDisplayLabel(ap.partner_type)}</div>
                       </TableCell>
                       <TableCell className="text-xs">
                         {ap.totalApplications} total ({ap.pendingApplications} pending)
@@ -201,7 +225,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="rounded-xl bg-slate-50 p-2 border">
                     <p className="text-[9px] text-slate-400">Type</p>
-                    <p className="font-bold capitalize truncate">{AP_PARTNER_TYPE_LABELS[ap.partner_type as APPartnerType] ?? ap.partner_type.replace("_", " ")}</p>
+                    <p className="font-bold truncate">{partnerTypeDisplayLabel(ap.partner_type)}</p>
                   </div>
                   <div className="rounded-xl bg-slate-50 p-2 border">
                     <p className="text-[9px] text-slate-400">Apps</p>

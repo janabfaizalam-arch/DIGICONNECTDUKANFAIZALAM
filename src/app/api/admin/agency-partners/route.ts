@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { DIGI_PARTNER_TYPE_VALUES, normalizePartnerType } from "@/lib/ap/partner-type";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -40,7 +41,8 @@ export async function POST(request: Request) {
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
     const partnerCode = normalizePartnerCode(String(body.partnerCode ?? ""));
-    const partnerType = String(body.partnerType ?? "field_executive");
+    const partnerTypeRaw = String(body.partnerType ?? "business_partner");
+    const partnerType = normalizePartnerType(partnerTypeRaw);
     
     const mobile = normalizeMobile(String(body.mobile ?? ""));
     const whatsapp = normalizeMobile(String(body.whatsapp ?? ""));
@@ -85,8 +87,11 @@ export async function POST(request: Request) {
       return jsonError("Password must be at least 8 characters.", 400);
     }
 
-    if (!["ceo", "shop_owner", "field_executive"].includes(partnerType)) {
-      return jsonError("Invalid partner type. Must be ceo, shop_owner, or field_executive.", 400);
+    if (!partnerType) {
+      return jsonError(
+        `Invalid partner type. Must be one of: ${DIGI_PARTNER_TYPE_VALUES.join(", ")}.`,
+        400,
+      );
     }
 
     if (!["fixed", "percentage", "tiered"].includes(commissionType)) {

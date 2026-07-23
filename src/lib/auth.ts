@@ -163,8 +163,16 @@ export function isAgencyPartnerRole(role: AppRole | string | null | undefined) {
   return normalizeAppRole(role) === "agency_partner";
 }
 
+import {
+  canManagePartnerTeam,
+  isCompanyPartnerType,
+} from "@/lib/ap/partner-type";
+
+export { canManagePartnerTeam, isCompanyPartnerType };
+
+/** @deprecated Use canManagePartnerTeam / isCompanyPartnerType */
 export function isCeoPartnerType(partnerType: string | null | undefined): boolean {
-  return partnerType === "ceo";
+  return canManagePartnerTeam(partnerType);
 }
 
 export type AgentAccessResult =

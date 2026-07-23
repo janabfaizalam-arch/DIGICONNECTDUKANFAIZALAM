@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentUser, isActiveAgent, isCeoPartnerType } from "@/lib/auth";
+import { canManagePartnerTeam } from "@/lib/ap/partner-type";
+import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { Crown, ArrowLeft } from "lucide-react";
 import { CreateTeamMemberForm } from "./create-team-member-form";
@@ -20,7 +21,7 @@ export default async function CreateTeamMemberPage() {
   }
 
   const ap = await getAgencyPartnerByUserId(user.id);
-  if (!ap || !isCeoPartnerType(ap.partner_type)) {
+  if (!ap || !canManagePartnerTeam(ap.partner_type)) {
     redirect("/ap/dashboard");
   }
 
@@ -44,7 +45,7 @@ export default async function CreateTeamMemberPage() {
             <h1 className="text-2xl font-black tracking-tight text-slate-900">Create Team Member</h1>
           </div>
           <p className="text-sm text-slate-500 font-medium">
-            Add a new Shop Owner or Field Executive to your team. They will be able to log in at{" "}
+            Add a Business Partner, Field Executive, or Office Staff to your team. They will be able to log in at{" "}
             <span className="font-mono text-slate-700">/ap/login</span> with their credentials.
           </p>
         </div>

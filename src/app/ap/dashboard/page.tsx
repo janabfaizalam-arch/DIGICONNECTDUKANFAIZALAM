@@ -8,7 +8,8 @@ import {
   getAPWalletLedger,
   getMonthlyChartData,
 } from "@/lib/ap-data";
-import { getCurrentUser, isActiveAgent, isCeoPartnerType } from "@/lib/auth";
+import { getCurrentUser, isActiveAgent } from "@/lib/auth";
+import { canManagePartnerTeam } from "@/lib/ap/partner-type";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { APDashboardClient } from "./dashboard-client";
 
@@ -40,11 +41,11 @@ export default async function APDashboardPage() {
     getMonthlyChartData(ap.id),
   ]);
 
-  // Fetch team member data for CEO partners
+  // Fetch team member data for Company Partners (legacy CEO team privilege)
   let teamMemberCount = 0;
   let teamMembers: { id: string; full_name: string; partner_type: string; status: string; partner_code: string }[] = [];
 
-  if (isCeoPartnerType(ap.partner_type)) {
+  if (canManagePartnerTeam(ap.partner_type)) {
     const supabase = getSupabaseAdmin();
     if (supabase) {
       const { data: members, count } = await supabase

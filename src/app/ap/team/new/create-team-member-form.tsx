@@ -9,6 +9,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DIGI_PARTNER_TYPES,
+  partnerTypeSelectOptions,
+  teamCreatablePartnerTypes,
+} from "@/lib/ap/partner-type";
 
 type CreateTeamResult = {
   message?: string;
@@ -16,6 +21,8 @@ type CreateTeamResult = {
   partnerCode?: string;
   partnerType?: string;
 };
+
+const TEAM_TYPE_OPTIONS = partnerTypeSelectOptions(teamCreatablePartnerTypes());
 
 export function CreateTeamMemberForm() {
   const { success, error: toastError } = useToast();
@@ -155,10 +162,16 @@ export function CreateTeamMemberForm() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="shop_owner">Shop Owner</SelectItem>
-                    <SelectItem value="field_executive">Field Executive</SelectItem>
+                    {TEAM_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <span className="text-[11px] text-slate-500">
+                  {DIGI_PARTNER_TYPES[partnerType as keyof typeof DIGI_PARTNER_TYPES]?.description}
+                </span>
               </label>
             </div>
           </div>
