@@ -59,6 +59,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: "/admin/applications", label: "Applications", description: "Workflow engine", icon: ClipboardList },
       { href: "/admin/customers", label: "Customers", description: "Customer 360", icon: UsersRound },
       { href: ADMIN_DIGI_PARTNERS_ROUTE, label: "Digi Partners", description: "KYC and partner CRM", icon: UserCheck },
+      { href: "/admin/partner-banners", label: "Partner Banners", description: "Digi Partner home slider", icon: Image },
       { href: ADMIN_SERVICES_ROUTE, label: "Services", description: "Catalog and pricing", icon: ListChecks },
       { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: ReceiptText },
       { href: "/admin/offline-invoices", label: "Offline Invoices", description: "Manual invoices", icon: FileText },
