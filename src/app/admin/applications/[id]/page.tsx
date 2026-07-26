@@ -13,6 +13,7 @@ import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { AdminOperationsCRM } from "@/components/admin/admin-operations-crm";
+import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
 
 export const dynamic = "force-dynamic";
 
@@ -85,11 +86,18 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
         </div>
       </Card>
 
+      <DprApplicationDetails
+        formData={formData}
+        serviceSlug={application.service_slug}
+        status={application.status}
+        finalDocumentUrl={appFinalDocumentUrl || null}
+      />
+
       <Card className="p-5 md:p-6 border border-slate-200 shadow-sm rounded-2xl">
         <h2 className="text-lg font-bold text-slate-950">Submitted Form Details</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {Object.entries(formData)
-            .filter(([key, value]) => !hiddenFormKeys.has(key) && text(value))
+            .filter(([key, value]) => !hiddenFormKeys.has(key) && text(value) && key !== "dpr" && key !== "details")
             .map(([key, value]) => (
               <DetailRow key={key} label={labelFromKey(key)} value={text(value)} />
             ))}

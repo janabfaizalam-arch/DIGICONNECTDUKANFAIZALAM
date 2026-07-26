@@ -85,13 +85,21 @@ export default async function APApplicationsPage(props: {
           title="Application workspace"
           description="Track every customer filing — status, payment, next action and commission path."
           actions={
-            <Link
-              href="/ap/applications/new"
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-bold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-            >
-              <FilePlus2 className="h-4 w-4" />
-              New Application
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/ap/applications/new?service=detailed-project-report"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 text-sm font-bold text-sky-800 transition hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+              >
+                New DPR
+              </Link>
+              <Link
+                href="/ap/applications/new"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-bold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                <FilePlus2 className="h-4 w-4" />
+                New Application
+              </Link>
+            </div>
           }
         />
 

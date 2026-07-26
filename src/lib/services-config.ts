@@ -308,7 +308,78 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
         ]
       }
     ]
-  }
+  },
+  {
+    slug: "detailed-project-report",
+    categorySlug: "loans",
+    govFee: 0,
+    serviceCharge: 399,
+    processingTime: "24-72 Working Hours",
+    successMessage: "Your DPR application is submitted. Track drafting progress and download from your dashboard when ready.",
+    plans: [
+      { id: "basic", name: "Basic", price: 399, description: "Bank-ready DPR with standard projections" },
+      { id: "professional", name: "Professional", price: 799, description: "Enhanced DPR with machinery schedule" },
+      { id: "premium", name: "Premium", price: 1499, description: "Full package with banker checklist" },
+      { id: "enterprise", name: "Enterprise", price: 2999, description: "Complex / multi-unit project support" },
+    ],
+    documents: [
+      { id: "pan", name: "PAN Card", required: true, ocrType: "pan" },
+      { id: "aadhaar", name: "Aadhaar Card", required: true, ocrType: "aadhaar" },
+      { id: "quotation", name: "Machinery / Quotation estimate", required: true },
+      { id: "gst", name: "GST Certificate (if registered)", required: false },
+      { id: "udyam", name: "Udyam / MSME Certificate", required: false },
+      { id: "photo", name: "Passport size photograph", required: true },
+      { id: "bank_statement", name: "Recent bank statement", required: true },
+      { id: "other", name: "Other supporting documents", required: false },
+    ],
+    formSections: [
+      {
+        id: "personal",
+        title: "Personal Details",
+        fields: [
+          { name: "fullName", label: "Full Name", type: "text", required: true },
+          { name: "mobile", label: "Mobile Number", type: "tel", required: true, validation: { ruleType: "phone" } },
+          { name: "email", label: "Email", type: "email", required: false },
+          { name: "pincode", label: "Pincode", type: "text", required: true },
+        ],
+      },
+      {
+        id: "business",
+        title: "Business Details",
+        fields: [
+          { name: "businessName", label: "Business / Unit Name", type: "text", required: true },
+          {
+            name: "businessType",
+            label: "Constitution",
+            type: "select",
+            options: ["Sole Proprietorship", "Partnership", "LLP", "Private Limited", "Other"],
+            required: true,
+          },
+          { name: "businessAddress", label: "Business Address", type: "textarea", required: true },
+        ],
+      },
+      {
+        id: "project",
+        title: "Project Details",
+        fields: [
+          {
+            name: "scheme",
+            label: "Target Scheme",
+            type: "select",
+            options: ["PMEGP", "Mudra", "CM Yuva", "PM Vishwakarma", "State MSME Scheme", "Other"],
+            required: true,
+          },
+          { name: "projectCost", label: "Total Project Cost (₹)", type: "number", required: true },
+          { name: "ownContribution", label: "Own Contribution / Margin (₹)", type: "number", required: true },
+          { name: "loanAmount", label: "Loan Amount Required (₹)", type: "number", required: true },
+          { name: "expectedSubsidy", label: "Expected Subsidy (₹)", type: "number", required: false },
+          { name: "annualSales", label: "Expected Annual Sales (₹)", type: "number", required: true },
+          { name: "annualProfit", label: "Expected Annual Profit (₹)", type: "number", required: true },
+          { name: "tenureYears", label: "Loan Tenure (Years)", type: "number", required: true },
+        ],
+      },
+    ],
+  },
 ];
 
 // Fallback configuration generator based on category

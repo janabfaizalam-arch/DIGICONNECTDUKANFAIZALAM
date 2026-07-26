@@ -5,6 +5,8 @@ import { portalServices } from "@/lib/portal-data";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { CustomerApplicationWizard } from "@/components/portal/customer-application-wizard";
+import { DprApplicationWizard } from "@/components/services/dpr/dpr-application-wizard";
+import { DPR_SERVICE_SLUG } from "@/lib/dpr/constants";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -72,15 +74,26 @@ export default async function ApplySlugPage({ params }: PageProps) {
         paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
       }}
     >
-      <CustomerApplicationWizard
-        initialServiceSlug={slug}
-        initialProfileFields={{
-          mobile: userProfile?.mobile ?? "",
-          pincode: userProfile?.pincode ?? "",
-          city: userProfile?.city ?? "",
-          state: userProfile?.state ?? "",
-        }}
-      />
+      {slug === DPR_SERVICE_SLUG ? (
+        <DprApplicationWizard
+          initialProfileFields={{
+            mobile: userProfile?.mobile ?? "",
+            pincode: userProfile?.pincode ?? "",
+            city: userProfile?.city ?? "",
+            state: userProfile?.state ?? "",
+          }}
+        />
+      ) : (
+        <CustomerApplicationWizard
+          initialServiceSlug={slug}
+          initialProfileFields={{
+            mobile: userProfile?.mobile ?? "",
+            pincode: userProfile?.pincode ?? "",
+            city: userProfile?.city ?? "",
+            state: userProfile?.state ?? "",
+          }}
+        />
+      )}
     </main>
   );
 }

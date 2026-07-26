@@ -4,6 +4,7 @@ import { ArrowLeft, Download, FileText, MessageCircle, RotateCcw } from "lucide-
 
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { RatingForm } from "@/components/portal/rating-form";
+import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
 import { formatCurrency } from "@/lib/portal-data";
 import { resolveDocumentUrls } from "@/lib/crm";
@@ -411,6 +412,13 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                 )}
               </div>
             </div>
+
+            <DprApplicationDetails
+              formData={formData}
+              serviceSlug={application.service_slug}
+              status={application.status}
+              finalDocumentUrl={application.final_document_url}
+            />
 
             {/* Submitted Documents Panel */}
             <div className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-sm relative overflow-hidden">

@@ -11,6 +11,7 @@ import type { Application } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { WorkflowStepper } from "@/components/engines/workflow-stepper";
+import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
 
 export const dynamic = "force-dynamic";
 
@@ -288,6 +289,13 @@ export default async function APApplicationDetailPage({
                 </p>
               </div>
             </div>
+
+            <DprApplicationDetails
+              formData={application.form_data}
+              serviceSlug={application.service_slug}
+              status={application.status}
+              finalDocumentUrl={application.final_document_url}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-slate-200/60 bg-slate-50/30 p-5 space-y-1">

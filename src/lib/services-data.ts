@@ -172,7 +172,7 @@ export const serviceCategories: ServiceCategory[] = [
     heading: "Loans & Government Schemes",
     description: "Apply online for PMEGP, Mudra loans, PM Vishwakarma, and Startup India programs.",
     icon: HandCoins,
-    featuredSlugs: ["pmegp-loan", "mudra-loan"],
+    featuredSlugs: ["detailed-project-report", "pmegp-loan", "mudra-loan"],
   },
   {
     title: "Banking & Credit",
@@ -758,7 +758,35 @@ const rawServices: RawService[] = [
     badge: "Health Scheme",
     documents: ["Aadhaar Card", "Ration Card / PM Letter", "Mobile Number Linked to Aadhaar"],
     benefits: ["PM-JAY enrollment verification support", "Instant digital card download assistance", "Cashless treatment benefit validation"],
-  }
+  },
+  {
+    title: "Detailed Project Report (DPR)",
+    slug: "detailed-project-report",
+    categorySlug: "loans",
+    shortDescription: "Bank-ready Detailed Project Report for PMEGP, Mudra, CM Yuva and MSME schemes. Launch offer ₹399.",
+    offerPrice: "₹399",
+    oldPrice: "₹999",
+    priceLabel: "₹399",
+    iconKey: "compliance",
+    badge: "Launch Offer",
+    documents: [
+      "PAN Card",
+      "Aadhaar Card",
+      "Machinery / Quotation estimate",
+      "GST Certificate (if registered)",
+      "Udyam / MSME Certificate",
+      "Passport size photograph",
+      "Recent bank statement",
+      "Other scheme-specific documents",
+    ],
+    benefits: [
+      "Scheme-aligned bank-ready DPR PDF",
+      "Cost of project & means of finance",
+      "Machinery schedule & projections",
+      "Document checklist guidance",
+      "Online tracking in customer portal",
+    ],
+  },
 ];
 
 export const servicesData = rawServices.map(createService);

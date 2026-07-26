@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function NewAPApplicationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ customerId?: string; serviceId?: string; name?: string; mobile?: string }>;
+  searchParams: Promise<{ customerId?: string; serviceId?: string; service?: string; name?: string; mobile?: string }>;
 }) {
   const user = await getCurrentUser();
 
@@ -23,6 +23,7 @@ export default async function NewAPApplicationPage({
   }
 
   const params = await searchParams;
+  const initialServiceSlug = params.serviceId || params.service;
 
   return (
     <main 
@@ -38,7 +39,7 @@ export default async function NewAPApplicationPage({
           Back to Dashboard
         </Link>
         <PartnerApplicationWizard
-          initialServiceSlug={params.serviceId}
+          initialServiceSlug={initialServiceSlug}
           initialProfileFields={{
             mobile: params.mobile ?? "",
           }}
