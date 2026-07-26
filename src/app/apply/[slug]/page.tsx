@@ -6,7 +6,11 @@ import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { CustomerApplicationWizard } from "@/components/portal/customer-application-wizard";
 import { DprApplicationWizard } from "@/components/services/dpr/dpr-application-wizard";
+import { ItrApplicationWizard } from "@/components/services/itr/itr-application-wizard";
 import { DPR_SERVICE_SLUG } from "@/lib/dpr/constants";
+import { isItrServiceSlug, resolveItrServiceSlug } from "@/lib/itr/constants";
+import { getItrCmsPayload } from "@/lib/itr/cms";
+import { DEFAULT_ITR_SETTINGS } from "@/lib/itr/defaults";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -23,7 +27,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const service = await getPublicServiceBySlug(slug);
+  const service = await getPublicServiceBySlug(resolveItrServiceSlug(slug));
 
   if (slug === "pvc-card-printing" || slug === "pvc-card") {
     return {
@@ -42,7 +46,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ApplySlugPage({ params }: PageProps) {
   const { slug } = await params;
-  const service = await getPublicServiceBySlug(slug);
+  const resolvedSlug = resolveItrServiceSlug(slug);
+  const service = await getPublicServiceBySlug(resolvedSlug);
 
   if (!service || service.ctaType !== "apply") {
     notFound();
@@ -66,6 +71,24 @@ export default async function ApplySlugPage({ params }: PageProps) {
     userProfile = data;
   }
 
+  const profileFields = {
+    mobile: userProfile?.mobile ?? "",
+    pincode: userProfile?.pincode ?? "",
+    city: userProfile?.city ?? "",
+    state: userProfile?.state ?? "",
+  };
+
+  let itrAssessmentYear = DEFAULT_ITR_SETTINGS.assessmentYear;
+  let itrCustomerDeclaration = DEFAULT_ITR_SETTINGS.customerDeclaration ?? undefined;
+  let itrCmsDocuments = undefined;
+
+  if (isItrServiceSlug(slug)) {
+    const itrCms = await getItrCmsPayload();
+    itrAssessmentYear = itrCms.settings.assessmentYear;
+    itrCustomerDeclaration = itrCms.settings.customerDeclaration ?? itrCustomerDeclaration;
+    itrCmsDocuments = itrCms.documents;
+  }
+
   return (
     <main 
       className="min-h-screen bg-slate-50/30 px-0 md:px-8 transition-all duration-300"
@@ -74,24 +97,19 @@ export default async function ApplySlugPage({ params }: PageProps) {
         paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
       }}
     >
-      {slug === DPR_SERVICE_SLUG ? (
-        <DprApplicationWizard
-          initialProfileFields={{
-            mobile: userProfile?.mobile ?? "",
-            pincode: userProfile?.pincode ?? "",
-            city: userProfile?.city ?? "",
-            state: userProfile?.state ?? "",
-          }}
+      {isItrServiceSlug(slug) ? (
+        <ItrApplicationWizard
+          initialProfileFields={profileFields}
+          assessmentYear={itrAssessmentYear}
+          customerDeclaration={itrCustomerDeclaration}
+          cmsDocuments={itrCmsDocuments}
         />
+      ) : resolvedSlug === DPR_SERVICE_SLUG ? (
+        <DprApplicationWizard initialProfileFields={profileFields} />
       ) : (
         <CustomerApplicationWizard
-          initialServiceSlug={slug}
-          initialProfileFields={{
-            mobile: userProfile?.mobile ?? "",
-            pincode: userProfile?.pincode ?? "",
-            city: userProfile?.city ?? "",
-            state: userProfile?.state ?? "",
-          }}
+          initialServiceSlug={resolvedSlug}
+          initialProfileFields={profileFields}
         />
       )}
     </main>

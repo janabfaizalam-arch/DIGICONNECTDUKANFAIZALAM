@@ -93,6 +93,12 @@ export default async function APApplicationsPage(props: {
                 New DPR
               </Link>
               <Link
+                href="/ap/applications/new?service=itr-filing"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+              >
+                New ITR
+              </Link>
+              <Link
                 href="/ap/applications/new"
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-bold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >

@@ -281,7 +281,10 @@ const slugAliases: Record<string, string> = {
   "ayushman-card": "ayushman-card",
   "ayushman": "ayushman-card",
   "pan-card": "pan-card",
-  "aadhaar-services": "aadhaar-services"
+  "aadhaar-services": "aadhaar-services",
+  "income-tax-return-filing": "itr-filing",
+  "itr": "itr-filing",
+  "income-tax-return": "itr-filing",
 };
 
 function resolveSlug(slug: string): string {

@@ -147,37 +147,60 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
     slug: "itr-filing",
     categorySlug: "tax",
     govFee: 0,
-    serviceCharge: 0,
+    serviceCharge: 499,
     processingTime: "2-3 Working Days",
+    successMessage: "Your ITR application is submitted. Track document review and filing progress in your dashboard.",
     plans: [
-      { id: "itr1", name: "ITR-1 Salaried", price: 0, description: "Filing for Single salary, pension or interest income" },
-      { id: "itr2", name: "ITR-2 Capital Gains", price: 0, description: "Filing for Share market gains or multiple house properties" },
-      { id: "itr3", name: "ITR-3 Business/Professional", price: 0, description: "Filing for business logs, CA audits, or freelancers" }
+      { id: "basic", name: "Basic ITR", price: 499, description: "Simple salary / interest returns — starting from ₹499" },
+      { id: "professional", name: "Professional ITR", price: 999, description: "Multi-source individual returns — starting from ₹999" },
+      { id: "business", name: "Business ITR", price: 1499, description: "Proprietor / freelancer / presumptive — starting from ₹1,499" },
+      { id: "capital_gains", name: "Capital Gains ITR", price: 1999, description: "Shares / MF / property gains — starting from ₹1,999" },
+      { id: "complex", name: "Complex ITR", price: 0, description: "F&O, crypto, foreign income — custom quote" },
     ],
     documents: [
-      { id: "form16", name: "Form 16 / AIS Summary", required: true },
-      { id: "pan", name: "PAN Card Copy", required: true, ocrType: "pan" },
-      { id: "bank_statement", name: "Bank Statement (Last 12 Months)", required: true }
+      { id: "pan", name: "PAN Card", required: true, ocrType: "pan" },
+      { id: "aadhaar", name: "Aadhaar Card", required: true, ocrType: "aadhaar" },
+      { id: "form16", name: "Form 16", required: false },
+      { id: "ais", name: "AIS", required: false },
+      { id: "form26as", name: "Form 26AS", required: false },
+      { id: "tis", name: "TIS", required: false },
+      { id: "bank_statement", name: "Bank statement", required: true },
+      { id: "bank_proof", name: "Cancelled cheque / passbook", required: true },
+      { id: "broker_statement", name: "Broker statement", required: false },
+      { id: "pl_summary", name: "P&L / sales summary", required: false },
+      { id: "other", name: "Other supporting documents", required: false },
     ],
     formSections: [
+      {
+        id: "itr_profile",
+        title: "Filing Profile",
+        fields: [
+          { name: "assessmentYear", label: "Assessment Year", type: "select", options: ["AY 2026-27 (FY 2025-26)", "AY 2025-26 (FY 2024-25)"], required: true },
+          {
+            name: "applicantType",
+            label: "Applicant type",
+            type: "select",
+            options: ["Individual", "HUF", "Proprietor", "Other"],
+            required: true,
+          },
+          {
+            name: "incomeProfile",
+            label: "Income profile",
+            type: "select",
+            options: ["Salaried", "Pensioner", "Business", "Professional", "Freelancer", "Investor", "Property owner", "Mixed income"],
+            required: true,
+          },
+        ],
+      },
       {
         id: "itr_basic",
         title: "ITR Core Details",
         fields: [
           { name: "panNumber", label: "PAN Number", type: "text", required: true, placeholder: "ABCDE1234F", validation: { ruleType: "pan" } },
-          { name: "assessmentYear", label: "Assessment Year", type: "select", options: ["AY 2026-27 (FY 2025-26)", "AY 2025-26 (FY 2024-25)"], required: true }
-        ]
+          { name: "mobile", label: "Mobile", type: "tel", required: true, validation: { ruleType: "phone" } },
+        ],
       },
-      {
-        id: "income_source",
-        title: "Income Categories",
-        fields: [
-          { name: "salaryIncome", label: "Salary Income", type: "select", options: ["No", "Yes"], required: true },
-          { name: "businessIncome", label: "Business/Professional Income", type: "select", options: ["No", "Yes"], required: true },
-          { name: "capitalGains", label: "Capital Gains (Shares/Property)", type: "select", options: ["No", "Yes"], required: true }
-        ]
-      }
-    ]
+    ],
   },
   {
     slug: "pvc-card",

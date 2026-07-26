@@ -83,6 +83,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: "/admin/notifications", label: "Notifications", description: "System alerts", icon: Bell },
       { href: ADMIN_HOMEPAGE_CMS_ROUTE, label: "Homepage CMS", description: "Banners and notices", icon: Image },
       { href: "/admin/services/dpr", label: "DPR CMS", description: "DPR landing sections & banners", icon: FileText },
+      { href: "/admin/services/itr", label: "ITR CMS", description: "ITR landing sections & banners", icon: FileText },
       { href: "/admin/articles", label: "Articles", description: "Knowledge content", icon: FileText },
     ],
   },
@@ -92,6 +93,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
       { href: "/admin/reports/dpr", label: "DPR Analytics", description: "DPR apps, revenue, schemes", icon: BarChart3 },
+      { href: "/admin/reports/itr", label: "ITR Analytics", description: "ITR apps, revenue, filing stats", icon: BarChart3 },
     ],
   },
   {

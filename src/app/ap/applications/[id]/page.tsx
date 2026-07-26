@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { WorkflowStepper } from "@/components/engines/workflow-stepper";
 import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
+import { ItrApplicationDetails } from "@/components/services/itr/itr-application-details";
 
 export const dynamic = "force-dynamic";
 
@@ -291,6 +292,13 @@ export default async function APApplicationDetailPage({
             </div>
 
             <DprApplicationDetails
+              formData={application.form_data}
+              serviceSlug={application.service_slug}
+              status={application.status}
+              finalDocumentUrl={application.final_document_url}
+            />
+
+            <ItrApplicationDetails
               formData={application.form_data}
               serviceSlug={application.service_slug}
               status={application.status}

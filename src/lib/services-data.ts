@@ -563,11 +563,25 @@ const rawServices: RawService[] = [
     title: "ITR Filing",
     slug: "itr-filing",
     categorySlug: "tax",
-    shortDescription: "Income tax return filing support for salary, business, and self-employment earnings.",
-    
-    
+    shortDescription: "Expert-assisted Income Tax Return filing for salaried, business, capital gains and freelancers. Starting from ₹499.",
+    offerPrice: "₹499",
+    oldPrice: "₹799",
+    priceLabel: "From ₹499",
     iconKey: "itr",
     badge: "Popular",
+    documents: [
+      "PAN Card",
+      "Aadhaar Card",
+      "Form 16 / AIS / Form 26AS",
+      "Bank statement / interest certificate",
+      "Investment & deduction proofs",
+    ],
+    benefits: [
+      "Expert-assisted form selection after document review",
+      "Secure document upload and portal tracking",
+      "Transparent starting packages from ₹499",
+      "Digital invoice and deliverable downloads",
+    ],
   },
 
   // Company Registration & Compliance
@@ -804,6 +818,9 @@ export function getServiceBySlug(slug: string) {
     "labour-card-e-shram-card": "labour-card",
     "driving-licence": "learning-driving-license",
     "gst-registration-filing": "gst-registration",
+    "income-tax-return-filing": "itr-filing",
+    itr: "itr-filing",
+    "income-tax-return": "itr-filing",
     "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
     "cibil-credit-score-guidance": "cibil-report-increase",
     "credit-cards-all-banks": "credit-cards",

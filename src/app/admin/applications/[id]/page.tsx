@@ -14,6 +14,7 @@ import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { AdminOperationsCRM } from "@/components/admin/admin-operations-crm";
 import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
+import { ItrApplicationDetails } from "@/components/services/itr/itr-application-details";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,13 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
       </Card>
 
       <DprApplicationDetails
+        formData={formData}
+        serviceSlug={application.service_slug}
+        status={application.status}
+        finalDocumentUrl={appFinalDocumentUrl || null}
+      />
+
+      <ItrApplicationDetails
         formData={formData}
         serviceSlug={application.service_slug}
         status={application.status}
