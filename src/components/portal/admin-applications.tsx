@@ -169,7 +169,7 @@ export function AdminApplications({
             <h1 className="text-3xl font-bold text-slate-950">Applications</h1>
             <p className="mt-1 text-sm text-slate-600">Search, filter, assign, invoice, and open customer applications.</p>
           </div>
-          <Link href="/agent/applications/new" className="inline-flex h-10 items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
+          <Link href="/ap/applications/new" className="inline-flex h-10 items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
             New Application
           </Link>
         </div>
@@ -235,6 +235,7 @@ export function AdminApplications({
                 <th className="px-3 py-2.5">Application ID</th>
                 <th className="px-3 py-2.5">Customer</th>
                 <th className="px-3 py-2.5">Service</th>
+                <th className="px-3 py-2.5">Source</th>
                 <th className="px-3 py-2.5">Status</th>
                 <th className="px-3 py-2.5">Payment</th>
                 <th className="px-3 py-2.5 text-right">Amount</th>
@@ -252,6 +253,11 @@ export function AdminApplications({
                     <p className="mt-0.5 font-mono text-xs text-slate-500">{row.mobile || row.customer_email || "-"}</p>
                   </td>
                   <td className="max-w-52 truncate px-3 py-2.5 text-slate-700">{row.service}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.source_badge_class || "border-slate-200 bg-slate-100 text-slate-700"}`}>
+                      {row.source_label || "Customer"}
+                    </span>
+                  </td>
                   <td className="px-3 py-2.5"><AdminStatusBadge status={row.application_status} /></td>
                   <td className="px-3 py-2.5"><AdminStatusBadge status={row.payment_status} /></td>
                   <td className="px-3 py-2.5 text-right font-bold text-slate-900">{safeCurrency(row.total_amount)}</td>
@@ -278,6 +284,9 @@ export function AdminApplications({
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <AdminStatusBadge status={row.payment_status} />
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${row.source_badge_class || "border-slate-200 bg-slate-100 text-slate-700"}`}>
+                    {row.source_label || "Customer"}
+                  </span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{safeCurrency(row.total_amount)}</span>
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{row.agent_name || "Unassigned"}</span>
                 </div>

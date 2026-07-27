@@ -1,97 +1,75 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { FileText, FolderOpen, History } from "lucide-react";
+
+type TabKey = "overview" | "documents" | "activity" | "payment" | "communication";
 
 type AdminApplicationTabsProps = {
   overviewContent: ReactNode;
   documentsContent: ReactNode;
   activityContent: ReactNode;
-  operationsContent: ReactNode;
-  documentCount: number;
-  activityCount: number;
+  paymentContent: ReactNode;
+  communicationContent: ReactNode;
+  documentCount?: number;
+  activityCount?: number;
 };
-
-type TabKey = "overview" | "documents" | "activity" | "operations";
 
 export function AdminApplicationTabs({
   overviewContent,
   documentsContent,
   activityContent,
-  operationsContent,
+  paymentContent,
+  communicationContent,
   documentCount,
   activityCount,
 }: AdminApplicationTabsProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
-  const tabs = [
-    {
-      key: "overview" as const,
-      label: "Overview",
-      icon: FileText,
-      count: null,
-    },
-    {
-      key: "documents" as const,
-      label: "Documents",
-      icon: FolderOpen,
-      count: documentCount,
-    },
-    {
-      key: "activity" as const,
-      label: "Activity",
-      icon: History,
-      count: activityCount,
-    },
-    {
-      key: "operations" as const,
-      label: "Operations & CRM",
-      icon: History,
-      count: null,
-    },
+  const tabs: Array<{ key: TabKey; label: string; count?: number | null }> = [
+    { key: "overview", label: "Overview" },
+    { key: "documents", label: "Documents", count: documentCount ?? null },
+    { key: "activity", label: "Activity", count: activityCount ?? null },
+    { key: "payment", label: "Payment" },
+    { key: "communication", label: "Communication" },
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Premium Stripe-like tab navigation */}
-      <div className="flex border-b border-slate-200 bg-white p-1 rounded-2xl shadow-sm md:p-1.5 overflow-x-auto no-scrollbar">
-        <div className="flex flex-1 gap-1 min-w-[480px]">
+    <div className="space-y-4">
+      <div className="-mx-1 overflow-x-auto px-1">
+        <div className="inline-flex min-w-full gap-1 border-b border-slate-200 pb-px sm:min-w-0">
           {tabs.map((tab) => {
-            const Icon = tab.icon;
             const isActive = activeTab === tab.key;
-
             return (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider transition md:py-3 md:text-sm shrink-0 ${
+                className={`shrink-0 rounded-t-md px-3 py-2 text-xs font-semibold transition ${
                   isActive
-                    ? "bg-[var(--primary)] text-white shadow-md shadow-blue-600/10"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "border-b-2 border-blue-600 text-blue-700"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-                {tab.count !== null && (
-                  <span className={`rounded-full px-2 py-0.5 text-xxs font-extrabold ${
-                    isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                {tab.label}
+                {typeof tab.count === "number" && tab.count > 0 ? (
+                  <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    isActive ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"
                   }`}>
                     {tab.count}
                   </span>
-                )}
+                ) : null}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Stateful tab views */}
-      <div className="min-h-[40vh] transition-all duration-200">
-        {activeTab === "overview" && <div className="space-y-5 animate-fade-in">{overviewContent}</div>}
-        {activeTab === "documents" && <div className="space-y-5 animate-fade-in">{documentsContent}</div>}
-        {activeTab === "activity" && <div className="space-y-5 animate-fade-in">{activityContent}</div>}
-        {activeTab === "operations" && <div className="space-y-5 animate-fade-in">{operationsContent}</div>}
+      <div className="min-h-[32vh]">
+        {activeTab === "overview" ? <div className="space-y-4">{overviewContent}</div> : null}
+        {activeTab === "documents" ? <div className="space-y-4">{documentsContent}</div> : null}
+        {activeTab === "activity" ? <div className="space-y-4">{activityContent}</div> : null}
+        {activeTab === "payment" ? <div className="space-y-4">{paymentContent}</div> : null}
+        {activeTab === "communication" ? <div className="space-y-4">{communicationContent}</div> : null}
       </div>
     </div>
   );

@@ -69,7 +69,7 @@ export default async function AgentDashboardPage() {
               <h1 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">{profile?.full_name || user.email || "Agent"}</h1>
               <p className="mt-1 font-mono text-sm font-semibold text-slate-500">{profile?.agent_code || "Agent"}</p>
             </div>
-            <Link href="/agent/applications/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
+            <Link href="/ap/applications/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
               <PlusCircle className="h-4 w-4" />
               New Application
             </Link>

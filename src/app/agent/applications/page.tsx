@@ -36,7 +36,7 @@ export default async function AgentApplicationsPage() {
             <h1 className="mt-2 text-3xl font-bold text-slate-950 md:text-5xl">My Applications</h1>
             <p className="mt-3 max-w-2xl text-slate-600">View applications submitted or referred by your agent account.</p>
           </div>
-          <Link href="/agent/applications/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
+          <Link href="/ap/applications/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
             <FilePlus2 className="h-4 w-4" />
             New Application
           </Link>
@@ -48,7 +48,7 @@ export default async function AgentApplicationsPage() {
               applications.map((application) => (
                 <Link
                   key={application.id}
-                  href={`/agent/applications/${application.id}`}
+                  href={`/ap/applications/${application.id}`}
                   className="grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_150px_150px_150px] md:items-center"
                 >
                   <div>

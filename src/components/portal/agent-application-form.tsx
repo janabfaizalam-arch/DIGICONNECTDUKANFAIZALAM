@@ -130,7 +130,7 @@ export function AgentApplicationForm({
 
         success(result.message ?? "Application created.");
         trackApplicationSubmit();
-        router.push(`/agent/applications/${result.applicationId}`);
+        router.push(`/ap/applications/${result.applicationId}`);
         router.refresh();
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Application could not be created.");

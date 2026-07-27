@@ -3,16 +3,18 @@ import { revalidatePath } from "next/cache";
 
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { isApplicationStatus } from "@/lib/application-status";
+import { canTransitionStatus, whatsappEventForStatusChange } from "@/lib/applications/status-machine";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { createInvoiceForApplication } from "@/lib/crm";
+import {
+  removeFinalDocumentObject,
+  uploadFinalDocumentObject,
+} from "@/lib/documents/final-document-storage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { creditCashbackForApplication } from "@/lib/wallet";
 import { validateFileSignature } from "@/lib/file-validation";
-
-function cleanFileName(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
-}
+import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
 
 function isCashbackCompletionStatus(status: unknown) {
   return ["completed", "delivered", "approved", "done"].includes(String(status ?? "").toLowerCase());
@@ -98,7 +100,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: application } = await supabase
       .from("applications")
-      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, total_amount, status, payment_status, agent_id, assigned_agent_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, form_data, customer_details")
+      .select("id, user_id, customer_id, service_id, service_slug, service_name, amount, total_amount, status, payment_status, agent_id, assigned_agent_id, commission_amount, cashback_enabled, cashback_amount, cashback_expiry_days, cashback_credited_at, final_document_url, final_document_path, completed_document_storage_path, form_data, customer_details, customer_mobile")
       .eq("id", id)
       .single();
 
@@ -119,9 +121,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       };
     }
 
+    const uploadingFinal = finalDocument instanceof File && finalDocument.size > 0;
+    const hasFinalDocument = Boolean(
+      uploadingFinal ||
+        application.final_document_path ||
+        application.completed_document_storage_path ||
+        application.final_document_url,
+    );
+
     if (status) {
       if (!isApplicationStatus(status)) {
         return NextResponse.json({ message: "Invalid application status." }, { status: 400 });
+      }
+
+      const transition = canTransitionStatus(application.status, status, {
+        hasFinalDocument,
+        paymentStatus: application.payment_status,
+      });
+      if (!transition.ok) {
+        return NextResponse.json({ message: transition.message }, { status: 400 });
       }
 
       updates.status = status;
@@ -155,26 +173,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return NextResponse.json({ message: "Final document must be smaller than 8MB." }, { status: 400 });
       }
 
-      const path = `final-documents/${id}/${Date.now()}-${cleanFileName(finalDocument.name)}`;
-      const bytes = await finalDocument.arrayBuffer();
-      const { error: uploadError } = await supabase.storage.from("documents").upload(path, bytes, {
+      const uploaded = await uploadFinalDocumentObject({
+        applicationId: id,
+        fileName: finalDocument.name,
+        bytes: await finalDocument.arrayBuffer(),
         contentType: finalDocument.type || "application/octet-stream",
-        upsert: true,
       });
-
-      if (uploadError) {
-        throw uploadError;
+      if (!uploaded.ok) {
+        return NextResponse.json(
+          {
+            message: uploaded.error,
+            code: "code" in uploaded ? uploaded.code : undefined,
+          },
+          { status: "code" in uploaded && uploaded.code === "database_upgrade_required" ? 503 : 500 },
+        );
       }
 
-      const { data } = await supabase.storage.from("documents").createSignedUrl(path, 60 * 60);
-      updates.final_document_url = data?.signedUrl ?? "";
+      const path = uploaded.storagePath;
+      const bucket = uploaded.bucket;
+
+      // Path-only on applications row — signed URLs are admin/WhatsApp ephemeral.
+      updates.final_document_url = null;
       updates.final_document_path = path;
-      updates.completed_document_url = data?.signedUrl ?? "";
+      updates.completed_document_url = null;
       updates.completed_document_storage_path = path;
       updates.final_document_name = finalDocument.name;
       updates.completed_at = new Date().toISOString();
 
-      await supabase.from("application_documents").insert({
+      const docRow = {
         application_id: id,
         user_id: application.user_id,
         customer_id: application.customer_id,
@@ -183,15 +209,57 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         document_type: "final_document",
         document_name: finalTitle || "Final completed document",
         file_name: finalDocument.name,
-        file_url: data?.signedUrl ?? "",
+        file_url: "",
         file_type: finalDocument.type || "application/octet-stream",
         storage_path: path,
+        storage_bucket: bucket,
         status: "approved",
         review_status: "approved",
         is_final: true,
+        customer_visible: false,
+        partner_visible: false,
+        delivery_channel: "whatsapp",
+        delivery_status: "pending",
         uploaded_at: new Date().toISOString(),
-        metadata: { title: finalTitle, note: customerNote || note || null },
-      });
+        metadata: { title: finalTitle, note: customerNote || note || null, whatsapp_only: true, storage_bucket: bucket },
+      };
+      const { data: insertedDoc, error: docInsertError } = await supabase
+        .from("application_documents")
+        .insert(docRow)
+        .select("id")
+        .maybeSingle();
+      if (docInsertError) {
+        const legacyRow = {
+          application_id: docRow.application_id,
+          user_id: docRow.user_id,
+          customer_id: docRow.customer_id,
+          uploaded_by: docRow.uploaded_by,
+          uploaded_by_role: docRow.uploaded_by_role,
+          document_type: docRow.document_type,
+          document_name: docRow.document_name,
+          file_name: docRow.file_name,
+          file_url: docRow.file_url,
+          file_type: docRow.file_type,
+          storage_path: docRow.storage_path,
+          status: docRow.status,
+          review_status: docRow.review_status,
+          is_final: docRow.is_final,
+          uploaded_at: docRow.uploaded_at,
+          metadata: { ...docRow.metadata, customer_visible: false, partner_visible: false },
+        };
+        const { data: legacyDoc, error: legacyError } = await supabase
+          .from("application_documents")
+          .insert(legacyRow)
+          .select("id")
+          .maybeSingle();
+        if (legacyError) {
+          await removeFinalDocumentObject(bucket, path);
+          return NextResponse.json({ message: "Final document could not be saved." }, { status: 500 });
+        }
+        updates.final_document_id = legacyDoc?.id ?? null;
+      } else {
+        updates.final_document_id = insertedDoc?.id ?? null;
+      }
     }
 
     const { error } = await supabase.from("applications").update(updates).eq("id", id);
@@ -249,7 +317,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
     }
 
-    if (updates.status) {
+    if (updates.status && String(updates.status) !== String(application.status)) {
       await supabase.from("status_logs").insert({
         application_id: id,
         changed_by: user?.id,
@@ -267,14 +335,39 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         note: note || "Status updated by admin.",
       });
 
-      await supabase.from("notifications").insert({
-        user_id: application.user_id,
-        application_id: id,
-        title: "Application status updated",
-        message: `${application.service_name} status is now ${String(updates.status).replace(/_/g, " ")}.`,
-      });
+      if (application.user_id) {
+        await supabase.from("notifications").insert({
+          user_id: application.user_id,
+          application_id: id,
+          title: "Application status updated",
+          message: `${application.service_name} status is now ${String(updates.status).replace(/_/g, " ")}.`,
+        });
+      }
 
-      if (isCashbackCompletionStatus(updates.status) && !application.final_document_url && !updates.final_document_url) {
+      // Customer-relevant WhatsApp only when status actually changes. Never for notes/assignment-only.
+      try {
+        const eventType = whatsappEventForStatusChange(application.status, updates.status);
+        if (eventType) {
+          const details = (application.customer_details ?? {}) as Record<string, unknown>;
+          const formDataRecord = (application.form_data ?? {}) as Record<string, unknown>;
+          const mobile = String(application.customer_mobile ?? details.mobile ?? formDataRecord.mobile ?? "").trim();
+          const customerName = String(details.name ?? formDataRecord.name ?? "Customer");
+          if (mobile) {
+            await sendApplicationWhatsApp({
+              applicationId: id,
+              eventType,
+              recipientMobile: mobile,
+              customerName,
+              serviceName: application.service_name,
+              notes: note || customerNote || undefined,
+            });
+          }
+        }
+      } catch (whatsappError) {
+        console.error("[admin-applications-patch] whatsapp_status_ping_failed", whatsappError);
+      }
+
+      if (isCashbackCompletionStatus(updates.status) && !application.final_document_url && !updates.final_document_url && !application.final_document_path && !updates.final_document_path) {
         await createAdminNotification(supabase, {
           type: "final_document_pending",
           title: "Final document pending",

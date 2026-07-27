@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Download, FileText, MessageCircle, RotateCcw } from "lucide-react";
+import { ArrowLeft, FileText, MessageCircle, RotateCcw } from "lucide-react";
 
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { RatingForm } from "@/components/portal/rating-form";
 import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
 import { ItrApplicationDetails } from "@/components/services/itr/itr-application-details";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
+import { CUSTOMER_APPLICATION_SELECT } from "@/lib/applications/safe-selects";
+import { isCustomerVisibleDocument } from "@/lib/applications/document-visibility";
 import { formatCurrency } from "@/lib/portal-data";
 import { resolveDocumentUrls } from "@/lib/crm";
 import type { Application, ApplicationDocument, Invoice, Payment, Rating } from "@/lib/portal-types";
@@ -72,7 +74,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
 
   const { data } = await supabase
     .from("applications")
-    .select("*")
+    .select(CUSTOMER_APPLICATION_SELECT)
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -84,8 +86,9 @@ export default async function CustomerApplicationDetailPage({ params }: { params
   const [documentsResult, paymentsResult, invoicesResult, ratingsResult] = await Promise.all([
     supabase
       .from("application_documents")
-      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, uploaded_at, created_at")
-      .eq("application_id", id),
+      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, customer_visible, uploaded_at, created_at")
+      .eq("application_id", id)
+      .eq("is_final", false),
     supabase
       .from("payments")
       .select("id, application_id, amount, status, screenshot_url, storage_path, razorpay_order_id, razorpay_payment_id, razorpay_status, payment_method, paid_at, created_at")
@@ -97,11 +100,13 @@ export default async function CustomerApplicationDetailPage({ params }: { params
     supabase.from("ratings").select("id, application_id, user_id, rating, feedback, created_at").eq("application_id", id),
   ]);
 
-  const signedDocuments = await resolveDocumentUrls((documentsResult.data ?? []) as ApplicationDocument[]);
-  const finalDocument = signedDocuments.find((document) => document.is_final || document.document_type === "final_document");
+  const signedDocuments = await resolveDocumentUrls(
+    ((documentsResult.data ?? []) as ApplicationDocument[]).filter(isCustomerVisibleDocument),
+  );
   const application = {
-    ...(data as Application),
-    final_document_url: (data as Application).final_document_url || finalDocument?.file_url || null,
+    ...(data as unknown as Application),
+    final_document_url: null,
+    final_document_path: null,
     documents: signedDocuments,
     payments: (paymentsResult.data ?? []) as Payment[],
     invoices: (invoicesResult.data ?? []) as Invoice[],
@@ -418,14 +423,14 @@ export default async function CustomerApplicationDetailPage({ params }: { params
               formData={formData}
               serviceSlug={application.service_slug}
               status={application.status}
-              finalDocumentUrl={application.final_document_url}
+              finalDocumentUrl={null}
             />
 
             <ItrApplicationDetails
               formData={formData}
               serviceSlug={application.service_slug}
               status={application.status}
-              finalDocumentUrl={application.final_document_url}
+              finalDocumentUrl={null}
             />
 
             {/* Submitted Documents Panel */}
@@ -484,18 +489,6 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                       <p className="text-[10px] font-semibold text-slate-400 mt-0.5">View your tax payment statement</p>
                     </div>
                   </Link>
-                ) : null}
-
-                {application.final_document_url ? (
-                  <a href={application.final_document_url} target="_blank" rel="noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-105 transition">
-                      <Download className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black text-slate-800">Download Output</p>
-                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Get your final certificate / card</p>
-                    </div>
-                  </a>
                 ) : null}
 
                 <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3.5 rounded-2xl border border-slate-100 bg-white p-3 hover:bg-slate-50/50 hover:border-slate-200 transition group">

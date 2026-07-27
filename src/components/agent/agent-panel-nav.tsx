@@ -8,14 +8,14 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
 
 const items: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/agent/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/agent/applications/new", label: "New Application", icon: PlusCircle },
-  { href: "/agent/applications", label: "My Applications", icon: FileText },
-  { href: "/agent/assigned-work", label: "Assigned Work", icon: ClipboardList },
-  { href: "/agent/commissions", label: "Commission", icon: HandCoins },
-  { href: "/agent/payout-history", label: "Wallet / Payout", icon: WalletCards },
-  { href: "/agent/profile", label: "Profile", icon: UserCog },
-  { href: "/agent/support", label: "Support", icon: Headphones },
+  { href: "/ap/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/ap/applications/new", label: "New Application", icon: PlusCircle },
+  { href: "/ap/applications", label: "My Applications", icon: FileText },
+  { href: "/ap/assigned-work", label: "Assigned Work", icon: ClipboardList },
+  { href: "/ap/commissions", label: "Commission", icon: HandCoins },
+  { href: "/ap/wallet", label: "Wallet / Payout", icon: WalletCards },
+  { href: "/ap/profile", label: "Profile", icon: UserCog },
+  { href: "/ap/support", label: "Support", icon: Headphones },
 ];
 
 export function AgentPanelNav() {

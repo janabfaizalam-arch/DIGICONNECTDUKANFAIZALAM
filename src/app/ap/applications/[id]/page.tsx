@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { buildAgentWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
+import { PARTNER_APPLICATION_SELECT } from "@/lib/applications/safe-selects";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -52,7 +53,7 @@ export default async function APApplicationDetailPage({
 
   const { data } = await supabase
     .from("applications")
-    .select("*")
+    .select(PARTNER_APPLICATION_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -60,7 +61,7 @@ export default async function APApplicationDetailPage({
     notFound();
   }
 
-  const applicationRow = data as Application;
+  const applicationRow = data as unknown as Application;
 
   interface DBWorkflow {
     id: string;
@@ -224,7 +225,16 @@ export default async function APApplicationDetailPage({
     notFound();
   }
 
-  const [application] = (await hydrateApplications([applicationRow])) as Application[];
+  const [hydrated] = (await hydrateApplications([applicationRow])) as Application[];
+  const application: Application = {
+    ...hydrated,
+    final_document_url: null,
+    documents: (hydrated.documents ?? []).filter((document) => {
+      if (document.is_final || document.document_type === "final_document") return false;
+      if (document.partner_visible === false) return false;
+      return true;
+    }),
+  };
   
   // Fetch commission from ap_commissions instead of legacy commissions table
   const { data: apCommission } = await supabase
@@ -295,14 +305,14 @@ export default async function APApplicationDetailPage({
               formData={application.form_data}
               serviceSlug={application.service_slug}
               status={application.status}
-              finalDocumentUrl={application.final_document_url}
+              finalDocumentUrl={null}
             />
 
             <ItrApplicationDetails
               formData={application.form_data}
               serviceSlug={application.service_slug}
               status={application.status}
-              finalDocumentUrl={application.final_document_url}
+              finalDocumentUrl={null}
             />
 
             <div className="grid gap-4 md:grid-cols-2">

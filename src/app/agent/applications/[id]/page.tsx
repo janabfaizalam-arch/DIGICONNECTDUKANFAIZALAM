@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { buildAgentWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import { getCustomerMobile, getCustomerName, hydrateApplications } from "@/lib/crm";
+import { isPartnerVisibleDocument } from "@/lib/applications/document-visibility";
+import { PARTNER_APPLICATION_SELECT } from "@/lib/applications/safe-selects";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Application } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -36,7 +38,7 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
 
   const { data } = await supabase
     .from("applications")
-    .select("*")
+    .select(PARTNER_APPLICATION_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -44,7 +46,7 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
     notFound();
   }
 
-  const applicationRow = data as Application;
+  const applicationRow = data as unknown as Application;
   const directlyAllowed =
     applicationRow.agent_id === user.id ||
     applicationRow.created_by === user.id ||
@@ -64,14 +66,19 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
     notFound();
   }
 
-  const [application] = (await hydrateApplications([applicationRow])) as Application[];
+  const [hydrated] = (await hydrateApplications([applicationRow])) as Application[];
+  const application: Application = {
+    ...hydrated,
+    final_document_url: null,
+    documents: (hydrated.documents ?? []).filter(isPartnerVisibleDocument),
+  };
   const commission = application.commissions?.[0];
   const mobile = getCustomerMobile(application);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-5xl space-y-5">
-        <Link href="/agent/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+        <Link href="/ap/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
           Back to agent panel
         </Link>

@@ -91,11 +91,18 @@ export async function resolveDocumentUrls(documents: ApplicationDocument[]) {
       }
 
       try {
-        const bucket = document.storage_path.startsWith("applications/") ||
-                       document.storage_path.startsWith("application-documents/") ||
-                       document.storage_path.startsWith("final-documents/")
-          ? "documents"
-          : "application-documents";
+        // Never sign final documents during list/hydrate — admin uses on-demand URL API.
+        if (document.is_final || document.document_type === "final_document") {
+          return { ...document, file_url: "", signed_url: null };
+        }
+
+        const bucket =
+          (document as ApplicationDocument & { storage_bucket?: string | null }).storage_bucket ||
+          (document.storage_path.startsWith("applications/") ||
+          document.storage_path.startsWith("application-documents/") ||
+          document.storage_path.startsWith("final-documents/")
+            ? "documents"
+            : "application-documents");
         const { data, error } = await supabase.storage.from(bucket).createSignedUrl(document.storage_path, 60 * 60);
         if (!error && data?.signedUrl) {
           return { ...document, file_url: data.signedUrl, signed_url: data.signedUrl };
@@ -343,7 +350,9 @@ export async function hydrateApplications(applications: Application[]) {
 
     return {
       ...application,
-      final_document_url: application.final_document_url || finalDocument?.file_url || null,
+      // Never hydrate signed/public URLs onto applications — finals are WhatsApp/admin signed-URL only.
+      final_document_url: null,
+      completed_document_url: null,
       final_document_name: application.final_document_name || finalDocument?.file_name || null,
       customers: application.customer_id ? customersById[application.customer_id] ?? null : null,
       documents,

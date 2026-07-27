@@ -33,7 +33,7 @@ export default async function AgentAssignedWorkPage() {
         <Card className="rounded-2xl p-4 md:p-6">
           <div className="grid gap-3">
             {applications.length ? applications.map((application) => (
-              <Link key={application.id} href={`/agent/applications/${application.id}`} className="grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_150px_150px_150px] md:items-center">
+              <Link key={application.id} href={`/ap/applications/${application.id}`} className="grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_150px_150px_150px] md:items-center">
                 <div>
                   <p className="font-bold text-slate-950">{getCustomerName(application)}</p>
                   <p className="mt-1 text-sm text-slate-600">{application.service_name} | {getCustomerMobile(application) || "No mobile"}</p>

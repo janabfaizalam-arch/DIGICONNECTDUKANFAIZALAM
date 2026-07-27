@@ -8,6 +8,8 @@ import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
 import { getWalletSnapshot } from "@/lib/wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { isCustomerVisibleDocument } from "@/lib/applications/document-visibility";
+import type { ApplicationDocument as PortalApplicationDocument } from "@/lib/portal-types";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,7 @@ export interface ApplicationDocument {
   review_status?: string | null;
   uploaded_by_role?: string | null;
   is_final?: boolean | null;
+  customer_visible?: boolean | null;
   uploaded_at?: string | null;
   created_at: string;
 }
@@ -164,11 +167,13 @@ export default async function CustomerDashboardPage() {
   if (appIds.length > 0 && supabaseAdmin) {
     const { data: docsData } = await supabaseAdmin
       .from("application_documents")
-      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, uploaded_at, created_at")
+      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, customer_visible, uploaded_at, created_at")
       .in("application_id", appIds)
       .order("created_at", { ascending: false });
     if (docsData) {
-      documents = docsData as unknown as ApplicationDocument[];
+      documents = (docsData as unknown as ApplicationDocument[]).filter((doc) =>
+        isCustomerVisibleDocument(doc as PortalApplicationDocument),
+      );
     }
   }
 

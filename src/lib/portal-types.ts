@@ -81,6 +81,7 @@ export type AdminApplicationRow = {
   commission_status?: string | null;
   service_slug?: string | null;
   source_label?: string | null;
+  source_badge_class?: string | null;
   agent_code?: string | null;
   document_count?: number;
   rejected_document_count?: number;
@@ -166,6 +167,12 @@ export type ApplicationDocument = {
   uploaded_by?: string | null;
   uploaded_by_role?: "admin" | "agent" | "customer" | null;
   is_final?: boolean | null;
+  storage_bucket?: string | null;
+  customer_visible?: boolean | null;
+  partner_visible?: boolean | null;
+  delivery_channel?: string | null;
+  delivery_status?: string | null;
+  delivered_at?: string | null;
   metadata?: Record<string, unknown> | null;
   uploaded_at?: string | null;
   source?: "application_documents" | "legacy_applications_documents" | "legacy_form_data_documents";
@@ -243,6 +250,12 @@ export type Application = {
   customer_mobile?: string | null;
   agent_id?: string | null;
   agency_partner_id?: string | null;
+  application_source?: string | null;
+  source_channel?: string | null;
+  priority?: string | null;
+  due_at?: string | null;
+  whatsapp_final_delivery_status?: string | null;
+  whatsapp_final_delivered_at?: string | null;
   application_code?: string | null;
   customerName?: string | null;
   customer_name?: string | null;
@@ -272,6 +285,8 @@ export type Application = {
   status: ApplicationStatus;
   final_document_url: string | null;
   final_document_name: string | null;
+  final_document_id?: string | null;
+  final_document_path?: string | null;
   assigned_to: string | null;
   internal_notes: string | null;
   customer_message?: string | null;
@@ -280,7 +295,6 @@ export type Application = {
   completed_document_url?: string | null;
   completed_document_storage_path?: string | null;
   completed_at?: string | null;
-  final_document_path?: string | null;
   payment_status?: PaymentStatus;
   razorpay_order_id?: string | null;
   razorpay_payment_id?: string | null;

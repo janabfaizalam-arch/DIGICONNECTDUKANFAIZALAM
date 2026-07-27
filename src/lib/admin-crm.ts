@@ -1,8 +1,14 @@
 import { safeCurrency, safeDate, safeDateTime } from "@/lib/admin-format";
 import { getApplicationCustomerIdentity } from "@/lib/admin/customer-resolver";
+import { resolveApplicationSourceInfo } from "@/lib/applications/source";
+import {
+  ADMIN_APPLICATION_SELECT,
+  ADMIN_APPLICATION_SELECT_LEGACY,
+} from "@/lib/applications/safe-selects";
 import { asRecord, getCustomerMobile, getCustomerName, hydrateApplications, resolveDocumentUrls } from "@/lib/crm";
 import type { AdminApplicationRow, Application, ApplicationDocument, Customer, Invoice, Payment, PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isMissingColumnError, isMissingRelationError } from "@/lib/supabase/schema-compat";
 
 export type AdminCrmSummary = {
   totalApplications: number;
@@ -200,7 +206,8 @@ function applicationToAdminRow(application: Application, agentById: Record<strin
   const documents = application.documents ?? [];
   const rejectedDocuments = documents.filter((document) => ["rejected", "reupload_required"].includes(normalizeStatus(document.review_status ?? document.status))).length;
   const finalDocuments = documents.filter((document) => document.is_final || document.document_type === "final_document").length;
-  const sourceLabel = firstText(application.submitted_by_role, application.source, assignedAgent ? "agent" : "", "website");
+  const sourceInfo = resolveApplicationSourceInfo(application);
+  const sourceLabel = sourceInfo.label;
 
   return {
     id: application.id,
@@ -236,6 +243,7 @@ function applicationToAdminRow(application: Application, agentById: Record<strin
     customer_email: customer.email,
     service_slug: application.service_slug,
     source_label: sourceLabel,
+    source_badge_class: sourceInfo.badgeClass,
     document_count: documents.length,
     rejected_document_count: rejectedDocuments,
     final_document_count: finalDocuments,
@@ -629,12 +637,37 @@ export async function getAdminApplicationDetail(id: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
-  const { data, error } = await supabase.from("applications").select("*").eq("id", id).maybeSingle();
+  let { data, error } = await supabase
+    .from("applications")
+    .select(ADMIN_APPLICATION_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error && isMissingColumnError(error)) {
+    ({ data, error } = await supabase
+      .from("applications")
+      .select(ADMIN_APPLICATION_SELECT_LEGACY)
+      .eq("id", id)
+      .maybeSingle());
+  }
+
   if (error || !data) return null;
 
-  let application = data as Application;
+  let application = data as unknown as Application;
+  // Never expose persisted signed/public final URLs into admin detail payloads.
+  application = {
+    ...application,
+    final_document_url: null,
+    completed_document_url: null,
+  } as Application;
+
   try {
     [application] = (await hydrateApplications([application])) as Application[];
+    application = {
+      ...application,
+      final_document_url: null,
+      completed_document_url: null,
+    } as Application;
   } catch (caught) {
     console.error("[admin-crm] Failed to hydrate application detail", caught);
   }
@@ -652,11 +685,13 @@ export async function getAdminApplicationDetail(id: string) {
   if (amountMismatch) warnings.push("Payment amount does not match application fresh payable amount.");
   if (!application.service_slug) warnings.push("Service slug is missing.");
 
-  const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, file_size, storage_path, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, metadata, uploaded_at, created_at";
-  const legacyDocumentSelect = "id, application_id, user_id, document_type, file_name, file_url, file_type, storage_path, created_at";
+  const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, file_size, storage_path, storage_bucket, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, customer_visible, partner_visible, delivery_channel, delivery_status, delivered_at, metadata, uploaded_at, created_at";
+  const legacyDocumentSelect = "id, application_id, user_id, document_type, file_name, file_url, file_type, storage_path, is_final, created_at";
   console.info("[admin-crm] ADMIN_APPLICATION_ID", { applicationId: id });
 
-  const [notesResult, agentsResult, statusLogsResult, referralResult, diagnosticsResult, initialDocumentsResult, profileResult, customerProfileResult, customerResult] = await Promise.all([
+  const agencyPartnerId = (application as Application & { agency_partner_id?: string | null }).agency_partner_id;
+
+  const [notesResult, agentsResult, statusLogsResult, referralResult, diagnosticsResult, initialDocumentsResult, profileResult, customerProfileResult, customerResult, partnerResult, whatsappResult] = await Promise.all([
     supabase.from("admin_notes").select("id, application_id, note, assigned_to, created_at").eq("application_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name, email, avatar_url, role, mobile, agent_code, commission_type, commission_value, commission_rate, active, is_active").eq("role", "agent"),
     supabase.from("status_logs").select("id, old_status, new_status, note, created_at").eq("application_id", id).order("created_at", { ascending: false }),
@@ -666,6 +701,15 @@ export async function getAdminApplicationDetail(id: string) {
     application.user_id ? supabase.from("profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.user_id ? supabase.from("customer_profiles").select("id, full_name, email, mobile, address, city, state, pincode").eq("id", application.user_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     application.customer_id ? supabase.from("customers").select("id, user_id, full_name, email, mobile, address, city, state, pincode").eq("id", application.customer_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    agencyPartnerId
+      ? supabase.from("agency_partners").select("id, partner_code, full_name, mobile, partner_type, email").eq("id", agencyPartnerId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("whatsapp_messages")
+      .select("id, event_type, status, attempt_count, error_message, created_at, sent_at, failed_at, last_attempt_at")
+      .eq("application_id", id)
+      .order("created_at", { ascending: false })
+      .limit(30),
   ]);
 
   let directDocumentsRaw: ApplicationDocument[] = [];
@@ -720,6 +764,11 @@ export async function getAdminApplicationDetail(id: string) {
       review_status: doc.review_status ?? doc.status ?? "pending",
       status: doc.status ?? doc.review_status ?? "pending",
       is_final: doc.is_final ?? false,
+      customer_visible: doc.customer_visible ?? null,
+      partner_visible: doc.partner_visible ?? null,
+      delivery_channel: doc.delivery_channel ?? null,
+      delivery_status: doc.delivery_status ?? null,
+      delivered_at: doc.delivered_at ?? null,
       rejection_reason: doc.rejection_reason ?? null,
       metadata: doc.metadata ?? {},
       uploaded_at: doc.uploaded_at ?? doc.created_at ?? new Date().toISOString(),
@@ -777,15 +826,30 @@ export async function getAdminApplicationDetail(id: string) {
   });
 
   const documents = await resolveDocumentUrls(normalizedDocs);
+  // Admin preview uses signed-URL API — strip file_url from final docs to avoid accidental exposure.
+  const documentsForAdmin = documents.map((document) => {
+    if (document.is_final || document.document_type === "final_document") {
+      return { ...document, file_url: "", signed_url: undefined };
+    }
+    return document;
+  });
   console.info("[admin-crm] ADMIN_DOCUMENTS_RESOLVED_URLS", {
     applicationId: id,
-    documents: documents.map((document) => ({
+    documents: documentsForAdmin.map((document) => ({
       fileName: document.file_name,
       storagePath: document.storage_path,
       hasUrl: Boolean(document.signed_url || document.file_url),
       source: document.source,
+      isFinal: Boolean(document.is_final),
     })),
   });
+
+  const whatsappMessages =
+    whatsappResult.error && (isMissingRelationError(whatsappResult.error) || isMissingColumnError(whatsappResult.error))
+      ? []
+      : whatsappResult.error
+        ? []
+        : whatsappResult.data ?? [];
 
   return {
     application,
@@ -800,13 +864,14 @@ export async function getAdminApplicationDetail(id: string) {
       state: firstText(profileResult.data?.state, customerProfileResult.data?.state, customerResult.data?.state),
       pincode: firstText(profileResult.data?.pincode, customerProfileResult.data?.pincode, customerResult.data?.pincode),
     },
-    documents,
+    documents: documentsForAdmin,
     possibleDocuments: [] as ApplicationDocument[],
     invoices: (application.invoices ?? []) as Invoice[],
     payments: allPayments,
     notes: notesResult.error ? [] : notesResult.data ?? [],
     agents: agentsResult.error ? [] : (agentsResult.data ?? []) as PortalUser[],
     statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
+    whatsappMessages,
     referralDebug: referralResult.error ? null : referralResult.data,
     diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],
     documentDiagnostics: {
@@ -816,6 +881,7 @@ export async function getAdminApplicationDetail(id: string) {
       expectedQuery: `application_documents.application_id = ${id}`,
     },
     warnings,
+    partner: partnerResult.error ? null : partnerResult.data,
     facts: {
       totalAmount: Number(application.total_amount ?? application.amount ?? 0),
       verifiedPaidAmount: isVerifiedPayment(payment) ? paymentAmount(payment) : 0,
