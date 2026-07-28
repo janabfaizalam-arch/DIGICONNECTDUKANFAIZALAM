@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AdminCustomerAuthActions } from "@/components/admin/admin-customer-auth-actions";
+import { AdminCustomerIdentityPanel } from "@/components/admin/admin-customer-identity-panel";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCustomerIdentityHealth } from "@/lib/auth/customer-identity-health";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import type { Application, Customer } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -79,6 +81,11 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
     }
   }
 
+  const identityHealth = await getCustomerIdentityHealth({
+    customerId: customer?.id ?? id,
+    mobile: customer?.mobile ?? authProfile?.phone ?? null,
+  });
+
   if (!customer) {
     return (
       <div className="mx-auto max-w-7xl space-y-6">
@@ -87,6 +94,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
           Back to customers
         </Link>
         <AdminPageHeader eyebrow="Customer" title="Customer unavailable" description="This customer record could not be loaded. Other admin sections remain available." />
+        <AdminCustomerIdentityPanel health={identityHealth} mobile={authProfile?.phone || null} />
         <AdminEmptyState title="No customer data" description="The customer may have been removed, or an optional database table may be unavailable." />
       </div>
     );
@@ -94,6 +102,10 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
 
   const customerRecord = customer;
   const customerApplications = applications;
+  const displayName =
+    (customerRecord as Customer & { name?: string | null }).name ||
+    customerRecord.full_name ||
+    "Customer";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -101,7 +113,9 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
         <ArrowLeft className="h-4 w-4" />
         Back to customers
       </Link>
-      <AdminPageHeader eyebrow="Customer" title={customerRecord.full_name || "Customer"} description="Customer profile, applications, notes, and timeline." />
+      <AdminPageHeader eyebrow="Customer" title={displayName} description="Customer profile, applications, notes, and timeline." />
+
+      <AdminCustomerIdentityPanel health={identityHealth} mobile={customerRecord.mobile || authProfile?.phone || null} />
 
       <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">

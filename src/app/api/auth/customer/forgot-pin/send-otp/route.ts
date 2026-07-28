@@ -34,12 +34,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: lookup.message }, { status: 409 });
     }
 
-    if (!lookup.ok && lookup.reason === "profile_only") {
+    if (!lookup.ok && (lookup.reason === "profile_only" || lookup.reason === "repair_failed")) {
       return NextResponse.json({ error: lookup.message }, { status: 409 });
     }
 
     if (!lookup.ok && lookup.reason === "service_unavailable") {
       return NextResponse.json({ error: lookup.message }, { status: 503 });
+    }
+
+    if (!lookup.ok && lookup.reason === "not_found") {
+      // Anti-enumeration: same generic success, but do not send OTP
+      await logAuthSecurityEvent({
+        phone: phone.local,
+        eventType: "forgot_pin_otp_probe",
+        ip,
+        userAgent,
+        details: { reason: lookup.reason, internalCode: lookup.internalCode },
+      });
+      return NextResponse.json({ ok: true, message: GENERIC });
     }
 
     if (lookup.ok) {
@@ -65,7 +77,10 @@ export async function POST(request: Request) {
       }
 
       if (!result.ok) {
-        return NextResponse.json({ error: result.error }, { status: result.status });
+        return NextResponse.json(
+          { error: "WhatsApp OTP could not be sent right now. Please try again." },
+          { status: result.status >= 400 ? result.status : 502 },
+        );
       }
 
       await logAuthSecurityEvent({
@@ -74,14 +89,6 @@ export async function POST(request: Request) {
         details: { customerId: lookup.customerId, campaign },
         ip,
         userAgent,
-      });
-    } else {
-      await logAuthSecurityEvent({
-        phone: phone.local,
-        eventType: "forgot_pin_otp_probe",
-        ip,
-        userAgent,
-        details: { reason: lookup.reason },
       });
     }
 

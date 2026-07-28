@@ -51,11 +51,24 @@ export async function POST(request: Request) {
     const lookup = await findExistingCustomerByMobile(phone.local);
     if (!lookup.ok) {
       const status =
-        lookup.reason === "ambiguous" || lookup.reason === "profile_only" ? 409 : 400;
+        lookup.reason === "ambiguous" ||
+        lookup.reason === "profile_only" ||
+        lookup.reason === "repair_failed"
+          ? 409
+          : 400;
       return NextResponse.json(
-        { error: lookup.reason === "not_found" ? "Unable to reset PIN" : lookup.message },
+        {
+          error:
+            lookup.reason === "not_found"
+              ? "No customer account is registered with this mobile number."
+              : lookup.message,
+        },
         { status },
       );
+    }
+
+    if (!lookup.isActive) {
+      return NextResponse.json({ error: "Your account is inactive." }, { status: 403 });
     }
 
     const updated = await updateCustomerHashedPin({
@@ -73,6 +86,7 @@ export async function POST(request: Request) {
       purpose: "forgot_pin",
       "customer id": lookup.customerId,
       "lookup source": lookup.lookupSource,
+      repaired: Boolean(lookup.repaired),
     });
 
     await logAuthSecurityEvent({

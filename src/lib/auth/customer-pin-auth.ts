@@ -57,6 +57,9 @@ export async function updateCustomerHashedPin(input: {
     localPhone: input.localPhone,
   });
 
+  const { revokeAllCustomerPinSessions } = await import("@/lib/auth/customer-lookup");
+  await revokeAllCustomerPinSessions(input.customerId);
+
   console.info("[customer-pin-auth] pin_updated", {
     "customer id": input.customerId,
     purpose: "forgot_pin",
