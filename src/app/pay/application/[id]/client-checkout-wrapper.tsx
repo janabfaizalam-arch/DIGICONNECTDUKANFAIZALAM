@@ -27,7 +27,7 @@ export function ClientCheckoutWrapper({
   const handleVerified = () => {
     success("Payment completed successfully! Redirecting...");
     setTimeout(() => {
-      window.location.href = `/dashboard/applications/${applicationId}`;
+      window.location.href = `/customer/applications/${applicationId}`;
     }, 1500);
   };
 

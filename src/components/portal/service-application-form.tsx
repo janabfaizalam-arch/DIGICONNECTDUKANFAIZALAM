@@ -1273,7 +1273,7 @@ export function ServiceApplicationForm({
       success("Application submitted successfully.");
       trackSubmitApplication();
       trackApplicationSubmit();
-      router.push(result.invoiceId ? `/invoice/${result.invoiceId}` : result.applicationId ? `/dashboard/applications/${result.applicationId}` : "/customer/dashboard");
+      router.push(result.invoiceId ? `/invoice/${result.invoiceId}` : result.applicationId ? `/customer/applications/${result.applicationId}` : "/customer/dashboard");
       router.refresh();
     } catch (error) {
       const message =

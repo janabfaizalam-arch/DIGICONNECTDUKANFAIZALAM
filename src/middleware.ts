@@ -180,8 +180,17 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/admin-login") {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
+  // Legacy /dashboard → customer portal (preserve application detail IDs)
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-    return NextResponse.redirect(new URL("/customer/dashboard", request.url));
+    const { resolveLegacyCustomerDashboardPath } = await import("@/lib/applications/customer-dashboard-paths");
+    const target = resolveLegacyCustomerDashboardPath(pathname) || "/customer/dashboard";
+    const url = request.nextUrl.clone();
+    const [pathOnly, queryFromTarget] = target.split("?");
+    url.pathname = pathOnly;
+    if (queryFromTarget) {
+      url.search = `?${queryFromTarget}`;
+    }
+    return NextResponse.redirect(url, 308);
   }
 
   // Canonical Digi Partner login — permanently redirect every legacy/alternate

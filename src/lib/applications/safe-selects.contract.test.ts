@@ -45,6 +45,8 @@ describe("safe selects contracts", () => {
   it("customer and partner selects exclude sensitive fields", () => {
     expect(CUSTOMER_APPLICATION_SELECT.includes("final_document_path")).toBe(false);
     expect(CUSTOMER_APPLICATION_SELECT.includes("final_document_id")).toBe(false);
+    expect(CUSTOMER_APPLICATION_SELECT.includes("commission_amount")).toBe(false);
+    expect(CUSTOMER_APPLICATION_SELECT.includes("internal_notes")).toBe(false);
     expect(PARTNER_APPLICATION_SELECT.includes("internal_notes")).toBe(false);
     expect(PARTNER_APPLICATION_SELECT.includes("whatsapp_final_delivery_status")).toBe(false);
   });

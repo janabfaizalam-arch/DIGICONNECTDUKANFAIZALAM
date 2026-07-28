@@ -160,7 +160,7 @@ async function getCustomerWalletBalance(userId: string) {
   return numberValue(data?.balance);
 }
 
-async function getCustomerApplications(userId: string) {
+async function getCustomerApplications(userId: string, limit = 50) {
   const supabase = await getSupabaseServerClient();
 
   if (!supabase) {
@@ -171,7 +171,8 @@ async function getCustomerApplications(userId: string) {
     .from("applications")
     .select("id, service_name, service_slug, status, payment_status, created_at, amount, total_amount, customer_details, form_data")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
   if (error) {
     console.error("[customer-dashboard] Applications failed", { userId, error });

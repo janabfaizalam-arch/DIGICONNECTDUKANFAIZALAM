@@ -42,7 +42,6 @@ export interface ApplicationDocument {
   file_name: string;
   file_url: string;
   file_type?: string | null;
-  storage_path?: string | null;
   status?: string | null;
   review_status?: string | null;
   uploaded_by_role?: string | null;
@@ -61,6 +60,10 @@ export interface CustomerNotification {
   read_at?: string | null;
   created_at: string;
 }
+
+const NOTIFICATION_SELECT = "id, user_id, application_id, title, message, read_at, created_at";
+const DOCUMENT_SELECT =
+  "id, application_id, document_type, document_name, file_name, file_url, file_type, status, review_status, uploaded_by_role, is_final, customer_visible, uploaded_at, created_at";
 
 export default async function CustomerDashboardPage() {
   const user = await getCurrentUser();
@@ -85,50 +88,52 @@ export default async function CustomerDashboardPage() {
   const metadataMobile = textValue(user.phone) || textValue(user.user_metadata.mobile) || textValue(user.user_metadata.phone);
   const metadataEmail = user.email ?? "";
 
-  if (user.email_confirmed_at) {
-    if (!metadataEmail || !metadataMobile) {
-      console.info("CLAIM_SKIPPED_MISSING_IDENTITY", {
-        userId: user.id,
-        email: metadataEmail || null,
-        hasMobile: Boolean(metadataMobile),
-      });
-    } else {
-      const supabase = await getSupabaseServerClient();
-      if (supabase) {
-        const { error } = await supabase.rpc("claim_customer_applications");
-        if (error) {
-          console.warn("CUSTOMER_SYNC_WARNING", {
-            step: "claim_customer_applications",
-            userId: user.id,
-            errorMessage: error.message,
-            errorCode: error.code,
-          });
-        }
+  if (user.email_confirmed_at && metadataEmail && metadataMobile) {
+    const supabase = await getSupabaseServerClient();
+    if (supabase) {
+      const { error } = await supabase.rpc("claim_customer_applications");
+      if (error) {
+        console.warn("CUSTOMER_SYNC_WARNING", {
+          userId: user.id,
+          message: error.message,
+          code: error.code,
+        });
       }
     }
   }
-  const customerProfile = await getCustomerDashboardProfile(user.id).catch((error) => {
-    console.error("CUSTOMER_DASHBOARD_PROFILE_FETCH_FAILED", {
-      step: "dashboard_profile_wrapper",
-      userId: user.id,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-    return null;
-  });
-  const { applications, stats } = await getCustomerDashboardData(user.id).catch((error) => {
-    logDashboardLoadFailed("dashboard_data_wrapper", user.id, error);
-    return {
-      applications: [],
-      stats: {
-        code: "",
-        link: "",
-        totalReferrals: 0,
-        todayEarning: 0,
-        lifetimeEarning: 0,
-        walletBalance: 0,
-      },
-    };
-  });
+
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const [customerProfile, dashboardData, walletSnapshot, profileStatus] = await Promise.all([
+    getCustomerDashboardProfile(user.id).catch((error) => {
+      logDashboardLoadFailed("dashboard_profile", user.id, error);
+      return null;
+    }),
+    getCustomerDashboardData(user.id).catch((error) => {
+      logDashboardLoadFailed("dashboard_data", user.id, error);
+      return {
+        applications: [],
+        stats: {
+          code: "",
+          link: "",
+          totalReferrals: 0,
+          todayEarning: 0,
+          lifetimeEarning: 0,
+          walletBalance: 0,
+        },
+      };
+    }),
+    getWalletSnapshot(user.id).catch((error) => {
+      logDashboardLoadFailed("wallet_snapshot", user.id, error);
+      return null;
+    }),
+    getCustomerProfileStatus(user.id).catch((error) => {
+      logDashboardLoadFailed("profile_status", user.id, error);
+      return null;
+    }),
+  ]);
+
+  const { applications, stats } = dashboardData;
   const name =
     textValue(customerProfile?.full_name) ||
     metadataName ||
@@ -137,64 +142,57 @@ export default async function CustomerDashboardPage() {
     textValue(customerProfile?.mobile) ||
     metadataMobile ||
     "Customer";
-  const supabaseAdmin = getSupabaseAdmin();
-  let userProfile = null;
-  if (supabaseAdmin) {
-    const { data } = await supabaseAdmin
-      .from("profiles")
-      .select("mobile, pincode, city, state")
-      .eq("id", user.id)
-      .maybeSingle();
-    userProfile = data;
-  }
-  const isProfileIncomplete = !userProfile?.mobile || !userProfile?.pincode || !userProfile?.city || !userProfile?.state;
 
-  // Fetch Wallet Snapshot (credits, debits, referral summary, transactions)
-  const walletSnapshot = await getWalletSnapshot(user.id).catch((error) => {
-    logDashboardLoadFailed("wallet_snapshot", user.id, error);
-    return null;
-  });
+  const profileForIncomplete = profileStatus?.profile;
+  const isProfileIncomplete =
+    !textValue(profileForIncomplete?.mobile) ||
+    !textValue(profileForIncomplete?.pincode) ||
+    !textValue(profileForIncomplete?.city) ||
+    !textValue(profileForIncomplete?.state);
 
-  // Fetch detailed Profile status (pincode, address completion stats)
-  const profileStatus = await getCustomerProfileStatus(user.id).catch((error) => {
-    logDashboardLoadFailed("profile_status", user.id, error);
-    return null;
-  });
-
-  // Fetch all documents related to the user's active applications
   let documents: ApplicationDocument[] = [];
+  let notifications: CustomerNotification[] = [];
   const appIds = applications.map((a) => a.id);
-  if (appIds.length > 0 && supabaseAdmin) {
-    const { data: docsData } = await supabaseAdmin
-      .from("application_documents")
-      .select("id, application_id, document_type, document_name, file_name, file_url, file_type, storage_path, status, review_status, uploaded_by_role, is_final, customer_visible, uploaded_at, created_at")
-      .in("application_id", appIds)
-      .order("created_at", { ascending: false });
-    if (docsData) {
-      documents = (docsData as unknown as ApplicationDocument[]).filter((doc) =>
+
+  if (supabaseAdmin) {
+    const [docsResult, notifResult] = await Promise.all([
+      appIds.length > 0
+        ? supabaseAdmin
+            .from("application_documents")
+            .select(DOCUMENT_SELECT)
+            .in("application_id", appIds)
+            .order("created_at", { ascending: false })
+            .limit(100)
+        : Promise.resolve({ data: null }),
+      supabaseAdmin
+        .from("notifications")
+        .select(NOTIFICATION_SELECT)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(15),
+    ]);
+
+    if (docsResult.data) {
+      documents = (docsResult.data as unknown as ApplicationDocument[]).filter((doc) =>
         isCustomerVisibleDocument(doc as PortalApplicationDocument),
       );
     }
-  }
-
-  // Fetch user-specific notifications
-  let notifications: CustomerNotification[] = [];
-  if (supabaseAdmin) {
-    const { data: notifData } = await supabaseAdmin
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(15);
-    if (notifData) {
-      notifications = notifData as unknown as CustomerNotification[];
+    if (notifResult.data) {
+      notifications = notifResult.data as unknown as CustomerNotification[];
     }
   }
+
+  // Prefer wallet snapshot balance over duplicate reward_wallets read in dashboard stats
+  const mergedStats = {
+    ...stats,
+    walletBalance: walletSnapshot?.wallet?.balance_points ?? stats.walletBalance,
+    lifetimeEarning: walletSnapshot?.referralSummary?.rewardEarned ?? stats.lifetimeEarning,
+  };
 
   return (
     <CustomerDashboard
       applications={applications}
-      stats={stats}
+      stats={mergedStats}
       profile={{ name }}
       isProfileIncomplete={isProfileIncomplete}
       walletSnapshot={walletSnapshot}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -25,7 +25,6 @@ import {
   Menu,
   Phone,
   Download,
-  Eye,
   MessageCircle,
   ShieldAlert,
   Compass,
@@ -40,12 +39,13 @@ import {
   Save,
   Search,
   Lock,
-  ArrowRight
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/browser";
-import { StatusBadge, PaymentBadge } from "@/components/portal/status-badge";
+import { StatusBadge } from "@/components/portal/status-badge";
+import { CustomerApplicationsList } from "@/components/portal/customer-applications-list";
+import { resolveCustomerNextAction } from "@/lib/applications/customer-next-action";
 import type { CustomerDashboardApplication, CustomerDashboardStats } from "@/lib/customer-dashboard-data";
 import { useToast } from "@/components/providers/toast-provider";
 import { servicesData } from "@/lib/services-data";
@@ -242,94 +242,23 @@ export function CustomerDashboard({
   };
 
   useEffect(() => {
-    const hasGst = applications.some(app => app.service_name.toLowerCase().includes("gst"));
-    const hasItr = applications.some(app => app.service_name.toLowerCase().includes("itr"));
-    let finalNotifications = [...notifications];
-    if (hasGst) {
-      const mockGstNotifications: CustomerNotification[] = [
-        {
-          id: "mock-notif-gst-1",
-          user_id: user?.id || "",
-          title: "GST Registration Submitted",
-          message: "Your GST application has been successfully filed with the common portal. CA assignment complete.",
-          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          priority: "normal"
-        },
-        {
-          id: "mock-notif-gst-2",
-          user_id: user?.id || "",
-          title: "Action Required: Verify Documents",
-          message: "CA Specialist flagged trade license verification. Check Documents Center.",
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          priority: "critical"
-        },
-        {
-          id: "mock-notif-gst-3",
-          user_id: user?.id || "",
-          title: "ARN Generated: Sync Successful",
-          message: "ARN AA270626002134F generated for your return filing. Tracking enabled.",
-          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          priority: "important"
-        },
-        {
-          id: "mock-notif-gst-4",
-          user_id: user?.id || "",
-          title: "₹200 GST Cashback Credited",
-          message: "Autopilot reward of ₹200 credited to your active wallet balance.",
-          created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          priority: "completed"
-        },
-        {
-          id: "mock-notif-gst-5",
-          user_id: user?.id || "",
-          title: "GSTR Compliance Filing Alert",
-          message: "Monthly GSTR-1 Sales return deadline is active. Ensure invoice sync.",
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          priority: "critical"
-        }
-      ];
-      finalNotifications = [...mockGstNotifications, ...finalNotifications.filter(n => !n.id.startsWith("mock-notif-gst-"))];
+    setLocalNotifications(notifications);
+    setUnreadNotifCount(notifications.filter((n) => !n.read_at).length);
+  }, [notifications]);
+
+  const handleMarkOneRead = async (notificationId: string) => {
+    try {
+      const supabase = createClient();
+      if (!supabase) return;
+      setLocalNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n)),
+      );
+      setUnreadNotifCount((count) => Math.max(0, count - 1));
+      await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", notificationId);
+    } catch {
+      // Ignored
     }
-    if (hasItr) {
-      const mockItrNotifications: CustomerNotification[] = [
-        {
-          id: "mock-notif-itr-1",
-          user_id: user?.id || "",
-          title: "ITR Form 16 Parsed Successfully",
-          message: "Your Form-16 has been parsed. Tax preparation under New Tax Regime has started.",
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          priority: "normal"
-        },
-        {
-          id: "mock-notif-itr-2",
-          user_id: user?.id || "",
-          title: "CA Expert Assigned",
-          message: "CA Rohit Gupta has been assigned to verify your tax computations and claim maximum eligible deductions.",
-          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          priority: "important"
-        },
-        {
-          id: "mock-notif-itr-3",
-          user_id: user?.id || "",
-          title: "₹150 ITR Cashback Credited",
-          message: "Wallet cashback reward of ₹150 has been credited to your active wallet balance.",
-          created_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
-          priority: "completed"
-        },
-        {
-          id: "mock-notif-itr-4",
-          user_id: user?.id || "",
-          title: "ITR-V Acknowledgement Ready",
-          message: "Assisted filing completed successfully. Download your ITR-V acknowledgement receipt in the Compliance Vault.",
-          created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          priority: "completed"
-        }
-      ];
-      finalNotifications = [...mockItrNotifications, ...finalNotifications.filter(n => !n.id.startsWith("mock-notif-itr-"))];
-    }
-    setLocalNotifications(finalNotifications);
-    setUnreadNotifCount(finalNotifications.filter(n => !n.read_at).length);
-  }, [notifications, applications, user?.id]);
+  };
 
   const handleMarkAllRead = async () => {
     try {
@@ -671,37 +600,8 @@ export function CustomerDashboard({
     return { total, pending, processing, completed, rejected };
   }, [applications]);
 
-  const activeApplications = useMemo(() => {
-    return applications.filter((app) => 
-      !["completed", "delivered", "rejected", "cancelled"].includes(app.status)
-    );
-  }, [applications]);
-
   const referralSummary = walletSnapshot?.referralSummary || null;
   const invitesCount = referralSummary?.total ?? stats.totalReferrals ?? 0;
-  
-  const milestone = useMemo(() => {
-    let currentLevel = 1;
-    let nextGoal = 10;
-    let levelName = "Bronze Tier";
-    
-    if (invitesCount >= 50) {
-      currentLevel = 4;
-      nextGoal = 100;
-      levelName = "Platinum Tier";
-    } else if (invitesCount >= 25) {
-      currentLevel = 3;
-      nextGoal = 50;
-      levelName = "Gold Tier";
-    } else if (invitesCount >= 10) {
-      currentLevel = 2;
-      nextGoal = 25;
-      levelName = "Silver Tier";
-    }
-
-    const progress = Math.min((invitesCount / nextGoal) * 100, 100);
-    return { currentLevel, nextGoal, levelName, progress };
-  }, [invitesCount]);
 
   const getNotifPriorityBadge = (notif: CustomerNotification) => {
     const priority = notif.priority || (notif.title.toLowerCase().includes("rejected") || notif.title.toLowerCase().includes("failed") ? "critical" : notif.title.toLowerCase().includes("pending") ? "important" : "normal");
@@ -729,43 +629,26 @@ export function CustomerDashboard({
     return { phone: "+917007595931", name: "General Support" };
   };
 
-  const getAssignedExpert = (appId: string) => {
-    const experts = [
-      { name: "CA Neha Sharma", role: "Senior Tax Consultant", phone: "+918287002983" },
-      { name: "CA Alok Kumar", role: "GST Specialist", phone: "+917007595931" },
-      { name: "CA Amit Verma", role: "Corporate Compliance Auditor", phone: "+917007595931" }
-    ];
-    const hash = appId ? appId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
-    return experts[hash % experts.length];
-  };
-
-  const getTimelineSteps = (app: CustomerDashboardApplication) => {
-    const status = (app.status as string) === "in_process" ? "in_progress" : app.status;
-    const payStatus = app.payment_status;
-
-    const isSubmitted = true;
-    const isPaymentDone = payStatus === "paid" || payStatus === "verified" || !["payment_pending", "draft"].includes(status);
-    const isDocsVerified = !["draft", "payment_pending", "submitted", "documents_required", "document_pending"].includes(status);
-    const isProcessing = ["in_progress", "assigned_to_agent", "completed", "delivered"].includes(status);
-    const isCompleted = ["completed", "delivered"].includes(status);
-
-    let progressPercent = 20;
-    if (isCompleted) progressPercent = 100;
-    else if (isProcessing) progressPercent = 80;
-    else if (isDocsVerified) progressPercent = 60;
-    else if (isPaymentDone) progressPercent = 40;
-
-    return {
-      percent: progressPercent,
-      steps: [
-        { label: "Submitted", active: isSubmitted },
-        { label: "Payment", active: isPaymentDone },
-        { label: "Docs Verified", active: isDocsVerified },
-        { label: "Processing", active: isProcessing },
-        { label: "Completed", active: isCompleted }
-      ]
-    };
-  };
+  const overviewCounts = useMemo(() => {
+    const docsRequired = applications.filter(
+      (app) => app.status === "documents_required" || app.status === "document_pending",
+    ).length;
+    const paymentPending = applications.filter((app) => {
+      const payment = String(app.payment_status || "").toLowerCase();
+      return payment === "pending" || payment === "failed" || app.status === "payment_pending";
+    }).length;
+    const completed = applications.filter(
+      (app) => app.status === "completed" || app.status === "delivered",
+    ).length;
+    const active = applications.filter(
+      (app) =>
+        app.status !== "completed" &&
+        app.status !== "delivered" &&
+        app.status !== "cancelled" &&
+        app.status !== "refunded",
+    ).length;
+    return { active, docsRequired, paymentPending, completed };
+  }, [applications]);
 
   const isToday = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -990,49 +873,6 @@ export function CustomerDashboard({
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
-
-  // AI recommendations data
-  const recommendedServices = useMemo(() => {
-    const hasGst = applications.some(app => app.service_name.toLowerCase().includes("gst"));
-    const hasItr = applications.some(app => app.service_name.toLowerCase().includes("itr"));
-    const hasMsme = applications.some(app => app.service_name.toLowerCase().includes("msme"));
-
-    const recs = [];
-    if (hasGst && !hasItr) {
-      const itr = servicesData.find(s => s.slug === "itr-filing");
-      if (itr) recs.push(itr);
-    }
-    if (hasItr && !hasGst) {
-      const gst = servicesData.find(s => s.slug === "gst-registration");
-      if (gst) recs.push(gst);
-    }
-    if (hasMsme && !hasGst) {
-      const gst = servicesData.find(s => s.slug === "gst-registration");
-      if (gst) recs.push(gst);
-    }
-
-    // Fallbacks if no matching usage
-    if (recs.length === 0) {
-      const defaults = ["cibil-credit-health", "gst-registration", "itr-filing"];
-      defaults.forEach(slug => {
-        const serv = servicesData.find(s => s.slug === slug);
-        if (serv) recs.push(serv);
-      });
-    }
-
-    return recs;
-  }, [applications]);
-
-  // Earned milestones indicators
-  const achievements = useMemo(() => {
-    const items = [
-      { id: "first_app", title: "First Application", desc: "First service submitted successfully", icon: "🚀", unlocked: applications.length > 0 },
-      { id: "first_ref", title: "First Referral", desc: "Referred a friend to DigiConnect", icon: "👥", unlocked: invitesCount > 0 },
-      { id: "cashback_1000", title: "₹1000 Milestone", desc: "Earned more than ₹1000 cashback", icon: "💰", unlocked: (walletSnapshot?.wallet?.total_reward_earned ?? 0) >= 1000 },
-      { id: "app_heavy", title: "Elite Comply", desc: "Completed 5 applications in portal", icon: "🏆", unlocked: counters.completed >= 5 }
-    ];
-    return items;
-  }, [applications, invitesCount, walletSnapshot, counters.completed]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-800 font-sans antialiased overflow-x-hidden md:flex">
@@ -1423,615 +1263,201 @@ export function CustomerDashboard({
 
           {/* TAB 1: DASHBOARD (OVERVIEW HUB) */}
           {activeTab === "dashboard" && (
-            <div className="space-y-6">
-              
-              {/* SMART DASHBOARD HERO */}
-              <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-tr from-white via-blue-50/20 to-indigo-50/10 p-5 md:p-6 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-stretch">
-                <div className="flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-1.5">
-                    <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[9px] font-black uppercase text-blue-700 tracking-wider">
-                      {milestone.levelName}
-                    </span>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">
-                      {dbProfile.full_name || profile.name}
-                    </h2>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Member since: {dbProfile.updated_at ? new Date(dbProfile.updated_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "June 2026"}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">Wallet Balance</p>
-                      <p className="text-xl font-extrabold text-slate-900">
-                        {safeCurrency(walletSnapshot?.wallet?.balance_points ?? stats.walletBalance)}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">Referral Income</p>
-                      <p className="text-xl font-extrabold text-slate-900">
-                        {safeCurrency(referralSummary?.rewardEarned ?? stats.lifetimeEarning)}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">Completed Orders</p>
-                      <p className="text-xl font-extrabold text-slate-900">{counters.completed}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">Pending Files</p>
-                      <p className="text-xl font-extrabold text-slate-900 text-amber-500">{counters.pending + counters.processing}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 shrink-0 flex flex-col justify-between w-full md:w-56 space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">Verification Status</p>
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
-                      <span className="text-xs font-black text-slate-700">KYC Completed</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                      <span>Verification Progress</span>
-                      <span className="text-blue-600">100%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 rounded-full" style={{ width: "100%" }} />
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-none">
+                <p className="text-xs text-slate-500">Hello</p>
+                <h2 className="text-xl font-bold text-slate-950">{dbProfile.full_name || profile.name}</h2>
+                <Link
+                  href="/apply"
+                  className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white sm:w-auto sm:px-5"
+                >
+                  <Plus className="h-4 w-4" />
+                  Apply for New Service
+                </Link>
               </div>
 
-              {/* QUICK ACTION CENTER */}
-              <div className="space-y-2.5">
-                <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">Quick Actions</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
-                  {[
-                    { label: "New Order", desc: "Apply Service", icon: Plus, color: "bg-blue-50 text-blue-600 border-blue-100", action: () => setServiceModalOpen(true) },
-                    { label: "Track Files", desc: "Timeline logs", icon: FileText, color: "bg-indigo-50 text-indigo-600 border-indigo-100", action: () => navigateToTab("applications") },
-                    { label: "My Wallet", desc: "Cashbacks", icon: WalletCards, color: "bg-emerald-50 text-emerald-600 border-emerald-100", action: () => navigateToTab("wallet") },
-                    { label: "Refer & Earn", desc: "Invite links", icon: Gift, color: "bg-orange-50 text-orange-600 border-orange-100", action: () => navigateToTab("referral") },
-                    { label: "Support Desk", desc: "24/7 CA help", icon: HelpCircle, color: "bg-teal-50 text-teal-600 border-teal-100", action: () => navigateToTab("support") }
-                  ].map((card, idx) => {
-                    const Icon = card.icon;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={card.action}
-                        className="p-4 rounded-2xl border border-slate-100 bg-white/70 backdrop-blur-md shadow-sm hover:border-slate-200/80 hover:shadow-md hover:-translate-y-0.5 transition-all text-left cursor-pointer flex flex-col justify-between h-28 active:scale-95 group"
-                      >
-                        <div className={`h-8 w-8 rounded-xl border flex items-center justify-center ${card.color} group-hover:scale-105 transition`}>
-                          <Icon className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-slate-800 leading-none">{card.label}</p>
-                          <p className="text-[10px] text-slate-400 mt-1 truncate">{card.desc}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: "Active", value: overviewCounts.active },
+                  { label: "Documents Required", value: overviewCounts.docsRequired },
+                  { label: "Payment Pending", value: overviewCounts.paymentPending },
+                  { label: "Completed", value: overviewCounts.completed },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => navigateToTab("applications")}
+                    className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-none"
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{item.label}</p>
+                    <p className="mt-1 text-xl font-bold text-slate-950">{item.value}</p>
+                  </button>
+                ))}
               </div>
 
-              {/* APPLICATION COMMAND CENTER (RECENT ACTIVE SHEETS) */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center px-1">
-                  <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Application Command Center</h3>
-                  {applications.length > 3 && (
-                    <button onClick={() => navigateToTab("applications")} className="text-[11px] font-bold text-blue-600 hover:underline">
-                      See all ({applications.length})
-                    </button>
-                  )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-0.5">
+                  <h3 className="text-sm font-bold text-slate-950">Recent applications</h3>
+                  <button type="button" onClick={() => navigateToTab("applications")} className="text-xs font-semibold text-blue-600">
+                    View all
+                  </button>
                 </div>
-
-                {activeApplications.length === 0 ? (
-                  <div className="p-8 text-center bg-white border border-slate-100 rounded-3xl space-y-3 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400">All submissions are completed or checked.</p>
-                    <button
-                      onClick={() => setServiceModalOpen(true)}
-                      className="h-8.5 px-4 rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm"
-                    >
-                      New Application
-                    </button>
+                {applications.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                    <p className="text-sm font-semibold text-slate-700">No active applications</p>
+                    <Link href="/apply" className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white">
+                      Apply for New Service
+                    </Link>
                   </div>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    {activeApplications.slice(0, 3).map((app) => {
-                      const timeline = getTimelineSteps(app);
-                      const expert = getAssignedExpert(app.id);
-                      const isOlympiad = app.service_slug === "csc-olympiad";
-                      const formData = app.form_data as Record<string, string | number | undefined> | null;
-                      const studentName = isOlympiad ? String(formData?.studentName || app.customer_details?.name || "Student") : "";
-                      const studentClass = isOlympiad ? String(formData?.studentClass || "") : "";
-                      
-                      if (isOlympiad) {
-                        return (
-                          <div key={app.id} className="rounded-2xl border border-cyan-100 bg-white p-4 shadow-sm text-slate-800 flex flex-col justify-between h-[230px] hover:border-cyan-200 transition-all duration-300 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-cyan-500/5 to-transparent rounded-bl-full pointer-events-none" />
-                            <div className="space-y-2.5">
-                              <div className="flex justify-between items-start gap-2">
-                                <span className="text-[8.5px] font-mono text-cyan-600/80 uppercase font-bold">PASS: {app.id.slice(0, 10).toUpperCase()}</span>
-                                <div className="flex gap-1">
-                                  <span className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 text-amber-700 font-extrabold text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200/50 shadow-sm">
-                                    Olympiad Pass
-                                  </span>
-                                  <StatusBadge status={app.status} />
-                                </div>
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-black text-slate-900 group-hover:text-cyan-600 transition">{app.service_name}</h4>
-                                <p className="text-[9px] text-slate-500 mt-0.5">
-                                  Candidate: <span className="font-extrabold text-slate-700">{studentName}</span> (Class {studentClass})
-                                </p>
-                              </div>
-                            </div>
-                            <div className="py-2 px-2.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
-                              <div className="flex justify-between text-[8px] font-bold text-slate-500">
-                                <span>Verification Pipeline</span>
-                                <span className="text-cyan-600 font-extrabold">{timeline.percent}%</span>
-                              </div>
-                              <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${timeline.percent}%` }} />
-                              </div>
-                              <p className="text-[8.5px] text-slate-400 leading-normal truncate">Support coordinator assigned</p>
-                            </div>
-                            <div className="flex gap-2 pt-2.5 border-t border-slate-100 shrink-0">
-                              <Link
-                                href={`/dashboard/applications/${app.id}`}
-                                className="flex-1 h-8 flex items-center justify-center gap-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition-all"
-                              >
-                                <Eye className="h-3.5 w-3.5 text-slate-500" /> Pass Details
-                              </Link>
-                              <a
-                                href={`https://api.whatsapp.com/send?phone=${expert.phone.replace("+", "")}&text=${encodeURIComponent(`Hi, I need assistance with my application: ${app.service_name} (ID: ${app.id}).`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-all"
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      }
-
+                  <div className="grid gap-2">
+                    {applications.slice(0, 5).map((app) => {
+                      const next = resolveCustomerNextAction({
+                        applicationId: app.id,
+                        status: app.status,
+                        paymentStatus: app.payment_status,
+                        missingDocuments:
+                          app.status === "documents_required" || app.status === "document_pending",
+                      });
                       return (
-                        <div key={app.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex flex-col justify-between h-[230px] hover:border-slate-200 hover:shadow-md transition">
-                          <div className="space-y-2.5">
-                            <div className="flex justify-between items-start gap-2">
-                              <span className="text-[9px] font-mono text-slate-400 truncate">ID: {app.id.slice(0, 10)}...</span>
-                              <StatusBadge status={app.status} />
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-extrabold text-slate-800 line-clamp-1">{app.service_name}</h4>
-                              <p className="text-[9px] text-slate-400 mt-0.5">
-                                Created: {new Date(app.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        <article key={app.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-none">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <h4 className="truncate text-sm font-semibold text-slate-900">{app.service_name}</h4>
+                              <p className="mt-0.5 font-mono text-[10px] text-slate-400">{app.id}</p>
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                Updated {new Date(app.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                               </p>
                             </div>
+                            <StatusBadge status={app.status} />
                           </div>
-
-                          <div className="py-2 px-2.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5">
-                            <div className="flex justify-between text-[8px] font-bold text-slate-500">
-                              <span>Compliance Timeline</span>
-                              <span className="text-blue-600 font-extrabold">{timeline.percent}%</span>
-                            </div>
-                            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-600 rounded-full" style={{ width: `${timeline.percent}%` }} />
-                            </div>
-                            <p className="text-[8.5px] text-slate-400 leading-normal truncate">Agent: {expert.name}</p>
-                          </div>
-
-                          <div className="flex gap-2 pt-2.5 border-t border-slate-100 shrink-0">
+                          <div className="mt-3 flex gap-2">
                             <Link
-                              href={`/dashboard/applications/${app.id}`}
-                              className="flex-1 h-8 flex items-center justify-center gap-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition"
+                              href={`/customer/applications/${app.id}`}
+                              className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-700"
                             >
-                              <Eye className="h-3.5 w-3.5" /> Details
+                              Details
                             </Link>
-                            <a
-                              href={`https://api.whatsapp.com/send?phone=${expert.phone.replace("+", "")}&text=${encodeURIComponent(`Hi, I need assistance with my application: ${app.service_name} (ID: ${app.id}).`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 flex items-center justify-center shrink-0 transition"
+                            <Link
+                              href={next.href}
+                              className="inline-flex h-8 flex-1 items-center justify-center rounded-lg bg-blue-600 text-[11px] font-semibold text-white"
                             >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                            </a>
+                              {next.label}
+                            </Link>
                           </div>
-                        </div>
+                        </article>
                       );
                     })}
                   </div>
                 )}
               </div>
 
-              {/* SERVICE RECOMMENDATIONS ENGINE */}
-              <div className="space-y-2.5">
-                <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">AI-Assisted Recommendations</h3>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {recommendedServices.map((service) => (
-                    <div key={service.slug} className="rounded-2xl border border-slate-100 bg-white/70 p-4.5 shadow-sm hover:shadow-md hover:border-slate-200 transition flex flex-col justify-between h-[156px]">
-                      <div>
-                        <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[8.5px] font-black text-blue-700 tracking-wide uppercase border border-blue-100">
-                          {service.badge || "Recommended"}
-                        </span>
-                        <h4 className="text-xs font-black text-slate-800 mt-2 line-clamp-1">{service.title}</h4>
-                        <p className="text-[10px] text-slate-400 leading-normal mt-1 line-clamp-2">{service.shortDescription}</p>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 mt-2">
-                        <span className="text-[10px] font-extrabold text-orange-600">{service.offerPrice || "CA Consultation"}</span>
-                        <Link
-                          href={`/apply/${service.slug}`}
-                          className="h-7.5 px-3 rounded-full bg-blue-600 hover:bg-blue-700 text-[10px] font-extrabold text-white flex items-center gap-1 transition"
-                        >
-                          Apply <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* REWARDS & ACHIEVEMENTS & SECURITY */}
-              <div className="grid gap-6 md:grid-cols-[2fr_1.1fr]">
-                
-                {/* Rewards & Gamification */}
-                <div className="p-5 rounded-3xl border border-slate-100 bg-white/60 shadow-sm space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rewards & Milestones</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {achievements.map((badge) => (
-                      <div key={badge.id} className={`p-3.5 rounded-2xl border flex gap-3 items-center ${
-                        badge.unlocked ? "bg-white border-slate-200/80" : "bg-slate-50/50 border-slate-100 opacity-60"
-                      }`}>
-                        <span className="text-xl shrink-0">{badge.icon}</span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-extrabold text-slate-800 truncate">{badge.title}</p>
-                          <p className="text-[9.5px] text-slate-400 truncate mt-0.5">{badge.desc}</p>
-                        </div>
-                        {badge.unlocked ? (
-                          <span className="ml-auto text-emerald-500 font-extrabold text-[10px]">✓</span>
-                        ) : (
-                          <span className="ml-auto text-slate-300 font-bold text-[10px]">🔒</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Trust & Security Center */}
-                <div className="p-5 rounded-3xl border border-slate-100 bg-white/60 shadow-sm flex flex-col justify-between space-y-4">
-                  <div className="space-y-3.5">
-                    <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Security & Access Log</h3>
-                    
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                        <span className="text-slate-400 font-medium">Verified Email</span>
-                        <span className="font-bold text-emerald-600 flex items-center gap-1">
-                          <ShieldCheck className="h-3.5 w-3.5" /> Yes
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                        <span className="text-slate-400 font-medium">Session Status</span>
-                        <span className="font-bold text-slate-700">Encrypted SSL</span>
-                      </div>
-                      <div className="flex justify-between items-center py-1.5">
-                        <span className="text-slate-400 font-medium">Last Login</span>
-                        <span className="font-bold text-slate-600">Today, {new Date().toLocaleDateString("en-IN", { hour: "numeric", minute: "numeric" })}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => navigateToTab("profile")}
-                    className="h-8 w-full rounded-xl border border-slate-200 hover:bg-slate-50 text-[10px] font-bold text-slate-600 transition"
-                  >
-                    View Security Settings
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-none">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-950">Wallet</h3>
+                  <button type="button" onClick={() => navigateToTab("wallet")} className="text-xs font-semibold text-blue-600">
+                    View wallet
                   </button>
                 </div>
-
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-slate-400">Balance</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">
+                      {safeCurrency(walletSnapshot?.wallet?.balance_points ?? stats.walletBalance)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-slate-400">Cashback</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">
+                      {safeCurrency(walletSnapshot?.wallet?.total_cashback_earned ?? walletSnapshot?.wallet?.total_reward_earned ?? 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-slate-400">Referral</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">
+                      {safeCurrency(referralSummary?.rewardEarned ?? stats.lifetimeEarning)}
+                    </p>
+                  </div>
+                </div>
               </div>
 
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-none">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-950">Notifications</h3>
+                  <div className="flex items-center gap-3">
+                    {unreadNotifCount > 0 ? (
+                      <button type="button" onClick={() => void handleMarkAllRead()} className="text-[11px] font-semibold text-slate-500">
+                        Mark all read
+                      </button>
+                    ) : null}
+                    <Link href="/notifications" className="text-xs font-semibold text-blue-600">
+                      View all
+                    </Link>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {localNotifications.slice(0, 3).length === 0 ? (
+                    <p className="text-xs text-slate-500">No notifications yet.</p>
+                  ) : (
+                    localNotifications.slice(0, 3).map((notification) => {
+                      const href = notification.application_id
+                        ? `/customer/applications/${notification.application_id}`
+                        : "/notifications";
+                      return (
+                        <Link
+                          key={notification.id}
+                          href={href}
+                          onClick={() => {
+                            if (!notification.read_at) void handleMarkOneRead(notification.id);
+                          }}
+                          className={`block rounded-lg border px-3 py-2 ${notification.read_at ? "border-slate-100 bg-slate-50" : "border-blue-100 bg-blue-50/50"}`}
+                        >
+                          <p className="text-xs font-semibold text-slate-900">{notification.title}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-500">{notification.message}</p>
+                        </Link>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-none">
+                <h3 className="text-sm font-bold text-slate-950">Support</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <a
+                    href={`https://api.whatsapp.com/send?phone=${getSupportDetails().phone.replace("+", "")}&text=${encodeURIComponent("Hi DigiConnect Support, I need help with my account.")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    WhatsApp support
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => navigateToTab("support")}
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-700"
+                  >
+                    Raise enquiry
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* TAB 2: MY APPLICATIONS LIST */}
           {activeTab === "applications" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight">Track Applications</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Filter and review your service submissions ledger.</p>
-                </div>
-                <button
-                  onClick={() => setServiceModalOpen(true)}
-                  className="h-8.5 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-sm transition cursor-pointer"
-                >
-                  New Order
-                </button>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-bold text-slate-950">Applications</h2>
+                <Link href="/apply" className="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white">
+                  New Service
+                </Link>
               </div>
-
-              {applications.length === 0 ? (
-                <div className="p-12 text-center bg-white border border-slate-100 rounded-3xl space-y-4">
-                  <p className="text-sm font-bold text-slate-400">You haven&apos;t filed any applications yet.</p>
-                  <button
-                    onClick={() => setServiceModalOpen(true)}
-                    className="inline-flex h-8.5 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-xs font-bold text-white cursor-pointer active:scale-95"
-                  >
-                    Apply New Service
-                  </button>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                   {applications.map((app) => {
-                    const timeline = getTimelineSteps(app);
-                    const supportDetails = getSupportDetails(app.service_name);
-                    const whatsAppUrl = `https://api.whatsapp.com/send?phone=${supportDetails.phone}&text=${encodeURIComponent(`Hi, I need assistance with my application: ${app.service_name} (ID: ${app.id}). Status: ${app.status}`)}`;
-
-                    if (app.service_slug === "csc-olympiad") {
-                      const formData = app.form_data as Record<string, string | number | undefined> | null;
-                      const subjects = formData?.selectedSubjects 
-                        ? String(formData.selectedSubjects).split(",").map((s) => s.trim()).filter(Boolean)
-                        : [];
-                      
-                      const studentName = (formData?.studentName || app.customer_details?.name || "Student") as string;
-                      const studentClass = String(formData?.studentClass || "N/A");
-                      const schoolName = (formData?.schoolName || "N/A") as string;
-                      const schoolBoard = (formData?.schoolBoard || "N/A") as string;
-                      const examSession = (formData?.session || "Academic Session 2026-2027") as string;
-                      
-                      const isApproved = ["approved", "completed", "delivered"].includes(app.status);
-                      const isCompleted = ["completed", "delivered"].includes(app.status);
-                      
-                      return (
-                        <div key={app.id} className="rounded-3xl p-6 border border-slate-200/80 bg-gradient-to-tr from-cyan-50/40 via-white to-blue-50/40 shadow-lg relative overflow-hidden text-slate-700 hover:border-blue-400/40 transition-all duration-350 space-y-4 group">
-                          {/* Ambient glow mesh */}
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-bl-full pointer-events-none" />
-                          
-                          <div className="flex flex-wrap items-start justify-between gap-3 relative z-10">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-0.5 text-[8.5px] font-black uppercase text-white tracking-wider shadow-sm select-none">
-                                  CSC Olympiad {examSession}
-                                </span>
-                                <span className="text-[8.5px] font-mono text-blue-600 font-bold uppercase tracking-widest">Digital Entry Pass</span>
-                              </div>
-                              <h3 className="text-base font-black text-slate-900 tracking-tight mt-1.5 group-hover:text-blue-600 transition">
-                                {app.service_name}
-                              </h3>
-                              <p className="text-[10px] font-mono text-slate-500">Application ID: {app.id}</p>
-                              <p className="text-[10px] text-slate-400 mt-0.5">
-                                Submitted: {new Date(app.created_at).toLocaleDateString("en-IN", { dateStyle: "long", timeStyle: "short" })}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <StatusBadge status={app.status} />
-                              <PaymentBadge status={app.payment_status ?? "pending"} />
-                            </div>
-                          </div>
-
-                          {/* Candidate & Exam Details Grid */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 px-4 rounded-2xl bg-slate-50/70 border border-slate-200/60 text-xs text-slate-500 relative z-10">
-                            <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-400">Candidate Name</p>
-                              <p className="font-extrabold text-slate-800">{studentName}</p>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-400">Class & Board</p>
-                              <p className="font-extrabold text-slate-800">Class {studentClass} ({schoolBoard})</p>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-400">School Name</p>
-                              <p className="font-extrabold text-slate-800 truncate" title={schoolName}>{schoolName}</p>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-[9px] font-bold uppercase text-slate-400">Exam Window</p>
-                              <p className="font-extrabold text-blue-600">Dec 2026 (Online)</p>
-                            </div>
-                          </div>
-
-                          {/* Selected Subjects Pill Box */}
-                          <div className="space-y-1.5 relative z-10">
-                            <p className="text-[9px] font-bold uppercase text-slate-400 px-1">Registered Subjects ({subjects.length})</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {subjects.map((sub, sIdx) => (
-                                <span key={sIdx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200/50 text-[11px] font-bold text-blue-700">
-                                  <Compass className="h-3 w-3 text-blue-600" />
-                                  {sub}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Barcode Simulator to enhance Apple Wallet aesthetics */}
-                          <div className="py-2.5 flex flex-col items-center justify-center border-t border-b border-slate-200/60 bg-slate-50/50 relative z-10">
-                            <div className="h-6 w-56 flex items-center justify-center gap-[1.5px] opacity-75">
-                              {Array.from({ length: 48 }).map((_, i) => (
-                                <div 
-                                  key={i} 
-                                  className="h-full bg-slate-850" 
-                                  style={{ 
-                                    width: i % 4 === 0 ? "2.5px" : i % 3 === 0 ? "1px" : "1.5px",
-                                    opacity: i % 7 === 0 ? 0.3 : 1
-                                  }} 
-                                />
-                              ))}
-                            </div>
-                            <span className="text-[8px] font-mono text-slate-500 tracking-[0.25em] mt-1 uppercase">*{app.id.slice(0, 12).toUpperCase()}*</span>
-                          </div>
-
-                          {/* Actions Section */}
-                          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 text-xs relative z-10">
-                            <span className="font-black text-slate-900">
-                              Paid Amount: {formatCurrency(app.total_amount ?? app.amount)}
-                            </span>
-                            
-                            <div className="flex flex-wrap items-center gap-2">
-                              {/* Prep Material Download */}
-                              <a
-                                href={`/api/csc-olympiad/prep-material?id=${app.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 transition duration-150 cursor-pointer select-none"
-                              >
-                                <Compass className="h-3.5 w-3.5 text-blue-650" /> Prep Study Material
-                              </a>
-
-                              {/* Admit Card Download */}
-                              {isApproved ? (
-                                <a
-                                  href={`/api/csc-olympiad/admit-card?id=${app.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold transition shadow-lg shadow-blue-500/15 duration-150 cursor-pointer select-none"
-                                >
-                                  <Download className="h-3.5 w-3.5" /> Admit Card
-                                </a>
-                              ) : (
-                                <button
-                                  disabled
-                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed text-[11px] font-bold"
-                                  title="Admit Card will be available after registration review/approval."
-                                >
-                                  <Lock className="h-3.5 w-3.5 text-slate-400" /> Admit Card (Awaiting)
-                                </button>
-                              )}
-
-                              {/* Certificate Download */}
-                              {isCompleted ? (
-                                <a
-                                  href={`/api/csc-olympiad/certificate?id=${app.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition shadow-lg shadow-emerald-500/15 duration-150 cursor-pointer select-none"
-                                >
-                                  <Award className="h-3.5 w-3.5" /> Certificate
-                                </a>
-                              ) : (
-                                <button
-                                  disabled
-                                  className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed text-[11px] font-bold"
-                                  title="Certificate will be issued post final examination."
-                                >
-                                  <Lock className="h-3.5 w-3.5 text-slate-400" /> Certificate (Awaiting)
-                                </button>
-                              )}
-
-                              <a
-                                href={whatsAppUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border border-emerald-200/60 transition duration-150 cursor-pointer"
-                              >
-                                <MessageCircle className="h-4 w-4 text-emerald-600" /> Support Desk
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={app.id} className="p-5 rounded-2xl border border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm transition-all space-y-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-sm font-extrabold text-slate-900 leading-normal">{app.service_name}</h3>
-                            <p className="text-[10px] font-mono text-slate-400 mt-1">ID: {app.id}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
-                              Created: {new Date(app.created_at).toLocaleDateString("en-IN", { dateStyle: "long", timeStyle: "short" })}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <StatusBadge status={app.status} />
-                            <PaymentBadge status={app.payment_status ?? "pending"} />
-                          </div>
-                        </div>
-
-                        {/* Interactive timeline progress representations */}
-                        <div className="py-4 px-4 rounded-xl bg-slate-50 border border-slate-100/50 space-y-3">
-                          <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-400">
-                            <span>Compliance Timeline</span>
-                            <span className="text-blue-600">{timeline.percent}% Complete</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-200/50 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-600 transition-all duration-500"
-                              style={{ width: `${timeline.percent}%` }}
-                            />
-                          </div>
-                          <div className="grid grid-cols-5 gap-2">
-                            {timeline.steps.map((st, sIdx) => (
-                              <div key={sIdx} className="space-y-1 text-center">
-                                <div className="flex items-center justify-center">
-                                  <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                                    st.active
-                                      ? "bg-blue-600 text-white shadow-sm"
-                                      : "bg-slate-200 text-slate-400"
-                                  }`}>
-                                    {sIdx + 1}
-                                  </div>
-                                </div>
-                                <span className={`block text-[9.5px] font-bold truncate ${st.active ? "text-blue-600" : "text-slate-400"}`}>
-                                  {st.label}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 text-xs">
-                          <span className="font-extrabold text-slate-700">
-                            Service Cost: {formatCurrency(app.total_amount ?? app.amount)}
-                          </span>
-                          
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/dashboard/applications/${app.id}`}
-                              className="inline-flex h-8 items-center justify-center gap-1 px-4 rounded-full border border-slate-200 hover:bg-slate-50 font-bold text-slate-600 transition"
-                            >
-                              <Eye className="h-3.5 w-3.5" /> Details
-                            </Link>
-
-                            {["documents_required", "document_pending"].includes(app.status) && (
-                              <button
-                                onClick={() => {
-                                  setUploadAppId(app.id);
-                                  navigateToTab("documents");
-                                }}
-                                className="inline-flex h-8 items-center justify-center gap-1 px-4 rounded-full bg-orange-500 text-white font-black transition active:scale-95 cursor-pointer"
-                              >
-                                <Upload className="h-3.5 w-3.5 animate-bounce" /> Upload Files
-                              </button>
-                            )}
-
-                            {app.payment_status === "pending" && (
-                              <Link
-                                href={`/pay/application/${app.id}`}
-                                className="inline-flex h-8 items-center justify-center gap-1 px-4 rounded-full bg-blue-600 text-white font-black transition active:scale-95"
-                              >
-                                Pay Invoice
-                              </Link>
-                            )}
-
-                            <a
-                              href={whatsAppUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold border border-emerald-100"
-                            >
-                              <MessageCircle className="h-4 w-4" /> WhatsApp Support
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <CustomerApplicationsList applications={applications} />
             </div>
           )}
+
 
           {/* TAB 3: WALLET DASHBOARD */}
           {activeTab === "wallet" && (

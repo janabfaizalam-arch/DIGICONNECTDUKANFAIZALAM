@@ -689,7 +689,7 @@ export function SiteHeader() {
                   {[
                     { href: "/", label: "Home" },
                     { href: "/services", label: "Services" },
-                    { href: "/customer/login", label: "Track Application" },
+                    { href: "/track-application", label: "Track Application" },
                     { href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL },
                   ].map((item) => {
                     const active =

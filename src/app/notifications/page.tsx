@@ -12,6 +12,7 @@ interface NotificationItem {
   message: string;
   created_at: string;
   read_at: string | null;
+  application_id?: string | null;
   type: "status" | "wallet" | "referral" | "document" | "payment" | "info";
 }
 
@@ -21,6 +22,7 @@ interface DbNotification {
   message: string;
   created_at: string;
   read_at: string | null;
+  application_id?: string | null;
 }
 
 export default function NotificationsPage() {
@@ -58,9 +60,10 @@ export default function NotificationsPage() {
     try {
       const { data: dbNotifs } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id, title, message, created_at, read_at, application_id")
         .eq("user_id", currentUser.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50);
 
       const list: NotificationItem[] = [];
       const readIds = JSON.parse(localStorage.getItem(`read_notifs_${currentUser.id}`) || "[]");
@@ -86,6 +89,7 @@ export default function NotificationsPage() {
             message: n.message,
             created_at: n.created_at,
             read_at: n.read_at || (readIds.includes(n.id) ? new Date().toISOString() : null),
+            application_id: n.application_id ?? null,
             type,
           });
         });
@@ -189,7 +193,7 @@ export default function NotificationsPage() {
         {/* Header toolbar */}
         <div className="flex items-center justify-between mb-8">
           <Link
-            href="/"
+            href="/customer/dashboard"
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-slate-200/60 text-slate-500 hover:text-slate-800 transition active:scale-95 shadow-sm"
           >
             <ArrowLeft className="h-4.5 w-4.5" />
@@ -304,6 +308,18 @@ export default function NotificationsPage() {
                     <p className="text-xs font-semibold text-slate-500 leading-relaxed">
                       {item.message}
                     </p>
+
+                    {item.application_id ? (
+                      <Link
+                        href={`/customer/applications/${item.application_id}`}
+                        onClick={() => {
+                          if (unread) void markAsRead(item.id);
+                        }}
+                        className="inline-flex pt-1 text-[11px] font-bold text-blue-600 hover:underline"
+                      >
+                        Open application
+                      </Link>
+                    ) : null}
 
                     {/* Footer Actions */}
                     <div className="flex justify-end items-center gap-3.5 pt-3 border-t border-slate-100/50 mt-3">

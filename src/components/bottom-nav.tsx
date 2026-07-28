@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Home, FileText, Wallet, Gift, UserRound } from "lucide-react";
+import { Home, FileText, Wallet, PlusCircle, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/browser";
@@ -131,25 +131,29 @@ export function BottomNav() {
   // Resolve dynamic dashboard links
   let applicationsHref = "/login";
   let walletHref = "/login";
-  let rewardsHref = "/login";
-  let dashboardHref = "/login";
+  let applyHref = "/apply";
+  let accountHref = "/login";
+  let homeHref = "/";
 
   if (user) {
     if (role === "admin") {
       applicationsHref = "/admin/applications";
       walletHref = "/admin/wallet";
-      rewardsHref = "/admin";
-      dashboardHref = "/admin";
+      applyHref = "/admin";
+      accountHref = "/admin";
+      homeHref = "/admin";
     } else if (role === "agent" || role === "agency_partner") {
       applicationsHref = "/ap/applications";
       walletHref = "/ap/wallet";
-      rewardsHref = "/ap/dashboard";
-      dashboardHref = "/ap/dashboard";
+      applyHref = "/ap/applications/new";
+      accountHref = "/ap/profile";
+      homeHref = "/ap/dashboard";
     } else {
+      homeHref = "/customer/dashboard";
       applicationsHref = "/customer/dashboard?tab=applications";
       walletHref = "/customer/dashboard?tab=wallet";
-      rewardsHref = "/customer/dashboard?tab=referral";
-      dashboardHref = "/customer/dashboard";
+      applyHref = "/apply";
+      accountHref = "/customer/dashboard?tab=profile";
     }
   }
 
@@ -165,22 +169,31 @@ export function BottomNav() {
   } as const;
 
   const isTabActive = (tabHref: string) => {
-    if (tabHref === "/") return pathname === "/";
-    
-    if (tabHref.includes("?tab=applications")) {
-      return pathname === "/customer/dashboard" && currentTabParam === "applications";
+    if (tabHref === "/" || tabHref === "/customer/dashboard") {
+      return (
+        pathname === "/" ||
+        (pathname === "/customer/dashboard" &&
+          (currentTabParam === "" || currentTabParam === "dashboard"))
+      );
     }
-    
+
+    if (tabHref.includes("?tab=applications")) {
+      return (
+        (pathname === "/customer/dashboard" && currentTabParam === "applications") ||
+        pathname.startsWith("/customer/applications/")
+      );
+    }
+
     if (tabHref.includes("?tab=wallet")) {
       return pathname === "/customer/dashboard" && currentTabParam === "wallet";
     }
 
-    if (tabHref.includes("?tab=referral")) {
-      return pathname === "/customer/dashboard" && currentTabParam === "referral";
+    if (tabHref.includes("?tab=profile")) {
+      return pathname === "/customer/dashboard" && currentTabParam === "profile";
     }
 
-    if (tabHref === "/customer/dashboard") {
-      return pathname === "/customer/dashboard" && (currentTabParam === "" || currentTabParam === "dashboard" || currentTabParam === "profile");
+    if (tabHref === "/apply") {
+      return pathname === "/apply" || pathname.startsWith("/apply/");
     }
 
     const baseHref = tabHref.split("?")[0];
@@ -191,20 +204,29 @@ export function BottomNav() {
     return pathname.startsWith(baseHref);
   };
 
-  const tabs = [
-    { label: "Home", href: "/", icon: Home },
-    { label: "Applications", href: applicationsHref, icon: FileText },
-    { label: "Wallet", href: walletHref, icon: Wallet },
-    { label: "Rewards", href: rewardsHref, icon: Gift },
-    { label: "Account", href: dashboardHref, icon: UserRound },
-  ];
+  const tabs =
+    role === "customer" || (!role && user)
+      ? [
+          { label: "Home", href: homeHref, icon: Home },
+          { label: "Applications", href: applicationsHref, icon: FileText },
+          { label: "Apply", href: applyHref, icon: PlusCircle },
+          { label: "Wallet", href: walletHref, icon: Wallet },
+          { label: "Account", href: accountHref, icon: UserRound },
+        ]
+      : [
+          { label: "Home", href: homeHref === "/customer/dashboard" ? "/" : homeHref, icon: Home },
+          { label: "Applications", href: applicationsHref, icon: FileText },
+          { label: "Wallet", href: walletHref, icon: Wallet },
+          { label: "Apply", href: applyHref, icon: PlusCircle },
+          { label: "Account", href: accountHref, icon: UserRound },
+        ];
 
   return (
     <motion.nav
       variants={navVariants}
       animate={navHidden ? "hidden" : "visible"}
       initial="visible"
-      className="bottom-nav-container fixed bottom-5 left-4 right-4 max-w-md md:hidden mx-auto z-[50] flex items-center justify-around h-16 px-3 bg-white/75 backdrop-blur-2xl border border-slate-200/40 rounded-[24px] shadow-[0_12px_36px_-6px_rgba(15,23,42,0.08),0_4px_16px_-4px_rgba(15,23,42,0.04)] print:hidden"
+      className="bottom-nav-container fixed bottom-0 left-0 right-0 z-[50] flex h-[68px] max-w-md items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-4px_16px_-6px_rgba(15,23,42,0.08)] backdrop-blur-md print:hidden md:hidden mx-auto"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;

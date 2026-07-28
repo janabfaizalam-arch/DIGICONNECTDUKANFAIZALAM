@@ -134,6 +134,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       relatedId: id,
     });
 
+    revalidatePath(`/customer/applications/${id}`);
     revalidatePath(`/dashboard/applications/${id}`);
     revalidatePath("/dashboard");
     revalidatePath(`/admin/applications/${id}`);

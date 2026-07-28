@@ -4,10 +4,14 @@ import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isCustomerPaymentSettled } from "@/lib/applications/customer-next-action";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { ClientCheckoutWrapper } from "./client-checkout-wrapper";
 
 export const dynamic = "force-dynamic";
+
+const PAY_APPLICATION_SELECT =
+  "id, user_id, service_name, service_slug, status, payment_status, amount, total_amount, wallet_redeemed_amount, wallet_used_amount, fresh_payable_amount, real_payment_amount, metadata, application_code, created_at, customer_details";
 
 function text(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
@@ -37,7 +41,7 @@ export default async function CustomerPayApplicationPage({ params }: { params: P
 
   const { data: application, error } = await supabase
     .from("applications")
-    .select("*")
+    .select(PAY_APPLICATION_SELECT)
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -46,7 +50,7 @@ export default async function CustomerPayApplicationPage({ params }: { params: P
     notFound();
   }
 
-  const isAlreadyPaid = application.payment_status === "verified";
+  const isAlreadyPaid = isCustomerPaymentSettled(application.payment_status);
   const metadata = application.metadata && typeof application.metadata === "object" ? (application.metadata as Record<string, string | number | boolean | null | undefined>) : {};
 
   // Pricing math from application record

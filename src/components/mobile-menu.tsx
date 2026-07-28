@@ -13,7 +13,7 @@ const menuLinks = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/about", label: "About" },
-  { href: "/customer/login", label: "Track Application" },
+  { href: "/track-application", label: "Track Application" },
   { href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL },
   { href: "/#support", label: "Contact" },
   { href: "/download-app", label: "Download App", icon: Download },
@@ -82,9 +82,9 @@ export function MobileMenu({ isLoggedIn, isCustomer = false, panelHref, panelLab
                 <>
                   {[
                     ["/customer/dashboard", "Dashboard"],
-                    ["/customer/dashboard#applications", "My Applications"],
+                    ["/customer/dashboard?tab=applications", "My Applications"],
                     ["/customer/wallet", "Wallet"],
-                    ["/customer/dashboard#refer-earn", "Refer & Earn"],
+                    ["/customer/dashboard?tab=referral", "Refer & Earn"],
                     ["/customer/profile", "Profile"],
                   ].map(([href, label]) => (
                     <Link key={href} href={href} onClick={closeMenu} className="rounded-xl border border-blue-50/80 bg-blue-50/40 px-4 py-2.5 text-sm font-bold text-blue-800 transition hover:bg-blue-50/70">
