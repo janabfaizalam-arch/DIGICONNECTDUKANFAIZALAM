@@ -1,10 +1,7 @@
 import { safeCurrency, safeDate, safeDateTime } from "@/lib/admin-format";
 import { getApplicationCustomerIdentity } from "@/lib/admin/customer-resolver";
+import { loadAdminApplicationRow } from "@/lib/admin/load-admin-application-row";
 import { resolveApplicationSourceInfo } from "@/lib/applications/source";
-import {
-  ADMIN_APPLICATION_SELECT,
-  ADMIN_APPLICATION_SELECT_LEGACY,
-} from "@/lib/applications/safe-selects";
 import { asRecord, getCustomerMobile, getCustomerName, hydrateApplications, resolveDocumentUrls } from "@/lib/crm";
 import type { AdminApplicationRow, Application, ApplicationDocument, Customer, Invoice, Payment, PortalUser } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -633,33 +630,79 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
   };
 }
 
-export async function getAdminApplicationDetail(id: string) {
+export type AdminApplicationDetailPayload = {
+  application: Application;
+  payment: ReturnType<typeof pickPrimaryPayment>;
+  invoice: Invoice | null;
+  customer: {
+    name: string;
+    mobile: string;
+    email: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  documents: ApplicationDocument[];
+  possibleDocuments: ApplicationDocument[];
+  invoices: Invoice[];
+  payments: Payment[];
+  notes: Array<{ id: string; application_id?: string; note: string; assigned_to?: string | null; created_at: string }>;
+  agents: PortalUser[];
+  statusLogs: Array<{ id: string; old_status: string | null; new_status: string; note: string | null; created_at: string }>;
+  whatsappMessages: Array<{
+    id: string;
+    event_type: string;
+    status: string;
+    attempt_count?: number | null;
+    error_message?: string | null;
+    created_at: string;
+    sent_at?: string | null;
+    failed_at?: string | null;
+    last_attempt_at?: string | null;
+  }>;
+  whatsappLogsAvailable: boolean;
+  schemaMode: "modern" | "legacy" | "minimal" | "star";
+  referralDebug: unknown;
+  diagnostics: unknown[];
+  documentDiagnostics: Record<string, unknown>;
+  warnings: string[];
+  partner: { id: string; partner_code?: string | null; full_name?: string | null; mobile?: string | null; partner_type?: string | null; email?: string | null } | null;
+  facts: {
+    totalAmount: number;
+    verifiedPaidAmount: number;
+    walletRedeemed: number;
+    cashbackEligible: number;
+    createdAt: string;
+    submittedAt: string;
+    paidAt: string;
+    completedAt: string;
+  };
+};
+
+export type AdminApplicationDetailResult =
+  | { ok: true; detail: AdminApplicationDetailPayload }
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "forbidden"; message: string }
+  | { ok: false; reason: "unavailable"; message: string }
+  | { ok: false; reason: "error"; message: string; code?: string };
+
+export async function getAdminApplicationDetail(id: string): Promise<AdminApplicationDetailResult> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return null;
-
-  let { data, error } = await supabase
-    .from("applications")
-    .select(ADMIN_APPLICATION_SELECT)
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error && isMissingColumnError(error)) {
-    ({ data, error } = await supabase
-      .from("applications")
-      .select(ADMIN_APPLICATION_SELECT_LEGACY)
-      .eq("id", id)
-      .maybeSingle());
+  if (!supabase) {
+    return { ok: false, reason: "unavailable", message: "Application could not be loaded. Please retry." };
   }
 
-  if (error || !data) return null;
+  const rowLoad = await loadAdminApplicationRow(supabase, id);
+  if (!rowLoad.ok) {
+    if (rowLoad.reason === "not_found") return { ok: false, reason: "not_found" };
+    if (rowLoad.reason === "forbidden") {
+      return { ok: false, reason: "forbidden", message: rowLoad.message };
+    }
+    return { ok: false, reason: "error", message: rowLoad.message, code: rowLoad.code };
+  }
 
-  let application = data as unknown as Application;
-  // Never expose persisted signed/public final URLs into admin detail payloads.
-  application = {
-    ...application,
-    final_document_url: null,
-    completed_document_url: null,
-  } as Application;
+  let application = rowLoad.row as unknown as Application;
 
   try {
     [application] = (await hydrateApplications([application])) as Application[];
@@ -667,9 +710,17 @@ export async function getAdminApplicationDetail(id: string) {
       ...application,
       final_document_url: null,
       completed_document_url: null,
+      final_document_id: application.final_document_id ?? null,
+      priority: (application as Application & { priority?: string | null }).priority ?? null,
+      due_at: (application as Application & { due_at?: string | null }).due_at ?? null,
+      whatsapp_final_delivery_status: application.whatsapp_final_delivery_status ?? null,
+      whatsapp_final_delivered_at: application.whatsapp_final_delivered_at ?? null,
     } as Application;
   } catch (caught) {
-    console.error("[admin-crm] Failed to hydrate application detail", caught);
+    console.error("[admin-crm] Failed to hydrate application detail", {
+      applicationId: id,
+      error: caught instanceof Error ? caught.message : "hydrate_failed",
+    });
   }
 
   const payment = pickPrimaryPayment(application);
@@ -687,7 +738,7 @@ export async function getAdminApplicationDetail(id: string) {
 
   const documentSelect = "id, application_id, user_id, customer_id, document_type, document_name, file_name, file_url, file_type, file_size, storage_path, storage_bucket, status, review_status, rejection_reason, reviewed_by, reviewed_at, uploaded_by, uploaded_by_role, is_final, customer_visible, partner_visible, delivery_channel, delivery_status, delivered_at, metadata, uploaded_at, created_at";
   const legacyDocumentSelect = "id, application_id, user_id, document_type, file_name, file_url, file_type, storage_path, is_final, created_at";
-  console.info("[admin-crm] ADMIN_APPLICATION_ID", { applicationId: id });
+  console.info("[admin-crm] ADMIN_APPLICATION_ID", { applicationId: id, schemaMode: rowLoad.mode });
 
   const agencyPartnerId = (application as Application & { agency_partner_id?: string | null }).agency_partner_id;
 
@@ -844,53 +895,57 @@ export async function getAdminApplicationDetail(id: string) {
     })),
   });
 
+  const whatsappLogsUnavailable =
+    Boolean(whatsappResult.error) &&
+    (isMissingRelationError(whatsappResult.error) || isMissingColumnError(whatsappResult.error));
   const whatsappMessages =
-    whatsappResult.error && (isMissingRelationError(whatsappResult.error) || isMissingColumnError(whatsappResult.error))
-      ? []
-      : whatsappResult.error
-        ? []
-        : whatsappResult.data ?? [];
+    whatsappLogsUnavailable || whatsappResult.error ? [] : whatsappResult.data ?? [];
 
   return {
-    application,
-    payment,
-    invoice: application.invoices?.[0] ?? null,
-    customer: {
-      name: firstText(profileResult.data?.full_name, customerProfileResult.data?.full_name, fallbackCustomer.name),
-      mobile: firstText(profileResult.data?.mobile, customerProfileResult.data?.mobile, customerResult.data?.mobile, fallbackCustomer.mobile, application.customer_mobile),
-      email: firstText(profileResult.data?.email, customerProfileResult.data?.email, customerResult.data?.email, fallbackCustomer.email, application.customer_email),
-      address: firstText(profileResult.data?.address, customerProfileResult.data?.address, customerResult.data?.address, fallbackCustomer.address),
-      city: firstText(profileResult.data?.city, customerProfileResult.data?.city, customerResult.data?.city),
-      state: firstText(profileResult.data?.state, customerProfileResult.data?.state, customerResult.data?.state),
-      pincode: firstText(profileResult.data?.pincode, customerProfileResult.data?.pincode, customerResult.data?.pincode),
-    },
-    documents: documentsForAdmin,
-    possibleDocuments: [] as ApplicationDocument[],
-    invoices: (application.invoices ?? []) as Invoice[],
-    payments: allPayments,
-    notes: notesResult.error ? [] : notesResult.data ?? [],
-    agents: agentsResult.error ? [] : (agentsResult.data ?? []) as PortalUser[],
-    statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
-    whatsappMessages,
-    referralDebug: referralResult.error ? null : referralResult.data,
-    diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],
-    documentDiagnostics: {
-      applicationId: id,
-      userId: application.user_id ?? null,
-      customerId: application.customer_id ?? null,
-      expectedQuery: `application_documents.application_id = ${id}`,
-    },
-    warnings,
-    partner: partnerResult.error ? null : partnerResult.data,
-    facts: {
-      totalAmount: Number(application.total_amount ?? application.amount ?? 0),
-      verifiedPaidAmount: isVerifiedPayment(payment) ? paymentAmount(payment) : 0,
-      walletRedeemed: Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0),
-      cashbackEligible: Number(application.cashback_eligible_amount ?? application.real_payment_amount ?? 0),
-      createdAt: safeDateTime(application.created_at),
-      submittedAt: safeDateTime(application.submitted_at),
-      paidAt: safeDateTime(application.paid_at ?? payment?.paid_at),
-      completedAt: normalizeStatus(application.status) === "completed" ? safeDateTime(application.updated_at) : "-",
+    ok: true as const,
+    detail: {
+      application,
+      payment,
+      invoice: application.invoices?.[0] ?? null,
+      customer: {
+        name: firstText(profileResult.data?.full_name, customerProfileResult.data?.full_name, fallbackCustomer.name),
+        mobile: firstText(profileResult.data?.mobile, customerProfileResult.data?.mobile, customerResult.data?.mobile, fallbackCustomer.mobile, application.customer_mobile),
+        email: firstText(profileResult.data?.email, customerProfileResult.data?.email, customerResult.data?.email, fallbackCustomer.email, application.customer_email),
+        address: firstText(profileResult.data?.address, customerProfileResult.data?.address, customerResult.data?.address, fallbackCustomer.address),
+        city: firstText(profileResult.data?.city, customerProfileResult.data?.city, customerResult.data?.city),
+        state: firstText(profileResult.data?.state, customerProfileResult.data?.state, customerResult.data?.state),
+        pincode: firstText(profileResult.data?.pincode, customerProfileResult.data?.pincode, customerResult.data?.pincode),
+      },
+      documents: documentsForAdmin,
+      possibleDocuments: [] as ApplicationDocument[],
+      invoices: (application.invoices ?? []) as Invoice[],
+      payments: allPayments,
+      notes: notesResult.error ? [] : notesResult.data ?? [],
+      agents: agentsResult.error ? [] : (agentsResult.data ?? []) as PortalUser[],
+      statusLogs: statusLogsResult.error ? [] : statusLogsResult.data ?? [],
+      whatsappMessages,
+      whatsappLogsAvailable: !whatsappLogsUnavailable,
+      schemaMode: rowLoad.mode,
+      referralDebug: referralResult.error ? null : referralResult.data,
+      diagnostics: diagnosticsResult.error ? [] : diagnosticsResult.data ?? [],
+      documentDiagnostics: {
+        applicationId: id,
+        userId: application.user_id ?? null,
+        customerId: application.customer_id ?? null,
+        expectedQuery: `application_documents.application_id = ${id}`,
+      },
+      warnings,
+      partner: partnerResult.error ? null : partnerResult.data,
+      facts: {
+        totalAmount: Number(application.total_amount ?? application.amount ?? 0),
+        verifiedPaidAmount: isVerifiedPayment(payment) ? paymentAmount(payment) : 0,
+        walletRedeemed: Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0),
+        cashbackEligible: Number(application.cashback_eligible_amount ?? application.real_payment_amount ?? 0),
+        createdAt: safeDateTime(application.created_at),
+        submittedAt: safeDateTime(application.submitted_at),
+        paidAt: safeDateTime(application.paid_at ?? payment?.paid_at),
+        completedAt: normalizeStatus(application.status) === "completed" ? safeDateTime(application.updated_at) : "-",
+      },
     },
   };
 }

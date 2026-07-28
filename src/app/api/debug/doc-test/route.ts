@@ -146,11 +146,12 @@ export async function GET() {
         };
 
     const adminDetail = await getAdminApplicationDetail(testId);
+    const detail = adminDetail.ok ? adminDetail.detail : null;
     results.step7_admin_document_contract = {
-      success: Boolean(adminDetail?.documents?.length),
+      success: Boolean(detail?.documents?.length),
       applicationId: testId,
-      documentCount: adminDetail?.documents?.length ?? 0,
-      documents: (adminDetail?.documents ?? []).map((document) => ({
+      documentCount: detail?.documents?.length ?? 0,
+      documents: (detail?.documents ?? []).map((document) => ({
         file_name: document.file_name,
         file_type: document.file_type,
         storage_path: document.storage_path,

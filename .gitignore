@@ -13,3 +13,7 @@ dist
 *.tsbuildinfo
 /backups/
 /tmp/
+.vercel
+.env*
+
+*.log

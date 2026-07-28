@@ -32,13 +32,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const { id } = await params;
-  const detail = await getAdminApplicationDetail(id);
+  const result = await getAdminApplicationDetail(id);
 
-  if (!detail) {
-    return NextResponse.json({ message: "Application not found." }, { status: 404 });
+  if (!result.ok) {
+    if (result.reason === "not_found") {
+      return NextResponse.json({ message: "Application not found." }, { status: 404 });
+    }
+    if (result.reason === "forbidden") {
+      return NextResponse.json({ message: result.message }, { status: 403 });
+    }
+    return NextResponse.json(
+      { message: result.message || "Application could not be loaded. Please retry." },
+      { status: result.reason === "unavailable" ? 503 : 500 },
+    );
   }
 
-  return NextResponse.json(detail);
+  return NextResponse.json(result.detail);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

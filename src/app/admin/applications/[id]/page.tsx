@@ -63,10 +63,39 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
   if (!isAdminRole(role)) redirect("/dashboard");
 
   const { id } = await params;
-  const detail = await getAdminApplicationDetail(id);
-  if (!detail) notFound();
+  const result = await getAdminApplicationDetail(id);
 
-  const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, agents, facts, partner, whatsappMessages = [] } = detail;
+  if (!result.ok) {
+    if (result.reason === "not_found") notFound();
+    if (result.reason === "forbidden") redirect("/dashboard");
+
+    console.error("[admin-application-detail] load_failed", {
+      applicationId: id,
+      reason: result.reason,
+      code: "code" in result ? result.code : undefined,
+    });
+
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16">
+        <Card className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-none">
+          <h1 className="text-lg font-bold text-amber-950">Application could not be loaded</h1>
+          <p className="mt-2 text-sm text-amber-900">
+            {result.message || "Application could not be loaded. Please retry."}
+          </p>
+          <Link
+            href="/admin/applications"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-900"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to applications
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  const detail = result.detail;
+  const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, agents, facts, partner, whatsappMessages = [], whatsappLogsAvailable } = detail;
   const formData = asRecord(application.form_data);
   const customerMobile = customer.mobile;
   const sourceInfo = resolveApplicationSourceInfo(application);
@@ -308,7 +337,11 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
       </div>
       <div className="mt-4 space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">WhatsApp log</h3>
-        {whatsappMessages.length ? (
+        {!whatsappLogsAvailable ? (
+          <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Database upgrade required for WhatsApp delivery logs. Existing application actions still work.
+          </p>
+        ) : whatsappMessages.length ? (
           whatsappMessages.map((row: {
             id: string;
             event_type: string;
@@ -332,7 +365,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
           ))
         ) : (
           <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-            No WhatsApp delivery logs yet. Logs appear after migrations are applied and messages are sent.
+            No WhatsApp delivery logs yet.
           </p>
         )}
       </div>
