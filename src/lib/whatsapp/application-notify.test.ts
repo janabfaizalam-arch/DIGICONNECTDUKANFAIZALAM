@@ -4,19 +4,16 @@ vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdmin: vi.fn(),
 }));
 
-vi.mock("@/lib/whatsapp/aisensy", () => ({
-  loadAisensyConfig: vi.fn(),
-  normalizeAisensyDestination: vi.fn((input: string) => {
-    const digits = String(input).replace(/\D/g, "");
-    const local = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-    if (!/^[6-9]\d{9}$/.test(local)) return { ok: false, error: "Invalid mobile" };
-    return { ok: true, destination: `91${local}`, local };
-  }),
-  isAisensySuccessResponse: vi.fn((status: number) => status >= 200 && status < 300),
-}));
+vi.mock("@/lib/whatsapp/aisensy", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/whatsapp/aisensy")>("@/lib/whatsapp/aisensy");
+  return {
+    ...actual,
+    sendAisensyCampaign: vi.fn(),
+  };
+});
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { loadAisensyConfig } from "@/lib/whatsapp/aisensy";
+import { sendAisensyCampaign } from "@/lib/whatsapp/aisensy";
 import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
 
 function mockSupabase(existing: { id: string; status: string; attempt_count?: number } | null = null) {
@@ -34,7 +31,6 @@ function mockSupabase(existing: { id: string; status: string; attempt_count?: nu
 describe("sendApplicationWhatsApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", vi.fn());
   });
 
   it("rejects invalid mobile", async () => {
@@ -62,12 +58,24 @@ describe("sendApplicationWhatsApp", () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.deduped).toBe(true);
-    expect(fetch).not.toHaveBeenCalled();
+    expect(sendAisensyCampaign).not.toHaveBeenCalled();
   });
 
   it("returns configuration_required without marking sent", async () => {
     mockSupabase(null);
-    vi.mocked(loadAisensyConfig).mockReturnValue({ ok: false, error: "missing" } as never);
+    vi.mocked(sendAisensyCampaign).mockResolvedValue({
+      ok: false,
+      queued: true,
+      sent: false,
+      failed: false,
+      configuration_required: true,
+      providerMessageId: null,
+      errorCode: "missing_api_key",
+      errorMessage: "AISENSY_API_KEY is not configured.",
+      campaignName: "application_update",
+      destination: "919876543210",
+      requestId: "r1",
+    });
     const result = await sendApplicationWhatsApp({
       applicationId: "app-1",
       eventType: "final_document",
@@ -84,15 +92,19 @@ describe("sendApplicationWhatsApp", () => {
 
   it("sends via AiSensy when configured", async () => {
     mockSupabase(null);
-    vi.mocked(loadAisensyConfig).mockReturnValue({
+    vi.mocked(sendAisensyCampaign).mockResolvedValue({
       ok: true,
-      config: { apiKey: "k", apiUrl: "https://example.test/send" },
-    } as never);
-    vi.mocked(fetch).mockResolvedValue({
-      status: 200,
-      ok: true,
-      text: async () => JSON.stringify({ success: true }),
-    } as Response);
+      queued: false,
+      sent: true,
+      failed: false,
+      configuration_required: false,
+      providerMessageId: "prov-1",
+      errorCode: null,
+      errorMessage: null,
+      campaignName: "application_update",
+      destination: "919876543210",
+      requestId: "r1",
+    });
 
     const result = await sendApplicationWhatsApp({
       applicationId: "app-1",
@@ -100,25 +112,32 @@ describe("sendApplicationWhatsApp", () => {
       recipientMobile: "9876543210",
       customerName: "A",
       serviceName: "ITR",
+      notes: "Almost done",
     });
     expect(result.ok).toBe(true);
-    expect(fetch).toHaveBeenCalledOnce();
-    const body = JSON.parse(String((vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit)?.body));
-    expect(body.apiKey).toBe("k");
-    expect(body.destination).toBe("919876543210");
+    expect(sendAisensyCampaign).toHaveBeenCalledOnce();
+    const arg = vi.mocked(sendAisensyCampaign).mock.calls[0]?.[0];
+    expect(arg?.destination).toBe("919876543210");
+    expect(arg?.templateParams).toHaveLength(4);
+    expect(arg?.dedupe).toBe(false);
   });
 
-  it("marks failure on non-2xx", async () => {
+  it("marks failure on provider rejection", async () => {
     mockSupabase(null);
-    vi.mocked(loadAisensyConfig).mockReturnValue({
-      ok: true,
-      config: { apiKey: "k", apiUrl: "https://example.test/send" },
-    } as never);
-    vi.mocked(fetch).mockResolvedValue({
-      status: 500,
+    vi.mocked(sendAisensyCampaign).mockResolvedValue({
       ok: false,
-      text: async () => "fail",
-    } as Response);
+      queued: false,
+      sent: false,
+      failed: true,
+      configuration_required: false,
+      providerMessageId: null,
+      errorCode: "provider_rejected",
+      errorMessage: "WhatsApp delivery failed.",
+      campaignName: "application_update",
+      destination: "919876543210",
+      requestId: "r1",
+      httpStatus: 500,
+    });
 
     const result = await sendApplicationWhatsApp({
       applicationId: "app-1",
@@ -143,7 +162,7 @@ describe("sendApplicationWhatsApp", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("retry_limit");
-    expect(fetch).not.toHaveBeenCalled();
+    expect(sendAisensyCampaign).not.toHaveBeenCalled();
   });
 
   it("returns database_upgrade_required when whatsapp_messages table is missing", async () => {
@@ -155,7 +174,6 @@ describe("sendApplicationWhatsApp", () => {
     const select = vi.fn().mockReturnValue({ eq });
     const from = vi.fn().mockReturnValue({ select, upsert: vi.fn(), update: vi.fn() });
     vi.mocked(getSupabaseAdmin).mockReturnValue({ from } as never);
-    vi.mocked(loadAisensyConfig).mockReturnValue({ ok: true, config: { apiKey: "k", apiUrl: "https://x" } } as never);
 
     const result = await sendApplicationWhatsApp({
       applicationId: "app-1",
@@ -163,12 +181,48 @@ describe("sendApplicationWhatsApp", () => {
       recipientMobile: "9876543210",
       customerName: "A",
       serviceName: "ITR",
+      notes: "update",
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe("database_upgrade_required");
       expect(result.upgradeRequired).toBe(true);
     }
-    expect(fetch).not.toHaveBeenCalled();
+    expect(sendAisensyCampaign).not.toHaveBeenCalled();
+  });
+
+  it("attaches media for final_document and does not persist signed URL in payload upsert", async () => {
+    const { upsert } = mockSupabase(null);
+    vi.mocked(sendAisensyCampaign).mockResolvedValue({
+      ok: true,
+      queued: false,
+      sent: true,
+      failed: false,
+      configuration_required: false,
+      providerMessageId: "prov-1",
+      errorCode: null,
+      errorMessage: null,
+      campaignName: "final_doc",
+      destination: "919876543210",
+      requestId: "r1",
+    });
+
+    await sendApplicationWhatsApp({
+      applicationId: "app-1",
+      eventType: "final_document",
+      recipientMobile: "9876543210",
+      customerName: "A",
+      serviceName: "ITR",
+      documentUrl: "https://signed.example/doc.pdf?token=secret",
+      documentName: "final.pdf",
+    });
+
+    const campaignArg = vi.mocked(sendAisensyCampaign).mock.calls[0]?.[0];
+    expect(campaignArg?.media).toEqual({
+      url: "https://signed.example/doc.pdf?token=secret",
+      filename: "final.pdf",
+    });
+    const upsertArg = upsert.mock.calls[0]?.[0] as { payload: Record<string, unknown> };
+    expect(JSON.stringify(upsertArg.payload)).not.toContain("signed.example");
   });
 });

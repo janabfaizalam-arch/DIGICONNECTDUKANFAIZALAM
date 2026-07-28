@@ -1,24 +1,19 @@
 import { randomUUID } from "crypto";
 
-import { loadAisensyConfig, normalizeAisensyDestination, isAisensySuccessResponse } from "@/lib/whatsapp/aisensy";
+import { sendAisensyCampaign } from "@/lib/whatsapp/aisensy";
+import { normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import {
+  buildApplicationTemplateParams,
+  getApplicationCampaignName,
+} from "@/lib/whatsapp/templates";
+import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   FINAL_DOCUMENT_BUCKET,
   WHATSAPP_FINAL_SIGNED_URL_TTL_SECONDS,
 } from "@/lib/documents/final-document-storage";
 
-export type ApplicationWhatsAppEvent =
-  | "application_submitted"
-  | "payment_pending"
-  | "payment_success"
-  | "documents_required"
-  | "documents_received"
-  | "processing_started"
-  | "progress_update"
-  | "objection"
-  | "objection_resolved"
-  | "completed"
-  | "final_document";
+export type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 
 export type SendApplicationWhatsAppInput = {
   applicationId: string;
@@ -27,6 +22,13 @@ export type SendApplicationWhatsAppInput = {
   customerName: string;
   serviceName: string;
   notes?: string;
+  amount?: string | number | null;
+  status?: string;
+  requiredDocuments?: string;
+  objectionMessage?: string;
+  progressMessage?: string;
+  customMessage?: string;
+  actionLink?: string;
   documentUrl?: string;
   documentName?: string;
   documentId?: string;
@@ -36,61 +38,63 @@ export type SendApplicationWhatsAppInput = {
   version?: number;
 };
 
+export type SendApplicationWhatsAppResult =
+  | {
+      ok: true;
+      requestId: string;
+      messageId: string | null;
+      campaignName?: string;
+      deduped?: boolean;
+      providerMessageId?: string | null;
+      error?: string;
+    }
+  | {
+      ok: false;
+      code:
+        | "invalid_mobile"
+        | "supabase_missing"
+        | "database_upgrade_required"
+        | "configuration_required"
+        | "queued"
+        | "failed"
+        | "retry_limit"
+        | "send_failed"
+        | "send_error"
+        | "timeout";
+      error: string;
+      requestId: string;
+      messageId?: string | null;
+      queued?: boolean;
+      upgradeRequired?: boolean;
+      providerMessageId?: string | null;
+    };
+
 const MAX_WHATSAPP_ATTEMPTS = 5;
 /** @deprecated use WHATSAPP_FINAL_SIGNED_URL_TTL_SECONDS */
 const SIGNED_URL_TTL_SECONDS = WHATSAPP_FINAL_SIGNED_URL_TTL_SECONDS;
 
-function campaignForEvent(eventType: ApplicationWhatsAppEvent): string {
-  if (eventType === "final_document") {
-    return (
-      process.env.AISENSY_FINAL_DOCUMENT_CAMPAIGN?.trim() ||
-      process.env.AISENSY_APPLICATION_CAMPAIGN?.trim() ||
-      "application_update"
-    );
-  }
-  return process.env.AISENSY_APPLICATION_CAMPAIGN?.trim() || "application_update";
-}
-
-function buildMessage(input: SendApplicationWhatsAppInput): string {
-  const name = input.customerName || "Customer";
-  const service = input.serviceName || "your service";
-  const id = input.applicationId;
-  switch (input.eventType) {
-    case "payment_pending":
-      return `Hello ${name},\n\nPayment is pending for "${service}" (App: ${id}). Please complete payment to continue. — DigiConnect Dukan`;
-    case "payment_success":
-      return `Hello ${name},\n\nPayment received for "${service}" (App: ${id}). We are processing your application. — DigiConnect Dukan`;
-    case "documents_required":
-      return `Hello ${name},\n\nAdditional documents are required for "${service}" (App: ${id}). ${input.notes || "Please check your dashboard."} — DigiConnect Dukan`;
-    case "objection":
-      return `Hello ${name},\n\nAction needed on "${service}" (App: ${id}). ${input.notes || "Please review and respond."} — DigiConnect Dukan`;
-    case "progress_update":
-    case "processing_started":
-      return `Hello ${name},\n\nUpdate on "${service}" (App: ${id}): ${input.notes || "Your application is in process."} — DigiConnect Dukan`;
-    case "final_document":
-    case "completed":
-      return `Hello ${name},\n\nYour "${service}" application is completed (App: ${id}).${
-        input.documentUrl ? `\n\nSecure document link (temporary):\n${input.documentUrl}` : ""
-      }\n\n— DigiConnect Dukan / RNOS India Pvt. Ltd.`;
-    default:
-      return `Hello ${name},\n\nUpdate on "${service}" (App: ${id}). ${input.notes || ""} — DigiConnect Dukan`;
-  }
-}
-
 function safeLogPayload(payload: Record<string, unknown>) {
   const copy = { ...payload };
-  if (typeof copy.document_url === "string") {
-    copy.document_url = "[redacted_signed_url]";
+  for (const key of Object.keys(copy)) {
+    const value = copy[key];
+    if (typeof value === "string" && /https?:\/\/\S+/i.test(value)) {
+      copy[key] = "[redacted_url]";
+    }
   }
+  if ("document_url" in copy) copy.document_url = "[redacted_signed_url]";
+  if ("signed_url" in copy) copy.signed_url = "[redacted_signed_url]";
+  if ("provider_response" in copy) delete copy.provider_response;
   return copy;
 }
 
 /**
- * Sends an application WhatsApp via AiSensy campaign API when configured.
- * Logs to whatsapp_messages with unique idempotency_key.
+ * Sends an application WhatsApp via the central AiSensy campaign client.
+ * Logs to whatsapp_messages with unique idempotency_key `${applicationId}:${eventType}:${version}`.
  * When AiSensy is not configured, status stays `queued` (NOT treated as sent).
  */
-export async function sendApplicationWhatsApp(input: SendApplicationWhatsAppInput) {
+export async function sendApplicationWhatsApp(
+  input: SendApplicationWhatsAppInput,
+): Promise<SendApplicationWhatsAppResult> {
   const supabase = getSupabaseAdmin();
   const requestId = randomUUID();
   const version = input.version ?? 1;
@@ -98,13 +102,13 @@ export async function sendApplicationWhatsApp(input: SendApplicationWhatsAppInpu
   const destination = normalizeAisensyDestination(input.recipientMobile);
 
   if (!destination.ok) {
-    return { ok: false as const, code: "invalid_mobile", error: destination.error, requestId };
+    return { ok: false, code: "invalid_mobile", error: destination.error, requestId };
   }
 
   const e164 = destination.destination;
 
   if (!supabase) {
-    return { ok: false as const, code: "supabase_missing", error: "Database unavailable.", requestId };
+    return { ok: false, code: "supabase_missing", error: "Database unavailable.", requestId };
   }
 
   const { data: existing, error: existingError } = await supabase
@@ -113,14 +117,14 @@ export async function sendApplicationWhatsApp(input: SendApplicationWhatsAppInpu
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
 
-  if (existingError && /PGRST205|42P01|does not exist|schema cache/i.test(`${existingError.code ?? ""} ${existingError.message}`)) {
-    const loaded = loadAisensyConfig();
+  if (
+    existingError &&
+    /PGRST205|42P01|does not exist|schema cache/i.test(`${existingError.code ?? ""} ${existingError.message}`)
+  ) {
     return {
-      ok: false as const,
-      code: "database_upgrade_required" as const,
-      error: loaded.ok
-        ? "Database upgrade required before WhatsApp delivery logging can run."
-        : "Database upgrade required. WhatsApp table missing and AiSensy not configured.",
+      ok: false,
+      code: "database_upgrade_required",
+      error: "Database upgrade required before WhatsApp delivery logging can run.",
       queued: true,
       requestId,
       messageId: null,
@@ -132,7 +136,7 @@ export async function sendApplicationWhatsApp(input: SendApplicationWhatsAppInpu
     const status = String(existing.status ?? "").toLowerCase();
     if (status === "sent" || status === "delivered" || status === "read") {
       return {
-        ok: true as const,
+        ok: true,
         deduped: true,
         requestId,
         messageId: existing.id,
@@ -140,23 +144,56 @@ export async function sendApplicationWhatsApp(input: SendApplicationWhatsAppInpu
       };
     }
     if (status === "queued" && !input.forceRetry) {
-      return { ok: false as const, code: "queued", error: "WhatsApp delivery is queued. Configure AiSensy or retry later.", requestId, messageId: existing.id };
+      return {
+        ok: false,
+        code: "queued",
+        error: "WhatsApp delivery is queued. Configure AiSensy or retry later.",
+        requestId,
+        messageId: existing.id,
+        queued: true,
+      };
     }
     const attempts = Number(existing.attempt_count ?? 1);
     if (input.forceRetry && attempts >= MAX_WHATSAPP_ATTEMPTS) {
-      return { ok: false as const, code: "retry_limit", error: `Retry limit (${MAX_WHATSAPP_ATTEMPTS}) reached.`, requestId, messageId: existing.id };
+      return {
+        ok: false,
+        code: "retry_limit",
+        error: `Retry limit (${MAX_WHATSAPP_ATTEMPTS}) reached.`,
+        requestId,
+        messageId: existing.id,
+      };
     }
     if (!input.forceRetry && status === "failed") {
-      return { ok: false as const, code: "failed", error: "Previous send failed. Use Retry WhatsApp.", requestId, messageId: existing.id };
+      return {
+        ok: false,
+        code: "failed",
+        error: "Previous send failed. Use Retry WhatsApp.",
+        requestId,
+        messageId: existing.id,
+      };
     }
   }
 
-  const campaignName = campaignForEvent(input.eventType);
-  const message = buildMessage(input);
+  const campaignName = getApplicationCampaignName(input.eventType);
+  const templateParams = buildApplicationTemplateParams(input.eventType, {
+    customerName: input.customerName,
+    serviceName: input.serviceName,
+    applicationId: input.applicationId,
+    status: input.status,
+    amount: input.amount,
+    requiredDocuments: input.requiredDocuments,
+    objectionMessage: input.objectionMessage,
+    progressMessage: input.progressMessage,
+    customMessage: input.customMessage,
+    actionLink: input.actionLink,
+    notes: input.notes,
+  });
+
   const payload = safeLogPayload({
     customer_name: input.customerName,
     service_name: input.serviceName,
-    message,
+    event_type: input.eventType,
+    template_params: templateParams,
     document_name: input.documentName ?? null,
     document_id: input.documentId ?? null,
     notes: input.notes ?? null,
@@ -188,131 +225,104 @@ export async function sendApplicationWhatsApp(input: SendApplicationWhatsAppInpu
     .maybeSingle();
 
   if (upsertError) {
-    // Pre-migration: whatsapp_messages table may not exist yet.
     if (/PGRST205|42P01|does not exist|schema cache/i.test(`${upsertError.code ?? ""} ${upsertError.message}`)) {
-      const loaded = loadAisensyConfig();
-      if (!loaded.ok) {
-        return {
-          ok: false as const,
-          code: "configuration_required",
-          error: "WhatsApp logging table missing and AiSensy not configured. Apply migrations and configure AiSensy.",
-          queued: true,
-          requestId,
-          messageId: null,
-          upgradeRequired: true,
-        };
-      }
-      // Config present but log table missing — still refuse false "sent"; require upgrade for auditability.
       return {
-        ok: false as const,
+        ok: false,
         code: "database_upgrade_required",
         error: "Database upgrade required before WhatsApp delivery logging can run.",
         requestId,
         messageId: null,
         upgradeRequired: true,
+        queued: true,
       };
     }
     console.error("[whatsapp-app] log_upsert_failed", upsertError.message);
   }
 
   const messageId = row?.id ?? existing?.id ?? null;
-  const loaded = loadAisensyConfig();
 
-  if (!loaded.ok) {
-    // Do NOT mark as sent — there is no guaranteed worker for application campaigns.
+  const sendResult = await sendAisensyCampaign({
+    campaignName,
+    destination: e164,
+    userName: input.customerName || "Customer",
+    templateParams,
+    source: `digiconnect-application:${input.eventType}`,
+    media:
+      input.eventType === "final_document" && input.documentUrl
+        ? { url: input.documentUrl, filename: input.documentName || "document.pdf" }
+        : undefined,
+    // Application idempotency is DB-backed; skip short in-memory OTP dedupe.
+    dedupe: false,
+  });
+
+  if (sendResult.configuration_required) {
     if (messageId) {
       await supabase
         .from("whatsapp_messages")
         .update({
           status: "queued",
           error_message: "AiSensy not configured. Delivery not sent.",
-          updated_at: now,
-        })
-        .eq("id", messageId);
-    }
-    return {
-      ok: false as const,
-      code: "configuration_required",
-      error: "WhatsApp is not configured. Message queued — configure AiSensy and retry.",
-      queued: true,
-      requestId,
-      messageId,
-    };
-  }
-
-  try {
-    const body: Record<string, unknown> = {
-      apiKey: loaded.config.apiKey,
-      campaignName,
-      destination: e164,
-      userName: input.customerName || "Customer",
-      templateParams: [
-        input.customerName || "Customer",
-        input.serviceName || "Service",
-        input.applicationId,
-        input.notes || message.slice(0, 120),
-      ],
-      source: "digiconnect-application",
-    };
-    if (input.documentUrl) {
-      body.media = { url: input.documentUrl, filename: input.documentName || "document.pdf" };
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
-    const response = await fetch(loaded.config.apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    const text = await response.text();
-    let parsed: unknown = null;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = text;
-    }
-
-    const success = isAisensySuccessResponse(response.status, parsed);
-    if (messageId) {
-      await supabase
-        .from("whatsapp_messages")
-        .update({
-          status: success ? "sent" : "failed",
-          sent_at: success ? new Date().toISOString() : null,
-          failed_at: success ? null : new Date().toISOString(),
-          error_message: success ? null : `HTTP ${response.status}`,
-          provider_message_id: requestId,
-          payload: {
-            ...payload,
-            provider_response: typeof parsed === "object" && parsed ? parsed : { raw: text.slice(0, 500) },
-          },
           updated_at: new Date().toISOString(),
         })
         .eq("id", messageId);
     }
+    return {
+      ok: false,
+      code: "configuration_required",
+      error: "WhatsApp is not configured. Message queued — configure AiSensy and retry.",
+      queued: true,
+      requestId: sendResult.requestId || requestId,
+      messageId,
+    };
+  }
 
-    if (!success) {
-      return { ok: false as const, code: "send_failed", error: "WhatsApp delivery failed.", requestId, messageId };
-    }
-    return { ok: true as const, requestId, messageId, campaignName };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "send_error";
+  if (!sendResult.ok) {
     if (messageId) {
       await supabase
         .from("whatsapp_messages")
         .update({
           status: "failed",
           failed_at: new Date().toISOString(),
-          error_message: msg,
+          error_message: sendResult.errorMessage || "WhatsApp delivery failed.",
+          provider_message_id: sendResult.providerMessageId,
+          // Never persist signed URLs or raw provider bodies.
+          payload,
           updated_at: new Date().toISOString(),
         })
         .eq("id", messageId);
     }
-    return { ok: false as const, code: "send_error", error: msg, requestId, messageId };
+    return {
+      ok: false,
+      code: sendResult.errorCode === "timeout" ? "timeout" : "send_failed",
+      error: sendResult.errorMessage || "WhatsApp delivery failed.",
+      requestId: sendResult.requestId || requestId,
+      messageId,
+      providerMessageId: sendResult.providerMessageId,
+    };
   }
+
+  if (messageId) {
+    await supabase
+      .from("whatsapp_messages")
+      .update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        failed_at: null,
+        error_message: null,
+        provider_message_id: sendResult.providerMessageId,
+        payload,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", messageId);
+  }
+
+  return {
+    ok: true,
+    requestId: sendResult.requestId || requestId,
+    messageId,
+    campaignName,
+    providerMessageId: sendResult.providerMessageId,
+  };
 }
 
 export async function completeAndSendFinalDocumentWhatsApp(options: {
@@ -328,7 +338,7 @@ export async function completeAndSendFinalDocumentWhatsApp(options: {
 }) {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
-    return { ok: false as const, error: "Database unavailable.", code: "supabase_missing" };
+    return { ok: false as const, error: "Database unavailable.", code: "supabase_missing" as const };
   }
 
   const bucket = options.storageBucket || FINAL_DOCUMENT_BUCKET;
@@ -346,9 +356,10 @@ export async function completeAndSendFinalDocumentWhatsApp(options: {
   }
 
   if (!documentUrl) {
-    return { ok: false as const, error: "Could not create secure document link.", code: "signed_url_failed" };
+    return { ok: false as const, error: "Could not create secure document link.", code: "signed_url_failed" as const };
   }
 
+  // Signed URL lives only in request memory for this send.
   const result = await sendApplicationWhatsApp({
     applicationId: options.applicationId,
     eventType: "final_document",

@@ -69,6 +69,8 @@ export function AdminUpdateForm({
   const [activityNote, setActivityNote] = useState("");
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [finalFile, setFinalFile] = useState<File | null>(null);
+  const [whatsappNote, setWhatsappNote] = useState("");
+  const [customMessage, setCustomMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const { success, error: toastError } = useToast();
   const router = useRouter();
@@ -89,6 +91,10 @@ export function AdminUpdateForm({
   const editable = isWorkflowEditable(currentStatus);
   const delivery = String(whatsappFinalDeliveryStatus ?? "").toLowerCase();
   const trustedDelivery = whatsappLogsAvailable ? delivery : "";
+  const isCompleted = String(currentStatus).toLowerCase() === "completed";
+  const isCancelled = ["cancelled", "canceled", "rejected", "failed"].includes(
+    String(currentStatus).toLowerCase(),
+  );
 
   const dirty = useMemo(() => {
     const statusChanged = editable && status !== normalizedInitialStatus;
@@ -110,26 +116,37 @@ export function AdminUpdateForm({
       {
         label: "Ask for Documents",
         icon: FileQuestion,
-        show: editable && missingDocuments,
-        eventType: "documents_required" as const,
+        show: editable && missingDocuments && !isCancelled,
+        action: "document_request" as const,
+        needsNotes: true,
       },
       {
         label: "Send Payment Reminder",
         icon: Clock3,
-        show: editable && showPaymentReminder,
-        eventType: "payment_pending" as const,
+        show: editable && showPaymentReminder && !isCancelled,
+        action: "payment_reminder" as const,
+        needsNotes: false,
       },
       {
         label: "Send Progress Update",
         icon: RefreshCw,
-        show: editable,
-        eventType: "progress_update" as const,
+        show: editable && !isCancelled,
+        action: "progress_update" as const,
+        needsNotes: true,
       },
       {
         label: "Send Objection",
         icon: MessageCircle,
-        show: editable,
-        eventType: "objection" as const,
+        show: editable && !isCancelled,
+        action: "objection" as const,
+        needsNotes: true,
+      },
+      {
+        label: "Send Completion Update",
+        icon: CheckCircle2,
+        show: isCompleted || editable,
+        action: "completion_message" as const,
+        needsNotes: false,
       },
     ] as const
   ).filter((item) => item.show);
@@ -154,10 +171,10 @@ export function AdminUpdateForm({
     });
   }
 
-  function sendWhatsAppEvent(eventType: string, label: string) {
+  function sendWhatsAppAction(action: string, label: string, notes?: string) {
     if (isPending) return;
     if (!hasValidMobile) {
-      toastError("Customer mobile is required for WhatsApp.");
+      toastError("Valid WhatsApp mobile number required");
       return;
     }
     startTransition(async () => {
@@ -165,7 +182,11 @@ export function AdminUpdateForm({
         const response = await fetch(`/api/admin/applications/${applicationId}/whatsapp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ eventType }),
+          body: JSON.stringify({
+            action,
+            notes: notes?.trim() || undefined,
+            message: notes?.trim() || undefined,
+          }),
         });
         const result = (await response.json()) as {
           message?: string;
@@ -178,6 +199,8 @@ export function AdminUpdateForm({
         else if (result.upgradeRequired) toastError(result.message || "Database upgrade required.");
         else if (result.queued) toastError(result.message || "WhatsApp queued — configure AiSensy and retry.");
         else toastError(result.message || `${label} failed.`);
+        setWhatsappNote("");
+        setCustomMessage("");
         router.refresh();
       } catch (error) {
         toastError(error instanceof Error ? error.message : `${label} failed.`);
@@ -377,6 +400,14 @@ export function AdminUpdateForm({
       </form>
 
       <div className="grid gap-1.5">
+        <Textarea
+          placeholder="WhatsApp note (required for documents / progress / objection)"
+          className="min-h-14 text-sm"
+          value={whatsappNote}
+          onChange={(event) => setWhatsappNote(event.target.value)}
+          disabled={isPending || !hasValidMobile || !whatsappLogsAvailable}
+          maxLength={500}
+        />
         {quickMessages.map((item) => {
           const Icon = item.icon;
           return (
@@ -384,7 +415,13 @@ export function AdminUpdateForm({
               key={item.label}
               type="button"
               disabled={isPending || !hasValidMobile || !whatsappLogsAvailable}
-              onClick={() => sendWhatsAppEvent(item.eventType, item.label)}
+              onClick={() => {
+                if (item.needsNotes && !whatsappNote.trim()) {
+                  toastError("Message text is required for this WhatsApp action.");
+                  return;
+                }
+                sendWhatsAppAction(item.action, item.label, whatsappNote);
+              }}
               className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
             >
               <Icon className="h-3.5 w-3.5" />
@@ -392,6 +429,24 @@ export function AdminUpdateForm({
             </button>
           );
         })}
+
+        <Textarea
+          placeholder="Custom WhatsApp message"
+          className="min-h-14 text-sm"
+          value={customMessage}
+          onChange={(event) => setCustomMessage(event.target.value)}
+          disabled={isPending || !hasValidMobile || !whatsappLogsAvailable}
+          maxLength={500}
+        />
+        <button
+          type="button"
+          disabled={isPending || !hasValidMobile || !whatsappLogsAvailable || !customMessage.trim()}
+          onClick={() => sendWhatsAppAction("custom_message", "Custom WhatsApp Message", customMessage)}
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          Custom WhatsApp Message
+        </button>
 
         {showComplete ? (
           <button
@@ -428,15 +483,15 @@ export function AdminUpdateForm({
             href={whatsappUrl!}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700"
           >
             <MessageCircle className="h-3.5 w-3.5" />
-            WhatsApp Customer
+            Open manual WhatsApp chat (fallback)
           </a>
         ) : (
           <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-slate-100 px-3 text-xs font-semibold text-slate-500">
             <AlertTriangle className="h-3.5 w-3.5" />
-            No customer mobile
+            Valid WhatsApp mobile number required
           </span>
         )}
 

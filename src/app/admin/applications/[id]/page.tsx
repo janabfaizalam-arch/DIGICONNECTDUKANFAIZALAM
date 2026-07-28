@@ -354,6 +354,11 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
       <h2 className="text-sm font-bold text-slate-950">Communication</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <DetailRow label="Customer message" value={application.customer_message || application.customer_note || "—"} />
+        <DetailRow label="Customer mobile" value={customerMobile || "—"} mono />
+        <DetailRow
+          label="Mobile validity"
+          value={customerMobile ? (customerMobile.replace(/\D/g, "").slice(-10).length === 10 ? "Valid for WhatsApp" : "Invalid") : "Missing"}
+        />
         <DetailRow
           label="WhatsApp final delivery"
           value={
@@ -373,8 +378,20 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
           }
           mono
         />
-        <DetailRow label="Customer mobile" value={customerMobile || "—"} mono />
+        <DetailRow
+          label="Last WhatsApp event"
+          value={
+            !whatsappLogsAvailable
+              ? "Upgrade required"
+              : whatsappMessages[0]
+                ? `${String(whatsappMessages[0].event_type).replace(/_/g, " ")} · ${whatsappMessages[0].status}`
+                : "—"
+          }
+        />
       </div>
+      <p className="mt-3 text-[11px] text-slate-500">
+        Delivered/read tracking requires an AiSensy webhook (not configured). Current statuses come from send API responses: queued / sent / failed / configuration required.
+      </p>
       <div className="mt-4 space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">WhatsApp log</h3>
         {!whatsappLogsAvailable ? (
@@ -388,6 +405,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             status: string;
             attempt_count?: number | null;
             error_message?: string | null;
+            last_attempt_at?: string | null;
             created_at: string;
           }) => (
             <div key={row.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
@@ -400,7 +418,9 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 Attempts: {row.attempt_count ?? 0}
                 {row.error_message ? ` · ${row.error_message}` : ""}
               </p>
-              <p className="mt-1 font-mono text-[11px] text-slate-400">{safeDateTime(row.created_at)}</p>
+              <p className="mt-1 font-mono text-[11px] text-slate-400">
+                {safeDateTime(row.last_attempt_at || row.created_at)}
+              </p>
             </div>
           ))
         ) : (

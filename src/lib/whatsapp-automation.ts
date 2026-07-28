@@ -1,21 +1,44 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
+import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 
 export type WhatsAppEvent =
   | "application_created"
+  | "payment_pending"
   | "payment_success"
   | "documents_required"
+  | "documents_received"
   | "processing_started"
+  | "under_review"
   | "completed"
   | "failed"
   | "rejected";
 
+const EVENT_MAP: Partial<Record<WhatsAppEvent, ApplicationWhatsAppEvent>> = {
+  application_created: "application_submitted",
+  payment_pending: "payment_pending",
+  payment_success: "payment_success",
+  documents_required: "documents_required",
+  documents_received: "documents_received",
+  processing_started: "processing_started",
+  under_review: "under_review",
+  completed: "completed",
+};
+
+/**
+ * Server-side application WhatsApp trigger.
+ * Delivers via AiSensy (`sendApplicationWhatsApp`) — does not invent browser sends.
+ * Failed/rejected events are logged but not auto-messaged (use admin objection/custom).
+ */
 export async function triggerWhatsAppNotification(
   event: WhatsAppEvent,
   applicationId: string,
   options: {
     paymentId?: string;
     notes?: string;
-  } = {}
+    amount?: string | number | null;
+    forceRetry?: boolean;
+  } = {},
 ) {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -23,11 +46,18 @@ export async function triggerWhatsAppNotification(
     return { success: false, reason: "supabase_not_initialized" };
   }
 
+  const mapped = EVENT_MAP[event];
+  if (!mapped) {
+    console.info("[whatsapp-automation] skip_unmapped_event", { event, applicationId });
+    return { success: false, reason: "event_not_mapped" };
+  }
+
   try {
-    // 1. Fetch application details and customer profile details
     const { data: application, error: appError } = await supabase
       .from("applications")
-      .select("*, profiles!applications_user_id_fkey(full_name, mobile, email)")
+      .select(
+        "id, status, payment_status, service_name, amount, total_amount, customer_mobile, customer_mobile_normalized, customer_name, customer_details, form_data, profiles!applications_user_id_fkey(full_name, mobile, email)",
+      )
       .eq("id", applicationId)
       .maybeSingle();
 
@@ -36,92 +66,73 @@ export async function triggerWhatsAppNotification(
       return { success: false, reason: "application_not_found" };
     }
 
-    const customer = (application as Record<string, unknown>).profiles as { full_name?: string | null; mobile?: string | null; email?: string | null } | null;
-    const customerMobile = application.customer_mobile_normalized || customer?.mobile || application.customer_mobile || "";
-    const customerName = customer?.full_name || application.customer_name || "Valued Customer";
-    const serviceName = application.service_name;
+    const customer = (application as Record<string, unknown>).profiles as
+      | { full_name?: string | null; mobile?: string | null }
+      | null;
+    const details = (application.customer_details ?? {}) as Record<string, unknown>;
+    const formData = (application.form_data ?? {}) as Record<string, unknown>;
+
+    const customerMobile = String(
+      application.customer_mobile_normalized ||
+        application.customer_mobile ||
+        customer?.mobile ||
+        details.mobile ||
+        formData.mobile ||
+        "",
+    ).trim();
+    const customerName =
+      String(
+        customer?.full_name || application.customer_name || details.name || formData.name || "Customer",
+      ).trim() || "Customer";
 
     if (!customerMobile) {
       console.warn(`WhatsApp Automation: No mobile number found for application ${applicationId}`);
       return { success: false, reason: "mobile_number_missing" };
     }
 
-    // 2. Format message template based on event type
-    let messageText = "";
-    switch (event) {
-      case "application_created":
-        messageText = `Hello ${customerName},\n\nYour application for "${serviceName}" has been successfully created on DigiConnect Dukan.\n\nApplication ID: ${applicationId}\nStatus: ${application.status}\n\nWe will update you on the next steps shortly. Thank you!`;
-        break;
-      case "payment_success":
-        messageText = `Hello ${customerName},\n\nPayment verified successfully for your "${serviceName}" application on DigiConnect Dukan.\n\nApplication ID: ${applicationId}\nPayment ID: ${options.paymentId || "N/A"}\nAmount Paid: Rs ${application.amount}\n\nWe are processing your application. Thank you!`;
-        break;
-      case "documents_required":
-        messageText = `Hello ${customerName},\n\nWe require additional documents to process your "${serviceName}" application.\n\nApplication ID: ${applicationId}\nRequested Details/Files: ${options.notes || "Please check dashboard for required documents."}\n\nPlease upload them on your dashboard as soon as possible. Thank you!`;
-        break;
-      case "processing_started":
-        messageText = `Hello ${customerName},\n\nYour "${serviceName}" application is now under review by our specialist CA experts.\n\nApplication ID: ${applicationId}\nStatus: Processing\n\nWe will notify you once completed. Thank you!`;
-        break;
-      case "completed":
-        messageText = `Hello ${customerName},\n\nCongratulations! Your application for "${serviceName}" has been completed/delivered.\n\nApplication ID: ${applicationId}\n\nYou can now log in to your DigiConnect Dukan dashboard to download the final certificate. Thank you!`;
-        break;
-      case "failed":
-        messageText = `Hello ${customerName},\n\nWe encountered an issue processing your "${serviceName}" application on DigiConnect Dukan.\n\nApplication ID: ${applicationId}\nStatus: Failed\n\nReason/Notes: ${options.notes || "Please contact support for details."}\n\nOur team is looking into it. Thank you!`;
-        break;
-      case "rejected":
-        messageText = `Hello ${customerName},\n\nYour "${serviceName}" application has been rejected on DigiConnect Dukan.\n\nApplication ID: ${applicationId}\nStatus: Rejected\n\nReason: ${options.notes || "Please log in to your dashboard to review the rejection reasons."}\n\nThank you!`;
-        break;
-      default:
-        messageText = `Hello ${customerName},\n\nUpdate regarding your application for "${serviceName}".\n\nApplication ID: ${applicationId}\nStatus: ${application.status}`;
-    }
+    const notes = [
+      options.notes,
+      options.paymentId ? `Payment ID: ${options.paymentId}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
-    // 3. Log to console / pino logs
-    console.info(`[WhatsApp Notification Sandbox Triggered]`, {
-      to: customerMobile,
-      event: `whatsapp.notification.${event}`,
+    const result = await sendApplicationWhatsApp({
       applicationId,
-      message: messageText,
+      eventType: mapped,
+      recipientMobile: customerMobile,
+      customerName,
+      serviceName: application.service_name || "Service",
+      notes: notes || undefined,
+      amount: options.amount ?? application.total_amount ?? application.amount,
+      status: application.status,
+      forceRetry: options.forceRetry,
+    });
+
+    // Best-effort audit trail (non-blocking for delivery).
+    await supabase.from("system_events").insert({
+      event_name: `whatsapp.notification.${event}`,
+      entity_type: "application",
+      entity_id: applicationId,
       payload: {
-        customerName,
-        serviceName,
-        paymentId: options.paymentId,
-        notes: options.notes,
+        to_masked: customerMobile.replace(/\d(?=\d{4})/g, "x"),
+        event: mapped,
+        ok: result.ok,
+        code: "code" in result ? result.code : null,
+        deduped: result.ok && "deduped" in result ? result.deduped : false,
       },
     });
 
-    // 4. Record the notification event in public.system_events table (which triggers DB enqueuing trigger)
-    const { error: eventError } = await supabase
-      .from("system_events")
-      .insert({
-        event_name: `whatsapp.notification.${event}`,
-        entity_type: "application",
-        entity_id: applicationId,
-        payload: {
-          to: customerMobile,
-          customer_name: customerName,
-          service_name: serviceName,
-          message: messageText,
-          payment_id: options.paymentId,
-          notes: options.notes,
-        },
-      });
-
-    if (eventError) {
-      console.error(`WhatsApp Automation: Failed to insert system event:`, eventError);
-      return { success: false, reason: "event_logging_failed" };
+    if (!result.ok) {
+      return {
+        success: false,
+        reason: result.code,
+        error: result.error,
+        queued: "queued" in result ? result.queued : false,
+      };
     }
 
-    // 5. Asynchronously trigger background queue worker (fire-and-forget)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    fetch(`${baseUrl}/api/cron/process-notifications`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    }).catch((err) => {
-      console.error("Failed to invoke background process-notifications worker:", err);
-    });
-
-    return { success: true };
+    return { success: true, deduped: result.deduped === true, messageId: result.messageId };
   } catch (error) {
     console.error(`WhatsApp Automation error for application ${applicationId}:`, error);
     return { success: false, reason: "exception_occurred", error };

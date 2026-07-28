@@ -570,6 +570,8 @@ export async function POST(request: Request) {
         await triggerWhatsAppNotification("payment_success", application.id, {
           paymentId: razorpayPaymentId
         });
+      } else if (expectedAmountPaise > 0) {
+        await triggerWhatsAppNotification("payment_pending", application.id);
       }
     } catch (waError) {
       console.error("WhatsApp trigger error for AP applications:", waError);

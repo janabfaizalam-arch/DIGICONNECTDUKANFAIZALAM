@@ -12,6 +12,12 @@
 
 import { randomUUID } from "crypto";
 
+import type {
+  SendAisensyCampaignInput,
+  SendAisensyCampaignResult,
+} from "@/lib/whatsapp/types";
+import { WHATSAPP_MOBILE_REQUIRED_ERROR } from "@/lib/whatsapp/types";
+
 const DEFAULT_AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
 const REQUEST_TIMEOUT_MS = 15_000;
 const DUPLICATE_SEND_WINDOW_MS = 5_000;
@@ -132,8 +138,11 @@ export function normalizeAisensyDestination(
     local = local.slice(1);
   }
 
+  if (!local || local.length !== 10) {
+    return { ok: false, error: WHATSAPP_MOBILE_REQUIRED_ERROR };
+  }
   if (!/^[6-9]\d{9}$/.test(local)) {
-    return { ok: false, error: "Valid Indian 10-digit WhatsApp number required." };
+    return { ok: false, error: WHATSAPP_MOBILE_REQUIRED_ERROR };
   }
 
   return { ok: true, destination: `91${local}`, local };
@@ -157,7 +166,12 @@ export function loadAisensyConfig():
   }
 
   const apiKey = process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim();
-  const apiUrl = (process.env.AISENSY_API_URL?.trim() || DEFAULT_AISENSY_API_URL).replace(/\/$/, "");
+  // Preserve production `AISENSY_API_URL`; accept `AISENSY_API_BASE_URL` as alias.
+  const apiUrl = (
+    process.env.AISENSY_API_URL?.trim() ||
+    process.env.AISENSY_API_BASE_URL?.trim() ||
+    DEFAULT_AISENSY_API_URL
+  ).replace(/\/$/, "");
 
   if (!apiKey) {
     return { ok: false, error: "AISENSY_API_KEY is not configured.", code: "missing_api_key" };
@@ -248,6 +262,216 @@ export function __resetAisensySendDedupeForTests() {
   recentSendKeys.clear();
 }
 
+function emptyCampaignResult(
+  requestId: string,
+  partial: Partial<SendAisensyCampaignResult> & {
+    errorCode: string;
+    errorMessage: string;
+  },
+): SendAisensyCampaignResult {
+  return {
+    ok: false,
+    queued: Boolean(partial.queued),
+    sent: false,
+    failed: !partial.queued && !partial.configuration_required,
+    configuration_required: Boolean(partial.configuration_required),
+    providerMessageId: partial.providerMessageId ?? null,
+    errorCode: partial.errorCode,
+    errorMessage: partial.errorMessage,
+    campaignName: partial.campaignName ?? null,
+    destination: partial.destination ?? null,
+    requestId,
+    httpStatus: partial.httpStatus ?? null,
+  };
+}
+
+function extractProviderMessageId(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const record = body as Record<string, unknown>;
+  const candidate =
+    record.submitted_message_id ??
+    record.submittedMessageId ??
+    record.messageId ??
+    record.message_id ??
+    record.request_id ??
+    record.requestId;
+  return candidate == null ? null : String(candidate);
+}
+
+/**
+ * Central AiSensy Campaign API sender (OTP + application notifications).
+ * Never logs API key or OTP/template secrets.
+ */
+export async function sendAisensyCampaign(
+  options: SendAisensyCampaignInput,
+): Promise<SendAisensyCampaignResult> {
+  const requestId = randomUUID();
+  const campaignName = String(options.campaignName ?? "").trim();
+  if (!campaignName) {
+    return emptyCampaignResult(requestId, {
+      errorCode: "missing_campaign",
+      errorMessage: "Campaign name is required.",
+    });
+  }
+
+  const loaded = loadAisensyConfig();
+  if (!loaded.ok) {
+    console.error("[aisensy] config_error", {
+      campaign: campaignName,
+      requestId,
+      code: loaded.code,
+      error: loaded.error,
+    });
+    return emptyCampaignResult(requestId, {
+      configuration_required: true,
+      queued: true,
+      failed: false,
+      errorCode: loaded.code,
+      errorMessage: loaded.error,
+      campaignName,
+    });
+  }
+
+  const phone = normalizeAisensyDestination(options.destination);
+  if (!phone.ok) {
+    return emptyCampaignResult(requestId, {
+      errorCode: "invalid_phone",
+      errorMessage: phone.error,
+      campaignName,
+    });
+  }
+
+  const templateParams = (options.templateParams ?? []).map((value) => String(value ?? "").trim());
+  if (templateParams.some((value) => !value)) {
+    return emptyCampaignResult(requestId, {
+      errorCode: "invalid_template_params",
+      errorMessage: "Template parameters cannot be empty.",
+      campaignName,
+      destination: phone.destination,
+    });
+  }
+
+  const useDedupe = options.dedupe !== false;
+  if (useDedupe && !claimSendSlot(phone.destination, campaignName)) {
+    console.warn("[aisensy] duplicate_send_blocked", {
+      campaign: campaignName,
+      phone: maskPhoneLocal(phone.local),
+      requestId,
+    });
+    return emptyCampaignResult(requestId, {
+      errorCode: "duplicate_send",
+      errorMessage: "Duplicate send blocked.",
+      campaignName,
+      destination: phone.destination,
+    });
+  }
+
+  console.info("[aisensy] send_start", {
+    Campaign: campaignName,
+    Phone: maskPhoneLocal(phone.local),
+    "Request Id": requestId,
+    Source: options.source ?? "digiconnect",
+    HasMedia: Boolean(options.media?.url),
+  });
+
+  const payload: Record<string, unknown> = {
+    apiKey: loaded.config.apiKey,
+    campaignName,
+    destination: phone.destination,
+    userName: options.userName?.trim() || "Customer",
+    templateParams,
+    source: options.source ?? "digiconnect",
+  };
+  if (options.buttons?.length) payload.buttons = options.buttons;
+  if (options.media?.url) {
+    payload.media = {
+      url: options.media.url,
+      filename: options.media.filename || "document.pdf",
+    };
+  }
+
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetchImpl(loaded.config.apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const rawText = await response.text();
+    const body = parseResponseBody(rawText);
+    const safeBody = redactSecrets(
+      typeof body === "string" ? body : JSON.stringify(body ?? null),
+      loaded.config.apiKey,
+    );
+    const success = isAisensySuccessResponse(response.status, body);
+
+    console.info("[aisensy] send_result", {
+      Campaign: campaignName,
+      "HTTP Status": response.status,
+      "Success/Failure": success ? "Success" : "Failure",
+      "AiSensy Response": safeBody.slice(0, 500),
+      "Request Id": requestId,
+    });
+
+    if (!success) {
+      if (useDedupe) recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
+      return emptyCampaignResult(requestId, {
+        errorCode: "provider_rejected",
+        errorMessage: "WhatsApp delivery failed.",
+        campaignName,
+        destination: phone.destination,
+        httpStatus: response.status,
+        providerMessageId: extractProviderMessageId(body),
+      });
+    }
+
+    return {
+      ok: true,
+      queued: false,
+      sent: true,
+      failed: false,
+      configuration_required: false,
+      providerMessageId: extractProviderMessageId(body) ?? requestId,
+      errorCode: null,
+      errorMessage: null,
+      campaignName,
+      destination: phone.destination,
+      requestId,
+      httpStatus: response.status,
+    };
+  } catch (error) {
+    if (useDedupe) recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
+    const aborted = error instanceof Error && error.name === "AbortError";
+    const message = aborted
+      ? "AiSensy request timed out."
+      : error instanceof Error
+        ? redactSecrets(error.message, loaded.config.apiKey)
+        : "AiSensy request failed.";
+
+    console.error("[aisensy] send_result", {
+      Campaign: campaignName,
+      "HTTP Status": aborted ? "timeout" : "network_error",
+      "Success/Failure": "Failure",
+      "AiSensy Response": message,
+      "Request Id": requestId,
+    });
+
+    return emptyCampaignResult(requestId, {
+      errorCode: aborted ? "timeout" : "network_error",
+      errorMessage: message,
+      campaignName,
+      destination: phone.destination,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export type SendAisensyOtpOptions = {
   phone: string;
   otp: string;
@@ -265,42 +489,8 @@ export type SendAisensyOtpOptions = {
  * Never logs the OTP value.
  */
 export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<AisensySendResult> {
-  const requestId = randomUUID();
   const purpose = String(options.purpose ?? "").trim() || "password_reset";
   const campaignName = getCampaignName(purpose);
-
-  const loaded = loadAisensyConfig();
-  if (!loaded.ok) {
-    console.error("[aisensy] config_error", {
-      purpose,
-      campaign: campaignName,
-      requestId,
-      code: loaded.code,
-      error: loaded.error,
-    });
-    return {
-      ok: false,
-      provider: "aisensy",
-      error: AISENSY_USER_FACING_SEND_ERROR,
-      code: loaded.code,
-      requestId,
-      campaignName,
-    };
-  }
-
-  const { config } = loaded;
-  const phone = normalizeAisensyDestination(options.phone);
-  if (!phone.ok) {
-    console.error("[aisensy] invalid_phone", { purpose, campaign: campaignName, requestId });
-    return {
-      ok: false,
-      provider: "aisensy",
-      error: phone.error,
-      code: "invalid_phone",
-      requestId,
-      campaignName,
-    };
-  }
 
   if (!/^\d{6}$/.test(options.otp)) {
     return {
@@ -308,40 +498,14 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
       provider: "aisensy",
       error: AISENSY_USER_FACING_SEND_ERROR,
       code: "invalid_otp",
-      requestId,
       campaignName,
     };
   }
 
-  if (!claimSendSlot(phone.destination, campaignName)) {
-    console.warn("[aisensy] duplicate_send_blocked", {
-      purpose,
-      campaign: campaignName,
-      phone: maskPhoneLocal(phone.local),
-      requestId,
-    });
-    return {
-      ok: false,
-      provider: "aisensy",
-      error: AISENSY_USER_FACING_SEND_ERROR,
-      code: "duplicate_send",
-      requestId,
-      campaignName,
-    };
-  }
-
-  console.info("[aisensy] send_start", {
-    Purpose: purpose,
-    Campaign: campaignName,
-    Phone: maskPhoneLocal(phone.local),
-    "Request Id": requestId,
-  });
-
-  const payload = {
-    apiKey: config.apiKey,
+  const result = await sendAisensyCampaign({
     campaignName,
-    destination: phone.destination,
-    userName: options.userName?.trim() || "Customer",
+    destination: options.phone,
+    userName: options.userName,
     templateParams: [options.otp],
     source: options.source ?? `digiconnect-auth:${purpose}`,
     buttons: [
@@ -352,84 +516,30 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
         parameters: [{ type: "text", text: options.otp }],
       },
     ],
-  };
+    dedupe: true,
+    fetchImpl: options.fetchImpl,
+  });
 
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  try {
-    const response = await fetchImpl(config.apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    const rawText = await response.text();
-    const body = parseResponseBody(rawText);
-    const safeBody = redactSecrets(
-      typeof body === "string" ? body : JSON.stringify(body ?? null),
-      config.apiKey,
-    );
-
-    const success = isAisensySuccessResponse(response.status, body);
-
-    console.info("[aisensy] send_result", {
-      Campaign: campaignName,
-      "HTTP Status": response.status,
-      "Success/Failure": success ? "Success" : "Failure",
-      "AiSensy Response": safeBody.slice(0, 500),
-      Purpose: purpose,
-      "Request Id": requestId,
-    });
-
-    if (!success) {
-      recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
-      return {
-        ok: false,
-        provider: "aisensy",
-        error: AISENSY_USER_FACING_SEND_ERROR,
-        code: "provider_rejected",
-        requestId,
-        campaignName,
-      };
-    }
-
-    return {
-      ok: true,
-      provider: "aisensy",
-      destination: phone.destination,
-      campaignName,
-      requestId,
-    };
-  } catch (error) {
-    recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
-    const aborted = error instanceof Error && error.name === "AbortError";
-    const message = aborted
-      ? "AiSensy request timed out."
-      : error instanceof Error
-        ? redactSecrets(error.message, config.apiKey)
-        : "AiSensy request failed.";
-
-    console.error("[aisensy] send_result", {
-      Campaign: campaignName,
-      "HTTP Status": aborted ? "timeout" : "network_error",
-      "Success/Failure": "Failure",
-      "AiSensy Response": message,
-      Purpose: purpose,
-      "Request Id": requestId,
-    });
-
+  if (!result.ok) {
+    const code = result.errorCode ?? "provider_rejected";
     return {
       ok: false,
       provider: "aisensy",
-      error: AISENSY_USER_FACING_SEND_ERROR,
-      code: aborted ? "timeout" : "network_error",
-      requestId,
-      campaignName,
+      error:
+        code === "invalid_phone"
+          ? result.errorMessage || WHATSAPP_MOBILE_REQUIRED_ERROR
+          : AISENSY_USER_FACING_SEND_ERROR,
+      code,
+      requestId: result.requestId,
+      campaignName: result.campaignName ?? campaignName,
     };
-  } finally {
-    clearTimeout(timer);
   }
+
+  return {
+    ok: true,
+    provider: "aisensy",
+    destination: result.destination || "",
+    campaignName: result.campaignName || campaignName,
+    requestId: result.requestId,
+  };
 }

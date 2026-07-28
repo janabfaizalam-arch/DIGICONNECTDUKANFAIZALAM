@@ -218,14 +218,26 @@ export function workflowSelectOptions(from: unknown) {
 export function whatsappEventForStatusChange(
   previousStatus: unknown,
   nextStatus: unknown,
-): "documents_required" | "objection" | "processing_started" | "objection_resolved" | null {
+):
+  | "documents_required"
+  | "objection"
+  | "processing_started"
+  | "objection_resolved"
+  | "under_review"
+  | null {
   const prev = normalizeWorkflowStatus(previousStatus);
   const next = normalizeWorkflowStatus(nextStatus);
   if (!next || prev === next) return null;
 
+  const rawNext = String(nextStatus ?? "")
+    .trim()
+    .toLowerCase();
+
   if (next === "documents_required" || next === "document_pending") return "documents_required";
   if (next === "objection") return "objection";
   if (next === "in_progress" && prev === "objection") return "objection_resolved";
+  // `under_review` normalizes to in_progress — detect raw value for the dedicated campaign.
+  if (rawNext === "under_review" || rawNext === "review") return "under_review";
   if (next === "in_progress") return "processing_started";
   return null;
 }

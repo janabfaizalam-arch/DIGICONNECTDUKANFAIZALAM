@@ -927,6 +927,8 @@ export async function POST(request: Request) {
             await triggerWhatsAppNotification("payment_success", app.id, {
               paymentId: body.razorpayPayment.razorpay_payment_id
             });
+          } else {
+            await triggerWhatsAppNotification("payment_pending", app.id);
           }
         }
       } catch (waError) {
@@ -1430,6 +1432,8 @@ export async function POST(request: Request) {
           await triggerWhatsAppNotification("payment_success", app.id, {
             paymentId: body.razorpayPayment.razorpay_payment_id
           });
+        } else {
+          await triggerWhatsAppNotification("payment_pending", app.id);
         }
       }
     } catch (waError) {
