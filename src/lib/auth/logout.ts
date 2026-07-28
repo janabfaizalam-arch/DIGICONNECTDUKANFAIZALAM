@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { isSupabaseAuthCookieName } from "@/lib/auth/admin-login-core";
+import { isSupabaseAuthCookieName } from "@/lib/auth/admin-login-shared";
 import { ADMIN_ACCESS_TOKEN_COOKIE } from "@/lib/auth/admin-session";
 import { PORTAL_CONTEXT_COOKIE } from "@/lib/auth/memberships";
 import {

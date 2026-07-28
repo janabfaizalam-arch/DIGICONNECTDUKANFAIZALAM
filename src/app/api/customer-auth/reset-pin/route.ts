@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hashPin } from "@/lib/auth-v2/password";
 import { checkRateLimit } from "@/lib/auth-v2/rate-limit";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   try {
     const { mobile, newPin } = await request.json();

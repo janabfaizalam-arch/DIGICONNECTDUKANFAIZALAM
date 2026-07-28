@@ -7,7 +7,7 @@ import {
   TimeoutError,
   withTimeout,
   type AdminProfileRow,
-} from "./admin-login-core";
+} from "./admin-login-shared";
 
 describe("withTimeout", () => {
   beforeEach(() => {

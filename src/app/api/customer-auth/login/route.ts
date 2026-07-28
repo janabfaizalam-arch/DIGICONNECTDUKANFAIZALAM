@@ -6,6 +6,8 @@ import { setAuthCookies, generateRefreshToken, hashRefreshToken, DEVICE_ID_COOKI
 import { signAccessToken } from "@/lib/auth-v2/jwt";
 import { checkRateLimit } from "@/lib/auth-v2/rate-limit";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   try {
     const { mobile, pin, rememberMe } = await request.json();

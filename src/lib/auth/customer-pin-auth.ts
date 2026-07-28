@@ -1,3 +1,5 @@
+import "server-only";
+
 import { cookies } from "next/headers";
 
 import { findExistingCustomerByMobile, syncProfileMobileFlags } from "@/lib/auth/customer-lookup";

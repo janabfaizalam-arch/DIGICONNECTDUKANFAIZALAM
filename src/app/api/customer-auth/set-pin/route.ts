@@ -5,6 +5,8 @@ import { hashPin } from "@/lib/auth-v2/password";
 import { setAuthCookies, generateRefreshToken, hashRefreshToken } from "@/lib/auth-v2/session";
 import { signAccessToken } from "@/lib/auth-v2/jwt";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

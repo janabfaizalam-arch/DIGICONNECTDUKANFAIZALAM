@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveCustomerMatches } from "@/lib/auth/customer-lookup";
 import {
   matchesLocal,
   mobileLookupVariants,
   normalizeStoredMobile,
-  resolveCustomerMatches,
-} from "@/lib/auth/customer-lookup";
+} from "@/lib/auth/mobile";
 
 describe("normalizeStoredMobile / variants", () => {
   it("normalizes common Indian formats to 10 digits", () => {

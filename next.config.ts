@@ -29,6 +29,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Keep native Argon2 out of the bundler graph for App Router server code.
+  serverExternalPackages: ["argon2"],
   images: {
     remotePatterns: [
       {

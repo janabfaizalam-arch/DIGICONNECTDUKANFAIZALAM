@@ -1,9 +1,8 @@
+import "server-only";
+
+import { mobileLookupVariants, normalizeStoredMobile } from "@/lib/auth/mobile";
+import { findExistingCustomerByMobile } from "@/lib/auth/customer-lookup";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import {
-  findExistingCustomerByMobile,
-  mobileLookupVariants,
-  normalizeStoredMobile,
-} from "@/lib/auth/customer-lookup";
 
 export type CustomerIdentityHealth = {
   customerId: string | null;

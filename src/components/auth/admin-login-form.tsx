@@ -13,7 +13,10 @@ import {
   SegmentedControl,
   TextField,
 } from "@/components/auth/ui";
-import { categorizeAdminLoginFailure, type AdminLoginFailure } from "@/lib/auth/admin-login-core";
+import {
+  categorizeAdminLoginFailure,
+  type AdminLoginFailure,
+} from "@/lib/auth/admin-login-shared";
 import { postJson } from "@/components/auth/ui/request";
 
 type Mode = "email" | "pin";

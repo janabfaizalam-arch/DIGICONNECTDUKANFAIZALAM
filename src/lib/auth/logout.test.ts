@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NextResponse } from "next/server";
 
-import { isSupabaseAuthCookieName } from "@/lib/auth/admin-login-core";
+import { isSupabaseAuthCookieName } from "@/lib/auth/admin-login-shared";
 import { ADMIN_ACCESS_TOKEN_COOKIE } from "@/lib/auth/admin-session";
 import {
   AUTH_COOKIE_CLEAR_SPECS,

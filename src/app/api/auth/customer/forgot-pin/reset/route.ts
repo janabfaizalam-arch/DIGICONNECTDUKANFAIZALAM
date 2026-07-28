@@ -9,6 +9,7 @@ import { isValidPinFormat, validateCustomerPin } from "@/lib/auth/pin";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
 import { logAuthSecurityEvent } from "@/lib/auth/security-log";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const schema = z.object({

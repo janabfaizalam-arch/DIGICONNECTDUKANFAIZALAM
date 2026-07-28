@@ -10,7 +10,7 @@ import {
   type AdminProfileRow,
 } from "@/lib/auth/admin-login-core";
 import { createPrimaryAdminPinSession } from "@/lib/auth/admin-session";
-import { mobileLookupVariants, normalizeStoredMobile } from "@/lib/auth/customer-lookup";
+import { mobileLookupVariants, normalizeStoredMobile } from "@/lib/auth/mobile";
 import { maskPhone, normalizeIndianPhone } from "@/lib/auth/phone";
 import {
   isAllowlistedAdminEmail,
@@ -26,6 +26,7 @@ import { clearAuthCookies } from "@/lib/auth-v2/session";
 import { verifyPin } from "@/lib/auth-v2/password";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Hard budgets so one slow/unreachable dependency can never hang the login.

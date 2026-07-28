@@ -1,4 +1,6 @@
-import * as argon2 from 'argon2';
+import "server-only";
+
+import * as argon2 from "argon2";
 
 export async function hashPin(pin: string): Promise<string> {
   return argon2.hash(pin, {
