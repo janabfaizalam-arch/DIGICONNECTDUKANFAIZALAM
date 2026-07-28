@@ -42,6 +42,7 @@ export function AdminUpdateForm({
   hasFinalDocument = false,
   missingDocuments = false,
   whatsappFinalDeliveryStatus = null,
+  whatsappLogsAvailable = true,
 }: {
   applicationId: string;
   currentStatus: ApplicationStatus | string;
@@ -55,16 +56,23 @@ export function AdminUpdateForm({
   hasFinalDocument?: boolean;
   missingDocuments?: boolean;
   whatsappFinalDeliveryStatus?: string | null;
+  /** False when July WhatsApp migration / table is absent. */
+  whatsappLogsAvailable?: boolean;
 }) {
   const initialStatus = currentStatus === "in_process" ? "in_progress" : currentStatus;
-  const [status, setStatus] = useState<ApplicationStatus>(
-    isApplicationStatus(initialStatus) ? initialStatus : "submitted",
-  );
+  const normalizedInitialStatus = isApplicationStatus(initialStatus) ? initialStatus : "submitted";
+  const initialAssigned = assignedAgentId || "none";
+
+  const [status, setStatus] = useState<ApplicationStatus>(normalizedInitialStatus);
+  const [assigned, setAssigned] = useState(initialAssigned);
+  const [internalNotes, setInternalNotes] = useState("");
+  const [activityNote, setActivityNote] = useState("");
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [finalFile, setFinalFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
   const { success, error: toastError } = useToast();
   const router = useRouter();
+
   const messageParams = { applicationId, serviceName, customerName };
   const whatsappUrl = buildCustomerWhatsAppUrl(
     buildAdminCustomerWhatsAppMessage({
@@ -73,18 +81,28 @@ export function AdminUpdateForm({
     }),
     customerMobile,
   );
+  const hasValidMobile = Boolean(whatsappUrl);
 
   const statusOptions = useMemo(() => workflowSelectOptions(currentStatus), [currentStatus]);
   const showPaymentReminder = shouldShowPaymentReminder(currentPaymentStatus, currentStatus);
   const showComplete = shouldShowCompleteAction(currentStatus);
   const editable = isWorkflowEditable(currentStatus);
   const delivery = String(whatsappFinalDeliveryStatus ?? "").toLowerCase();
+  const trustedDelivery = whatsappLogsAvailable ? delivery : "";
+
+  const dirty = useMemo(() => {
+    const statusChanged = editable && status !== normalizedInitialStatus;
+    const assignedChanged = editable && assigned !== initialAssigned;
+    const notesChanged = Boolean(internalNotes.trim() || activityNote.trim());
+    return statusChanged || assignedChanged || notesChanged;
+  }, [editable, status, normalizedInitialStatus, assigned, initialAssigned, internalNotes, activityNote]);
+
   const smartAction = resolveSmartNextAction({
     status: currentStatus,
     paymentStatus: currentPaymentStatus,
     hasFinalDocument,
     missingDocuments,
-    whatsappFinalDeliveryStatus,
+    whatsappFinalDeliveryStatus: whatsappLogsAvailable ? whatsappFinalDeliveryStatus : null,
   });
 
   const quickMessages = (
@@ -92,13 +110,13 @@ export function AdminUpdateForm({
       {
         label: "Ask for Documents",
         icon: FileQuestion,
-        show: missingDocuments,
+        show: editable && missingDocuments,
         eventType: "documents_required" as const,
       },
       {
         label: "Send Payment Reminder",
         icon: Clock3,
-        show: showPaymentReminder,
+        show: editable && showPaymentReminder,
         eventType: "payment_pending" as const,
       },
       {
@@ -117,6 +135,7 @@ export function AdminUpdateForm({
   ).filter((item) => item.show);
 
   function patchApplication(formData: FormData) {
+    if (isPending) return;
     startTransition(async () => {
       try {
         const response = await fetch(`/api/admin/applications/${applicationId}`, {
@@ -126,6 +145,8 @@ export function AdminUpdateForm({
         const result = (await response.json()) as { message?: string };
         if (!response.ok) throw new Error(result.message || "Update failed.");
         success(result.message || "Application updated.");
+        setInternalNotes("");
+        setActivityNote("");
         router.refresh();
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Update failed.");
@@ -135,7 +156,7 @@ export function AdminUpdateForm({
 
   function sendWhatsAppEvent(eventType: string, label: string) {
     if (isPending) return;
-    if (!customerMobile) {
+    if (!hasValidMobile) {
       toastError("Customer mobile is required for WhatsApp.");
       return;
     }
@@ -174,9 +195,14 @@ export function AdminUpdateForm({
           method: "POST",
           body: formData,
         });
-        const result = (await response.json()) as { message?: string; whatsappOk?: boolean };
+        const result = (await response.json()) as {
+          message?: string;
+          whatsappOk?: boolean;
+          code?: string;
+        };
         if (!response.ok) throw new Error(result.message || "Retry failed.");
         if (result.whatsappOk) success(result.message || "WhatsApp resent.");
+        else if (result.code === "database_upgrade_required") toastError(result.message || "Database upgrade required.");
         else toastError(result.message || "WhatsApp delivery failed.");
         router.refresh();
       } catch (error) {
@@ -191,7 +217,7 @@ export function AdminUpdateForm({
       toastError("Upload a final document first.");
       return;
     }
-    if (!customerMobile) {
+    if (!hasValidMobile) {
       toastError("Customer mobile is required for WhatsApp.");
       return;
     }
@@ -204,7 +230,6 @@ export function AdminUpdateForm({
     startTransition(async () => {
       try {
         if (!finalFile && hasFinalDocument) {
-          // Already uploaded — mark completed via PATCH then retry WhatsApp send
           const patch = new FormData();
           patch.set("status", "completed");
           const patchRes = await fetch(`/api/admin/applications/${applicationId}`, {
@@ -243,15 +268,23 @@ export function AdminUpdateForm({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isPending) return;
+    if (isPending || !dirty) return;
     const formData = new FormData(event.currentTarget);
-    formData.set("status", status);
+    if (editable) {
+      formData.set("status", status);
+      formData.set("assignedAgentId", assigned);
+    } else {
+      formData.delete("status");
+      formData.delete("assignedAgentId");
+    }
+    if (internalNotes.trim()) formData.set("internalNotes", internalNotes.trim());
+    if (activityNote.trim()) formData.set("note", activityNote.trim());
     patchApplication(formData);
   };
 
   return (
     <div className="space-y-3">
-      {smartAction.key !== "none" ? (
+      {editable && smartAction.key !== "none" ? (
         <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
           Next: {smartAction.label}
         </div>
@@ -259,17 +292,26 @@ export function AdminUpdateForm({
 
       {!editable ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-          Workflow locked ({String(currentStatus).replace(/_/g, " ")}).
-          {delivery ? ` WhatsApp: ${delivery}.` : ""}
+          Workflow locked ({String(currentStatus).replace(/_/g, " ")}). Internal notes can still be saved.
+        </div>
+      ) : null}
+
+      {!whatsappLogsAvailable ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">
+          Database upgrade required for WhatsApp delivery logs.
         </div>
       ) : null}
 
       <form onSubmit={onSubmit} className="space-y-3" aria-busy={isPending}>
-        <fieldset disabled={isPending || !editable} className="space-y-3">
+        <fieldset disabled={isPending} className="space-y-3">
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</label>
-            <Select value={status} onValueChange={(value) => setStatus(value as ApplicationStatus)}>
-              <SelectTrigger aria-label="Work status" className="h-9">
+            <Select
+              value={status}
+              onValueChange={(value) => setStatus(value as ApplicationStatus)}
+              disabled={!editable || isPending}
+            >
+              <SelectTrigger aria-label="Work status" className="h-9" disabled={!editable || isPending}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -288,8 +330,13 @@ export function AdminUpdateForm({
 
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Assigned to</label>
-            <Select name="assignedAgentId" defaultValue={assignedAgentId || "none"}>
-              <SelectTrigger aria-label="Assigned agent" className="h-9">
+            <Select
+              name="assignedAgentId"
+              value={assigned}
+              onValueChange={setAssigned}
+              disabled={!editable || isPending}
+            >
+              <SelectTrigger aria-label="Assigned agent" className="h-9" disabled={!editable || isPending}>
                 <SelectValue placeholder="Assign agent" />
               </SelectTrigger>
               <SelectContent>
@@ -303,10 +350,27 @@ export function AdminUpdateForm({
             </Select>
           </div>
 
-          <Textarea name="internalNotes" placeholder="Internal note" className="min-h-16 text-sm" />
-          <Textarea name="note" placeholder="Activity note" className="min-h-16 text-sm" />
+          <Textarea
+            name="internalNotes"
+            placeholder="Internal note"
+            className="min-h-16 text-sm"
+            value={internalNotes}
+            onChange={(event) => setInternalNotes(event.target.value)}
+          />
+          <Textarea
+            name="note"
+            placeholder="Activity note"
+            className="min-h-16 text-sm"
+            value={activityNote}
+            onChange={(event) => setActivityNote(event.target.value)}
+          />
 
-          <FormSubmitButton loading={isPending} loadingText="Saving..." className="h-9 w-full text-sm">
+          <FormSubmitButton
+            loading={isPending}
+            loadingText="Saving..."
+            disabled={!dirty || isPending}
+            className="h-9 w-full text-sm"
+          >
             Save Changes
           </FormSubmitButton>
         </fieldset>
@@ -319,7 +383,7 @@ export function AdminUpdateForm({
             <button
               key={item.label}
               type="button"
-              disabled={isPending || !customerMobile}
+              disabled={isPending || !hasValidMobile || !whatsappLogsAvailable}
               onClick={() => sendWhatsAppEvent(item.eventType, item.label)}
               className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
             >
@@ -341,11 +405,10 @@ export function AdminUpdateForm({
           </button>
         ) : null}
 
-        {String(whatsappFinalDeliveryStatus ?? "").toLowerCase() === "failed" ||
-        String(whatsappFinalDeliveryStatus ?? "").toLowerCase() === "queued" ? (
+        {whatsappLogsAvailable && (trustedDelivery === "failed" || trustedDelivery === "queued") ? (
           <button
             type="button"
-            disabled={isPending || !customerMobile}
+            disabled={isPending || !hasValidMobile}
             onClick={retryWhatsApp}
             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
           >
@@ -354,15 +417,15 @@ export function AdminUpdateForm({
           </button>
         ) : null}
 
-        {String(whatsappFinalDeliveryStatus ?? "").toLowerCase() === "sent" ? (
+        {whatsappLogsAvailable && trustedDelivery === "sent" ? (
           <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
             Final document delivered on WhatsApp
           </p>
         ) : null}
 
-        {whatsappUrl ? (
+        {hasValidMobile ? (
           <a
-            href={whatsappUrl}
+            href={whatsappUrl!}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white"
@@ -434,7 +497,7 @@ export function AdminUpdateForm({
               </button>
               <button
                 type="button"
-                disabled={isPending || (!finalFile && !hasFinalDocument) || !customerMobile}
+                disabled={isPending || (!finalFile && !hasFinalDocument) || !hasValidMobile}
                 onClick={completeAndSend}
                 className="h-9 flex-1 rounded-lg bg-emerald-600 text-xs font-semibold text-white disabled:opacity-50"
               >

@@ -38,6 +38,22 @@ function text(value: unknown) {
 }
 
 const hiddenFormKeys = new Set(["documents", "payment", "service_slugs"]);
+/** Already shown in Customer / Application overview — skip in Submitted fields. */
+const overviewDuplicateFormKeys = new Set([
+  "name",
+  "full_name",
+  "customer_name",
+  "mobile",
+  "phone",
+  "whatsapp",
+  "email",
+  "address",
+  "city",
+  "state",
+  "pincode",
+  "pin_code",
+  "pin",
+]);
 const formLabels: Record<string, string> = {
   pincode: "Pin Code",
   district: "District",
@@ -177,7 +193,14 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
         <h2 className="text-sm font-bold text-slate-950">Submitted fields</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {Object.entries(formData)
-            .filter(([key, value]) => !hiddenFormKeys.has(key) && text(value) && key !== "dpr" && key !== "details")
+            .filter(
+              ([key, value]) =>
+                !hiddenFormKeys.has(key) &&
+                !overviewDuplicateFormKeys.has(key) &&
+                text(value) &&
+                key !== "dpr" &&
+                key !== "details",
+            )
             .map(([key, value]) => (
               <DetailRow key={key} label={labelFromKey(key)} value={text(value)} />
             ))}
@@ -331,8 +354,25 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
       <h2 className="text-sm font-bold text-slate-950">Communication</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <DetailRow label="Customer message" value={application.customer_message || application.customer_note || "—"} />
-        <DetailRow label="WhatsApp final delivery" value={application.whatsapp_final_delivery_status || "—"} />
-        <DetailRow label="Delivered at" value={application.whatsapp_final_delivered_at ? safeDateTime(application.whatsapp_final_delivered_at) : "—"} mono />
+        <DetailRow
+          label="WhatsApp final delivery"
+          value={
+            !whatsappLogsAvailable
+              ? "Upgrade required"
+              : application.whatsapp_final_delivery_status || "—"
+          }
+        />
+        <DetailRow
+          label="Delivered at"
+          value={
+            !whatsappLogsAvailable
+              ? "—"
+              : application.whatsapp_final_delivered_at
+                ? safeDateTime(application.whatsapp_final_delivered_at)
+                : "—"
+          }
+          mono
+        />
         <DetailRow label="Customer mobile" value={customerMobile || "—"} mono />
       </div>
       <div className="mt-4 space-y-2">
@@ -400,7 +440,14 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               <DetailRow label="Amount" value={safeCurrency(facts.totalAmount)} />
               <DetailRow label="Created" value={facts.createdAt} mono />
               <DetailRow label="Assigned" value={assignedLabel} />
-              <DetailRow label="WhatsApp doc" value={application.whatsapp_final_delivery_status || "—"} />
+              <DetailRow
+                label="WhatsApp doc"
+                value={
+                  !whatsappLogsAvailable
+                    ? "Upgrade required"
+                    : application.whatsapp_final_delivery_status || "—"
+                }
+              />
             </div>
           </Card>
 
@@ -432,6 +479,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 hasFinalDocument={hasFinalDocument}
                 missingDocuments={Boolean(missingDocuments)}
                 whatsappFinalDeliveryStatus={application.whatsapp_final_delivery_status}
+                whatsappLogsAvailable={whatsappLogsAvailable}
               />
             </div>
             {paymentStatus === "pending" ? (
