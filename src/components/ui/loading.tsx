@@ -1,26 +1,34 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { LoaderCircle } from "lucide-react";
 
+import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type ButtonSpinnerProps = {
   className?: string;
+  label?: string;
+  size?: "xs" | "sm";
 };
 
-export function ButtonSpinner({ className }: ButtonSpinnerProps) {
+/** Compact DigiConnect loader for buttons and inline controls. */
+export function ButtonSpinner({ className, label = "Loading...", size = "sm" }: ButtonSpinnerProps) {
   return (
-    <span className={cn("relative inline-flex h-5 w-5 shrink-0 items-center justify-center", className)} aria-hidden="true">
-      <span className="absolute h-full w-full rounded-full bg-gradient-to-r from-blue-600 via-sky-500 to-orange-500 opacity-35 motion-safe:animate-ping motion-reduce:animate-none" />
-      <LoaderCircle className="relative h-full w-full animate-spin text-current motion-reduce:animate-none" />
+    <span className={cn("inline-flex shrink-0 items-center justify-center", className)}>
+      <DigiConnectLoader variant="inline" size={size} label={label} showLabel={false} />
     </span>
   );
 }
 
-export function PageLoader({ label = "Loading DigiConnect Dukan" }: { label?: string }) {
+export function PageLoader({ label = "Loading DigiConnect Dukan..." }: { label?: string }) {
   return (
-    <div className="container-shell flex min-h-[60vh] items-center justify-center py-14" role="status" aria-live="polite" aria-label={label}>
+    <div
+      className="container-shell flex min-h-[60vh] items-center justify-center py-14"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={label}
+    >
       <div className="glass-panel flex w-full max-w-sm flex-col items-center rounded-[1.75rem] border border-white/20 px-6 py-8 text-center">
         <Image
           src="/logo-navbar.png"
@@ -28,10 +36,10 @@ export function PageLoader({ label = "Loading DigiConnect Dukan" }: { label?: st
           width={220}
           height={94}
           priority
-          className="h-auto w-44 object-contain motion-safe:animate-logo-load md:w-52"
+          className="h-auto w-44 object-contain md:w-52"
         />
-        <div className="mt-5 h-1.5 w-40 overflow-hidden rounded-full bg-blue-100">
-          <div className="h-full w-1/2 rounded-full bg-gradient-to-r from-blue-700 to-orange-500 motion-safe:animate-[loading-slide_1.15s_ease-in-out_infinite] motion-reduce:animate-none" />
+        <div className="mt-6">
+          <DigiConnectLoader variant="section" size="md" label={label} showLabel={false} className="!min-h-0 !p-0" />
         </div>
         <p className="mt-4 text-sm font-bold text-slate-700">{label}</p>
       </div>
@@ -39,14 +47,27 @@ export function PageLoader({ label = "Loading DigiConnect Dukan" }: { label?: st
   );
 }
 
-export function LoadingOverlay({ show, label = "Please wait...", children }: { show: boolean; label?: string; children?: ReactNode }) {
+export function LoadingOverlay({
+  show,
+  label = "Please wait...",
+  children,
+}: {
+  show: boolean;
+  label?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="relative">
       {children}
       {show ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[inherit] bg-white/72 backdrop-blur-sm" role="status" aria-live="polite">
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center rounded-[inherit] bg-white/72 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
           <div className="glass-panel flex items-center gap-3 rounded-2xl border border-white/25 px-4 py-3 text-sm font-bold text-slate-800 shadow-soft">
-            <ButtonSpinner className="text-blue-700" />
+            <DigiConnectLoader variant="inline" size="sm" label={label} showLabel={false} />
             {label}
           </div>
         </div>
@@ -78,16 +99,31 @@ type FormSubmitButtonProps = ButtonProps & {
 
 export function FormSubmitButton({
   loading = false,
+  isLoading,
   loadingText = "Please wait...",
   icon,
   children,
   disabled,
   ...props
 }: FormSubmitButtonProps) {
+  const busy = Boolean(loading || isLoading);
   return (
-    <Button type="submit" disabled={disabled || loading} aria-busy={loading} {...props}>
-      {loading ? <ButtonSpinner /> : icon}
-      {loading ? loadingText : children}
+    <Button
+      type="submit"
+      disabled={disabled || busy}
+      isLoading={busy}
+      loadingText={loadingText}
+      aria-busy={busy}
+      {...props}
+    >
+      {!busy && icon ? (
+        <>
+          {icon}
+          {children}
+        </>
+      ) : (
+        children
+      )}
     </Button>
   );
 }

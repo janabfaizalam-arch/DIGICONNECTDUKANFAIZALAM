@@ -9,7 +9,6 @@ import {
   ClipboardList,
   FolderCheck,
   ListChecks,
-  LoaderCircle,
   Menu,
   ReceiptText,
   UserCheck,
@@ -24,6 +23,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AdminBreadcrumbs } from "@/components/admin/admin-breadcrumbs";
 import { AdminGlobalSearch } from "@/components/admin/admin-global-search";
 import { AdminNotificationsBell } from "@/components/admin/admin-notifications-bell";
+import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ADMIN_NAV_GROUPS, isAdminNavActive } from "@/lib/admin/nav";
 import { cn } from "@/lib/utils";
@@ -77,7 +77,11 @@ function AdminNav({
                       active ? "bg-white text-blue-600 shadow-sm border border-blue-100" : "text-slate-400 group-hover/link:text-slate-700",
                     )}
                   >
-                    {loadingHref === href ? <LoaderCircle className="h-4 w-4 animate-spin text-blue-600" /> : <Icon className="h-4 w-4" />}
+                    {loadingHref === href ? (
+                      <DigiConnectLoader variant="inline" size="xs" label="Opening..." showLabel={false} />
+                    ) : (
+                      <Icon className="h-4 w-4" />
+                    )}
                   </span>
                   {!collapsed ? (
                     <span className="min-w-0 flex-1 truncate text-sm">{loadingHref === href ? "Opening…" : label}</span>

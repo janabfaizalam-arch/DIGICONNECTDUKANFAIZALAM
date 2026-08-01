@@ -1,8 +1,9 @@
 "use client";
 
-import { LoaderCircle, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
+import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { cn } from "@/lib/utils";
 
 type Ripple = { id: number; x: number; y: number; size: number };
@@ -90,7 +91,12 @@ export function AuthButton({
       {status === "success" ? (
         <Check className="auth-pop-in h-5 w-5" strokeWidth={3} />
       ) : loading ? (
-        <LoaderCircle className="h-5 w-5 animate-spin motion-reduce:animate-none" />
+        <DigiConnectLoader
+          variant="inline"
+          size="sm"
+          label={loadingText || "Loading..."}
+          showLabel={false}
+        />
       ) : null}
       <span className="relative">{loading && loadingText ? loadingText : children}</span>
     </button>

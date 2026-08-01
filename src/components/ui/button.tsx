@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -30,11 +31,60 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** When true, disables the button and shows the DigiConnect loader. */
+  isLoading?: boolean;
+  loadingText?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return <button className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+  (
+    {
+      className,
+      variant,
+      size,
+      isLoading = false,
+      loadingText,
+      disabled,
+      children,
+      onClick,
+      type = "button",
+      ...props
+    },
+    ref,
+  ) => {
+    const busy = Boolean(isLoading);
+    return (
+      <button
+        type={type}
+        className={cn(buttonVariants({ variant, size, className }), busy && "relative")}
+        ref={ref}
+        disabled={disabled || busy}
+        aria-disabled={disabled || busy || undefined}
+        aria-busy={busy || undefined}
+        onClick={(event) => {
+          if (busy) {
+            event.preventDefault();
+            return;
+          }
+          onClick?.(event);
+        }}
+        {...props}
+      >
+        {busy ? (
+          <>
+            <DigiConnectLoader
+              variant="inline"
+              size={size === "lg" ? "sm" : "xs"}
+              label={loadingText || "Loading..."}
+              showLabel={false}
+            />
+            <span>{loadingText || children}</span>
+          </>
+        ) : (
+          children
+        )}
+      </button>
+    );
   },
 );
 Button.displayName = "Button";

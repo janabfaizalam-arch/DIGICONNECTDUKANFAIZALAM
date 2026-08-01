@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { LoaderCircle, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+
+import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { usePathname } from "next/navigation";
 
 import { useToast } from "@/components/providers/toast-provider";
@@ -95,7 +97,11 @@ export function LogoutButton({
       aria-label={showLabel ? undefined : "Logout"}
       aria-busy={isLoggingOut}
     >
-      {isLoggingOut ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+      {isLoggingOut ? (
+        <DigiConnectLoader variant="inline" size="xs" label="Signing out..." showLabel={false} />
+      ) : (
+        <LogOut className="h-4 w-4" />
+      )}
       {showLabel ? (isLoggingOut ? "Signing out..." : "Logout") : null}
     </Button>
   );
