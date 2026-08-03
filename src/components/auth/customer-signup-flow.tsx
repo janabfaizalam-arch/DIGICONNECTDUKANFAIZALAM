@@ -23,6 +23,17 @@ import { stepTransition } from "@/components/auth/ui/motion";
 type Step = "details" | "otp" | "pin";
 const STEPS: Step[] = ["details", "otp", "pin"];
 const STEP_LABELS: Record<Step, string> = { details: "Details", otp: "Verify", pin: "Set PIN" };
+const SIGNUP_OTP_ROUTE = "/api/auth/customer/send-signup-otp";
+
+function maskLocalPhone(local: string): string {
+  if (local.length !== 10) return "+91 XXXXXX****";
+  return `+91 ${local.slice(0, 2)}XXXXXX${local.slice(-2)}`;
+}
+
+function logSignupOtp(event: string, payload: Record<string, unknown>) {
+  // Safe client diagnostics only — never log OTP, tokens, or full numbers.
+  console.info(`[signup-otp-client] ${event}`, payload);
+}
 
 export function CustomerSignupFlow() {
   const reduceMotion = useReducedMotion();
@@ -55,6 +66,13 @@ export function CustomerSignupFlow() {
   async function sendOtp() {
     if (loading) return;
     setError(null);
+    const masked = maskLocalPhone(phone);
+    logSignupOtp("signup_otp_button_clicked", {
+      route: SIGNUP_OTP_ROUTE,
+      purpose: "customer_signup",
+      maskedPhone: masked,
+    });
+
     if (!fullName.trim() || phone.length !== 10 || !address.trim() || pincode.length !== 6 || !district.trim() || !stateName.trim()) {
       setError("Please complete all details.");
       return;
@@ -63,9 +81,29 @@ export function CustomerSignupFlow() {
       setError("Please accept the Terms and Privacy Policy.");
       return;
     }
+
+    logSignupOtp("signup_otp_validation_passed", {
+      route: SIGNUP_OTP_ROUTE,
+      purpose: "customer_signup",
+      maskedPhone: masked,
+    });
+
     setLoading(true);
+    logSignupOtp("signup_otp_request_started", {
+      route: SIGNUP_OTP_ROUTE,
+      purpose: "customer_signup",
+      maskedPhone: masked,
+    });
+
     try {
-      const result = await postJson<{ error?: string; maskedPhone?: string }>("/api/auth/customer/send-signup-otp", {
+      const result = await postJson<{
+        ok?: boolean;
+        success?: boolean;
+        error?: string;
+        code?: string;
+        maskedPhone?: string;
+        requestId?: string;
+      }>(SIGNUP_OTP_ROUTE, {
         fullName,
         phone,
         address,
@@ -73,13 +111,34 @@ export function CustomerSignupFlow() {
         district,
         state: stateName,
       });
+
+      logSignupOtp("signup_otp_response_received", {
+        route: SIGNUP_OTP_ROUTE,
+        purpose: "customer_signup",
+        maskedPhone: masked,
+        status: result.status,
+        requestId: result.data?.requestId,
+        code: result.data?.code,
+        ok: result.ok,
+      });
+
       if (!result.ok) {
-        const msg = messageFor(result, "OTP send failed.");
+        const msg = messageFor(result, "OTP send failed. WhatsApp OTP was not sent.");
+        logSignupOtp("signup_otp_request_failed", {
+          route: SIGNUP_OTP_ROUTE,
+          purpose: "customer_signup",
+          maskedPhone: masked,
+          status: result.status,
+          requestId: result.data?.requestId,
+          code: result.data?.code,
+        });
         setError(msg);
         toastError(msg);
         return;
       }
-      setMaskedPhone(result.data.maskedPhone ?? "");
+
+      // OTP step only after explicit provider-accepted success (postJson requires ok/success).
+      setMaskedPhone(result.data.maskedPhone ?? masked);
       setCooldown(60);
       setOtp("");
       setStep("otp");

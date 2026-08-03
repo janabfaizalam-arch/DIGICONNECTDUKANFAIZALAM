@@ -17,3 +17,11 @@ dist
 .env*
 
 *.log
+test-results/
+playwright-report/
+screenshots/
+dev-server.log.err
+*.tgz
+*.png.tmp
+visual-outputs/
+homepage-visual/

@@ -167,12 +167,21 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // API routes must never be rewritten/redirected to HTML auth pages.
+  // Auth and rate limits are enforced inside each route handler.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   // Preserve AiSensy customer auth entrypoints
   if (pathname === "/login" || pathname === "/login/customer" || pathname === "/customer-login") {
     return NextResponse.redirect(new URL("/customer/login", request.url));
   }
   if (pathname === "/signup") {
     return NextResponse.redirect(new URL("/customer/signup", request.url));
+  }
+  if (pathname === "/customer-auth-v2/signup" || pathname.startsWith("/customer-auth-v2/signup/")) {
+    return NextResponse.redirect(new URL("/customer/signup", request.url), 308);
   }
   if (pathname === "/forgot-password" || pathname.startsWith("/forgot-password/")) {
     return NextResponse.redirect(new URL("/customer/forgot-pin", request.url));

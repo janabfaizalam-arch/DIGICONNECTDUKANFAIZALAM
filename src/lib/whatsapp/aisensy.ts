@@ -71,33 +71,39 @@ export function getWhatsappProvider(): string {
   return (process.env.WHATSAPP_PROVIDER ?? "aisensy").trim().toLowerCase();
 }
 
+export type OtpCampaignResolution =
+  | { ok: true; campaignName: string; source: string }
+  | { ok: false; code: "OTP_PROVIDER_CONFIG_MISSING" | "OTP_FORBIDDEN_CAMPAIGN"; error: string; source: string | null };
+
+function firstEnv(...keys: string[]): { value: string; source: string } | null {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return { value, source: key };
+  }
+  return null;
+}
+
 /**
- * Select the existing AiSensy LIVE campaign for an OTP purpose.
- * Defaults match dashboard campaign names when env vars are unset.
- *
- * Fallback order for signup:
- *   AISENSY_SIGNUP_CAMPAIGN
- *   → AISENSY_CAMPAIGN_NAME_SIGNUP (legacy Vercel)
- *   → AISENSY_OTP_CAMPAIGN_NAME (legacy shared)
- *   → signup_otp
+ * Resolve the Live AiSensy campaign for an OTP purpose with an explicit env source.
+ * Signup never falls back to login/reset campaigns.
  */
-export function getCampaignName(purpose: string): string {
+export function resolveOtpCampaign(purpose: string): OtpCampaignResolution {
   const normalized = String(purpose ?? "")
     .trim()
     .toLowerCase();
 
-  let campaign: string;
-  let fallback: string;
+  let resolved: { value: string; source: string } | null = null;
+  let intentionalDefault: string | null = null;
 
   switch (normalized) {
     case "customer_signup":
     case "signup":
-      fallback = DEFAULT_SIGNUP_CAMPAIGN;
-      campaign =
-        process.env.AISENSY_SIGNUP_CAMPAIGN?.trim() ||
-        process.env.AISENSY_CAMPAIGN_NAME_SIGNUP?.trim() ||
-        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
-        fallback;
+      resolved = firstEnv(
+        "AISENSY_SIGNUP_CAMPAIGN",
+        "AISENSY_CAMPAIGN_NAME_SIGNUP",
+        "AISENSY_OTP_CAMPAIGN_NAME",
+      );
+      intentionalDefault = DEFAULT_SIGNUP_CAMPAIGN;
       break;
 
     case "forgot_pin":
@@ -107,45 +113,77 @@ export function getCampaignName(purpose: string): string {
     case "password_reset":
     case "change_phone":
     case "security_verification":
-      fallback = DEFAULT_PASSWORD_RESET_CAMPAIGN;
-      campaign =
-        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() ||
-        process.env.AISENSY_CAMPAIGN_NAME_RESET?.trim() ||
-        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
-        fallback;
+      resolved = firstEnv(
+        "AISENSY_PASSWORD_RESET_CAMPAIGN",
+        "AISENSY_RESET_CAMPAIGN",
+        "AISENSY_CAMPAIGN_NAME_RESET",
+        "AISENSY_OTP_CAMPAIGN_NAME",
+      );
+      intentionalDefault = DEFAULT_PASSWORD_RESET_CAMPAIGN;
       break;
 
     case "login":
     case "login_otp":
-      fallback = DEFAULT_LOGIN_CAMPAIGN;
-      campaign =
-        process.env.AISENSY_LOGIN_CAMPAIGN?.trim() ||
-        process.env.AISENSY_CAMPAIGN_NAME_LOGIN?.trim() ||
-        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
-        fallback;
+      resolved = firstEnv(
+        "AISENSY_LOGIN_CAMPAIGN",
+        "AISENSY_CAMPAIGN_NAME_LOGIN",
+        "AISENSY_OTP_CAMPAIGN_NAME",
+      );
+      intentionalDefault = DEFAULT_LOGIN_CAMPAIGN;
       break;
 
     default:
-      console.warn("[aisensy] unknown_purpose_using_password_reset", { purpose: normalized });
-      fallback = DEFAULT_PASSWORD_RESET_CAMPAIGN;
-      campaign =
-        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() ||
-        process.env.AISENSY_CAMPAIGN_NAME_RESET?.trim() ||
-        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
-        fallback;
-      break;
+      return {
+        ok: false,
+        code: "OTP_PROVIDER_CONFIG_MISSING",
+        error: `Unsupported OTP purpose "${normalized}".`,
+        source: null,
+      };
   }
 
-  if (campaign === FORBIDDEN_AUTH_CAMPAIGN) {
-    console.error("[aisensy] forbidden_campaign_blocked", {
-      purpose: normalized,
-      campaign,
-      fallback,
+  const campaignName = resolved?.value || intentionalDefault || "";
+  const source = resolved?.source || (intentionalDefault ? `default:${intentionalDefault}` : null);
+
+  if (!campaignName) {
+    return {
+      ok: false,
+      code: "OTP_PROVIDER_CONFIG_MISSING",
+      error: "OTP_PROVIDER_CONFIG_MISSING: no signup/login/reset campaign configured.",
+      source: null,
+    };
+  }
+
+  if (campaignName === FORBIDDEN_AUTH_CAMPAIGN) {
+    return {
+      ok: false,
+      code: "OTP_FORBIDDEN_CAMPAIGN",
+      error: `Forbidden campaign "${FORBIDDEN_AUTH_CAMPAIGN}" cannot be used for authentication OTP.`,
+      source,
+    };
+  }
+
+  return { ok: true, campaignName, source: source || "unknown" };
+}
+
+/**
+ * Select the existing AiSensy LIVE campaign for an OTP purpose.
+ * Prefer resolveOtpCampaign() when failure must be explicit.
+ */
+export function getCampaignName(purpose: string): string {
+  const resolved = resolveOtpCampaign(purpose);
+  if (!resolved.ok) {
+    console.error("[aisensy] campaign_resolve_failed", {
+      purpose,
+      code: resolved.code,
+      error: resolved.error,
     });
-    return fallback;
+    // Backward-compatible string API for callers that still expect a name —
+    // OTP send path must check resolveOtpCampaign() and fail hard.
+    if (purpose === "customer_signup" || purpose === "signup") return DEFAULT_SIGNUP_CAMPAIGN;
+    if (purpose === "login" || purpose === "login_otp") return DEFAULT_LOGIN_CAMPAIGN;
+    return DEFAULT_PASSWORD_RESET_CAMPAIGN;
   }
-
-  return campaign;
+  return resolved.campaignName;
 }
 
 export function redactSecrets(value: string, apiKey?: string): string {
@@ -535,7 +573,25 @@ export type SendAisensyOtpOptions = {
  */
 export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<AisensySendResult> {
   const purpose = String(options.purpose ?? "").trim() || "password_reset";
-  const campaignName = getCampaignName(purpose);
+  const campaign = resolveOtpCampaign(purpose);
+
+  if (!campaign.ok) {
+    console.error("[aisensy] otp_campaign_missing", {
+      purpose,
+      code: campaign.code,
+      error: campaign.error,
+    });
+    return {
+      ok: false,
+      provider: "aisensy",
+      error: AISENSY_USER_FACING_SEND_ERROR,
+      code: campaign.code,
+      campaignName: undefined,
+      providerDetail: campaign.error,
+    };
+  }
+
+  const campaignName = campaign.campaignName;
 
   if (!/^\d{6}$/.test(options.otp)) {
     return {
@@ -544,8 +600,15 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
       error: AISENSY_USER_FACING_SEND_ERROR,
       code: "invalid_otp",
       campaignName,
+      providerDetail: "OTP must be exactly 6 digits before provider send.",
     };
   }
+
+  console.info("[aisensy] otp_campaign_resolved", {
+    purpose,
+    campaign: campaignName,
+    source: campaign.source,
+  });
 
   const result = await sendAisensyCampaign({
     campaignName,
@@ -570,6 +633,7 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
     console.error("[aisensy] otp_send_failed", {
       purpose,
       campaign: result.campaignName ?? campaignName,
+      campaignSource: campaign.source,
       code,
       requestId: result.requestId,
       httpStatus: result.httpStatus,
@@ -594,6 +658,7 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
   console.info("[aisensy] otp_send_accepted", {
     purpose,
     campaign: result.campaignName || campaignName,
+    campaignSource: campaign.source,
     requestId: result.requestId,
     providerMessageId: result.providerMessageId,
     httpStatus: result.httpStatus,

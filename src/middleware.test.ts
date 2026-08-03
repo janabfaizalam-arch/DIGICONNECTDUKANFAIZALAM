@@ -78,3 +78,16 @@ describe("loggedOut login pages stay public", () => {
     expect(location.pathname).not.toBe("/unauthorized");
   });
 });
+
+describe("signup OTP API and legacy redirects", () => {
+  it("lets /api/* pass through without auth redirects", async () => {
+    const res = await middleware(requestFor("/api/auth/customer/send-signup-otp"));
+    expect(res.status).toBeLessThan(300);
+  });
+
+  it("permanently redirects legacy customer-auth-v2 signup to canonical signup", async () => {
+    const res = await middleware(requestFor("/customer-auth-v2/signup"));
+    expect(res.status).toBe(308);
+    expect(new URL(res.headers.get("location") as string).pathname).toBe("/customer/signup");
+  });
+});

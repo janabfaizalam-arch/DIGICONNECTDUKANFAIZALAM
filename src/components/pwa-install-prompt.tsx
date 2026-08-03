@@ -34,7 +34,13 @@ export function PwaInstallPrompt() {
     }
 
     function registerServiceWorker() {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .then((registration) => {
+          // Pick up CACHE_NAME bumps from new deploys (auth/OTP JS must not stay stale).
+          registration.update().catch(() => undefined);
+        })
+        .catch(() => undefined);
     }
 
     if (document.readyState === "complete") {
@@ -47,6 +53,19 @@ export function PwaInstallPrompt() {
     return () => {
       window.removeEventListener("load", registerServiceWorker);
     };
+  }, []);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let refreshing = false;
+    function onControllerChange() {
+      if (refreshing) return;
+      refreshing = true;
+      // skipWaiting + clientsClaim already ran in sw.js — load fresh signup/auth bundles.
+      window.location.reload();
+    }
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
   }, []);
 
   useEffect(() => {

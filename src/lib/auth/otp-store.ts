@@ -151,8 +151,11 @@ export async function createAndSendOtp(input: {
 
     return {
       ok: false,
-      error: "Unable to send OTP. Please try again in a few minutes.",
-      status: 502,
+      error:
+        sendResult.code === "OTP_PROVIDER_CONFIG_MISSING" || sendResult.code === "missing_api_key"
+          ? "OTP provider is not configured. Please contact support."
+          : "Unable to send OTP. Please try again in a few minutes.",
+      status: sendResult.code === "OTP_PROVIDER_CONFIG_MISSING" || sendResult.code === "missing_api_key" ? 503 : 502,
     };
   }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "digiconnect-static-v1";
+const CACHE_NAME = "digiconnect-static-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
@@ -9,11 +9,14 @@ const PRECACHE_URLS = [
   "/icons/maskable-icon-512.png",
 ];
 
+/** Never intercept or cache these paths (auth, APIs, HTML that must stay fresh). */
 const PRIVATE_PATH_PREFIXES = [
   "/api/",
   "/admin",
   "/agent",
   "/customer",
+  "/customer-auth",
+  "/customer-auth-v2",
   "/dashboard",
   "/login",
   "/signup",
@@ -32,16 +35,17 @@ function isPrivatePath(pathname) {
   return PRIVATE_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix));
 }
 
-function isStaticAsset(request, url) {
+/** Icons/images/fonts only — never permanently cache /_next/static JS (stale auth bundles). */
+function isCacheableStaticAsset(request, url) {
   if (url.pathname.startsWith("/_next/static/")) {
-    return true;
+    return false;
   }
 
   if (url.pathname.startsWith("/icons/") || url.pathname.startsWith("/images/")) {
     return true;
   }
 
-  return ["image", "font", "style", "script"].includes(request.destination);
+  return ["image", "font"].includes(request.destination);
 }
 
 self.addEventListener("install", (event) => {
@@ -65,6 +69,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
+  // Never intercept non-GET (POST OTP/auth) — let the network handle it.
   if (request.method !== "GET") {
     return;
   }
@@ -75,12 +80,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Navigations: network-only with offline fallback (no HTML cache).
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
     return;
   }
 
-  if (!isStaticAsset(request, url)) {
+  // Next.js hashed bundles: network-first so deploys pick up new auth JS immediately.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => response)
+        .catch(() => caches.match(request)),
+    );
+    return;
+  }
+
+  if (!isCacheableStaticAsset(request, url)) {
     return;
   }
 
