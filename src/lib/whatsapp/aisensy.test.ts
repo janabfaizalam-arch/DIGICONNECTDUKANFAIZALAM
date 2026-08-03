@@ -121,6 +121,7 @@ describe("resolveOtpCampaign", () => {
   });
 });
 
+describe("getCampaignName", () => {
   it("maps signup purposes to signup_otp by default", () => {
     expect(getCampaignName("customer_signup")).toBe("signup_otp");
     expect(getCampaignName("signup")).toBe("signup_otp");
