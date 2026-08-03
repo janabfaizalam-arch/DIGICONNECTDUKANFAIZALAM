@@ -55,8 +55,13 @@ export function derivePinPassword(localPhone: string, pin: string): string {
 }
 
 export function hashOtp(otp: string): string {
-  const secret = process.env.AUTH_HMAC_SECRET?.trim() || "otp-fallback-dev-only";
-  return crypto.createHmac("sha256", secret).update(`otp:${otp}`).digest("hex");
+  const secret = process.env.AUTH_HMAC_SECRET?.trim();
+  if (!secret) {
+    console.error("[auth] AUTH_HMAC_SECRET_missing_using_dev_fallback");
+  } else if (secret.length < 32) {
+    console.error("[auth] AUTH_HMAC_SECRET_too_short", { length: secret.length });
+  }
+  return crypto.createHmac("sha256", secret || "otp-fallback-dev-only").update(`otp:${otp}`).digest("hex");
 }
 
 export function verifyOtpHash(otp: string, otpHash: string): boolean {

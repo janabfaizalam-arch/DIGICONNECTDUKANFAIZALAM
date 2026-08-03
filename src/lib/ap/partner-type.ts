@@ -47,6 +47,17 @@ export const LEGACY_PARTNER_TYPE_MAP = {
   ceo: "company_partner",
   shop_owner: "business_partner",
   field_executive: "field_executive",
+  // Common historical / UI aliases → canonical Digi Partner types
+  agent: "field_executive",
+  sub_agent: "field_executive",
+  field_staff: "field_executive",
+  team_member: "office_staff",
+  staff: "office_staff",
+  employee: "office_staff",
+  agency_staff: "office_staff",
+  franchise: "business_partner",
+  consultant: "business_partner",
+  reseller: "business_partner",
 } as const;
 
 export type LegacyPartnerType = keyof typeof LEGACY_PARTNER_TYPE_MAP;

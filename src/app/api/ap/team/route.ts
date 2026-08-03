@@ -241,6 +241,7 @@ export async function POST(request: Request) {
       status: "active",
       kyc_status: "approved",
       created_by_user_id: user!.id, // Company Partner team scoping
+      reporting_to_partner_id: ap!.id,
     };
 
     const profilePayload = {
@@ -272,6 +273,13 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    console.info("[partner-team] inserting_records", {
+      managerId: user!.id,
+      managerPartnerId: ap!.id,
+      memberCode: partnerCode,
+      partnerType,
+    });
+
     const [apRes, profileRes, userRes] = await Promise.all([
       supabase!.from("agency_partners").upsert(apPayload, { onConflict: "user_id" }),
       supabase!.from("profiles").upsert(profilePayload, { onConflict: "id" }),
@@ -279,10 +287,32 @@ export async function POST(request: Request) {
     ]);
 
     if (apRes.error || profileRes.error || userRes.error) {
-      const errMsg = apRes.error?.message || profileRes.error?.message || userRes.error?.message;
-      console.error("[partner-team] Record sync failed:", errMsg);
+      const errMsg = apRes.error?.message || profileRes.error?.message || userRes.error?.message || "unknown";
+      const errCode = apRes.error?.code || profileRes.error?.code || userRes.error?.code;
+      const errDetails = apRes.error?.details || profileRes.error?.details || userRes.error?.details;
+      console.error("[partner-team] Record sync failed:", {
+        message: errMsg,
+        code: errCode,
+        details: errDetails,
+        partnerType,
+        partnerCode,
+      });
       // Rollback auth user
       await supabase!.auth.admin.deleteUser(created.user.id);
+
+      const isPartnerTypeCheck =
+        /agency_partners_partner_type_check/i.test(errMsg) ||
+        (/partner_type/i.test(errMsg) && /check constraint/i.test(errMsg));
+
+      if (isPartnerTypeCheck) {
+        return jsonError(
+          `Team member creation failed: database partner_type check still rejects "${partnerType}". ` +
+            `Apply migration 20260803120000_partner_types_v2_repair.sql so allowed values are ` +
+            `business_partner, company_partner, field_executive, office_staff.`,
+          500,
+        );
+      }
+
       return jsonError("Team member creation failed: " + errMsg, 500);
     }
 

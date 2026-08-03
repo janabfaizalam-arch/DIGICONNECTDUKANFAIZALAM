@@ -41,6 +41,20 @@ export function isHomepageSlideCtaPosition(value: string): value is HomepageSlid
   return homepageSlideCtaPositions.includes(value as HomepageSlideCtaPosition);
 }
 
+function isSlideLive(slide: HomepageSlide, now = Date.now()) {
+  if (!slide.is_active) return false;
+  if (slide.starts_at) {
+    const start = Date.parse(slide.starts_at);
+    if (!Number.isNaN(start) && start > now) return false;
+  }
+  if (slide.ends_at) {
+    const end = Date.parse(slide.ends_at);
+    if (!Number.isNaN(end) && end < now) return false;
+  }
+  if (!slide.image_url?.trim()) return false;
+  return true;
+}
+
 export async function getActiveHomepageSlides(limit = 12): Promise<HomepageSlide[]> {
   const supabase = getSupabaseAdmin();
 
@@ -55,14 +69,15 @@ export async function getActiveHomepageSlides(limit = 12): Promise<HomepageSlide
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .limit(Math.max(limit * 2, 12));
 
     if (error) {
       console.error("[homepage-slides] Failed to fetch active slides", error);
       return [];
     }
 
-    return (data ?? []) as HomepageSlide[];
+    const now = Date.now();
+    return ((data ?? []) as HomepageSlide[]).filter((slide) => isSlideLive(slide, now)).slice(0, limit);
   } catch (error) {
     console.error("[homepage-slides] Failed to fetch active slides", error);
     return [];

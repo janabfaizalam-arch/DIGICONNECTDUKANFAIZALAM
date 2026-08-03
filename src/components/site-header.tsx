@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck, ChevronDown, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -170,7 +170,7 @@ function getRelativeTime(dateStr: string) {
   }
 }
 
-export function SiteHeader() {
+export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const pathname = usePathname();
@@ -241,16 +241,31 @@ export function SiteHeader() {
   const scrolledRef = useRef(false);
   const ticking = useRef(false);
 
-  // AI Search custom event & hotkey listeners
+  const focusHomepageSearch = useCallback(() => {
+    if (typeof document === "undefined") return false;
+    const el = document.getElementById("homepage-search-input") as HTMLInputElement | null;
+    if (!el) return false;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => el.focus({ preventScroll: true }), 180);
+    return true;
+  }, []);
+
+  // Search: on homepage prefer the primary search hub; elsewhere open header search
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handleOpenSearch = () => setSearchOpen(true);
+    const openSearch = () => {
+      if (pathname === "/" && focusHomepageSearch()) return;
+      setSearchOpen(true);
+    };
+
+    const handleOpenSearch = () => openSearch();
     window.addEventListener("open-ai-search", handleOpenSearch);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
+        if (pathname === "/" && focusHomepageSearch()) return;
         setSearchOpen((prev) => !prev);
       }
     };
@@ -260,7 +275,7 @@ export function SiteHeader() {
       window.removeEventListener("open-ai-search", handleOpenSearch);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [pathname, focusHomepageSearch]);
 
   // Auth sync — never trust a stale client session after logout
   useEffect(() => {
@@ -660,9 +675,12 @@ export function SiteHeader() {
   return (
     <>
       <header
-        className={`site-header print:hidden ${isHome ? "home-header" : ""} ${scrolled ? "scrolled" : ""} ${navHidden ? "nav-hidden" : ""}`}
+        className={`site-header print:hidden ${isHome ? "home-header home-stacked" : ""} ${scrolled ? "scrolled" : ""} ${navHidden ? "nav-hidden" : ""}`}
       >
-        <div className="flex h-full items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
+        {isHome && announcement ? (
+          <div className="home-announcement-slot w-full shrink-0 empty:hidden">{announcement}</div>
+        ) : null}
+        <div className="flex h-[var(--header-height)] w-full items-center justify-between gap-3 bg-white px-4 md:px-6 lg:px-8">
           {/* LEFT — Logo */}
           <Link
             href="/"
@@ -681,49 +699,70 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          {/* CENTER — Public nav (desktop guests) or AI Search */}
+          {/* CENTER — Primary nav (desktop) + compact search trigger */}
           {!agentShell && (
-            <div className="hidden flex-1 items-center justify-center gap-1 px-4 md:flex lg:px-10">
-              {!isLoggedIn ? (
-                <nav aria-label="Primary" className="flex items-center gap-0.5">
-                  {[
-                    { href: "/", label: "Home" },
+            <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-2 lg:flex lg:gap-3 lg:px-6">
+              <nav aria-label="Primary" className="flex max-w-full flex-wrap items-center justify-center gap-0.5 xl:flex-nowrap">
+                {(
+                  [
                     { href: "/services", label: "Services" },
-                    { href: "/track-application", label: "Track Application" },
-                    { href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL },
-                  ].map((item) => {
-                    const active =
-                      item.href === "/"
-                        ? pathname === "/"
-                        : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "rounded-xl px-3 py-2 text-xs font-bold transition",
-                          active
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-800",
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              ) : (
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="flex h-10 w-full max-w-md items-center gap-2.5 rounded-2xl border border-slate-200/40 bg-white/40 px-4 text-xs font-semibold text-slate-400 transition-all duration-200 hover:border-slate-350 hover:bg-white hover:shadow-sm"
-                >
-                  <Search className="h-4 w-4 text-slate-400" />
-                  <span className="flex items-center gap-1">AI Search services, FAQs, schemes...</span>
-                  <kbd className="ml-auto hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-405 lg:inline-block">
+                    { href: isHome ? "#categories" : "/services", label: "Categories" },
+                    { href: isHome ? "#schemes" : "/services", label: "Schemes" },
+                    { href: "/print", label: "Smart Print" },
+                    { href: "/track-application", label: "Track" },
+                    { href: isHome ? "#support" : "/#support", label: "Help" },
+                    ...(!isLoggedIn
+                      ? [{ href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL }]
+                      : []),
+                  ] as const
+                ).map((item) => {
+                  const active =
+                    item.href.startsWith("#") || item.href.includes("#")
+                      ? false
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  return (
+                    <Link
+                      key={`${item.href}-${item.label}`}
+                      href={item.href}
+                      className={cn(
+                        "rounded-lg px-2.5 py-2 text-[11px] font-bold transition xl:px-3 xl:text-xs",
+                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+                        active
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Compact search trigger — homepage focuses primary hub; elsewhere opens header search */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isHome && focusHomepageSearch()) return;
+                  setSearchOpen(true);
+                }}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200/70 bg-white/80 px-3 text-xs font-semibold text-slate-500 transition",
+                  "hover:border-slate-300 hover:bg-white hover:text-slate-800",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+                  isHome ? "max-w-[2.5rem] justify-center px-0 xl:max-w-none xl:px-3" : "max-w-xs",
+                )}
+                aria-label={isHome ? "Focus homepage search" : "Open search"}
+              >
+                <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className={cn("truncate", isHome ? "hidden xl:inline" : "hidden lg:inline")}>
+                  Search
+                </span>
+                {!isHome ? (
+                  <kbd className="ml-1 hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold text-slate-400 xl:inline-block">
                     ⌘K
                   </kbd>
-                </button>
-              )}
+                ) : null}
+              </button>
             </div>
           )}
 
@@ -756,26 +795,33 @@ export function SiteHeader() {
 
           {/* RIGHT — Actions */}
           <div className="flex items-center gap-1.5 md:gap-2">
-            {/* Mobile search icon */}
+            {/* Mobile / tablet search — homepage focuses primary hub */}
             <button
-              onClick={() => setSearchOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 md:hidden"
+              type="button"
+              onClick={() => {
+                if (isHome && focusHomepageSearch()) return;
+                setSearchOpen(true);
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 lg:hidden"
+              aria-label={isHome ? "Focus homepage search" : "Open search"}
               title="Search"
             >
-              <Search className="h-[18px] w-[18px]" />
+              <Search className="h-[18px] w-[18px]" aria-hidden="true" />
             </button>
 
             {/* Notifications System */}
             <div className="relative" ref={notifRef}>
               <button
+                type="button"
                 title="Notifications"
                 onClick={() => setNotifOpen(!notifOpen)}
                 onKeyDown={handleNotifKeyDown}
+                aria-label="Notifications"
                 aria-haspopup="dialog"
                 aria-expanded={notifOpen}
-                className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
-                <Bell className="h-[18px] w-[18px]" />
+                <Bell className="h-[18px] w-[18px]" aria-hidden="true" />
                 {unreadCount > 0 && (
                   <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white animate-pulse" />
                 )}

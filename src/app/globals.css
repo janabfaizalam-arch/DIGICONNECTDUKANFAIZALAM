@@ -73,7 +73,68 @@
 
   /* Layout */
   --header-height: 64px;
-  --bottom-nav-height: 60px;
+  --announcement-height: 40px;
+  /* Content height of mobile bottom nav (safe-area applied separately in padding) */
+  --bottom-nav-height: 64px;
+  --whatsapp-fab-size: 2.75rem;
+  --whatsapp-fab-gap: 1rem;
+
+  /* DigiConnect logo-derived homepage system */
+  --dc-navy-950: #071f4d;
+  --dc-navy-900: #082b63;
+  --dc-blue-800: #064a9f;
+  --dc-blue-700: #075bbb;
+  --dc-blue-600: #1268e8;
+  --dc-blue-500: #2f80ed;
+  --dc-orange-700: #d94b00;
+  --dc-orange-600: #f25a00;
+  --dc-orange-500: #ff6800;
+  --dc-orange-400: #ff8533;
+  --dc-ink: #10213d;
+  --dc-body: #35445f;
+  --dc-muted: #64748b;
+  --dc-blue-soft: #eaf4ff;
+  --dc-sky-soft: #f1f8ff;
+  --dc-orange-soft: #fff1e6;
+  --dc-cream: #fff9ed;
+  --dc-teal: #078b75;
+  --dc-teal-soft: #e5f8f3;
+  --dc-violet: #6846d6;
+  --dc-violet-soft: #f0ebff;
+  --dc-cyan: #078cab;
+  --dc-cyan-soft: #e5f8fc;
+  --dc-max: 1360px;
+  --mobile-page-gutter: 16px;
+  --mobile-card-gutter: 16px;
+  --mobile-section-gap: 32px;
+  --dc-card-radius: 1.25rem;
+
+  /* Back-compat aliases used by earlier Option 3 work */
+  --home-navy: var(--dc-navy-950);
+  --home-blue: var(--dc-blue-700);
+  --home-blue-bright: var(--dc-blue-600);
+  --home-orange: var(--dc-orange-500);
+  --home-orange-soft: var(--dc-orange-soft);
+  --home-teal: var(--dc-teal);
+  --home-teal-soft: var(--dc-teal-soft);
+  --home-violet: var(--dc-violet);
+  --home-violet-soft: var(--dc-violet-soft);
+  --home-sky-soft: var(--dc-sky-soft);
+  --home-cream: var(--dc-cream);
+  --home-slate: var(--dc-ink);
+  --home-max: var(--dc-max);
+}
+
+@media (max-width: 359px) {
+  :root {
+    --mobile-page-gutter: 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --mobile-page-gutter: 24px;
+  }
 }
 
 * {
@@ -528,12 +589,13 @@ textarea {
 
 .whatsapp-floating-button {
   position: fixed;
-  right: 1.25rem;
-  bottom: calc(var(--bottom-nav-height) + 1rem + env(safe-area-inset-bottom));
-  z-index: 45;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(var(--bottom-nav-height) + var(--whatsapp-fab-gap) + env(safe-area-inset-bottom));
+  z-index: 40;
   display: inline-flex;
-  min-height: 2.85rem;
-  width: 2.85rem;
+  min-height: var(--whatsapp-fab-size);
+  min-width: var(--whatsapp-fab-size);
+  width: var(--whatsapp-fab-size);
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -542,7 +604,14 @@ textarea {
   background: linear-gradient(135deg, #059669, #10b981);
   box-shadow: 0 8px 20px rgba(5, 150, 105, 0.2);
   animation: pulse-subtle 6s infinite;
-  transition: all 0.2s ease;
+  transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease;
+}
+
+@media (max-width: 379px) {
+  .whatsapp-floating-button {
+    --whatsapp-fab-size: 2.6rem;
+    right: max(0.55rem, env(safe-area-inset-right));
+  }
 }
 
 @media (min-width: 768px) {
@@ -550,6 +619,7 @@ textarea {
     right: 1.5rem;
     bottom: 1.5rem;
     min-height: 3.25rem;
+    min-width: 3.25rem;
     width: 3.25rem;
   }
 
@@ -591,29 +661,46 @@ textarea {
               backdrop-filter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.site-header.home-header {
-  background: transparent;
-  border-bottom-color: transparent;
+.site-header.home-header,
+.site-header.home-stacked {
+  height: auto;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: none;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.site-header.home-stacked {
+  display: flex;
+  flex-direction: column;
+}
+
+.site-header.home-stacked .home-announcement-slot {
+  min-height: var(--announcement-height);
 }
 
 .site-header.scrolled {
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom-color: rgba(226, 232, 240, 0.7);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom-color: rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .site-header.home-header.scrolled {
-  background: rgba(255, 255, 255, 0.52);
-  backdrop-filter: blur(24px) saturate(2.1);
-  -webkit-backdrop-filter: blur(24px) saturate(2.1);
-  border-bottom-color: rgba(255, 255, 255, 0.42);
-  box-shadow: 
-    0 1px 2px rgba(15, 23, 42, 0.01),
-    0 12px 32px rgba(15, 23, 42, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+/* Homepage content offset: header, plus announcement when present */
+.homepage-mobile-shell.home-option3 {
+  padding-top: var(--header-height);
+}
+
+body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
+  padding-top: calc(var(--header-height) + var(--announcement-height));
 }
 
 .site-header.nav-hidden {
@@ -713,7 +800,8 @@ textarea {
   .homepage-mobile-shell {
     overflow-x: clip;
     padding-top: var(--header-height);
-    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+    /* Bottom nav + FAB clearance so final cards are not covered */
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--whatsapp-fab-size) + 1.75rem);
   }
 
   .homepage-mobile-shell img,

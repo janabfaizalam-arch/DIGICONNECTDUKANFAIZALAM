@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid OTP payload" }, { status: 400 });
     }
+    console.error("[verify-signup-otp] unexpected_error", error);
     return NextResponse.json({ error: "Unable to verify OTP" }, { status: 500 });
   }
 }

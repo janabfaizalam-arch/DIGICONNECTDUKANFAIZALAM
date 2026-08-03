@@ -26,9 +26,12 @@ describe("partner-type", () => {
     expect(normalizePartnerType("business_partner")).toBe("business_partner");
     expect(normalizePartnerType("company_partner")).toBe("company_partner");
     expect(normalizePartnerType("office_staff")).toBe("office_staff");
-    expect(normalizePartnerType("franchise")).toBeNull();
+    expect(normalizePartnerType("franchise")).toBe("business_partner");
+    expect(normalizePartnerType("team_member")).toBe("office_staff");
+    expect(normalizePartnerType("agent")).toBe("field_executive");
     expect(normalizePartnerType("")).toBeNull();
     expect(normalizePartnerType(null)).toBeNull();
+    expect(normalizePartnerType("totally_unknown")).toBeNull();
   });
 
   it("grants team management only to company_partner (incl. legacy ceo)", () => {

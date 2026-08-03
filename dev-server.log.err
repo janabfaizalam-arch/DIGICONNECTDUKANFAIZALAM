@@ -1,0 +1,30 @@
+ ⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: An Application Control policy has blocked this file.
+\\?\D:\digiconnectdukanfaizalam\node_modules\.pnpm\@next+swc-win32-x64-msvc@15.5.20\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+ ⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: An Application Control policy has blocked this file.
+\\?\D:\digiconnectdukanfaizalam\node_modules\.pnpm\@next+swc-win32-x64-msvc@15.5.20\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (106kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (253kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+(node:26060) ExperimentalWarning: WASI is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26060) ExperimentalWarning: WASI is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ⨯ Error: Cannot find module './vendor-chunks/next@15.5.20_react-dom@19.2.7_react@19.2.7__react@19.2.7.js'
+Require stack:
+- D:\digiconnectdukanfaizalam\.next\server\webpack-runtime.js
+- D:\digiconnectdukanfaizalam\.next\server\app\page.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\server\require.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\server\load-components.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\build\utils.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\build\swc\options.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\build\swc\index.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\build\next-config-ts\transpile-config.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\server\config.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\server\next.js
+- D:\digiconnectdukanfaizalam\node_modules\.pnpm\next@15.5.20_@playwright+te_8f65ecb039fdb2f9795fc3c35d710d71\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\digiconnectdukanfaizalam\.next\server\app\page.js:1242:47)
+    at Object.<anonymous> (D:\digiconnectdukanfaizalam\.next\server\app\page.js:1245:3) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\digiconnectdukanfaizalam\.next\cache\webpack\server-development\0.pack.gz_' -> 'D:\digiconnectdukanfaizalam\.next\cache\webpack\server-development\0.pack.gz'

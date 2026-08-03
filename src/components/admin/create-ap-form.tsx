@@ -91,6 +91,7 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
       email,
       temporaryPassword: password,
       partnerCode,
+      partnerType,
       commissionType,
       commissionValue,
       kycStatus,

@@ -16,9 +16,13 @@ const ENV_KEYS = [
   "AISENSY_PROJECT_API_KEY",
   "AISENSY_OTP_CAMPAIGN_NAME",
   "AISENSY_SIGNUP_CAMPAIGN",
+  "AISENSY_CAMPAIGN_NAME_SIGNUP",
   "AISENSY_PASSWORD_RESET_CAMPAIGN",
+  "AISENSY_CAMPAIGN_NAME_RESET",
   "AISENSY_LOGIN_CAMPAIGN",
+  "AISENSY_CAMPAIGN_NAME_LOGIN",
   "AISENSY_API_URL",
+  "AISENSY_BASE_URL",
 ] as const;
 
 const originalEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
@@ -57,8 +61,12 @@ beforeEach(() => {
     AISENSY_PROJECT_API_KEY: undefined,
     AISENSY_OTP_CAMPAIGN_NAME: undefined,
     AISENSY_SIGNUP_CAMPAIGN: undefined,
+    AISENSY_CAMPAIGN_NAME_SIGNUP: undefined,
     AISENSY_PASSWORD_RESET_CAMPAIGN: undefined,
+    AISENSY_CAMPAIGN_NAME_RESET: undefined,
     AISENSY_LOGIN_CAMPAIGN: undefined,
+    AISENSY_CAMPAIGN_NAME_LOGIN: undefined,
+    AISENSY_BASE_URL: undefined,
   });
 });
 
@@ -100,7 +108,26 @@ describe("getCampaignName", () => {
 
   it("never returns DCD_NEW_WORK_CONFIRMATION for auth", () => {
     setEnv({ AISENSY_SIGNUP_CAMPAIGN: "DCD_NEW_WORK_CONFIRMATION" });
-    expect(getCampaignName("customer_signup")).toBe("password_reset");
+    // Falls back to purpose-appropriate default (signup_otp), not password_reset
+    expect(getCampaignName("customer_signup")).toBe("signup_otp");
+  });
+
+  it("uses legacy AISENSY_OTP_CAMPAIGN_NAME when purpose-specific env is unset", () => {
+    setEnv({
+      AISENSY_SIGNUP_CAMPAIGN: undefined,
+      AISENSY_CAMPAIGN_NAME_SIGNUP: undefined,
+      AISENSY_OTP_CAMPAIGN_NAME: "legacy_signup_campaign",
+    });
+    expect(getCampaignName("customer_signup")).toBe("legacy_signup_campaign");
+  });
+
+  it("prefers AISENSY_CAMPAIGN_NAME_SIGNUP over shared OTP campaign name", () => {
+    setEnv({
+      AISENSY_SIGNUP_CAMPAIGN: undefined,
+      AISENSY_CAMPAIGN_NAME_SIGNUP: "prod_signup_live",
+      AISENSY_OTP_CAMPAIGN_NAME: "shared_otp",
+    });
+    expect(getCampaignName("customer_signup")).toBe("prod_signup_live");
   });
 });
 

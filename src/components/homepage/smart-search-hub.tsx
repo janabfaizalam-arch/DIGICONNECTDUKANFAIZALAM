@@ -1,13 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import {
   Search, Mic, MicOff, CornerDownRight, HelpCircle, History,
-  Sparkles, Zap, ArrowRight, Printer, Gift, UserRound
+  Sparkles, Zap, ArrowRight, Printer, Gift, UserRound, X
 } from "lucide-react";
 import { servicesData } from "@/lib/services-data";
+
+export type SearchCatalogItem = {
+  slug: string;
+  title: string;
+  shortDescription: string;
+  priceLabel: string;
+  category: string;
+  amount: number;
+};
 
 // Synonym mapping for abbreviation, typo, Hindi & Hinglish tolerance
 const synonymMap: Record<string, string[]> = {
@@ -90,16 +99,44 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function SmartSearchHub() {
+export function SmartSearchHub({
+  catalog,
+  variant = "default",
+}: {
+  catalog?: SearchCatalogItem[];
+  variant?: "default" | "hero";
+}) {
+  const isHero = variant === "hero";
+  const searchCatalog = useMemo<SearchCatalogItem[]>(() => {
+    if (catalog && catalog.length) return catalog;
+    return servicesData.map((s) => ({
+      slug: s.slug,
+      title: s.title,
+      shortDescription: s.shortDescription,
+      priceLabel: s.priceLabel,
+      category: s.category,
+      amount: s.amount,
+    }));
+  }, [catalog]);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [matchedActions, setMatchedActions] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchCatalogItem[]>([]);
+  const [matchedActions, setMatchedActions] = useState<typeof QUICK_ACTIONS>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [activeResultIndex, setActiveResultIndex] = useState(-1);
   const [isFocused, setIsFocused] = useState(false);
+  const [desktopSearch, setDesktopSearch] = useState(false);
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setDesktopSearch(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     setActiveResultIndex(-1);
@@ -160,41 +197,44 @@ export function SmartSearchHub() {
     );
     setMatchedActions(actions);
 
-    // 2. Filter & Rank Services
-    const ranked = servicesData.map(service => {
-      let score = 0;
-      const title = service.title.toLowerCase();
-      const desc = service.shortDescription.toLowerCase();
+    // 2. Filter & Rank Services (deterministic; no browser AI API)
+    const ranked = searchCatalog
+      .map((service) => {
+        let score = 0;
+        const title = service.title.toLowerCase();
+        const desc = (service.shortDescription || "").toLowerCase();
+        const category = (service.category || "").toLowerCase();
 
-      if (title === q) score += 100;
-      else if (title.startsWith(q)) score += 80;
-      else if (title.includes(q)) score += 50;
+        if (title === q) score += 100;
+        else if (title.startsWith(q)) score += 80;
+        else if (title.includes(q)) score += 50;
 
-      if (desc.includes(q)) score += 15;
+        if (desc.includes(q)) score += 15;
+        if (category.includes(q)) score += 10;
 
-      const synonyms = synonymMap[service.slug] || [];
-      synonyms.forEach(syn => {
-        const synLower = syn.toLowerCase();
-        if (synLower === q) score += 95;
-        else if (synLower.includes(q)) score += 40;
-        else if (q.includes(synLower)) score += 30;
-      });
-
-      const queryWords = q.split(/\s+/);
-      const titleWords = title.split(/\s+/);
-      queryWords.forEach(qw => {
-        titleWords.forEach(tw => {
-          const dist = levenshtein(qw, tw);
-          if (dist === 1 && qw.length > 3) score += 35;
-          else if (dist === 2 && qw.length > 5) score += 15;
+        const synonyms = synonymMap[service.slug] || [];
+        synonyms.forEach((syn) => {
+          const synLower = syn.toLowerCase();
+          if (synLower === q) score += 95;
+          else if (synLower.includes(q)) score += 40;
+          else if (q.includes(synLower)) score += 30;
         });
-      });
 
-      return { service, score };
-    })
-    .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .map(item => item.service);
+        const queryWords = q.split(/\s+/);
+        const titleWords = title.split(/\s+/);
+        queryWords.forEach((qw) => {
+          titleWords.forEach((tw) => {
+            const dist = levenshtein(qw, tw);
+            if (dist === 1 && qw.length > 3) score += 35;
+            else if (dist === 2 && qw.length > 5) score += 15;
+          });
+        });
+
+        return { service, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.service);
 
     setSearchResults(ranked);
 
@@ -220,7 +260,7 @@ export function SmartSearchHub() {
     } else {
       setSuggestion(null);
     }
-  }, [searchQuery]);
+  }, [searchQuery, searchCatalog]);
 
   const saveSearch = (term: string) => {
     const next = [term, ...recentSearches.filter(s => s !== term)].slice(0, 5);
@@ -263,7 +303,14 @@ export function SmartSearchHub() {
   };
 
   return (
-    <section id="search-hub" className="relative z-30 px-4 pt-6 pb-2.5 max-w-2xl mx-auto">
+    <section
+      id="search-hub"
+      className={
+        isHero
+          ? "relative z-30 w-full max-w-xl"
+          : "relative z-30 mx-auto w-full max-w-2xl px-3 pt-3 pb-2 sm:px-4 sm:pt-5 md:pt-6"
+      }
+    >
       {/* Click catcher backdrop wrapper */}
       {isFocused && (
         <div
@@ -273,33 +320,83 @@ export function SmartSearchHub() {
       )}
 
       {/* Search Input Box */}
-      <div className="relative z-20">
-        <div className="relative flex items-center rounded-full bg-white/75 backdrop-blur-xl border border-slate-200/40 shadow-[0_8px_30px_rgba(15,23,42,0.03)] focus-within:shadow-[0_12px_36px_rgba(37,99,235,0.06)] focus-within:border-blue-500/50 focus-within:scale-[1.01] transition-all duration-300">
-          <Search className="pointer-events-none absolute left-5 h-4.5 w-4.5 text-slate-400" />
+      <div className="relative z-20 min-w-0">
+        <div
+          className={
+            isHero
+              ? "relative flex min-h-12 items-center gap-1 rounded-full border border-white/40 bg-white p-1 shadow-[0_12px_36px_rgba(7,31,77,0.2)] sm:min-h-[3.35rem]"
+              : "relative flex min-h-12 items-center gap-1 rounded-2xl border border-slate-200/50 bg-white/90 shadow-[0_8px_30px_rgba(15,23,42,0.03)] backdrop-blur-xl transition-all duration-300 focus-within:border-blue-500/50 focus-within:shadow-[0_12px_36px_rgba(37,99,235,0.06)] sm:min-h-[3.25rem] sm:rounded-full"
+          }
+        >
+          <Search className="pointer-events-none ml-3 h-4 w-4 shrink-0 text-slate-400 sm:ml-4 sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
+          <label htmlFor="homepage-search-input" className="sr-only">
+            Search services, schemes, forms and FAQs
+          </label>
           <input
-            type="text"
+            id="homepage-search-input"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
-            placeholder="Search services, schemes, forms…"
-            className="h-13 w-full rounded-full bg-transparent pl-[52px] pr-[60px] text-[16px] font-bold text-slate-800 placeholder:text-slate-400 outline-none"
+            placeholder={desktopSearch ? "Search services, schemes, forms and FAQs" : "Search services or schemes"}
+            autoComplete="off"
+            enterKeyHint="search"
+            className="min-w-0 flex-1 bg-transparent py-3 pr-1 text-base font-semibold text-slate-800 outline-none placeholder:truncate placeholder:text-slate-400 sm:text-[15px] sm:font-bold"
+            aria-controls="homepage-search-results"
+            aria-autocomplete="list"
           />
-          <div className="absolute right-3 flex items-center">
-            <button
-              type="button"
-              onClick={toggleVoiceSearch}
-              className={`flex h-8.5 w-8.5 items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${
-                isListening
-                  ? "bg-red-500 text-white animate-pulse"
-                  : "bg-slate-100 hover:bg-slate-200/60 text-slate-500"
-              }`}
-              title="Voice Search"
-            >
-              {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            </button>
+          <div className="mr-1 flex shrink-0 items-center gap-0.5 sm:mr-1.5 sm:gap-1">
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+            {isHero ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (searchResults[0]) {
+                    window.location.href = `/services/${searchResults[0].slug}`;
+                  } else if (searchQuery.trim()) {
+                    window.location.href = `/services?q=${encodeURIComponent(searchQuery.trim())}`;
+                  } else {
+                    document.getElementById("homepage-search-input")?.focus();
+                  }
+                }}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-200 sm:w-auto sm:px-4"
+                aria-label="Search"
+              >
+                <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                <span className="hidden text-sm font-black sm:inline">Search</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={toggleVoiceSearch}
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200/70"
+                }`}
+                aria-label={isListening ? "Stop voice search" : "Start voice search"}
+                title="Voice search"
+              >
+                {isListening ? <Mic className="h-4 w-4" aria-hidden="true" /> : <MicOff className="h-4 w-4" aria-hidden="true" />}
+              </button>
+            )}
           </div>
         </div>
+        {!isHero ? (
+          <p className="mt-1.5 hidden px-1 text-[11px] font-semibold text-slate-400 md:block">
+            Search services, schemes, forms and FAQs
+          </p>
+        ) : null}
 
         {/* Listening Indicator */}
         {isListening && (
@@ -327,13 +424,18 @@ export function SmartSearchHub() {
 
         {/* Dynamic Command Dropdown */}
         {isFocused && (
-          <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-slate-150 bg-white/95 backdrop-blur-xl p-4 shadow-2xl text-left max-h-[360px] overflow-y-auto no-scrollbar z-30 space-y-3.5">
+          <div
+            id="homepage-search-results"
+            role="listbox"
+            aria-label="Search suggestions"
+            className="absolute top-full left-0 right-0 z-30 mt-2 max-h-[min(360px,55vh)] space-y-3.5 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-150 bg-white/95 p-3 text-left shadow-2xl backdrop-blur-xl no-scrollbar sm:p-4"
+          >
             {/* Case A: Empty Input State (Popular, Recents, and Default Quick Actions) */}
             {!searchQuery.trim() ? (
               <>
                 {/* Popular Tags */}
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">🔥 Popular Searches</p>
+                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">Popular searches</p>
                   <div className="flex flex-wrap gap-1.5">
                     {POPULAR_SEARCHES.map(term => (
                       <button
@@ -350,7 +452,7 @@ export function SmartSearchHub() {
                 {/* Recents */}
                 {recentSearches.length > 0 && (
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1.5">🕐 Recent Searches</p>
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Recent searches</p>
                     <div className="space-y-1">
                       {recentSearches.map(term => (
                         <button
@@ -418,7 +520,7 @@ export function SmartSearchHub() {
                                 <Icon className="h-4 w-4" />
                               </div>
                               <div className="min-w-0">
-                                <p className={`text-xs font-bold leading-tight ${isActive ? "text-white" : "text-slate-800"}`}>
+                                <p className={`truncate text-xs font-bold leading-tight ${isActive ? "text-white" : "text-slate-800"}`}>
                                   <HighlightText text={action.title} query={searchQuery} />
                                 </p>
                                 <p className={`text-[10px] truncate mt-0.5 leading-normal ${isActive ? "text-white/80" : "text-slate-400"}`}>

@@ -1,34 +1,23 @@
+import { getActiveHomepageNotices, type HomepageNotice } from "@/lib/homepage-notices";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-import { getActiveHomepageNotices, type HomepageNotice } from "@/lib/homepage-notices";
+import { HomepageNoticeControls } from "@/components/homepage/homepage-notice-controls";
 
 function isExternalLink(link: string | null) {
   return Boolean(link && /^https?:\/\//i.test(link));
 }
 
-const fallbackOffers = [
-  { text: "GST Registration", emoji: "📋" },
-  { text: "ITR Filing", emoji: "💰" },
-  { text: "PM Vishwakarma", emoji: "🏗️" },
-  { text: "Credit Cards", emoji: "💳" },
-  { text: "Passport Services", emoji: "🛂" },
-  { text: "Vehicle Insurance", emoji: "🚗" },
-  { text: "Driving Licence", emoji: "🪪" },
-];
-
 function NoticeItem({ notice }: { notice: HomepageNotice }) {
   const content = (
-    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold text-white/90 md:text-xs">
-      {notice.emoji_icon ? <span className="text-sm leading-none">{notice.emoji_icon}</span> : null}
+    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap pr-10 text-[11px] font-bold text-white md:text-xs">
+      {notice.emoji_icon ? <span className="text-sm leading-none" aria-hidden="true">{notice.emoji_icon}</span> : null}
       <span>{notice.notice_text}</span>
-      {notice.link_url ? <ChevronRight className="h-3 w-3 shrink-0 text-white/50" /> : null}
+      {notice.link_url ? <ChevronRight className="h-3 w-3 shrink-0 text-white/60" aria-hidden="true" /> : null}
     </span>
   );
 
-  if (!notice.link_url) {
-    return content;
-  }
+  if (!notice.link_url) return content;
 
   if (isExternalLink(notice.link_url)) {
     return (
@@ -45,64 +34,43 @@ function NoticeItem({ notice }: { notice: HomepageNotice }) {
   );
 }
 
-function FallbackItem({ text, emoji }: { text: string; emoji: string }) {
+function Separator() {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold text-white/90 md:text-xs">
-      <span className="text-sm leading-none">{emoji}</span>
-      <span>{text}</span>
+    <span className="mx-4 shrink-0 text-[var(--home-orange)]" aria-hidden="true">
+      •
     </span>
   );
 }
 
-function Separator() {
-  return <span className="shrink-0 text-white/25 mx-4" aria-hidden="true">•</span>;
-}
-
+/** Backend-driven announcement strip. Hidden when no active notices exist. */
 export async function HomepageOfferNoticeBar() {
   const notices = await getActiveHomepageNotices();
-  const hasNotices = notices.length > 0;
+  if (!notices.length) return null;
 
   return (
-    <section
-      className="relative z-20 w-full bg-gradient-to-r from-[#071326] via-[#0d2a52] to-[#071326] print:hidden"
-      aria-label="Current offers"
-    >
-      <div className="overflow-hidden py-2.5">
-        <div className="marquee-track" aria-live="off">
-          {/* First set */}
-          {hasNotices
-            ? notices.map((notice, i) => (
-                <span key={`a-${notice.id}`} className="inline-flex items-center">
-                  {i > 0 ? <Separator /> : null}
-                  <NoticeItem notice={notice} />
-                </span>
-              ))
-            : fallbackOffers.map((offer, i) => (
-                <span key={`a-${i}`} className="inline-flex items-center">
-                  {i > 0 ? <Separator /> : null}
-                  <FallbackItem text={offer.text} emoji={offer.emoji} />
-                </span>
-              ))}
-
-          {/* Spacer */}
-          <Separator />
-
-          {/* Duplicate for seamless loop */}
-          {hasNotices
-            ? notices.map((notice, i) => (
-                <span key={`b-${notice.id}`} className="inline-flex items-center">
-                  {i > 0 ? <Separator /> : null}
-                  <NoticeItem notice={notice} />
-                </span>
-              ))
-            : fallbackOffers.map((offer, i) => (
-                <span key={`b-${i}`} className="inline-flex items-center">
-                  {i > 0 ? <Separator /> : null}
-                  <FallbackItem text={offer.text} emoji={offer.emoji} />
-                </span>
-              ))}
+    <HomepageNoticeControls>
+      <section
+        className="relative z-20 w-full bg-[var(--home-navy)] print:hidden"
+        aria-label="Service announcements"
+        data-announcement="true"
+      >
+        <div className="overflow-hidden py-2.5 pr-20">
+          <div className="marquee-track motion-reduce:animate-none" aria-live="polite">
+            {notices.map((notice, i) => (
+              <span key={`a-${notice.id}`} className="inline-flex items-center">
+                {i > 0 ? <Separator /> : null}
+                <NoticeItem notice={notice} />
+              </span>
+            ))}
+            {notices.map((notice, i) => (
+              <span key={`b-${notice.id}`} className="inline-flex items-center motion-reduce:hidden" aria-hidden="true">
+                {i > 0 ? <Separator /> : null}
+                <NoticeItem notice={notice} />
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </HomepageNoticeControls>
   );
 }

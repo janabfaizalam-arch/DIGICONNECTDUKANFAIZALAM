@@ -485,6 +485,7 @@ export function serviceFromDb(service: DbService): ServiceItem {
     seoDescription: service.seo_description || fallback?.seoDescription || service.short_description || "",
     seoKeywords: jsonArray<string>(service.seo_keywords, fallback?.seoKeywords ?? []),
     blogContent: service.blog_content || fallback?.blogContent || "",
+    heroImageUrl: service.hero_image_url || null,
   };
 
   return item;
@@ -772,6 +773,19 @@ export async function getPublicHomepageServices(limit = 6) {
 
   if (cibilService) {
     nextServices.unshift(cibilService);
+  }
+
+  // When CMS flags are sparse, backfill from other live published services (never invent rows).
+  if (nextServices.length < limit) {
+    const seen = new Set(nextServices.map((service) => service.slug));
+    const backfill = rows
+      .filter((service) => activeServiceFilter(service) && !seen.has(service.slug))
+      .sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title))
+      .map(serviceFromDb);
+    for (const service of backfill) {
+      if (nextServices.length >= limit) break;
+      nextServices.push(service);
+    }
   }
 
   return nextServices.slice(0, limit);

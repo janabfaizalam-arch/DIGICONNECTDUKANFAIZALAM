@@ -45,7 +45,17 @@ export async function POST(request: Request) {
       is_used: false,
     }]);
 
-    await sendWhatsappOTP(mobile, otp, "password_reset");
+    const sendResult = await sendWhatsappOTP(mobile, otp, "password_reset");
+    if (!sendResult.success) {
+      console.error("[Auth V2] forgot-pin provider_send_failed", {
+        mobileMasked: `${String(mobile).slice(0, 2)}******${String(mobile).slice(-2)}`,
+        error: sendResult.error,
+      });
+      return NextResponse.json(
+        { error: sendResult.error || "Unable to send OTP. Please try again later." },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ success: true, message: "If the number exists, an OTP has been sent." });
 

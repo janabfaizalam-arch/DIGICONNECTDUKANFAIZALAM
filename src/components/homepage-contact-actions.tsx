@@ -30,7 +30,6 @@ export function HomepageContactActions() {
       const currentScrollY = window.scrollY;
       const scrollDelta = currentScrollY - lastScrollYRef.current;
 
-      // Match bottom-nav scroll hide/show thresholds
       if (scrollDelta > 10 && currentScrollY > 80) {
         setNavHidden(true);
       } else if (scrollDelta < -5) {
@@ -43,7 +42,7 @@ export function HomepageContactActions() {
 
   useEffect(() => {
     if (shouldHideBottomNav(pathname)) {
-      setNavHidden(true); // Push always to the bottom if bottom nav is not present
+      setNavHidden(true);
       return;
     }
 
@@ -53,21 +52,21 @@ export function HomepageContactActions() {
   }, [pathname, handleScroll]);
 
   const isBottomNavHidden = shouldHideBottomNav(pathname);
-
-  // Compute reactive bottom class. On scroll hide, we match the transition of bottom nav.
-  const bottomPosition = isBottomNavHidden || navHidden
-    ? "bottom-5"
-    : "bottom-[calc(var(--bottom-nav-height)+1rem+env(safe-area-inset-bottom))]";
+  const bottomPosition =
+    isBottomNavHidden || navHidden
+      ? "bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]"
+      : "bottom-[calc(var(--bottom-nav-height)+var(--whatsapp-fab-gap)+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]";
 
   return (
     <a
       href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Chat with DigiConnect Dukan on WhatsApp"
-      className={`whatsapp-floating-button transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${bottomPosition}`}
+      aria-label="Chat with support on WhatsApp"
+      className={`whatsapp-floating-button ${bottomPosition}`}
+      data-homepage-fab="whatsapp"
     >
-      <MessageCircle className="h-5 w-5" />
+      <MessageCircle className="h-5 w-5" aria-hidden="true" />
     </a>
   );
 }

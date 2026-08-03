@@ -46,7 +46,18 @@ export type AisensyOtpPurpose =
 
 export type AisensySendResult =
   | { ok: true; provider: "aisensy"; destination: string; campaignName: string; requestId: string }
-  | { ok: false; provider: "aisensy"; error: string; code?: string; requestId?: string; campaignName?: string };
+  | {
+      ok: false;
+      provider: "aisensy";
+      /** Safe user-facing message (never includes provider internals). */
+      error: string;
+      code?: string;
+      requestId?: string;
+      campaignName?: string;
+      httpStatus?: number | null;
+      /** Redacted provider response / error detail for server logs only. */
+      providerDetail?: string;
+    };
 
 type AisensyConfig = {
   apiKey: string;
@@ -63,6 +74,12 @@ export function getWhatsappProvider(): string {
 /**
  * Select the existing AiSensy LIVE campaign for an OTP purpose.
  * Defaults match dashboard campaign names when env vars are unset.
+ *
+ * Fallback order for signup:
+ *   AISENSY_SIGNUP_CAMPAIGN
+ *   → AISENSY_CAMPAIGN_NAME_SIGNUP (legacy Vercel)
+ *   → AISENSY_OTP_CAMPAIGN_NAME (legacy shared)
+ *   → signup_otp
  */
 export function getCampaignName(purpose: string): string {
   const normalized = String(purpose ?? "")
@@ -70,11 +87,17 @@ export function getCampaignName(purpose: string): string {
     .toLowerCase();
 
   let campaign: string;
+  let fallback: string;
 
   switch (normalized) {
     case "customer_signup":
     case "signup":
-      campaign = process.env.AISENSY_SIGNUP_CAMPAIGN?.trim() || DEFAULT_SIGNUP_CAMPAIGN;
+      fallback = DEFAULT_SIGNUP_CAMPAIGN;
+      campaign =
+        process.env.AISENSY_SIGNUP_CAMPAIGN?.trim() ||
+        process.env.AISENSY_CAMPAIGN_NAME_SIGNUP?.trim() ||
+        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
+        fallback;
       break;
 
     case "forgot_pin":
@@ -84,19 +107,32 @@ export function getCampaignName(purpose: string): string {
     case "password_reset":
     case "change_phone":
     case "security_verification":
+      fallback = DEFAULT_PASSWORD_RESET_CAMPAIGN;
       campaign =
-        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() || DEFAULT_PASSWORD_RESET_CAMPAIGN;
+        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() ||
+        process.env.AISENSY_CAMPAIGN_NAME_RESET?.trim() ||
+        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
+        fallback;
       break;
 
     case "login":
     case "login_otp":
-      campaign = process.env.AISENSY_LOGIN_CAMPAIGN?.trim() || DEFAULT_LOGIN_CAMPAIGN;
+      fallback = DEFAULT_LOGIN_CAMPAIGN;
+      campaign =
+        process.env.AISENSY_LOGIN_CAMPAIGN?.trim() ||
+        process.env.AISENSY_CAMPAIGN_NAME_LOGIN?.trim() ||
+        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
+        fallback;
       break;
 
     default:
       console.warn("[aisensy] unknown_purpose_using_password_reset", { purpose: normalized });
+      fallback = DEFAULT_PASSWORD_RESET_CAMPAIGN;
       campaign =
-        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() || DEFAULT_PASSWORD_RESET_CAMPAIGN;
+        process.env.AISENSY_PASSWORD_RESET_CAMPAIGN?.trim() ||
+        process.env.AISENSY_CAMPAIGN_NAME_RESET?.trim() ||
+        process.env.AISENSY_OTP_CAMPAIGN_NAME?.trim() ||
+        fallback;
       break;
   }
 
@@ -104,8 +140,9 @@ export function getCampaignName(purpose: string): string {
     console.error("[aisensy] forbidden_campaign_blocked", {
       purpose: normalized,
       campaign,
+      fallback,
     });
-    return DEFAULT_PASSWORD_RESET_CAMPAIGN;
+    return fallback;
   }
 
   return campaign;
@@ -166,10 +203,11 @@ export function loadAisensyConfig():
   }
 
   const apiKey = process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim();
-  // Preserve production `AISENSY_API_URL`; accept `AISENSY_API_BASE_URL` as alias.
+  // Preserve production URL aliases used across older Vercel env sets.
   const apiUrl = (
     process.env.AISENSY_API_URL?.trim() ||
     process.env.AISENSY_API_BASE_URL?.trim() ||
+    process.env.AISENSY_BASE_URL?.trim() ||
     DEFAULT_AISENSY_API_URL
   ).replace(/\/$/, "");
 
@@ -420,9 +458,16 @@ export async function sendAisensyCampaign(
 
     if (!success) {
       if (useDedupe) recentSendKeys.delete(sendDedupeKey(phone.destination, campaignName));
+      console.error("[aisensy] provider_rejected_detail", {
+        campaign: campaignName,
+        requestId,
+        httpStatus: response.status,
+        response: safeBody.slice(0, 1000),
+        phone: maskPhoneLocal(phone.local),
+      });
       return emptyCampaignResult(requestId, {
         errorCode: "provider_rejected",
-        errorMessage: "WhatsApp delivery failed.",
+        errorMessage: `WhatsApp delivery failed (HTTP ${response.status}): ${safeBody.slice(0, 400)}`,
         campaignName,
         destination: phone.destination,
         httpStatus: response.status,
@@ -522,6 +567,15 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
 
   if (!result.ok) {
     const code = result.errorCode ?? "provider_rejected";
+    console.error("[aisensy] otp_send_failed", {
+      purpose,
+      campaign: result.campaignName ?? campaignName,
+      code,
+      requestId: result.requestId,
+      httpStatus: result.httpStatus,
+      providerDetail: result.errorMessage,
+      configurationRequired: result.configuration_required,
+    });
     return {
       ok: false,
       provider: "aisensy",
@@ -532,8 +586,18 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
       code,
       requestId: result.requestId,
       campaignName: result.campaignName ?? campaignName,
+      httpStatus: result.httpStatus,
+      providerDetail: result.errorMessage ?? undefined,
     };
   }
+
+  console.info("[aisensy] otp_send_accepted", {
+    purpose,
+    campaign: result.campaignName || campaignName,
+    requestId: result.requestId,
+    providerMessageId: result.providerMessageId,
+    httpStatus: result.httpStatus,
+  });
 
   return {
     ok: true,

@@ -1,131 +1,94 @@
-"use client";
-
-import React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Store, ReceiptText, Globe, CarFront, ShieldCheck, CreditCard, IdCard, LayoutGrid } from "lucide-react";
+import {
+  ArrowRight,
+  LayoutGrid,
+  ReceiptText,
+  CarFront,
+  ShieldCheck,
+  IdCard,
+  Landmark,
+  BriefcaseBusiness,
+  CreditCard,
+  type LucideIcon,
+} from "lucide-react";
 
-const quickServices = [
-  {
-    title: "GST Registration",
-    href: "/services/gst-registration",
-    icon: Store,
-    iconColor: "text-emerald-500",
-    bgColor: "bg-emerald-50/40",
-    borderColor: "group-hover:border-emerald-200/50",
-    anim: "animate-float-slow"
-  },
-  {
-    title: "ITR Filing",
-    href: "/services/itr-filing",
-    icon: ReceiptText,
-    iconColor: "text-blue-500",
-    bgColor: "bg-blue-50/40",
-    borderColor: "group-hover:border-blue-200/50",
-    anim: "animate-float-medium"
-  },
-  {
-    title: "Passport Service",
-    href: "/services/passport",
-    icon: Globe,
-    iconColor: "text-indigo-500",
-    bgColor: "bg-indigo-50/40",
-    borderColor: "group-hover:border-indigo-200/50",
-    anim: "animate-float-slow"
-  },
-  {
-    title: "Driving Licence",
-    href: "/services/learning-driving-license",
-    icon: CarFront,
-    iconColor: "text-purple-500",
-    bgColor: "bg-purple-50/40",
-    borderColor: "group-hover:border-purple-200/50",
-    anim: "animate-float-medium"
-  },
-  {
-    title: "Vehicle Insurance",
-    href: "/services/insurance",
-    icon: ShieldCheck,
-    iconColor: "text-cyan-500",
-    bgColor: "bg-cyan-50/40",
-    borderColor: "group-hover:border-cyan-200/50",
-    anim: "animate-float-slow"
-  },
-  {
-    title: "Credit Cards",
-    href: "/services/credit-cards",
-    icon: CreditCard,
-    iconColor: "text-rose-500",
-    bgColor: "bg-rose-50/40",
-    borderColor: "group-hover:border-rose-200/50",
-    anim: "animate-float-medium"
-  },
-  {
-    title: "PVC Smart Card",
-    href: "/services/pvc-card",
-    icon: IdCard,
-    iconColor: "text-orange-500",
-    bgColor: "bg-orange-50/40",
-    borderColor: "group-hover:border-orange-200/50",
-    anim: "animate-float-slow"
-  },
-  {
-    title: "See All Services",
-    href: "/services",
-    icon: LayoutGrid,
-    iconColor: "text-slate-600",
-    bgColor: "bg-slate-50/60",
-    borderColor: "group-hover:border-slate-300/50",
-    anim: ""
-  }
+import { getPublicCategoriesWithCounts } from "@/lib/services";
+import { resolveHomepageCategoryArt } from "@/lib/homepage-visual-assets";
+import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
+
+const ICON_BY_MATCH: { match: RegExp; Icon: LucideIcon }[] = [
+  { match: /pvc|card.?print|smart.?card|identity.?card/, Icon: CreditCard },
+  { match: /passport|licence|license|driving|travel|tourism|vehicle/, Icon: CarFront },
+  { match: /tax|gst|itr/, Icon: ReceiptText },
+  { match: /company|compliance|incorporation|roc/, Icon: BriefcaseBusiness },
+  { match: /loan|scheme|yojana|mudra|subsidy/, Icon: Landmark },
+  { match: /bank|finance|credit|wallet|cibil/, Icon: Landmark },
+  { match: /insur/, Icon: ShieldCheck },
+  { match: /gov|document|certificate|id/, Icon: IdCard },
 ];
 
-export function QuickServiceGrid() {
-  return (
-    <section className="bg-white px-4 pt-6 pb-8 md:pb-12 relative overflow-hidden">
-      {/* Soft background light reflections */}
-      <div className="absolute top-0 right-1/4 w-[250px] h-[250px] rounded-full bg-blue-500/5 blur-[80px] pointer-events-none" />
-      
-      <div className="container-shell max-w-[1600px] mx-auto relative z-10">
-        {/* Header */}
-        <div className="mb-8 flex items-end justify-between">
-          <div className="text-left">
-            <p className="text-[10px] font-black uppercase tracking-wider text-blue-500">Categories</p>
-            <h2 className="mt-1 text-xl md:text-2xl font-black tracking-tight text-slate-800">
-              Quick Services Grid
-            </h2>
-          </div>
-          <Link
-            href="/services"
-            className="inline-flex items-center gap-0.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition"
-          >
-            See All <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+function iconFor(slug: string, title: string) {
+  const hay = `${slug} ${title}`.toLowerCase();
+  return ICON_BY_MATCH.find((item) => item.match.test(hay))?.Icon ?? LayoutGrid;
+}
 
-        {/* 3D Glass Cards Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:gap-6">
-          {quickServices.map((service, index) => {
-            const Icon = service.icon;
-            const isLast = index === quickServices.length - 1;
-            
-            return (
-              <Link
-                key={service.title}
-                href={service.href}
-                className={`group glass-liquid-premium rounded-2xl p-5 md:p-6 text-center flex flex-col items-center justify-center gap-3.5 select-none transition-all duration-350 cursor-pointer border-white/40 ${service.borderColor} ${isLast ? "border-slate-300/30" : ""}`}
-              >
-                {/* Icon wrapper with floating effect */}
-                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${service.bgColor} shadow-inner transition-all duration-350 group-hover:scale-110 ${service.anim}`}>
-                  <Icon className={`h-6 w-6 stroke-[2] ${service.iconColor}`} />
-                </div>
-                <span className="text-xs font-black text-slate-750 group-hover:text-blue-600 transition-colors leading-none">
-                  {service.title}
+export async function QuickServiceGrid() {
+  const categories = await getPublicCategoriesWithCounts();
+  const visible = categories.filter((c) => (c.serviceCount ?? 0) > 0).slice(0, 6);
+
+  if (!visible.length) return null;
+
+  return (
+    <HomepageSection id="categories" surface="white">
+      <HomepageSectionHeader
+        eyebrow="Browse"
+        title="Browse by category"
+        actionHref="/services"
+        actionLabel="All categories"
+      />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {visible.map((category) => {
+          const art = resolveHomepageCategoryArt(category.slug, category.title);
+          const Icon = iconFor(category.slug, category.title);
+          return (
+            <Link
+              key={category.slug}
+              href={`/services/${category.slug}`}
+              className={`group relative flex min-h-[156px] overflow-hidden rounded-[var(--dc-card-radius)] border ${art.border} ${art.tone} p-4 transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-600)]`}
+            >
+              <span className="relative z-10 flex max-w-[58%] flex-col justify-between">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${art.iconTone}`}>
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
-              </Link>
-            );
-          })}
-        </div>
+                <span>
+                  <span className="mt-3 block text-[15px] font-extrabold leading-snug text-[var(--dc-ink)]">
+                    {category.title}
+                  </span>
+                  <span className="mt-1 block text-[13px] font-semibold text-[var(--dc-body)]">
+                    {art.descriptor}
+                    {" · "}
+                    {category.serviceCount} service{category.serviceCount === 1 ? "" : "s"}
+                  </span>
+                  <span className="mt-2 inline-flex min-h-11 items-center gap-0.5 text-sm font-bold text-[var(--dc-blue-600)]">
+                    Explore <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </span>
+              </span>
+              <span className="pointer-events-none absolute bottom-0 right-0 h-[88%] w-[48%]">
+                <Image
+                  src={art.src}
+                  alt=""
+                  fill
+                  className="object-contain object-bottom-right opacity-95"
+                  sizes="(max-width: 640px) 45vw, 220px"
+                />
+              </span>
+            </Link>
+          );
+        })}
       </div>
-    </section>
+    </HomepageSection>
   );
 }

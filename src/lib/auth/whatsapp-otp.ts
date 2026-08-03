@@ -9,6 +9,25 @@ export type OtpPurpose = "customer_signup" | "forgot_pin" | "change_phone" | "se
 
 export { generateOtp, hashOtp, verifyOtpHash };
 
+export type CustomerOtpSendResult =
+  | {
+      success: true;
+      provider: string;
+      campaignName?: string;
+      requestId?: string;
+    }
+  | {
+      success: false;
+      error: string;
+      provider: string;
+      campaignName?: string;
+      code?: string;
+      requestId?: string;
+      httpStatus?: number | null;
+      /** Redacted provider detail for server logs only — never return to clients. */
+      providerDetail?: string;
+    };
+
 /**
  * Deliver customer auth OTP via the AiSensy campaign selected for `purpose`.
  * Verification remains server-side in auth_otp_requests.
@@ -17,7 +36,7 @@ export async function sendCustomerWhatsappOtp(
   phone: string,
   otp: string,
   purpose: OtpPurpose | AisensyOtpPurpose,
-): Promise<{ success: boolean; error?: string; provider?: string; campaignName?: string }> {
+): Promise<CustomerOtpSendResult> {
   const result = await sendAisensyOtp({
     phone,
     otp,
@@ -26,13 +45,38 @@ export async function sendCustomerWhatsappOtp(
   });
 
   if (!result.ok) {
+    console.error("[whatsapp-otp] send_failed", {
+      purpose,
+      provider: "aisensy",
+      code: result.code,
+      campaign: result.campaignName,
+      requestId: result.requestId,
+      httpStatus: result.httpStatus,
+      providerDetail: result.providerDetail,
+    });
     return {
       success: false,
-      error: AISENSY_USER_FACING_SEND_ERROR,
+      error: result.code === "invalid_phone" ? result.error : AISENSY_USER_FACING_SEND_ERROR,
       provider: "aisensy",
       campaignName: result.campaignName,
+      code: result.code,
+      requestId: result.requestId,
+      httpStatus: result.httpStatus,
+      providerDetail: result.providerDetail,
     };
   }
 
-  return { success: true, provider: "aisensy", campaignName: result.campaignName };
+  console.info("[whatsapp-otp] send_accepted", {
+    purpose,
+    provider: "aisensy",
+    campaign: result.campaignName,
+    requestId: result.requestId,
+  });
+
+  return {
+    success: true,
+    provider: "aisensy",
+    campaignName: result.campaignName,
+    requestId: result.requestId,
+  };
 }

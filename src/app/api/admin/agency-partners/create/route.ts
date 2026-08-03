@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { DIGI_PARTNER_TYPE_VALUES, normalizePartnerType } from "@/lib/ap/partner-type";
 import { agencyInternalEmail } from "@/lib/auth/phone";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -14,6 +15,7 @@ const schema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   temporaryPassword: z.string().min(8).max(128),
   partnerCode: z.string().trim().min(2).max(40).optional(),
+  partnerType: z.string().trim().optional(),
   commissionType: z.enum(["fixed", "percentage"]).default("fixed"),
   commissionValue: z.number().min(0).max(100000).default(0),
   kycStatus: z.enum(["pending", "approved", "rejected"]).default("pending"),
@@ -29,6 +31,16 @@ export async function POST(request: Request) {
   try {
     const body = schema.parse(await request.json());
     const username = body.username.trim().toLowerCase();
+    const partnerType = normalizePartnerType(body.partnerType ?? "business_partner");
+    if (!partnerType) {
+      return NextResponse.json(
+        {
+          error: `Invalid partner type. Must be one of: ${DIGI_PARTNER_TYPE_VALUES.join(", ")}.`,
+        },
+        { status: 400 },
+      );
+    }
+
     const supabase = getSupabaseAdmin();
     if (!supabase) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
 
@@ -51,19 +63,21 @@ export async function POST(request: Request) {
     });
 
     if (error || !created.user) {
+      console.error("[ap-create] auth_create_failed", error?.message);
       return NextResponse.json({ error: error?.message ?? "Create failed" }, { status: 500 });
     }
 
     const userId = created.user.id;
     const partnerStatus = body.accountStatus === "active" ? "active" : body.accountStatus;
+    const mobile = body.mobile.replace(/\D/g, "").slice(-10);
 
-    await supabase.from("profiles").upsert({
+    const { error: profileError } = await supabase.from("profiles").upsert({
       id: userId,
       role: "agency_partner",
       full_name: body.fullName,
       email: body.email || email,
-      phone: body.mobile.replace(/\D/g, "").slice(-10),
-      mobile: body.mobile.replace(/\D/g, "").slice(-10),
+      phone: mobile,
+      mobile,
       username,
       partner_code: body.partnerCode ?? null,
       account_status: body.accountStatus === "active" ? "active" : "pending",
@@ -71,14 +85,22 @@ export async function POST(request: Request) {
       phone_verified: false,
     });
 
+    if (profileError) {
+      console.error("[ap-create] profile_upsert_failed", profileError.message);
+      await supabase.auth.admin.deleteUser(userId);
+      return NextResponse.json({ error: "Profile create failed: " + profileError.message }, { status: 500 });
+    }
+
     const { data: partner, error: partnerError } = await supabase
       .from("agency_partners")
       .insert({
         user_id: userId,
         username,
+        full_name: body.fullName,
         business_name: body.fullName,
         contact_name: body.fullName,
-        mobile: body.mobile.replace(/\D/g, "").slice(-10),
+        partner_type: partnerType,
+        mobile,
         email: body.email || "",
         status: partnerStatus,
         commission_rate: body.commissionType === "percentage" ? body.commissionValue : 0,
@@ -90,9 +112,30 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (partnerError) {
-      // best-effort: profile exists; surface partner error
-      console.error("[ap-create]", partnerError.message);
+      console.error("[ap-create] partner_insert_failed", {
+        message: partnerError.message,
+        code: partnerError.code,
+        details: partnerError.details,
+        partnerType,
+      });
+      await supabase.auth.admin.deleteUser(userId);
+      const isPartnerTypeCheck =
+        /agency_partners_partner_type_check/i.test(partnerError.message) ||
+        (/partner_type/i.test(partnerError.message) && /check constraint/i.test(partnerError.message));
+      if (isPartnerTypeCheck) {
+        return NextResponse.json(
+          {
+            error:
+              `Partner type check rejected "${partnerType}". Apply migration ` +
+              `20260803120000_partner_types_v2_repair.sql (allowed: ${DIGI_PARTNER_TYPE_VALUES.join(", ")}).`,
+          },
+          { status: 500 },
+        );
+      }
+      return NextResponse.json({ error: "Partner create failed: " + partnerError.message }, { status: 500 });
     }
+
+    console.info("[ap-create] success", { userId, partnerId: partner?.id, partnerType, username });
 
     return NextResponse.json({
       ok: true,
@@ -100,6 +143,7 @@ export async function POST(request: Request) {
       userId,
       partnerId: partner?.id ?? null,
       partnerCode: body.partnerCode ?? null,
+      partnerType,
       username,
       mustChangePassword: true,
     });
@@ -107,6 +151,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid agent payload", details: error.flatten() }, { status: 400 });
     }
+    console.error("[ap-create] unexpected_error", error);
     return NextResponse.json({ error: "Create failed" }, { status: 500 });
   }
 }

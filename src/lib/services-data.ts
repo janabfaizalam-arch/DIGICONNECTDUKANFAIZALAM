@@ -55,6 +55,8 @@ export type ServiceItem = {
   seoDescription: string;
   seoKeywords: string[];
   blogContent: string;
+  /** Optional CMS hero/thumbnail for homepage cards */
+  heroImageUrl?: string | null;
 };
 
 export type ServiceCategory = {

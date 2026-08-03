@@ -2,9 +2,34 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Globe, MessageCircle, Phone, Mail, ShieldCheck, Play, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  Globe,
+  MessageCircle,
+  Phone,
+  Mail,
+  ShieldCheck,
+  Play,
+  ArrowRight,
+  CheckCircle2,
+  Facebook,
+  Instagram,
+  Youtube,
+  Linkedin,
+  Send,
+  ExternalLink,
+} from "lucide-react";
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getEnabledSocialLinks, type SocialPlatform } from "@/lib/social-links";
+
+const socialIcon: Partial<Record<SocialPlatform, typeof Facebook>> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  youtube: Youtube,
+  linkedin: Linkedin,
+  telegram: Send,
+  whatsapp: MessageCircle,
+};
 
 const servicesLinks = [
   { label: "GST Registration", href: "/services/gst-registration" },
@@ -27,12 +52,36 @@ const companyLinks = [
 const legalLinks = [
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Terms & Conditions", href: "/terms-and-conditions" },
-  { label: "Refund Policy", href: "/terms-and-conditions" },
+  { label: "Refund / Cancellation", href: "/terms-and-conditions" },
+  { label: "Grievance", href: "/#support" },
+  { label: "Accessibility", href: "/#support" },
+  { label: "Sitemap", href: "/sitemap.xml" },
 ];
 
-export function MarketingFooter() {
+const helpLinks = [
+  { label: "FAQ Center", href: "/#faq" },
+  { label: "Track application", href: "/track-application" },
+  { label: "Smart Print", href: "/print" },
+  { label: "Support desk", href: "/#support" },
+];
+
+const categoryLinks = [
+  { label: "Browse categories", href: "/#categories" },
+  { label: "All services", href: "/services" },
+  { label: "Government schemes", href: "/#schemes" },
+  { label: "Knowledge Center", href: "/#blog" },
+];
+
+const partnerLinks = [
+  { label: "Become a Digi Partner", href: "/digi-partner" },
+  { label: "Partner login", href: "/ap/login" },
+];
+
+export function MarketingFooter({ variant = "default" }: { variant?: "default" | "homepage" }) {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const isHomepage = variant === "homepage";
+  const enabledSocial = getEnabledSocialLinks();
 
   const whatsappUrl = buildWhatsAppUrl(
     buildSupportWhatsAppMessage({ page: "footer", topic: "Website footer service enquiry" })
@@ -40,12 +89,118 @@ export function MarketingFooter() {
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim() && email.includes("@")) {
-      setSubscribed(true);
-      setEmail("");
-      setTimeout(() => setSubscribed(false), 5000);
-    }
+    const value = email.trim();
+    if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return;
+    setSubscribed(true);
+    setEmail("");
+    setTimeout(() => setSubscribed(false), 5000);
   };
+
+  if (isHomepage) {
+    return (
+      <footer className="relative bg-[var(--dc-navy-950)] pt-10 pb-8 pb-safe-bottom text-white print:hidden md:pb-10">
+        <div className="mx-auto max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] sm:px-6 md:px-8">
+          {/* WhatsApp / updates conversion — no fake newsletter backend */}
+          <div className="rounded-[1.5rem] border border-white/15 bg-gradient-to-br from-[var(--dc-blue-800)] to-[var(--dc-navy-900)] p-5 sm:p-7">
+            <div className="grid gap-5 lg:grid-cols-[1.2fr_auto] lg:items-center">
+              <div>
+                <h3 className="text-xl font-black tracking-tight text-white md:text-2xl">Stay connected on WhatsApp</h3>
+                <p className="mt-2 max-w-xl text-[15px] font-semibold leading-relaxed text-white/85">
+                  Get help with services, applications and documents through DigiConnect support. No invented email list —
+                  chat with the real support desk.
+                </p>
+              </div>
+              <a
+                id="footer-whatsapp-support"
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[var(--dc-orange-500)] px-6 text-[15px] font-black text-white transition hover:bg-[var(--dc-orange-600)]"
+              >
+                <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                WhatsApp support
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+
+          {enabledSocial.length ? (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <p className="w-full text-sm font-bold text-white/70 sm:w-auto sm:mr-2">Connect</p>
+              {enabledSocial.map((link) => {
+                const Icon = socialIcon[link.platform] ?? ExternalLink;
+                return (
+                  <a
+                    key={link.platform}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Visit DigiConnect on ${link.label}`}
+                    className="inline-flex h-11 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 text-sm font-bold text-white transition hover:bg-white/15"
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {link.label}
+                    {link.handle ? <span className="text-white/65">· {link.handle}</span> : null}
+                  </a>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="mt-10 grid gap-8 border-t border-white/15 pt-8 md:grid-cols-[1.2fr_repeat(4,1fr)]">
+            <div>
+              <span className="inline-flex rounded-xl bg-white px-3 py-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-8 w-auto" />
+              </span>
+              <p className="mt-4 text-base font-black text-white">RNOS India Private Limited</p>
+              <p className="mt-2 max-w-sm text-[15px] font-semibold leading-relaxed text-white/75">
+                Private digital assistance across India. Not an official government portal.
+              </p>
+              <div className="mt-4 space-y-2 text-sm font-bold text-white/85">
+                <a href={`tel:+91${contactDetails.primaryPhone}`} className="flex min-h-10 items-center gap-2 hover:text-[var(--dc-orange-400)]">
+                  <Phone className="h-4 w-4" aria-hidden="true" /> +91 {contactDetails.primaryPhone}
+                </a>
+                <a href={`mailto:${contactDetails.email}`} className="flex min-h-10 items-center gap-2 hover:text-[var(--dc-orange-400)]">
+                  <Mail className="h-4 w-4" aria-hidden="true" /> {contactDetails.email}
+                </a>
+                <p className="text-white/65">Mon–Sat: 10:00 AM – 6:00 PM IST</p>
+              </div>
+            </div>
+
+            {[
+              { title: "Services", links: servicesLinks },
+              { title: "Explore", links: categoryLinks },
+              { title: "Company", links: [...partnerLinks, ...companyLinks.slice(0, 3).map((l) => ({ label: l.label, href: l.href }))] },
+              { title: "Help & Legal", links: [...helpLinks.slice(0, 3), ...legalLinks.slice(0, 4)] },
+            ].map((group) => (
+              <div key={group.title}>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-[var(--dc-orange-400)]">{group.title}</p>
+                <nav className="mt-3 grid gap-2.5">
+                  {group.links.map((link) => (
+                    <Link key={`${group.title}-${link.label}`} href={link.href} className="text-[15px] font-semibold text-white/80 hover:text-[var(--dc-orange-400)]">
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col items-start justify-between gap-3 border-t border-white/15 pt-5 text-sm font-bold text-white/65 sm:flex-row sm:items-center">
+            <div>
+              <p>&copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited</p>
+              <p className="mt-1">Private assistance platform — not a government portal.</p>
+            </div>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-[var(--dc-teal)]" aria-hidden="true" />
+              Secured by Razorpay and SSL
+            </span>
+          </div>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="relative bg-slate-50/80 border-t border-slate-200/50 pt-16 pb-8 pb-safe-bottom print:hidden overflow-hidden noise-bg">

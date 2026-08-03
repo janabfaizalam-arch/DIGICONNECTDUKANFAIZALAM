@@ -66,8 +66,10 @@ export function getDefaultHomepageNotices(): HomepageNotice[] {
 export async function getActiveHomepageNotices(limit = 8): Promise<HomepageNotice[]> {
   const supabase = getSupabaseAdmin();
 
+  // Production homepage hides the bar when no admin-published notices exist.
+  // Defaults remain available for admin preview tooling via getDefaultHomepageNotices().
   if (!supabase) {
-    return getDefaultHomepageNotices();
+    return [];
   }
 
   try {
@@ -81,13 +83,13 @@ export async function getActiveHomepageNotices(limit = 8): Promise<HomepageNotic
 
     if (error) {
       console.error("[homepage-notices] Failed to fetch active notices", error);
-      return getDefaultHomepageNotices();
+      return [];
     }
 
-    return data?.length ? (data as HomepageNotice[]) : getDefaultHomepageNotices();
+    return (data ?? []) as HomepageNotice[];
   } catch (error) {
     console.error("[homepage-notices] Failed to fetch active notices", error);
-    return getDefaultHomepageNotices();
+    return [];
   }
 }
 

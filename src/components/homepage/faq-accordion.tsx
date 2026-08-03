@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { ChevronRight, HelpCircle, Search, Sparkles } from "lucide-react";
+import { ChevronRight, HelpCircle, Search, MessageCircle, Headphones } from "lucide-react";
+import {
+  FIRST_SERVICE_CASHBACK_PERCENT,
+  REPEAT_CASHBACK_PERCENT,
+  MAX_WALLET_REDEEM_PERCENT,
+} from "@/lib/reward-rules";
+import { HomepageSection } from "@/components/homepage/ui";
+import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 interface FaqItem {
   question: string;
@@ -10,38 +17,42 @@ interface FaqItem {
 
 const faqs: FaqItem[] = [
   {
-    question: "DigiConnect Dukan kya hai?",
-    answer: "DigiConnect Dukan, RNOS India Pvt Ltd dwara powered ek digital support aur verification assist desk hai. Hum customers ko GST registration, ITR filing, vehicle insurance, loans, passport applications aur PVC smart card printing jaisi online services me expert guidance aur secure form submission support provide karte hain.",
+    question: "What is DigiConnect Dukan?",
+    answer:
+      "DigiConnect Dukan is the customer brand of RNOS India Private Limited. We provide private digital assistance for services such as GST registration support, ITR filing help, passport and licence documentation, vehicle insurance assistance, and PVC smart card printing. We are not an official government portal.",
   },
   {
-    question: "PVC Smart Card print me kitna time lagta hai?",
-    answer: "PVC card print orders apply karne ke 24-48 hours ke andar process ho kar secure ship kar diye jate hain. Aapko email aur dashboard notifications par tracking details and updates milte hain.",
+    question: "How do I track my application?",
+    answer:
+      "Sign in to your DigiConnect Dukan customer account and open Applications. Status updates, missing-document requests, and receipts are shown there. For privacy, we do not expose application records through public ID lookup on the homepage.",
   },
   {
-    question: "Kya wallet cashback real money me redeem ho sakta hai?",
-    answer: "Wallet cashback points real reward credits hain jinhe aap direct platform par koi bhi nayi paid application select karte waqt up to 50% discount apply karne ke liye redeem kar sakte hain. Ye directly orders summary ledger me automatically deduct hote hain.",
+    question: "How do wallet rewards work?",
+    answer: `Eligible paid services can earn wallet cashback per the current reward configuration (commonly ${FIRST_SERVICE_CASHBACK_PERCENT}% on a first eligible service and ${REPEAT_CASHBACK_PERCENT}% thereafter). Wallet credits can typically be redeemed up to ${MAX_WALLET_REDEEM_PERCENT}% of a new order. Exact eligibility is shown in your wallet ledger.`,
   },
   {
-    question: "Agar documents verification reject ho jaye toh kya hoga?",
-    answer: "Agar verification me koi spelling mistake, wrong database registry, ya document issue match hota hai, toh humare experts direct call ya WhatsApp support dwara correct copies review karte hain aur submission resolve karte hain.",
+    question: "Are payments secure?",
+    answer:
+      "Checkout uses Razorpay for UPI, cards, net banking, and supported wallets. DigiConnect Dukan does not store your full card details on our servers.",
   },
   {
-    question: "Payment checkout security kaisi hai?",
-    answer: "DigiConnect Dukan safe transactions ke liye industry-standard secure payment gateway (Razorpay) use karta hai. Aap UPI, cards, net banking, ya wallets ke through checkout complete kar sakte hain.",
-  },
-  {
-    question: "How long does GST Registration take?",
-    answer: "GST Registration typically takes 3-7 working days after all required documents are verified by our CA/CS team. Our experts ensure proper documentation to avoid rejections and speed up portal processing.",
+    question: "What if documents need correction?",
+    answer:
+      "If verification finds missing or incorrect documents, our team contacts you through the dashboard and support channels (call/WhatsApp) so you can upload corrected files before further processing.",
   },
   {
     question: "Is there a refund policy?",
-    answer: "Yes, we have a transparent refund policy. If an application cannot be processed due to verification constraints or our error, a refund is processed. Please refer to our Refund Policy page for details.",
+    answer:
+      "Yes. Refunds follow our published Refund / Cancellation Policy when an application cannot be processed due to verification constraints or our error. Please review the policy page for timelines and exclusions.",
   },
 ];
 
 export function FaqAccordion() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const whatsappUrl = buildWhatsAppUrl(
+    buildSupportWhatsAppMessage({ page: "faq", topic: "FAQ follow-up question" }),
+  );
 
   const toggle = (idx: number) => {
     setOpenIndex(openIndex === idx ? null : idx);
@@ -51,104 +62,134 @@ export function FaqAccordion() {
     if (!searchQuery.trim()) return faqs;
     const q = searchQuery.toLowerCase();
     return faqs.filter(
-      faq => faq.question.toLowerCase().includes(q) || faq.answer.toLowerCase().includes(q)
+      (faq) => faq.question.toLowerCase().includes(q) || faq.answer.toLowerCase().includes(q),
     );
   }, [searchQuery]);
 
-  // SEO schema markup
   const schema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "mainEntity": faqs.map((faq) => ({
+    mainEntity: filteredFaqs.map((faq) => ({
       "@type": "Question",
-      "name": faq.question,
-      "acceptedAnswer": {
+      name: faq.question,
+      acceptedAnswer: {
         "@type": "Answer",
-        "text": faq.answer,
+        text: faq.answer,
       },
     })),
   };
 
   return (
-    <section id="faq" className="bg-white py-12 px-4 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute bottom-0 right-1/4 w-[300px] h-[300px] rounded-full bg-blue-500/5 blur-[90px] pointer-events-none" />
-
-      <div className="container-shell max-w-3xl mx-auto relative z-10">
-        
-        {/* Header */}
-        <div className="text-center mb-8">
-          <p className="text-[10px] font-black uppercase tracking-wider text-blue-500 flex items-center justify-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 fill-blue-100 text-blue-500" /> FAQ Accordion
-          </p>
-          <h2 className="mt-1.5 text-xl md:text-2xl font-black tracking-tight text-slate-850">
-            Frequently Asked Questions
+    <HomepageSection id="faq" surface="sky">
+      <div className="grid gap-8 lg:grid-cols-[0.9fr_1.2fr] lg:gap-12">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--dc-blue-600)]">Help centre</p>
+          <h2 className="mt-2 text-[1.65rem] font-black tracking-tight text-[var(--dc-ink)] sm:text-[2rem] md:text-[2.25rem]">
+            Frequently asked questions
           </h2>
+          <p className="mt-3 max-w-md text-[15px] font-semibold leading-relaxed text-[var(--dc-body)] sm:text-base">
+            Clear answers about private digital assistance, payments, tracking and support.
+          </p>
+
+          <div className="mt-6 rounded-[1.5rem] border border-[var(--dc-blue-500)]/15 bg-white p-5 shadow-[0_12px_32px_rgba(7,31,77,0.05)] md:p-6">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--dc-teal-soft)] text-[var(--dc-teal)]">
+              <Headphones className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <h3 className="mt-4 text-lg font-extrabold text-[var(--dc-ink)]">Still need help?</h3>
+            <p className="mt-2 text-[15px] font-semibold leading-relaxed text-[var(--dc-body)]">
+              Chat with DigiConnect support on WhatsApp for screenshots, status questions and document guidance.
+            </p>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--dc-teal)] px-4 text-[15px] font-black text-white sm:w-auto"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp support
+            </a>
+          </div>
         </div>
 
-        {/* AI-connected Search Filter */}
-        <div className="relative mb-6">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search FAQs instantly..."
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white/70 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-450 focus:ring-4 focus:ring-blue-100/50 shadow-inner"
-          />
-        </div>
+        <div>
+          <div className="relative mb-4">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dc-muted)]"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setOpenIndex(0);
+              }}
+              placeholder="Search FAQs..."
+              aria-label="Search frequently asked questions"
+              className="h-12 w-full rounded-xl border border-[var(--dc-blue-500)]/15 bg-white pl-10 pr-4 text-[15px] font-semibold text-[var(--dc-ink)] outline-none transition placeholder:text-[var(--dc-muted)] focus:border-[var(--dc-blue-500)] focus:ring-4 focus:ring-[var(--dc-blue-500)]/15"
+            />
+          </div>
 
-        {/* Accordion Container */}
-        <div className="space-y-3">
-          {filteredFaqs.map((faq, idx) => {
-            const isOpen = openIndex === idx;
-            return (
-              <div
-                key={idx}
-                className={`glass-liquid-premium rounded-2xl transition-all duration-350 border-white/50 ${
-                  isOpen ? "border-blue-400/40 shadow-sm" : "hover:border-slate-300/30"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggle(idx)}
-                  className="w-full flex items-center justify-between gap-3.5 p-4 font-black text-slate-750 text-xs md:text-sm outline-none cursor-pointer text-left select-none"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <HelpCircle className={`h-4.5 w-4.5 shrink-0 transition-colors ${isOpen ? "text-blue-500" : "text-slate-350"}`} />
-                    <span>{faq.question}</span>
-                  </span>
-                  <ChevronRight className={`h-4 w-4 text-slate-400 shrink-0 transition-transform duration-350 ${isOpen ? "rotate-90 text-blue-600" : ""}`} />
-                </button>
-
-                {/* Instant smooth grid animation */}
+          <div className="space-y-3">
+            {filteredFaqs.map((faq, idx) => {
+              const isOpen = openIndex === idx;
+              const panelId = `faq-panel-${idx}`;
+              const buttonId = `faq-button-${idx}`;
+              return (
                 <div
-                  className="grid transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                  key={faq.question}
+                  className={`rounded-[1.25rem] bg-white transition ${
+                    isOpen
+                      ? "shadow-[0_10px_28px_rgba(7,31,77,0.07)] ring-2 ring-[var(--dc-orange-500)]/35"
+                      : "ring-1 ring-slate-200/80"
+                  }`}
                 >
-                  <div className="overflow-hidden">
-                    <div className="px-4 pb-4.5 pl-11">
-                      <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-                        {faq.answer}
-                      </p>
+                  <button
+                    id={buttonId}
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    onClick={() => toggle(idx)}
+                    className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 p-4 text-left text-base font-black text-[var(--dc-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--dc-blue-600)] md:p-5"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <HelpCircle
+                        className={`h-5 w-5 shrink-0 ${isOpen ? "text-[var(--dc-orange-500)]" : "text-[var(--dc-muted)]"}`}
+                        aria-hidden="true"
+                      />
+                      <span>{faq.question}</span>
+                    </span>
+                    <ChevronRight
+                      className={`h-5 w-5 shrink-0 text-[var(--dc-muted)] transition-transform ${isOpen ? "rotate-90 text-[var(--dc-blue-600)]" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={buttonId}
+                    className="grid transition-[grid-template-rows] duration-300 ease-out"
+                    style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="px-4 pb-5 pl-12 md:px-5 md:pl-14">
+                        <p className="text-[15px] font-semibold leading-relaxed text-[var(--dc-body)]">{faq.answer}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {filteredFaqs.length === 0 ? (
+            <p className="py-10 text-center text-[15px] font-semibold text-[var(--dc-muted)]">No matching questions found.</p>
+          ) : null}
+
+          {filteredFaqs.length > 0 ? (
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+          ) : null}
         </div>
-
-        {filteredFaqs.length === 0 && (
-          <p className="text-center text-xs font-semibold text-slate-400 py-10">No matching questions found.</p>
-        )}
-
-        {/* Schema injection */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-        />
       </div>
-    </section>
+    </HomepageSection>
   );
 }

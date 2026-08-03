@@ -10,6 +10,7 @@ import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
 import { BottomNav } from "@/components/bottom-nav";
+import { HomepageOfferNoticeBar } from "@/components/homepage-offer-notice-bar";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -140,10 +141,16 @@ export default function RootLayout({
           </>
         ) : null}
         <ToastProvider>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-blue-700 focus:shadow-lg"
+          >
+            Skip to main content
+          </a>
           <Suspense fallback={null}>
             <NavigationProgress />
           </Suspense>
-          <SiteHeader />
+          <SiteHeader announcement={<HomepageOfferNoticeBar />} />
           {children}
           <Suspense fallback={null}>
             <BottomNav />

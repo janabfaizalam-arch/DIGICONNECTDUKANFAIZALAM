@@ -1,175 +1,173 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Printer, ArrowRight } from "lucide-react";
 
-import { HeroSearchSection } from "@/components/homepage/hero-search-section";
-import { SmartSearchHub } from "@/components/homepage/smart-search-hub";
+import { HomepageHero, HomepageTrustChips } from "@/components/homepage/homepage-hero";
+import { QuickActions } from "@/components/homepage/quick-actions";
 import { TrendingNow } from "@/components/homepage/trending-now";
 import { QuickServiceGrid } from "@/components/homepage/quick-service-grid";
 import { FeaturedServices } from "@/components/homepage/featured-services";
+import { HowItWorks } from "@/components/homepage/how-it-works";
+import { ApplicationTrackingCta } from "@/components/homepage/application-tracking-cta";
 import { RecentSuccessStories } from "@/components/homepage/recent-success-stories";
 import { RewardCenter } from "@/components/homepage/reward-center";
 import { TrustStrip } from "@/components/homepage/trust-strip";
-import { WhyChooseUs } from "@/components/homepage/why-choose-us";
 import { GoogleReviews } from "@/components/homepage/google-reviews";
 import { VideoTestimonials } from "@/components/homepage/video-testimonials";
 import { GovernmentSchemesHub } from "@/components/homepage/government-schemes-hub";
 import { KnowledgeCenter } from "@/components/homepage/knowledge-center";
 import { FaqAccordion } from "@/components/homepage/faq-accordion";
+import { BecomeDigiPartner } from "@/components/homepage/become-digi-partner";
 import { SupportCenter } from "@/components/homepage/support-center";
+import { AboutRnos } from "@/components/homepage/about-rnos";
 
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
-import { TrustStripMarquee } from "@/components/homepage/trust-strip-marquee";
 import { ScrollReveal } from "@/components/scroll-reveal";
+import { getPublicServices } from "@/lib/services";
+import { getActiveHomepageSlides } from "@/lib/homepage-slides";
+import { contactDetails } from "@/lib/constants";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
 
 export const metadata: Metadata = {
-  title: "DigiConnect Dukan | India's Premium Digital Services Marketplace",
+  title: "DigiConnect Dukan | Digital Assistance by RNOS India Pvt Ltd",
   description:
-    "DigiConnect Dukan by RNOS India Pvt Ltd — GST Registration, ITR Filing, Passport, Driving Licence, Vehicle Insurance, CIBIL Analysis, PVC Cards & more. 20% Wallet Cashback on every service.",
+    "DigiConnect Dukan by RNOS India Private Limited — private digital assistance for GST, ITR, passport, driving licence, vehicle insurance, PVC cards, and selected government scheme filings. Secure payments, wallet rewards, and application tracking.",
   keywords: [
-    "Digital Services India",
-    "GST Registration Online",
-    "ITR Filing Service",
-    "Passport Application",
-    "Driving Licence Online",
-    "CIBIL Score Analysis",
-    "PVC Smart Card",
-    "Vehicle Insurance",
-    "20% DigiWallet Cashback",
-    "PM Vishwakarma Yojana",
-    "Government Services Online",
-    "Digital Wallet Rewards India",
+    "DigiConnect Dukan",
+    "RNOS India Pvt Ltd",
+    "GST registration assistance",
+    "ITR filing support",
+    "Passport application help",
+    "Driving licence online support",
+    "PVC smart card printing",
+    "Vehicle insurance assistance",
+    "Government scheme documentation support",
+    "Digital wallet rewards India",
   ],
   alternates: {
     canonical: "/",
+  },
+  openGraph: {
+    title: "DigiConnect Dukan | Digital Assistance by RNOS India Pvt Ltd",
+    description:
+      "Private digital assistance for tax, business, identity, insurance, and selected government scheme filings across India.",
+    type: "website",
+    url: siteUrl,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DigiConnect Dukan | RNOS India Pvt Ltd",
+    description:
+      "Private digital assistance for GST, ITR, passport, insurance, PVC cards, and more — with secure payments and tracking.",
   },
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const [publicServices, slides] = await Promise.all([getPublicServices(), getActiveHomepageSlides(5)]);
+
+  const searchCatalog = publicServices.map((s) => ({
+    slug: s.slug,
+    title: s.title,
+    shortDescription: s.shortDescription,
+    priceLabel: s.priceLabel,
+    category: s.category,
+    amount: s.amount,
+  }));
+
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "RNOS India Private Limited",
+    alternateName: "DigiConnect Dukan",
+    url: siteUrl,
+    email: contactDetails.email,
+    telephone: `+91${contactDetails.phone}`,
+    description:
+      "DigiConnect Dukan provides private digital assistance and documentation support services. Not an official government portal.",
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "DigiConnect Dukan",
+    url: siteUrl,
+  };
+
   return (
     <>
-      <main className="homepage-mobile-shell bg-white pb-8 md:pb-0">
-        {/* Section 2 — Smart Search Hub */}
-        <SmartSearchHub />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
 
-        {/* Section 1 — Hero Slides */}
-        <HeroSearchSection />
+      <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
+        <HomepageHero catalog={searchCatalog} slides={slides} />
 
-        {/* Prominent Smart Print QR Service Button */}
-        <ScrollReveal>
-          <div className="px-4 py-2.5 max-w-2xl mx-auto relative z-20">
-            <Link
-              href="/print"
-              className="group relative block overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent p-[1.2px] shadow-sm hover:shadow-md transition-all duration-300 select-none cursor-pointer"
-            >
-              {/* Outer border glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/15 to-amber-500/15 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              {/* Inner card container */}
-              <div className="relative flex items-center justify-between bg-white/80 backdrop-blur-xl p-3.5 sm:p-4 rounded-[15px] border border-white/40">
-                <div className="flex items-center gap-3.5 text-left">
-                  {/* Icon with double gradient ring */}
-                  <div className="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-500 p-[1.5px] shadow-sm shrink-0 flex items-center justify-center">
-                    <div className="w-full h-full rounded-[10px] bg-white flex items-center justify-center">
-                      <Printer className="h-5 w-5 text-orange-600 stroke-[2] group-hover:scale-105 transition-transform duration-300" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-extrabold text-slate-900 leading-tight">
-                      Smart Print
-                    </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-normal font-semibold">
-                      Scan QR & print instantly. Upload PDFs or photos securely.
-                    </p>
-                  </div>
-                </div>
-                {/* Micro-animated CTA button */}
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-50 group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500 text-orange-600 group-hover:text-white shadow-xs group-hover:translate-x-0.5 transition-all duration-300">
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </Link>
-          </div>
-        </ScrollReveal>
+        <QuickActions />
 
-        {/* Section 3 — Trending Now */}
-        <ScrollReveal>
-          <TrendingNow />
-        </ScrollReveal>
+        <HomepageTrustChips />
 
-        {/* Section 4 — Quick Categories (8 Glass Cards) */}
-        <ScrollReveal>
-          <QuickServiceGrid />
-        </ScrollReveal>
+        <TrendingNow />
 
-        {/* Section 5 — Featured Services */}
+        <QuickServiceGrid />
+
         <ScrollReveal>
           <FeaturedServices />
         </ScrollReveal>
 
-        {/* Section 6 — Recent Success Stories */}
         <ScrollReveal>
-          <RecentSuccessStories />
+          <HowItWorks />
         </ScrollReveal>
 
-        {/* Section 7 — Reward Center */}
-        <ScrollReveal>
-          <RewardCenter />
-        </ScrollReveal>
-
-        {/* Trust Strip Marquee under Refer & Earn */}
-        <ScrollReveal>
-          <TrustStripMarquee />
-        </ScrollReveal>
-
-        {/* Section 8 — Trust Center (Animated Counters) */}
         <ScrollReveal>
           <TrustStrip />
         </ScrollReveal>
 
-        {/* Section 9 — Why DigiConnect (Premium Visual Trust) */}
         <ScrollReveal>
-          <WhyChooseUs />
+          <ApplicationTrackingCta />
         </ScrollReveal>
 
-        {/* Section 10 — Google Reviews */}
+        <ScrollReveal>
+          <RewardCenter />
+        </ScrollReveal>
+
+        {/* CMS/API sections render only when real data exists */}
+        <ScrollReveal>
+          <RecentSuccessStories />
+        </ScrollReveal>
+
         <ScrollReveal>
           <GoogleReviews />
         </ScrollReveal>
 
-        {/* Section 11 — Video Testimonials */}
-        <ScrollReveal>
-          <VideoTestimonials />
-        </ScrollReveal>
+        <VideoTestimonials />
 
-        {/* Section 12 — Government Schemes Hub */}
         <ScrollReveal>
           <GovernmentSchemesHub />
         </ScrollReveal>
 
-        {/* Section 13 — Knowledge Center */}
         <ScrollReveal>
           <KnowledgeCenter />
         </ScrollReveal>
 
-        {/* Section 14 — FAQ Accordion */}
         <ScrollReveal>
           <FaqAccordion />
         </ScrollReveal>
 
-        {/* Section 15 — Support Center */}
+        <ScrollReveal>
+          <BecomeDigiPartner />
+        </ScrollReveal>
+
         <ScrollReveal>
           <SupportCenter />
         </ScrollReveal>
+
+        <ScrollReveal>
+          <AboutRnos />
+        </ScrollReveal>
       </main>
 
-      {/* Section 16 — Footer */}
-      <MarketingFooter />
-
-      {/* Sticky WhatsApp CTA */}
+      <MarketingFooter variant="homepage" />
       <HomepageContactActions />
     </>
   );

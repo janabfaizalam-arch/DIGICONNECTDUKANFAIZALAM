@@ -1,236 +1,162 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Star, Check, ArrowRight, Store, ReceiptText, ShieldCheck, CreditCard, Globe, Landmark } from "lucide-react";
-import { getServiceBySlug } from "@/lib/services-data";
+import { ArrowRight } from "lucide-react";
 
-interface ServiceItem {
-  slug: string;
-  title: string;
-  category: string;
-  amount: number;
-  priceLabel: string;
-  rating: number;
-  ratingCount: string;
-  benefits: string[];
-  icon: React.ComponentType<{ className?: string }>;
-}
+import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
+import { getPublicHomepageServices } from "@/lib/services";
+import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
 
-const fallbackFeatured: Omit<ServiceItem, "icon">[] = [
-  {
-    slug: "gst-registration",
-    title: "GST Registration",
-    category: "Tax & GST Compliance",
-    amount: 2499,
-    priceLabel: "₹2,499",
-    rating: 4.9,
-    ratingCount: "1,240 reviews",
-    benefits: [
-      "Legitimize your business & sell online",
-      "Claim Input Tax Credit (ITC) safely",
-      "Expert CA-assisted document validation"
-    ]
-  },
-  {
-    slug: "itr-filing",
-    title: "ITR Filing",
-    category: "Income Tax return",
-    amount: 699,
-    priceLabel: "₹699",
-    rating: 4.8,
-    ratingCount: "850 reviews",
-    benefits: [
-      "File accurate salary or business tax returns",
-      "Claim maximum eligible deductions",
-      "Expert review to avoid notice queries"
-    ]
-  },
-  {
-    slug: "pm-vishwakarma-yojana",
-    title: "PM Vishwakarma",
-    category: "Government Schemes",
-    amount: 250,
-    priceLabel: "₹250",
-    rating: 4.9,
-    ratingCount: "420 reviews",
-    benefits: [
-      "Artisan benefits registration support",
-      "Toolkit incentive of ₹15,000 file preparation",
-      "Official certificate & skill card guidance"
-    ]
-  },
-  {
-    slug: "credit-cards",
-    title: "Credit Cards",
-    category: "Banking & Credit",
-    amount: 0,
-    priceLabel: "Enquiry Now",
-    rating: 4.8,
-    ratingCount: "980 reviews",
-    benefits: [
-      "Compare top cashbacks & reward cards",
-      "Zero joining fee eligibility support",
-      "Fast processing with lead bank channels"
-    ]
-  },
-  {
-    slug: "passport",
-    title: "Passport Application",
-    category: "Passport & Licence",
-    amount: 2499,
-    priceLabel: "₹2,499",
-    rating: 4.9,
-    ratingCount: "630 reviews",
-    benefits: [
-      "Fresh & reissue application slots scheduling",
-      "Complete document review to prevent rejections",
-      "Fast appointment date allocation support"
-    ]
-  },
-  {
-    slug: "cibil-report-increase",
-    title: "CIBIL score & Analysis",
-    category: "Banking & Credit",
-    amount: 2600,
-    priceLabel: "₹2,600",
-    rating: 4.8,
-    ratingCount: "510 reviews",
-    benefits: [
-      "TransUnion membership & credit score query",
-      "Negative remark disputing instruction file",
-      "Detailed health report review & repair guidelines"
-    ]
-  }
-];
+/** Editorial featured services — large lead + image-led supporting cards. */
+export async function FeaturedServices() {
+  const featuredServices = await getPublicHomepageServices(8);
+  if (!featuredServices.length) return null;
 
-function getIconBySlug(slug: string) {
-  switch (slug) {
-    case "gst-registration": return Store;
-    case "itr-filing": return ReceiptText;
-    case "pm-vishwakarma-yojana": return ShieldCheck;
-    case "credit-cards": return CreditCard;
-    case "passport": return Globe;
-    case "cibil-report-increase": return Landmark;
-    default: return Star;
-  }
-}
-
-export function FeaturedServices() {
-  const [items, setItems] = useState<ServiceItem[]>([]);
-
-  useEffect(() => {
-    // Resolve dynamic prices/details from service database fallbacks
-    const resolved = fallbackFeatured.map(item => {
-      const details = getServiceBySlug(item.slug);
-      return {
-        ...item,
-        title: details?.title || item.title,
-        priceLabel: details?.priceLabel || item.priceLabel,
-        amount: details?.amount || item.amount,
-        benefits: details?.benefits?.slice(0, 3) || item.benefits,
-        icon: getIconBySlug(item.slug)
-      };
-    });
-    setItems(resolved);
-  }, []);
+  const [lead, ...rest] = featuredServices;
+  const LeadIcon = lead.icon;
+  const leadImage = resolveHomepageServiceImage(lead.slug, lead.title, lead.heroImageUrl);
+  const supporting = rest.slice(0, 4);
 
   return (
-    <section id="featured-services" className="bg-slate-50/30 py-12 px-4 relative overflow-hidden">
-      {/* Background ambient lighting effects */}
-      <div className="absolute top-0 right-1/4 w-[350px] h-[350px] rounded-full bg-blue-500/5 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-[350px] h-[350px] rounded-full bg-purple-500/5 blur-[100px] pointer-events-none" />
+    <HomepageSection id="top-services" surface="sky">
+      <HomepageSectionHeader
+        eyebrow="Featured assistance"
+        title="Featured digital assistance"
+        description="Selected services from the live catalog. Fees shown are RNOS assistance fees where listed."
+        actionHref="/services"
+        actionLabel="All services"
+      />
 
-      <div className="container-shell max-w-[1600px] mx-auto relative z-10">
-        {/* Header */}
-        <div className="mb-8 flex items-end justify-between">
-          <div className="text-left">
-            <p className="text-[10px] font-black uppercase tracking-wider text-blue-500 flex items-center gap-1">
-              <Star className="h-3.5 w-3.5 fill-blue-100 text-blue-500" />
-              Featured Services
-            </p>
-            <h2 className="mt-1 text-xl md:text-2xl font-black tracking-tight text-slate-800">
-              Profitable Premium Solutions
-            </h2>
-          </div>
-          <Link
-            href="/services"
-            className="flex items-center gap-0.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition"
-          >
-            All Services <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        {/* Responsive Grid/Carousel */}
-        {/* Mobile: horizontal snap scroll; Desktop: 3-column bento grid */}
-        <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-4 snap-x snap-mandatory lg:grid lg:grid-cols-3 lg:gap-6 lg:px-0 lg:mx-0">
-          {items.map((service) => {
-            const IconComponent = service.icon;
-            
-            return (
-              <div
-                key={service.slug}
-                className="w-[290px] sm:w-[320px] shrink-0 snap-start snap-always lg:w-auto flex"
-              >
-                <div className="glass-liquid-premium rounded-3xl p-6 flex flex-col justify-between w-full hover:border-blue-400/40 border-white/50">
-                  
-                  {/* Card Top */}
-                  <div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
-                        {service.category}
-                      </span>
-                      <div className="flex items-center gap-1 text-amber-500">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        <span className="text-[11px] font-black text-slate-700">{service.rating}</span>
-                        <span className="text-[9px] font-semibold text-slate-400">({service.ratingCount.split(" ")[0]})</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50/50 text-blue-600">
-                        <IconComponent className="h-5.5 w-5.5 stroke-[2]" />
-                      </div>
-                      <h3 className="text-base font-black text-slate-800 tracking-tight leading-snug">
-                        {service.title}
-                      </h3>
-                    </div>
-
-                    {/* Bulleted Benefits list */}
-                    <ul className="mt-5 space-y-2.5">
-                      {service.benefits.map((benefit, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs font-semibold text-slate-500">
-                          <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5 stroke-[3]" />
-                          <span className="leading-snug">{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Card Bottom / Action */}
-                  <div className="mt-8 pt-4 border-t border-slate-200/50 flex items-center justify-between gap-4">
-                    <div>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block leading-none">Starting from</span>
-                      <span className="text-sm font-black text-slate-800 block mt-1.5 leading-none">
-                        {service.priceLabel}
-                      </span>
-                    </div>
-                    
-                    <Link
-                      href={`/services/${service.slug}`}
-                      className="h-10 rounded-xl bg-slate-900 hover:bg-slate-850 px-4 text-xs font-black text-white transition-all active:scale-[0.96] flex items-center justify-center gap-1.5 shadow-sm relative overflow-hidden animate-shine-glass group"
-                    >
-                      Apply Now
-                      <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-                  </div>
-
-                </div>
+      {/* Desktop editorial layout */}
+      <div className="hidden gap-5 lg:grid lg:grid-cols-[1.15fr_1fr]">
+        <article className="overflow-hidden rounded-[1.5rem] border border-[var(--dc-blue-500)]/12 bg-white shadow-[0_16px_40px_rgba(7,31,77,0.08)]">
+          <div className="relative aspect-[16/10] bg-gradient-to-br from-[var(--dc-blue-700)] to-[var(--dc-navy-950)]">
+            {leadImage ? (
+              <Image src={leadImage} alt="" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 680px" priority={false} />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <LeadIcon className="h-16 w-16 text-white/80" aria-hidden="true" />
               </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" aria-hidden="true" />
+            {lead.badge ? (
+              <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-xs font-black uppercase tracking-wide text-[var(--dc-blue-700)]">
+                {lead.badge}
+              </span>
+            ) : null}
+          </div>
+          <div className="p-6 md:p-8">
+            <p className="text-xs font-black uppercase tracking-wider text-[var(--dc-blue-600)]">{lead.category}</p>
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-[var(--dc-ink)] md:text-[1.75rem]">{lead.title}</h3>
+            {lead.shortDescription ? (
+              <p className="mt-3 line-clamp-3 text-base font-semibold leading-relaxed text-[var(--dc-body)]">
+                {lead.shortDescription}
+              </p>
+            ) : null}
+            <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-[var(--dc-muted)]">Assistance fee</p>
+                <p className="mt-1 text-xl font-black text-[var(--dc-ink)]">{lead.priceLabel}</p>
+              </div>
+              <Link
+                href={`/services/${lead.slug}`}
+                className="inline-flex h-12 min-w-[9rem] items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-orange-500)] px-6 text-[15px] font-black text-white transition hover:bg-[var(--dc-orange-600)]"
+              >
+                View service
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        </article>
+
+        <ul className="grid grid-cols-2 gap-4 content-start">
+          {supporting.map((service) => {
+            const Icon = service.icon;
+            const imageSrc = resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl);
+            return (
+              <li key={service.slug}>
+                <Link
+                  href={`/services/${service.slug}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--dc-blue-500)]/10 bg-white shadow-[0_8px_24px_rgba(7,31,77,0.05)] transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <span className="relative block aspect-[16/11] bg-[var(--dc-blue-soft)]">
+                    {imageSrc ? (
+                      <Image src={imageSrc} alt="" fill className="object-cover transition duration-300 group-hover:scale-[1.03]" sizes="280px" />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
+                        <Icon className="h-8 w-8" aria-hidden="true" />
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex flex-1 flex-col p-4">
+                    <span className="line-clamp-2 text-[15px] font-extrabold leading-snug text-[var(--dc-ink)] group-hover:text-[var(--dc-blue-700)]">
+                      {service.title}
+                    </span>
+                    <span className="mt-2 text-sm font-bold text-[var(--dc-body)]">{service.priceLabel}</span>
+                  </span>
+                </Link>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
-    </section>
+
+      {/* Mobile: lead card + snap rail */}
+      <div className="lg:hidden">
+        <article className="overflow-hidden rounded-[1.35rem] border border-[var(--dc-blue-500)]/12 bg-white shadow-sm">
+          <div className="relative aspect-[16/10] bg-[var(--dc-blue-soft)]">
+            {leadImage ? (
+              <Image src={leadImage} alt="" fill className="object-cover" sizes="100vw" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
+                <LeadIcon className="h-10 w-10" aria-hidden="true" />
+              </div>
+            )}
+          </div>
+          <div className="p-4">
+            <h3 className="text-xl font-black tracking-tight text-[var(--dc-ink)]">{lead.title}</h3>
+            <p className="mt-1 text-sm font-bold text-[var(--dc-body)]">{lead.priceLabel}</p>
+            <Link
+              href={`/services/${lead.slug}`}
+              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-orange-500)] text-sm font-black text-white"
+            >
+              View service
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </article>
+
+        {supporting.length ? (
+          <div className="mt-4">
+            <HomepageMobileRail>
+              {supporting.map((service) => {
+                const Icon = service.icon;
+                const imageSrc = resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl);
+                return (
+                  <Link
+                    key={service.slug}
+                    href={`/services/${service.slug}`}
+                    className="w-[78%] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[1.25rem] border border-[var(--dc-blue-500)]/10 bg-white shadow-sm"
+                  >
+                    <span className="relative block aspect-[16/10] bg-[var(--dc-blue-soft)]">
+                      {imageSrc ? (
+                        <Image src={imageSrc} alt="" fill className="object-cover" sizes="280px" />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
+                          <Icon className="h-8 w-8" aria-hidden="true" />
+                        </span>
+                      )}
+                    </span>
+                    <span className="block p-3.5">
+                      <span className="line-clamp-2 text-[15px] font-extrabold text-[var(--dc-ink)]">{service.title}</span>
+                      <span className="mt-1 block text-sm font-bold text-[var(--dc-body)]">{service.priceLabel}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </HomepageMobileRail>
+          </div>
+        ) : null}
+      </div>
+    </HomepageSection>
   );
 }

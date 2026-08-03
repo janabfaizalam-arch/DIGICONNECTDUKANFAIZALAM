@@ -226,35 +226,56 @@ export function BottomNav() {
       variants={navVariants}
       animate={navHidden ? "hidden" : "visible"}
       initial="visible"
-      className="bottom-nav-container fixed bottom-0 left-0 right-0 z-[50] flex h-[68px] max-w-md items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-4px_16px_-6px_rgba(15,23,42,0.08)] backdrop-blur-md print:hidden md:hidden mx-auto"
+      className="bottom-nav-container fixed bottom-0 left-0 right-0 z-[50] px-3 print:hidden md:hidden"
+      style={{ paddingBottom: "max(0.35rem, env(safe-area-inset-bottom))" }}
+      aria-label="Primary mobile navigation"
     >
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = isTabActive(tab.href);
-        return (
-          <Link
-            key={tab.label}
-            href={tab.href}
-            className={`flex flex-col items-center justify-center flex-1 h-full relative transition-all duration-300 ${
-              isActive ? "text-blue-600 font-semibold scale-105" : "text-slate-400 hover:text-slate-650"
-            }`}
-          >
-            <div className="flex flex-col items-center justify-center gap-0.5 relative z-10">
-              <Icon className={`h-4.5 w-4.5 transition-all duration-300 ${
-                isActive ? "stroke-[2.2] scale-110 drop-shadow-[0_0_8px_rgba(37,99,235,0.25)]" : "stroke-[1.8]"
-              }`} />
-              <span className="text-[9px] tracking-wide font-bold">{tab.label}</span>
-            </div>
-            {isActive && (
-              <motion.span
-                layoutId="activeTabIndicator"
-                className="absolute inset-0 bg-blue-50/60 rounded-[18px] border border-blue-100/20 -z-10"
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              />
-            )}
-          </Link>
-        );
-      })}
+      <div className="mx-auto flex h-[var(--bottom-nav-height)] max-w-md items-stretch justify-around rounded-[1.35rem] border border-[var(--dc-blue-500)]/15 bg-white px-1 shadow-[0_-8px_28px_rgba(7,31,77,0.12)]">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = isTabActive(tab.href);
+          const isApply = tab.label === "Apply";
+          return (
+            <Link
+              key={tab.label}
+              href={tab.href}
+              className={`relative flex min-h-11 flex-1 flex-col items-center justify-center transition-colors duration-200 ${
+                isApply
+                  ? "text-[var(--dc-orange-600)]"
+                  : isActive
+                    ? "text-[var(--dc-blue-700)]"
+                    : "text-[var(--dc-ink)]/55 hover:text-[var(--dc-ink)]"
+              }`}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <div className="relative z-10 flex flex-col items-center justify-center gap-0.5">
+                <span
+                  className={
+                    isApply
+                      ? "flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--dc-orange-500)] text-white shadow-[0_6px_14px_rgba(242,90,0,0.35)]"
+                      : undefined
+                  }
+                >
+                  <Icon
+                    className={`h-5 w-5 transition-all duration-200 ${
+                      isApply ? "stroke-[2.4] text-white" : isActive ? "stroke-[2.3]" : "stroke-[1.9]"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </span>
+                <span className="max-w-[4.75rem] truncate text-[10px] font-bold tracking-wide">{tab.label}</span>
+              </div>
+              {isActive && !isApply ? (
+                <motion.span
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-x-1 inset-y-1 -z-10 rounded-xl bg-[var(--dc-blue-soft)]"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
     </motion.nav>
   );
 }

@@ -36,7 +36,7 @@ export async function sendWhatsappOTP(
   mobile: string,
   otp: string,
   purpose: WhatsappTemplatePurpose,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; code?: string; requestId?: string }> {
   const mapped = mapLegacyPurpose(purpose);
   const result = await sendAisensyOtp({
     phone: mobile,
@@ -45,7 +45,20 @@ export async function sendWhatsappOTP(
     source: `legacy-whatsapp-auth:${purpose}`,
   });
   if (!result.ok) {
-    return { success: false, error: AISENSY_USER_FACING_SEND_ERROR };
+    console.error("[whatsapp-auth] legacy_send_failed", {
+      purpose,
+      mapped,
+      code: result.code,
+      campaign: result.campaignName,
+      requestId: result.requestId,
+      providerDetail: result.providerDetail,
+    });
+    return {
+      success: false,
+      error: AISENSY_USER_FACING_SEND_ERROR,
+      code: result.code,
+      requestId: result.requestId,
+    };
   }
-  return { success: true };
+  return { success: true, requestId: result.requestId };
 }
