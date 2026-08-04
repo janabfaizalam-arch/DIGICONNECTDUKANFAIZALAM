@@ -1,4 +1,4 @@
-{
+﻿{
   "crons": [
     {
       "path": "/api/cron/expire-rewards",
@@ -10,7 +10,8 @@
     },
     {
       "path": "/api/cron/crm-sync",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
+
