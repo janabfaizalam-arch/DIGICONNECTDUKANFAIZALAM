@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 
@@ -192,11 +193,14 @@ export async function POST(request: Request) {
         console.error("[razorpay/webhook] Failed to calculate/reserve partner commission:", err);
       }
 
+      scheduleCrmSyncMany(applicationIds, "payment_updated");
+
       try {
         for (const appId of applicationIds) {
           await triggerWhatsAppNotification("payment_success", appId, {
             paymentId: payment.id
           });
+          scheduleCrmSync(appId, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
         }
       } catch (waError) {
         console.error("WhatsApp trigger error in Razorpay webhook:", waError);

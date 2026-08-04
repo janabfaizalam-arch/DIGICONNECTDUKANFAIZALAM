@@ -1,3 +1,4 @@
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { getRazorpayClient } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -263,6 +264,7 @@ async function markApplicationPaid(supabase: SupabaseAdmin, payment: RazorpayPay
   }
 
   await supabase.from("invoices").update({ payment_status: "verified" }).eq("application_id", application.id);
+  scheduleCrmSync(application.id, "payment_updated");
   return true;
 }
 

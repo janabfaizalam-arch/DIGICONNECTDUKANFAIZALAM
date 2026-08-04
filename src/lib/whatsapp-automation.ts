@@ -1,3 +1,4 @@
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
 import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
@@ -124,6 +125,9 @@ export async function triggerWhatsAppNotification(
     });
 
     if (!result.ok) {
+      scheduleCrmSync(applicationId, "whatsapp_sent", {
+        payload: { whatsappStatus: "Failed" },
+      });
       return {
         success: false,
         reason: result.code,
@@ -131,6 +135,10 @@ export async function triggerWhatsAppNotification(
         queued: "queued" in result ? result.queued : false,
       };
     }
+
+    scheduleCrmSync(applicationId, "whatsapp_sent", {
+      payload: { whatsappStatus: result.deduped ? "Deduped" : "Sent" },
+    });
 
     return { success: true, deduped: result.deduped === true, messageId: result.messageId };
   } catch (error) {

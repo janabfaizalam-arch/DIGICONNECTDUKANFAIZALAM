@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { canTransitionStatus } from "@/lib/applications/status-machine";
 import {
   FINAL_DOCUMENT_BUCKET,
@@ -266,6 +267,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await removeFinalDocumentObject(storageBucket, storagePath);
         return NextResponse.json({ message: "Application could not be completed." }, { status: 500 });
       }
+      scheduleCrmSync(id, completeAndSend ? "status_updated" : "admin_updated");
     }
 
     if (completeAndSend && String(application.status) !== "completed") {

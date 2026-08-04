@@ -1,3 +1,4 @@
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { createInvoiceNumber, portalServices } from "@/lib/portal-data";
 import type { Application, ApplicationDocument, Commission, Customer, Invoice, Payment, PortalUser, ServiceCatalogItem } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -304,6 +305,7 @@ export async function createInvoiceForApplication({
 
   if (data?.id) {
     await supabase.from("applications").update({ invoice_id: data.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
+    scheduleCrmSync(applicationId, "invoice_generated");
   }
 
   return data as Invoice | null;

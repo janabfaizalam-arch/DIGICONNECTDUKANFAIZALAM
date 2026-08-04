@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { logCommissionStatusChange } from "@/lib/ap-commission-engine";
 
@@ -418,6 +419,8 @@ export async function POST(
         }
       }
     }
+
+    scheduleCrmSync(id, "status_updated");
 
     return NextResponse.json({ ok: true, message: "Workflow transition completed successfully." });
   } catch (err: unknown) {

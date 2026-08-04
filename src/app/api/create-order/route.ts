@@ -13,6 +13,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { resolveApplicationSourceEnum, resolveSourceChannel, rupeesToPaise } from "@/lib/payments/application-source";
 import { getPartnerMembership } from "@/lib/auth/memberships";
+import { scheduleCrmSyncMany } from "@/lib/crmSync";
 
 type CreateOrderBody = {
   amount?: number;
@@ -546,6 +547,8 @@ export async function POST(request: Request) {
           console.error("[razorpay/create-order] Cashback processing failed for wallet-only order (non-blocking)", cashbackError);
         }
 
+        scheduleCrmSyncMany(walletAppIds, "payment_updated");
+
         return NextResponse.json({
           order_id: null,
           amount: 0,
@@ -920,6 +923,11 @@ export async function POST(request: Request) {
       currency: order.currency,
       receipt,
     });
+
+    if (applicationIds.length) {
+      // Unpaid / payment-pending applications must still appear in office CRM.
+      scheduleCrmSyncMany(applicationIds, "application_created");
+    }
 
     return NextResponse.json({
       order_id: order.id,

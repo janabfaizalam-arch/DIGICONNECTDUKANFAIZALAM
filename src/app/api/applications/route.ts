@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { validateFileSignature } from "@/lib/file-validation";
+import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 type UploadedDocument = {
@@ -920,6 +921,11 @@ export async function POST(request: Request) {
         });
       }
 
+      scheduleCrmSyncMany(
+        existingApplications.map((app) => app.id),
+        body.razorpayPayment?.razorpay_payment_id ? "payment_updated" : "application_created",
+      );
+
       try {
         for (const app of existingApplications) {
           await triggerWhatsAppNotification("application_created", app.id);
@@ -930,6 +936,7 @@ export async function POST(request: Request) {
           } else {
             await triggerWhatsAppNotification("payment_pending", app.id);
           }
+          scheduleCrmSync(app.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
         }
       } catch (waError) {
         console.error("WhatsApp trigger error for existing applications:", waError);
@@ -1425,6 +1432,11 @@ export async function POST(request: Request) {
       });
     }
 
+    scheduleCrmSyncMany(
+      applications.map((app) => app.id),
+      hasVerifiedRazorpayPayment ? "payment_updated" : "application_created",
+    );
+
     try {
       for (const app of applications) {
         await triggerWhatsAppNotification("application_created", app.id);
@@ -1435,6 +1447,7 @@ export async function POST(request: Request) {
         } else {
           await triggerWhatsAppNotification("payment_pending", app.id);
         }
+        scheduleCrmSync(app.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
       }
     } catch (waError) {
       console.error("WhatsApp trigger error for new applications:", waError);

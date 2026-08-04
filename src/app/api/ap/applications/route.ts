@@ -13,6 +13,7 @@ import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 import { linkCustomerApplicationsByMobile } from "@/lib/ap-customer-linking";
 import { validateFileSignature } from "@/lib/file-validation";
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -564,6 +565,12 @@ export async function POST(request: Request) {
         : []),
     ]);
 
+    scheduleCrmSync(
+      application.id,
+      paymentMode !== "link" && expectedAmountPaise > 0 ? "payment_updated" : "application_created",
+      { customerId: customer.id },
+    );
+
     try {
       await triggerWhatsAppNotification("application_created", application.id);
       if (paymentMode !== "link" && expectedAmountPaise > 0) {
@@ -573,6 +580,7 @@ export async function POST(request: Request) {
       } else if (expectedAmountPaise > 0) {
         await triggerWhatsAppNotification("payment_pending", application.id);
       }
+      scheduleCrmSync(application.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
     } catch (waError) {
       console.error("WhatsApp trigger error for AP applications:", waError);
     }

@@ -9,6 +9,7 @@ import { createInvoiceNumber } from "@/lib/portal-data";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { validateFileSignature } from "@/lib/file-validation";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -450,6 +451,8 @@ export async function POST(request: Request) {
           ]
         : []),
     ]);
+
+    scheduleCrmSync(application.id, "application_created", { customerId: customer.id });
 
     return NextResponse.json({
       message: "Application created successfully.",

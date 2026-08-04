@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { calculateCommission, getAgents, getServiceCatalog } from "@/lib/crm";
 import { getServiceBySlug, portalServices } from "@/lib/portal-data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -88,7 +89,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         payment_screenshot_path: lead.payment_proof_path ?? null,
         commission_amount: catalogService ? calculateCommission(catalogService, agent) : 0,
       })
-      .select("id")
+      .select("id, customer_id")
       .single();
 
     if (applicationError || !application) {
@@ -130,6 +131,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .from("leads")
       .update({ status: "converted", converted_application_id: application.id, updated_at: new Date().toISOString() })
       .eq("id", id);
+
+    scheduleCrmSync(application.id, "application_created", { customerId: application.customer_id });
 
     return NextResponse.json({ message: "Lead converted to application.", applicationId: application.id });
   }

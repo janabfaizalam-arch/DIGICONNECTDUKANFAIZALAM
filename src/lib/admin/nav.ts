@@ -15,6 +15,7 @@ import {
   ListChecks,
   ReceiptText,
   Settings,
+  Sheet,
   ShieldCheck,
   TrendingUp,
   UserCheck,
@@ -80,6 +81,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: "CRM / Content",
     items: [
       { href: "/admin/leads", label: "Leads", description: "Lead list and pipeline", icon: TrendingUp },
+      { href: "/admin/crm-sync", label: "CRM Sync Logs", description: "Google Sheets mirror", icon: Sheet },
       { href: "/admin/notifications", label: "Notifications", description: "System alerts", icon: Bell },
       { href: ADMIN_HOMEPAGE_CMS_ROUTE, label: "Homepage CMS", description: "Banners and notices", icon: Image },
       { href: "/admin/services/dpr", label: "DPR CMS", description: "DPR landing sections & banners", icon: FileText },

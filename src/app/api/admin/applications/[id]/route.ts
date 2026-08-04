@@ -6,6 +6,7 @@ import { isApplicationStatus } from "@/lib/application-status";
 import { canTransitionStatus, whatsappEventForStatusChange } from "@/lib/applications/status-machine";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
+import { scheduleCrmSync } from "@/lib/crmSync";
 import { createInvoiceForApplication } from "@/lib/crm";
 import {
   removeFinalDocumentObject,
@@ -277,6 +278,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application could not be updated." }, { status: 500 });
     }
 
+    scheduleCrmSync(id, updates.status ? "status_updated" : "admin_updated");
+
     const nextStatus = String(updates.status ?? application.status);
     const nextAgentId = assignedAgentId && assignedAgentId !== "none" ? assignedAgentId : application.assigned_agent_id ?? application.agent_id;
     const paymentVerified = ["verified", "paid"].includes(String(application.payment_status ?? "").toLowerCase());
@@ -471,6 +474,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!invoice?.id) {
     return NextResponse.json({ message: "Invoice could not be generated." }, { status: 500 });
   }
+
+  scheduleCrmSync(id, "invoice_generated");
 
   return NextResponse.json({ message: "Invoice generated.", invoiceId: invoice.id });
 }

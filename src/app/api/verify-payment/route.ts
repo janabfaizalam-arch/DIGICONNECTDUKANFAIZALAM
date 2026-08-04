@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { redeemWalletForApplication } from "@/lib/wallet";
 import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
@@ -376,10 +377,13 @@ export async function POST(request: Request) {
       applicationIds,
     });
 
+    scheduleCrmSyncMany(applicationIds, "payment_updated");
+
     try {
       await triggerWhatsAppNotification("payment_success", primaryApplication.id, {
         paymentId: paymentId
       });
+      scheduleCrmSync(primaryApplication.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
     } catch (waError) {
       console.error("WhatsApp trigger error for payment verification:", waError);
     }
