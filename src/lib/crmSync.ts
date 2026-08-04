@@ -24,7 +24,7 @@ export function scheduleCrmSync(
 ): void {
   if (!applicationId) return;
 
-  void (async () => {
+  const run = async () => {
     try {
       const enqueued = await enqueueCrmSyncJob({
         eventType,
@@ -33,26 +33,24 @@ export function scheduleCrmSync(
         payload: options.payload,
       });
 
-      if (!enqueued.ok || enqueued.skipped === "not_configured") return;
-
-      const run = async () => {
-        try {
-          await processCrmSyncQueue({ limit: options.processInlineLimit ?? 5 });
-        } catch (error) {
-          console.error("[crm-sync] background_process_failed", {
-            applicationId,
-            eventType,
-            error: error instanceof Error ? error.message : "unknown",
-          });
-        }
-      };
-
-      try {
-        after(run);
-      } catch {
-        // outside request context (scripts/tests) — fire and forget
-        void run();
+      if (!enqueued.ok) {
+        console.error("[crm-sync] schedule_enqueue_failed", {
+          applicationId,
+          eventType,
+          error: enqueued.error,
+        });
+        return;
       }
+
+      if (enqueued.skipped === "not_configured") {
+        console.info("[crm-sync] schedule_skipped_not_configured", {
+          applicationId,
+          eventType,
+        });
+        return;
+      }
+
+      await processCrmSyncQueue({ limit: options.processInlineLimit ?? 5 });
     } catch (error) {
       console.error("[crm-sync] schedule_failed", {
         applicationId,
@@ -60,7 +58,17 @@ export function scheduleCrmSync(
         error: error instanceof Error ? error.message : "unknown",
       });
     }
-  })();
+  };
+
+  try {
+    // Register while the request context is still active so Next.js keeps the
+    // invocation alive for both the durable enqueue and inline processing.
+    after(run);
+  } catch {
+    // Scripts and tests have no request context. Keep their existing safe,
+    // non-blocking behavior while still running the same enqueue lifecycle.
+    void run();
+  }
 }
 
 export function scheduleCrmSyncMany(
