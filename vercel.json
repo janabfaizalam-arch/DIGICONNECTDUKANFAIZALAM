@@ -1,4 +1,4 @@
-﻿{
+{
   "crons": [
     {
       "path": "/api/cron/expire-rewards",
@@ -14,4 +14,3 @@
     }
   ]
 }
-
