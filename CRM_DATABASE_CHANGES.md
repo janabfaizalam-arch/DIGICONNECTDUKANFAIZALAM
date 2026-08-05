@@ -263,4 +263,28 @@ select count(*) from public.whatsapp_messages; -- ensure 5A applied first
 ### Rollback
 Drop new tables/functions. Set `CRM_NOTIFICATION_DELIVERY_MODE=disabled` (or unset — also disabled). Do not delete business rows.
 
+## Security Advisor remediation (local only — do not apply without backup gate)
+
+Migration: `20260805180000_supabase_security_advisor_remediation.sql`  
+Full audit: `SUPABASE_SECURITY_ADVISOR_AUDIT.md`
+
+**Status wording:** Security Advisor remediation authored and committed locally; production backup, preflight, migration apply, Advisor recheck and isolation tests pending.
+
+### Changes
+1. `public.is_admin_from_db()` — profiles/users only; empty `search_path`; no JWT metadata
+2. Replace `offline_invoices` policy `"Admins manage offline invoices"` to use `is_admin_from_db()` only
+3. Seven diagnostic/fact views: `security_invoker = true` (PostgreSQL 15+ / current Supabase); revoke PUBLIC/anon/authenticated; grant SELECT to `service_role`
+4. Initplan-safe wraps of `auth.uid()` / `auth.jwt()` on flagged policies (`agent_services`, `agent_service_assignments`, `customer_sessions`, `customer_login_logs`, `applications`) with fail-fast policy-name/expression preflight
+
+### Not included
+- No customer metadata rewrite
+- No truncation / data deletion
+- No production apply in this change set
+
+### Backup requirement before apply
+1. Supabase plan with verified recoverable backup/PITR, **or**
+2. Verified encrypted manual production backup outside Git/workspace/public folders
+
+### Rollback
+Prefer fix canonical `profiles.role` over restoring `user_metadata` trust. See audit § Rollback.
 

@@ -73,4 +73,13 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 - `CRM_NOTIFICATION_DELIVERY_MODE` is server-only; browser cannot choose delivery mode.
 - Partners/customers cannot invoke automation/alerts/summaries admin APIs.
 
+### Security Advisor remediation notes (local; not applied)
+| Object | Admin | Agency Partner | Customer | Anon |
+|--------|:-----:|:--------------:|:--------:|:----:|
+| `offline_invoices` (RLS via `is_admin_from_db`) | Y* | N | N | N |
+| Diagnostic views (`admin_crm_*`, wallet/payment diagnostics, legacy leads) | service_role only | N | N | N |
+
+\*Admin portal uses Next.js auth + `getSupabaseAdmin()` (service_role). Forged JWT `user_metadata.role` must not grant access.  
+See `SUPABASE_SECURITY_ADVISOR_AUDIT.md`.
+
 Enforcement: `src/lib/crm/permissions.ts` + existing route gates + RLS. Hiding UI is not sufficient.

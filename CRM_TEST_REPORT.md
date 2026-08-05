@@ -1,11 +1,11 @@
 # DigiConnect Dukan — CRM Test Report
 
-Last updated: 2026-08-05 (Phase 5B Checkpoint B — uncommitted)
+Last updated: 2026-08-05 (Security Advisor remediation — local only)
 
 ## Status wording
 
-**Phase 5B implementation complete locally; staging database, CI, scheduler, provider and browser verification pending.**  
-Not production-ready.
+**Security Advisor remediation authored and committed locally; production backup, preflight, migration apply, Advisor recheck and isolation tests pending.**  
+Advisor findings are **not** claimed resolved. CRM production rollout remains paused.
 
 ## Authored tests (Phase 5B)
 
@@ -16,7 +16,14 @@ Not production-ready.
 | `src/lib/automation/queue-producer.contract.test.ts` | Queue/direct/disabled call-chain ownership and migrated-route static guardrails |
 | Phase 5A comms contracts | Still applicable |
 
-CI: `pnpm test:crm-automation`
+## Authored tests (Security Advisor remediation)
+
+| File | Area | Execution |
+|------|------|-----------|
+| `src/lib/supabase/security-advisor-remediation.contract.test.ts` | Migration static contracts: no `user_metadata` in offline_invoices policy; view invoker+revokes; initplan wraps; access matrix | May be **BLOCKED** on Windows App Control |
+| Runtime RLS isolation (admin/partner/customer/forged metadata) | Documented in audit | **NOT RUN** — no DB harness |
+
+CI: `pnpm test:crm-automation` · `pnpm test:security-advisor`
 
 ## Verification (Checkpoint B pre-commit)
 
@@ -33,3 +40,17 @@ CI: `pnpm test:crm-automation`
 | Live provider / scheduler | **NOT RUN** |
 | Migration apply | **No** |
 | Push | **No** |
+
+## Verification (Security Advisor remediation — local)
+
+| Check | Result |
+|-------|--------|
+| `npx tsc --noEmit` | **PASS** |
+| Targeted lint (contract test) | **PASS** (eslint exit 0) |
+| Migration static review | **PASS** — no truncate/delete/drop table; policy removes `user_metadata` trust; views set invoker+revoke |
+| Secret / artifact scan | **PASS** |
+| Vitest (`test:security-advisor`) | **BLOCKED** (Windows App Control / Rollup native) — tests authored, not claimed PASS |
+| Migration apply | **No** |
+| Security Advisor recheck | **Not run** (production untouched) |
+| Push / deploy | **No** |
+| Claim Advisor resolved | **No** — requires apply + recheck + isolation tests |

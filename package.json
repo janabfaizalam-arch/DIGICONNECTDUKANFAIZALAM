@@ -12,6 +12,7 @@
     "test:crm-leads": "npx vitest run src/lib/crm/leads.test.ts src/lib/crm/lead-workflow.test.ts src/lib/crm/lead-convert.contract.test.ts src/app/api/ap/leads/route.test.ts",
     "test:crm-comms": "npx vitest run src/lib/communications src/lib/whatsapp/application-notify.test.ts",
     "test:crm-automation": "npx vitest run src/lib/automation src/lib/communications/comms.contract.test.ts",
+    "test:security-advisor": "npx vitest run src/lib/supabase/security-advisor-remediation.contract.test.ts",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "smoke": "node scripts/smoke-test.mjs",

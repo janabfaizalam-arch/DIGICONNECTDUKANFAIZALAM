@@ -8,7 +8,8 @@ Last updated: 2026-08-05
 |-------|--------|-------|
 | 1–4 | Complete (local) | Prior commits not pushed |
 | 5A | Complete (local) | `aa2c195` — outbox + adapter |
-| 5B | **Implementation complete locally** | Uncommitted — queue-mode producer ownership finalized; Checkpoint B awaiting approval |
+| 5B | **Implementation complete locally** | Committed locally (not pushed); production rollout paused |
+| Security Advisor remediation | **Committed locally; not applied** | Status: Security Advisor remediation authored and committed locally; production backup, preflight, migration apply, Advisor recheck and isolation tests pending. |
 | 6–7 | Pending | |
 
 ## Status wording (Phase 5B)
@@ -29,4 +30,12 @@ Not production-ready. Migrations not applied. Cron not registered. Live messages
 | Phase | Hash | Message |
 |-------|------|---------|
 | 5A | `aa2c195` | `feat(crm): add communication outbox and AiSensy adapter` |
-| 5B | *awaiting approval* | `feat(crm): add event-driven CRM automations and operations` |
+| 5B | `886654f` (local) | `feat(crm): add event-driven CRM automations and operations` |
+
+## Production pause (Security Advisor)
+
+**Security Advisor remediation authored and committed locally; production backup, preflight, migration apply, Advisor recheck and isolation tests pending.**
+
+- Free production project; **no recoverable backups** — remediation must not be applied until backup gate.
+- Rollout of CRM Phases 2–5B remains paused.
+- No push/deploy/apply; findings not claimed resolved.
