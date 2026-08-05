@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   TrendingUp,
   UserCheck,
+  UserPlus,
   UsersRound,
   WalletCards,
 } from "lucide-react";
@@ -58,6 +59,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: "Operations",
     items: [
       { href: "/admin/applications", label: "Applications", description: "Workflow engine", icon: ClipboardList },
+      { href: "/admin/customers/walk-in", label: "New Customer", description: "Walk-in phone-first create", icon: UserPlus },
       { href: "/admin/customers", label: "Customers", description: "Customer 360", icon: UsersRound },
       { href: ADMIN_DIGI_PARTNERS_ROUTE, label: "Digi Partners", description: "KYC and partner CRM", icon: UserCheck },
       { href: "/admin/partner-banners", label: "Partner Banners", description: "Digi Partner home slider", icon: Image },
