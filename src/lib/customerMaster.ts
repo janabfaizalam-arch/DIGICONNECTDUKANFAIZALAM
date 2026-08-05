@@ -120,6 +120,11 @@ export async function upsertCustomerMasterRow(input: {
     rowNumber = mapped?.row_number ?? null;
   }
 
+  // Customer Master data starts at row 2 (header on row 1). Ignore invalid maps.
+  if (rowNumber != null && rowNumber < 2) {
+    rowNumber = null;
+  }
+
   if (!rowNumber) {
     const found = await findSheetRowByKey(CUSTOMER_MASTER_SHEET, "Customer ID", input.customerCode);
     if (!found.ok) return { ok: false, error: found.error };

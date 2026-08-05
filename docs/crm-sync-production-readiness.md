@@ -60,6 +60,17 @@ Unpaid applications **do** enqueue — payment is not required.
 - Successful sync coalesces any leftover pending siblings  
 - Backfill skips already-mapped applications by default  
 
+### Customer Work row layout
+
+| Row | Content |
+|-----|---------|
+| 1 | Title / dashboard (never written by sync) |
+| 2 | Headers (`CUSTOMER_WORK_HEADER_ROW`) |
+| 3+ | Data (`CUSTOMER_WORK_FIRST_DATA_ROW`) |
+
+Appends use an explicit next data row (`max(lastDataRow+1, 3)`), not Sheets `INSERT_ROWS` (which could insert above headers). Invalid map rows `1`/`2` are ignored. Admin repair: `POST /api/admin/crm-sync` with `{ "action": "repair_row_placement" }`.  
+
+
 ---
 
 ## 5. Security

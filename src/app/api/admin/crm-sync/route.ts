@@ -5,6 +5,7 @@ import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { scheduleCrmSync } from "@/lib/crmSync";
 import { backfillCrmApplications, parseBackfillCursor } from "@/lib/crmBackfill";
 import { isGoogleSheetsConfigured, loadGoogleSheetsConfig } from "@/lib/google";
+import { repairCustomerWorkRowPlacement } from "@/lib/googleSheets";
 import {
   getCrmSyncSummary,
   listCrmSyncJobs,
@@ -41,7 +42,7 @@ export async function GET() {
 }
 
 const postSchema = z.object({
-  action: z.enum(["retry", "process", "resync", "backfill"]),
+  action: z.enum(["retry", "process", "resync", "backfill", "repair_row_placement"]),
   jobId: z.string().uuid().optional(),
   applicationId: z.string().uuid().optional(),
   limit: z.number().int().min(1).max(500).optional(),
@@ -96,6 +97,11 @@ export async function POST(request: Request) {
       processAfterEnqueue: body.processAfterEnqueue === true,
       processLimit: 25,
     });
+    return NextResponse.json(result, { status: result.ok ? 200 : 400 });
+  }
+
+  if (body.action === "repair_row_placement") {
+    const result = await repairCustomerWorkRowPlacement();
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   }
 

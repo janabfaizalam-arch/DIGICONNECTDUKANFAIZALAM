@@ -2,9 +2,11 @@ import "server-only";
 
 import { ensureCustomerCode, upsertCustomerMasterRow } from "@/lib/customerMaster";
 import {
+  CUSTOMER_WORK_FIRST_DATA_ROW,
   CUSTOMER_WORK_HEADERS,
   CUSTOMER_WORK_SHEET,
   findSheetRowByKey,
+  isValidSheetDataRow,
   upsertSheetRow,
 } from "@/lib/googleSheets";
 import { loadGoogleSheetsConfig } from "@/lib/google";
@@ -275,6 +277,25 @@ export async function syncApplicationToSheets(
     .eq("entity_key", applicationId)
     .maybeSingle();
   mappedRow = existingMap?.row_number ?? null;
+
+  // Never trust mapped title/header rows (Customer Work data starts at row 3).
+  if (mappedRow != null && !isValidSheetDataRow(CUSTOMER_WORK_SHEET, mappedRow)) {
+    console.warn("[work-sync] invalid_mapped_row", {
+      applicationId,
+      mappedRow,
+      firstDataRow: CUSTOMER_WORK_FIRST_DATA_ROW,
+    });
+    if (existingMap) {
+      await supabase
+        .from("crm_sheet_row_map")
+        .delete()
+        .eq("spreadsheet_id", loaded.config.spreadsheetId)
+        .eq("sheet_name", CUSTOMER_WORK_SHEET)
+        .eq("entity_type", "customer_work")
+        .eq("entity_key", applicationId);
+    }
+    mappedRow = null;
+  }
 
   if (!mappedRow) {
     const found = await findSheetRowByKey(CUSTOMER_WORK_SHEET, "Application ID", applicationId);
