@@ -4,6 +4,8 @@
 
 OTP is **not** sent via Meta Cloud API directly. Delivery is AiSensy Campaign API only.
 
+**Critical:** `success=true` + `submitted_message_id` means AiSensy **accepted the submit**. It does **not** mean WhatsApp Delivered. Confirm Delivered in Campaign → Sent (or webhook) and that the user received the OTP.
+
 ### Required env (Vercel / server)
 
 | Variable | Purpose |
@@ -22,27 +24,71 @@ OTP is **not** sent via Meta Cloud API directly. Delivery is AiSensy Campaign AP
 | `AUTH_HMAC_SECRET` | OTP hash secret |
 | `SUPABASE_SERVICE_ROLE_KEY` | OTP table writes |
 
+### Optional OTP payload contract (match Test Campaign cURL — do not guess)
+
+Default payload (AiSensy Authentication / Copy-Code docs):
+
+```json
+{
+  "templateParams": ["<6-digit-otp>"],
+  "buttons": [{
+    "type": "button",
+    "sub_type": "url",
+    "index": 0,
+    "parameters": [{ "type": "text", "text": "<6-digit-otp>" }]
+  }]
+}
+```
+
+| Variable | When to set |
+|----------|-------------|
+| `AISENSY_OTP_INCLUDE_EXPIRY_PARAM=true` | Only if Test Campaign cURL has **two** `templateParams` (OTP + expiry minutes). Template-baked expiry text alone does **not** need this. |
+| `AISENSY_OTP_EXPIRY_MINUTES` | Second param value when include-expiry is on (default `5`) |
+| `AISENSY_OTP_BUTTON_MODE` | `url` (default, Meta/AiSensy Copy Code), `copy_code`, or `none` |
+| `AISENSY_DESTINATION_FORMAT` | `digits` (default `91…`) or `e164` (`+91…`) |
+| `AISENSY_MESSAGE_STATUS_URL` | Optional status GET URL with `{id}` if AiSensy support provides one |
+| `AISENSY_WEBHOOK_SECRET` | Enables `POST /api/webhooks/aisensy` delivery callbacks |
+
 ### Log lines to search after a failed signup
 
 ```
 [otp] generated_and_stored
 [aisensy] send_start
 [aisensy] send_result
-[aisensy] otp_send_failed | otp_send_accepted
-[otp] provider_send_failed | provider_send_accepted
+[aisensy] otp_send_accepted | otp_send_failed
+[otp] provider_send_accepted | provider_send_failed
 ```
 
-Provider rejection logs include **redacted** AiSensy response body + HTTP status + request id.
-Never expect the OTP digits in logs.
+Safe structured fields now include: `TemplateParamCount`, `TemplateParamsMasked` (e.g. `[OTP_6]` — never full OTP), `Campaign`, masked `Destination`, `submitted_message_id`.
 
-### AiSensy dashboard checks
+### Admin diagnostics
 
-1. Campaign name matches env (`signup_otp` or `AISENSY_SIGNUP_CAMPAIGN`).
-2. Campaign is **Live**.
-3. Template is Authentication / OTP category with `{{1}}` = OTP.
-4. If template is copy-code / URL-button, button param must accept the OTP string we send.
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/admin/diagnostics/otp-config` | Campaign resolution + payload contract flags |
+| `POST /api/admin/diagnostics/otp-test-send` | Real signup OTP send (`{ phone, confirm: true }`) → returns `submittedMessageId` |
+| `GET /api/admin/diagnostics/otp-delivery-status?submittedMessageId=…` | Stored OTP metadata + optional status API |
+| `POST /api/webhooks/aisensy` | Delivery webhook (requires `AISENSY_WEBHOOK_SECRET`) |
 
-Accepted API response ≠ WhatsApp inbox delivery. Confirm delivery in AiSensy / Meta logs using `provider_request_id` from `auth_otp_requests.metadata`.
+### AiSensy dashboard checks (when API accepts but inbox empty)
+
+1. Exact template name linked to campaign `signup_otp`
+2. Campaign status **Live**
+3. API campaign enabled
+4. Template approval **Approved**
+5. Template language matches send
+6. `templateParams` count/order equals Test Campaign cURL (usually one: OTP → `{{1}}`)
+7. OTP present in `templateParams` (we log masked count)
+8. Button / Copy-code parameter uses the same OTP (index 0)
+9. Destination `91…` or `+91…` as accepted by AiSensy for India
+10. WhatsApp account / phone number connection healthy
+11. Contact not opted-out / blocklisted
+12. Meta delivery errors on the message
+13. Template category is **Authentication** (not Marketing)
+14. Template quality / pacing limits
+15. Conversation / account restrictions
+
+Accepted API response ≠ WhatsApp inbox delivery. Use `submitted_message_id` in Campaign → Sent.
 
 ---
 

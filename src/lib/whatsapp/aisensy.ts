@@ -45,7 +45,15 @@ export type AisensyOtpPurpose =
   | "security_verification";
 
 export type AisensySendResult =
-  | { ok: true; provider: "aisensy"; destination: string; campaignName: string; requestId: string }
+  | {
+      ok: true;
+      provider: "aisensy";
+      destination: string;
+      campaignName: string;
+      requestId: string;
+      /** AiSensy `submitted_message_id` when returned (delivery tracking). */
+      providerMessageId: string | null;
+    }
   | {
       ok: false;
       provider: "aisensy";
@@ -55,9 +63,19 @@ export type AisensySendResult =
       requestId?: string;
       campaignName?: string;
       httpStatus?: number | null;
+      providerMessageId?: string | null;
       /** Redacted provider response / error detail for server logs only. */
       providerDetail?: string;
     };
+
+/** How OTP Authentication templateParams / buttons are assembled. */
+export type AisensyOtpPayloadContract = {
+  templateParamCount: number;
+  includesExpiryParam: boolean;
+  expiryMinutes: number | null;
+  buttonMode: "url" | "copy_code" | "none";
+  destinationFormat: "digits" | "e164";
+};
 
 type AisensyConfig = {
   apiKey: string;
@@ -200,6 +218,11 @@ export function redactSecrets(value: string, apiKey?: string): string {
   return out;
 }
 
+function getDestinationFormat(): "digits" | "e164" {
+  const raw = (process.env.AISENSY_DESTINATION_FORMAT ?? "digits").trim().toLowerCase();
+  return raw === "e164" || raw === "+e164" || raw === "plus" ? "e164" : "digits";
+}
+
 export function normalizeAisensyDestination(
   input: string,
 ): { ok: true; destination: string; local: string } | { ok: false; error: string } {
@@ -220,12 +243,89 @@ export function normalizeAisensyDestination(
     return { ok: false, error: WHATSAPP_MOBILE_REQUIRED_ERROR };
   }
 
-  return { ok: true, destination: `91${local}`, local };
+  const destination =
+    getDestinationFormat() === "e164" ? `+91${local}` : `91${local}`;
+  return { ok: true, destination, local };
 }
 
 function maskPhoneLocal(local: string): string {
   if (local.length !== 10) return "91XXXXXXXXXX";
   return `91${local.slice(0, 2)}******${local.slice(-2)}`;
+}
+
+/**
+ * Mask template/button values for logs. Never emit full OTP digits in production logs.
+ */
+export function maskTemplateParamForLog(value: string): string {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "[empty]";
+  if (/^\d{4,8}$/.test(trimmed)) {
+    return `[OTP_${trimmed.length}]`;
+  }
+  if (trimmed.length <= 2) return "**";
+  if (trimmed.length <= 6) return `${trimmed.slice(0, 1)}***`;
+  return `${trimmed.slice(0, 2)}***${trimmed.slice(-1)}`;
+}
+
+export function describeOtpPayloadContract(): AisensyOtpPayloadContract {
+  const includeExpiry =
+    (process.env.AISENSY_OTP_INCLUDE_EXPIRY_PARAM ?? "").trim().toLowerCase() === "true" ||
+    (process.env.AISENSY_OTP_INCLUDE_EXPIRY_PARAM ?? "").trim() === "1";
+  const expiryRaw = Number.parseInt(process.env.AISENSY_OTP_EXPIRY_MINUTES ?? "5", 10);
+  const expiryMinutes = Number.isFinite(expiryRaw) && expiryRaw > 0 ? expiryRaw : 5;
+  const buttonRaw = (process.env.AISENSY_OTP_BUTTON_MODE ?? "url").trim().toLowerCase();
+  const buttonMode: AisensyOtpPayloadContract["buttonMode"] =
+    buttonRaw === "none" || buttonRaw === "off"
+      ? "none"
+      : buttonRaw === "copy_code"
+        ? "copy_code"
+        : "url";
+
+  return {
+    templateParamCount: includeExpiry ? 2 : 1,
+    includesExpiryParam: includeExpiry,
+    expiryMinutes: includeExpiry ? expiryMinutes : null,
+    buttonMode,
+    destinationFormat: getDestinationFormat(),
+  };
+}
+
+/**
+ * Build OTP campaign templateParams + buttons to match the approved Auth template.
+ *
+ * Default (AiSensy Authentication / Copy-Code docs + Test Campaign):
+ * - templateParams: [OTP]  → fills {{1}}
+ * - buttons: url/index 0 with the same OTP text (Copy Code interactive action)
+ *
+ * Enable AISENSY_OTP_INCLUDE_EXPIRY_PARAM=true only when the Live campaign's
+ * Test Campaign cURL shows a second template param (e.g. expiry minutes).
+ * OTP expiry text baked into the Meta template itself is NOT a templateParam.
+ */
+export function buildAisensyOtpPayloadParts(otp: string): {
+  templateParams: string[];
+  buttons: SendAisensyCampaignInput["buttons"];
+  contract: AisensyOtpPayloadContract;
+} {
+  const contract = describeOtpPayloadContract();
+  const templateParams = contract.includesExpiryParam
+    ? [otp, String(contract.expiryMinutes)]
+    : [otp];
+
+  let buttons: SendAisensyCampaignInput["buttons"];
+  if (contract.buttonMode === "none") {
+    buttons = undefined;
+  } else {
+    buttons = [
+      {
+        type: "button",
+        sub_type: contract.buttonMode === "copy_code" ? "copy_code" : "url",
+        index: 0,
+        parameters: [{ type: "text", text: otp }],
+      },
+    ];
+  }
+
+  return { templateParams, buttons, contract };
 }
 
 export function loadAisensyConfig():
@@ -287,6 +387,10 @@ export function isAisensySuccessResponse(status: number, body: unknown): boolean
   if (errorField && typeof errorField === "object") return false;
 
   if (record.success === true || record.ok === true) return true;
+  // AiSensy sometimes returns success as the string "true".
+  if (String(record.success).toLowerCase() === "true" || String(record.ok).toLowerCase() === "true") {
+    return true;
+  }
 
   const statusText = String(record.status ?? record.Status ?? "").toLowerCase();
   if (statusText === "success" || statusText === "ok" || statusText === "submitted") return true;
@@ -442,12 +546,29 @@ export async function sendAisensyCampaign(
     });
   }
 
+  const buttonSummaries = (options.buttons ?? []).map((button) => ({
+    sub_type: button.sub_type,
+    index: button.index,
+    parameterCount: button.parameters?.length ?? 0,
+    parametersMasked: (button.parameters ?? []).map((parameter) =>
+      maskTemplateParamForLog(parameter.text),
+    ),
+  }));
+
   console.info("[aisensy] send_start", {
     Campaign: campaignName,
     Phone: maskPhoneLocal(phone.local),
+    Destination: phone.destination.startsWith("+")
+      ? `+91${phone.local.slice(0, 2)}******${phone.local.slice(-2)}`
+      : maskPhoneLocal(phone.local),
+    DestinationFormat: phone.destination.startsWith("+") ? "e164" : "digits",
     "Request Id": requestId,
     Source: options.source ?? "digiconnect",
     HasMedia: Boolean(options.media?.url),
+    TemplateParamCount: templateParams.length,
+    TemplateParamsMasked: templateParams.map(maskTemplateParamForLog),
+    ButtonCount: buttonSummaries.length,
+    ButtonsMasked: buttonSummaries,
   });
 
   const payload: Record<string, unknown> = {
@@ -486,12 +607,21 @@ export async function sendAisensyCampaign(
     );
     const success = isAisensySuccessResponse(response.status, body);
 
+    const submittedMessageId = extractProviderMessageId(body);
+
     console.info("[aisensy] send_result", {
       Campaign: campaignName,
       "HTTP Status": response.status,
       "Success/Failure": success ? "Success" : "Failure",
       "AiSensy Response": safeBody.slice(0, 500),
       "Request Id": requestId,
+      submitted_message_id: submittedMessageId,
+      TemplateParamCount: templateParams.length,
+      TemplateParamsMasked: templateParams.map(maskTemplateParamForLog),
+      Destination: maskPhoneLocal(phone.local),
+      Note: success
+        ? "API accept ≠ WhatsApp Delivered. Confirm Sent tab / webhook / inbox."
+        : undefined,
     });
 
     if (!success) {
@@ -502,6 +632,7 @@ export async function sendAisensyCampaign(
         httpStatus: response.status,
         response: safeBody.slice(0, 1000),
         phone: maskPhoneLocal(phone.local),
+        submitted_message_id: submittedMessageId,
       });
       return emptyCampaignResult(requestId, {
         errorCode: "provider_rejected",
@@ -509,7 +640,7 @@ export async function sendAisensyCampaign(
         campaignName,
         destination: phone.destination,
         httpStatus: response.status,
-        providerMessageId: extractProviderMessageId(body),
+        providerMessageId: submittedMessageId,
       });
     }
 
@@ -519,7 +650,8 @@ export async function sendAisensyCampaign(
       sent: true,
       failed: false,
       configuration_required: false,
-      providerMessageId: extractProviderMessageId(body) ?? requestId,
+      // Prefer real AiSensy id; do not invent one from our request UUID.
+      providerMessageId: submittedMessageId,
       errorCode: null,
       errorMessage: null,
       campaignName,
@@ -604,26 +736,26 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
     };
   }
 
+  const { templateParams, buttons, contract } = buildAisensyOtpPayloadParts(options.otp);
+
   console.info("[aisensy] otp_campaign_resolved", {
     purpose,
     campaign: campaignName,
     source: campaign.source,
+    templateParamCount: contract.templateParamCount,
+    includesExpiryParam: contract.includesExpiryParam,
+    buttonMode: contract.buttonMode,
+    destinationFormat: contract.destinationFormat,
+    templateParamsMasked: templateParams.map(maskTemplateParamForLog),
   });
 
   const result = await sendAisensyCampaign({
     campaignName,
     destination: options.phone,
     userName: options.userName,
-    templateParams: [options.otp],
+    templateParams,
     source: options.source ?? `digiconnect-auth:${purpose}`,
-    buttons: [
-      {
-        type: "button",
-        sub_type: "url",
-        index: 0,
-        parameters: [{ type: "text", text: options.otp }],
-      },
-    ],
+    buttons,
     dedupe: true,
     fetchImpl: options.fetchImpl,
   });
@@ -636,9 +768,12 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
       campaignSource: campaign.source,
       code,
       requestId: result.requestId,
+      submitted_message_id: result.providerMessageId,
       httpStatus: result.httpStatus,
       providerDetail: result.errorMessage,
       configurationRequired: result.configuration_required,
+      templateParamCount: contract.templateParamCount,
+      buttonMode: contract.buttonMode,
     });
     return {
       ok: false,
@@ -651,6 +786,7 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
       requestId: result.requestId,
       campaignName: result.campaignName ?? campaignName,
       httpStatus: result.httpStatus,
+      providerMessageId: result.providerMessageId ?? null,
       providerDetail: result.errorMessage ?? undefined,
     };
   }
@@ -660,8 +796,17 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
     campaign: result.campaignName || campaignName,
     campaignSource: campaign.source,
     requestId: result.requestId,
-    providerMessageId: result.providerMessageId,
+    submitted_message_id: result.providerMessageId,
+    destination: (() => {
+      const normalized = normalizeAisensyDestination(options.phone);
+      return normalized.ok ? maskPhoneLocal(normalized.local) : null;
+    })(),
     httpStatus: result.httpStatus,
+    templateParamCount: contract.templateParamCount,
+    templateParamsMasked: templateParams.map(maskTemplateParamForLog),
+    buttonMode: contract.buttonMode,
+    deliveryNote:
+      "API success=true is submit-accepted only. Confirm Delivered in AiSensy Sent tab / webhook.",
   });
 
   return {
@@ -670,5 +815,138 @@ export async function sendAisensyOtp(options: SendAisensyOtpOptions): Promise<Ai
     destination: result.destination || "",
     campaignName: result.campaignName || campaignName,
     requestId: result.requestId,
+    providerMessageId: result.providerMessageId,
   };
+}
+
+export type AisensyMessageStatusLookup = {
+  ok: boolean;
+  submittedMessageId: string;
+  source: "status_api" | "unavailable";
+  httpStatus: number | null;
+  /** Provider delivery status when a status API is configured and responds. */
+  deliveryStatus: string | null;
+  /** Redacted provider body snippet for admins/logs — never includes OTP. */
+  providerBodyPreview: string | null;
+  guidance: string;
+};
+
+/**
+ * Optional delivery-status lookup.
+ * AiSensy does not document a public GET-by-submitted_message_id API.
+ * Set AISENSY_MESSAGE_STATUS_URL with `{id}` placeholder when AiSensy/support provides one.
+ */
+export async function lookupAisensyMessageStatus(
+  submittedMessageId: string,
+  options?: { fetchImpl?: typeof fetch },
+): Promise<AisensyMessageStatusLookup> {
+  const id = String(submittedMessageId ?? "").trim();
+  const guidanceUnavailable =
+    "No public AiSensy delivery-status API is documented. Check Campaign → Sent for this submitted_message_id, Meta message errors, opt-out/blocklist, and WABA connection. Configure AISENSY_MESSAGE_STATUS_URL or AISENSY_WEBHOOK_SECRET delivery webhook when available.";
+
+  if (!id) {
+    return {
+      ok: false,
+      submittedMessageId: "",
+      source: "unavailable",
+      httpStatus: null,
+      deliveryStatus: null,
+      providerBodyPreview: null,
+      guidance: "submittedMessageId is required.",
+    };
+  }
+
+  const statusUrlTemplate = process.env.AISENSY_MESSAGE_STATUS_URL?.trim();
+  if (!statusUrlTemplate) {
+    return {
+      ok: false,
+      submittedMessageId: id,
+      source: "unavailable",
+      httpStatus: null,
+      deliveryStatus: null,
+      providerBodyPreview: null,
+      guidance: guidanceUnavailable,
+    };
+  }
+
+  const loaded = loadAisensyConfig();
+  if (!loaded.ok) {
+    return {
+      ok: false,
+      submittedMessageId: id,
+      source: "unavailable",
+      httpStatus: null,
+      deliveryStatus: null,
+      providerBodyPreview: null,
+      guidance: loaded.error,
+    };
+  }
+
+  const url = statusUrlTemplate.includes("{id}")
+    ? statusUrlTemplate.replaceAll("{id}", encodeURIComponent(id))
+    : `${statusUrlTemplate.replace(/\/$/, "")}/${encodeURIComponent(id)}`;
+
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetchImpl(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${loaded.config.apiKey}`,
+        "x-api-key": loaded.config.apiKey,
+      },
+      signal: controller.signal,
+    });
+    const rawText = await response.text();
+    const safeBody = redactSecrets(rawText, loaded.config.apiKey).slice(0, 800);
+    const body = parseResponseBody(rawText);
+    let deliveryStatus: string | null = null;
+    if (body && typeof body === "object") {
+      const record = body as Record<string, unknown>;
+      const candidate =
+        record.delivery_status ??
+        record.deliveryStatus ??
+        record.status ??
+        record.Status ??
+        record.message_status ??
+        record.messageStatus;
+      if (candidate != null) deliveryStatus = String(candidate);
+    }
+
+    console.info("[aisensy] message_status_lookup", {
+      submitted_message_id: id,
+      httpStatus: response.status,
+      deliveryStatus,
+      bodyPreview: safeBody.slice(0, 300),
+    });
+
+    return {
+      ok: response.ok,
+      submittedMessageId: id,
+      source: "status_api",
+      httpStatus: response.status,
+      deliveryStatus,
+      providerBodyPreview: safeBody,
+      guidance: response.ok
+        ? "Status API responded. Treat Delivered/read as confirmation; API accept alone is not enough."
+        : "Status API returned a non-OK response. Verify AISENSY_MESSAGE_STATUS_URL with AiSensy support.",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? redactSecrets(error.message, loaded.config.apiKey) : "status lookup failed";
+    return {
+      ok: false,
+      submittedMessageId: id,
+      source: "status_api",
+      httpStatus: null,
+      deliveryStatus: null,
+      providerBodyPreview: message.slice(0, 400),
+      guidance: "Status API request failed. Fall back to AiSensy Sent tab.",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }

@@ -84,6 +84,7 @@ export async function POST(request: Request) {
     adminId: admin.id,
     maskedPhone: masked,
     providerRequestId: result.requestId,
+    submitted_message_id: result.providerMessageId,
     campaignName: result.campaignName,
   });
 
@@ -91,6 +92,9 @@ export async function POST(request: Request) {
     ok: true,
     maskedPhone: masked,
     requestId: result.requestId,
+    submittedMessageId: result.providerMessageId ?? null,
     campaignName: result.campaignName,
+    note:
+      "submittedMessageId is AiSensy accept id — confirm Delivered in Campaign → Sent or GET /api/admin/diagnostics/otp-delivery-status",
   });
 }

@@ -41,9 +41,14 @@ export type AisensyMediaPayload = {
   filename: string;
 };
 
+/**
+ * AiSensy Authentication / Copy-Code Test Campaign scripts use Meta-style
+ * button components (`sub_type: "url"` with a text OTP parameter).
+ * Prefer matching the Live campaign's Test Campaign cURL exactly.
+ */
 export type AisensyCampaignButton = {
   type: "button";
-  sub_type: "url";
+  sub_type: "url" | "copy_code";
   index: number;
   parameters: Array<{ type: "text"; text: string }>;
 };

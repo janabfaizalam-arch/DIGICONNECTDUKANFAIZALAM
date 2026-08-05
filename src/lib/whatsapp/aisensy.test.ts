@@ -2,9 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   __resetAisensySendDedupeForTests,
+  buildAisensyOtpPayloadParts,
+  describeOtpPayloadContract,
   getCampaignName,
   isAisensySuccessResponse,
   loadAisensyConfig,
+  lookupAisensyMessageStatus,
+  maskTemplateParamForLog,
   normalizeAisensyDestination,
   redactSecrets,
   resolveOtpCampaign,
@@ -25,6 +29,11 @@ const ENV_KEYS = [
   "AISENSY_CAMPAIGN_NAME_LOGIN",
   "AISENSY_API_URL",
   "AISENSY_BASE_URL",
+  "AISENSY_OTP_INCLUDE_EXPIRY_PARAM",
+  "AISENSY_OTP_EXPIRY_MINUTES",
+  "AISENSY_OTP_BUTTON_MODE",
+  "AISENSY_DESTINATION_FORMAT",
+  "AISENSY_MESSAGE_STATUS_URL",
 ] as const;
 
 const originalEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
@@ -70,6 +79,11 @@ beforeEach(() => {
     AISENSY_LOGIN_CAMPAIGN: undefined,
     AISENSY_CAMPAIGN_NAME_LOGIN: undefined,
     AISENSY_BASE_URL: undefined,
+    AISENSY_OTP_INCLUDE_EXPIRY_PARAM: undefined,
+    AISENSY_OTP_EXPIRY_MINUTES: undefined,
+    AISENSY_OTP_BUTTON_MODE: undefined,
+    AISENSY_DESTINATION_FORMAT: undefined,
+    AISENSY_MESSAGE_STATUS_URL: undefined,
   });
 });
 
@@ -216,6 +230,12 @@ describe("isAisensySuccessResponse", () => {
     expect(isAisensySuccessResponse(200, { success: true })).toBe(true);
     expect(isAisensySuccessResponse(200, { submitted_message_id: "abc123xyz" })).toBe(true);
     expect(isAisensySuccessResponse(200, { status: "success" })).toBe(true);
+    expect(
+      isAisensySuccessResponse(200, {
+        success: "true",
+        submitted_message_id: "38f7abbe-c01a-47d5-b075-9c228c2e401b",
+      }),
+    ).toBe(true);
   });
 
   it("rejects HTTP 200 with error payloads", () => {
@@ -431,11 +451,65 @@ describe("sendAisensyOtp campaign selection", () => {
       campaignName: string;
       destination: string;
       templateParams: string[];
+      buttons: Array<{ sub_type: string; parameters: Array<{ text: string }> }>;
       apiKey: string;
     };
     expect(body.campaignName).toBe("approved_signup_campaign");
     expect(body.destination).toBe("919876543210");
     expect(body.templateParams).toEqual(["654321"]);
+    expect(body.buttons?.[0]?.sub_type).toBe("url");
+    expect(body.buttons?.[0]?.parameters?.[0]?.text).toBe("654321");
     expect(body.apiKey).toBe("test-api-key-abcdef123456");
+  });
+
+  it("returns submitted_message_id separately from requestId", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ success: "true", submitted_message_id: "38f7abbe-c01a-47d5-b075-9c228c2e401b" }),
+        { status: 200 },
+      ),
+    ) as unknown as typeof fetch;
+
+    const result = await sendAisensyOtp({
+      phone: "9876543210",
+      otp: "482913",
+      purpose: "customer_signup",
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.providerMessageId).toBe("38f7abbe-c01a-47d5-b075-9c228c2e401b");
+      expect(result.requestId).not.toBe(result.providerMessageId);
+    }
+  });
+});
+
+describe("OTP payload contract + masking", () => {
+  it("masks OTP digits without leaking the code", () => {
+    expect(maskTemplateParamForLog("482913")).toBe("[OTP_6]");
+    expect(maskTemplateParamForLog("482913")).not.toContain("482913");
+  });
+
+  it("defaults to single OTP param + url button", () => {
+    const contract = describeOtpPayloadContract();
+    expect(contract.templateParamCount).toBe(1);
+    expect(contract.buttonMode).toBe("url");
+    const parts = buildAisensyOtpPayloadParts("123456");
+    expect(parts.templateParams).toEqual(["123456"]);
+    expect(parts.buttons?.[0]?.sub_type).toBe("url");
+  });
+
+  it("adds expiry param only when explicitly enabled", () => {
+    setEnv({ AISENSY_OTP_INCLUDE_EXPIRY_PARAM: "true", AISENSY_OTP_EXPIRY_MINUTES: "5" });
+    const parts = buildAisensyOtpPayloadParts("123456");
+    expect(parts.templateParams).toEqual(["123456", "5"]);
+    expect(parts.contract.templateParamCount).toBe(2);
+  });
+
+  it("lookup reports unavailable when status URL is unset", async () => {
+    const status = await lookupAisensyMessageStatus("38f7abbe-c01a-47d5-b075-9c228c2e401b");
+    expect(status.source).toBe("unavailable");
+    expect(status.ok).toBe(false);
   });
 });

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { resolveOtpCampaign, loadAisensyConfig } from "@/lib/whatsapp/aisensy";
+import {
+  describeOtpPayloadContract,
+  loadAisensyConfig,
+  resolveOtpCampaign,
+} from "@/lib/whatsapp/aisensy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +32,7 @@ export async function GET() {
   const signup = resolveOtpCampaign("customer_signup");
   const login = resolveOtpCampaign("login");
   const reset = resolveOtpCampaign("forgot_pin");
+  const payloadContract = describeOtpPayloadContract();
 
   const baseUrlConfigured = Boolean(
     process.env.AISENSY_BASE_URL?.trim() || process.env.AISENSY_API_URL?.trim(),
@@ -46,7 +51,12 @@ export async function GET() {
     signupCampaignMasked: signup.ok ? maskCampaign(signup.campaignName) : null,
     loginCampaignConfigured: login.ok,
     resetCampaignConfigured: reset.ok,
+    otpPayloadContract: payloadContract,
+    messageStatusUrlConfigured: Boolean(process.env.AISENSY_MESSAGE_STATUS_URL?.trim()),
+    webhookSecretConfigured: Boolean(process.env.AISENSY_WEBHOOK_SECRET?.trim()),
     otpStore: "supabase",
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+    note:
+      "API accept (success=true) ≠ WhatsApp Delivered. Match Live campaign Test Campaign cURL before changing AISENSY_OTP_* envs.",
   });
 }

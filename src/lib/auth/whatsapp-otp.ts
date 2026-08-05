@@ -15,6 +15,7 @@ export type CustomerOtpSendResult =
       provider: string;
       campaignName?: string;
       requestId?: string;
+      providerMessageId?: string | null;
     }
   | {
       success: false;
@@ -24,6 +25,7 @@ export type CustomerOtpSendResult =
       code?: string;
       requestId?: string;
       httpStatus?: number | null;
+      providerMessageId?: string | null;
       /** Redacted provider detail for server logs only — never return to clients. */
       providerDetail?: string;
     };
@@ -51,6 +53,7 @@ export async function sendCustomerWhatsappOtp(
       code: result.code,
       campaign: result.campaignName,
       requestId: result.requestId,
+      submitted_message_id: result.providerMessageId,
       httpStatus: result.httpStatus,
       providerDetail: result.providerDetail,
     });
@@ -62,6 +65,7 @@ export async function sendCustomerWhatsappOtp(
       code: result.code,
       requestId: result.requestId,
       httpStatus: result.httpStatus,
+      providerMessageId: result.providerMessageId ?? null,
       providerDetail: result.providerDetail,
     };
   }
@@ -71,6 +75,7 @@ export async function sendCustomerWhatsappOtp(
     provider: "aisensy",
     campaign: result.campaignName,
     requestId: result.requestId,
+    submitted_message_id: result.providerMessageId,
   });
 
   return {
@@ -78,5 +83,6 @@ export async function sendCustomerWhatsappOtp(
     provider: "aisensy",
     campaignName: result.campaignName,
     requestId: result.requestId,
+    providerMessageId: result.providerMessageId,
   };
 }

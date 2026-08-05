@@ -23,7 +23,10 @@ export async function createAndSendOtp(input: {
   ip: string;
   userAgent: string;
   metadata?: Record<string, unknown>;
-}): Promise<{ ok: true; requestId?: string; campaignName?: string } | { ok: false; error: string; status: number }> {
+}): Promise<
+  | { ok: true; requestId?: string; campaignName?: string; providerMessageId?: string | null }
+  | { ok: false; error: string; status: number }
+> {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
     console.error("[otp] supabase_admin_missing", { purpose: input.purpose });
@@ -132,6 +135,7 @@ export async function createAndSendOtp(input: {
           campaign: sendResult.campaignName ?? null,
           provider_code: sendResult.code ?? null,
           provider_request_id: sendResult.requestId ?? null,
+          submitted_message_id: sendResult.providerMessageId ?? null,
           provider_http_status: sendResult.httpStatus ?? null,
           provider_detail: sendResult.providerDetail ?? null,
         },
@@ -145,6 +149,7 @@ export async function createAndSendOtp(input: {
       campaign: sendResult.campaignName,
       code: sendResult.code,
       requestId: sendResult.requestId,
+      submitted_message_id: sendResult.providerMessageId,
       httpStatus: sendResult.httpStatus,
       providerDetail: sendResult.providerDetail,
     });
@@ -168,6 +173,7 @@ export async function createAndSendOtp(input: {
         provider: sendResult.provider ?? "aisensy",
         campaign: sendResult.campaignName ?? null,
         provider_request_id: sendResult.requestId ?? null,
+        submitted_message_id: sendResult.providerMessageId ?? null,
       },
     })
     .eq("id", inserted.id);
@@ -178,9 +184,15 @@ export async function createAndSendOtp(input: {
     provider: sendResult.provider,
     campaign: sendResult.campaignName,
     requestId: sendResult.requestId,
+    submitted_message_id: sendResult.providerMessageId,
   });
 
-  return { ok: true, requestId: sendResult.requestId, campaignName: sendResult.campaignName };
+  return {
+    ok: true,
+    requestId: sendResult.requestId,
+    campaignName: sendResult.campaignName,
+    providerMessageId: sendResult.providerMessageId ?? null,
+  };
 }
 
 export async function verifyOtpRequest(input: {
