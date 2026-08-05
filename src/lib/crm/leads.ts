@@ -16,6 +16,7 @@ import {
   type LeadPipelineStage,
   type LeadSource,
 } from "@/lib/crm/leads-core";
+import { getAsiaKolkataDayRange } from "@/lib/crm/lead-workflow-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type CanonicalLead = {
@@ -81,11 +82,16 @@ export async function listCanonicalLeads(input: {
   q?: string;
   stage?: string;
   source?: string;
+  service?: string;
+  createdFrom?: string;
+  createdTo?: string;
   assignee?: "all" | "unassigned" | "me" | string;
+  /** overdue | today | upcoming — server-side Asia/Kolkata day bounds for today/upcoming */
+  followUpQueue?: "all" | "overdue" | "today" | "upcoming";
   overdueOnly?: boolean;
   page?: number;
   pageSize?: number;
-}): Promise<{ ok: true; leads: CanonicalLead[]; total: number; page: number; pageSize: number; kpis: { overdue: number; unassigned: number } } | { ok: false; error: string; status: number }> {
+}): Promise<{ ok: true; leads: CanonicalLead[]; total: number; page: number; pageSize: number; kpis: { overdue: number; unassigned: number; today: number; upcoming: number } } | { ok: false; error: string; status: number }> {
   if (!roleHasCapability(input.actorRole, "leads.view")) {
     return { ok: false, error: "Forbidden", status: 403 };
   }
@@ -101,7 +107,7 @@ export async function listCanonicalLeads(input: {
   let query = supabase
     .from("leads")
     .select(
-      "id, name, customer_name, mobile, mobile_normalized, service, message, notes, status, source, lead_source, pipeline_stage, assigned_to, agent_id, partner_id, next_follow_up_at, lost_reason, converted_application_id, converted_customer_id, created_at, updated_at",
+      "id, name, customer_name, mobile, mobile_normalized, service, message, notes, status, source, lead_source, pipeline_stage, assigned_to, agent_id, partner_id, next_follow_up_at, lost_reason, converted_application_id, converted_customer_id, created_at, updated_at, external_ref, ingestion_key",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -119,13 +125,30 @@ export async function listCanonicalLeads(input: {
 
   if (input.q?.trim()) {
     const q = input.q.trim().replace(/[% ,]/g, "");
-    query = query.or(`name.ilike.%${q}%,mobile.ilike.%${q}%,service.ilike.%${q}%`);
+    const uuidLike = /^[0-9a-f-]{8,}$/i.test(q);
+    query = query.or(
+      uuidLike
+        ? `name.ilike.%${q}%,mobile.ilike.%${q}%,mobile_normalized.ilike.%${q}%,service.ilike.%${q}%,id.eq.${q},external_ref.ilike.%${q}%,ingestion_key.ilike.%${q}%`
+        : `name.ilike.%${q}%,mobile.ilike.%${q}%,mobile_normalized.ilike.%${q}%,service.ilike.%${q}%,external_ref.ilike.%${q}%,ingestion_key.ilike.%${q}%`,
+    );
   }
   if (input.stage && input.stage !== "all") {
     query = query.eq("pipeline_stage", input.stage);
   }
   if (input.source && input.source !== "all") {
     query = query.eq("lead_source", input.source);
+  }
+  if (input.service?.trim() && input.service !== "all") {
+    const service = input.service.trim().replace(/[% ,]/g, "");
+    query = query.ilike("service", `%${service}%`);
+  }
+  if (input.createdFrom && !Number.isNaN(Date.parse(input.createdFrom))) {
+    query = query.gte("created_at", new Date(input.createdFrom).toISOString());
+  }
+  if (input.createdTo && !Number.isNaN(Date.parse(input.createdTo))) {
+    const end = new Date(input.createdTo);
+    end.setHours(23, 59, 59, 999);
+    query = query.lte("created_at", end.toISOString());
   }
   if (input.assignee === "unassigned") {
     query = query.is("assigned_to", null);
@@ -134,8 +157,19 @@ export async function listCanonicalLeads(input: {
   } else if (input.assignee && input.assignee !== "all") {
     query = query.eq("assigned_to", input.assignee);
   }
-  if (input.overdueOnly) {
-    query = query.lt("next_follow_up_at", new Date().toISOString()).not("pipeline_stage", "in", "(won,lost)");
+
+  const queue = input.followUpQueue ?? (input.overdueOnly ? "overdue" : "all");
+  const nowIso = new Date().toISOString();
+  const { startIso, endIso } = getAsiaKolkataDayRange();
+  if (queue === "overdue") {
+    query = query.lt("next_follow_up_at", nowIso).not("pipeline_stage", "in", "(won,lost)");
+  } else if (queue === "today") {
+    query = query
+      .gte("next_follow_up_at", startIso)
+      .lte("next_follow_up_at", endIso)
+      .not("pipeline_stage", "in", "(won,lost)");
+  } else if (queue === "upcoming") {
+    query = query.gt("next_follow_up_at", endIso).not("pipeline_stage", "in", "(won,lost)");
   }
 
   const { data, error, count } = await query;
@@ -149,11 +183,24 @@ export async function listCanonicalLeads(input: {
   // KPI counts (scoped). Best-effort; ignore column-missing environments.
   let overdue = 0;
   let unassigned = 0;
+  let today = 0;
+  let upcoming = 0;
   try {
     let overdueQuery = supabase
       .from("leads")
       .select("id", { count: "exact", head: true })
-      .lt("next_follow_up_at", new Date().toISOString())
+      .lt("next_follow_up_at", nowIso)
+      .not("pipeline_stage", "in", "(won,lost)");
+    let todayQuery = supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .gte("next_follow_up_at", startIso)
+      .lte("next_follow_up_at", endIso)
+      .not("pipeline_stage", "in", "(won,lost)");
+    let upcomingQuery = supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .gt("next_follow_up_at", endIso)
       .not("pipeline_stage", "in", "(won,lost)");
     let unassignedQuery = supabase
       .from("leads")
@@ -163,10 +210,14 @@ export async function listCanonicalLeads(input: {
     if (isPartner) {
       const scope = `agent_id.eq.${input.actorId},assigned_to.eq.${input.actorId},partner_id.eq.${input.actorId}`;
       overdueQuery = overdueQuery.or(scope);
+      todayQuery = todayQuery.or(scope);
+      upcomingQuery = upcomingQuery.or(scope);
       unassignedQuery = unassignedQuery.or(scope);
     }
-    const [o, u] = await Promise.all([overdueQuery, unassignedQuery]);
+    const [o, t, uq, u] = await Promise.all([overdueQuery, todayQuery, upcomingQuery, unassignedQuery]);
     overdue = o.count ?? 0;
+    today = t.count ?? 0;
+    upcoming = uq.count ?? 0;
     unassigned = u.count ?? 0;
   } catch {
     overdue = leads.filter((l) => l.overdue).length;
@@ -179,7 +230,7 @@ export async function listCanonicalLeads(input: {
     total: count ?? leads.length,
     page,
     pageSize,
-    kpis: { overdue, unassigned },
+    kpis: { overdue, unassigned, today, upcoming },
   };
 }
 
@@ -501,7 +552,19 @@ export async function reassignLead(input: {
   const { data: existing } = await supabase.from("leads").select("*").eq("id", input.leadId).maybeSingle();
   if (!existing) return { ok: false, error: "Lead not found.", status: 404 };
 
+  if (input.assigneeUserId) {
+    const { listEligibleLeadAssignees } = await import("@/lib/crm/lead-convert");
+    const eligible = await listEligibleLeadAssignees();
+    if (!eligible.some((row) => row.id === input.assigneeUserId)) {
+      return { ok: false, error: "Assignee is not an eligible CRM operational user.", status: 400 };
+    }
+  }
+
   const previous = existing.assigned_to ? String(existing.assigned_to) : null;
+  if (previous === (input.assigneeUserId ?? null)) {
+    return { ok: true, lead: rowToLead(existing as Record<string, unknown>) };
+  }
+
   const { data: updated, error } = await supabase
     .from("leads")
     .update({
@@ -536,6 +599,81 @@ export async function reassignLead(input: {
   });
 
   return { ok: true, lead: rowToLead(updated as Record<string, unknown>) };
+}
+
+export async function getLeadHistory(input: {
+  actorId: string;
+  actorRole: string | null | undefined;
+  leadId: string;
+  limit?: number;
+}): Promise<
+  | {
+      ok: true;
+      activities: Array<Record<string, unknown>>;
+      stages: Array<Record<string, unknown>>;
+      assignments: Array<Record<string, unknown>>;
+      followUps: Array<Record<string, unknown>>;
+    }
+  | { ok: false; error: string; status: number }
+> {
+  if (!roleHasCapability(input.actorRole, "leads.view")) {
+    return { ok: false, error: "Forbidden", status: 403 };
+  }
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: false, error: "Service unavailable.", status: 503 };
+
+  const { data: lead } = await supabase.from("leads").select("id, agent_id, assigned_to, partner_id").eq("id", input.leadId).maybeSingle();
+  if (!lead) return { ok: false, error: "Lead not found.", status: 404 };
+
+  const isPartner =
+    String(input.actorRole ?? "").toLowerCase() === "agency_partner" ||
+    String(input.actorRole ?? "").toLowerCase() === "agent";
+  if (isPartner) {
+    const owned =
+      lead.agent_id === input.actorId || lead.assigned_to === input.actorId || lead.partner_id === input.actorId;
+    if (!owned) return { ok: false, error: "Forbidden", status: 403 };
+  }
+
+  const limit = Math.min(50, Math.max(1, input.limit ?? 30));
+  const [activities, stages, assignments, followUps] = await Promise.all([
+    supabase
+      .from("lead_activities")
+      .select("id, activity_type, body, actor_id, actor_role, created_at, metadata")
+      .eq("lead_id", input.leadId)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("lead_stage_history")
+      .select("id, from_stage, to_stage, changed_by, note, created_at")
+      .eq("lead_id", input.leadId)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("lead_assignment_history")
+      .select("id, assigned_user_id, previous_assigned_user_id, assignment_reason, assigned_by, created_at")
+      .eq("lead_id", input.leadId)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("lead_follow_ups")
+      .select("id, scheduled_at, status, assignee_id, created_by, completed_at, cancelled_at, reason, note, created_at")
+      .eq("lead_id", input.leadId)
+      .order("scheduled_at", { ascending: false })
+      .limit(limit),
+  ]);
+
+  let activityRows = activities.data ?? [];
+  if (isPartner) {
+    activityRows = activityRows.filter((row) => String(row.actor_role ?? "") !== "admin_internal");
+  }
+
+  return {
+    ok: true,
+    activities: activityRows as Array<Record<string, unknown>>,
+    stages: (stages.data ?? []) as Array<Record<string, unknown>>,
+    assignments: (assignments.data ?? []) as Array<Record<string, unknown>>,
+    followUps: (followUps.data ?? []) as Array<Record<string, unknown>>,
+  };
 }
 
 /** Read adapter: present canonical leads as crm_leads-shaped cards for the prototype Kanban. */

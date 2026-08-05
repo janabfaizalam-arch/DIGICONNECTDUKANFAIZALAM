@@ -2,67 +2,48 @@
 
 Last updated: 2026-08-05
 
-## Phase 2 checkpoint (local)
+## Status
 
-| Field | Value |
-|-------|-------|
-| Commit | `928f187` (`feat(crm): add secure walk-in customer foundation`) |
-| Pushed | No |
+**Phase 4 implementation complete locally; staging and CI verification pending.**  
+Not production-ready.
 
-## Automated tests added
+## Local commits
 
-| Area | File |
+| Phase | Hash | Message |
+|-------|------|---------|
+| 2 | `928f187` | walk-in foundation |
+| 3 | `c5722e6` | atomic walk-in application |
+| 4 foundation | `4e1ed2c` | unify leads on canonical pipeline |
+| 4 completion | *(see git log)* | complete lead conversion and operations workspace |
+
+## Authored automated CRM tests (not executed locally)
+
+| File | Area |
 |------|------|
-| Permissions | `src/lib/crm/permissions.test.ts` |
-| Mobile / price / assignment / WhatsApp UI map / authZ | `src/lib/crm/walk-in-application.test.ts` |
+| `src/lib/crm/leads.test.ts` | Normalize, stages, duplicates, overdue, ingest keys |
+| `src/lib/crm/lead-workflow.test.ts` | Transitions, lost reason, IST follow-up buckets |
+| `src/lib/crm/lead-convert.contract.test.ts` | Convert authZ/privacy/price contracts + CI checklist |
+| `src/app/api/ap/leads/route.test.ts` | Legacy AP scope contract |
 
-Covered behaviours (unit):
-- Indian mobile normalization + validation + masking
-- Unauthorized capability gaps (partner assign/resend, customer walk-in)
-- Existing vs new path pricing authority
-- Override reason requirement
-- Unassigned fallback (no silent assign)
-- WhatsApp state mapping without provider payload exposure
+CI command (Linux / approved runners):
 
-Integration behaviours implemented in code (require DB + migration for full E2E):
-- Idempotent repeat submission (`crm_idempotency_keys` / RPC)
-- Atomic rollback on post-insert history failure (TS fallback deletes application)
-- WhatsApp failure does not fail application
-- Partner scope isolation on customer access
-- Temporary PIN not logged (asserted by code review + log fields)
+```bash
+pnpm test:crm-leads
+```
 
-## Commands & results (this host — Phase 3 verify)
+Local Windows host: Vitest **BLOCKED** by App Control / Rollup — do not claim PASS.
 
-| Command | Result |
-|---------|--------|
-| `npx tsc --noEmit` | **PASS** (exit 0) |
-| `npx next lint` (Phase 3 files) | **PASS** (exit 0; SWC native blocked warning only) |
-| `npx vitest run src/lib/crm/*.test.ts` | **BLOCKED** — Windows App Control blocks `@rollup/rollup-win32-x64-msvc` |
-| `npx next build` | **FAILED / env** — App Control blocks `@next/swc-win32-x64-msvc`; webpack fallback ends in `TypeError: Cannot read properties of undefined (reading 'length')`. Not attributed to Phase 3 source errors (`tsc` clean). |
-| Playwright critical journey | Not run (no authenticated admin env in this session) |
+## Verification (Phase 4 completion commit)
 
-## Pre-existing / environmental issues (not hidden)
-
-1. **Vitest native Rollup binary** blocked by Windows App Control on this machine — document, do not treat as product regression.
-2. `pnpm lint` may fail when pnpm ignored builds are blocked — prefer `npx next lint` for product lint signal.
-
-## Phase 4 automated tests
-
-| Area | File |
-|------|------|
-| Lead core (normalize, stages, duplicates, overdue, idempotency keys, authZ) | `src/lib/crm/leads.test.ts` |
-
-## Phase 4 foundation verification
-
-| Command | Result |
-|---------|--------|
+| Check | Result |
+|-------|--------|
 | `npx tsc --noEmit` | **PASS** |
-| Targeted `npx next lint` (Phase 4 files) | **PASS** |
-| Vitest | **Blocked** — App Control / Rollup (not passed) |
-| Production build | **Blocked** — SWC App Control (not passed) |
-| Playwright | **Not run** |
-| Production migration | **Not applied** |
+| Targeted lint (Phase 4 files) | **PASS** |
+| Secret scan | **PASS** |
+| Migration static review | **PASS** (not applied) |
+| Vitest / `pnpm test:crm-leads` | **BLOCKED** (authored, not executed locally) |
+| Production build | **NOT RUN** / historically **BLOCKED** |
+| Playwright / browser journeys | **NOT RUN** |
+| Migrations applied | **No** |
 | Remote push | **No** |
-
-Label: **Phase 4 foundation completed** — remaining conversion/UI/follow-ups/inbound activation still pending.
-
+| Production | **Unchanged** |

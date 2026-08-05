@@ -120,4 +120,34 @@ mobile_normalized, lead_source, pipeline_stage, partner_id, assigned_to+follow_u
 ### Rollback / mitigation
 Drop new tables/indexes/columns; **do not DELETE** lead business rows. Production unchanged until explicitly applied.
 
+## Phase 4 conversion migration (hardened)
+
+`20260805140000_crm_lead_conversion_rpc.sql`
+
+### Mobile uniqueness precondition
+- Audits duplicate `normalize_customer_mobile(mobile)` groups; **fails migration** if any exist (operator message + audit query).
+- Ensures `customers_mobile_unique_auth_idx` (raw mobile) and `customers_mobile_normalized_unique_idx` (expression).
+- Source of raw unique index historically: `20260718180000_customer_whatsapp_pin_auth.sql` (may have been skipped via NOTICE — preflight now hard-fails).
+
+### RPC defense in depth
+- Validates admin via `profiles`/`users` roles OR active approved `agency_partners`.
+- Partner lead ownership: `agent_id` / `assigned_to` / `partner_id`.
+- Customer link scoped; inaccessible matches raise generic `customer_forbidden` / `customer_match_required` (no cross-partner leak).
+- Assignee must pass `crm_user_is_eligible_assignee` (admin/staff or active partner — not customer-only / arbitrary auth.users).
+- Partners forced to self-assignment on convert.
+- Fee from `agent_services` when service id present; otherwise 0 (client price ignored).
+- Lead-scoped advisory lock + `FOR UPDATE`; already-converted returns prior IDs; different clientKey cannot double-convert.
+- EXECUTE: `service_role` only; `search_path=''`.
+
+### Remaining DB boundary (documented)
+- Fine-grained TS capabilities (e.g. `leads.convert` string) are not a SQL enum — RPC uses strongest canonical role/membership checks available.
+- Service-skill assignee matching deferred; uncertain assignees → unassigned for admin null path.
+
+## Phase 4 follow-up lifecycle
+
+`20260805150000_crm_lead_followups.sql` — `lead_follow_ups` statuses: scheduled/completed/cancelled/rescheduled. `leads.next_follow_up_at` remains queue pointer.
+
+### Rollback / mitigation (conversion + follow-ups)
+Revoke/drop convert function and helpers; drop convert idempotency + follow-up tables/columns. **Do not** delete converted applications/customers/leads. Production unchanged until explicitly applied.
+
 

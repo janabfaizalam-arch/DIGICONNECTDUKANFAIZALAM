@@ -1,7 +1,7 @@
-# DigiConnect Dukan — CRM Lead Ownership (Phase 4 foundation)
+# DigiConnect Dukan — CRM Lead Ownership (Phase 4)
 
 Last updated: 2026-08-05  
-Checkpoint label: **Phase 4 foundation** (not Phase 4 complete)
+Status: **Phase 4 implementation ready locally** (completion commit pending approval)
 
 ## Canonical source
 
@@ -13,20 +13,22 @@ Checkpoint label: **Phase 4 foundation** (not Phase 4 complete)
 
 | Stage | Meaning |
 |-------|---------|
-| `application_created` | An application is linked / created from the lead |
-| `won` | Commercially closed-won / converted (legacy status often `converted`) |
+| `application_created` | Application linked/created from lead workflow (pre-won) |
+| `won` | Terminal converted success (legacy status often `converted`) |
 | `lost` | Terminal loss — **lost reason required** |
+
+Conversion RPC marks leads `pipeline_stage = won` + `status = converted` atomically with application create.
 
 ## Ownership rules
 
-| Actor | Can view | Can create | Can reassign | Duplicate suggestions |
-|-------|----------|------------|--------------|------------------------|
-| Admin | All | Yes (`manual`) | Yes | Global (authorized) |
-| Agency partner | Own `agent_id` / `assigned_to` / `partner_id` | Yes (`agency_partner`) | No (global) | **Own scope only** |
-| Customer | No | Website form only | No | N/A |
-| System ingest | N/A | website / whatsapp / sheets keys | N/A | N/A |
+| Actor | Can view | Can create | Can reassign | Duplicate suggestions | Convert |
+|-------|----------|------------|--------------|------------------------|---------|
+| Admin | All | Yes (`manual`) | Yes | Global (authorized) | Yes |
+| Agency partner | Own `agent_id` / `assigned_to` / `partner_id` | Yes (`agency_partner`) | No (global) | **Own scope only** | Yes (own leads) |
+| Customer | No | Website form only | No | N/A | N/A |
+| System ingest | N/A | website / whatsapp / sheets keys | N/A | N/A | N/A |
 
-Ownership on partner ingest is derived from **authenticated `actorId`**, never from client-supplied partner UUIDs.
+Ownership on partner ingest/convert is derived from **authenticated `actorId`**, never from client-supplied partner UUIDs.
 
 ## Conflict resolution
 
@@ -34,12 +36,24 @@ Ownership on partner ingest is derived from **authenticated `actorId`**, never f
 2. One partner **cannot** block another’s valid ingest for the same mobile/service/day.
 3. Duplicate suggestions are **advisory** — never auto-merge.
 4. Cross-partner duplicate matches are **not exposed** to partners.
-5. Sheets remains outbound application/customer mirror — does not create leads (no sync loop).
-6. WhatsApp inbound (future) must use provider message id as `externalId`.
+5. Customer mobile matches require **explicit authorized link** before conversion; silent auto-link is forbidden.
+6. Cross-partner customer matches are not revealed to partners (generic failure / no matched id).
+7. Sheets remains outbound application/customer mirror — does not create leads (no sync loop). DB is authoritative for leads.
+8. WhatsApp inbound (ready, inactive) must use provider message id as `externalId`.
 
-## Remaining after foundation
+## Follow-up queues
 
-- Transactional lead conversion
-- Dedicated admin/AP lead operations UI
-- Follow-up queues UX
-- Live WhatsApp/Sheets adapters (ready, not activated)
+- Overdue / today / upcoming computed server-side.
+- Today/upcoming use Asia/Kolkata calendar-day bounds.
+- Display formatting uses `Asia/Kolkata`.
+- DB timestamps remain `timestamptz` (UTC storage).
+
+## Env names only (inactive inbound)
+
+- AiSensy / WhatsApp webhook secrets (reuse existing conventions) — **do not enable live**
+- `GOOGLE_SHEETS_*` for outbound CRM sync — do **not** enable Sheets→leads writers
+
+## Remaining before production enablement
+
+- Apply migrations on a staging environment first
+- Explicit approval for push / deploy / live webhooks

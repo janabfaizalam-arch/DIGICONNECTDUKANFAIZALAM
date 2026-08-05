@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { getCurrentUser, getCurrentUserRole } from "@/lib/auth";
 import { currentUserHasCapability } from "@/lib/crm/permissions";
-import { reassignLead, transitionLeadStage } from "@/lib/crm/leads";
+import { reassignLead } from "@/lib/crm/leads";
+import { transitionLeadStageSafe } from "@/lib/crm/lead-convert";
 import { isLeadPipelineStage } from "@/lib/crm/leads-core";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -14,9 +15,10 @@ const schema = z.object({
   toStage: z.string().optional(),
   note: z.string().max(1000).optional().nullable(),
   lostReason: z.string().max(240).optional().nullable(),
-  nextFollowUpAt: z.string().datetime().optional().nullable(),
+  nextFollowUpAt: z.string().optional().nullable(),
   assigneeUserId: z.string().uuid().optional().nullable(),
   reason: z.string().max(240).optional().nullable(),
+  allowReopen: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -43,14 +45,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!isLeadPipelineStage(body.toStage)) {
       return NextResponse.json({ error: "Invalid pipeline stage." }, { status: 400 });
     }
-    const result = await transitionLeadStage({
+    const nextFollowUpAt = body.nextFollowUpAt ?? null;
+    if (nextFollowUpAt && Number.isNaN(Date.parse(nextFollowUpAt))) {
+      return NextResponse.json({ error: "Invalid follow-up datetime." }, { status: 400 });
+    }
+    const result = await transitionLeadStageSafe({
       actorId: user.id,
       actorRole: role,
       leadId: id,
       toStage: body.toStage,
       note: body.note,
       lostReason: body.lostReason,
-      nextFollowUpAt: body.nextFollowUpAt,
+      nextFollowUpAt,
+      allowReopen: body.allowReopen,
     });
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json({ ok: true, lead: result.lead });

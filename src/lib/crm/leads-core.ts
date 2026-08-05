@@ -27,6 +27,21 @@ export const LEAD_PIPELINE_STAGES = [
 
 export type LeadPipelineStage = (typeof LEAD_PIPELINE_STAGES)[number];
 
+/**
+ * Status semantics (single source of truth):
+ * - pipeline_stage: operational pipeline (`LEAD_PIPELINE_STAGES`)
+ * - legacy `status` text: compatibility mirror via mapStageToLegacyStatus
+ * - `converted` is NOT a pipeline stage — it is legacy status + converted_at / converted_* refs
+ * - `application_created`: application linked/created; pre-won operational stage
+ * - `won`: terminal commercially converted success (sets legacy status=converted)
+ * - `lost`: terminal loss; lost_reason required; reopen only via authorized allowReopen
+ * Analytics: count won OR converted_at IS NOT NULL once — do not sum both.
+ */
+export const LEAD_TERMINAL_STAGES: LeadPipelineStage[] = ["won", "lost"];
+
+export function isTerminalLeadStage(stage: LeadPipelineStage): boolean {
+  return LEAD_TERMINAL_STAGES.includes(stage);
+}
 export function normalizeLeadMobile(value: string): string {
   return String(value ?? "").replace(/\D/g, "").slice(-10);
 }

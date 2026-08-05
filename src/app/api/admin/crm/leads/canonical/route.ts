@@ -19,6 +19,13 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const role = await getCurrentUserRole(user);
+  const followUpParam = url.searchParams.get("followUp");
+  const followUp =
+    followUpParam === "today" || followUpParam === "upcoming" || followUpParam === "overdue"
+      ? followUpParam
+      : url.searchParams.get("overdue") === "1"
+        ? "overdue"
+        : "all";
   const result = await listCanonicalLeads({
     actorId: user.id,
     actorRole: role,
@@ -26,7 +33,7 @@ export async function GET(request: Request) {
     stage: url.searchParams.get("stage") ?? undefined,
     source: url.searchParams.get("source") ?? undefined,
     assignee: (url.searchParams.get("assignee") as "all" | "unassigned" | "me" | string | null) ?? "all",
-    overdueOnly: url.searchParams.get("overdue") === "1",
+    followUpQueue: followUp,
     page: Number(url.searchParams.get("page") ?? 1),
     pageSize: Number(url.searchParams.get("pageSize") ?? 25),
   });

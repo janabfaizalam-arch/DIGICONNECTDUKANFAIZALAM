@@ -47,4 +47,11 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 - Partner lead reassignment remains admin-capability gated (`applications.assign` / `staff.manage`).
 - Customers have no lead portal access.
 
+### Phase 4 conversion notes
+- Convert requires `leads.convert` + lead ownership scope for partners.
+- Existing customer match requires explicit `existingCustomerId` (admin/partner-visible only).
+- Cross-partner customer matches are not exposed.
+- Convert RPC is `service_role` only; Next.js authZ is mandatory before call.
+- Terminal Lost cannot convert without authorized reopen transition.
+
 Enforcement: `src/lib/crm/permissions.ts` + existing route gates + RLS. Hiding UI is not sufficient.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { ButtonSpinner } from "@/components/ui/loading";
@@ -14,24 +14,42 @@ const leadStatuses = [
   ["closed", "Closed"],
 ] as const;
 
+function newKey() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k-${Date.now()}`;
+}
+
 export function AdminLeadActions({ leadId, status }: { leadId: string; status: string }) {
   const [isPending, startTransition] = useTransition();
+  const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
-  function update(payload: { status?: string; convert?: boolean }) {
+  function update(payload: { status?: string; convert?: boolean; existingCustomerId?: string }) {
     if (isPending) return;
     startTransition(async () => {
       try {
         const response = await fetch(`/api/admin/leads/${leadId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            idempotencyKey: payload.convert ? newKey() : undefined,
+          }),
         });
-        const result = (await response.json()) as { message?: string };
+        const result = (await response.json()) as {
+          message?: string;
+          matchedCustomerId?: string;
+        };
+
+        if (response.status === 409 && result.matchedCustomerId) {
+          setMatchedCustomerId(result.matchedCustomerId);
+          toastError("Existing customer found — confirm link.");
+          return;
+        }
 
         if (!response.ok) throw new Error(result.message ?? "Lead update failed.");
 
+        setMatchedCustomerId(null);
         success(result.message ?? "Lead updated.");
         router.refresh();
       } catch (error) {
@@ -48,18 +66,20 @@ export function AdminLeadActions({ leadId, status }: { leadId: string; status: s
         </SelectTrigger>
         <SelectContent>
           {leadStatuses.map(([value, label]) => (
-            <SelectItem key={value} value={value}>{label}</SelectItem>
+            <SelectItem key={value} value={value}>
+              {label}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
       <button
         type="button"
         disabled={isPending || status === "converted"}
-        onClick={() => update({ convert: true })}
+        onClick={() => update({ convert: true, existingCustomerId: matchedCustomerId || undefined })}
         className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-orange-500 px-3 text-xs font-bold text-white disabled:opacity-50"
       >
         {isPending ? <ButtonSpinner className="h-3.5 w-3.5" /> : null}
-        {isPending ? "Updating..." : "Convert"}
+        {isPending ? "Updating..." : matchedCustomerId ? "Link & convert" : "Convert"}
       </button>
     </div>
   );

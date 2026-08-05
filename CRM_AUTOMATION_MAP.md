@@ -40,16 +40,33 @@ Admin walk-in UI
 ## Lead ingest (Phase 4)
 
 ```
-Website form / AP create / manual pipeline
-  → ingestLead()
-  → lead_ingestion_keys (idempotent)
+Website form / AP create / manual / WhatsApp-ready / Sheets-ready
+  → lead-inbound-adapters.ts → ingestLead()
+  → lead_ingestion_keys (idempotent, partner-scoped for AP)
   → public.leads insert (canonical)
   → lead_stage_history + lead_activities (+ assignment history if owned)
 ```
 
+## Lead conversion (Phase 4)
+
+```
+Admin/AP lead workspace
+  → POST /api/admin/crm/leads/canonical/[id]/convert
+  → authZ (leads.convert) + partner scope
+  → convert_lead_to_application_core (atomic)
+       · customer link/create
+       · application + status/assignment history
+       · lead → won/converted + timeline
+       · convert idempotency
+  → (outside tx) scheduleCrmSync
+  → (outside tx) sendApplicationWhatsApp
+```
+
 Rules:
-- No Sheets→leads write path (prevents sync loops).
+- No Sheets→leads write path (prevents sync loops). DB authoritative for leads.
 - No auto-merge of duplicate mobiles.
+- Explicit customer link when match exists.
 - Pipeline UI reads canonical leads via adapter; `crm_leads` is fallback only.
 - Demo seed leads removed.
+- WhatsApp/Sheets inbound adapters are ready but **not activated**.
 
