@@ -8,12 +8,18 @@ import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function WalkInCustomerPage() {
+export default async function WalkInCustomerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ customerId?: string; step?: string }>;
+}) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
 
   if (!user) redirect("/admin/login");
   if (!isAdminRole(role)) redirect("/dashboard");
+
+  const params = await searchParams;
 
   return (
     <main className="min-h-screen">
@@ -25,9 +31,12 @@ export default async function WalkInCustomerPage() {
         <AdminPageHeader
           eyebrow="Walk-in / Counter"
           title="New Customer"
-          description="Phone-first lookup prevents duplicates. New customers get a PIN-compatible login (no staff-chosen password)."
+          description="Phone-first lookup → confirm/create → service → application. Existing customers never get a duplicate profile."
         />
-        <WalkInCustomerWizard />
+        <WalkInCustomerWizard
+          initialCustomerId={params.customerId ?? null}
+          initialStep={params.step ?? null}
+        />
         <p className="text-xs text-slate-500">
           Legacy email/password create remains at{" "}
           <Link href="/admin/customers/new" className="font-semibold underline">

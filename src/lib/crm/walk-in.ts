@@ -4,6 +4,8 @@ import { randomInt } from "crypto";
 
 import { customerInternalEmail } from "@/lib/auth/phone";
 import { derivePinPassword, validateCustomerPin } from "@/lib/auth/pin";
+import { logAuthSecurityEvent } from "@/lib/auth/security-log";
+import { hashPin } from "@/lib/auth-v2/password";
 import {
   assertCustomerIdentityAvailable,
   completeCustomerAccount,
@@ -182,6 +184,10 @@ export async function createWalkInCustomer(input: {
   }
 
   const temporaryPin = generateSecurePin(mobile);
+  // Primary login verifier for /api/auth/customer/login: argon2id (per-hash salt + work factor).
+  // Supabase Auth password remains HMAC-derived for complete-signup compatibility only —
+  // GoTrue still bcrypt-hashes that password. See CRM_DATABASE_CHANGES.md PIN threat notes.
+  const hashedPin = await hashPin(temporaryPin);
   const password = derivePinPassword(mobile, temporaryPin);
 
   const { data: created, error: createError } = await supabase.auth.admin.createUser({
@@ -196,6 +202,7 @@ export async function createWalkInCustomer(input: {
       source: "admin_walk_in",
       referral_source: input.referralSource ?? null,
       alternate_mobile: input.alternateMobile ?? null,
+      // Never store temporaryPin in metadata.
     },
     app_metadata: { role: "customer" },
   });
@@ -240,6 +247,7 @@ export async function createWalkInCustomer(input: {
   const customerId = customerRow?.id ? String(customerRow.id) : created.user.id;
 
   // Soft-update CRM fields that completeCustomerAccount may not set.
+  // Persist argon2 hashed_pin so customer PIN login works; never store plain PIN.
   try {
     await supabase
       .from("customers")
@@ -251,12 +259,26 @@ export async function createWalkInCustomer(input: {
         state,
         created_by: input.createdByUserId,
         source: "offline",
+        hashed_pin: hashedPin,
+        is_active: true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", customerId);
   } catch {
     // Optional columns may differ across environments.
   }
+
+  await logAuthSecurityEvent({
+    userId: created.user.id,
+    phone: `${mobile.slice(0, 2)}******${mobile.slice(-2)}`,
+    eventType: "walk_in_temporary_pin_issued",
+    details: {
+      customerId,
+      must_change_pin: true,
+      actorId: input.createdByUserId,
+      // Never include temporaryPin or hashed_pin.
+    },
+  });
 
   // Do not auto-send a signup OTP here — that would mint a different code than temporaryPin.
   // Counter staff sees temporaryPin once; WhatsApp welcome templates are Phase 5 outbox work.

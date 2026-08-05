@@ -155,10 +155,11 @@ export function AdminApplications({
   }
 
   const kpis = [
-    { title: "Total Applications", value: stats.totalApplications, icon: "fileText" as const, tone: "blue" as const, status: "all" },
-    { title: "Payment Pending", value: stats.paymentPending, icon: "receiptText" as const, tone: "orange" as const, status: "payment_pending" },
-    { title: "In Progress", value: stats.inProgress, icon: "repeat" as const, tone: "blue" as const, status: "in_progress" },
-    { title: "Completed", value: stats.completed, icon: "clipboardList" as const, tone: "green" as const, status: "completed" },
+    { title: "Total Applications", value: stats.totalApplications, icon: "fileText" as const, tone: "blue" as const, status: "all", agentId: "all" as const },
+    { title: "Unassigned", value: stats.unassignedApplications, icon: "repeat" as const, tone: "orange" as const, status: "all", agentId: "none" as const },
+    { title: "Payment Pending", value: stats.paymentPending, icon: "receiptText" as const, tone: "orange" as const, status: "payment_pending", agentId: "all" as const },
+    { title: "In Progress", value: stats.inProgress, icon: "repeat" as const, tone: "blue" as const, status: "in_progress", agentId: "all" as const },
+    { title: "Completed", value: stats.completed, icon: "clipboardList" as const, tone: "green" as const, status: "completed", agentId: "all" as const },
   ];
 
   return (
@@ -175,9 +176,14 @@ export function AdminApplications({
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {kpis.map((kpi) => (
-          <button key={kpi.title} type="button" onClick={() => go({ ...filters, status: kpi.status })} className="text-left">
+          <button
+            key={kpi.title}
+            type="button"
+            onClick={() => go({ ...filters, status: kpi.status, agentId: kpi.agentId })}
+            className="text-left"
+          >
             <AdminStatCard title={kpi.title} value={kpi.value} icon={kpi.icon} tone={kpi.tone} />
           </button>
         ))}

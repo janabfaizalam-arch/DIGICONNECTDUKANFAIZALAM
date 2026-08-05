@@ -32,4 +32,12 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 | `messaging.resend` | Y | N | N |
 | `walk_in.create` | Y | Y | N |
 
+### Phase 3 notes
+- Walk-in application API requires `applications.create` **and** `walk_in.create`.
+- Price override requires `payments.edit` + non-empty reason; amount still resolved server-side from `agent_services`.
+- Assignment at create: admin may pass `assigneeUserId` (`applications.assign`); partners cannot assign outside scope and cannot set arbitrary global assignees via this path.
+- Default when no rule/assignee: **Unassigned** queue (`assigned_agent_id` null + assignment history reason `unassigned_queue`).
+- WhatsApp manual resend requires `messaging.resend` (admin only in matrix).
+- Limitation: finer staff roles are not first-class DB roles yet — do not invent fake roles; extend via additive migration later.
+
 Enforcement: `src/lib/crm/permissions.ts` + existing route gates + RLS. Hiding UI is not sufficient.
