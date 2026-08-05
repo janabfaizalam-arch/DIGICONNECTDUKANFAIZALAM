@@ -119,9 +119,12 @@ describe("Authorization matrix for walk-in application path", () => {
     expect(roleHasCapability("admin", "applications.create")).toBe(true);
     expect(roleHasCapability("admin", "applications.assign")).toBe(true);
     expect(roleHasCapability("admin", "messaging.resend")).toBe(true);
+    expect(roleHasCapability("admin", "messaging.view")).toBe(true);
+    expect(roleHasCapability("admin", "messaging.cancel")).toBe(true);
     expect(roleHasCapability("agency_partner", "applications.create")).toBe(true);
     expect(roleHasCapability("agency_partner", "applications.assign")).toBe(false);
     expect(roleHasCapability("agency_partner", "messaging.resend")).toBe(false);
+    expect(roleHasCapability("agency_partner", "messaging.view")).toBe(false);
     expect(roleHasCapability("customer", "applications.create")).toBe(true);
     expect(roleHasCapability("customer", "walk_in.create")).toBe(false);
   });

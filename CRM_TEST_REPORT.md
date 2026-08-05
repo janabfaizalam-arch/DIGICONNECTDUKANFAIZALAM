@@ -1,49 +1,43 @@
 # DigiConnect Dukan — CRM Test Report
 
-Last updated: 2026-08-05
+Last updated: 2026-08-05 (Phase 5A Checkpoint A)
 
-## Status
+## Status wording
 
-**Phase 4 implementation complete locally; staging and CI verification pending.**  
+**Phase 5A implementation complete locally; staging database, CI, provider and scheduler verification pending.**  
 Not production-ready.
 
 ## Local commits
 
 | Phase | Hash | Message |
 |-------|------|---------|
-| 2 | `928f187` | walk-in foundation |
-| 3 | `c5722e6` | atomic walk-in application |
-| 4 foundation | `4e1ed2c` | unify leads on canonical pipeline |
-| 4 completion | *(see git log)* | complete lead conversion and operations workspace |
+| 2–4 | see git log | prior CRM phases |
+| 5A | *(after commit)* | `feat(crm): add communication outbox and AiSensy adapter` |
 
-## Authored automated CRM tests (not executed locally)
+## Authored tests
 
 | File | Area |
 |------|------|
-| `src/lib/crm/leads.test.ts` | Normalize, stages, duplicates, overdue, ingest keys |
-| `src/lib/crm/lead-workflow.test.ts` | Transitions, lost reason, IST follow-up buckets |
-| `src/lib/crm/lead-convert.contract.test.ts` | Convert authZ/privacy/price contracts + CI checklist |
-| `src/app/api/ap/leads/route.test.ts` | Legacy AP scope contract |
+| `src/lib/communications/comms.contract.test.ts` | State machine, idempotency, backoff, consent class, authZ, webhook contracts, cron secret precedence, adapter config-required |
+| `src/lib/whatsapp/application-notify.test.ts` | Application send contracts |
+| Capability / nav tests | messaging.view/cancel; `/admin/communications` |
 
-CI command (Linux / approved runners):
+CI: `pnpm test:crm-comms`
 
-```bash
-pnpm test:crm-leads
-```
-
-Local Windows host: Vitest **BLOCKED** by App Control / Rollup — do not claim PASS.
-
-## Verification (Phase 4 completion commit)
+## Verification (Checkpoint A)
 
 | Check | Result |
 |-------|--------|
-| `npx tsc --noEmit` | **PASS** |
-| Targeted lint (Phase 4 files) | **PASS** |
-| Secret scan | **PASS** |
-| Migration static review | **PASS** (not applied) |
-| Vitest / `pnpm test:crm-leads` | **BLOCKED** (authored, not executed locally) |
-| Production build | **NOT RUN** / historically **BLOCKED** |
-| Playwright / browser journeys | **NOT RUN** |
+| `npx tsc --noEmit` | **PASS** (re-run at commit) |
+| Targeted lint (Phase 5A files) | **PASS** (re-run at commit) |
+| Secret / sensitive-artifact scan | **PASS** (re-run at commit) |
+| Migration static review | **PASS** (preflight fail-closed; not applied) |
+| Vitest | **BLOCKED** (Windows App Control / Rollup) |
+| DB concurrency / claim | **NOT RUN** |
+| Live provider / webhook | **NOT RUN** |
+| Production build | **NOT RUN** |
+| Playwright | **NOT RUN** |
 | Migrations applied | **No** |
+| Cron in vercel.json | **No** |
 | Remote push | **No** |
 | Production | **Unchanged** |

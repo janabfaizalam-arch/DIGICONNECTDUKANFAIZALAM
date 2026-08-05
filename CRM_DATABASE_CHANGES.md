@@ -150,4 +150,91 @@ Drop new tables/indexes/columns; **do not DELETE** lead business rows. Productio
 ### Rollback / mitigation (conversion + follow-ups)
 Revoke/drop convert function and helpers; drop convert idempotency + follow-up tables/columns. **Do not** delete converted applications/customers/leads. Production unchanged until explicitly applied.
 
+## Phase 5A — Communication outbox (additive)
+
+`20260805160000_crm_communication_outbox.sql`
+
+### Decision
+Reuse `public.whatsapp_messages` as the **canonical** outbox. Do **not** create a competing queue. Leave `notification_queue` mock/legacy untouched.
+
+### Additive changes
+1. Expand `whatsapp_messages.status` check to include processing/submitted/retryable/cancelled/configuration_required/suppressed
+2. Columns: provider, purpose, lead_id, payment_id, follow_up_id, classification, consent_basis, max_attempts, next_attempt_at, provider_status, failure_*, correlation_id, created_by, cancel_*, processing lease, safe_metadata
+3. `communication_delivery_events` — webhook idempotency (provider + provider_event_id)
+4. `customer_communication_preferences` + `customer_communication_preference_history`
+5. `claim_communication_outbox` SECURITY DEFINER, `search_path=''`, EXECUTE **service_role only**
+6. `communication_ops_audit` — retry/cancel/explicit_resend audit (admin SELECT)
+
+### RLS / grants
+| Object | Policy / grant |
+|--------|----------------|
+| whatsapp_messages | Existing admin manage (unchanged intent) |
+| communication_delivery_events | Admin SELECT |
+| customer_communication_preferences | Admin ALL |
+| preference history | Admin SELECT |
+| communication_ops_audit | Admin SELECT; writes via service_role from Next.js |
+| claim_communication_outbox | REVOKE PUBLIC/anon/authenticated; GRANT service_role |
+
+### Retention
+Delivery events + ops audit: prefer ≥ 90 days. Never store API keys, webhook secrets, identity documents, or full rendered PII dumps in payload/safe_metadata.
+
+### Preflight (staging — non-destructive reporting)
+
+Legacy statuses written by production-compatible code: `queued`, `sent`, `delivered`, `read`, `failed`.  
+Migration **fails safely** if null/blank or unknown statuses exist (no silent rewrite/delete).
+
+```sql
+-- 1) Count per status (including unknown)
+select coalesce(nullif(btrim(status), ''), '(blank)') as status, count(*) as n
+from public.whatsapp_messages
+group by 1
+order by n desc;
+
+-- 2) Unknown statuses (must be 0 before apply)
+select id, status, created_at
+from public.whatsapp_messages
+where status is null
+   or btrim(status) = ''
+   or status not in (
+     'queued','sent','delivered','read','failed',
+     'processing','submitted','retryable','cancelled','configuration_required','suppressed'
+   );
+
+-- 3) Duplicate idempotency keys (unique already exists — expect 0)
+select idempotency_key, count(*) as n
+from public.whatsapp_messages
+group by 1 having count(*) > 1;
+
+-- 4) Duplicate provider_message_id (NO unique index added — report only)
+select provider_message_id, count(*) as n
+from public.whatsapp_messages
+where provider_message_id is not null
+group by 1 having count(*) > 1;
+
+-- 5) Recipients that look unnormalizable (< 10 digits)
+select id, left(recipient, 4) as recipient_prefix, length(regexp_replace(recipient, '\D', '', 'g')) as digits
+from public.whatsapp_messages
+where length(regexp_replace(coalesce(recipient, ''), '\D', '', 'g')) < 10
+limit 100;
+```
+
+### Remediation options (manual — never auto)
+- Unknown status: map only with operator-approved UPDATE after backup; or quarantine rows before CHECK apply.
+- Duplicate provider IDs: leave as-is; webhook refuses multi-match updates.
+- Invalid recipients: leave failed/queued; fix at source on retry.
+
+### Compatibility with old rows
+- New columns have defaults (`provider`, `classification`, `max_attempts`, `safe_metadata`).
+- List/processor/webhook tolerate null `purpose` (fall back to `event_type`), null lease fields, missing delivery events table (logged safely).
+- Existing notification rows remain readable via prior admin selects.
+
+### Indexes
+Non-unique only on `provider_message_id` — **no** unique index on dirty provider IDs.
+
+### Rollback / disable
+1. Unset `AISENSY_API_KEY` / `COMMS_CRON_SECRET` / `AISENSY_WEBHOOK_SECRET` (feature safely disabled).
+2. Do not register cron in `vercel.json`.
+3. Drop new tables/function/columns; restore prior status CHECK if required.
+4. **Do not delete** message history.
+
 

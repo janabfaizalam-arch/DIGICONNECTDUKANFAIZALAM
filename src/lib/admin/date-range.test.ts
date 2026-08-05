@@ -31,6 +31,7 @@ describe("admin nav IA", () => {
     expect(hrefs).toContain("/admin/agency-partners");
     expect(hrefs).toContain("/admin/payment-reconciliation");
     expect(hrefs).toContain("/admin/homepage");
+    expect(hrefs).toContain("/admin/communications");
   });
 
   it("uses Digi Partners label", () => {

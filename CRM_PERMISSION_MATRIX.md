@@ -29,7 +29,9 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 | `audit.view` | Y | N | N |
 | `leads.view` | Y | S | N |
 | `leads.convert` | Y | S | N |
+| `messaging.view` | Y | N | N |
 | `messaging.resend` | Y | N | N |
+| `messaging.cancel` | Y | N | N |
 | `walk_in.create` | Y | Y | N |
 
 ### Phase 3 notes
@@ -53,5 +55,12 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 - Cross-partner customer matches are not exposed.
 - Convert RPC is `service_role` only; Next.js authZ is mandatory before call.
 - Terminal Lost cannot convert without authorized reopen transition.
+
+### Phase 5A communications notes
+- Outbox list/retry/cancel/explicit resend: admin only (`messaging.view` / `messaging.resend` / `messaging.cancel`).
+- Partners do **not** see other partners’ messages (no partner messaging list capability).
+- Customers must not see internal provider errors or retry details.
+- Cron `/api/cron/comms-outbox` uses Bearer `COMMS_CRON_SECRET` or `CRON_SECRET` — not session cookies.
+- Webhook uses `AISENSY_WEBHOOK_SECRET` (shared secret; no invented signature).
 
 Enforcement: `src/lib/crm/permissions.ts` + existing route gates + RLS. Hiding UI is not sufficient.

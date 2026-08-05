@@ -22,7 +22,9 @@ export type CrmCapability =
   | "audit.view"
   | "leads.view"
   | "leads.convert"
+  | "messaging.view"
   | "messaging.resend"
+  | "messaging.cancel"
   | "walk_in.create";
 
 const ADMIN_ALIASES = new Set(["admin", "super_admin", "staff", "team", "employee", "processor"]);
@@ -62,7 +64,9 @@ const ADMIN_ALL: CrmCapability[] = [
   "audit.view",
   "leads.view",
   "leads.convert",
+  "messaging.view",
   "messaging.resend",
+  "messaging.cancel",
   "walk_in.create",
 ];
 
