@@ -1,6 +1,6 @@
 import { scheduleCrmSync } from "@/lib/crmSync";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
+import { dispatchApplicationNotification } from "@/lib/automation/dispatch-notification";
 import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 
 export type WhatsAppEvent =
@@ -27,9 +27,9 @@ const EVENT_MAP: Partial<Record<WhatsAppEvent, ApplicationWhatsAppEvent>> = {
 };
 
 /**
- * Server-side application WhatsApp trigger.
- * Delivers via AiSensy (`sendApplicationWhatsApp`) — does not invent browser sends.
- * Failed/rejected events are logged but not auto-messaged (use admin objection/custom).
+ * Server-side application WhatsApp trigger (non-OTP).
+ * Routes through dispatchApplicationNotification — respects CRM_NOTIFICATION_DELIVERY_MODE.
+ * Never invents browser sends. Failed/rejected events are logged but not auto-messaged.
  */
 export async function triggerWhatsAppNotification(
   event: WhatsAppEvent,
@@ -39,6 +39,8 @@ export async function triggerWhatsAppNotification(
     notes?: string;
     amount?: string | number | null;
     forceRetry?: boolean;
+    sourceHistoryId?: string | null;
+    actorOrigin?: "system" | "admin" | "agency_partner" | "customer" | "webhook" | "cron";
   } = {},
 ) {
   const supabase = getSupabaseAdmin();
@@ -57,7 +59,7 @@ export async function triggerWhatsAppNotification(
     const { data: application, error: appError } = await supabase
       .from("applications")
       .select(
-        "id, status, payment_status, service_name, amount, total_amount, customer_mobile, customer_mobile_normalized, customer_name, customer_details, form_data, profiles!applications_user_id_fkey(full_name, mobile, email)",
+        "id, status, payment_status, service_name, amount, total_amount, customer_mobile, customer_mobile_normalized, customer_name, customer_details, form_data, customer_id, profiles!applications_user_id_fkey(full_name, mobile, email)",
       )
       .eq("id", applicationId)
       .maybeSingle();
@@ -98,7 +100,7 @@ export async function triggerWhatsAppNotification(
       .filter(Boolean)
       .join(" · ");
 
-    const result = await sendApplicationWhatsApp({
+    const result = await dispatchApplicationNotification({
       applicationId,
       eventType: mapped,
       recipientMobile: customerMobile,
@@ -108,9 +110,12 @@ export async function triggerWhatsAppNotification(
       amount: options.amount ?? application.total_amount ?? application.amount,
       status: application.status,
       forceRetry: options.forceRetry,
+      customerId: application.customer_id ? String(application.customer_id) : null,
+      sourceHistoryId: options.sourceHistoryId,
+      actorOrigin: options.actorOrigin ?? "system",
+      processRulesInline: true,
     });
 
-    // Best-effort audit trail (non-blocking for delivery).
     await supabase.from("system_events").insert({
       event_name: `whatsapp.notification.${event}`,
       entity_type: "application",
@@ -118,31 +123,30 @@ export async function triggerWhatsAppNotification(
       payload: {
         to_masked: customerMobile.replace(/\d(?=\d{4})/g, "x"),
         event: mapped,
+        delivery_mode: "deliveryMode" in result ? result.deliveryMode : null,
         ok: result.ok,
         code: "code" in result ? result.code : null,
-        deduped: result.ok && "deduped" in result ? result.deduped : false,
       },
     });
 
-    if (!result.ok) {
-      await scheduleCrmSync(applicationId, "whatsapp_sent", {
-        payload: { whatsappStatus: "Failed" },
-      });
-      return {
-        success: false,
-        reason: result.code,
-        error: result.error,
-        queued: "queued" in result ? result.queued : false,
-      };
+    if (result.ok || ("queued" in result && result.queued)) {
+      try {
+        await scheduleCrmSync(applicationId, "whatsapp_sent");
+      } catch {
+        // non-blocking
+      }
     }
 
-    await scheduleCrmSync(applicationId, "whatsapp_sent", {
-      payload: { whatsappStatus: result.deduped ? "Deduped" : "Sent" },
+    if (result.ok) return { success: true, result };
+    if ("queued" in result && result.queued) {
+      return { success: true, queued: true, result };
+    }
+    return { success: false, reason: "code" in result ? result.code : "send_failed", result };
+  } catch {
+    console.error("[whatsapp-automation] unexpected", {
+      code: "unexpected",
+      applicationId,
     });
-
-    return { success: true, deduped: result.deduped === true, messageId: result.messageId };
-  } catch (error) {
-    console.error(`WhatsApp Automation error for application ${applicationId}:`, error);
-    return { success: false, reason: "exception_occurred", error };
+    return { success: false, reason: "unexpected_error" };
   }
 }

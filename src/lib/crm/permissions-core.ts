@@ -25,7 +25,12 @@ export type CrmCapability =
   | "messaging.view"
   | "messaging.resend"
   | "messaging.cancel"
-  | "walk_in.create";
+  | "walk_in.create"
+  | "automation.view"
+  | "automation.retry"
+  | "alerts.view"
+  | "alerts.resolve"
+  | "summaries.view";
 
 const ADMIN_ALIASES = new Set(["admin", "super_admin", "staff", "team", "employee", "processor"]);
 const PARTNER_ALIASES = new Set(["agency_partner", "agent", "ap"]);
@@ -68,6 +73,11 @@ const ADMIN_ALL: CrmCapability[] = [
   "messaging.resend",
   "messaging.cancel",
   "walk_in.create",
+  "automation.view",
+  "automation.retry",
+  "alerts.view",
+  "alerts.resolve",
+  "summaries.view",
 ];
 
 const PARTNER_CAPS: CrmCapability[] = [

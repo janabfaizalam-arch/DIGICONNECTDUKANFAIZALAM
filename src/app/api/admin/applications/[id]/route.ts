@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { isApplicationStatus } from "@/lib/application-status";
-import { canTransitionStatus, whatsappEventForStatusChange } from "@/lib/applications/status-machine";
+import { canTransitionStatus } from "@/lib/applications/status-machine";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { scheduleCrmSync } from "@/lib/crmSync";
@@ -15,7 +15,8 @@ import {
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { creditCashbackForApplication } from "@/lib/wallet";
 import { validateFileSignature } from "@/lib/file-validation";
-import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
+import { recordApplicationAssignmentEvent } from "@/lib/automation/producers/assignment";
+import { emitApplicationStatusChangedFromHistory } from "@/lib/automation/producers/status-changed";
 
 function isCashbackCompletionStatus(status: unknown) {
   return ["completed", "delivered", "approved", "done"].includes(String(status ?? "").toLowerCase());
@@ -162,6 +163,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (assignedAgentId) {
       updates.assigned_agent_id = assignedAgentId === "none" ? null : assignedAgentId;
     }
+
+    const previousAssignee = application.assigned_agent_id ?? application.agent_id ?? null;
+    const nextAssigneeExplicit =
+      assignedAgentId === undefined
+        ? undefined
+        : assignedAgentId === "none"
+          ? null
+          : assignedAgentId;
+    const assigneeChanging =
+      nextAssigneeExplicit !== undefined && String(nextAssigneeExplicit ?? "") !== String(previousAssignee ?? "");
 
     if (internalNotes) {
       updates.internal_notes = internalNotes;
@@ -311,6 +322,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
     }
 
+    if (assigneeChanging) {
+      const { data: historyRow } = await supabase
+        .from("application_assignment_history")
+        .insert({
+          application_id: id,
+          assigned_user_id: nextAssigneeExplicit,
+          assigned_role: nextAssigneeExplicit ? "assignee" : "unassigned",
+          assignment_reason: note || (nextAssigneeExplicit ? "admin_assignment" : "admin_unassigned"),
+          assigned_by: user?.id,
+          assigned_by_system: false,
+          metadata: { source: "admin_patch" },
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (historyRow?.id) {
+        await recordApplicationAssignmentEvent({
+          applicationId: id,
+          assignmentHistoryId: String(historyRow.id),
+          assigneeUserId: nextAssigneeExplicit,
+          actorId: user?.id ?? null,
+          actorOrigin: "admin",
+          reason: note || null,
+        });
+      }
+    }
+
     if (note) {
       await supabase.from("admin_notes").insert({
         application_id: id,
@@ -338,14 +376,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         note: note || "Status updated by admin.",
       });
 
-      await supabase.from("application_status_logs").insert({
-        application_id: id,
-        actor_id: user?.id,
-        actor_role: "admin",
-        old_status: application.status,
-        new_status: updates.status,
-        note: note || "Status updated by admin.",
-      });
+      const { data: statusHistory } = await supabase
+        .from("application_status_logs")
+        .insert({
+          application_id: id,
+          actor_id: user?.id,
+          actor_role: "admin",
+          old_status: application.status,
+          new_status: updates.status,
+          note: note || "Status updated by admin.",
+        })
+        .select("id")
+        .maybeSingle();
 
       if (application.user_id) {
         await supabase.from("notifications").insert({
@@ -356,27 +398,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         });
       }
 
-      // Customer-relevant WhatsApp only when status actually changes. Never for notes/assignment-only.
-      try {
-        const eventType = whatsappEventForStatusChange(application.status, updates.status);
-        if (eventType) {
+      // Canonical status-history producer — idempotent on history row id.
+      if (statusHistory?.id) {
+        try {
           const details = (application.customer_details ?? {}) as Record<string, unknown>;
           const formDataRecord = (application.form_data ?? {}) as Record<string, unknown>;
-          const mobile = String(application.customer_mobile ?? details.mobile ?? formDataRecord.mobile ?? "").trim();
+          const mobile = String(
+            application.customer_mobile ?? details.mobile ?? formDataRecord.mobile ?? "",
+          ).trim();
           const customerName = String(details.name ?? formDataRecord.name ?? "Customer");
-          if (mobile) {
-            await sendApplicationWhatsApp({
-              applicationId: id,
-              eventType,
-              recipientMobile: mobile,
-              customerName,
-              serviceName: application.service_name,
-              notes: note || customerNote || undefined,
-            });
-          }
+          await emitApplicationStatusChangedFromHistory({
+            applicationId: id,
+            statusHistoryId: String(statusHistory.id),
+            oldStatus: application.status != null ? String(application.status) : null,
+            newStatus: String(updates.status),
+            actorId: user?.id,
+            actorOrigin: "admin",
+            note: note || customerNote || null,
+            dispatchCustomerWhatsApp: Boolean(mobile),
+            recipientMobile: mobile || null,
+            customerName,
+            serviceName: application.service_name,
+            customerId: application.customer_id ? String(application.customer_id) : null,
+          });
+        } catch (whatsappError) {
+          console.error("[admin-applications-patch] status_producer_failed", whatsappError);
         }
-      } catch (whatsappError) {
-        console.error("[admin-applications-patch] whatsapp_status_ping_failed", whatsappError);
       }
 
       if (isCashbackCompletionStatus(updates.status) && !application.final_document_url && !updates.final_document_url && !application.final_document_path && !updates.final_document_path) {

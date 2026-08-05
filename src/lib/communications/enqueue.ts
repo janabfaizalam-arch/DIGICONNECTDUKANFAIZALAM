@@ -35,6 +35,11 @@ export type EnqueueCommunicationInput = {
   maxAttempts?: number;
   /** Override when preserving a legacy key format (e.g. applicationId:event:version). */
   idempotencyKey?: string;
+  /**
+   * Non-claimable audit statuses only. Never use for live send paths.
+   * Claim RPC ignores configuration_required / suppressed.
+   */
+  forceStatus?: "configuration_required" | "suppressed";
 };
 
 export type EnqueueResult =
@@ -51,7 +56,9 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
   if (!supabase) return { ok: false, error: "Service unavailable.", status: 503 };
 
   const mobile = normalizeLeadMobile(input.recipientMobile);
-  if (input.channel !== "internal_alert" && !isValidLeadMobile(mobile)) {
+  const auditOnly =
+    input.forceStatus === "configuration_required" || input.forceStatus === "suppressed";
+  if (input.channel !== "internal_alert" && !auditOnly && !isValidLeadMobile(mobile)) {
     return { ok: false, error: "Invalid recipient mobile.", status: 400, code: "invalid_mobile" };
   }
 
@@ -122,6 +129,8 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
   }
 
   const now = new Date().toISOString();
+  const status = input.forceStatus ?? "queued";
+  const claimable = status === "queued";
   const { data: row, error } = await supabase
     .from("whatsapp_messages")
     .insert({
@@ -135,22 +144,24 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
       event_type: input.purpose,
       purpose: input.purpose,
       template_name: campaignName,
-      recipient: mobile,
-      status: "queued",
+      recipient: mobile || "audit",
+      status,
       idempotency_key: idempotencyKey,
       classification,
       consent_basis: input.consentBasis ?? (classification === "transactional" ? "transactional_ops" : null),
       correlation_id: input.correlationId ?? randomUUID(),
       created_by: input.createdBy ?? null,
       max_attempts: input.maxAttempts ?? 5,
-      next_attempt_at: now,
+      next_attempt_at: claimable ? now : null,
+      failure_code: auditOnly ? "configuration_required" : null,
+      failure_summary: auditOnly ? "CRM delivery mode disabled or misconfigured — not sendable." : null,
       payload: {
         user_name: input.userName ?? null,
         template_params: input.templateParams ?? [],
         ...(input.safePayload ?? {}),
       },
       safe_metadata: {
-        recipient_masked: maskMobile(mobile),
+        recipient_masked: maskMobile(mobile || "audit"),
       },
       created_at: now,
       updated_at: now,

@@ -13,6 +13,9 @@ import {
 } from "@/lib/documents/final-document-storage";
 import { createAisensyAdapter } from "@/lib/communications/provider-adapter";
 import { purposeClassification } from "@/lib/communications/comms-core";
+import { resolveCrmNotificationDeliveryMode } from "@/lib/automation/delivery-mode";
+import { buildLegacyApplicationOutboxKey } from "@/lib/automation/outbox-key";
+import { enqueueCommunication } from "@/lib/communications/enqueue";
 
 export type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 
@@ -91,19 +94,160 @@ function safeLogPayload(payload: Record<string, unknown>) {
 }
 
 /**
- * Application WhatsApp path — preserves legacy idempotency keys and sync caller contract.
- * Provider HTTP goes through the AiSensy adapter (never inside a CRM DB transaction).
- * Logs to whatsapp_messages (canonical outbox). When AiSensy is not configured,
- * status is configuration_required (API still reports queued: true for callers).
+ * Application WhatsApp — respects CRM_NOTIFICATION_DELIVERY_MODE.
+ * queue: enqueue only (no AiSensy). direct: sync adapter send. disabled: skip.
+ * OTP must not call this. Idempotency key remains `${applicationId}:${eventType}:${version}`.
  */
 export async function sendApplicationWhatsApp(
+  input: SendApplicationWhatsAppInput,
+): Promise<SendApplicationWhatsAppResult> {
+  const mode = resolveCrmNotificationDeliveryMode();
+  if (mode === "disabled") {
+    return recordDisabledApplicationWhatsApp(input);
+  }
+  if (mode === "queue") {
+    return enqueueApplicationWhatsAppOnly(input);
+  }
+  return sendApplicationWhatsAppDirect(input);
+}
+
+/**
+ * Disabled / fail-closed: never call AiSensy; never create a claimable queued row.
+ * Idempotent configuration_required audit row (processor claim ignores this status).
+ */
+async function recordDisabledApplicationWhatsApp(
+  input: SendApplicationWhatsAppInput,
+): Promise<SendApplicationWhatsAppResult> {
+  const requestId = input.correlationId || randomUUID();
+  const version = input.version ?? 1;
+  const destination = normalizeAisensyDestination(input.recipientMobile);
+  const mobile = destination.ok ? destination.destination : "disabled";
+
+  const enqueued = await enqueueCommunication({
+    purpose: input.eventType,
+    recipientMobile: mobile === "disabled" ? "0000000000" : mobile,
+    customerId: input.customerId,
+    applicationId: input.applicationId,
+    eventKeyParts: [input.applicationId, input.eventType, String(version), "disabled"],
+    idempotencyKey: `${buildLegacyApplicationOutboxKey({
+      applicationId: input.applicationId,
+      eventType: input.eventType,
+      version,
+    })}:disabled`,
+    templateParams: [],
+    userName: input.customerName || "Customer",
+    campaignName: getApplicationCampaignName(input.eventType),
+    classification: purposeClassification(input.eventType),
+    consentBasis: "transactional_ops",
+    correlationId: requestId,
+    forceStatus: "configuration_required",
+    safePayload: { reason: "crm_notification_delivery_mode_disabled" },
+  });
+
+  if (!enqueued.ok) {
+    return {
+      ok: false,
+      code: "configuration_required",
+      error: "CRM notifications are disabled.",
+      requestId,
+      queued: false,
+    };
+  }
+
+  return {
+    ok: false,
+    code: "configuration_required",
+    error: "CRM notifications are disabled.",
+    requestId,
+    messageId: enqueued.id,
+    queued: false,
+  };
+}
+
+async function enqueueApplicationWhatsAppOnly(
+  input: SendApplicationWhatsAppInput,
+): Promise<SendApplicationWhatsAppResult> {
+  const requestId = input.correlationId || randomUUID();
+  const version = input.version ?? 1;
+  const destination = normalizeAisensyDestination(input.recipientMobile);
+  if (!destination.ok) {
+    return { ok: false, code: "invalid_mobile", error: destination.error, requestId };
+  }
+
+  const campaignName = getApplicationCampaignName(input.eventType);
+  const templateParams = buildApplicationTemplateParams(input.eventType, {
+    customerName: input.customerName,
+    serviceName: input.serviceName,
+    applicationId: input.applicationId,
+    status: input.status,
+    amount: input.amount,
+    requiredDocuments: input.requiredDocuments,
+    objectionMessage: input.objectionMessage,
+    progressMessage: input.progressMessage,
+    customMessage: input.customMessage,
+    actionLink: input.actionLink,
+    notes: input.notes,
+  });
+
+  const enqueued = await enqueueCommunication({
+    purpose: input.eventType,
+    recipientMobile: destination.destination,
+    customerId: input.customerId,
+    applicationId: input.applicationId,
+    eventKeyParts: [input.applicationId, input.eventType, String(version)],
+    idempotencyKey: buildLegacyApplicationOutboxKey({
+      applicationId: input.applicationId,
+      eventType: input.eventType,
+      version,
+    }),
+    templateParams,
+    userName: input.customerName || "Customer",
+    campaignName,
+    classification: purposeClassification(input.eventType),
+    consentBasis: "transactional_ops",
+    correlationId: requestId,
+  });
+
+  if (!enqueued.ok) {
+    if (enqueued.code === "upgrade_required") {
+      return {
+        ok: false,
+        code: "database_upgrade_required",
+        error: enqueued.error,
+        requestId,
+        queued: true,
+        upgradeRequired: true,
+      };
+    }
+    return { ok: false, code: "queued", error: enqueued.error, requestId, queued: true };
+  }
+
+  if (["sent", "delivered", "read"].includes(enqueued.status)) {
+    return { ok: true, deduped: true, requestId, messageId: enqueued.id };
+  }
+
+  return {
+    ok: false,
+    code: enqueued.status === "configuration_required" ? "configuration_required" : "queued",
+    error: "WhatsApp queued for outbox processor.",
+    requestId,
+    messageId: enqueued.id,
+    queued: true,
+  };
+}
+
+async function sendApplicationWhatsAppDirect(
   input: SendApplicationWhatsAppInput,
 ): Promise<SendApplicationWhatsAppResult> {
   const supabase = getSupabaseAdmin();
   const requestId = input.correlationId || randomUUID();
   const version = input.version ?? 1;
   // Preserve production-compatible key format (do not switch to purpose:… alone).
-  const idempotencyKey = `${input.applicationId}:${input.eventType}:${version}`;
+  const idempotencyKey = buildLegacyApplicationOutboxKey({
+    applicationId: input.applicationId,
+    eventType: input.eventType,
+    version,
+  });
   const destination = normalizeAisensyDestination(input.recipientMobile);
 
   if (!destination.ok) {

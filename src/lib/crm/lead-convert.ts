@@ -11,7 +11,7 @@ import {
 import { assertLostReason, canTransitionLeadStage } from "@/lib/crm/lead-workflow-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { scheduleCrmSync } from "@/lib/crmSync";
-import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
+import { dispatchApplicationNotification } from "@/lib/automation/dispatch-notification";
 
 export type LeadConvertResult = {
   ok: true;
@@ -193,7 +193,7 @@ export async function convertLeadToApplication(input: {
   }
 
   try {
-    await sendApplicationWhatsApp({
+    await dispatchApplicationNotification({
       applicationId,
       eventType: "application_submitted",
       recipientMobile: mobile,
@@ -201,6 +201,11 @@ export async function convertLeadToApplication(input: {
       serviceName,
       amount: Number(data.amount ?? amount),
       status: "submitted",
+      customerId,
+      actorId: input.actorId,
+      actorOrigin: input.actorRole === "agency_partner" ? "agency_partner" : "admin",
+      automationEventType: "lead.converted",
+      processRulesInline: true,
     });
   } catch {
     // Non-blocking

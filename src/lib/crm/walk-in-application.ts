@@ -15,7 +15,8 @@ import {
 import { createWalkInCustomer, lookupCustomerByMobile, scheduleWalkInApplicationSync } from "@/lib/crm/walk-in";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { ensureWorkId } from "@/lib/workSync";
-import { sendApplicationWhatsApp } from "@/lib/whatsapp/application-notify";
+import { dispatchApplicationNotification } from "@/lib/automation/dispatch-notification";
+import { recordApplicationAssignmentEvent } from "@/lib/automation/producers/assignment";
 
 export type CrmServiceCatalogueItem = {
   id: string;
@@ -310,16 +311,35 @@ async function createApplicationViaRpcOrFallback(input: {
       metadata: { source: "walk_in", idempotency_key: scopedKey },
     });
 
-    await supabase.from("application_assignment_history").insert({
-      application_id: applicationId,
-      assigned_user_id: input.assigneeId,
-      assigned_role: input.assigneeId ? "assignee" : "unassigned",
-      assignment_reason: input.assignmentReason,
-      assigned_by: input.actorId,
-      assigned_by_system: input.assignedBySystem,
-      metadata: { source: "walk_in" },
-    });
+    const { data: assignmentHistory } = await supabase
+      .from("application_assignment_history")
+      .insert({
+        application_id: applicationId,
+        assigned_user_id: input.assigneeId,
+        assigned_role: input.assigneeId ? "assignee" : "unassigned",
+        assignment_reason: input.assignmentReason,
+        assigned_by: input.actorId,
+        assigned_by_system: input.assignedBySystem,
+        metadata: { source: "walk_in" },
+      })
+      .select("id")
+      .maybeSingle();
 
+    if (assignmentHistory?.id) {
+      // Fire-and-observe after core tx — failure must not roll back the application.
+      try {
+        await recordApplicationAssignmentEvent({
+          applicationId,
+          assignmentHistoryId: String(assignmentHistory.id),
+          assigneeUserId: input.assigneeId ?? null,
+          actorId: input.actorId,
+          actorOrigin: "admin",
+          reason: input.assignmentReason,
+        });
+      } catch {
+        console.error("[walk-in-app] assignment_event_emit_failed", { applicationId });
+      }
+    }
     if (input.assigneeId) {
       await supabase.from("assignments").upsert(
         {
@@ -528,7 +548,7 @@ export async function createWalkInApplication(input: {
   // Never log temporary PIN. Idempotency key is applicationId:event:version inside adapter.
   let whatsapp: WalkInNotificationState = "queued";
   try {
-    const notifyResult = await sendApplicationWhatsApp({
+    const notifyResult = await dispatchApplicationNotification({
       applicationId: created.applicationId,
       eventType: "application_submitted",
       recipientMobile: customer.mobile,
@@ -538,6 +558,10 @@ export async function createWalkInApplication(input: {
       status: created.status,
       notes: input.notes ?? undefined,
       requiredDocuments: service.required_documents ?? undefined,
+      customerId,
+      actorId: input.actorId,
+      actorOrigin: input.actorRole === "agency_partner" ? "agency_partner" : "admin",
+      processRulesInline: true,
     });
     whatsapp = mapWhatsAppResultToUiState(notifyResult);
   } catch (error) {
@@ -601,7 +625,7 @@ export async function resendWalkInApplicationWhatsApp(input: {
     return { ok: false, error: "Customer mobile unavailable for WhatsApp.", status: 400 };
   }
 
-  const result = await sendApplicationWhatsApp({
+  const result = await dispatchApplicationNotification({
     applicationId: input.applicationId,
     eventType: "application_submitted",
     recipientMobile: mobile,
@@ -610,6 +634,10 @@ export async function resendWalkInApplicationWhatsApp(input: {
     amount: application.amount,
     status: String(application.status ?? ""),
     forceRetry: true,
+    customerId: application.customer_id ? String(application.customer_id) : null,
+    actorId: input.actorId,
+    actorOrigin: "admin",
+    processRulesInline: true,
   });
 
   return { ok: true, whatsapp: mapWhatsAppResultToUiState(result) };

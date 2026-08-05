@@ -32,6 +32,11 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 | `messaging.view` | Y | N | N |
 | `messaging.resend` | Y | N | N |
 | `messaging.cancel` | Y | N | N |
+| `automation.view` | Y | N | N |
+| `automation.retry` | Y | N | N |
+| `alerts.view` | Y | N | N |
+| `alerts.resolve` | Y | N | N |
+| `summaries.view` | Y | N | N |
 | `walk_in.create` | Y | Y | N |
 
 ### Phase 3 notes
@@ -62,5 +67,10 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 - Customers must not see internal provider errors or retry details.
 - Cron `/api/cron/comms-outbox` uses Bearer `COMMS_CRON_SECRET` or `CRON_SECRET` — not session cookies.
 - Webhook uses `AISENSY_WEBHOOK_SECRET` (shared secret; no invented signature).
+
+### Phase 5B automation notes
+- `automation.view` / `automation.retry` / `alerts.view` / `alerts.resolve` / `summaries.view` — admin only.
+- `CRM_NOTIFICATION_DELIVERY_MODE` is server-only; browser cannot choose delivery mode.
+- Partners/customers cannot invoke automation/alerts/summaries admin APIs.
 
 Enforcement: `src/lib/crm/permissions.ts` + existing route gates + RLS. Hiding UI is not sufficient.

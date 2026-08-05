@@ -8,6 +8,8 @@ import {
   isTransactionalWhatsAppAllowed,
 } from "@/lib/communications/enqueue";
 import { getDefaultCommunicationProvider } from "@/lib/communications/provider-adapter";
+import { resolveCrmNotificationDeliveryMode } from "@/lib/automation/delivery-mode";
+import { emitAutomationEvent } from "@/lib/automation/events";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type ProcessOutboxSummary = {
@@ -18,6 +20,10 @@ export type ProcessOutboxSummary = {
   configurationRequired: number;
   cancelled: number;
   errors: string[];
+  /** Aggregate effective delivery mode — never secrets. */
+  deliveryMode: string;
+  /** Why processor skipped claiming when not queue. */
+  configurationStatus: "ready_queue" | "skip_direct" | "skip_disabled" | "skip_other";
 };
 
 /**
@@ -39,6 +45,8 @@ export async function processCommunicationOutbox(input?: {
     configurationRequired: 0,
     cancelled: 0,
     errors: [],
+    deliveryMode: "disabled",
+    configurationStatus: "skip_disabled",
   };
 
   const supabase = getSupabaseAdmin();
@@ -46,6 +54,17 @@ export async function processCommunicationOutbox(input?: {
     summary.errors.push("supabase_missing");
     return summary;
   }
+
+  // Only the exact `queue` delivery mode owns processor sends (fail closed).
+  const deliveryMode = resolveCrmNotificationDeliveryMode();
+  summary.deliveryMode = deliveryMode;
+  if (deliveryMode !== "queue") {
+    summary.configurationStatus =
+      deliveryMode === "direct" ? "skip_direct" : deliveryMode === "disabled" ? "skip_disabled" : "skip_other";
+    summary.errors.push(`delivery_mode_${deliveryMode}_skip`);
+    return summary;
+  }
+  summary.configurationStatus = "ready_queue";
 
   const workerId = input?.workerId || `worker-${randomUUID().slice(0, 8)}`;
   const batchSize = Math.min(50, Math.max(1, input?.batchSize ?? 10));
@@ -175,6 +194,18 @@ export async function processCommunicationOutbox(input?: {
         error_message: send.failureSummary,
       });
       summary.configurationRequired += 1;
+      await emitAutomationEvent({
+        eventType: "communication.failed",
+        entityType: "whatsapp_message",
+        entityId: id,
+        actorOrigin: "system",
+        idempotencyParts: ["outbox", id, "configuration_required"],
+        safeMetadata: {
+          failure_code: "configuration_required",
+          application_id: fresh.application_id ? String(fresh.application_id) : null,
+        },
+      });
+      await processAutomationEventsSafe();
       continue;
     }
 
@@ -192,6 +223,19 @@ export async function processCommunicationOutbox(input?: {
         failed_at: new Date().toISOString(),
       });
       summary.failed += 1;
+      // Emit at most one communication.failed per outbox id (idempotent)
+      await emitAutomationEvent({
+        eventType: "communication.failed",
+        entityType: "whatsapp_message",
+        entityId: id,
+        actorOrigin: "system",
+        idempotencyParts: ["outbox", id, "failed", failureCode || "failed"],
+        safeMetadata: {
+          failure_code: failureCode,
+          application_id: fresh.application_id ? String(fresh.application_id) : null,
+        },
+      });
+      await processAutomationEventsSafe();
       continue;
     }
 
@@ -262,4 +306,13 @@ async function fallbackClaim(
     if (updated) claimed.push(updated as Record<string, unknown>);
   }
   return claimed;
+}
+
+async function processAutomationEventsSafe() {
+  try {
+    const { processAutomationEvents } = await import("@/lib/automation/processor");
+    await processAutomationEvents({ batchSize: 3, timeBudgetMs: 4_000 });
+  } catch {
+    // never recurse alerts into processor crash
+  }
 }

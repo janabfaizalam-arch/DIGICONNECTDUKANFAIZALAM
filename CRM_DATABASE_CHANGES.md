@@ -237,4 +237,30 @@ Non-unique only on `provider_message_id` — **no** unique index on dirty provid
 3. Drop new tables/function/columns; restore prior status CHECK if required.
 4. **Do not delete** message history.
 
+## Phase 5B — Automation foundation (additive)
+
+`20260805170000_crm_automation_foundation.sql`
+
+### Objects
+- `crm_automation_events` (+ claim RPC `claim_crm_automation_events`, service_role only)
+- `crm_automation_executions` (DELETE forbidden)
+- `crm_ops_alerts`
+- `crm_daily_summaries` (unique business_date + timezone)
+- Queue producer key contract (app-layer): `auto:{automationEventId}:purpose:{purpose}:rv:{ruleVersion}`
+- Legacy direct/manual key (compat): `{applicationId}:{eventType}:{version}`
+
+### Routing ownership note
+- Database uniqueness remains last-line defense (`unique(idempotency_key)`), but queue-mode architecture must use one producer path:
+  business operation → automation event → rule execution → outbox row.
+- Reconciliation inserts missing automation events only; it must not directly enqueue customer communication.
+
+### Preflight (staging)
+```sql
+select count(*) from public.whatsapp_messages; -- ensure 5A applied first
+-- No destructive rewrites. New tables are create-if-not-exists.
+```
+
+### Rollback
+Drop new tables/functions. Set `CRM_NOTIFICATION_DELIVERY_MODE=disabled` (or unset — also disabled). Do not delete business rows.
+
 

@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-05 (Phase 5A audit + outbox)
 
-## Walk-in application notification path (Phase 3)
+## Walk-in application notification path (Phase 5B queue-authoritative)
 
 ```
 Admin walk-in UI
@@ -13,11 +13,12 @@ Admin walk-in UI
        · application_assignment_history
        · crm_idempotency_keys
   → (outside tx) scheduleCrmSync(application_created)
-  → (outside tx) sendApplicationWhatsApp(application_submitted)
-       · upserts whatsapp_messages with idempotency_key
-         `${applicationId}:application_submitted:${version}`
-       · AiSensy via provider adapter when credentials/template present
-       · else status configuration_required (API may report queued: true)
+  → (outside tx) dispatchApplicationNotification(application_submitted)
+       · queue mode: emit automation event only
+       · rule execution enqueues canonical outbox row
+       · outbox processor sends
+       · direct mode: explicit sync send + direct_handled event
+       · disabled mode: suppressed/configuration_required audit (non-sendable)
 ```
 
 ## Rules
@@ -47,7 +48,7 @@ Website form / AP create / manual / WhatsApp-ready / Sheets-ready
   → lead_stage_history + lead_activities (+ assignment history if owned)
 ```
 
-## Lead conversion (Phase 4)
+## Lead conversion (Phase 5B queue-authoritative)
 
 ```
 Admin/AP lead workspace
@@ -59,7 +60,10 @@ Admin/AP lead workspace
        · lead → won/converted + timeline
        · convert idempotency
   → (outside tx) scheduleCrmSync
-  → (outside tx) sendApplicationWhatsApp
+  → (outside tx) dispatchApplicationNotification (automationEventType=lead.converted)
+       · queue mode: emit event only; rule enqueues outbox
+       · direct mode: send once + direct_handled
+       · disabled mode: non-sendable audit only
 ```
 
 Rules:
@@ -170,27 +174,104 @@ Event / caller
 
 **Retry ownership:** outbox processor only; HTTP client = single attempt + timeout (no nested retry loop).
 
-### Direct-send honesty
-Checkpoint A **preserves** sync `sendApplicationWhatsApp` for caller compatibility (still writes outbox + uses adapter). OTP remains direct. Phase 5B: migrate non-OTP transactional paths to enqueue+processor fully.
-
-### Initial automations (foundations — Checkpoint B deferred)
-
-| Automation | State |
-|------------|-------|
-| Application created confirmation | Active via existing notify path (sync hybrid) |
-| Status / document / payment messages | Active via existing event types (sync hybrid) |
-| Onboarding / temporary PIN | **Deferred / configuration-disabled** |
-| Staff assignment notify | Deferred |
-| Follow-up due | Deferred |
-| Failed-message admin alert | Deferred |
-| Feedback request | Deferred (promotional + consent) |
-| Daily operational summary | Deferred |
-| Full enqueue-only for non-OTP WA | **Phase 5B task** |
+### Direct-send honesty (updated Phase 5B — FAIL-CLOSED)
+`sendApplicationWhatsApp` / `dispatchApplicationNotification` respect `CRM_NOTIFICATION_DELIVERY_MODE`:
+- **unset / blank / unknown → `disabled`** (never live-send by default)
+- `queue` → enqueue only (no AiSensy in request); outbox processor sends
+- `direct` → sync adapter send; event marked `completed/direct_handled` (must be explicit)
+- `disabled` → configuration_required / suppressed audit only; not claimable
+OTP remains on `sendAisensyOtp` and **does not** use this env var.
 
 ---
 
-## Phase 5B (not started until Checkpoint A committed + approved)
-- Canonical automation events + rules
-- Migrate suitable non-OTP transactional notifications to enqueue processing
-- Daily summary foundation (delivery disabled)
-- Broader staff alerts / work queue
+## Phase 5B — Event-driven automation (local)
+
+**Status wording:** Phase 5B implementation complete locally; staging database, CI, scheduler, provider and browser verification pending.
+
+### Delivery mode rollout (fail-closed)
+
+| Mode | Behavior | Double-send |
+|------|----------|-------------|
+| `queue` | Enqueue / emit+rules enqueue; processor sends | Processor skipped unless mode=queue |
+| `direct` | Sync adapter only; `direct_handled` | Processor does not claim/send; no second enqueue |
+| `disabled` (default) | Audit only | No send |
+
+Env: `CRM_NOTIFICATION_DELIVERY_MODE` (server-only). Browser cannot set it.  
+**No mode sends both direct and queued.**  
+**Missing value = disabled** — code deploy cannot accidentally turn messaging on.
+
+**Deployment order:** (1) deploy code (mode disabled) (2) migrate (3) set secrets (4) verify processor manually (5) set mode=`queue`.
+
+### Producer ownership (single queue-mode communication producer)
+Queue mode architecture is now authoritative as:
+
+`business operation → automation event → rule execution → canonical outbox → outbox processor send`
+
+No migrated queue-mode route should independently enqueue customer communication.
+
+| Business event | Event producer | Communication producer | Outbox idempotency key | Direct-mode owner | Reconciliation owner |
+|---|---|---|---|---|---|
+| Walk-in application created | `dispatchApplicationNotification` (event `application.created`) | Automation rule `application_created_customer_wa` | `auto:{automationEventId}:purpose:application_submitted:rv:1` | `dispatchApplicationNotification` + `sendApplicationWhatsApp` (`direct_handled`) | `reconcileMissingApplicationCreatedEvents` (event only) |
+| Lead converted/application created | `dispatchApplicationNotification` (event `lead.converted`) | Automation rule `lead_converted_customer_wa` | `auto:{automationEventId}:purpose:application_submitted:rv:1` | `dispatchApplicationNotification` + `sendApplicationWhatsApp` (`direct_handled`) | Source event reconciliation (event only) |
+| Admin-created application | `triggerWhatsAppNotification` → `dispatchApplicationNotification` (`application.created`) | Automation rule `application_created_customer_wa` | `auto:{automationEventId}:purpose:application_submitted:rv:1` | `dispatchApplicationNotification` direct branch | `reconcileMissingApplicationCreatedEvents` |
+| Application assigned | `recordApplicationAssignmentEvent` (source `application_assignment_history.id`) | `application_assigned_staff_alert` rule (internal alert/action only) | n/a (no customer outbox in current rule) | same producer marks non-queue outcomes | `reconcileApplicationAssignmentEvents` |
+| Application status changed | `emitApplicationStatusChangedFromHistory` (source `application_status_logs.id`) | `application_status_customer_wa` rule (customer-visible only) | `auto:{automationEventId}:purpose:application_status:rv:1` | `emitApplicationStatusChangedFromHistory` direct branch | `reconcileApplicationStatusEvents` |
+| Document required | status-history producer emits mapped automation event | `application_document_required_wa` rule | `auto:{automationEventId}:purpose:document_required:rv:1` | status producer direct branch | status-event reconciliation (event only) |
+| Payment due | canonical mutation emits `application.payment_due` | `application_payment_due_wa` rule | `auto:{automationEventId}:purpose:payment_due:rv:1` | dispatch/status producer direct branch | event reconciliation (event only) |
+| Application completed | status/history producer emits `application.completed` | `application_completed_wa` rule | `auto:{automationEventId}:purpose:application_completed:rv:1` | status/direct helper | status-event reconciliation |
+| Follow-up due | `scanLeadFollowupsDue` (source `lead_follow_ups.id + scheduled_at`) | `lead_followup_due_internal` rule (internal alert only) | n/a (internal alert path) | n/a | same scanner (event only) |
+| Communication permanently failed | outbox terminal transition emits `communication.failed` | `communication_failed_admin_alert` rule | n/a (already terminal outbox row) | n/a | outbox event idempotency (`outbox:{id}:{terminal}`) |
+
+**Temporary compatibility exceptions (explicit):**
+- `/api/admin/applications/[id]/whatsapp` (manual admin send/resend)
+- `completeAndSendFinalDocumentWhatsApp` (final document send helper)
+
+These may use `sendApplicationWhatsApp` directly for manual workflows. They are not queue-mode business-event producers and are not paired with duplicate automation enqueue rules for the same business event.
+
+### Partner assignment path disposition
+- Current canonical application assignment-history writers are:
+  - `src/app/api/admin/applications/[id]/route.ts`
+  - `src/lib/crm/walk-in-application.ts`
+- No separate AP portal application reassignment writer exists in the current codebase.
+- Therefore AP-specific assignment producer wiring is **not applicable** at this checkpoint (not deferred).
+- Reconciliation remains recovery-only and not the primary event path.
+
+### Delivery guarantee (honest)
+At-least-once event discovery + idempotent action. Event emit failure after business commit is observable and recoverable via reconciliation without rolling back the business row.
+### Notification call-site matrix (Phase 5B)
+
+| Call site | Trigger | Sync/async | CRM committed? | Recipient | Class | Idempotency | Disposition | Dup risk |
+|-----------|---------|------------|----------------|-----------|-------|-------------|-------------|----------|
+| `sendApplicationWhatsApp` | manual/compat app WA | mode-dependent | caller post-commit | customer | transactional | `buildLegacyApplicationOutboxKey` | **compat_only** | medium if misused on migrated routes |
+| `dispatchApplicationNotification` | migrated business events | queue: emit only; rules enqueue | yes | customer | transactional | event idempotency + rule outbox key | **authoritative_queue_event_producer** | low |
+| `triggerWhatsAppNotification` | apps/AP/verify/webhook | via dispatch | yes | customer | transactional | via above | migrate_queue | medium vs verify+webhook (key mitigates) |
+| walk-in create/resend | walk-in | via dispatch | yes | customer | transactional | status/history + event | migrate_queue | low |
+| lead-convert | convert | via dispatch (`lead.converted`) | yes | customer | transactional | source event + rule | migrate_queue | low |
+| admin status PATCH | status change | via dispatch | yes | customer | transactional | status event | migrate_queue | high vs AP transition (same key) |
+| admin `/whatsapp` + final-doc | manual | `sendApplicationWhatsApp` | n/a | customer | transactional | per event | preserve_compat (mode-aware) | medium on forceRetry |
+| `sendAisensyOtp` + auth routes | OTP | sync direct | n/a | customer | auth | otp-store | **preserve_otp** | low |
+| `enqueueCommunication` | outbox/rules/ops | enqueue only | n/a | — | purpose | event key | canonical | low |
+| `notification_queue` mock | legacy | mock | n/a | — | — | — | config_disabled | none |
+| Sheets sync | mirror | async | post-commit | Sheets | n/a | jobs | no WA | none |
+| feedback/onboarding PIN | — | — | — | — | promo/sensitive | — | **config_disabled / deferred** | — |
+
+### Event catalogue
+
+Active producers: `application.created`, `lead.converted`, `application.status_changed`, `application.document_*`, `application.payment_*`, `application.completed`, `communication.failed` (from outbox terminal).  
+Typed inactive: `customer.onboarding_requested` (no producer; PIN never stored).  
+Defined for future: `customer.created`, `lead.created/assigned/followup_due`, `application.assigned`.
+
+### Rule catalogue
+Code-defined in `src/lib/automation/rules.ts` — whitelist actions only; enqueue rules require `delivery_mode=queue`. Onboarding + feedback rules **disabled**.
+
+### Alerts
+`crm_ops_alerts` — communication failed/config-required, automation failed, missing template, follow-up overdue. No recursive alert-about-alert. No customer re-message from `communication.failed`.
+
+### Daily summary
+`crm_daily_summaries` — IST date key; aggregates only; `delivery_status=disabled`. UI: `/admin/automation` summaries tab.
+
+### Reconciliation
+`reconcileMissingApplicationCreatedEvents` — lookback/batch bounded; dry-run; does not resend completed outbox; no OTP. Unregistered.
+
+### Cron (inactive)
+`/api/cron/automation-events` — same Bearer secret model as comms-outbox; **not** in vercel.json.
