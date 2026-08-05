@@ -305,7 +305,7 @@ export async function createInvoiceForApplication({
 
   if (data?.id) {
     await supabase.from("applications").update({ invoice_id: data.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
-    scheduleCrmSync(applicationId, "invoice_generated");
+    await scheduleCrmSync(applicationId, "invoice_generated");
   }
 
   return data as Invoice | null;

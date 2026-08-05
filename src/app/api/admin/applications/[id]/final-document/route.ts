@@ -267,7 +267,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await removeFinalDocumentObject(storageBucket, storagePath);
         return NextResponse.json({ message: "Application could not be completed." }, { status: 500 });
       }
-      scheduleCrmSync(id, completeAndSend ? "status_updated" : "admin_updated");
+      await scheduleCrmSync(id, completeAndSend ? "status_updated" : "admin_updated");
     }
 
     if (completeAndSend && String(application.status) !== "completed") {

@@ -452,7 +452,7 @@ export async function POST(request: Request) {
         : []),
     ]);
 
-    scheduleCrmSync(application.id, "application_created", { customerId: customer.id });
+    await scheduleCrmSync(application.id, "application_created", { customerId: customer.id });
 
     return NextResponse.json({
       message: "Application created successfully.",

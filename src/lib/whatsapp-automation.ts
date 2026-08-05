@@ -125,7 +125,7 @@ export async function triggerWhatsAppNotification(
     });
 
     if (!result.ok) {
-      scheduleCrmSync(applicationId, "whatsapp_sent", {
+      await scheduleCrmSync(applicationId, "whatsapp_sent", {
         payload: { whatsappStatus: "Failed" },
       });
       return {
@@ -136,7 +136,7 @@ export async function triggerWhatsAppNotification(
       };
     }
 
-    scheduleCrmSync(applicationId, "whatsapp_sent", {
+    await scheduleCrmSync(applicationId, "whatsapp_sent", {
       payload: { whatsappStatus: result.deduped ? "Deduped" : "Sent" },
     });
 

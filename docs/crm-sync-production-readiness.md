@@ -13,7 +13,7 @@ Scope: Google Sheets live office CRM mirror (website = source of truth)
 3. Sharing the spreadsheet with the service account (Editor)
 
 **No blocking regressions found in customer/AP/agent/admin request paths.**  
-CRM sync is fire-and-forget (`scheduleCrmSync`); enqueue/process failures are logged and never thrown to the HTTP response.
+CRM sync **awaits enqueue** before the HTTP response returns (required on Vercel so `crm_sync_jobs` inserts are not killed). Queue processing runs via Next.js `after()` and never throws to the client.
 
 ---
 
@@ -80,8 +80,8 @@ Unpaid applications **do** enqueue — payment is not required.
 
 | Concern | Assessment |
 |---------|------------|
-| Request latency | Sync scheduled via `after()`; user response not awaited |
-| Failure isolation | Enqueue errors caught/logged inside `scheduleCrmSync` |
+| Request latency | Enqueue awaited (DB insert only); Sheet process via `after()` |
+| Failure isolation | Enqueue errors caught/logged; never thrown to HTTP clients |
 | Missing Google config | Soft-skip (`not_configured`); site continues |
 | Missing migration | Soft-fail persist for `work_id`/`customer_code`; sync still uses deterministic IDs |
 

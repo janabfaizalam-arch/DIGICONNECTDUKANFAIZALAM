@@ -278,7 +278,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ message: "Application could not be updated." }, { status: 500 });
     }
 
-    scheduleCrmSync(id, updates.status ? "status_updated" : "admin_updated");
+    await scheduleCrmSync(id, updates.status ? "status_updated" : "admin_updated");
 
     const nextStatus = String(updates.status ?? application.status);
     const nextAgentId = assignedAgentId && assignedAgentId !== "none" ? assignedAgentId : application.assigned_agent_id ?? application.agent_id;
@@ -475,7 +475,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ message: "Invoice could not be generated." }, { status: 500 });
   }
 
-  scheduleCrmSync(id, "invoice_generated");
+  await scheduleCrmSync(id, "invoice_generated");
 
   return NextResponse.json({ message: "Invoice generated.", invoiceId: invoice.id });
 }

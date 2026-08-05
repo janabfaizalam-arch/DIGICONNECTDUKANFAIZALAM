@@ -193,14 +193,14 @@ export async function POST(request: Request) {
         console.error("[razorpay/webhook] Failed to calculate/reserve partner commission:", err);
       }
 
-      scheduleCrmSyncMany(applicationIds, "payment_updated");
+      await scheduleCrmSyncMany(applicationIds, "payment_updated");
 
       try {
         for (const appId of applicationIds) {
           await triggerWhatsAppNotification("payment_success", appId, {
             paymentId: payment.id
           });
-          scheduleCrmSync(appId, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
+          await scheduleCrmSync(appId, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
         }
       } catch (waError) {
         console.error("WhatsApp trigger error in Razorpay webhook:", waError);

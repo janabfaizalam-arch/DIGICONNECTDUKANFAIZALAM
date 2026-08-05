@@ -565,7 +565,7 @@ export async function POST(request: Request) {
         : []),
     ]);
 
-    scheduleCrmSync(
+    await scheduleCrmSync(
       application.id,
       paymentMode !== "link" && expectedAmountPaise > 0 ? "payment_updated" : "application_created",
       { customerId: customer.id },
@@ -580,7 +580,7 @@ export async function POST(request: Request) {
       } else if (expectedAmountPaise > 0) {
         await triggerWhatsAppNotification("payment_pending", application.id);
       }
-      scheduleCrmSync(application.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
+      await scheduleCrmSync(application.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
     } catch (waError) {
       console.error("WhatsApp trigger error for AP applications:", waError);
     }

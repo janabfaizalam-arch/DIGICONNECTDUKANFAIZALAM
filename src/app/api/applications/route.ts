@@ -921,7 +921,7 @@ export async function POST(request: Request) {
         });
       }
 
-      scheduleCrmSyncMany(
+      await scheduleCrmSyncMany(
         existingApplications.map((app) => app.id),
         body.razorpayPayment?.razorpay_payment_id ? "payment_updated" : "application_created",
       );
@@ -936,7 +936,7 @@ export async function POST(request: Request) {
           } else {
             await triggerWhatsAppNotification("payment_pending", app.id);
           }
-          scheduleCrmSync(app.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
+          await scheduleCrmSync(app.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
         }
       } catch (waError) {
         console.error("WhatsApp trigger error for existing applications:", waError);
@@ -1432,7 +1432,7 @@ export async function POST(request: Request) {
       });
     }
 
-    scheduleCrmSyncMany(
+    await scheduleCrmSyncMany(
       applications.map((app) => app.id),
       hasVerifiedRazorpayPayment ? "payment_updated" : "application_created",
     );
@@ -1447,7 +1447,7 @@ export async function POST(request: Request) {
         } else {
           await triggerWhatsAppNotification("payment_pending", app.id);
         }
-        scheduleCrmSync(app.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
+        await scheduleCrmSync(app.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
       }
     } catch (waError) {
       console.error("WhatsApp trigger error for new applications:", waError);

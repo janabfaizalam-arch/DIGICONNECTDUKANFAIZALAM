@@ -61,7 +61,7 @@ export async function enqueueCrmSyncJob(input: {
   payload?: Record<string, unknown>;
 }): Promise<{ ok: true; jobId: string | null; skipped?: string } | { ok: false; error: string }> {
   if (!isGoogleSheetsConfigured()) {
-    console.info("[crm-sync] enqueue_skipped_not_configured", {
+    console.info("[crm-sync] google_disabled", {
       eventType: input.eventType,
       applicationId: input.applicationId,
     });
@@ -69,11 +69,27 @@ export async function enqueueCrmSyncJob(input: {
   }
 
   if (!input.applicationId) {
+    console.error("[crm-sync] enqueue_failed", {
+      eventType: input.eventType,
+      error: "applicationId is required",
+    });
     return { ok: false, error: "applicationId is required" };
   }
 
   const supabase = getSupabaseAdmin();
-  if (!supabase) return { ok: false, error: "Supabase admin unavailable" };
+  if (!supabase) {
+    console.error("[crm-sync] enqueue_failed", {
+      eventType: input.eventType,
+      applicationId: input.applicationId,
+      error: "Supabase admin unavailable",
+    });
+    return { ok: false, error: "Supabase admin unavailable" };
+  }
+
+  console.info("[crm-sync] enqueue_starting", {
+    eventType: input.eventType,
+    applicationId: input.applicationId,
+  });
 
   const { data: existing } = await supabase
     .from("crm_sync_jobs")
@@ -102,6 +118,12 @@ export async function enqueueCrmSyncJob(input: {
       .eq("id", existing.id)
       .eq("status", "pending");
 
+    console.info("[crm-sync] enqueue_success", {
+      jobId: existing.id,
+      eventType: input.eventType,
+      applicationId: input.applicationId,
+      skipped: "merged_pending",
+    });
     return { ok: true, jobId: existing.id, skipped: "merged_pending" };
   }
 
@@ -158,9 +180,13 @@ export async function enqueueCrmSyncJob(input: {
     return { ok: false, error: "Failed to enqueue CRM sync job" };
   }
 
-  console.info("[crm-sync] enqueued", {
+  console.info("[crm-sync] enqueue_success", {
     jobId: data.id,
     eventType: input.eventType,
+    applicationId: input.applicationId,
+  });
+  console.info("[crm-sync] queue_insert_complete", {
+    jobId: data.id,
     applicationId: input.applicationId,
   });
 
@@ -338,9 +364,11 @@ export async function processCrmSyncQueue(options: { limit?: number } = {}): Pro
   if (!supabase) return { processed: 0, succeeded: 0, failed: 0, skipped: 0, recovered: 0 };
 
   if (!isGoogleSheetsConfigured()) {
+    console.info("[crm-sync] processing_queue_skipped_google_disabled");
     return { processed: 0, succeeded: 0, failed: 0, skipped: 0, recovered: 0 };
   }
 
+  console.info("[crm-sync] processing_queue", { limit: options.limit ?? 10 });
   const recovered = await recoverStaleProcessingJobs();
   const limit = Math.min(Math.max(options.limit ?? 10, 1), 50);
   const now = new Date().toISOString();

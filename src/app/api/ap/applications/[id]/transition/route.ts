@@ -420,7 +420,7 @@ export async function POST(
       }
     }
 
-    scheduleCrmSync(id, "status_updated");
+    await scheduleCrmSync(id, "status_updated");
 
     return NextResponse.json({ ok: true, message: "Workflow transition completed successfully." });
   } catch (err: unknown) {

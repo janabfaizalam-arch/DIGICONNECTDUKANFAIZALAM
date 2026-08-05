@@ -132,7 +132,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .update({ status: "converted", converted_application_id: application.id, updated_at: new Date().toISOString() })
       .eq("id", id);
 
-    scheduleCrmSync(application.id, "application_created", { customerId: application.customer_id });
+    await scheduleCrmSync(application.id, "application_created", { customerId: application.customer_id });
 
     return NextResponse.json({ message: "Lead converted to application.", applicationId: application.id });
   }

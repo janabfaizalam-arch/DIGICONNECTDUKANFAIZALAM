@@ -547,7 +547,7 @@ export async function POST(request: Request) {
           console.error("[razorpay/create-order] Cashback processing failed for wallet-only order (non-blocking)", cashbackError);
         }
 
-        scheduleCrmSyncMany(walletAppIds, "payment_updated");
+        await scheduleCrmSyncMany(walletAppIds, "payment_updated");
 
         return NextResponse.json({
           order_id: null,
@@ -926,7 +926,8 @@ export async function POST(request: Request) {
 
     if (applicationIds.length) {
       // Unpaid / payment-pending applications must still appear in office CRM.
-      scheduleCrmSyncMany(applicationIds, "application_created");
+      // Await enqueue so Vercel cannot freeze before crm_sync_jobs insert.
+      await scheduleCrmSyncMany(applicationIds, "application_created");
     }
 
     return NextResponse.json({

@@ -73,8 +73,17 @@ export async function POST(request: Request) {
     if (!body.applicationId) {
       return NextResponse.json({ error: "applicationId required" }, { status: 400 });
     }
-    scheduleCrmSync(body.applicationId, "full_resync");
-    return NextResponse.json({ ok: true, scheduled: true, applicationId: body.applicationId });
+    const scheduled = await scheduleCrmSync(body.applicationId, "full_resync", {
+      awaitProcess: true,
+    });
+    return NextResponse.json({
+      ok: scheduled.ok,
+      scheduled: scheduled.ok,
+      applicationId: body.applicationId,
+      jobId: scheduled.jobId ?? null,
+      skipped: scheduled.skipped ?? null,
+      error: scheduled.error ?? null,
+    });
   }
 
   if (body.action === "backfill") {

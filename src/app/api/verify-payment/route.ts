@@ -377,13 +377,13 @@ export async function POST(request: Request) {
       applicationIds,
     });
 
-    scheduleCrmSyncMany(applicationIds, "payment_updated");
+    await scheduleCrmSyncMany(applicationIds, "payment_updated");
 
     try {
       await triggerWhatsAppNotification("payment_success", primaryApplication.id, {
         paymentId: paymentId
       });
-      scheduleCrmSync(primaryApplication.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
+      await scheduleCrmSync(primaryApplication.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
     } catch (waError) {
       console.error("WhatsApp trigger error for payment verification:", waError);
     }
