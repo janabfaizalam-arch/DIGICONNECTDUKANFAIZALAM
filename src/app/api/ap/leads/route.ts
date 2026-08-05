@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
+import { ingestLead } from "@/lib/crm/leads";
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message, message }, { status });
@@ -56,29 +57,29 @@ export async function POST(request: Request) {
       return jsonError("Name, mobile, and service are required fields.", 400);
     }
 
-    const { data, error } = await supabase
-      .from("leads")
-      .insert({
-        name,
-        mobile,
-        service,
-        message: message ?? "",
-        notes: notes ?? "",
-        city: city ?? "",
-        status: "new",
-        agent_id: user.id,
-      })
-      .select()
-      .single();
+    const ingested = await ingestLead({
+      source: "agency_partner",
+      name,
+      mobile,
+      service,
+      message: message ?? "",
+      notes: notes ?? "",
+      city: city ?? "",
+      actorId: user.id,
+    });
 
-    if (error) {
-      return jsonError(error.message, 500);
+    if (!ingested.ok) {
+      return jsonError(ingested.error, ingested.status);
     }
 
+    const { data } = await supabase.from("leads").select("*").eq("id", ingested.leadId).maybeSingle();
+
     return NextResponse.json({
-      message: "Lead registered successfully.",
-      lead: data,
+      message: ingested.deduped ? "Existing lead reused (idempotent)." : "Lead registered successfully.",
+      lead: data ?? { id: ingested.leadId },
       ok: true,
+      deduped: ingested.deduped,
+      duplicates: ingested.duplicates,
     });
   } catch (err) {
     console.error("[api/ap/leads] POST error", err);

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { validateFileSignature } from "@/lib/file-validation";
+import { ingestLead } from "@/lib/crm/leads";
+import { normalizeLeadMobile } from "@/lib/crm/leads-core";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -22,6 +25,9 @@ function devLog(message: string, details?: Record<string, unknown>) {
 
 export async function POST(request: Request) {
   try {
+    const rate = checkRateLimit(`public-lead:${getClientIp(request)}`, 20, 60_000);
+    if (!rate.ok) return rateLimitResponse(rate.retryAfter);
+
     devLog("[api/lead] POST request received");
     const supabase = getSupabaseAdmin();
 
@@ -39,7 +45,7 @@ export async function POST(request: Request) {
 
     devLog("[api/lead] Parsed payload", {
       hasName: Boolean(name),
-      mobile,
+      mobile: `${normalizeLeadMobile(mobile).slice(0, 2)}******`,
       service,
       hasFile: file instanceof File && file.size > 0,
     });
@@ -94,25 +100,28 @@ export async function POST(request: Request) {
       };
     }
 
-    const { error } = await supabase.from("leads").insert({
+    const ingested = await ingestLead({
+      source: "website",
       name,
       mobile,
       service,
       message,
-      status: "new",
-      source: "website",
-      ...fileMetadata,
     });
 
-    if (error) {
-      console.error("[api/lead] Lead insert failed", error);
-      return jsonError(error.message, 500);
+    if (!ingested.ok) {
+      return jsonError(ingested.error, ingested.status);
     }
 
-    devLog("[api/lead] Lead inserted successfully", { mobile, service });
+    if (fileMetadata.storage_path) {
+      await supabase.from("leads").update(fileMetadata).eq("id", ingested.leadId);
+    }
+
+    devLog("[api/lead] Lead ingested", { leadId: ingested.leadId, deduped: ingested.deduped });
     return NextResponse.json({
       message: "Thank you. Our team will contact you shortly.",
       ok: true,
+      leadId: ingested.leadId,
+      deduped: ingested.deduped,
     });
   } catch (error) {
     console.error("[api/lead] Unhandled error", error);

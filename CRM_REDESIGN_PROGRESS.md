@@ -7,51 +7,57 @@ Last updated: 2026-08-05
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 Discovery & safety | **Complete** | Audit written |
-| 2 Foundation + walk-in | **Complete (local commit)** | `928f187` — not pushed |
-| 3 Application + assignment | **Complete (local commit `25cc0d4`)** | Security-hardened RPC + argon2 PIN |
-| 4 Leads & team ops | **Starting after Phase 3 commit** | Canonical = `public.leads` |
-| 5 WhatsApp & automation | Partial | Outbox reused in Phase 3 |
+| 2 Foundation + walk-in | **Complete (local)** | `928f187` — not pushed |
+| 3 Application + assignment | **Complete (local)** | `c5722e6` — not pushed |
+| 4 Leads & team ops | **Foundation checkpoint (local)** | Not “Phase 4 complete” |
+| 5 WhatsApp & automation | Partial | Outbox reused; inbound adapters pending activation |
 | 6 Dashboards & AI adapters | Pending | |
 | 7 QA & production readiness | Pending | |
 
-## Phase 2 local checkpoint
+## Phase 2 / 3 checkpoints
+
+| Phase | Hash | Message | Pushed |
+|-------|------|---------|--------|
+| 2 | `928f187` | `feat(crm): add secure walk-in customer foundation` | No |
+| 3 | `c5722e6` | `feat(crm): add atomic walk-in application workflow` | No |
+
+## Phase 4 foundation checkpoint
 
 | Field | Value |
 |-------|-------|
-| Commit | `928f187` / `928f187cab6f7e289889115ddf9b2906ae9de3c2` |
-| Message | `feat(crm): add secure walk-in customer foundation` |
+| Label | **Phase 4 foundation checkpoint** (not complete) |
+| Commit message | `feat(crm): unify leads on canonical pipeline` |
+| Commit hash | `cd34084` / `cd34084439f260d9dc4e722a813c85fc21b9b41c` |
 | Pushed | **No** |
+| Migration applied | **No** |
+| Production | **Unchanged** |
 
-## Phase 3 local checkpoint
+### Foundation includes
+- Canonical `public.leads` additive columns + history/ingestion tables
+- Partner-scoped idempotency + duplicate privacy
+- Website / AP / manual ingest adapters
+- Pipeline compatibility adapter (no demo seed)
+- Ownership docs + unit tests for core helpers
 
-| Field | Value |
-|-------|-------|
-| Commit | `25cc0d4` / `25cc0d475d65945657e9faa259bb1c9e3bbebfce` |
-| Message | `feat(crm): add atomic walk-in application workflow` |
-| Pushed | **No** |
+### Remaining Phase 4 work
+- Transactional lead conversion
+- Dedicated admin + AP lead operations UI
+- Follow-up queues (today/overdue/upcoming)
+- WhatsApp/Sheets-ready inbound (inactive)
+- Conversion/UI integration tests
 
-## Phase 3 verification
+## Verification (foundation)
 
 | Check | Result |
 |-------|--------|
-| Secrets / `.env*` staged | No |
-| SECURITY DEFINER review | Hardened before commit |
-| PIN review | argon2 `hashed_pin` + documented residual HMAC risk |
-| `npx tsc --noEmit` | PASS |
-| `npx next lint` (Phase 3 files) | PASS |
-| Vitest | **Not completed** (App Control / Rollup) |
-| Production build | **Not completed** (SWC App Control) |
+| `npx tsc --noEmit` | Re-run before commit |
+| Targeted lint | Re-run before commit |
+| Vitest | **Blocked** (App Control / Rollup) — not passed |
+| Production build | **Blocked** (SWC App Control) — not passed |
 | Playwright | **Not run** |
-| Migration applied to production | **No** |
-
-## Phase 3 security changes in pre-commit review
-- Rewrote RPC: empty search_path, re-validate customer + active service fee from DB
-- Actor-scoped idempotency keys
-- Append-only assignment history (no UPDATE/DELETE policies + forbid trigger)
-- Walk-in stores argon2 `hashed_pin` for real PIN login
-- Safe RPC error codes; no SQL detail to browser
-- Docs: grants + threat review in `CRM_DATABASE_CHANGES.md`
+| Remote push | **No** |
 
 ## Decisions
-1. Canonical lead table for Phase 4 = `public.leads` (not `crm_leads` demo pipeline).
+1. Canonical lead table = `public.leads`; `crm_leads` compatibility only.
 2. No push / deploy / prod migration without explicit approval.
+3. Do not call Phase 4 complete until conversion + UI + follow-ups + inactive inbound adapters land.

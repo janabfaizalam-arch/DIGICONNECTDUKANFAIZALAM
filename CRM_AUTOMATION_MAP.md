@@ -37,7 +37,19 @@ Admin walk-in UI
 - `scheduleCrmSync(applicationId, "application_created")` after successful create
 - Existing enqueue/process pipeline unchanged
 
-## Out of scope for Phase 3
-- Full welcome PIN WhatsApp template (Phase 5)
-- Promotional broadcasts
-- Infinite retry workers
+## Lead ingest (Phase 4)
+
+```
+Website form / AP create / manual pipeline
+  → ingestLead()
+  → lead_ingestion_keys (idempotent)
+  → public.leads insert (canonical)
+  → lead_stage_history + lead_activities (+ assignment history if owned)
+```
+
+Rules:
+- No Sheets→leads write path (prevents sync loops).
+- No auto-merge of duplicate mobiles.
+- Pipeline UI reads canonical leads via adapter; `crm_leads` is fallback only.
+- Demo seed leads removed.
+

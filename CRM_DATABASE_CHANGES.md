@@ -93,5 +93,31 @@ Regenerate Supabase types after applying when that is the project convention.
 3. OTP `hashOtp` still has a **dev-only fallback string** when secret missing — must never be used in production; `derivePinPassword` already throws without secret.
 4. Failed-attempt limits / lockout exist on `/api/customer-auth/login` path; ensure `/api/auth/customer/login` has equivalent controls in the follow-up.
 
-### Abandoned customer risk
-Phase 2 `POST /api/admin/customers/walk-in` can create a customer without an application. Phase 3 wizard prefers final submit via walk-in-application with `newCustomer`. If app fails after customer create, API returns `customerId` for retry without duplicate.
+## Phase 4 additive migration
+
+`20260805130000_crm_leads_canonical_ops.sql` (after Phase 3 `...120000_crm_walk_in...`)
+
+### Additive only
+- Extends `public.leads` with pipeline/source/assignment/follow-up/ingestion/attribution columns.
+- Backfills `mobile_normalized`, `lead_source`, `pipeline_stage`, `assigned_to`, `last_activity_at` where null — does **not** rewrite names/messages or delete rows.
+- Does **not** drop or rewrite `crm_leads`.
+- No CHECK constraints that would fail on dirty legacy `status` values.
+- No demo seed in migration.
+
+### Indexes
+mobile_normalized, lead_source, pipeline_stage, partner_id, assigned_to+follow_up, unassigned partial, overdue partial, external_ref, ingestion_key unique.
+
+### History / idempotency
+- `lead_stage_history`, `lead_assignment_history` append-only (forbid UPDATE/DELETE triggers; INVOKER; search_path empty; revoke PUBLIC/anon/authenticated).
+- `lead_activities` admin + scoped partner insert/select.
+- `lead_ingestion_keys` admin select only; writes via service role.
+
+### App-layer hardening (paired with migration)
+- Partner-scoped ingestion keys (`agency_partner:{partnerId}:...`).
+- Duplicate suggestions privacy-scoped for partners.
+- Ownership derived from authenticated actor.
+
+### Rollback / mitigation
+Drop new tables/indexes/columns; **do not DELETE** lead business rows. Production unchanged until explicitly applied.
+
+

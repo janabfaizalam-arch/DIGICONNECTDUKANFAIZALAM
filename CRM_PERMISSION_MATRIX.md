@@ -40,4 +40,11 @@ Legend: **Y** = allowed · **N** = denied · **S** = scoped (own / assigned / cr
 - WhatsApp manual resend requires `messaging.resend` (admin only in matrix).
 - Limitation: finer staff roles are not first-class DB roles yet — do not invent fake roles; extend via additive migration later.
 
+### Phase 4 foundation notes
+- Canonical ops on `public.leads`; `crm_leads` read adapter only.
+- Partner ingest ownership derived from authenticated actor — client cannot spoof `partner_id`.
+- Duplicate suggestions for partners are scope-filtered (no cross-partner PII).
+- Partner lead reassignment remains admin-capability gated (`applications.assign` / `staff.manage`).
+- Customers have no lead portal access.
+
 Enforcement: `src/lib/crm/permissions.ts` + existing route gates + RLS. Hiding UI is not sufficient.

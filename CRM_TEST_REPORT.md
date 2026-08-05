@@ -46,12 +46,23 @@ Integration behaviours implemented in code (require DB + migration for full E2E)
 1. **Vitest native Rollup binary** blocked by Windows App Control on this machine — document, do not treat as product regression.
 2. `pnpm lint` may fail when pnpm ignored builds are blocked — prefer `npx next lint` for product lint signal.
 
-## Manual checklist (staging)
+## Phase 4 automated tests
 
-- [ ] Lookup existing mobile → confirm → create application (no duplicate customer)
-- [ ] New mobile → form → service → success (PIN once; leave screen → PIN gone)
-- [ ] Double-click Create → single application (idempotency)
-- [ ] Inactive service not listed / rejected server-side
-- [ ] Unassigned KPI / filter shows walk-in apps
-- [ ] AiSensy missing → application succeeds, WhatsApp `configuration_required` / `queued`
-- [ ] Resend WhatsApp as admin only
+| Area | File |
+|------|------|
+| Lead core (normalize, stages, duplicates, overdue, idempotency keys, authZ) | `src/lib/crm/leads.test.ts` |
+
+## Phase 4 foundation verification
+
+| Command | Result |
+|---------|--------|
+| `npx tsc --noEmit` | **PASS** |
+| Targeted `npx next lint` (Phase 4 files) | **PASS** |
+| Vitest | **Blocked** — App Control / Rollup (not passed) |
+| Production build | **Blocked** — SWC App Control (not passed) |
+| Playwright | **Not run** |
+| Production migration | **Not applied** |
+| Remote push | **No** |
+
+Label: **Phase 4 foundation completed** — remaining conversion/UI/follow-ups/inbound activation still pending.
+
