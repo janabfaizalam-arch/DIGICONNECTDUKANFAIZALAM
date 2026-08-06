@@ -38,6 +38,20 @@ Last updated: 2026-08-05 (Phase 3 security hardening)
 Function attributes:
 - `SECURITY DEFINER`
 - `SET search_path = ''` (empty) — all relations schema-qualified as `public.*` / `auth.users`
+- Optional `p_customer_auth_user_id` — server-resolved only; must equal `customers.id` and exist in `auth.users`
+
+### Production customer schema / Auth linkage (verified 2026-08-06)
+
+| Fact | Production |
+|------|------------|
+| Display name column | `customers.name` (not `full_name`) |
+| `customers.user_id` | **Absent** — do not add for walk-in |
+| PIN login | JWT `sub` = `customers.id`; sessions via `customer_sessions.customer_id` |
+| Proven Auth link | `customers.id == auth.users.id` when Auth row exists |
+| `applications.user_id` | Nullable FK → `auth.users`; set only when proven link exists, else **null** |
+| Ownership for CRM | Always set `applications.customer_id` to real `customers.id` |
+
+RPC never reads `customers.full_name` or `customers.user_id`. Browser-supplied Auth ids are rejected.
 - Owner: migration role (typically `postgres` / Supabase superuser) — document in deploy runbook
 
 ### Threat review (SECURITY DEFINER)

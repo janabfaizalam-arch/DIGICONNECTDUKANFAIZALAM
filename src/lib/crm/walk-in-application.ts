@@ -8,6 +8,7 @@ import {
   mapWhatsAppResultToUiState,
   maskIndianMobile,
   normalizeIndianMobileDigits,
+  resolveApplicationAuthUserId,
   resolveAuthoritativePrice,
   resolveWalkInAssignment,
   type WalkInNotificationState,
@@ -104,7 +105,7 @@ async function loadCustomerForWalkIn(customerId: string) {
 
   const { data } = await supabase
     .from("customers")
-    .select("id, user_id, full_name, name, mobile, email, address, pincode, city, district, state")
+    .select("id, name, mobile, email, address, pincode, city, district, state")
     .eq("id", customerId)
     .maybeSingle();
 
@@ -116,8 +117,7 @@ async function loadCustomerForWalkIn(customerId: string) {
 
   return {
     id: String(data.id),
-    userId: data.user_id ? String(data.user_id) : null,
-    fullName: String(data.full_name || data.name || "Customer"),
+    fullName: String(data.name || "Customer"),
     mobile: normalizeIndianMobileDigits(String(data.mobile ?? "")),
     email: publicEmail,
     address: data.address ?? null,
@@ -128,11 +128,28 @@ async function loadCustomerForWalkIn(customerId: string) {
   };
 }
 
+/**
+ * Proven production Auth linkage: customers.id == auth.users.id.
+ * Never invent linkage from email strings or admin actor ids.
+ */
+async function resolveCustomerAuthUserId(customerId: string): Promise<string | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.auth.admin.getUserById(customerId);
+    if (error || !data?.user?.id) return null;
+    if (data.user.id !== customerId) return null;
+    return customerId;
+  } catch {
+    return null;
+  }
+}
+
 async function createApplicationViaRpcOrFallback(input: {
   actorId: string;
   idempotencyKey: string;
   customerId: string;
-  userId: string | null;
+  customerAuthUserId: string | null;
   service: AgentService;
   amount: number;
   originalAmount: number;
@@ -165,6 +182,7 @@ async function createApplicationViaRpcOrFallback(input: {
     p_override_amount: input.priceOverridden ? input.amount : null,
     p_override_reason: input.overrideReason,
     p_referral_source: input.referralSource,
+    p_customer_auth_user_id: input.customerAuthUserId,
   });
 
   if (!rpc.error && rpc.data) {
@@ -189,6 +207,8 @@ async function createApplicationViaRpcOrFallback(input: {
       "service_required",
       "customer_not_found",
       "customer_mobile_invalid",
+      "customer_auth_user_not_found",
+      "customer_auth_user_mismatch",
       "service_not_found",
       "inactive_service",
       "invalid_override_amount",
@@ -259,7 +279,8 @@ async function createApplicationViaRpcOrFallback(input: {
     .from("applications")
     .insert({
       customer_id: input.customerId,
-      user_id: input.userId,
+      // Nullable FK → auth.users. Only set when proven customers.id == auth.users.id.
+      user_id: input.customerAuthUserId,
       created_by: input.actorId,
       assigned_agent_id: input.assigneeId,
       agent_id: input.assigneeId,
@@ -446,6 +467,7 @@ export async function createWalkInApplication(input: {
   let customerId = input.customerId?.trim() || null;
   let temporaryPin: string | undefined;
   let customerCreatedInRequest = false;
+  let customerAuthUserId: string | null = null;
   const referralSource: string | null = input.newCustomer?.referralSource ?? null;
 
   if (!customerId && input.newCustomer) {
@@ -467,6 +489,11 @@ export async function createWalkInApplication(input: {
       customerId = created.customerId;
       temporaryPin = created.temporaryPin;
       customerCreatedInRequest = true;
+      // New walk-in: Auth user created first; customers.id == auth.users.id.
+      customerAuthUserId = created.userId === created.customerId ? created.userId : null;
+      if (!customerAuthUserId) {
+        return { ok: false, error: "Customer Auth linkage could not be established.", status: 500 };
+      }
     }
   }
 
@@ -477,6 +504,33 @@ export async function createWalkInApplication(input: {
   const customer = await loadCustomerForWalkIn(customerId);
   if (!customer || !isValidIndianMobile(customer.mobile)) {
     return { ok: false, error: "Customer not found or mobile invalid.", status: 404 };
+  }
+
+  if (!customerAuthUserId) {
+    const linked = await resolveCustomerAuthUserId(customer.id);
+    const resolved = resolveApplicationAuthUserId({
+      customerId: customer.id,
+      customerIdIsAuthUser: Boolean(linked),
+      serverResolvedAuthUserId: linked,
+      browserProvidedAuthUserId: null,
+      actorId: input.actorId,
+    });
+    if (!resolved.ok) {
+      return { ok: false, error: "Customer Auth linkage is invalid.", status: 400 };
+    }
+    customerAuthUserId = resolved.userId;
+  } else {
+    const resolved = resolveApplicationAuthUserId({
+      customerId: customer.id,
+      customerIdIsAuthUser: true,
+      serverResolvedAuthUserId: customerAuthUserId,
+      browserProvidedAuthUserId: null,
+      actorId: input.actorId,
+    });
+    if (!resolved.ok) {
+      return { ok: false, error: "Customer Auth linkage is invalid.", status: 400 };
+    }
+    customerAuthUserId = resolved.userId;
   }
 
   // Partners must not create applications for customers outside their scope.
@@ -508,7 +562,7 @@ export async function createWalkInApplication(input: {
     actorId: input.actorId,
     idempotencyKey,
     customerId,
-    userId: customer.userId,
+    customerAuthUserId,
     service,
     amount: pricing.amount,
     originalAmount: pricing.original,

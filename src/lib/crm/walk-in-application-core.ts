@@ -85,6 +85,106 @@ export function assertOverrideAllowed(input: {
   return { ok: true };
 }
 
+/**
+ * Decide applications.user_id from proven server-side facts only.
+ * Proven production link: customers.id == auth.users.id.
+ * Never invent Auth ids from email / admin actor / browser input.
+ */
+export function resolveApplicationAuthUserId(input: {
+  customerId: string;
+  /** Server-resolved: customers.id exists in auth.users */
+  customerIdIsAuthUser: boolean;
+  /** Optional Auth user id created/verified by server for this customer */
+  serverResolvedAuthUserId?: string | null;
+  /** Reject if browser/client attempts to supply a different Auth id */
+  browserProvidedAuthUserId?: string | null;
+  actorId?: string | null;
+}): { ok: true; userId: string | null } | { ok: false; error: string } {
+  const customerId = String(input.customerId || "").trim();
+  if (!customerId) {
+    return { ok: false, error: "customer_required" };
+  }
+
+  const browserId = input.browserProvidedAuthUserId?.trim() || null;
+  if (browserId && browserId !== customerId) {
+    return { ok: false, error: "browser_cannot_choose_auth_user" };
+  }
+
+  const actorId = input.actorId?.trim() || null;
+  if (actorId && actorId === customerId) {
+    // Admin/staff actor must never become the customer application owner.
+    return { ok: false, error: "actor_cannot_own_customer_application" };
+  }
+
+  const serverId = input.serverResolvedAuthUserId?.trim() || null;
+  if (serverId) {
+    if (serverId !== customerId) {
+      return { ok: false, error: "customer_auth_user_mismatch" };
+    }
+    if (actorId && serverId === actorId) {
+      return { ok: false, error: "customer_auth_user_mismatch" };
+    }
+    return { ok: true, userId: serverId };
+  }
+
+  if (input.customerIdIsAuthUser) {
+    return { ok: true, userId: customerId };
+  }
+
+  // Existing PIN-only / unlinked customer: ownership via customer_id; user_id stays null.
+  return { ok: true, userId: null };
+}
+
+export type WalkInCleanupStep = "deleted" | "missing" | "failed" | "skipped_not_owned";
+
+/**
+ * Classify compensating cleanup after a request-scoped Auth/customer create failure.
+ * Only request-created IDs may be deleted; pre-existing rows are never owned by the request.
+ */
+export function classifyWalkInCleanupOutcome(input: {
+  customerCleanup: WalkInCleanupStep;
+  authCleanup: WalkInCleanupStep;
+}): {
+  clean: boolean;
+  reconciliationRequired: boolean;
+  severity: "none" | "high";
+  code: "cleanup_ok" | "cleanup_reconciliation_required";
+} {
+  const failed =
+    input.customerCleanup === "failed" || input.authCleanup === "failed";
+  if (failed) {
+    return {
+      clean: false,
+      reconciliationRequired: true,
+      severity: "high",
+      code: "cleanup_reconciliation_required",
+    };
+  }
+  return {
+    clean: true,
+    reconciliationRequired: false,
+    severity: "none",
+    code: "cleanup_ok",
+  };
+}
+
+/** Safe client-facing failure when orphan remnants may remain. */
+export function walkInReconciliationClientError(correlationId: string): {
+  ok: false;
+  error: string;
+  status: number;
+  reconciliationRequired: true;
+  correlationId: string;
+} {
+  return {
+    ok: false,
+    error: "Customer setup needs reconciliation. Retry with the same details or contact support.",
+    status: 409,
+    reconciliationRequired: true,
+    correlationId,
+  };
+}
+
 export type WalkInNotificationState =
   | "queued"
   | "sent"

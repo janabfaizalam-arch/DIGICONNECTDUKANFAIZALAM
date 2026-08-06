@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomInt } from "crypto";
+import { randomInt, randomUUID } from "crypto";
 
 import { customerInternalEmail } from "@/lib/auth/phone";
 import { derivePinPassword, validateCustomerPin } from "@/lib/auth/pin";
@@ -9,8 +9,14 @@ import { hashPin } from "@/lib/auth-v2/password";
 import {
   assertCustomerIdentityAvailable,
   completeCustomerAccount,
+  findAuthUserByEmailOrMobile,
   normalizeCustomerMobile,
 } from "@/lib/customer-identity";
+import {
+  classifyWalkInCleanupOutcome,
+  type WalkInCleanupStep,
+  walkInReconciliationClientError,
+} from "@/lib/crm/walk-in-application-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { scheduleCrmSync } from "@/lib/crmSync";
 
@@ -58,7 +64,6 @@ export async function lookupCustomerByMobile(mobileInput: string): Promise<{
 
   type CustomerRow = {
     id: string;
-    full_name?: string | null;
     name?: string | null;
     mobile?: string | null;
     email?: string | null;
@@ -72,7 +77,7 @@ export async function lookupCustomerByMobile(mobileInput: string): Promise<{
   let row: CustomerRow | null = null;
   const primary = await supabase
     .from("customers")
-    .select("id, full_name, mobile, email, address, pincode, city, district, state")
+    .select("id, name, mobile, email, address, pincode, city, district, state")
     .eq("mobile", mobile)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -106,7 +111,7 @@ export async function lookupCustomerByMobile(mobileInput: string): Promise<{
     mobile,
     customer: {
       id: String(row.id),
-      fullName: String(row.full_name || row.name || "Customer"),
+      fullName: String(row.name || "Customer"),
       mobile: String(row.mobile || mobile),
       email: publicEmail,
       address: row.address ?? null,
@@ -144,7 +149,13 @@ export async function createWalkInCustomer(input: {
       temporaryPin: string;
       messaging: "queued" | "skipped" | "failed";
     }
-  | { ok: false; error: string; status: number }
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      reconciliationRequired?: true;
+      correlationId?: string;
+    }
 > {
   const mobile = normalizeCustomerMobile(input.mobile);
   const fullName = input.fullName.trim();
@@ -184,11 +195,152 @@ export async function createWalkInCustomer(input: {
   }
 
   const temporaryPin = generateSecurePin(mobile);
-  // Primary login verifier for /api/auth/customer/login: argon2id (per-hash salt + work factor).
+  // Primary login verifier for /api/customer-auth/login: argon2id (per-hash salt + work factor).
   // Supabase Auth password remains HMAC-derived for complete-signup compatibility only —
   // GoTrue still bcrypt-hashes that password. See CRM_DATABASE_CHANGES.md PIN threat notes.
   const hashedPin = await hashPin(temporaryPin);
   const password = derivePinPassword(mobile, temporaryPin);
+
+  // Request-scoped ownership for compensating cleanup (never delete pre-existing rows).
+  let requestCreatedAuthUserId: string | null = null;
+  let requestCreatedCustomerId: string | null = null;
+
+  const runCompensatingCleanup = async (): Promise<{
+    customerCleanup: WalkInCleanupStep;
+    authCleanup: WalkInCleanupStep;
+    correlationId: string;
+  }> => {
+    const correlationId = randomUUID();
+    let customerCleanup: WalkInCleanupStep = "skipped_not_owned";
+    let authCleanup: WalkInCleanupStep = "skipped_not_owned";
+
+    // Order: customer row first, then Auth user. Only request-created IDs.
+    if (requestCreatedCustomerId) {
+      const { error } = await supabase.from("customers").delete().eq("id", requestCreatedCustomerId);
+      if (error) {
+        customerCleanup = "failed";
+      } else {
+        customerCleanup = "deleted";
+      }
+    }
+
+    if (requestCreatedAuthUserId) {
+      const { error } = await supabase.auth.admin.deleteUser(requestCreatedAuthUserId);
+      if (error) {
+        const msg = String(error.message || "").toLowerCase();
+        authCleanup = msg.includes("not found") || msg.includes("does not exist") ? "missing" : "failed";
+      } else {
+        authCleanup = "deleted";
+      }
+    }
+
+    const outcome = classifyWalkInCleanupOutcome({ customerCleanup, authCleanup });
+    if (outcome.reconciliationRequired) {
+      console.error("[walk-in] HIGH_SEVERITY_ORPHAN_RECONCILIATION", {
+        correlationId,
+        customerCleanup,
+        authCleanup,
+        // Never log PIN, email, phone, hash, or secrets.
+        requestOwnedAuth: Boolean(requestCreatedAuthUserId),
+        requestOwnedCustomer: Boolean(requestCreatedCustomerId),
+      });
+    }
+
+    return { customerCleanup, authCleanup, correlationId };
+  };
+
+  // Idempotent remnant recovery: prior request may have created Auth without customer (or both).
+  try {
+    const remnantAuth = await findAuthUserByEmailOrMobile(supabase, email, mobile);
+    if (remnantAuth?.id) {
+      const source = String(remnantAuth.user_metadata?.source ?? "");
+      const remnantMobile = normalizeCustomerMobile(
+        String(remnantAuth.user_metadata?.mobile ?? remnantAuth.phone ?? ""),
+      );
+      if (source === "admin_walk_in" && remnantMobile === mobile) {
+        const { data: remnantCustomer } = await supabase
+          .from("customers")
+          .select("id, hashed_pin")
+          .eq("id", remnantAuth.id)
+          .maybeSingle();
+
+        if (remnantCustomer?.id) {
+          // Fully linked remnant — do not mint another Auth/customer; force PIN refresh only if unset.
+          if (!remnantCustomer.hashed_pin) {
+            await supabase
+              .from("customers")
+              .update({ hashed_pin: hashedPin, name: fullName, is_active: true })
+              .eq("id", remnantCustomer.id);
+            return {
+              ok: true,
+              customerId: String(remnantCustomer.id),
+              userId: remnantAuth.id,
+              mobile,
+              temporaryPin,
+              messaging: "skipped",
+            };
+          }
+          return {
+            ok: false,
+            error: "Customer already exists for this mobile. Use the existing record.",
+            status: 409,
+          };
+        }
+
+        // Auth remnant without customer row — complete customer insert only (no second Auth user).
+        const { error: remnantInsertError } = await supabase.from("customers").insert({
+          id: remnantAuth.id,
+          name: fullName,
+          mobile,
+          email,
+          address,
+          pincode,
+          city,
+          district,
+          state,
+          hashed_pin: hashedPin,
+          is_active: true,
+        });
+        if (remnantInsertError) {
+          console.error("[walk-in] remnant_customer_insert_failed", {
+            code: "walk_in_remnant_insert_failed",
+          });
+          return { ok: false, error: "Customer profile could not be completed.", status: 500 };
+        }
+        requestCreatedCustomerId = remnantAuth.id;
+        try {
+          await completeCustomerAccount(supabase, {
+            userId: remnantAuth.id,
+            email,
+            mobile,
+            fullName,
+            pincode,
+            city,
+            district,
+            state,
+            address,
+            source: "offline",
+            createdBy: input.createdByUserId,
+            skipCustomers: true,
+          });
+        } catch {
+          // Profile sync best-effort; customer row is authoritative for PIN login.
+        }
+        return {
+          ok: true,
+          customerId: remnantAuth.id,
+          userId: remnantAuth.id,
+          mobile,
+          temporaryPin,
+          messaging: "skipped",
+        };
+      }
+    }
+  } catch (error) {
+    console.error("[walk-in] remnant_lookup_failed", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
 
   const { data: created, error: createError } = await supabase.auth.admin.createUser({
     email,
@@ -208,13 +360,38 @@ export async function createWalkInCustomer(input: {
   });
 
   if (createError || !created.user?.id) {
-    console.error("[walk-in] auth_create_failed", { error: createError?.message });
-    return { ok: false, error: createError?.message || "Could not create customer login.", status: 500 };
+    console.error("[walk-in] auth_create_failed", { code: createError?.code ?? "auth_create_failed" });
+    return { ok: false, error: "Could not create customer login.", status: 500 };
   }
 
+  requestCreatedAuthUserId = created.user.id;
+  const authUserId = created.user.id;
+
   try {
+    // Production customers schema: id + name (no customers.user_id / full_name).
+    // Canonical Auth linkage: customers.id == auth.users.id (one UUID).
+    // skipCustomers on profile sync prevents a second customers write via legacy user_id path.
+    const { error: customerInsertError } = await supabase.from("customers").insert({
+      id: authUserId,
+      name: fullName,
+      mobile,
+      email,
+      address,
+      pincode,
+      city,
+      district,
+      state,
+      hashed_pin: hashedPin,
+      is_active: true,
+    });
+
+    if (customerInsertError) {
+      throw new Error("customers_insert_failed");
+    }
+    requestCreatedCustomerId = authUserId;
+
     await completeCustomerAccount(supabase, {
-      userId: created.user.id,
+      userId: authUserId,
       email,
       mobile,
       fullName,
@@ -225,29 +402,28 @@ export async function createWalkInCustomer(input: {
       address,
       source: "offline",
       createdBy: input.createdByUserId,
+      skipCustomers: true,
     });
   } catch (error) {
     console.error("[walk-in] complete_account_failed", {
-      userId: created.user.id,
-      error: error instanceof Error ? error.message : "unknown",
+      code: error instanceof Error ? error.message : "complete_account_failed",
+      requestOwnedAuth: Boolean(requestCreatedAuthUserId),
+      requestOwnedCustomer: Boolean(requestCreatedCustomerId),
     });
-    // Best-effort cleanup of orphan auth user
-    await supabase.auth.admin.deleteUser(created.user.id).catch(() => undefined);
+
+    const cleanup = await runCompensatingCleanup();
+    const outcome = classifyWalkInCleanupOutcome({
+      customerCleanup: cleanup.customerCleanup,
+      authCleanup: cleanup.authCleanup,
+    });
+    if (outcome.reconciliationRequired) {
+      return walkInReconciliationClientError(cleanup.correlationId);
+    }
     return { ok: false, error: "Customer profile could not be completed.", status: 500 };
   }
 
-  const { data: customerRow } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("mobile", mobile)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const customerId = authUserId;
 
-  const customerId = customerRow?.id ? String(customerRow.id) : created.user.id;
-
-  // Soft-update CRM fields that completeCustomerAccount may not set.
-  // Persist argon2 hashed_pin so customer PIN login works; never store plain PIN.
   try {
     await supabase
       .from("customers")
@@ -257,8 +433,6 @@ export async function createWalkInCustomer(input: {
         city,
         district,
         state,
-        created_by: input.createdByUserId,
-        source: "offline",
         hashed_pin: hashedPin,
         is_active: true,
         updated_at: new Date().toISOString(),
@@ -269,7 +443,7 @@ export async function createWalkInCustomer(input: {
   }
 
   await logAuthSecurityEvent({
-    userId: created.user.id,
+    userId: authUserId,
     phone: `${mobile.slice(0, 2)}******${mobile.slice(-2)}`,
     eventType: "walk_in_temporary_pin_issued",
     details: {
@@ -287,7 +461,7 @@ export async function createWalkInCustomer(input: {
   return {
     ok: true,
     customerId,
-    userId: created.user.id,
+    userId: authUserId,
     mobile,
     temporaryPin,
     messaging,

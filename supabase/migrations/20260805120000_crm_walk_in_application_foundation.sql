@@ -16,6 +16,8 @@
 -- - Confirm public.applications has customer_id, assigned_agent_id, source_channel.
 -- - Confirm public.agent_services exists with is_active + customer_fee.
 -- - Confirm public.is_admin_role() exists (three-role hardening).
+-- - Production customers use `name` (not full_name) and have no customers.user_id.
+-- - Auth linkage for applications.user_id is customers.id == auth.users.id when present.
 -- - Do NOT apply to production without explicit approval.
 --
 -- ROLLBACK / MITIGATION (non-destructive to business rows)
@@ -152,9 +154,15 @@ create index if not exists applications_unassigned_queue_idx
 -- ---------------------------------------------------------------------------
 -- SECURITY DEFINER create core
 -- ---------------------------------------------------------------------------
--- Drop prior signature from earlier Phase 3 draft if present.
+-- Drop prior signatures from earlier Phase 3 drafts if present.
 drop function if exists public.create_walk_in_application_core(
   uuid, text, uuid, uuid, jsonb, numeric, numeric, boolean, text, text, text, uuid, text, boolean, jsonb, jsonb, text, text, text
+);
+drop function if exists public.create_walk_in_application_core(
+  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text
+);
+drop function if exists public.create_walk_in_application_core(
+  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text, uuid
 );
 
 create or replace function public.create_walk_in_application_core(
@@ -168,7 +176,8 @@ create or replace function public.create_walk_in_application_core(
   p_allow_price_override boolean,
   p_override_amount numeric,
   p_override_reason text,
-  p_referral_source text
+  p_referral_source text,
+  p_customer_auth_user_id uuid default null
 )
 returns jsonb
 language plpgsql
@@ -232,11 +241,11 @@ begin
     return v_existing || jsonb_build_object('deduped', true);
   end if;
 
-  -- Re-load customer from DB (do not trust caller identity fields).
+  -- Re-load customer from DB (production schema: name, no customers.user_id).
+  -- Do not trust caller identity fields / browser-supplied auth ids.
   select
     c.id,
-    c.user_id,
-    coalesce(nullif(trim(c.full_name), ''), 'Customer') as full_name,
+    coalesce(nullif(trim(c.name), ''), 'Customer') as customer_name,
     c.mobile,
     c.email
   into v_customer
@@ -252,11 +261,34 @@ begin
     raise exception 'customer_mobile_invalid' using errcode = 'P0001';
   end if;
 
-  v_name := coalesce(v_customer.full_name, 'Customer');
-  v_user_id := v_customer.user_id;
+  v_name := coalesce(v_customer.customer_name, 'Customer');
   v_email := nullif(trim(coalesce(v_customer.email, '')), '');
   if v_email is not null and lower(v_email) like '%@customer.rnos.internal' then
     v_email := null;
+  end if;
+
+  -- Canonical Auth linkage (production):
+  -- - PIN login uses customers.id (customer_sessions), not customers.user_id.
+  -- - applications.user_id is nullable FK → auth.users; set only when proven.
+  -- - Proven link: customers.id == auth.users.id (same UUID).
+  -- - Optional p_customer_auth_user_id is server-resolved only and must equal customer.id.
+  if p_customer_auth_user_id is not null then
+    if not exists (select 1 from auth.users u where u.id = p_customer_auth_user_id) then
+      raise exception 'customer_auth_user_not_found' using errcode = 'P0001';
+    end if;
+    if p_customer_auth_user_id is distinct from v_customer.id then
+      raise exception 'customer_auth_user_mismatch' using errcode = 'P0001';
+    end if;
+    if p_customer_auth_user_id = p_actor_id then
+      raise exception 'customer_auth_user_mismatch' using errcode = 'P0001';
+    end if;
+    v_user_id := p_customer_auth_user_id;
+  else
+    select u.id
+      into v_user_id
+    from auth.users u
+    where u.id = v_customer.id;
+    -- leaves null when customer has no Auth row (PIN-only / unlinked).
   end if;
 
   -- Authoritative active service + fee from catalogue (do not trust caller price/title).
@@ -503,6 +535,8 @@ exception
       'service_required',
       'customer_not_found',
       'customer_mobile_invalid',
+      'customer_auth_user_not_found',
+      'customer_auth_user_mismatch',
       'service_not_found',
       'inactive_service',
       'invalid_override_amount',
@@ -517,16 +551,16 @@ end;
 $$;
 
 revoke all on function public.create_walk_in_application_core(
-  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text
+  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text, uuid
 ) from public;
 
 revoke all on function public.create_walk_in_application_core(
-  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text
+  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text, uuid
 ) from anon, authenticated;
 
 grant execute on function public.create_walk_in_application_core(
-  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text
+  uuid, text, uuid, uuid, text, uuid, text, boolean, numeric, text, text, uuid
 ) to service_role;
 
 comment on function public.create_walk_in_application_core is
-  'Walk-in atomic application create. SECURITY DEFINER, search_path empty, service_role execute only. Re-validates customer+active agent_services fee. Actor-scoped idempotency. No WhatsApp inside this function.';
+  'Walk-in atomic application create. SECURITY DEFINER, search_path empty, service_role execute only. Uses customers.name. Sets applications.user_id only when customers.id is a proven auth.users id (or verified p_customer_auth_user_id matching customer.id). Actor-scoped idempotency. No WhatsApp inside this function.';
