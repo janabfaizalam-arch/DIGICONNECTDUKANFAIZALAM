@@ -32,8 +32,31 @@ function isPartnerRole(role: string | null | undefined) {
 }
 
 /**
+ * Partner customer scope without invented customers.created_by / assigned_agent_id.
+ * Canonical ownership lives on applications (created_by / assigned_agent_id / agent_id).
+ */
+export async function partnerCanAccessCustomer(
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  actorId: string,
+  customerId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("applications")
+    .select("id")
+    .eq("customer_id", customerId)
+    .or(`created_by.eq.${actorId},assigned_agent_id.eq.${actorId},agent_id.eq.${actorId}`)
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data?.id);
+}
+
+/**
  * App-layer authZ + scope. The RPC ALSO validates actor/ownership/customer/assignee
  * because service_role bypasses RLS — defense in depth, not duplicate trust of client values.
+ *
+ * Conversion does not create Auth users or temporary PINs.
+ * New customers are created inside the RPC with production columns (id, name, mobile, …).
+ * applications.user_id is set only when customers.id == auth.users.id (proven link).
  */
 export async function convertLeadToApplication(input: {
   actorId: string;
@@ -88,16 +111,23 @@ export async function convertLeadToApplication(input: {
   const existingCustomerId = input.existingCustomerId ?? null;
 
   if (!existingCustomerId) {
+    // Production customers: name (not full_name); no created_by / assigned_agent_id / source.
     const { data: matches } = await supabase
       .from("customers")
-      .select("id, mobile, created_by, assigned_agent_id")
+      .select("id, mobile, name")
       .eq("mobile", mobile)
       .limit(5);
 
-    const visible = (matches ?? []).filter((row) => {
-      if (!isPartnerRole(input.actorRole)) return true;
-      return row.created_by === input.actorId || row.assigned_agent_id === input.actorId;
-    });
+    let visible = matches ?? [];
+    if (isPartnerRole(input.actorRole)) {
+      const scoped: typeof visible = [];
+      for (const row of visible) {
+        if (await partnerCanAccessCustomer(supabase, input.actorId, String(row.id))) {
+          scoped.push(row);
+        }
+      }
+      visible = scoped;
+    }
 
     if (visible.length === 1) {
       return {
@@ -111,7 +141,7 @@ export async function convertLeadToApplication(input: {
     if (visible.length > 1) {
       return { ok: false, error: "Multiple customer matches. Select one explicitly.", status: 409 };
     }
-    if ((matches ?? []).length > 0 && isPartnerRole(input.actorRole)) {
+    if ((matches ?? []).length > 0 && isPartnerRole(input.actorRole) && visible.length === 0) {
       // Inaccessible exact match — generic conflict, no id/name/ownership leak.
       return {
         ok: false,
@@ -120,13 +150,8 @@ export async function convertLeadToApplication(input: {
       };
     }
   } else if (isPartnerRole(input.actorRole)) {
-    const { data: scoped } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("id", existingCustomerId)
-      .or(`created_by.eq.${input.actorId},assigned_agent_id.eq.${input.actorId}`)
-      .maybeSingle();
-    if (!scoped) {
+    const allowed = await partnerCanAccessCustomer(supabase, input.actorId, existingCustomerId);
+    if (!allowed) {
       return { ok: false, error: "Customer is outside your authorized scope.", status: 403 };
     }
   }
@@ -162,7 +187,7 @@ export async function convertLeadToApplication(input: {
         status: 409,
       };
     }
-    if (msg.includes("actor_forbidden") || msg.includes("lead_forbidden") || msg.includes("customer_forbidden")) {
+    if (msg.includes("actor_forbidden") || msg.includes("lead_forbidden") || msg.includes("customer_forbidden") || msg.includes("customer_auth_user_mismatch")) {
       return { ok: false, error: "Forbidden", status: 403 };
     }
     if (msg.includes("assignee_ineligible")) {

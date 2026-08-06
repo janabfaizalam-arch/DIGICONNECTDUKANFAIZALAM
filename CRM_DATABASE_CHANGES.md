@@ -1,6 +1,6 @@
 # DigiConnect Dukan — CRM Database Changes
 
-Last updated: 2026-08-05 (Phase 3 security hardening)
+Last updated: 2026-08-06 (Phase 4 lead conversion aligned to production customer schema)
 
 ## Mapping before Phase 3
 
@@ -136,22 +136,45 @@ Drop new tables/indexes/columns; **do not DELETE** lead business rows. Productio
 
 ## Phase 4 conversion migration (hardened)
 
-`20260805140000_crm_lead_conversion_rpc.sql`
+`20260805140000_crm_lead_conversion_rpc.sql` (revised 2026-08-06 — production customer schema)
+
+### Invalid → canonical column mapping (do not add missing customer columns)
+
+| Stale assumption | Canonical destination |
+|------------------|----------------------|
+| `customers.full_name` | `customers.name` |
+| `customers.user_id` | **Absent** — optional Auth link is `customers.id = auth.users.id`; else `applications.user_id = null` |
+| `customers.created_by` | Conversion actor → `applications.created_by`, `lead_activities`, `lead_stage_history` |
+| `customers.assigned_agent_id` | Assignee → `applications.assigned_agent_id` / `agent_id` + `application_assignment_history` |
+| `customers.source` | `applications.source` / `source_channel` (`lead_conversion` / `offline`) + lead `lead_source`/`source` in form_data |
+
+### Production customer create path (conversion)
+- Inserts only: `id` (gen_random_uuid), `name`, `mobile` (normalized), `email`, `address`, `referral_code`, `is_active`.
+- Does **not** create Auth users or temporary PINs at conversion time.
+- New customers → `applications.user_id = null`; portal ownership via `applications.customer_id`.
+- Existing linked customers → `applications.user_id = customer.id` only when `auth.users.id = customer.id`.
+- Actor id must never become `applications.user_id`.
+
+### Partner customer scope
+- Not via invented `customers.created_by` / `assigned_agent_id`.
+- Via `crm_actor_can_access_customer`: prior `applications` where `created_by` / `assigned_agent_id` / `agent_id` = actor (admins unrestricted).
 
 ### Mobile uniqueness precondition
 - Audits duplicate `normalize_customer_mobile(mobile)` groups; **fails migration** if any exist (operator message + audit query).
-- Ensures `customers_mobile_unique_auth_idx` (raw mobile) and `customers_mobile_normalized_unique_idx` (expression).
-- Source of raw unique index historically: `20260718180000_customer_whatsapp_pin_auth.sql` (may have been skipped via NOTICE — preflight now hard-fails).
+- Ensures a raw unique index exists (`customers_mobile_unique_auth_idx` **or** `customers_mobile_key`); does **not** drop either.
+- Adds `customers_mobile_normalized_unique_idx` using the same `normalize_customer_mobile` expression as walk-in.
+- Does **not** rewrite mobile data.
 
 ### RPC defense in depth
 - Validates admin via `profiles`/`users` roles OR active approved `agency_partners`.
 - Partner lead ownership: `agent_id` / `assigned_to` / `partner_id`.
-- Customer link scoped; inaccessible matches raise generic `customer_forbidden` / `customer_match_required` (no cross-partner leak).
+- Customer link scoped via applications ownership; inaccessible matches raise generic `customer_forbidden` / `customer_match_required` (no cross-partner leak).
 - Assignee must pass `crm_user_is_eligible_assignee` (admin/staff or active partner — not customer-only / arbitrary auth.users).
 - Partners forced to self-assignment on convert.
 - Fee from `agent_services` when service id present; otherwise 0 (client price ignored).
 - Lead-scoped advisory lock + `FOR UPDATE`; already-converted returns prior IDs; different clientKey cannot double-convert.
-- EXECUTE: `service_role` only; `search_path=''`.
+- `SECURITY DEFINER`, empty `search_path`, schema-qualified objects.
+- EXECUTE: `service_role` only; REVOKE from PUBLIC/anon/authenticated.
 
 ### Remaining DB boundary (documented)
 - Fine-grained TS capabilities (e.g. `leads.convert` string) are not a SQL enum — RPC uses strongest canonical role/membership checks available.

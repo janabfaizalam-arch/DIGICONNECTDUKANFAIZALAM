@@ -1,27 +1,36 @@
 -- Phase 4 completion: transactional lead conversion (additive, hardened)
 -- Ordering: after 20260805130000_crm_leads_canonical_ops.sql
 --
+-- PRODUCTION SCHEMA (verified) — align with walk-in / M7 auth-linkage model:
+--   customers: id, mobile, name, email, address, ... (NO full_name, user_id,
+--              created_by, assigned_agent_id, source)
+--   Proven Auth link: customers.id == auth.users.id when Auth row exists
+--   applications.customer_id is authoritative ownership
+--   applications.user_id nullable; set ONLY when proven Auth link exists
+--
+-- Conversion does NOT create Supabase Auth users or temporary PINs.
+-- New customers get gen_random_uuid(); applications.user_id stays null until
+-- a later Auth/PIN linkage exists.
+--
 -- DEFENSE IN DEPTH
 -- App routes MUST authenticate the actor and capability-check before calling.
 -- This RPC ALSO validates actor role/ownership/customer/assignee from canonical
--- tables because EXECUTE is granted to service_role (bypasses RLS). A future
--- buggy route must not be able to convert arbitrary leads by passing forged IDs.
+-- tables because EXECUTE is granted to service_role (bypasses RLS).
 --
 -- PRIVILEGE BOUNDARY
 -- SECURITY DEFINER, search_path '', schema-qualified objects.
 -- EXECUTE revoked from PUBLIC/anon/authenticated; granted to service_role only.
 --
 -- MOBILE UNIQUENESS DEPENDENCY
--- Conversion inserts/looks up customers.mobile using last-10-digit normalization
--- (same as public.normalize_customer_mobile / walk-in / lead ingest).
+-- Uses public.normalize_customer_mobile (same expression as walk-in / lead ingest).
 -- Preflight + expression unique index added below. If dirty duplicates exist,
 -- migration FAILS with an operator message (does not silently skip).
+-- Does NOT drop existing raw unique indexes (customers_mobile_key /
+-- customers_mobile_unique_auth_idx). Does NOT rewrite mobile data.
 --
 -- ROLLBACK / MITIGATION
 -- revoke + drop function; drop lead_convert_idempotency / convert_idempotency_key;
--- drop lead follow-up helpers added in later migrations if applied.
 -- Do NOT delete converted applications/customers/leads business rows.
--- Production unchanged until explicitly applied.
 
 -- ---------------------------------------------------------------------------
 -- Mobile uniqueness preflight (normalized)
@@ -33,6 +42,13 @@ declare
 begin
   if to_regclass('public.customers') is null then
     raise exception 'customers table missing — cannot apply lead conversion migration';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'customers' and column_name = 'name'
+  ) then
+    raise exception 'PRECONDITION FAILED: public.customers.name missing (production display name column)';
   end if;
 
   select count(*)::integer into v_dupes
@@ -52,7 +68,8 @@ begin
 
   select exists (
     select 1 from pg_indexes
-    where schemaname = 'public' and indexname = 'customers_mobile_unique_auth_idx'
+    where schemaname = 'public'
+      and indexname in ('customers_mobile_unique_auth_idx', 'customers_mobile_key')
   ) into v_has_raw_unique;
 
   if not v_has_raw_unique then
@@ -82,7 +99,7 @@ end
 $$;
 
 comment on index public.customers_mobile_normalized_unique_idx is
-  'Guarantees one customer per normalized 10-digit mobile for walk-in and lead conversion.';
+  'Guarantees one customer per normalized 10-digit mobile for walk-in and lead conversion. Expression matches public.normalize_customer_mobile.';
 
 alter table public.leads
   add column if not exists convert_idempotency_key text;
@@ -171,12 +188,46 @@ as $$
     );
 $$;
 
+-- Partner/customer scope without invented customers.created_by / assigned_agent_id:
+-- prior application ownership (created_by / assigned_agent_id / agent_id).
+create or replace function public.crm_actor_can_access_customer(p_actor_id uuid, p_customer_id uuid)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    p_actor_id is not null
+    and p_customer_id is not null
+    and (
+      public.crm_actor_is_admin(p_actor_id)
+      or exists (
+        select 1
+        from public.applications a
+        where a.customer_id = p_customer_id
+          and (
+            a.created_by = p_actor_id
+            or a.assigned_agent_id = p_actor_id
+            or a.agent_id = p_actor_id
+          )
+      )
+    );
+$$;
+
 revoke all on function public.crm_actor_is_admin(uuid) from public, anon, authenticated;
 revoke all on function public.crm_actor_is_active_partner(uuid) from public, anon, authenticated;
 revoke all on function public.crm_user_is_eligible_assignee(uuid) from public, anon, authenticated;
+revoke all on function public.crm_actor_can_access_customer(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.crm_actor_is_admin(uuid) to service_role;
 grant execute on function public.crm_actor_is_active_partner(uuid) to service_role;
 grant execute on function public.crm_user_is_eligible_assignee(uuid) to service_role;
+grant execute on function public.crm_actor_can_access_customer(uuid, uuid) to service_role;
+
+-- Drop any prior overload of the convert RPC (unapplied / stale local drafts only).
+drop function if exists public.convert_lead_to_application_core(
+  uuid, text, uuid, uuid, boolean, uuid, text, text, numeric, uuid, text
+);
 
 create or replace function public.convert_lead_to_application_core(
   p_actor_id uuid,
@@ -206,6 +257,9 @@ declare
   v_user_id uuid;
   v_mobile text;
   v_name text;
+  v_email text;
+  v_address text;
+  v_referral text;
   v_app_id uuid;
   v_work_id text;
   v_day text := to_char((timezone('utc', now())), 'YYYYMMDD');
@@ -219,7 +273,6 @@ declare
   v_is_admin boolean;
   v_is_partner boolean;
   v_lead_owned boolean;
-  v_customer_scoped boolean;
 begin
   -- AuthZ in RPC (defense in depth) — do not trust TS-derived role/ownership/price.
   if p_actor_id is null then
@@ -294,24 +347,33 @@ begin
     raise exception 'lead_mobile_invalid' using errcode = 'P0001';
   end if;
   v_name := coalesce(nullif(trim(v_lead.name), ''), 'Customer');
+  v_email := nullif(trim(coalesce(v_lead.email, '')), '');
+  if v_email is not null and lower(v_email) like '%@customer.rnos.internal' then
+    v_email := null;
+  end if;
+  v_address := nullif(trim(coalesce(v_lead.address, '')), '');
+  v_referral := nullif(trim(coalesce(v_lead.referral_code, '')), '');
 
   if p_existing_customer_id is not null then
-    select c.id, c.user_id,
-      (
-        v_is_admin
-        or c.created_by = p_actor_id
-        or c.assigned_agent_id = p_actor_id
-      )
-    into v_customer_id, v_user_id, v_customer_scoped
+    select c.id
+    into v_customer_id
     from public.customers c
     where c.id = p_existing_customer_id;
 
     if not found then
       raise exception 'customer_forbidden' using errcode = 'P0001';
     end if;
-    if not v_customer_scoped then
+
+    if not public.crm_actor_can_access_customer(p_actor_id, v_customer_id) then
       raise exception 'customer_forbidden' using errcode = 'P0001';
     end if;
+
+    -- Proven Auth linkage only: customers.id == auth.users.id. Never actor id.
+    select u.id
+      into v_user_id
+    from auth.users u
+    where u.id = v_customer_id;
+    -- leaves null when customer has no Auth row (PIN-only / unlinked).
   else
     if exists (
       select 1
@@ -328,24 +390,30 @@ begin
     end if;
 
     begin
-      insert into public.customers (full_name, mobile, email, address, source, created_by, assigned_agent_id)
+      -- Production customers columns only. Display via name. No invented ownership/source columns.
+      -- Auth is not created here; applications.user_id stays null for new customers.
+      insert into public.customers (id, name, mobile, email, address, referral_code, is_active)
       values (
+        gen_random_uuid(),
         v_name,
         v_mobile,
-        nullif(trim(coalesce(v_lead.email, '')), ''),
-        coalesce(v_lead.address, ''),
-        'offline',
-        p_actor_id,
-        case
-          when v_is_partner then p_actor_id
-          else coalesce(p_assignee_id, v_lead.assigned_to, v_lead.agent_id)
-        end
+        v_email,
+        v_address,
+        v_referral,
+        true
       )
       returning id into v_customer_id;
     exception when unique_violation then
       -- Race: another convert created the customer. Require explicit authorized link.
       raise exception 'customer_match_required' using errcode = 'P0001';
     end;
+
+    v_user_id := null;
+  end if;
+
+  -- Never allow actor to become the application Auth owner.
+  if v_user_id is not null and v_user_id = p_actor_id then
+    raise exception 'customer_auth_user_mismatch' using errcode = 'P0001';
   end if;
 
   -- Service + price: authoritative from agent_services when id provided. Ignore client fee.
@@ -413,7 +481,7 @@ begin
     v_assignee,
     v_mobile,
     v_mobile,
-    nullif(trim(coalesce(v_lead.email, '')), ''),
+    v_email,
     null,
     p_agent_service_id,
     v_service_slug,
@@ -431,7 +499,10 @@ begin
       'name', v_name,
       'mobile', v_mobile,
       'sourceLeadId', v_lead.id,
-      'convert_idempotency_key', v_scoped_key
+      'convert_idempotency_key', v_scoped_key,
+      'lead_source', coalesce(v_lead.lead_source, v_lead.source),
+      'partner_id', v_lead.partner_id,
+      'referral_code', v_referral
     ),
     jsonb_build_object(
       'agent_service_id', p_agent_service_id,
@@ -541,6 +612,7 @@ exception
       'lead_mobile_invalid',
       'customer_forbidden',
       'customer_match_required',
+      'customer_auth_user_mismatch',
       'inactive_service',
       'assignee_ineligible',
       'assignee_not_found'
@@ -564,4 +636,4 @@ grant execute on function public.convert_lead_to_application_core(
 ) to service_role;
 
 comment on function public.convert_lead_to_application_core is
-  'Atomic lead→customer/application conversion. service_role only. Validates actor/ownership/customer/assignee inside RPC. App authZ required. No WhatsApp inside.';
+  'Atomic lead→customer/application conversion. service_role only. Uses customers.name for display. No customer Auth FK column. Optional Auth linkage via customers.id=auth.users.id. Partner customer scope via applications ownership. No WhatsApp inside.';
