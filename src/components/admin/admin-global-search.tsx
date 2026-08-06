@@ -10,7 +10,15 @@ import { cn } from "@/lib/utils";
 type SearchResult = { id: string; title: string; subtitle: string; href: string };
 type SearchGroup = { type: string; label: string; results: SearchResult[] };
 
-export function AdminGlobalSearch({ className }: { className?: string }) {
+export function AdminGlobalSearch({
+  className,
+  autoFocus,
+  placeholder = "Search applications, customers, partners…",
+}: {
+  className?: string;
+  autoFocus?: boolean;
+  placeholder?: string;
+}) {
   const router = useRouter();
   const inputId = useId();
   const [query, setQuery] = useState("");
@@ -20,7 +28,12 @@ export function AdminGlobalSearch({ className }: { className?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     function onDocClick(event: MouseEvent) {
@@ -71,16 +84,17 @@ export function AdminGlobalSearch({ className }: { className?: string }) {
   return (
     <div ref={rootRef} className={cn("relative w-full max-w-md", className)}>
       <label htmlFor={inputId} className="sr-only">
-        Admin global search
+        Search CRM
       </label>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden />
       <input
+        ref={inputRef}
         id={inputId}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
-        placeholder="Search applications, customers, partners…"
-        className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        placeholder={placeholder}
+        className="h-10 w-full truncate rounded-full border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs font-medium text-slate-700 outline-none transition placeholder:truncate focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
         autoComplete="off"
       />
       {query ? (

@@ -1,6 +1,6 @@
 /**
- * Admin sidebar information architecture (Phase B).
- * Only operational modules — no stubs (Tickets, Core Config).
+ * Admin sidebar information architecture — operations-first CRM.
+ * All existing authorized routes remain reachable; legacy hubs preserved.
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   Settings,
   Sheet,
   ShieldCheck,
+  Sparkles,
   TrendingUp,
   UserCheck,
   UserPlus,
@@ -31,11 +32,15 @@ export type AdminNavItem = {
   label: string;
   description: string;
   icon: LucideIcon;
+  /** Emphasize in nav (e.g. New Customer). */
+  emphasis?: boolean;
 };
 
 export type AdminNavGroup = {
   id: string;
   label: string;
+  /** Start collapsed on desktop when true (user can expand). */
+  defaultCollapsed?: boolean;
   items: AdminNavItem[];
 };
 
@@ -53,27 +58,52 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     id: "overview",
     label: "Overview",
     items: [
-      { href: "/admin", label: "Dashboard", description: "KPIs and operations", icon: LayoutDashboard },
+      { href: "/admin", label: "Dashboard", description: "Operations command center", icon: LayoutDashboard },
     ],
   },
   {
-    id: "operations",
-    label: "Operations",
+    id: "customers",
+    label: "Customers",
+    items: [
+      {
+        href: "/admin/customers/walk-in",
+        label: "New Customer",
+        description: "Walk-in phone-first create",
+        icon: UserPlus,
+        emphasis: true,
+      },
+      { href: "/admin/customers", label: "Customers", description: "Customer 360", icon: UsersRound },
+    ],
+  },
+  {
+    id: "leads-sales",
+    label: "Leads & Sales",
+    items: [
+      { href: "/admin/leads", label: "Leads", description: "Pipeline, follow-ups, convert", icon: TrendingUp },
+    ],
+  },
+  {
+    id: "applications",
+    label: "Applications",
     items: [
       { href: "/admin/applications", label: "Applications", description: "Workflow engine", icon: ClipboardList },
-      { href: "/admin/customers/walk-in", label: "New Customer", description: "Walk-in phone-first create", icon: UserPlus },
-      { href: "/admin/customers", label: "Customers", description: "Customer 360", icon: UsersRound },
-      { href: ADMIN_DIGI_PARTNERS_ROUTE, label: "Digi Partners", description: "KYC and partner CRM", icon: UserCheck },
-      { href: "/admin/partner-banners", label: "Partner Banners", description: "Digi Partner home slider", icon: Image },
       { href: ADMIN_SERVICES_ROUTE, label: "Services", description: "Catalog and pricing", icon: ListChecks },
-      { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: ReceiptText },
-      { href: "/admin/offline-invoices", label: "Offline Invoices", description: "Manual invoices", icon: FileText },
     ],
   },
   {
-    id: "finance",
-    label: "Finance",
+    id: "team-partners",
+    label: "Team & Partners",
     items: [
+      { href: ADMIN_DIGI_PARTNERS_ROUTE, label: "Digi Partners", description: "KYC and partner CRM", icon: UserCheck },
+      { href: "/admin/partner-banners", label: "Partner Banners", description: "Digi Partner home slider", icon: Image },
+    ],
+  },
+  {
+    id: "payments-finance",
+    label: "Payments & Finance",
+    items: [
+      { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: ReceiptText },
+      { href: "/admin/offline-invoices", label: "Offline Invoices", description: "Manual invoices", icon: FileText },
       { href: "/admin/wallet", label: "Wallet", description: "Liability ledger", icon: WalletCards },
       { href: "/admin/coupons", label: "Coupons", description: "Discount codes", icon: BadgePercent },
       { href: "/admin/commissions", label: "Commissions", description: "Partner earnings", icon: ShieldCheck },
@@ -81,14 +111,35 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    id: "crm-content",
-    label: "CRM / Content",
+    id: "communications",
+    label: "Communications",
     items: [
-      { href: "/admin/leads", label: "Leads", description: "Lead list and pipeline", icon: TrendingUp },
       { href: "/admin/communications", label: "Communications", description: "WhatsApp outbox ops", icon: MessageSquare },
-      { href: "/admin/automation", label: "Automation", description: "Events, alerts, summaries", icon: Workflow },
-      { href: "/admin/crm-sync", label: "CRM Sync Logs", description: "Google Sheets mirror", icon: Sheet },
       { href: "/admin/notifications", label: "Notifications", description: "System alerts", icon: Bell },
+      { href: "/admin/crm-sync", label: "CRM Sync Logs", description: "Google Sheets mirror", icon: Sheet },
+    ],
+  },
+  {
+    id: "automation-ai",
+    label: "Automation & AI",
+    items: [
+      { href: "/admin/automation", label: "Automation", description: "Events, alerts, summaries", icon: Workflow },
+      {
+        href: "/admin/automation#insights",
+        label: "AI Insights",
+        description: "Deterministic insights · generative AI off until configured",
+        icon: Sparkles,
+      },
+    ],
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    defaultCollapsed: true,
+    items: [
+      { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
+      { href: "/admin/reports/dpr", label: "DPR Analytics", description: "DPR apps, revenue, schemes", icon: BarChart3 },
+      { href: "/admin/reports/itr", label: "ITR Analytics", description: "ITR apps, revenue, filing stats", icon: BarChart3 },
       { href: ADMIN_HOMEPAGE_CMS_ROUTE, label: "Homepage CMS", description: "Banners and notices", icon: Image },
       { href: "/admin/services/dpr", label: "DPR CMS", description: "DPR landing sections & banners", icon: FileText },
       { href: "/admin/services/itr", label: "ITR CMS", description: "ITR landing sections & banners", icon: FileText },
@@ -96,17 +147,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    id: "insights",
-    label: "Insights",
-    items: [
-      { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
-      { href: "/admin/reports/dpr", label: "DPR Analytics", description: "DPR apps, revenue, schemes", icon: BarChart3 },
-      { href: "/admin/reports/itr", label: "ITR Analytics", description: "ITR apps, revenue, filing stats", icon: BarChart3 },
-    ],
-  },
-  {
-    id: "system",
-    label: "System",
+    id: "settings",
+    label: "Settings",
+    defaultCollapsed: true,
     items: [
       { href: "/admin/settings", label: "Settings", description: "Platform settings", icon: Settings },
     ],
@@ -114,12 +157,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 ];
 
 export function flattenAdminNav(): AdminNavItem[] {
-  return ADMIN_NAV_GROUPS.flatMap((group) => group.items);
+  return ADMIN_NAV_GROUPS.flatMap((group) => group.items).filter((item) => !item.href.includes("#"));
 }
 
 export function isAdminNavActive(pathname: string, href: string) {
-  if (href === "/admin") return pathname === "/admin";
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const base = href.split("#")[0] || href;
+  if (base === "/admin") return pathname === "/admin";
+  return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 export function resolveAdminBreadcrumbs(pathname: string): { label: string; href?: string }[] {
