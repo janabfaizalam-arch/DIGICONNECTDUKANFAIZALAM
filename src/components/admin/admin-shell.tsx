@@ -327,13 +327,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <AdminBreadcrumbs />
                 <p className="hidden truncate text-[11px] font-medium text-slate-400 sm:block">DigiConnect Dukan · RNOS India Pvt. Ltd.</p>
               </div>
-              <AdminGlobalSearch className="hidden md:block" />
+              <AdminGlobalSearch className="hidden lg:block" />
               <button
                 type="button"
                 aria-label="Search CRM"
                 aria-expanded={mobileSearchOpen}
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 md:hidden",
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 lg:hidden",
                   mobileSearchOpen && "border-blue-300 bg-blue-50 text-blue-700",
                 )}
                 onClick={() => setMobileSearchOpen((open) => !open)}
@@ -343,7 +343,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <AdminNotificationsBell />
             </div>
             {mobileSearchOpen ? (
-              <div className="mt-2 min-w-0 md:hidden">
+              <div className="mt-2 min-w-0 lg:hidden">
                 <AdminGlobalSearch className="max-w-none" autoFocus placeholder="Search CRM…" />
               </div>
             ) : null}
