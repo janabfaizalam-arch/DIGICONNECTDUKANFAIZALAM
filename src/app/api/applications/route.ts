@@ -11,6 +11,7 @@ import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { getAgentServiceBySlug } from "@/lib/agent-services";
 
+import { resolveCustomerIdForUser } from "@/lib/customer-identity";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRewardRuleForOrder, redeemWalletForApplication } from "@/lib/wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
@@ -623,11 +624,10 @@ export async function POST(request: Request) {
           }
         : {}),
     };
-    const { data: linkedCustomer } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const linkedCustomerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+      console.error("[applications] customer_link_lookup_failed", customerError);
+      return null;
+    });
 
     const existingApplicationIds = Array.from(
       new Set((Array.isArray(body.applicationIds) ? body.applicationIds : [])
@@ -715,7 +715,7 @@ export async function POST(request: Request) {
             razorpay_order_id: body.razorpayPayment?.razorpay_order_id ?? application.razorpay_order_id ?? null,
             razorpay_payment_id: body.razorpayPayment?.razorpay_payment_id ?? application.razorpay_payment_id ?? null,
             submitted_at: isDraft ? null : new Date().toISOString(),
-            customer_id: linkedCustomer?.id ?? application.customer_id ?? null,
+            customer_id: linkedCustomerId ?? application.customer_id ?? null,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
             updated_at: new Date().toISOString(),
@@ -772,7 +772,7 @@ export async function POST(request: Request) {
           file_type: document.file_type ?? null,
           file_size: document.file_size ?? null,
           storage_path: document.storage_path ?? null,
-          customer_id: linkedCustomer?.id ?? application.customer_id ?? null,
+          customer_id: linkedCustomerId ?? application.customer_id ?? null,
           status: "pending",
           review_status: "pending",
           uploaded_at: new Date().toISOString(),
@@ -789,7 +789,7 @@ export async function POST(request: Request) {
             files: submissionFiles,
             applications: existingApplications,
             userId: user.id,
-            customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+            customerId: linkedCustomerId ?? existingApplications[0]?.customer_id ?? null,
           })
         : [];
       const documentsToInsert = [...metadataDocumentRows, ...uploadedFileRows];
@@ -848,7 +848,7 @@ export async function POST(request: Request) {
         invoice = await createInvoiceForApplication({
           applicationId: existingApplications[0].id,
           userId: user.id,
-          customerId: linkedCustomer?.id ?? existingApplications[0]?.customer_id ?? null,
+          customerId: linkedCustomerId ?? existingApplications[0]?.customer_id ?? null,
           customerName: customer.name,
           customerEmail: customer.email,
           customerMobile: customer.mobile,
@@ -1050,7 +1050,7 @@ export async function POST(request: Request) {
 
       return {
         user_id: user.id,
-        customer_id: linkedCustomer?.id ?? null,
+        customer_id: linkedCustomerId ?? null,
         customer_email: customer.email.toLowerCase(),
         customer_mobile: customer.mobile.replace(/\D/g, ""),
         service_slug: service.slug,
@@ -1153,7 +1153,7 @@ export async function POST(request: Request) {
         file_type: document.file_type ?? null,
         file_size: document.file_size ?? null,
         storage_path: document.storage_path ?? null,
-        customer_id: linkedCustomer?.id ?? null,
+        customer_id: linkedCustomerId ?? null,
         status: "pending",
         review_status: "pending",
         uploaded_at: new Date().toISOString(),
@@ -1170,7 +1170,7 @@ export async function POST(request: Request) {
           files: submissionFiles,
           applications,
           userId: user.id,
-          customerId: linkedCustomer?.id ?? null,
+          customerId: linkedCustomerId ?? null,
         })
       : [];
     const documentsToInsert = [...metadataDocumentRows, ...uploadedFileRows];
@@ -1321,7 +1321,7 @@ export async function POST(request: Request) {
       invoice = await createInvoiceForApplication({
         applicationId: applications[0].id,
         userId: user.id,
-        customerId: linkedCustomer?.id ?? null,
+        customerId: linkedCustomerId ?? null,
         customerName: customer.name,
         customerEmail: customer.email,
         customerMobile: customer.mobile,

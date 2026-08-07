@@ -3,7 +3,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const ROOT = path.resolve(__dirname, "../..");
+// __dirname is src/components/ui — three levels up is the repo root the
+// relative paths below are written against.
+const ROOT = path.resolve(__dirname, "../../..");
 
 function read(relativePath: string) {
   return fs.readFileSync(path.join(ROOT, relativePath), "utf8");

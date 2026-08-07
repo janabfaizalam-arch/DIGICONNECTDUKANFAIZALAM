@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { resolveCustomerIdForUser } from "@/lib/customer-identity";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -18,18 +19,16 @@ export async function GET(request: Request) {
     }
 
     // 1. Get corresponding customer ID
-    const { data: customer, error: customerError } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    let customerId: string | null = null;
 
-    if (customerError) {
+    try {
+      customerId = await resolveCustomerIdForUser(supabase, user);
+    } catch (customerError) {
       console.error("[vault-get] Customer fetch error:", customerError);
-      return NextResponse.json({ message: customerError.message }, { status: 500 });
+      return NextResponse.json({ message: "Customer profile lookup failed." }, { status: 500 });
     }
 
-    if (!customer) {
+    if (!customerId) {
       // If customer row is missing, check if we have one in profiles or customer_profiles
       return NextResponse.json({ message: "Customer profile not found. Please complete profile first." }, { status: 404 });
     }
@@ -42,7 +41,7 @@ export async function GET(request: Request) {
       const { data: duplicate, error: duplicateError } = await supabase
         .from("customer_vault_documents")
         .select("id, file_name, file_url, document_type")
-        .eq("customer_id", customer.id)
+        .eq("customer_id", customerId)
         .eq("hash", hashCheck)
         .maybeSingle();
 
@@ -74,7 +73,7 @@ export async function GET(request: Request) {
           updated_at
         )
       `)
-      .eq("customer_id", customer.id)
+      .eq("customer_id", customerId)
       .order("created_at", { ascending: false });
 
     if (docsError) {
@@ -105,13 +104,12 @@ export async function POST(request: Request) {
     }
 
     // 1. Get corresponding customer ID
-    const { data: customer, error: customerError } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const customerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+      console.error("[vault-post] Customer fetch error:", customerError);
+      return null;
+    });
 
-    if (customerError || !customer) {
+    if (!customerId) {
       return NextResponse.json({ message: "Customer record not found." }, { status: 404 });
     }
 
@@ -127,7 +125,7 @@ export async function POST(request: Request) {
       const { data: duplicate, error: duplicateError } = await supabase
         .from("customer_vault_documents")
         .select("id, file_name, file_url, document_type")
-        .eq("customer_id", customer.id)
+        .eq("customer_id", customerId)
         .eq("hash", hash)
         .maybeSingle();
 
@@ -148,7 +146,7 @@ export async function POST(request: Request) {
     const { data: docData, error: docError } = await supabase
       .from("customer_vault_documents")
       .insert({
-        customer_id: customer.id,
+        customer_id: customerId,
         document_type,
         file_name,
         file_url,
@@ -214,13 +212,12 @@ export async function DELETE(request: Request) {
     }
 
     // Verify ownership
-    const { data: customer } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const customerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+      console.error("[vault-delete] Customer fetch error:", customerError);
+      return null;
+    });
 
-    if (!customer) {
+    if (!customerId) {
       return NextResponse.json({ message: "Customer profile not found." }, { status: 404 });
     }
 
@@ -228,7 +225,7 @@ export async function DELETE(request: Request) {
       .from("customer_vault_documents")
       .select("id, storage_path, customer_id")
       .eq("id", documentId)
-      .eq("customer_id", customer.id)
+      .eq("customer_id", customerId)
       .maybeSingle();
 
     if (docError || !doc) {

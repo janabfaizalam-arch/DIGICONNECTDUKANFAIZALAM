@@ -108,7 +108,11 @@ describe("Walk-in production customer schema contracts", () => {
     expect(actorAsOwner).toEqual({ ok: false, error: "actor_cannot_own_customer_application" });
 
     expect(readSrc("src/app/api/customer-auth/login/route.ts")).toMatch(/sub: customer\.id/);
-    expect(readSrc("src/app/api/customer/vault/route.ts")).toMatch(/\.eq\("customer_id", customer\.id\)/);
+    // Vault rows stay scoped to the signed-in user's own customer id, however
+    // that id is resolved (customers.id == auth user, mobile, or legacy user_id).
+    const vault = readSrc("src/app/api/customer/vault/route.ts");
+    expect(vault).toMatch(/\.eq\("customer_id", (customer\.id|customerId)\)/);
+    expect(vault).toMatch(/resolveCustomerIdForUser\(supabase, user\)|\.eq\("user_id", user\.id\)/);
   });
 
   it("12. Auth/customer create rolls back orphan auth on failure", () => {

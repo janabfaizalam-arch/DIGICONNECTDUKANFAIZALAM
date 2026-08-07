@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { resolveCustomerIdForUser } from "@/lib/customer-identity";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -25,13 +26,12 @@ export async function GET(request: Request) {
     }
 
     // Verify document belongs to customer
-    const { data: customer } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const customerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+      console.error("[ocr-get] Customer fetch error:", customerError);
+      return null;
+    });
 
-    if (!customer) {
+    if (!customerId) {
       return NextResponse.json({ message: "Customer profile not found." }, { status: 404 });
     }
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       .from("customer_vault_documents")
       .select("id")
       .eq("id", documentId)
-      .eq("customer_id", customer.id)
+      .eq("customer_id", customerId)
       .maybeSingle();
 
     if (docError || !document) {
@@ -80,13 +80,12 @@ export async function POST(request: Request) {
     }
 
     // 1. Get corresponding customer ID
-    const { data: customer } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const customerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+      console.error("[ocr-post] Customer fetch error:", customerError);
+      return null;
+    });
 
-    if (!customer) {
+    if (!customerId) {
       return NextResponse.json({ message: "Customer profile not found." }, { status: 404 });
     }
 
@@ -102,7 +101,7 @@ export async function POST(request: Request) {
       .from("customer_vault_documents")
       .select("id, document_type, file_name")
       .eq("id", document_id)
-      .eq("customer_id", customer.id)
+      .eq("customer_id", customerId)
       .maybeSingle();
 
     if (docError || !docData) {
@@ -188,7 +187,7 @@ export async function POST(request: Request) {
             .from("entity_timelines")
             .insert({
               entity_type: "customer",
-              entity_id: customer.id,
+              entity_id: customerId,
               event_title: "Document OCR Complete",
               event_description: `Asynchronous OCR data extraction finished for ${documentType.replace(/_/g, " ")}.`,
               metadata: {

@@ -129,6 +129,67 @@ export function getSupabaseErrorDebug(error: unknown) {
   };
 }
 
+/**
+ * Resolve the `customers` row that belongs to an authenticated user.
+ *
+ * Production schema (20260706000000_customer_auth_system.sql) recreated
+ * `public.customers` WITHOUT a `user_id` column — auth linkage is
+ * `customers.id == auth.users.id`, with mobile as the secondary key.
+ * Callers that filtered on `customers.user_id` were silently getting a 42703
+ * error and treating it as "customer not found", so anything hanging off the
+ * customer row (vault, application linkage) never resolved.
+ *
+ * Lookup order: canonical id → mobile → legacy `user_id` column when a
+ * deployment still has it (missing-column errors are tolerated, not fatal).
+ */
+export async function resolveCustomerIdForUser(
+  supabase: SupabaseAdminClient,
+  user: { id: string; phone?: string | null; user_metadata?: Record<string, unknown> | null },
+): Promise<string | null> {
+  const byId = await supabase.from("customers").select("id").eq("id", user.id).maybeSingle();
+
+  if (byId.error && !isMissingTableOrColumnError(byId.error)) {
+    throw byId.error;
+  }
+
+  if (byId.data?.id) {
+    return byId.data.id;
+  }
+
+  const mobile = normalizeCustomerMobile(
+    String(user.phone ?? user.user_metadata?.mobile ?? user.user_metadata?.phone ?? ""),
+  );
+
+  if (mobile) {
+    const byMobile = await supabase.from("customers").select("id").eq("mobile", mobile).limit(1).maybeSingle();
+
+    if (byMobile.error && !isMissingTableOrColumnError(byMobile.error)) {
+      throw byMobile.error;
+    }
+
+    if (byMobile.data?.id) {
+      return byMobile.data.id;
+    }
+  }
+
+  // Legacy deployments that still carry customers.user_id (pre-20260706 schema).
+  const byLegacyUserId = await supabase
+    .from("customers")
+    .select("id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (byLegacyUserId.error) {
+    if (isMissingTableOrColumnError(byLegacyUserId.error)) {
+      return null;
+    }
+    throw byLegacyUserId.error;
+  }
+
+  return byLegacyUserId.data?.id ?? null;
+}
+
 function isMissingTableOrColumnError(error: unknown) {
   const { message, code } = getSupabaseErrorDebug(error);
   const normalized = message.toLowerCase();

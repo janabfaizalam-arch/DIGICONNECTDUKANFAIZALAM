@@ -14,7 +14,9 @@ function mockResponse(input: {
 }): Response {
   const headers = new Headers();
   if (input.contentType) headers.set("content-type", input.contentType);
-  return new Response(input.body ?? "", {
+  // 204/205/304 are null-body statuses — passing "" throws in undici.
+  const nullBodyStatus = [204, 205, 304].includes(input.status);
+  return new Response(nullBodyStatus ? null : input.body ?? "", {
     status: input.status,
     headers,
   });

@@ -40,12 +40,13 @@ export type WalkInApplicationSummary = {
 };
 
 function generateSecurePin(localPhone: string): string {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  // Keep drawing until the PIN clears the same strength rules the customer's
+  // own PIN must pass — a hardcoded fallback could hand out a rejected PIN.
+  for (let attempt = 0; attempt < 100; attempt += 1) {
     const pin = String(randomInt(100000, 1000000));
     if (validateCustomerPin(pin, localPhone).ok) return pin;
   }
-  // Extremely unlikely; still avoid weak sequential defaults.
-  return String(randomInt(204812, 987654));
+  throw new Error("Could not generate a secure temporary PIN.");
 }
 
 export async function lookupCustomerByMobile(mobileInput: string): Promise<{

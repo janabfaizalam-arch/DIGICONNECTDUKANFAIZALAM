@@ -9,6 +9,7 @@ import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
 import { getAgentServiceBySlug, type AgentService } from "@/lib/agent-services";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 
+import { resolveCustomerIdForUser } from "@/lib/customer-identity";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { resolveApplicationSourceEnum, resolveSourceChannel, rupeesToPaise } from "@/lib/payments/application-source";
@@ -376,11 +377,10 @@ export async function POST(request: Request) {
           return jsonCustomerValidationError(customerValidationError, customer);
         }
 
-        const { data: linkedCustomer } = await supabase
-          .from("customers")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const linkedCustomerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+          console.error("[razorpay/create-order] customer_link_lookup_failed", customerError);
+          return null;
+        });
 
         const formData = {
           service: services.filter(Boolean).map((s) => s?.title).join(", "),
@@ -457,7 +457,7 @@ export async function POST(request: Request) {
 
           return {
             user_id: user.id,
-            customer_id: linkedCustomer?.id ?? null,
+            customer_id: linkedCustomerId,
             agency_partner_id: resolvedAgentOrReferralId,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),
@@ -648,11 +648,10 @@ export async function POST(request: Request) {
           freshPayableAmount,
         });
 
-        const { data: linkedCustomer } = await supabase
-          .from("customers")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const linkedCustomerId = await resolveCustomerIdForUser(supabase, user).catch((customerError) => {
+          console.error("[razorpay/create-order] customer_link_lookup_failed", customerError);
+          return null;
+        });
         const formData = {
           service: services.filter(Boolean).map((service) => service?.title).join(", "),
           name: customer.name,
@@ -726,7 +725,7 @@ export async function POST(request: Request) {
 
           return {
             user_id: user.id,
-            customer_id: linkedCustomer?.id ?? null,
+            customer_id: linkedCustomerId,
             agency_partner_id: resolvedAgentOrReferralId,
             customer_email: customer.email.toLowerCase(),
             customer_mobile: customer.mobile.replace(/\D/g, ""),

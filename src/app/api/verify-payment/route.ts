@@ -13,6 +13,23 @@ import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 
+type ApplicationRow = {
+  id: string;
+  user_id: string | null;
+  customer_id: string | null;
+  customer_email: string | null;
+  customer_mobile: string | null;
+  customer_details: Record<string, unknown> | null;
+  service_name: string | null;
+  amount: number | null;
+  total_amount: number | null;
+  wallet_redeemed_amount: number | null;
+  fresh_payable_amount: number | null;
+  razorpay_order_id: string | null;
+  payment_status: string | null;
+  status: string | null;
+};
+
 type VerifyPaymentBody = {
   razorpay_payment_id?: string;
   razorpay_order_id?: string;
@@ -132,7 +149,9 @@ export async function POST(request: Request) {
 
     const { data: applications, error: applicationLoadError } = await supabase
       .from("applications")
-      .select("id, user_id, service_name, amount, total_amount, wallet_redeemed_amount, fresh_payable_amount, razorpay_order_id, payment_status, status")
+      .select(
+        "id, user_id, customer_id, customer_email, customer_mobile, customer_details, service_name, amount, total_amount, wallet_redeemed_amount, fresh_payable_amount, razorpay_order_id, payment_status, status",
+      )
       .in("id", applicationIds)
       .eq("user_id", user.id);
 
@@ -165,27 +184,33 @@ export async function POST(request: Request) {
     const walletRedeemedAmount = applications.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? 0), 0);
     const freshPayableAmount = applications.reduce((total, application) => total + Number(application.fresh_payable_amount ?? application.amount ?? 0), 0);
     let cashbackResult: { processed?: boolean; cashback_amount?: number; first_service?: boolean; cashback_transaction_id?: string | null; referrer_transaction_id?: string | null } | null = null;
-    const wallet = await createWalletIfMissing(user.id);
-    const redeemLimit = calculateWalletRedeemBreakdown({
-      serviceAmount,
-      walletBalance: Number(wallet.balance ?? 0),
-      requestedRedeem: walletRedeemedAmount,
-    });
 
-    if (serviceAmount > 0 && (walletRedeemedAmount > redeemLimit.maxRedeem || freshPayableAmount !== redeemLimit.freshPayable)) {
-      console.error("[razorpay/verify-payment] Wallet redeem cap violation", {
-        orderId,
-        paymentId,
+    // Re-verifying an already-verified order must stay idempotent. The wallet was
+    // already debited on the first pass, so recomputing the 50% cap against the
+    // post-debit balance would reject a payment that is in fact complete.
+    if (!alreadyVerified) {
+      const wallet = await createWalletIfMissing(user.id);
+      const redeemLimit = calculateWalletRedeemBreakdown({
         serviceAmount,
-        walletBalance: redeemLimit.walletBalance,
-        walletRedeemedAmount,
-        freshPayableAmount,
-        walletHalf: redeemLimit.walletHalf,
-        serviceHalf: redeemLimit.serviceHalf,
-        maxWalletRedeem: redeemLimit.maxRedeem,
-        expectedFreshPayable: redeemLimit.freshPayable,
+        walletBalance: Number(wallet.balance ?? 0),
+        requestedRedeem: walletRedeemedAmount,
       });
-      return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
+
+      if (serviceAmount > 0 && (walletRedeemedAmount > redeemLimit.maxRedeem || freshPayableAmount !== redeemLimit.freshPayable)) {
+        console.error("[razorpay/verify-payment] Wallet redeem cap violation", {
+          orderId,
+          paymentId,
+          serviceAmount,
+          walletBalance: redeemLimit.walletBalance,
+          walletRedeemedAmount,
+          freshPayableAmount,
+          walletHalf: redeemLimit.walletHalf,
+          serviceHalf: redeemLimit.serviceHalf,
+          maxWalletRedeem: redeemLimit.maxRedeem,
+          expectedFreshPayable: redeemLimit.freshPayable,
+        });
+        return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
+      }
     }
 
     if (!alreadyVerified) {
@@ -389,12 +414,14 @@ export async function POST(request: Request) {
     }
 
     try {
-      // Auto-create invoice
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const appData = primaryApplication as any;
-      const customerName = (appData.customer_details as {name?: string})?.name || "Customer";
-      const customerEmail = appData.customer_email || "no-reply@digiconnect.in";
-      const customerMobile = appData.customer_mobile || "0000000000";
+      // Auto-create invoice from the application's own customer snapshot
+      // (these columns are part of the select above — do not fall back to
+      // placeholders while real values exist on the row).
+      const appData = primaryApplication as ApplicationRow;
+      const details = (appData.customer_details ?? {}) as { name?: string; email?: string; mobile?: string };
+      const customerName = details.name?.trim() || "Customer";
+      const customerEmail = (appData.customer_email || details.email || "").trim() || "no-reply@digiconnect.in";
+      const customerMobile = (appData.customer_mobile || details.mobile || "").trim() || "0000000000";
       const serviceName = applications.map((a) => a.service_name).join(", ");
       await createInvoiceForApplication({
         applicationId: appData.id,
