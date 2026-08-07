@@ -206,8 +206,8 @@ export async function assertCustomerIdentityAvailable(
   }
 
   console.info("ONBOARDING_SUBMIT_STARTED", {
-    email,
-    mobile,
+    emailDomain: email.includes("@") ? email.split("@")[1] : null,
+    mobileMasked: mobile ? `${mobile.slice(0, 2)}******${mobile.slice(-2)}` : null,
     excludeUserId: input.excludeUserId ?? null,
     excludeCustomerId: input.excludeCustomerId ?? null,
   });
@@ -275,34 +275,32 @@ export async function assertCustomerIdentityAvailable(
       return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
     }
 
-    // 3. customers table — mobile only, skip email
-    // Only conflict if user_id is not null AND user_id belongs to a DIFFERENT user
-    // Rows with user_id=null are unclaimed legacy records — never block on them
+    // 3. customers table — mobile only, skip email.
+    // Production schema: no customers.user_id; Auth linkage is customers.id == auth.users.id.
+    // Conflict when another customer row (different id) already owns this mobile.
     const customerMobileResult = await supabase
       .from("customers")
-      .select("id, user_id")
+      .select("id")
       .eq("mobile", mobile)
-      .not("user_id", "is", null)
-      .neq("user_id", input.excludeUserId)
+      .neq("id", input.excludeUserId)
       .limit(1)
       .maybeSingle();
 
-    const customerMobileRow = customerMobileResult.data as { id: string; user_id: string | null } | null;
+    if (customerMobileResult.error && !isMissingTableOrColumnError(customerMobileResult.error)) {
+      console.error("ONBOARDING_CUSTOMERS_LOOKUP_FAILED", {
+        code: getSupabaseErrorDebug(customerMobileResult.error).code,
+      });
+      return { ok: false as const, message: "Identity check failed. Please try again." };
+    }
 
-    if (customerMobileRow?.user_id) {
+    const customerMobileRow = customerMobileResult.data as { id: string } | null;
+
+    if (customerMobileRow?.id) {
       console.warn("DUPLICATE_ERROR_SOURCE", {
         source: "customers_mobile_match",
         DUPLICATE_TABLE: "customers",
-        DUPLICATE_MATCH_USER_ID: customerMobileRow.user_id,
-        DUPLICATE_MATCH_MOBILE: mobile,
+        DUPLICATE_MATCH_CUSTOMER_ID: customerMobileRow.id,
         excludeUserId: input.excludeUserId,
-      });
-      console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
-        source: "auth/profiles/customers/customer_profiles/users",
-        currentUserId: input.excludeUserId ?? null,
-        email,
-        mobile,
-        matchedRow: customerMobileRow,
       });
       return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
     }
@@ -349,8 +347,8 @@ export async function assertCustomerIdentityAvailable(
   // ── UNAUTHENTICATED SIGNUP FLOW ───────────────────────────────────────────
   // No excludeUserId: full email+mobile check for new signups via admin or email/password.
   console.info("ONBOARDING_DUPLICATE_CHECK", {
-    email,
-    mobile,
+    emailDomain: email.includes("@") ? email.split("@")[1] : null,
+    mobileMasked: mobile ? `${mobile.slice(0, 2)}******${mobile.slice(-2)}` : null,
     excludeUserId: null,
     excludeCustomerId: input.excludeCustomerId ?? null,
   });
@@ -362,87 +360,87 @@ export async function assertCustomerIdentityAvailable(
       source: "auth_email_or_mobile_match",
       DUPLICATE_TABLE: "auth.users",
       DUPLICATE_MATCH_USER_ID: authDuplicate.id,
-      DUPLICATE_MATCH_EMAIL: authDuplicate.email ?? null,
       excludeUserId: null,
-    });
-    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
-      source: "auth/profiles/customers/customer_profiles/users",
-      currentUserId: null,
-      email,
-      mobile,
-      matchedRow: authDuplicate,
     });
     return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
   }
 
+  // Production customers: select id only (no customers.user_id column).
+  // customer_profiles may still use user_id; tolerate missing table/column.
   const [profileEmail, profileMobile, customerEmail, customerMobile, customerProfileEmail, customerProfileMobile] =
     await Promise.all([
       supabase.from("profiles").select("id").ilike("email", email).limit(1).maybeSingle(),
       supabase.from("profiles").select("id").eq("mobile", mobile).limit(1).maybeSingle(),
-      supabase.from("customers").select("id, user_id").ilike("email", email).limit(1).maybeSingle(),
-      supabase.from("customers").select("id, user_id").eq("mobile", mobile).limit(1).maybeSingle(),
+      supabase.from("customers").select("id").ilike("email", email).limit(1).maybeSingle(),
+      supabase.from("customers").select("id").eq("mobile", mobile).limit(1).maybeSingle(),
       supabase.from("customer_profiles").select("id, user_id").ilike("email", email).limit(1).maybeSingle(),
       supabase.from("customer_profiles").select("id, user_id").eq("mobile", mobile).limit(1).maybeSingle(),
     ]);
 
-  const lookupError =
-    profileEmail.error ||
-    profileMobile.error ||
-    customerEmail.error ||
-    customerMobile.error ||
-    customerProfileEmail.error ||
-    customerProfileMobile.error;
+  const hardErrors = [
+    profileEmail.error,
+    profileMobile.error,
+    customerEmail.error,
+    customerMobile.error,
+    customerProfileEmail.error,
+    customerProfileMobile.error,
+  ].filter((error) => error && !isMissingTableOrColumnError(error));
 
-  if (lookupError) {
-    throw lookupError;
+  if (hardErrors.length > 0) {
+    console.error("ONBOARDING_DUPLICATE_CHECK_FAILED", {
+      code: getSupabaseErrorDebug(hardErrors[0]).code,
+    });
+    return { ok: false as const, message: "Identity check failed. Please try again." };
   }
 
+  const customerEmailRow = isMissingTableOrColumnError(customerEmail.error)
+    ? null
+    : (customerEmail.data as { id?: string | null } | null);
+  const customerMobileRow = isMissingTableOrColumnError(customerMobile.error)
+    ? null
+    : (customerMobile.data as { id?: string | null } | null);
+  const customerProfileEmailRow = isMissingTableOrColumnError(customerProfileEmail.error)
+    ? null
+    : (customerProfileEmail.data as { id?: string | null; user_id?: string | null } | null);
+  const customerProfileMobileRow = isMissingTableOrColumnError(customerProfileMobile.error)
+    ? null
+    : (customerProfileMobile.data as { id?: string | null; user_id?: string | null } | null);
+
   console.info("ONBOARDING_DUPLICATE_CHECK_DB", {
-    email,
-    mobile,
     profileEmailId: profileEmail.data?.id ?? null,
     profileMobileId: profileMobile.data?.id ?? null,
-    customerEmailUserId: (customerEmail.data as { user_id?: string | null } | null)?.user_id ?? null,
-    customerMobileUserId: (customerMobile.data as { user_id?: string | null } | null)?.user_id ?? null,
+    customerEmailId: customerEmailRow?.id ?? null,
+    customerMobileId: customerMobileRow?.id ?? null,
   });
 
+  // New public signup: any existing identity row is a conflict (exclude* only skips self).
   const publicDuplicate =
-    hasDifferentUserId(profileEmail.data, input.excludeUserId) ||
-    hasDifferentUserId(profileMobile.data, input.excludeUserId) ||
-    hasDifferentUserId(customerProfileEmail.data, input.excludeUserId) ||
-    hasDifferentUserId(customerProfileMobile.data, input.excludeUserId) ||
-    hasDifferentUserId(customerEmail.data, input.excludeUserId) ||
-    hasDifferentUserId(customerMobile.data, input.excludeUserId) ||
-    hasDifferentCustomerId(customerEmail.data, input.excludeCustomerId) ||
-    hasDifferentCustomerId(customerMobile.data, input.excludeCustomerId);
+    Boolean(profileEmail.data?.id) ||
+    Boolean(profileMobile.data?.id) ||
+    Boolean(customerProfileEmailRow && hasDifferentUserId(customerProfileEmailRow, input.excludeUserId)) ||
+    Boolean(customerProfileMobileRow && hasDifferentUserId(customerProfileMobileRow, input.excludeUserId)) ||
+    Boolean(customerProfileEmailRow?.id && !input.excludeUserId) ||
+    Boolean(customerProfileMobileRow?.id && !input.excludeUserId) ||
+    hasDifferentCustomerId(customerEmailRow, input.excludeCustomerId) ||
+    hasDifferentCustomerId(customerMobileRow, input.excludeCustomerId) ||
+    Boolean(customerEmailRow?.id && !input.excludeCustomerId) ||
+    Boolean(customerMobileRow?.id && !input.excludeCustomerId);
 
   if (publicDuplicate) {
     console.warn("DUPLICATE_ERROR_SOURCE", {
       source: "db_email_or_mobile_match",
       DUPLICATE_TABLE: "profiles/customers/customer_profiles",
-      email,
-      mobile,
       profileEmailId: profileEmail.data?.id ?? null,
       profileMobileId: profileMobile.data?.id ?? null,
-    });
-    console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
-      source: "auth/profiles/customers/customer_profiles/users",
-      currentUserId: null,
-      email,
-      mobile,
-      matchedRow: {
-        profileEmail: profileEmail.data,
-        profileMobile: profileMobile.data,
-        customerEmail: customerEmail.data,
-        customerMobile: customerMobile.data,
-        customerProfileEmail: customerProfileEmail.data,
-        customerProfileMobile: customerProfileMobile.data,
-      },
+      customerEmailId: customerEmailRow?.id ?? null,
+      customerMobileId: customerMobileRow?.id ?? null,
     });
     return { ok: false as const, message: CUSTOMER_EXISTS_MESSAGE };
   }
 
-  console.info("ONBOARDING_DUPLICATE_CHECK_CLEAR", { email, mobile });
+  console.info("ONBOARDING_DUPLICATE_CHECK_CLEAR", {
+    emailDomain: email.includes("@") ? email.split("@")[1] : null,
+  });
   return { ok: true as const };
 }
 
@@ -486,13 +484,12 @@ export async function assertMobileAvailableForAuthenticatedUser(
     return { ok: false as const, message: "This mobile number is already registered with another account." };
   }
 
-  // 2. Check customers table
+  // 2. Check customers table (production: no customers.user_id; id == auth user when linked)
   const customerMobileResult = await supabase
     .from("customers")
-    .select("id, user_id")
+    .select("id")
     .eq("mobile", targetMobile)
-    .not("user_id", "is", null)
-    .neq("user_id", currentUserId)
+    .neq("id", currentUserId)
     .limit(1)
     .maybeSingle();
 
@@ -500,15 +497,13 @@ export async function assertMobileAvailableForAuthenticatedUser(
     throw customerMobileResult.error;
   }
 
-  const customerMobileRow = customerMobileResult.data as { id: string; user_id: string | null } | null;
+  const customerMobileRow = customerMobileResult.data as { id: string } | null;
 
-  if (customerMobileRow?.user_id) {
+  if (customerMobileRow?.id) {
     console.error("CUSTOMER_EXISTS_MESSAGE_SOURCE", {
       source: "auth/profiles/customers/customer_profiles/users",
       currentUserId,
-      email: null,
-      mobile: targetMobile,
-      matchedRow: customerMobileRow,
+      matchedCustomerId: customerMobileRow.id,
     });
     return { ok: false as const, message: "This mobile number is already registered with another account." };
   }

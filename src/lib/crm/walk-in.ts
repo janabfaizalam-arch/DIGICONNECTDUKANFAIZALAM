@@ -185,7 +185,15 @@ export async function createWalkInCustomer(input: {
   if (!supabase) return { ok: false, error: "Service unavailable.", status: 503 };
 
   const email = customerInternalEmail(mobile);
-  const available = await assertCustomerIdentityAvailable(supabase, { email, mobile });
+  let available: Awaited<ReturnType<typeof assertCustomerIdentityAvailable>>;
+  try {
+    available = await assertCustomerIdentityAvailable(supabase, { email, mobile });
+  } catch (error) {
+    console.error("[walk-in] identity_check_threw", {
+      code: error instanceof Error ? error.message.slice(0, 80) : "identity_check_failed",
+    });
+    return { ok: false, error: "Identity check failed. Please try again.", status: 500 };
+  }
   if (available?.ok === false) {
     return {
       ok: false,

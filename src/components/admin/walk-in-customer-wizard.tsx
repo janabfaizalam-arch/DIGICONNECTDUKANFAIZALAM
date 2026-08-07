@@ -8,6 +8,11 @@ import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FormSubmitButton } from "@/components/ui/loading";
+import {
+  extractSafeApiError,
+  isRawJsonParseExceptionMessage,
+  parseApiResponse,
+} from "@/lib/http/parse-api-response";
 
 type LookupCustomer = {
   id: string;
@@ -76,6 +81,48 @@ function newIdempotencyKey() {
   return `walkin-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function toSuccessResult(data: Record<string, unknown>, selectedService?: CrmService | null): SuccessResult | null {
+  const applicationId = data.applicationId ? String(data.applicationId) : "";
+  const customerId = data.customerId ? String(data.customerId) : "";
+  if (!applicationId) return null;
+  const next =
+    data.next && typeof data.next === "object"
+      ? (data.next as SuccessResult["next"])
+      : {
+          applicationHref: `/admin/applications/${encodeURIComponent(applicationId)}`,
+          customerHref: customerId
+            ? `/admin/customers/${encodeURIComponent(customerId)}`
+            : "/admin/customers",
+          unassignedHref: "/admin/applications?agent=unassigned",
+          anotherHref: "/admin/customers/walk-in",
+        };
+
+  return {
+    deduped: Boolean(data.deduped || data.idempotentReplay),
+    customerId,
+    applicationId,
+    workId: data.workId ? String(data.workId) : data.referenceNumber ? String(data.referenceNumber) : null,
+    customerName: data.customerName ? String(data.customerName) : "Customer",
+    mobileMasked: data.mobileMasked ? String(data.mobileMasked) : "**********",
+    serviceName: data.serviceName ? String(data.serviceName) : selectedService?.title || "Service",
+    amount: data.amount != null ? Number(data.amount) : selectedService?.customerFee || 0,
+    paymentStatus: data.paymentStatus ? String(data.paymentStatus) : "pending",
+    status: data.status ? String(data.status) : "submitted",
+    estimatedCompletion: data.estimatedCompletion
+      ? String(data.estimatedCompletion)
+      : selectedService?.processingTime || null,
+    assignmentLabel: data.assignmentLabel ? String(data.assignmentLabel) : "Awaiting assignment",
+    whatsapp: data.whatsapp
+      ? String(data.whatsapp)
+      : data.notificationStatus
+        ? String(data.notificationStatus)
+        : "configuration_required",
+    temporaryPin: data.temporaryPin ? String(data.temporaryPin) : undefined,
+    temporaryPinShownOnce: Boolean(data.temporaryPinShownOnce),
+    next,
+  };
+}
+
 export function WalkInCustomerWizard({
   initialCustomerId = null,
   initialStep = null,
@@ -95,6 +142,8 @@ export function WalkInCustomerWizard({
   const [formError, setFormError] = useState("");
   const [successResult, setSuccessResult] = useState<SuccessResult | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [showStatusAction, setShowStatusAction] = useState(false);
   const submitLock = useRef(false);
 
   const [fullName, setFullName] = useState("");
@@ -119,7 +168,6 @@ export function WalkInCustomerWizard({
 
   useEffect(() => {
     if (!initialCustomerId || initialStep !== "service") return;
-    // Continue from Phase 2 create success URL without putting PIN in the query string.
     setFound({
       id: initialCustomerId,
       fullName: "Customer",
@@ -140,16 +188,16 @@ export function WalkInCustomerWizard({
     const timer = setTimeout(async () => {
       try {
         const response = await fetch(`/api/pincode?pincode=${pincode}`, { signal: controller.signal });
-        const data = (await response.json()) as {
+        const parsed = await parseApiResponse<{
           ok?: boolean;
           city?: string;
           district?: string;
           state?: string;
-        };
-        if (!response.ok || !data.ok) return;
-        if (data.city) setCity((prev) => prev || data.city || "");
-        if (data.district) setDistrict((prev) => prev || data.district || "");
-        if (data.state) setStateName((prev) => prev || data.state || "");
+        }>(response);
+        if (!parsed.ok || !parsed.data?.ok) return;
+        if (parsed.data.city) setCity((prev) => prev || parsed.data?.city || "");
+        if (parsed.data.district) setDistrict((prev) => prev || parsed.data?.district || "");
+        if (parsed.data.state) setStateName((prev) => prev || parsed.data?.state || "");
       } catch {
         // Manual entry remains available.
       }
@@ -167,13 +215,15 @@ export function WalkInCustomerWizard({
     (async () => {
       try {
         const response = await fetch(`/api/admin/crm/services?q=${encodeURIComponent(serviceQuery)}`);
-        const data = (await response.json()) as { services?: CrmService[]; error?: string };
-        if (!response.ok) throw new Error(data.error || "Could not load services.");
-        if (!cancelled) setServices(data.services || []);
+        const parsed = await parseApiResponse<{ services?: CrmService[]; error?: string }>(response);
+        if (!parsed.ok) {
+          throw new Error(extractSafeApiError(parsed).message);
+        }
+        if (!cancelled) setServices(parsed.data?.services || []);
       } catch (error) {
         if (!cancelled) {
           const message = error instanceof Error ? error.message : "Could not load services.";
-          setFormError(message);
+          setFormError(isRawJsonParseExceptionMessage(message) ? "Could not load services." : message);
         }
       } finally {
         if (!cancelled) setServicesLoading(false);
@@ -186,6 +236,16 @@ export function WalkInCustomerWizard({
 
   const filteredServices = useMemo(() => services, [services]);
 
+  async function recoverByIdempotencyKey(key: string): Promise<SuccessResult | null> {
+    const response = await fetch(
+      `/api/admin/crm/walk-in-application?idempotencyKey=${encodeURIComponent(key)}`,
+    );
+    const parsed = await parseApiResponse<Record<string, unknown>>(response);
+    if (!parsed.ok || !parsed.data) return null;
+    if (parsed.data.recoveryStatus !== "succeeded") return null;
+    return toSuccessResult(parsed.data, selectedService);
+  }
+
   async function runLookup() {
     setFormError("");
     setSuccessResult(null);
@@ -193,6 +253,7 @@ export function WalkInCustomerWizard({
     setFound(null);
     setRecentApplications([]);
     setSelectedService(null);
+    setShowStatusAction(false);
 
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       setFormError("Enter a valid 10-digit Indian mobile number.");
@@ -202,17 +263,17 @@ export function WalkInCustomerWizard({
     setLookupLoading(true);
     try {
       const response = await fetch(`/api/admin/customers/lookup?mobile=${encodeURIComponent(mobile)}`);
-      const data = (await response.json()) as {
+      const parsed = await parseApiResponse<{
         error?: string;
         found?: boolean;
         customer?: LookupCustomer | null;
         recentApplications?: RecentApp[];
-      };
-      if (!response.ok) throw new Error(data.error || "Lookup failed.");
+      }>(response);
+      if (!parsed.ok) throw new Error(extractSafeApiError(parsed).message);
 
-      if (data.found && data.customer) {
-        setFound(data.customer);
-        setRecentApplications(data.recentApplications || []);
+      if (parsed.data?.found && parsed.data.customer) {
+        setFound(parsed.data.customer);
+        setRecentApplications(parsed.data.recentApplications || []);
         setStep("confirm");
         success("Existing customer found.");
       } else {
@@ -220,7 +281,8 @@ export function WalkInCustomerWizard({
         success("No customer found. Enter details, then select a service.");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Lookup failed.";
+      const raw = error instanceof Error ? error.message : "Lookup failed.";
+      const message = isRawJsonParseExceptionMessage(raw) ? "Lookup failed." : raw;
       setFormError(message);
       toastError(message);
     } finally {
@@ -231,6 +293,7 @@ export function WalkInCustomerWizard({
   function goToServiceFromExisting() {
     if (!found) return;
     setOneTimePin(null);
+    setShowStatusAction(false);
     setIdempotencyKey(newIdempotencyKey());
     setStep("service");
   }
@@ -245,19 +308,32 @@ export function WalkInCustomerWizard({
       setFormError("Enter a valid 6-digit PIN code.");
       return;
     }
+    setShowStatusAction(false);
     setIdempotencyKey(newIdempotencyKey());
     setStep("service");
   }
 
+  function applySuccess(data: SuccessResult) {
+    if (data.temporaryPin) {
+      setOneTimePin(data.temporaryPin);
+    }
+    setSuccessResult(data);
+    setStep("success");
+    setShowStatusAction(false);
+    success(data.deduped ? "Already created (idempotent replay)." : "Application created.");
+    setIdempotencyKey(newIdempotencyKey());
+  }
+
   function submitApplication() {
-    if (isPending || submitLock.current || !selectedService) return;
+    if (isPending || submitLock.current || checkingStatus || !selectedService) return;
     setFormError("");
     submitLock.current = true;
 
     startTransition(async () => {
+      const activeKey = idempotencyKey;
       try {
         const payload: Record<string, unknown> = {
-          idempotencyKey,
+          idempotencyKey: activeKey,
           serviceSlug: selectedService.slug,
           notes: notes || null,
         };
@@ -280,47 +356,112 @@ export function WalkInCustomerWizard({
 
         const response = await fetch("/api/admin/crm/walk-in-application", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload),
         });
-        const data = (await response.json()) as SuccessResult & {
-          error?: string;
-          customerId?: string;
-          temporaryPin?: string;
-        };
-        if (!response.ok) {
-          if (data.customerId && !found) {
-            setFound({
-              id: data.customerId,
-              fullName,
-              mobile,
-              email: null,
-              address,
-              pincode,
-              city,
-              district,
-              state: stateName,
-            });
+        const parsed = await parseApiResponse<Record<string, unknown>>(response);
+        const safeError = extractSafeApiError(parsed);
+
+        if (parsed.ok && parsed.data?.ok !== false && parsed.data?.applicationId) {
+          const successData = toSuccessResult(parsed.data, selectedService);
+          if (successData) {
+            if (parsed.data.customerId && !found) {
+              setFound({
+                id: String(parsed.data.customerId),
+                fullName,
+                mobile,
+                email: null,
+                address,
+                pincode,
+                city,
+                district,
+                state: stateName,
+              });
+            }
+            applySuccess(successData);
+            return;
           }
-          throw new Error(data.error || "Application could not be created.");
         }
 
-        if (data.temporaryPin) {
-          setOneTimePin(data.temporaryPin);
+        if (!parsed.ok && parsed.data?.customerId && !found) {
+          setFound({
+            id: String(parsed.data.customerId),
+            fullName,
+            mobile,
+            email: null,
+            address,
+            pincode,
+            city,
+            district,
+            state: stateName,
+          });
         }
-        setSuccessResult(data);
-        setStep("success");
-        success(data.deduped ? "Already created (idempotent replay)." : "Application created.");
-        // Rotate key only after success so retries of same click stay safe.
-        setIdempotencyKey(newIdempotencyKey());
+
+        if (safeError.ambiguous || safeError.authRequired) {
+          setShowStatusAction(true);
+          setCheckingStatus(true);
+          try {
+            const recovered = await recoverByIdempotencyKey(activeKey);
+            if (recovered) {
+              applySuccess(recovered);
+              return;
+            }
+          } finally {
+            setCheckingStatus(false);
+          }
+          // Keep the same idempotency key — do not mint a new key on ambiguous failure.
+          const message = safeError.authRequired
+            ? safeError.message
+            : "We could not confirm the create response. Application was not found yet — you can safely retry once.";
+          setFormError(message);
+          toastError(message);
+          return;
+        }
+
+        throw new Error(safeError.message);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Create failed.";
+        const raw = error instanceof Error ? error.message : "Create failed.";
+        const message = isRawJsonParseExceptionMessage(raw)
+          ? "Application create response could not be read. Check status before retrying."
+          : raw;
+        setShowStatusAction(true);
+        setCheckingStatus(true);
+        try {
+          const recovered = await recoverByIdempotencyKey(activeKey);
+          if (recovered) {
+            applySuccess(recovered);
+            return;
+          }
+        } catch {
+          // Ignore recovery transport errors; show friendly create message.
+        } finally {
+          setCheckingStatus(false);
+        }
         setFormError(message);
         toastError(message);
       } finally {
         submitLock.current = false;
       }
     });
+  }
+
+  async function checkApplicationStatus() {
+    if (checkingStatus || !idempotencyKey) return;
+    setCheckingStatus(true);
+    setFormError("");
+    try {
+      const recovered = await recoverByIdempotencyKey(idempotencyKey);
+      if (recovered) {
+        applySuccess(recovered);
+        return;
+      }
+      setFormError("No application found for this request yet. You can safely retry Create.");
+      setShowStatusAction(true);
+    } catch {
+      setFormError("Could not check application status. Please try again.");
+    } finally {
+      setCheckingStatus(false);
+    }
   }
 
   function resetWizard() {
@@ -331,17 +472,27 @@ export function WalkInCustomerWizard({
     setSuccessResult(null);
     setOneTimePin(null);
     setNotes("");
+    setShowStatusAction(false);
     setIdempotencyKey(newIdempotencyKey());
     setFormError("");
     mobileRef.current?.focus();
   }
+
+  const createBusy = isPending || checkingStatus;
 
   return (
     <div className="space-y-4">
       <Card className="p-4 md:p-6">
         <div className="mb-4">
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--primary)]">
-            Walk-in · {step === "lookup" ? "1 · Mobile" : step === "confirm" || step === "create" ? "2 · Customer" : step === "service" || step === "review" ? "3 · Service" : "4 · Done"}
+            Walk-in ·{" "}
+            {step === "lookup"
+              ? "1 · Mobile"
+              : step === "confirm" || step === "create"
+                ? "2 · Customer"
+                : step === "service" || step === "review"
+                  ? "3 · Service"
+                  : "4 · Done"}
           </p>
           <h2 className="mt-1 text-lg font-bold text-slate-900">Counter walk-in workflow</h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -554,7 +705,9 @@ export function WalkInCustomerWizard({
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="font-bold text-slate-900">{service.title}</span>
-                      <span className="text-sm font-semibold text-slate-700">₹{Number(service.customerFee).toLocaleString("en-IN")}</span>
+                      <span className="text-sm font-semibold text-slate-700">
+                        ₹{Number(service.customerFee).toLocaleString("en-IN")}
+                      </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                       {[service.category, service.processingTime].filter(Boolean).join(" · ") || service.slug}
@@ -577,7 +730,8 @@ export function WalkInCustomerWizard({
             <p className="text-xs font-bold uppercase tracking-wide text-[var(--primary)]">Requirements & confirm</p>
             <h3 className="mt-1 text-lg font-bold text-slate-900">{selectedService.title}</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Amount ₹{Number(selectedService.customerFee).toLocaleString("en-IN")} · Status {selectedService.customerInitialStatus}
+              Amount ₹{Number(selectedService.customerFee).toLocaleString("en-IN")} · Status{" "}
+              {selectedService.customerInitialStatus}
               {selectedService.processingTime ? ` · ETA ${selectedService.processingTime}` : ""}
             </p>
           </div>
@@ -602,15 +756,16 @@ export function WalkInCustomerWizard({
           </label>
 
           <p className="text-xs text-slate-500">
-            Assignment defaults to the Unassigned queue unless a later rule/assignee is configured. WhatsApp runs after save and cannot
-            block creation.
+            Assignment defaults to the Unassigned queue unless a later rule/assignee is configured. WhatsApp runs after save
+            and cannot block creation.
           </p>
 
           <div className="flex flex-wrap gap-3">
             <FormSubmitButton
               type="button"
-              loading={isPending}
-              loadingText="Creating..."
+              loading={createBusy}
+              loadingText={checkingStatus ? "Checking status…" : "Creating…"}
+              disabled={createBusy}
               className="w-full md:w-fit"
               onClick={submitApplication}
             >
@@ -618,11 +773,22 @@ export function WalkInCustomerWizard({
             </FormSubmitButton>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 disabled:opacity-60"
               onClick={() => setStep("service")}
+              disabled={createBusy}
             >
               Change service
             </button>
+            {showStatusAction || formError ? (
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 disabled:opacity-60"
+                onClick={() => void checkApplicationStatus()}
+                disabled={createBusy}
+              >
+                Check application status
+              </button>
+            ) : null}
           </div>
         </Card>
       ) : null}
@@ -653,7 +819,8 @@ export function WalkInCustomerWizard({
             <div className="rounded-xl bg-white/90 px-3 py-3">
               <p className="font-mono text-lg font-bold tracking-widest">Temporary PIN: {oneTimePin}</p>
               <p className="mt-2 text-sm font-semibold text-amber-900">
-                Shown once only on this screen. Not stored in browser storage, URL, or logs. Customer should change PIN after first login.
+                Shown once only on this screen. Not stored in browser storage, URL, or logs. Customer should change PIN after
+                first login.
               </p>
             </div>
           ) : null}

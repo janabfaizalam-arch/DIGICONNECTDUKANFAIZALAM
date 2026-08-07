@@ -588,7 +588,8 @@ export async function createWalkInApplication(input: {
     };
   }
 
-  // Sheets sync — outside core DB transaction; failure must not undo application.
+  // Sheets sync + WhatsApp — outside core DB transaction; must not block or replace success.
+  // Failures are logged; response still returns committed application.
   try {
     await scheduleWalkInApplicationSync(created.applicationId);
   } catch (error) {
@@ -598,28 +599,66 @@ export async function createWalkInApplication(input: {
     });
   }
 
-  // WhatsApp outbox — NEVER inside DB transaction; failure must not undo application.
-  // Never log temporary PIN. Idempotency key is applicationId:event:version inside adapter.
-  let whatsapp: WalkInNotificationState = "queued";
+  // Prefer a fast acknowledgement when CRM messaging is disabled — still audit asynchronously.
+  let whatsapp: WalkInNotificationState = "configuration_required";
   try {
-    const notifyResult = await dispatchApplicationNotification({
-      applicationId: created.applicationId,
-      eventType: "application_submitted",
-      recipientMobile: customer.mobile,
-      customerName: customer.fullName,
-      serviceName: service.title,
-      amount: pricing.amount,
-      status: created.status,
-      notes: input.notes ?? undefined,
-      requiredDocuments: service.required_documents ?? undefined,
-      customerId,
-      actorId: input.actorId,
-      actorOrigin: input.actorRole === "agency_partner" ? "agency_partner" : "admin",
-      processRulesInline: true,
-    });
-    whatsapp = mapWhatsAppResultToUiState(notifyResult);
+    const { resolveCrmNotificationDeliveryModeDetailed } = await import("@/lib/automation/delivery-mode");
+    const mode = resolveCrmNotificationDeliveryModeDetailed().mode;
+    if (mode === "disabled") {
+      whatsapp = "configuration_required";
+      const { after } = await import("next/server");
+      after(async () => {
+        try {
+          await dispatchApplicationNotification({
+            applicationId: created.applicationId,
+            eventType: "application_submitted",
+            recipientMobile: customer.mobile,
+            customerName: customer.fullName,
+            serviceName: service.title,
+            amount: pricing.amount,
+            status: created.status,
+            notes: input.notes ?? undefined,
+            requiredDocuments: service.required_documents ?? undefined,
+            customerId,
+            actorId: input.actorId,
+            actorOrigin: input.actorRole === "agency_partner" ? "agency_partner" : "admin",
+            processRulesInline: false,
+          });
+        } catch (error) {
+          console.error("[walk-in-app] whatsapp_audit_after_failed", {
+            applicationId: created.applicationId,
+            error: error instanceof Error ? error.message : "unknown",
+          });
+        }
+      });
+    } else {
+      try {
+        const notifyResult = await dispatchApplicationNotification({
+          applicationId: created.applicationId,
+          eventType: "application_submitted",
+          recipientMobile: customer.mobile,
+          customerName: customer.fullName,
+          serviceName: service.title,
+          amount: pricing.amount,
+          status: created.status,
+          notes: input.notes ?? undefined,
+          requiredDocuments: service.required_documents ?? undefined,
+          customerId,
+          actorId: input.actorId,
+          actorOrigin: input.actorRole === "agency_partner" ? "agency_partner" : "admin",
+          processRulesInline: true,
+        });
+        whatsapp = mapWhatsAppResultToUiState(notifyResult);
+      } catch (error) {
+        console.error("[walk-in-app] whatsapp_enqueue_failed", {
+          applicationId: created.applicationId,
+          error: error instanceof Error ? error.message : "unknown",
+        });
+        whatsapp = "queued";
+      }
+    }
   } catch (error) {
-    console.error("[walk-in-app] whatsapp_enqueue_failed", {
+    console.error("[walk-in-app] notification_status_resolve_failed", {
       applicationId: created.applicationId,
       error: error instanceof Error ? error.message : "unknown",
     });
@@ -648,6 +687,113 @@ export async function createWalkInApplication(input: {
     temporaryPin,
     temporaryPinShownOnce: Boolean(temporaryPin),
     customerCreatedInRequest,
+  };
+}
+
+export async function lookupWalkInApplicationByIdempotency(input: {
+  actorId: string;
+  idempotencyKey: string;
+}): Promise<
+  | {
+      ok: true;
+      status: "succeeded";
+      applicationId: string;
+      workId: string | null;
+      customerId: string | null;
+      customerName: string | null;
+      mobileMasked: string | null;
+      serviceName: string | null;
+      amount: number | null;
+      paymentStatus: string | null;
+      applicationStatus: string | null;
+      assignmentLabel: string;
+      estimatedCompletion: string | null;
+      whatsapp: WalkInNotificationState;
+      deduped: true;
+    }
+  | { ok: true; status: "pending" | "not_found" }
+  | { ok: false; error: string; httpStatus: number }
+> {
+  const idempotencyKey = String(input.idempotencyKey || "").trim();
+  if (idempotencyKey.length < 8) {
+    return { ok: false, error: "Idempotency key is required.", httpStatus: 400 };
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: false, error: "Service unavailable.", httpStatus: 503 };
+
+  const scopedKey = `walk_in_application_create:${input.actorId}:${idempotencyKey}`;
+
+  const { data: keyRow, error: keyError } = await supabase
+    .from("crm_idempotency_keys")
+    .select("response, actor_id")
+    .eq("key", scopedKey)
+    .eq("actor_id", input.actorId)
+    .maybeSingle();
+
+  if (keyError) {
+    console.error("[walk-in-app] idempotency_lookup_failed", { error: "idempotency_lookup_failed" });
+    return { ok: false, error: "Could not check application status.", httpStatus: 500 };
+  }
+
+  if (!keyRow?.response) {
+    return { ok: true, status: "not_found" };
+  }
+
+  const response = keyRow.response as Record<string, unknown>;
+  const applicationId = response.applicationId ? String(response.applicationId) : null;
+  if (!applicationId) {
+    return { ok: true, status: "pending" };
+  }
+
+  const { data: application } = await supabase
+    .from("applications")
+    .select(
+      "id, customer_id, service_name, amount, payment_status, status, work_id, assigned_agent_id, customer_mobile, form_data, service_snapshot",
+    )
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (!application) {
+    return { ok: true, status: "pending" };
+  }
+
+  const formData = (application.form_data ?? {}) as Record<string, unknown>;
+  const snapshot = (application.service_snapshot ?? {}) as Record<string, unknown>;
+  const mobile = normalizeIndianMobileDigits(
+    String(application.customer_mobile ?? formData.mobile ?? ""),
+  );
+
+  return {
+    ok: true,
+    status: "succeeded",
+    applicationId,
+    workId: application.work_id ? String(application.work_id) : response.workId ? String(response.workId) : null,
+    customerId: application.customer_id ? String(application.customer_id) : response.customerId ? String(response.customerId) : null,
+    customerName: formData.name ? String(formData.name) : response.customerName ? String(response.customerName) : null,
+    mobileMasked: isValidIndianMobile(mobile) ? maskIndianMobile(mobile) : null,
+    serviceName: application.service_name
+      ? String(application.service_name)
+      : snapshot.title
+        ? String(snapshot.title)
+        : response.serviceName
+          ? String(response.serviceName)
+          : null,
+    amount: application.amount != null ? Number(application.amount) : response.amount != null ? Number(response.amount) : null,
+    paymentStatus: application.payment_status
+      ? String(application.payment_status)
+      : response.paymentStatus
+        ? String(response.paymentStatus)
+        : null,
+    applicationStatus: application.status
+      ? String(application.status)
+      : response.status
+        ? String(response.status)
+        : null,
+    assignmentLabel: application.assigned_agent_id ? "Assigned" : "Awaiting assignment",
+    estimatedCompletion: snapshot.processing_time ? String(snapshot.processing_time) : null,
+    whatsapp: "configuration_required",
+    deduped: true,
   };
 }
 
