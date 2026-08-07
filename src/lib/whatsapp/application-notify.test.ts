@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdmin: vi.fn(),
@@ -29,6 +29,20 @@ function mockSupabase(existing: { id: string; status: string; attempt_count?: nu
 }
 
 describe("sendApplicationWhatsApp", () => {
+  // These cases assert the direct-send path. sendApplicationWhatsApp fails closed
+  // to `disabled` (queue-only, no provider call) when the mode is unset, so the
+  // mode has to be pinned or every case routes away from the code under test.
+  const previousDeliveryMode = process.env.CRM_NOTIFICATION_DELIVERY_MODE;
+
+  beforeAll(() => {
+    process.env.CRM_NOTIFICATION_DELIVERY_MODE = "direct";
+  });
+
+  afterAll(() => {
+    if (previousDeliveryMode === undefined) delete process.env.CRM_NOTIFICATION_DELIVERY_MODE;
+    else process.env.CRM_NOTIFICATION_DELIVERY_MODE = previousDeliveryMode;
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

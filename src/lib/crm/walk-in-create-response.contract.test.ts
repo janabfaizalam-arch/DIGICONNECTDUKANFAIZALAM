@@ -39,16 +39,19 @@ describe("Walk-in create response + recovery contracts", () => {
     expect(identity).toMatch(/from\("customers"\)\.select\("id"\)\.ilike\("email"/);
     expect(identity).toMatch(/from\("customers"\)\.select\("id"\)\.eq\("mobile"/);
     // Onboarding duplicate + assertMobileAvailable must not filter customers by user_id.
+    // Scan stops at the next `.from(` so a neighbouring customer_profiles query —
+    // which legitimately selects user_id — is not attributed to the customers chain.
+    const customersChainUsesUserId = /from\("customers"\)(?:(?!\.from\()[\s\S]){0,400}?user_id/;
     const onboardingBlock = identity.slice(
       identity.indexOf("export async function assertCustomerIdentityAvailable"),
       identity.indexOf("export async function assertMobileAvailableForAuthenticatedUser"),
     );
-    expect(onboardingBlock).not.toMatch(/from\("customers"\)[\s\S]{0,200}user_id/);
+    expect(onboardingBlock).not.toMatch(customersChainUsesUserId);
     const mobileBlock = identity.slice(
       identity.indexOf("export async function assertMobileAvailableForAuthenticatedUser"),
       identity.indexOf("export async function consolidateCustomerRows"),
     );
-    expect(mobileBlock).not.toMatch(/from\("customers"\)[\s\S]{0,200}user_id/);
+    expect(mobileBlock).not.toMatch(customersChainUsesUserId);
     expect(identity).toMatch(/isMissingTableOrColumnError/);
   });
 

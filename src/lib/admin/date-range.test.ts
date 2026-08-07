@@ -40,7 +40,18 @@ describe("admin nav IA", () => {
   });
 
   it("groups navigation sections", () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.id)).toEqual(["overview", "operations", "finance", "crm-content", "insights", "system"]);
+    expect(ADMIN_NAV_GROUPS.map((g) => g.id)).toEqual([
+      "overview",
+      "customers",
+      "leads-sales",
+      "applications",
+      "team-partners",
+      "payments-finance",
+      "communications",
+      "automation-ai",
+      "reports",
+      "settings",
+    ]);
   });
 
   it("highlights nested routes", () => {

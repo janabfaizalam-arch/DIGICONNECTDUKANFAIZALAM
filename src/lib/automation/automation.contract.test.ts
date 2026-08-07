@@ -103,7 +103,13 @@ describe("direct/queue/disabled transition matrix", () => {
       direct: { requestSends: true, automationEnqueues: false, outboxSends: false },
       disabled: { requestSends: false, automationEnqueues: false, outboxSends: false },
     };
-    expect(matrix.queue.outboxSends && matrix.direct.requestSends).toBe(false); // not both paths live
+    // Within any one mode, the request path and the outbox path are never both
+    // live — that is what "exclusive ownership" means. Comparing queue.outboxSends
+    // against direct.requestSends compared two different modes and was always true.
+    for (const mode of Object.values(matrix)) {
+      expect(mode.requestSends && mode.outboxSends).toBe(false);
+      expect(mode.requestSends && mode.automationEnqueues).toBe(false);
+    }
     expect(matrix.direct.automationEnqueues).toBe(false);
     expect(matrix.disabled.requestSends).toBe(false);
   });

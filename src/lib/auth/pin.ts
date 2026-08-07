@@ -24,12 +24,42 @@ export function isValidPinFormat(pin: string): boolean {
   return /^\d{6}$/.test(pin);
 }
 
+/** Every digit identical — 000000, 777777, … */
+function isSingleDigitRun(pin: string): boolean {
+  return new Set(pin).size === 1;
+}
+
+/**
+ * Consecutive ascending or descending run — 123456, 654321, 987654, 456789.
+ * The explicit blocklist only covered a handful of these; the structural check
+ * catches every window, so no sequential PIN can be issued or chosen.
+ */
+function isSequentialRun(pin: string): boolean {
+  const deltas = new Set<number>();
+  for (let index = 1; index < pin.length; index += 1) {
+    deltas.add(Number(pin[index]) - Number(pin[index - 1]));
+  }
+  return deltas.size === 1 && (deltas.has(1) || deltas.has(-1));
+}
+
+/** Short pattern repeated to fill the PIN — 121212 (2-digit), 123123 (3-digit). */
+function isRepeatedPattern(pin: string): boolean {
+  return [1, 2, 3].some((size) => {
+    const unit = pin.slice(0, size);
+    return unit.repeat(pin.length / size) === pin;
+  });
+}
+
+export function isWeakPin(pin: string): boolean {
+  return WEAK_PINS.has(pin) || isSingleDigitRun(pin) || isSequentialRun(pin) || isRepeatedPattern(pin);
+}
+
 export function validateCustomerPin(pin: string, localPhone?: string): { ok: true } | { ok: false; error: string } {
   if (!isValidPinFormat(pin)) {
     return { ok: false, error: "PIN exactly 6 digits hona chahiye." };
   }
 
-  if (WEAK_PINS.has(pin)) {
+  if (isWeakPin(pin)) {
     return { ok: false, error: "Yeh PIN weak hai. Koi aur 6-digit PIN choose karein." };
   }
 
@@ -56,11 +86,20 @@ export function derivePinPassword(localPhone: string, pin: string): string {
 
 export function hashOtp(otp: string): string {
   const secret = process.env.AUTH_HMAC_SECRET?.trim();
+
+  // A published fallback secret makes a stored OTP hash brute-forceable in
+  // seconds (6-digit space), so production must fail closed like
+  // derivePinPassword does. The fallback stays for local development only.
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_HMAC_SECRET must be set (min 32 characters).");
+  }
+
   if (!secret) {
     console.error("[auth] AUTH_HMAC_SECRET_missing_using_dev_fallback");
   } else if (secret.length < 32) {
     console.error("[auth] AUTH_HMAC_SECRET_too_short", { length: secret.length });
   }
+
   return crypto.createHmac("sha256", secret || "otp-fallback-dev-only").update(`otp:${otp}`).digest("hex");
 }
 

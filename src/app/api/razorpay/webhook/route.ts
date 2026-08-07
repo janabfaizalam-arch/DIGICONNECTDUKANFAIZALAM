@@ -84,7 +84,11 @@ export async function POST(request: Request) {
   const paymentMatchFilter = payment.order_id
     ? `razorpay_payment_id.eq.${payment.id},razorpay_order_id.eq.${payment.order_id}`
     : `razorpay_payment_id.eq.${payment.id}`;
-  const { data: updatedPayments } = await supabase
+
+  // A verified payment is terminal. Razorpay can deliver a `payment.failed` for an
+  // abandoned first attempt after the retry succeeded, and re-deliver events out of
+  // order, so a non-verified event must never overwrite a verified row.
+  let paymentsUpdate = supabase
     .from("payments")
     .update({
       status,
@@ -92,30 +96,65 @@ export async function POST(request: Request) {
       razorpay_payment_id: payment.id,
       razorpay_status: payment.status ?? null,
       payment_method: payment.method ?? null,
-      paid_at: status === "verified" ? paidAt : null,
+      ...(status === "verified" ? { paid_at: paidAt } : {}),
       updated_at: new Date().toISOString(),
     })
-    .or(paymentMatchFilter)
-    .select("application_id");
+    .or(paymentMatchFilter);
+
+  if (status !== "verified") {
+    paymentsUpdate = paymentsUpdate.neq("status", "verified");
+  }
+
+  const { data: updatedPayments } = await paymentsUpdate.select("application_id");
 
   const applicationIds = Array.from(new Set((updatedPayments ?? []).map((row) => row.application_id).filter(Boolean)));
 
   if (applicationIds.length) {
-    await Promise.all([
-      supabase
-        .from("applications")
-        .update({
-          payment_status: status,
-          status: status === "verified" ? "submitted" : status === "failed" ? "payment_failed" : "payment_pending",
-          razorpay_order_id: payment.order_id ?? null,
-          razorpay_payment_id: payment.id,
-          paid_at: status === "verified" ? paidAt : null,
-          submitted_at: status === "verified" ? paidAt : null,
-          updated_at: new Date().toISOString(),
-        })
-        .in("id", applicationIds),
-      supabase.from("invoices").update({ payment_status: status }).in("application_id", applicationIds),
-    ]);
+    // Payment facts (payment_status, razorpay ids, paid_at) always apply, whatever
+    // stage the application has reached — only the downgrade of a verified payment
+    // is blocked.
+    let applicationPaymentUpdate = supabase
+      .from("applications")
+      .update({
+        payment_status: status,
+        razorpay_order_id: payment.order_id ?? null,
+        razorpay_payment_id: payment.id,
+        ...(status === "verified" ? { paid_at: paidAt, submitted_at: paidAt } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", applicationIds);
+
+    if (status !== "verified") {
+      applicationPaymentUpdate = applicationPaymentUpdate.neq("payment_status", "verified");
+    }
+
+    // The workflow status is a separate concern: rewrite it only while the
+    // application is still in a payment stage. Once it has moved into processing or
+    // completion, a late/replayed payment event must not drag it back to
+    // "submitted" — or to "payment_failed" after it was already paid.
+    const PAYMENT_STAGE_STATUSES = ["draft", "new", "payment_pending", "payment_failed", "payment_success", "submitted"];
+
+    let applicationStatusUpdate = supabase
+      .from("applications")
+      .update({
+        status: status === "verified" ? "submitted" : status === "failed" ? "payment_failed" : "payment_pending",
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", applicationIds)
+      .in("status", PAYMENT_STAGE_STATUSES);
+
+    if (status !== "verified") {
+      applicationStatusUpdate = applicationStatusUpdate.neq("payment_status", "verified");
+    }
+
+    let invoicesUpdate = supabase.from("invoices").update({ payment_status: status }).in("application_id", applicationIds);
+
+    if (status !== "verified") {
+      invoicesUpdate = invoicesUpdate.neq("payment_status", "verified");
+    }
+
+    await applicationPaymentUpdate;
+    await Promise.all([applicationStatusUpdate, invoicesUpdate]);
 
     if (status === "verified") {
       // 1. Process payment links status if any matching links exist
