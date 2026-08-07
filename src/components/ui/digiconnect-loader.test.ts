@@ -22,21 +22,40 @@ describe("DigiConnectLoader contracts", () => {
     expect(source).toContain("srOnly");
   });
 
-  it("defines five squares and reduced-motion styles", () => {
+  it("defines the converging connect animation and reduced-motion styles", () => {
     const css = read("src/components/ui/digiconnect-loader.module.css");
-    expect(css).toContain("square-path");
-    expect(css).toContain("2.4s");
+    expect(css).toContain("node-converge-left");
+    expect(css).toContain("node-converge-right");
+    expect(css).toContain("link-draw");
+    expect(css).toContain("1.8s");
     expect(css).toContain("prefers-reduced-motion");
-    expect(css).toContain("square-pulse");
-    expect(css).toContain("--square: 5px");
-    expect(css).toContain("--square: 8px");
-    expect(css).toContain("--square: 15px");
-    expect(css).toContain("--square: 20px");
+    expect(css).toContain("node-breathe");
+    expect(css).toContain("--node: 6px");
+    expect(css).toContain("--node: 8px");
+    expect(css).toContain("--node: 12px");
+    expect(css).toContain("--node: 16px");
+    // Brand colors drive both nodes — blue converging on orange.
     expect(css).toContain("var(--primary");
     expect(css).toContain("var(--secondary");
-    // five squares rendered in component
+  });
+
+  it("renders exactly two nodes joined by one link", () => {
     const source = read("src/components/ui/digiconnect-loader.tsx");
-    expect((source.match(/styles\.square/g) || []).length).toBe(5);
+    expect((source.match(/styles\.node\b/g) || []).length).toBe(2);
+    expect((source.match(/styles\.nodeLeft/g) || []).length).toBe(1);
+    expect((source.match(/styles\.nodeRight/g) || []).length).toBe(1);
+    expect((source.match(/styles\.link/g) || []).length).toBe(1);
+  });
+
+  it("keeps the fullscreen overlay card-free so the mark is the hero", () => {
+    const css = read("src/components/ui/digiconnect-loader.module.css");
+    const fullscreenInner = css.slice(
+      css.indexOf(".fullscreenInner {"),
+      css.indexOf("@keyframes shell-fade-in"),
+    );
+    expect(fullscreenInner).not.toMatch(/border:/);
+    expect(fullscreenInner).not.toMatch(/box-shadow:/);
+    expect(fullscreenInner).not.toMatch(/background:/);
   });
 
   it("root loading uses fullscreen DigiConnectLoader", () => {
