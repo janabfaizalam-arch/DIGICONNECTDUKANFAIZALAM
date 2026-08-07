@@ -1,111 +1,132 @@
 /*
-  DigiConnect five-square loader.
-  Squares travel a compact 2×2 stepped path (~2.4s ease-in-out).
+  DigiConnect Dukan — "connect" loader.
+
+  Mirrors the brand mark: a blue node and an orange node travel toward each
+  other, the gradient link draws between them, the connection holds with a
+  soft glow, then releases and repeats (~1.8s).
+
   Brand colors via --primary / --secondary (globals.css).
 */
 
-.board {
+.mark {
   --loader-primary: var(--primary, #2563eb);
   --loader-secondary: var(--secondary, #f97316);
-  --square: 18px;
-  --offset: 22px;
+  --node: 12px;
+  --span: 48px;
+  --link-height: max(2px, calc(var(--node) / 5));
+  --travel: calc(var(--span) * 0.28);
   position: relative;
   display: block;
-  width: calc(var(--square) + var(--offset));
-  height: calc(var(--square) + var(--offset));
+  width: var(--span);
+  height: var(--node);
   flex-shrink: 0;
 }
 
-.square {
+.node {
   position: absolute;
-  top: 0;
+  top: 50%;
+  width: var(--node);
+  height: var(--node);
+  margin-top: calc(var(--node) / -2);
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+
+.nodeLeft {
   left: 0;
-  width: var(--square);
-  height: var(--square);
-  border-radius: 22%;
-  background: linear-gradient(135deg, var(--loader-primary) 0%, var(--loader-secondary) 100%);
-  box-shadow: 0 0 0 0 transparent;
-  opacity: 0;
-  will-change: left, top, opacity, transform;
-  animation:
-    square-enter 0.45s ease-out both,
-    square-path 2.4s ease-in-out infinite;
+  background: var(--loader-primary);
+  animation: node-converge-left 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-.square:nth-child(1) {
-  animation-delay: 0s, 0s;
-}
-.square:nth-child(2) {
-  animation-delay: 0.08s, -0.48s;
-}
-.square:nth-child(3) {
-  animation-delay: 0.16s, -0.96s;
-}
-.square:nth-child(4) {
-  animation-delay: 0.24s, -1.44s;
-}
-.square:nth-child(5) {
-  animation-delay: 0.32s, -1.92s;
+.nodeRight {
+  right: 0;
+  background: var(--loader-secondary);
+  animation: node-converge-right 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-@keyframes square-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.55);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.link {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--node) / 2);
+  right: calc(var(--node) / 2);
+  height: var(--link-height);
+  margin-top: calc(var(--link-height) / -2);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--loader-primary) 0%, var(--loader-secondary) 100%);
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: link-draw 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-@keyframes square-path {
-  0% {
-    left: 0;
-    top: 0;
-  }
-  25% {
-    left: var(--offset);
-    top: 0;
-  }
-  50% {
-    left: var(--offset);
-    top: var(--offset);
-  }
-  75% {
-    left: 0;
-    top: var(--offset);
-  }
+@keyframes node-converge-left {
+  0%,
   100% {
-    left: 0;
-    top: 0;
+    transform: translateX(0) scale(0.72);
+    opacity: 0.5;
+  }
+  35%,
+  62% {
+    transform: translateX(var(--travel)) scale(1);
+    opacity: 1;
   }
 }
 
-/* Size-specific variables — do not scale the whole board with transform. */
+@keyframes node-converge-right {
+  0%,
+  100% {
+    transform: translateX(0) scale(0.72);
+    opacity: 0.5;
+  }
+  35%,
+  62% {
+    transform: translateX(calc(var(--travel) * -1)) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes link-draw {
+  0%,
+  100% {
+    transform: scaleX(0.04);
+    opacity: 0;
+  }
+  35%,
+  62% {
+    transform: scaleX(0.44);
+    opacity: 1;
+  }
+}
+
+/* Size-specific variables — never scale the whole mark with transform. */
 .sizeXs {
-  --square: 5px;
-  --offset: 9px;
+  --node: 6px;
+  --span: 24px;
 }
 
 .sizeSm {
-  --square: 8px;
-  --offset: 12px;
+  --node: 8px;
+  --span: 32px;
 }
 
 .sizeMd {
-  --square: 15px;
-  --offset: 19px;
+  --node: 12px;
+  --span: 48px;
 }
 
 .sizeLg {
-  --square: 20px;
-  --offset: 24px;
+  --node: 16px;
+  --span: 64px;
 }
 
-.sizeMd .square,
-.sizeLg .square {
-  box-shadow: 0 0 10px color-mix(in srgb, var(--loader-primary) 22%, transparent);
+/* Glow only at the larger sizes, where it reads as intent rather than noise. */
+.sizeMd .nodeLeft,
+.sizeLg .nodeLeft {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--loader-primary) 45%, transparent);
+}
+
+.sizeMd .nodeRight,
+.sizeLg .nodeRight {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--loader-secondary) 45%, transparent);
 }
 
 .inline {
@@ -124,10 +145,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.85rem;
+  gap: 1rem;
   padding: 1.5rem;
 }
 
+/*
+  Fullscreen is deliberately card-free: the mark is the hero, floating on a
+  blurred wash of the page behind it.
+*/
 .fullscreen {
   position: fixed;
   inset: 0;
@@ -145,23 +170,42 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem 1.75rem;
-  border-radius: 1.25rem;
-  border: 1px solid var(--glass-border-subtle, rgba(226, 232, 240, 0.5));
-  background: var(--glass-bg-solid, rgba(255, 255, 255, 0.92));
-  box-shadow: var(--glass-shadow, 0 8px 32px rgba(15, 23, 42, 0.04));
+  gap: 1.25rem;
+  padding: 1rem;
+  animation: shell-fade-in 0.35s ease-out both;
+}
+
+@keyframes shell-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .label {
   margin: 0;
   max-width: 18rem;
   text-align: center;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted-foreground, #64748b);
+  animation: label-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes label-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  45% {
+    opacity: 1;
+  }
 }
 
 .srOnly {
@@ -177,44 +221,39 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .square {
-    animation: square-pulse 1.6s ease-in-out infinite;
-    left: auto !important;
-    top: auto !important;
-    position: relative;
-    opacity: 0.85;
-    transform: none;
+  /* Hold the connected state; convey progress with opacity alone. */
+  .nodeLeft,
+  .nodeRight {
+    animation: node-breathe 1.8s ease-in-out infinite;
   }
 
-  .board {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    width: auto;
-    height: auto;
+  .nodeLeft {
+    transform: translateX(var(--travel));
   }
 
-  .square:nth-child(1) {
-    animation-delay: 0s;
-  }
-  .square:nth-child(2) {
-    animation-delay: 0.12s;
-  }
-  .square:nth-child(3) {
-    animation-delay: 0.24s;
-  }
-  .square:nth-child(4) {
-    animation-delay: 0.36s;
-  }
-  .square:nth-child(5) {
-    animation-delay: 0.48s;
+  .nodeRight {
+    transform: translateX(calc(var(--travel) * -1));
   }
 
-  @keyframes square-pulse {
+  .link {
+    animation: none;
+    transform: scaleX(0.44);
+    opacity: 1;
+  }
+
+  .fullscreenInner {
+    animation: none;
+  }
+
+  .label {
+    animation: none;
+    opacity: 1;
+  }
+
+  @keyframes node-breathe {
     0%,
     100% {
-      opacity: 0.35;
+      opacity: 0.45;
     }
     50% {
       opacity: 1;
@@ -230,11 +269,6 @@
 @media (prefers-color-scheme: dark) {
   .fullscreen {
     background: color-mix(in srgb, #0f172a 86%, transparent);
-  }
-
-  .fullscreenInner {
-    background: rgba(15, 23, 42, 0.92);
-    border-color: rgba(51, 65, 85, 0.7);
   }
 
   .label {

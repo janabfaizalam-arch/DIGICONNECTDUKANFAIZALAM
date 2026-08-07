@@ -1,6 +1,9 @@
 /**
- * DigiConnect Dukan — five-square branded loader.
- * Size variants use dedicated CSS variables (not transform scale) to avoid blur.
+ * DigiConnect Dukan — branded "connect" loader.
+ *
+ * Echoes the DigiConnect mark: a blue node and an orange node converge and the
+ * gradient link draws between them. Size variants use dedicated CSS variables
+ * (not transform scale) to avoid blur.
  */
 
 import { cn } from "@/lib/utils";
@@ -28,13 +31,11 @@ export function DigiConnectLoader({
   showLabel = variant !== "inline",
   className,
 }: DigiConnectLoaderProps) {
-  const squares = (
-    <span className={cn(styles.board, SIZE_CLASS[size])} aria-hidden="true">
-      <span className={styles.square} />
-      <span className={styles.square} />
-      <span className={styles.square} />
-      <span className={styles.square} />
-      <span className={styles.square} />
+  const mark = (
+    <span className={cn(styles.mark, SIZE_CLASS[size])} aria-hidden="true">
+      <span className={styles.link} />
+      <span className={cn(styles.node, styles.nodeLeft)} />
+      <span className={cn(styles.node, styles.nodeRight)} />
     </span>
   );
 
@@ -46,7 +47,7 @@ export function DigiConnectLoader({
         aria-live="polite"
         aria-busy="true"
       >
-        {squares}
+        {mark}
         <span className={styles.srOnly}>{label}</span>
       </span>
     );
@@ -61,7 +62,7 @@ export function DigiConnectLoader({
         aria-busy="true"
       >
         <div className={styles.fullscreenInner}>
-          {squares}
+          {mark}
           {showLabel ? <p className={styles.label}>{label}</p> : <span className={styles.srOnly}>{label}</span>}
         </div>
       </div>
@@ -75,7 +76,7 @@ export function DigiConnectLoader({
       aria-live="polite"
       aria-busy="true"
     >
-      {squares}
+      {mark}
       {showLabel ? <p className={styles.label}>{label}</p> : <span className={styles.srOnly}>{label}</span>}
     </div>
   );
