@@ -90,7 +90,7 @@ Rules:
 | OTP / auth | `sendAisensyOtp` / `sendCustomerWhatsappOtp` | Yes (not outbox; OTP tables) |
 | Canonical enqueue | `enqueueCommunication` | **No** (insert only) |
 | Outbox processor | `processCommunicationOutbox` + `/api/cron/comms-outbox` | Yes |
-| Legacy notification queue | `/api/cron/process-notifications` | Mock only — **not** production WA |
+| Legacy notification queue | _removed_ | The mock processor was unauthenticated and wrote simulated outcomes into the real `notification_queue`. Deleted — use `/api/cron/comms-outbox` (secret-guarded). |
 | Lead WA / Sheets inbound | adapters | **Inactive** |
 
 ### Current provider calls
