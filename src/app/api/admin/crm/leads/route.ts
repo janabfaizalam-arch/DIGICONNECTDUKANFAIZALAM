@@ -64,7 +64,8 @@ export async function POST(request: Request) {
   }
 
   // New writes go to canonical public.leads (not crm_leads prototype).
-  const { ingestLead, transitionLeadStage } = await import("@/lib/crm/leads");
+  const { ingestLead } = await import("@/lib/crm/leads");
+  const { transitionLeadStageSafe } = await import("@/lib/crm/lead-convert");
   const { mapCrmLeadsPipelineToStage } = await import("@/lib/crm/leads-core");
   const ingested = await ingestLead({
     source: "manual",
@@ -79,18 +80,36 @@ export async function POST(request: Request) {
   }
 
   if (pipeline_stage) {
-    await transitionLeadStage({
+    const toStage = mapCrmLeadsPipelineToStage(pipeline_stage);
+    // Go through the guarded transition so the stage machine (and its lost-reason
+    // and terminal-stage rules) applies here too — the raw mutation skipped it.
+    const transitioned = await transitionLeadStageSafe({
       actorId: user.id,
       actorRole: role,
       leadId: ingested.leadId,
-      toStage: mapCrmLeadsPipelineToStage(pipeline_stage),
+      toStage,
       note: "Pipeline create mapping",
     });
+
+    // The lead exists either way; report the stage outcome instead of
+    // swallowing it and claiming an unqualified success.
+    if (!transitioned.ok) {
+      return NextResponse.json(
+        {
+          message: `Lead saved, but the stage could not be set to ${toStage}: ${transitioned.error}`,
+          data: { id: ingested.leadId },
+          stageApplied: false,
+          source: "leads",
+        },
+        { status: 207 },
+      );
+    }
   }
 
   return NextResponse.json({
     message: ingested.deduped ? "Existing lead reused (idempotent)." : "Lead saved successfully.",
     data: { id: ingested.leadId },
+    stageApplied: Boolean(pipeline_stage),
     source: "leads",
   });
 }

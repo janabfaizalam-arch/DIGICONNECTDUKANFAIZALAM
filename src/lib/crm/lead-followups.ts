@@ -10,6 +10,59 @@ function isPartnerRole(role: string | null | undefined) {
   return value === "agency_partner" || value === "agent";
 }
 
+/**
+ * Stages later in the funnel than `follow_up_scheduled`. The transition table has
+ * no path from `follow_up_scheduled` back to these, so overwriting the stage when
+ * an operator books a call would strand the lead earlier in the pipeline.
+ */
+const STAGES_AFTER_FOLLOW_UP = new Set([
+  "qualified",
+  "service_selected",
+  "documents_awaited",
+  "application_created",
+  "won",
+  "lost",
+]);
+
+/**
+ * Repoint `leads.next_follow_up_at` at the earliest still-scheduled follow-up.
+ *
+ * Completing or cancelling a follow-up used to leave the pointer on the old
+ * datetime, so the lead stayed permanently "overdue" and the overdue queue never
+ * drained — finished work kept showing up as outstanding.
+ */
+async function refreshNextFollowUpPointer(
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  leadId: string,
+) {
+  const { data: upcoming, error } = await supabase
+    .from("lead_follow_ups")
+    .select("scheduled_at")
+    .eq("lead_id", leadId)
+    .eq("status", "scheduled")
+    .order("scheduled_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[crm-followups] next_pointer_lookup_failed", { leadId, error: error.message });
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from("leads")
+    .update({
+      next_follow_up_at: upcoming?.scheduled_at ?? null,
+      last_activity_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", leadId);
+
+  if (updateError) {
+    console.error("[crm-followups] next_pointer_update_failed", { leadId, error: updateError.message });
+  }
+}
+
 async function assertLeadScope(input: {
   actorId: string;
   actorRole: string | null | undefined;
@@ -99,11 +152,16 @@ export async function scheduleLeadFollowUp(input: {
     return { ok: false as const, error: "Could not schedule follow-up.", status: 500 };
   }
 
+  // Booking a call must not rewind pipeline progress — keep any stage at or past
+  // qualification, and only mark early-stage leads as follow_up_scheduled.
+  const currentStage = String(lead.pipeline_stage ?? "");
+  const nextStage = STAGES_AFTER_FOLLOW_UP.has(currentStage) ? currentStage : "follow_up_scheduled";
+
   await supabase
     .from("leads")
     .update({
       next_follow_up_at: row.scheduled_at,
-      pipeline_stage: lead.pipeline_stage === "won" || lead.pipeline_stage === "lost" ? lead.pipeline_stage : "follow_up_scheduled",
+      pipeline_stage: nextStage,
       last_activity_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
@@ -171,6 +229,8 @@ export async function completeLeadFollowUp(input: {
     return { ok: false as const, error: "Follow-up could not be completed.", status: 409 };
   }
 
+  await refreshNextFollowUpPointer(supabase, String(existing.lead_id));
+
   await supabase.from("lead_activities").insert({
     lead_id: existing.lead_id,
     activity_type: "follow_up_completed",
@@ -226,7 +286,15 @@ export async function cancelLeadFollowUp(input: {
     .select("*")
     .maybeSingle();
 
-  if (error || !row) return { ok: false as const, error: "Could not cancel follow-up.", status: 500 };
+  if (error) return { ok: false as const, error: "Could not cancel follow-up.", status: 500 };
+  if (!row) {
+    // Lost the race against another actor — report the settled state, not a 500.
+    const { data: again } = await supabase.from("lead_follow_ups").select("*").eq("id", input.followUpId).maybeSingle();
+    if (again?.status === "cancelled") return { ok: true as const, followUp: again, deduped: true };
+    return { ok: false as const, error: "Follow-up could not be cancelled.", status: 409 };
+  }
+
+  await refreshNextFollowUpPointer(supabase, String(existing.lead_id));
 
   await supabase.from("lead_activities").insert({
     lead_id: existing.lead_id,

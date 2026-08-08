@@ -86,6 +86,39 @@ export function formatFollowUpForDisplay(iso: string | null | undefined): string
   }).format(new Date(ms));
 }
 
+/**
+ * Inclusive Asia/Kolkata calendar-day bounds for a user-picked date range.
+ *
+ * A bare `new Date("2026-08-07")` is UTC midnight — 05:30 IST — so a naive
+ * range silently drops the first 5.5 hours of the "from" day and pulls in the
+ * first 5.5 hours of the day after "to". Anchoring to +05:30 keeps the filter
+ * aligned with the dates the operator actually typed.
+ */
+export function getAsiaKolkataRangeForDates(input: {
+  from?: string | null;
+  to?: string | null;
+}): { startIso: string | null; endIso: string | null } {
+  const dayOnly = /^\d{4}-\d{2}-\d{2}$/;
+
+  const resolve = (value: string | null | undefined, edge: "start" | "end"): string | null => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return null;
+
+    // A full timestamp already carries its own offset — respect it as given.
+    if (!dayOnly.test(raw)) {
+      const parsed = Date.parse(raw);
+      return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+    }
+
+    const anchored = new Date(
+      edge === "start" ? `${raw}T00:00:00.000+05:30` : `${raw}T23:59:59.999+05:30`,
+    );
+    return Number.isFinite(anchored.getTime()) ? anchored.toISOString() : null;
+  };
+
+  return { startIso: resolve(input.from, "start"), endIso: resolve(input.to, "end") };
+}
+
 /** Calendar-day bounds in Asia/Kolkata (+05:30 year-round). */
 export function getAsiaKolkataDayRange(now: Date = new Date()): { startIso: string; endIso: string; day: string } {
   const day = new Intl.DateTimeFormat("en-CA", {
