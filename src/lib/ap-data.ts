@@ -303,15 +303,15 @@ export async function getAPWalletLedger(apId: string, limit = 200): Promise<APWa
 
 // ── AP Wallet Balance ──────────────────────────────────────────────────────
 
+/**
+ * Delegates to the canonical paginated balance in ap-wallet so the number a
+ * partner sees and the number enforced at withdrawal can never disagree. The
+ * previous local copy capped the ledger at one page, understating the balance
+ * of any partner with a long history.
+ */
 export async function getAPWalletBalance(apId: string): Promise<number> {
-  const ledger = await getAPWalletLedger(apId, 10000);
-
-  return ledger.reduce((total, e) => {
-    const amt = safeNumber(e.amount);
-    if (["commission_credit", "manual_credit", "bonus", "adjustment"].includes(e.entry_type)) return total + amt;
-    if (["manual_debit", "payout_deduction", "penalty", "reversal"].includes(e.entry_type)) return total - Math.abs(amt);
-    return total;
-  }, 0);
+  const { getWalletBalance } = await import("@/lib/ap-wallet");
+  return getWalletBalance(apId);
 }
 
 // ── AP Payouts ─────────────────────────────────────────────────────────────

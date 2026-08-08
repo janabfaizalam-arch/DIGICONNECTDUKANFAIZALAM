@@ -19,36 +19,74 @@ function safeNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+const CREDIT_TYPES = ["commission_credit", "manual_credit", "bonus"];
+const DEBIT_TYPES = ["manual_debit", "payout_deduction", "penalty", "reversal"];
+
+/** Ledger rows fetched per request. PostgREST caps a single response, so the
+ *  balance has to be paged — a one-shot select silently truncates a busy
+ *  partner's ledger and understates their balance. */
+const LEDGER_PAGE_SIZE = 1000;
+
+export function applyLedgerEntry(balance: number, entry: { amount: unknown; entry_type: string }): number {
+  const amt = safeNumber(entry.amount);
+  if (CREDIT_TYPES.includes(entry.entry_type)) return balance + amt;
+  if (DEBIT_TYPES.includes(entry.entry_type)) return balance - Math.abs(amt);
+  // adjustment: use sign of amount
+  if (entry.entry_type === "adjustment") return balance + amt;
+  return balance;
+}
+
+/**
+ * Canonical wallet balance — the single source of truth for every AP balance
+ * read. Pages through the whole ledger and reports failure explicitly, so a
+ * caller can never mistake "query failed" for "zero balance".
+ */
+export async function calculateWalletBalance(
+  agencyPartnerId: string,
+): Promise<{ ok: true; balance: number; entries: number } | { ok: false; error: string }> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: false, error: "Missing server config" };
+
+  let balance = 0;
+  let entries = 0;
+
+  for (let page = 0; ; page += 1) {
+    const from = page * LEDGER_PAGE_SIZE;
+    const { data, error } = await supabase
+      .from("ap_wallet_ledger")
+      .select("amount, entry_type")
+      .eq("agency_partner_id", agencyPartnerId)
+      .order("created_at", { ascending: true })
+      .range(from, from + LEDGER_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("[ap-wallet] balance_read_failed", { agencyPartnerId, error: error.message });
+      return { ok: false, error: error.message };
+    }
+
+    const rows = (data ?? []) as { amount: number; entry_type: string }[];
+    for (const row of rows) {
+      balance = applyLedgerEntry(balance, row);
+    }
+    entries += rows.length;
+
+    if (rows.length < LEDGER_PAGE_SIZE) break;
+  }
+
+  return { ok: true, balance, entries };
+}
+
 /**
  * Get current wallet balance by summing all ledger entries.
  * Credits (commission_credit, manual_credit, bonus, adjustment with positive amount) add.
  * Debits (manual_debit, payout_deduction, penalty, reversal) subtract.
+ *
+ * Returns 0 when the ledger cannot be read — safe for display, but never use
+ * this for a spend decision; use `calculateWalletBalance` and check `ok`.
  */
 export async function getWalletBalance(agencyPartnerId: string): Promise<number> {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return 0;
-
-  const { data, error } = await supabase
-    .from("ap_wallet_ledger")
-    .select("amount, entry_type")
-    .eq("agency_partner_id", agencyPartnerId)
-    .order("created_at", { ascending: true });
-
-  if (error || !data) return 0;
-
-  return (data as { amount: number; entry_type: string }[]).reduce((balance, entry) => {
-    const amt = safeNumber(entry.amount);
-    const creditTypes = ["commission_credit", "manual_credit", "bonus"];
-    const debitTypes = ["manual_debit", "payout_deduction", "penalty", "reversal"];
-
-    if (creditTypes.includes(entry.entry_type)) return balance + amt;
-    if (debitTypes.includes(entry.entry_type)) return balance - Math.abs(amt);
-
-    // adjustment: use sign of amount
-    if (entry.entry_type === "adjustment") return balance + amt;
-
-    return balance;
-  }, 0);
+  const result = await calculateWalletBalance(agencyPartnerId);
+  return result.ok ? result.balance : 0;
 }
 
 /**
@@ -66,21 +104,15 @@ async function appendLedgerEntry(params: {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { ok: false, error: "Missing server config" };
 
-  const currentBalance = await getWalletBalance(params.agencyPartnerId);
-
-  const creditTypes = ["commission_credit", "manual_credit", "bonus"];
-  const debitTypes = ["manual_debit", "payout_deduction", "penalty", "reversal"];
-  const amt = safeNumber(params.amount);
-
-  let newBalance: number;
-  if (creditTypes.includes(params.entryType)) {
-    newBalance = currentBalance + amt;
-  } else if (debitTypes.includes(params.entryType)) {
-    newBalance = currentBalance - Math.abs(amt);
-  } else {
-    // adjustment
-    newBalance = currentBalance + amt;
+  // running_balance is an audit column — writing it from a failed balance read
+  // would silently corrupt the ledger's history, so refuse to append instead.
+  const current = await calculateWalletBalance(params.agencyPartnerId);
+  if (!current.ok) {
+    return { ok: false, error: `Could not read wallet balance: ${current.error}` };
   }
+
+  const amt = safeNumber(params.amount);
+  const newBalance = applyLedgerEntry(current.balance, { amount: amt, entry_type: params.entryType });
 
   const { data, error } = await supabase
     .from("ap_wallet_ledger")
@@ -106,14 +138,58 @@ async function appendLedgerEntry(params: {
 }
 
 /**
- * Credit commission to AP wallet.
+ * Look up an existing ledger entry for a reference, so money operations can be
+ * retried without paying twice.
+ */
+async function findLedgerEntryByReference(
+  agencyPartnerId: string,
+  referenceType: string,
+  referenceId: string,
+  entryType: APWalletEntryType,
+): Promise<{ id: string } | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("ap_wallet_ledger")
+    .select("id")
+    .eq("agency_partner_id", agencyPartnerId)
+    .eq("reference_type", referenceType)
+    .eq("reference_id", referenceId)
+    .eq("entry_type", entryType)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[ap-wallet] reference_lookup_failed", { referenceId, error: error.message });
+    return null;
+  }
+  return data ? { id: String(data.id) } : null;
+}
+
+/**
+ * Credit commission to AP wallet — idempotent per commission.
+ *
+ * A retried approval must not pay the partner twice, so an existing
+ * commission_credit for the same commission short-circuits.
  */
 export async function creditCommission(params: {
   agencyPartnerId: string;
   commissionId: string;
   amount: number;
   serviceName?: string;
-}): Promise<WalletResult> {
+}): Promise<WalletResult & { deduped?: boolean }> {
+  const existing = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "commission",
+    params.commissionId,
+    "commission_credit",
+  );
+
+  if (existing) {
+    return { ok: true, entryId: existing.id, deduped: true };
+  }
+
   return appendLedgerEntry({
     agencyPartnerId: params.agencyPartnerId,
     entryType: "commission_credit",
@@ -121,6 +197,48 @@ export async function creditCommission(params: {
     referenceType: "commission",
     referenceId: params.commissionId,
     description: `Commission earned${params.serviceName ? ` for ${params.serviceName}` : ""}`,
+  });
+}
+
+/**
+ * Claw a credited commission back out of the wallet — idempotent per commission.
+ * Used when an already-approved commission is cancelled or reversed; without it
+ * the money stays spendable after the commission is revoked.
+ */
+export async function reverseCommissionCredit(params: {
+  agencyPartnerId: string;
+  commissionId: string;
+  amount: number;
+  createdBy?: string | null;
+  reason?: string | null;
+}): Promise<WalletResult & { deduped?: boolean }> {
+  const credited = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "commission",
+    params.commissionId,
+    "commission_credit",
+  );
+
+  // Nothing was ever credited — nothing to claw back.
+  if (!credited) return { ok: true, deduped: true };
+
+  const alreadyReversed = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "commission_reversal",
+    params.commissionId,
+    "reversal",
+  );
+
+  if (alreadyReversed) return { ok: true, entryId: alreadyReversed.id, deduped: true };
+
+  return appendLedgerEntry({
+    agencyPartnerId: params.agencyPartnerId,
+    entryType: "reversal",
+    amount: params.amount,
+    referenceType: "commission_reversal",
+    referenceId: params.commissionId,
+    description: params.reason?.trim() || "Commission reversed",
+    createdBy: params.createdBy ?? null,
   });
 }
 
@@ -267,8 +385,18 @@ export async function debitPayout(params: {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { ok: false, error: "Missing database client" };
 
-  const balance = await getWalletBalance(params.agencyPartnerId);
-  if (balance < params.amount) {
+  const amount = safeNumber(params.amount, NaN);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: "Payout amount must be greater than zero." };
+  }
+
+  // A failed balance read must never be treated as a zero balance here — it has
+  // to block the withdrawal, not silently reject or approve it on bad data.
+  const current = await calculateWalletBalance(params.agencyPartnerId);
+  if (!current.ok) {
+    return { ok: false, error: "Could not verify wallet balance. Please try again." };
+  }
+  if (current.balance < amount) {
     return { ok: false, error: "Insufficient wallet balance." };
   }
 
@@ -287,12 +415,15 @@ export async function debitPayout(params: {
     upi_id: ap.upi_id
   } : null;
 
-  // Insert payout request
+  // Insert payout request. A partial unique index on
+  // ap_payouts(agency_partner_id) WHERE status IN ('requested','processing')
+  // makes "one active payout per partner" a database guarantee — without it two
+  // concurrent requests both pass the balance check and both withdraw.
   const { data: payout, error: payoutError } = await supabase
     .from("ap_payouts")
     .insert({
       agency_partner_id: params.agencyPartnerId,
-      amount: params.amount,
+      amount,
       status: "requested",
       bank_account_snapshot: bankSnapshot,
       requested_at: new Date().toISOString(),
@@ -301,6 +432,9 @@ export async function debitPayout(params: {
     .single();
 
   if (payoutError || !payout) {
+    if (payoutError?.code === "23505" || /duplicate key|unique constraint/i.test(payoutError?.message ?? "")) {
+      return { ok: false, error: "You already have an active payout request under process." };
+    }
     return { ok: false, error: "Failed to create payout request: " + payoutError?.message };
   }
 
@@ -308,7 +442,7 @@ export async function debitPayout(params: {
   const ledgerRes = await deductPayout({
     agencyPartnerId: params.agencyPartnerId,
     payoutId: payout.id as string,
-    amount: params.amount,
+    amount,
     createdBy: params.createdBy,
   });
 
