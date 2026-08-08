@@ -278,3 +278,139 @@ export async function logCommissionStatusChange(
   return data;
 }
 
+
+// ── Commission lifecycle ────────────────────────────────────────────────────
+
+export const AP_COMMISSION_STATUSES = [
+  "pending",
+  "earned",
+  "approved",
+  "paid",
+  "cancelled",
+  "reversed",
+  "adjusted",
+] as const;
+
+export type ApCommissionStatus = (typeof AP_COMMISSION_STATUSES)[number];
+
+/** Statuses at which the commission amount is sitting in the partner's wallet. */
+const CREDITED_STATUSES = new Set<ApCommissionStatus>(["approved", "paid"]);
+/** Statuses that revoke a commission — any credit must be clawed back. */
+const REVOKED_STATUSES = new Set<ApCommissionStatus>(["cancelled", "reversed"]);
+
+export function isApCommissionStatus(value: unknown): value is ApCommissionStatus {
+  return AP_COMMISSION_STATUSES.includes(String(value ?? "") as ApCommissionStatus);
+}
+
+/**
+ * Move an `ap_commissions` row to a new status, keeping the partner's wallet in
+ * step.
+ *
+ * This is the link that made the earn → wallet → payout chain work: commissions
+ * were reserved as `pending` and shown to the partner, but nothing ever credited
+ * `ap_wallet_ledger`, so a partner's balance never grew and they could never
+ * reach the payout minimum. Approving now credits the wallet exactly once, and
+ * cancelling or reversing an already-credited commission takes it back out.
+ */
+export async function setApCommissionStatus(params: {
+  commissionId: string;
+  toStatus: ApCommissionStatus;
+  actorId: string;
+  notes?: string | null;
+}): Promise<
+  | { ok: true; status: ApCommissionStatus; walletEntryId?: string | null; walletChanged: boolean }
+  | { ok: false; error: string; status: number }
+> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: false, error: "Missing server config", status: 503 };
+
+  const { data: commission, error: loadError } = await supabase
+    .from("ap_commissions")
+    .select("id, agency_partner_id, calculated_amount, status, service_name")
+    .eq("id", params.commissionId)
+    .maybeSingle();
+
+  if (loadError) return { ok: false, error: "Could not load commission.", status: 500 };
+  if (!commission) return { ok: false, error: "Commission not found.", status: 404 };
+
+  const fromStatus = String(commission.status ?? "pending") as ApCommissionStatus;
+  const amount = safeNumber(commission.calculated_amount);
+  const partnerId = String(commission.agency_partner_id);
+
+  if (fromStatus === params.toStatus) {
+    return { ok: true, status: fromStatus, walletChanged: false };
+  }
+
+  const { creditCommission, reverseCommissionCredit } = await import("@/lib/ap-wallet");
+
+  let walletEntryId: string | null = null;
+  let walletChanged = false;
+
+  // Settle the wallet before recording the status, so a failure here leaves the
+  // commission in its old state rather than marking it paid with no money moved.
+  if (CREDITED_STATUSES.has(params.toStatus) && !CREDITED_STATUSES.has(fromStatus)) {
+    if (amount > 0) {
+      const credited = await creditCommission({
+        agencyPartnerId: partnerId,
+        commissionId: params.commissionId,
+        amount,
+        serviceName: commission.service_name ? String(commission.service_name) : undefined,
+      });
+      if (!credited.ok) {
+        return { ok: false, error: credited.error || "Wallet credit failed.", status: 500 };
+      }
+      walletEntryId = credited.entryId ?? null;
+      walletChanged = !credited.deduped;
+    }
+  } else if (REVOKED_STATUSES.has(params.toStatus) && CREDITED_STATUSES.has(fromStatus)) {
+    const reversed = await reverseCommissionCredit({
+      agencyPartnerId: partnerId,
+      commissionId: params.commissionId,
+      amount,
+      createdBy: params.actorId,
+      reason: params.notes ?? `Commission ${params.toStatus}`,
+    });
+    if (!reversed.ok) {
+      return { ok: false, error: reversed.error || "Wallet reversal failed.", status: 500 };
+    }
+    walletEntryId = reversed.entryId ?? null;
+    walletChanged = !reversed.deduped;
+  }
+
+  const now = new Date().toISOString();
+  const updates: Record<string, unknown> = { status: params.toStatus, updated_at: now };
+  if (params.toStatus === "approved") {
+    updates.approved_by = params.actorId;
+    updates.approved_at = now;
+  }
+  if (params.toStatus === "paid") {
+    updates.paid_at = now;
+  }
+
+  const { error: updateError } = await supabase
+    .from("ap_commissions")
+    .update(updates)
+    .eq("id", params.commissionId);
+
+  if (updateError) {
+    console.error("[ap-commission] status_update_failed", {
+      commissionId: params.commissionId,
+      error: updateError.message,
+    });
+    return { ok: false, error: "Commission status could not be updated.", status: 500 };
+  }
+
+  try {
+    await logCommissionStatusChange(
+      params.commissionId,
+      fromStatus,
+      params.toStatus,
+      params.actorId,
+      params.notes ?? undefined,
+    );
+  } catch (auditError) {
+    console.error("[ap-commission] audit_log_failed", auditError);
+  }
+
+  return { ok: true, status: params.toStatus, walletEntryId, walletChanged };
+}
