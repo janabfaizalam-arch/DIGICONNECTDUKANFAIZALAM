@@ -4,7 +4,9 @@ import { getAgentServiceBySlug, type AgentService } from "@/lib/agent-services";
 import { roleHasCapability } from "@/lib/crm/permissions-core";
 import {
   assertOverrideAllowed,
+  describeWalkInFailure,
   isValidIndianMobile,
+  matchWalkInFailureCode,
   mapWhatsAppResultToUiState,
   maskIndianMobile,
   normalizeIndianMobileDigits,
@@ -165,7 +167,7 @@ async function createApplicationViaRpcOrFallback(input: {
   referralSource: string | null;
 }): Promise<
   | { ok: true; applicationId: string; workId: string | null; status: string; paymentStatus: string; deduped: boolean }
-  | { ok: false; error: string; status: number }
+  | { ok: false; error: string; status: number; code?: string }
 > {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { ok: false, error: "Service unavailable.", status: 503 };
@@ -200,31 +202,33 @@ async function createApplicationViaRpcOrFallback(input: {
   // Fallback when migration not applied yet — still enforce idempotency via scoped key lookup.
   if (rpc.error) {
     const msg = `${rpc.error.code ?? ""} ${rpc.error.message ?? ""}`;
-    const safeCodes = [
-      "actor_required",
-      "idempotency_key_required",
-      "customer_required",
-      "service_required",
-      "customer_not_found",
-      "customer_mobile_invalid",
-      "customer_auth_user_not_found",
-      "customer_auth_user_mismatch",
-      "service_not_found",
-      "inactive_service",
-      "invalid_override_amount",
-      "override_reason_required",
-      "assignee_not_found",
-      "walk_in_application_failed",
-    ];
-    const matched = safeCodes.find((code) => msg.includes(code));
-    if (matched && !/PGRST202|42883|does not exist|schema cache/i.test(msg)) {
+    // Only a genuinely missing function should fall through to the manual insert.
+    const rpcMissing = /PGRST202|42883|does not exist|schema cache/i.test(msg);
+    const matched = matchWalkInFailureCode(msg);
+
+    if (matched && !rpcMissing) {
+      // Report *which* rule rejected the create. These all used to collapse into
+      // one dead-end message, leaving the operator with nothing to act on.
+      const detail = describeWalkInFailure(matched);
       console.error("[walk-in-app] rpc_rejected", { code: matched });
-      return { ok: false, error: "Application could not be created.", status: matched === "inactive_service" ? 400 : 400 };
+      return { ok: false, error: detail.message, code: matched, status: detail.status };
     }
-    if (!/PGRST202|42883|does not exist|schema cache/i.test(msg)) {
-      console.error("[walk-in-app] rpc_failed", { error: "walk_in_application_failed" });
-      return { ok: false, error: "Application could not be created.", status: 500 };
+
+    if (!rpcMissing) {
+      console.error("[walk-in-app] rpc_failed", {
+        code: rpc.error.code ?? null,
+        // Postgres message only — never the parameters, which carry customer PII.
+        message: String(rpc.error.message ?? "").slice(0, 200),
+      });
+      return {
+        ok: false,
+        error: "The application could not be saved. Nothing was created — check status before retrying.",
+        code: "rpc_failed",
+        status: 500,
+      };
     }
+
+    console.warn("[walk-in-app] rpc_missing_using_fallback", { code: rpc.error.code ?? null });
   }
 
   const scopedKey = `walk_in_application_create:${input.actorId}:${input.idempotencyKey}`;
@@ -307,8 +311,19 @@ async function createApplicationViaRpcOrFallback(input: {
     .single();
 
   if (applicationError || !application) {
-    console.error("[walk-in-app] insert_failed", { error: "application_insert_failed" });
-    return { ok: false, error: "Application could not be created.", status: 500 };
+    // Keep the Postgres code and message: without them a failed insert was
+    // undiagnosable even from the server logs.
+    console.error("[walk-in-app] insert_failed", {
+      code: applicationError?.code ?? null,
+      message: String(applicationError?.message ?? "").slice(0, 200),
+      details: String(applicationError?.details ?? "").slice(0, 200),
+    });
+    return {
+      ok: false,
+      error: "The application could not be saved. Nothing was created — check status before retrying.",
+      code: "application_insert_failed",
+      status: 500,
+    };
   }
 
   const applicationId = String(application.id);
@@ -439,7 +454,9 @@ export async function createWalkInApplication(input: {
   assigneeUserId?: string | null;
   priceOverride?: number | null;
   overrideReason?: string | null;
-}): Promise<WalkInApplicationSuccess | { ok: false; error: string; status: number; customerId?: string }> {
+}): Promise<
+  WalkInApplicationSuccess | { ok: false; error: string; status: number; customerId?: string; code?: string }
+> {
   const idempotencyKey = String(input.idempotencyKey || "").trim();
   if (idempotencyKey.length < 8) {
     return { ok: false, error: "Idempotency key is required.", status: 400 };
@@ -583,6 +600,8 @@ export async function createWalkInApplication(input: {
       ok: false,
       error: created.error,
       status: created.status,
+      // Carry the specific rejection reason out to the API and the operator.
+      code: "code" in created ? created.code : undefined,
       // If customer was created but application failed, return id so UI can retry without duplicate customer.
       customerId: customerCreatedInRequest ? customerId : undefined,
     };

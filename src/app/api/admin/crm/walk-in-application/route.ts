@@ -132,17 +132,27 @@ export async function POST(request: Request) {
       const code =
         status === 400 || status === 422
           ? "VALIDATION_ERROR"
-          : status === 403
-            ? "FORBIDDEN"
-            : status === 404
-              ? "NOT_FOUND"
-              : status === 409
-                ? "CONFLICT"
-                : status === 503
-                  ? "SERVICE_UNAVAILABLE"
-                  : "CREATE_FAILED";
+          : status === 401
+            ? "UNAUTHORIZED"
+            : status === 403
+              ? "FORBIDDEN"
+              : status === 404
+                ? "NOT_FOUND"
+                : status === 409
+                  ? "CONFLICT"
+                  : status === 503
+                    ? "SERVICE_UNAVAILABLE"
+                    : "CREATE_FAILED";
+      // Log the precise rejection reason against the correlation id the
+      // operator sees, so a reported failure can be traced to one log line.
+      console.warn("[walk-in-app] create_rejected", {
+        correlationId,
+        status,
+        reason: "code" in result ? result.code ?? null : null,
+      });
       return jsonError(status, code, result.error, correlationId, {
         customerId: result.customerId,
+        reason: "code" in result ? result.code : undefined,
       });
     }
 

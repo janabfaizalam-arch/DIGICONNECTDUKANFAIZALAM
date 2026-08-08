@@ -72,6 +72,34 @@ type SuccessResult = {
 
 type Step = "lookup" | "confirm" | "create" | "service" | "review" | "success";
 
+/** What each step is for, in the operator's terms. */
+const STEP_COPY: Record<Step, { title: string; hint: string }> = {
+  lookup: {
+    title: "Find the customer",
+    hint: "Enter the WhatsApp or mobile number. If they already exist, we reuse that profile — no duplicates.",
+  },
+  confirm: {
+    title: "Confirm the customer",
+    hint: "This number is already registered. Check the details match the person at the counter.",
+  },
+  create: {
+    title: "New customer details",
+    hint: "This number is not registered yet. Fill in the details to create the profile.",
+  },
+  service: {
+    title: "Choose the service",
+    hint: "Pick the service the customer is here for. Prices come from the live catalogue.",
+  },
+  review: {
+    title: "Confirm and create",
+    hint: "Check the amount and required documents, then create the application.",
+  },
+  success: {
+    title: "Application created",
+    hint: "Share the reference with the customer, or start another walk-in.",
+  },
+};
+
 function digits(value: string, max: number) {
   return value.replace(/\D/g, "").slice(0, max);
 }
@@ -140,6 +168,8 @@ export function WalkInCustomerWizard({
   const [found, setFound] = useState<LookupCustomer | null>(null);
   const [recentApplications, setRecentApplications] = useState<RecentApp[]>([]);
   const [formError, setFormError] = useState("");
+  /** Correlation id from the failed create — the only handle support has on the server log. */
+  const [errorCorrelationId, setErrorCorrelationId] = useState<string | null>(null);
   const [successResult, setSuccessResult] = useState<SuccessResult | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -327,6 +357,7 @@ export function WalkInCustomerWizard({
   function submitApplication() {
     if (isPending || submitLock.current || checkingStatus || !selectedService) return;
     setFormError("");
+    setErrorCorrelationId(null);
     submitLock.current = true;
 
     startTransition(async () => {
@@ -361,6 +392,9 @@ export function WalkInCustomerWizard({
         });
         const parsed = await parseApiResponse<Record<string, unknown>>(response);
         const safeError = extractSafeApiError(parsed);
+        const responseCorrelationId =
+          typeof parsed.data?.correlationId === "string" ? parsed.data.correlationId : null;
+        setErrorCorrelationId(responseCorrelationId);
 
         if (parsed.ok && parsed.data?.ok !== false && parsed.data?.applicationId) {
           const successData = toSuccessResult(parsed.data, selectedService);
@@ -494,10 +528,11 @@ export function WalkInCustomerWizard({
                   ? "3 · Service"
                   : "4 · Done"}
           </p>
-          <h2 className="mt-1 text-lg font-bold text-slate-900">Counter walk-in workflow</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Lookup → confirm or create → service → application. Existing customers never create a duplicate profile.
-          </p>
+          {/* The page header already states the whole workflow — repeating it here
+              told the operator nothing about where they are. Name the current
+              step and what it needs instead. */}
+          <h2 className="mt-1 text-lg font-bold text-slate-900">{STEP_COPY[step].title}</h2>
+          <p className="mt-1 text-sm text-slate-600">{STEP_COPY[step].hint}</p>
         </div>
 
         {(step === "lookup" || step === "create" || step === "confirm") && (
@@ -764,7 +799,7 @@ export function WalkInCustomerWizard({
             <FormSubmitButton
               type="button"
               loading={createBusy}
-              loadingText={checkingStatus ? "Checking status…" : "Creating…"}
+              loadingText={checkingStatus ? "Confirming…" : "Creating…"}
               disabled={createBusy}
               className="w-full md:w-fit"
               onClick={submitApplication}
@@ -853,9 +888,14 @@ export function WalkInCustomerWizard({
       ) : null}
 
       {formError ? (
-        <p className="rounded-2xl bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700" role="alert">
-          {formError}
-        </p>
+        <div className="rounded-2xl bg-orange-50 px-4 py-3 text-orange-700" role="alert">
+          <p className="text-sm font-semibold">{formError}</p>
+          {errorCorrelationId ? (
+            <p className="mt-1 font-mono text-xs text-orange-600">
+              Reference: {errorCorrelationId}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

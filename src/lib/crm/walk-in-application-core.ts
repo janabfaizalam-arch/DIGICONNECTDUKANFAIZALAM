@@ -208,3 +208,110 @@ export function mapWhatsAppResultToUiState(result: {
   if (result.code === "supabase_missing") return "configuration_required";
   return "failed";
 }
+
+// ── Walk-in create failure reporting ────────────────────────────────────────
+
+/**
+ * Reasons `create_walk_in_application_core` rejects a walk-in create.
+ * Mirrors the `raise exception '<code>'` list in
+ * 20260805120000_crm_walk_in_application_foundation.sql.
+ */
+export const WALK_IN_FAILURE_CODES = [
+  "actor_required",
+  "idempotency_key_required",
+  "customer_required",
+  "service_required",
+  "customer_not_found",
+  "customer_mobile_invalid",
+  "customer_auth_user_not_found",
+  "customer_auth_user_mismatch",
+  "service_not_found",
+  "inactive_service",
+  "invalid_override_amount",
+  "override_reason_required",
+  "assignee_not_found",
+  "walk_in_application_failed",
+] as const;
+
+export type WalkInFailureCode = (typeof WALK_IN_FAILURE_CODES)[number];
+
+/**
+ * Turn a rejection code into something the counter operator can act on.
+ *
+ * Every one of these used to surface as the same dead-end string,
+ * "Application could not be created.", so an admin had no way to tell an
+ * inactive service from a bad assignee from a genuine server fault — and no
+ * indication of what to change before retrying.
+ */
+const WALK_IN_FAILURE_DETAIL: Record<WalkInFailureCode, { message: string; status: number }> = {
+  actor_required: {
+    message: "Your session did not carry a valid admin identity. Sign in again and retry.",
+    status: 401,
+  },
+  idempotency_key_required: {
+    message: "This form lost its submission key. Reload the page and re-enter the application.",
+    status: 400,
+  },
+  customer_required: {
+    message: "No customer was attached to this application. Look the customer up again.",
+    status: 400,
+  },
+  service_required: {
+    message: "No service was selected. Choose a service and retry.",
+    status: 400,
+  },
+  customer_not_found: {
+    message: "That customer record no longer exists. Search for the customer again.",
+    status: 404,
+  },
+  customer_mobile_invalid: {
+    message: "The customer's saved mobile number is not a valid 10-digit Indian number. Fix it on the customer record first.",
+    status: 400,
+  },
+  customer_auth_user_not_found: {
+    message: "The customer's login account could not be found. Create the application without linking, or repair the account first.",
+    status: 409,
+  },
+  customer_auth_user_mismatch: {
+    message: "This customer record is linked to a different login account. Resolve the duplicate before creating an application.",
+    status: 409,
+  },
+  service_not_found: {
+    message: "That service is no longer in the catalogue. Pick another service.",
+    status: 404,
+  },
+  inactive_service: {
+    message: "That service is inactive. Activate it in Services, or pick an active one.",
+    status: 400,
+  },
+  invalid_override_amount: {
+    message: "The price override is not a valid amount. Clear it or enter a valid figure.",
+    status: 400,
+  },
+  override_reason_required: {
+    message: "A price override needs a reason. Add one and retry.",
+    status: 400,
+  },
+  assignee_not_found: {
+    message: "The chosen assignee is not an eligible user. Leave it unassigned or pick someone else.",
+    status: 400,
+  },
+  walk_in_application_failed: {
+    message: "The application could not be saved. Nothing was created — check status before retrying.",
+    status: 500,
+  },
+};
+
+export function isWalkInFailureCode(value: unknown): value is WalkInFailureCode {
+  return WALK_IN_FAILURE_CODES.includes(String(value ?? "") as WalkInFailureCode);
+}
+
+/** Find the rejection code inside a raw Postgres error string. */
+export function matchWalkInFailureCode(rawMessage: string): WalkInFailureCode | null {
+  const msg = String(rawMessage ?? "");
+  return WALK_IN_FAILURE_CODES.find((code) => msg.includes(code)) ?? null;
+}
+
+export function describeWalkInFailure(code: WalkInFailureCode): { message: string; status: number } {
+  return WALK_IN_FAILURE_DETAIL[code];
+}

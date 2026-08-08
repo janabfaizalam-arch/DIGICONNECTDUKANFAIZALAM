@@ -37,12 +37,14 @@ export default async function WalkInCustomerPage({
           initialCustomerId={params.customerId ?? null}
           initialStep={params.step ?? null}
         />
+        {/* Operator-facing wording — the previous line read as an internal
+            migration note ("until fully retired") on a production screen. */}
         <p className="text-xs text-slate-500">
-          Legacy email/password create remains at{" "}
+          Need to create a customer with an email and password instead?{" "}
           <Link href="/admin/customers/new" className="font-semibold underline">
-            /admin/customers/new
-          </Link>{" "}
-          until fully retired.
+            Use the email sign-up form
+          </Link>
+          .
         </p>
       </div>
     </main>
