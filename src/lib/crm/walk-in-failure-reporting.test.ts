@@ -80,6 +80,27 @@ describe("walk-in create diagnostics", () => {
     expect(insertBlock.slice(0, 300)).toContain("applicationError?.message");
   });
 
+  it("distinguishes the three server-fault paths from each other", () => {
+    // These three are different problems — the database rolling the write back,
+    // the RPC erroring unexpectedly, and the fallback insert failing. Sharing
+    // one message left the operator unable to tell which had happened, which is
+    // the same defect this file exists to prevent.
+    const core = readSrc("src/lib/crm/walk-in-application-core.ts");
+    const messages = [
+      /The database rejected the application and rolled it back\./,
+      /The application service returned an unexpected error\./,
+      /The application record could not be written to the database\./,
+    ];
+    expect(core).toMatch(messages[0]);
+    expect(lib).toMatch(messages[1]);
+    expect(lib).toMatch(messages[2]);
+
+    // And none of them is the old shared wording.
+    const shared = "The application could not be saved. Nothing was created";
+    expect(core).not.toContain(shared);
+    expect(lib).not.toContain(shared);
+  });
+
   it("ties the operator-visible reference to the server log line", () => {
     expect(route).toContain("create_rejected");
     expect(route).toContain("correlationId");

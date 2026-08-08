@@ -222,7 +222,8 @@ async function createApplicationViaRpcOrFallback(input: {
       });
       return {
         ok: false,
-        error: "The application could not be saved. Nothing was created — check status before retrying.",
+        error:
+          "The application service returned an unexpected error. Nothing was created — check status before retrying.",
         code: "rpc_failed",
         status: 500,
       };
@@ -320,7 +321,8 @@ async function createApplicationViaRpcOrFallback(input: {
     });
     return {
       ok: false,
-      error: "The application could not be saved. Nothing was created — check status before retrying.",
+      error:
+        "The application record could not be written to the database. Nothing was created — check status before retrying.",
       code: "application_insert_failed",
       status: 500,
     };

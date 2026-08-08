@@ -297,7 +297,9 @@ const WALK_IN_FAILURE_DETAIL: Record<WalkInFailureCode, { message: string; statu
     status: 400,
   },
   walk_in_application_failed: {
-    message: "The application could not be saved. Nothing was created — check status before retrying.",
+    // The database function's own catch-all: it reached the write and rolled back.
+    message:
+      "The database rejected the application and rolled it back. Nothing was created — check status before retrying.",
     status: 500,
   },
 };
