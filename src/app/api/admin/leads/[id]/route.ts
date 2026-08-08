@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { convertLeadToApplication } from "@/lib/crm/lead-convert";
 import { transitionLeadStageSafe } from "@/lib/crm/lead-convert";
-import { isLeadPipelineStage } from "@/lib/crm/leads-core";
+import { isLeadPipelineStage, mapLegacyStatusToStage } from "@/lib/crm/leads-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const leadStatuses = [
@@ -98,14 +98,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ message: "Invalid lead status." }, { status: 400 });
   }
 
+  // `status` and `pipeline_stage` describe the same lead. Writing only the
+  // legacy column let the two drift apart — reads prefer pipeline_stage, so a
+  // status set here would silently not take effect and conversion analytics
+  // (which count won / converted_at) would disagree with the pipeline.
+  const mappedStage = mapLegacyStatusToStage(body.status);
+
   const { error } = await supabase
     .from("leads")
-    .update({ status: body.status, updated_at: new Date().toISOString() })
+    .update({
+      status: body.status,
+      pipeline_stage: mappedStage,
+      updated_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString(),
+    })
     .eq("id", id);
 
   if (error) {
     return NextResponse.json({ message: "Lead could not be updated." }, { status: 500 });
   }
 
-  return NextResponse.json({ message: "Lead updated." });
+  // Keep the audit trail complete — this path previously wrote no history at all.
+  await supabase.from("lead_activities").insert({
+    lead_id: id,
+    activity_type: "stage_change",
+    body: `Legacy status set to ${body.status} (stage ${mappedStage})`,
+    actor_id: auth.user!.id,
+    actor_role: String(auth.role ?? "admin"),
+    metadata: { legacyStatus: body.status, toStage: mappedStage, via: "legacy_status_patch" },
+  });
+
+  return NextResponse.json({ message: "Lead updated.", status: body.status, pipelineStage: mappedStage });
 }

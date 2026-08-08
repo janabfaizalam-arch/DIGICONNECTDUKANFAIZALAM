@@ -3,6 +3,7 @@ import "server-only";
 import { roleHasCapability } from "@/lib/crm/permissions-core";
 import {
   buildLeadIngestionKey,
+  buildLeadSearchFilter,
   classifyDuplicateMatch,
   isFollowUpOverdue,
   isLeadPipelineStage,
@@ -16,7 +17,7 @@ import {
   type LeadPipelineStage,
   type LeadSource,
 } from "@/lib/crm/leads-core";
-import { getAsiaKolkataDayRange } from "@/lib/crm/lead-workflow-core";
+import { getAsiaKolkataDayRange, getAsiaKolkataRangeForDates } from "@/lib/crm/lead-workflow-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type CanonicalLead = {
@@ -123,14 +124,9 @@ export async function listCanonicalLeads(input: {
     );
   }
 
-  if (input.q?.trim()) {
-    const q = input.q.trim().replace(/[% ,]/g, "");
-    const uuidLike = /^[0-9a-f-]{8,}$/i.test(q);
-    query = query.or(
-      uuidLike
-        ? `name.ilike.%${q}%,mobile.ilike.%${q}%,mobile_normalized.ilike.%${q}%,service.ilike.%${q}%,id.eq.${q},external_ref.ilike.%${q}%,ingestion_key.ilike.%${q}%`
-        : `name.ilike.%${q}%,mobile.ilike.%${q}%,mobile_normalized.ilike.%${q}%,service.ilike.%${q}%,external_ref.ilike.%${q}%,ingestion_key.ilike.%${q}%`,
-    );
+  const searchFilter = buildLeadSearchFilter(input.q);
+  if (searchFilter) {
+    query = query.or(searchFilter);
   }
   if (input.stage && input.stage !== "all") {
     query = query.eq("pipeline_stage", input.stage);
@@ -142,16 +138,16 @@ export async function listCanonicalLeads(input: {
     const service = input.service.trim().replace(/[% ,]/g, "");
     query = query.ilike("service", `%${service}%`);
   }
-  if (input.createdFrom && !Number.isNaN(Date.parse(input.createdFrom))) {
-    query = query.gte("created_at", new Date(input.createdFrom).toISOString());
+  const createdRange = getAsiaKolkataRangeForDates({ from: input.createdFrom, to: input.createdTo });
+  if (createdRange.startIso) {
+    query = query.gte("created_at", createdRange.startIso);
   }
-  if (input.createdTo && !Number.isNaN(Date.parse(input.createdTo))) {
-    const end = new Date(input.createdTo);
-    end.setHours(23, 59, 59, 999);
-    query = query.lte("created_at", end.toISOString());
+  if (createdRange.endIso) {
+    query = query.lte("created_at", createdRange.endIso);
   }
   if (input.assignee === "unassigned") {
-    query = query.is("assigned_to", null);
+    // Match the KPI definition — the unassigned queue is open work, not closed leads.
+    query = query.is("assigned_to", null).not("pipeline_stage", "in", "(won,lost)");
   } else if (input.assignee === "me") {
     query = query.eq("assigned_to", input.actorId);
   } else if (input.assignee && input.assignee !== "all") {
@@ -180,11 +176,23 @@ export async function listCanonicalLeads(input: {
 
   const leads = (data ?? []).map((row) => rowToLead(row as Record<string, unknown>));
 
-  // KPI counts (scoped). Best-effort; ignore column-missing environments.
+  // KPI counts (scoped). Best-effort — fall back to page-local counts when the
+  // count queries fail. Supabase resolves with an `error` field rather than
+  // throwing, so the failure has to be inspected, not caught.
   let overdue = 0;
   let unassigned = 0;
   let today = 0;
   let upcoming = 0;
+
+  const fallbackKpis = () => {
+    overdue = leads.filter((l) => l.overdue).length;
+    unassigned = leads.filter(
+      (l) => !l.assignedTo && l.pipelineStage !== "won" && l.pipelineStage !== "lost",
+    ).length;
+    today = 0;
+    upcoming = 0;
+  };
+
   try {
     let overdueQuery = supabase
       .from("leads")
@@ -215,13 +223,19 @@ export async function listCanonicalLeads(input: {
       unassignedQuery = unassignedQuery.or(scope);
     }
     const [o, t, uq, u] = await Promise.all([overdueQuery, todayQuery, upcomingQuery, unassignedQuery]);
-    overdue = o.count ?? 0;
-    today = t.count ?? 0;
-    upcoming = uq.count ?? 0;
-    unassigned = u.count ?? 0;
-  } catch {
-    overdue = leads.filter((l) => l.overdue).length;
-    unassigned = leads.filter((l) => !l.assignedTo && l.pipelineStage !== "won" && l.pipelineStage !== "lost").length;
+    const countError = o.error ?? t.error ?? uq.error ?? u.error;
+    if (countError) {
+      console.error("[crm-leads] kpi_count_failed", { error: countError.message });
+      fallbackKpis();
+    } else {
+      overdue = o.count ?? 0;
+      today = t.count ?? 0;
+      upcoming = uq.count ?? 0;
+      unassigned = u.count ?? 0;
+    }
+  } catch (kpiError) {
+    console.error("[crm-leads] kpi_count_threw", { error: kpiError });
+    fallbackKpis();
   }
 
   return {
@@ -570,8 +584,11 @@ export async function reassignLead(input: {
     .update({
       assigned_to: input.assigneeUserId,
       assigned_by: input.actorId,
-      assigned_at: new Date().toISOString(),
-      agent_id: input.assigneeUserId ?? existing.agent_id,
+      assigned_at: input.assigneeUserId ? new Date().toISOString() : null,
+      // Partner scoping matches on agent_id as well as assigned_to, so keeping a
+      // stale agent_id here would leave the previous owner able to read and act
+      // on a lead that was explicitly moved to the unassigned queue.
+      agent_id: input.assigneeUserId,
       last_activity_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

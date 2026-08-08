@@ -132,6 +132,62 @@ export function isFollowUpOverdue(input: {
   return due < (input.now ?? new Date()).getTime();
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: string | null | undefined): boolean {
+  return UUID_PATTERN.test(String(value ?? "").trim());
+}
+
+/**
+ * Strip characters that would break a PostgREST `or=(...)` filter list.
+ * Commas separate conditions, parentheses group them, and `%`/`*` are wildcards
+ * the caller supplies itself.
+ */
+export function sanitizeLeadSearchTerm(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[%*(),\\]/g, "")
+    .slice(0, 80);
+}
+
+/**
+ * Build the PostgREST `or` filter for lead search.
+ *
+ * `id.eq.<term>` may only be included for a real UUID: Postgres rejects anything
+ * else with "invalid input syntax for type uuid", which fails the whole query.
+ * A plain mobile number is all hex-safe digits, so a loose "looks like a uuid"
+ * test made every phone-number search error out.
+ */
+export function buildLeadSearchFilter(rawTerm: string | null | undefined): string | null {
+  const term = sanitizeLeadSearchTerm(rawTerm);
+  if (!term) return null;
+
+  const conditions = [
+    `name.ilike.%${term}%`,
+    `mobile.ilike.%${term}%`,
+    `mobile_normalized.ilike.%${term}%`,
+    `service.ilike.%${term}%`,
+    `external_ref.ilike.%${term}%`,
+    `ingestion_key.ilike.%${term}%`,
+  ];
+
+  if (isUuid(term)) {
+    conditions.push(`id.eq.${term}`);
+  }
+
+  return conditions.join(",");
+}
+
+/** Calendar day in Asia/Kolkata (the business timezone) as YYYY-MM-DD. */
+export function asiaKolkataDay(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 export function buildLeadIngestionKey(input: {
   source: LeadSource;
   mobile: string;
@@ -150,7 +206,9 @@ export function buildLeadIngestionKey(input: {
     .replace(/\s+/g, "-")
     .slice(0, 80);
   // Soft daily bucket reduces accidental double-submits without forever-blocking re-enquiry.
-  const day = new Date().toISOString().slice(0, 10);
+  // Bucket on the Asia/Kolkata business day — a UTC day rolls over at 05:30 IST,
+  // splitting one working morning across two dedupe windows.
+  const day = asiaKolkataDay();
   const scope = input.scopeId?.trim();
   if (input.source === "agency_partner") {
     const partnerScope = scope || "unknown-partner";
