@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Legacy Auth V2 signup retired — single canonical flow at /customer/signup. */
-export default function CustomerAuthV2SignupRedirect() {
+/** Retired PIN/OTP customer auth — kept so existing links and bookmarks land on the new flow. */
+export default function Page() {
   redirect("/customer/signup");
 }

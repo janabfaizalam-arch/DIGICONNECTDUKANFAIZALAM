@@ -36,18 +36,17 @@ const GUARD_PATTERNS =
  * This is an inventory, not a blessing: it exists so a NEW unauthenticated
  * service-role write fails this test and gets a decision, instead of landing
  * quietly the way /api/debug/doc-test and /api/test/verify-phase3 did.
+ *
+ * Known blind spot: this matches on `getSupabaseAdmin` appearing in the route
+ * file itself, so a route that reaches the service role through a helper is not
+ * caught. The customer auth routes (register / signin / forgot-password) are
+ * exactly that shape — deliberately public, with their privileged work in
+ * `lib/auth/customer-account.ts`, which is covered by its own tests.
  */
 const KNOWN_UNAUTHENTICATED_WRITES = [
   // Auth endpoints themselves — they run before a session can exist.
   "auth/admin/login",
   "auth/ap/login",
-  "auth/customer/complete-signup",
-  "customer-auth/forgot-pin",
-  "customer-auth/login",
-  "customer-auth/refresh",
-  "customer-auth/reset-pin",
-  "customer-auth/set-pin",
-  "customer-auth/verify-otp",
 
   // Public capture surfaces — anonymous visitors are the intended callers.
   "crm/event",

@@ -16,6 +16,42 @@ function metadataDeliveryStatus(row: { metadata?: unknown } | null | undefined):
   return typeof status === "string" ? status : null;
 }
 
+/**
+ * True when the number has an OTP that a customer could still be part-way
+ * through using.
+ *
+ * `createAndSendOtp` invalidates every live OTP for the same phone+purpose
+ * before issuing a new one. That is correct for a real resend, but an admin
+ * test send would silently kill a customer's in-progress signup — and because
+ * a test row carries no signup details, a customer who then entered the test
+ * code would fail at the final step instead.
+ */
+export async function hasLiveOtpRequest(input: {
+  phoneLocal: string;
+  purpose: OtpPurpose;
+}): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  const { data, error } = await supabase
+    .from("auth_otp_requests")
+    .select("id")
+    .eq("phone", input.phoneLocal)
+    .eq("purpose", input.purpose)
+    .is("invalidated_at", null)
+    .is("verified_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .limit(1);
+
+  if (error) {
+    console.error("[otp] live_check_failed", { purpose: input.purpose, error: error.message });
+    // Fail closed: assume a live request rather than clobbering one.
+    return true;
+  }
+
+  return (data ?? []).length > 0;
+}
+
 export async function createAndSendOtp(input: {
   phoneE164: string;
   phoneLocal: string;
