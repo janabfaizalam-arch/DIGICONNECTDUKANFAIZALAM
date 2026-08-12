@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import { createAndSendOtp } from "@/lib/auth/otp-store";
+import { createAndSendOtp, hasLiveOtpRequest } from "@/lib/auth/otp-store";
 import { maskPhone, normalizeIndianPhone } from "@/lib/auth/phone";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
 import { checkRateLimit } from "@/lib/auth-v2/rate-limit";
@@ -52,6 +52,24 @@ export async function POST(request: Request) {
   }
 
   const masked = maskPhone(phone.local);
+
+  // A test send issues a fresh OTP, which invalidates any live one for this
+  // number. Doing that mid-signup breaks the customer's flow: their real code
+  // stops working, and the test row carries none of the signup details that
+  // complete-signup needs. Refuse rather than clobber.
+  if (await hasLiveOtpRequest({ phoneLocal: phone.local, purpose: "customer_signup" })) {
+    console.warn("[admin-otp-test] blocked_live_signup", { adminId: admin.id, maskedPhone: masked });
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "This number has a signup OTP in progress. Testing now would cancel that customer's code. Wait 5 minutes for it to expire, or test with a different number.",
+        code: "LIVE_OTP_IN_PROGRESS",
+      },
+      { status: 409 },
+    );
+  }
+
   console.info("[admin-otp-test] send_started", {
     adminId: admin.id,
     purpose: "customer_signup",

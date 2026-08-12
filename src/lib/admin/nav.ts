@@ -19,6 +19,7 @@ import {
   Sheet,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
   TrendingUp,
   UserCheck,
   UserPlus,
@@ -118,6 +119,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: "/admin/communications", label: "Communications", description: "WhatsApp outbox ops", icon: MessageSquare },
       { href: "/admin/notifications", label: "Notifications", description: "System alerts", icon: Bell },
       { href: "/admin/crm-sync", label: "CRM Sync Logs", description: "Google Sheets mirror", icon: Sheet },
+      {
+        href: "/admin/diagnostics/otp",
+        label: "OTP Delivery",
+        description: "Why signup OTPs do or don't reach WhatsApp",
+        icon: Stethoscope,
+      },
     ],
   },
   {

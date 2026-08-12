@@ -70,8 +70,21 @@ Safe structured fields now include: `TemplateParamCount`, `TemplateParamsMasked`
 | `GET /api/admin/diagnostics/otp-delivery-status?submittedMessageId=…` | Stored OTP metadata + optional status API |
 | `POST /api/webhooks/aisensy` | Delivery webhook (requires `AISENSY_WEBHOOK_SECRET`) |
 
+### Admin UI
+
+`/admin/diagnostics/otp` (Communications → OTP Delivery) wraps the endpoints below in a
+screen: campaign resolution, payload contract, recent attempts classified as
+delivered / WhatsApp-rejected / AiSensy-refused / **submitted but unconfirmed**, plus a
+guarded test send. The endpoints alone cannot be used from a phone.
+
+Until `AISENSY_WEBHOOK_SECRET` is set, every attempt classifies as *submitted but
+unconfirmed* — the app has no way to know whether WhatsApp delivered anything.
+
 ### AiSensy dashboard checks (when API accepts but inbox empty)
 
+0. **Wallet balance / plan status.** An exhausted balance accepts submits and silently
+   drops them — the single most common cause of accepted-but-never-delivered, and
+   invisible from the API response.
 1. Exact template name linked to campaign `signup_otp`
 2. Campaign status **Live**
 3. API campaign enabled
