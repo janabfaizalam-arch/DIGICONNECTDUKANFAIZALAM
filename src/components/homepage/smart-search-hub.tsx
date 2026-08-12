@@ -129,6 +129,38 @@ export function SmartSearchHub({
   const [isFocused, setIsFocused] = useState(false);
   const [desktopSearch, setDesktopSearch] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * Close the suggestions on an outside click or Escape.
+   *
+   * This used to rely on a full-screen backdrop element rendered inside the
+   * search's own stacking context, which meant anything painting above that
+   * context swallowed the click and left the panel stuck open. Listening on the
+   * document instead is independent of paint order, and without a backdrop a
+   * click on a button behind the panel both closes it and activates the button,
+   * which is what people expect.
+   */
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const root = rootRef.current;
+      if (root && event.target instanceof Node && !root.contains(event.target)) {
+        setIsFocused(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsFocused(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isFocused]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -305,20 +337,13 @@ export function SmartSearchHub({
   return (
     <section
       id="search-hub"
+      ref={rootRef}
       className={
         isHero
           ? "relative z-30 w-full max-w-xl"
           : "relative z-30 mx-auto w-full max-w-2xl px-3 pt-3 pb-2 sm:px-4 sm:pt-5 md:pt-6"
       }
     >
-      {/* Click catcher backdrop wrapper */}
-      {isFocused && (
-        <div
-          className="fixed inset-0 z-10 bg-transparent"
-          onMouseDown={() => setIsFocused(false)}
-        />
-      )}
-
       {/* Search Input Box */}
       <div className="relative z-20 min-w-0">
         <div
@@ -339,6 +364,10 @@ export function SmartSearchHub({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
+            // Escape closes the panel without moving focus out of the input, so
+            // a second click fires no focus event. Without this the search box
+            // looks dead until the user clicks away and back.
+            onClick={() => setIsFocused(true)}
             placeholder={desktopSearch ? "Search services, schemes, forms and FAQs" : "Search services or schemes"}
             autoComplete="off"
             enterKeyHint="search"

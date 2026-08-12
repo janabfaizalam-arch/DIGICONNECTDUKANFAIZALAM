@@ -150,3 +150,51 @@ describe("publication safety", () => {
     expect(lib).toMatch(/return \[\];/);
   });
 });
+
+describe("hero search panel dismissal", () => {
+  const hub = readSrc("src/components/homepage/smart-search-hub.tsx");
+  const hero = readSrc("src/components/homepage/homepage-hero.tsx");
+
+  it("closes on an outside click and on Escape", () => {
+    // The old close path was a full-screen backdrop rendered inside the
+    // search's own stacking context, so anything painting above it swallowed
+    // the click and the panel stayed open.
+    expect(hub).toContain('document.addEventListener("pointerdown"');
+    expect(hub).toMatch(/event\.key === "Escape"/);
+    expect(hub).toContain("rootRef");
+  });
+
+  it("no longer relies on a backdrop element", () => {
+    expect(hub).not.toContain("Click catcher backdrop");
+    expect(hub).not.toMatch(/fixed inset-0 z-10 bg-transparent/);
+  });
+
+  it("reopens when the already-focused input is clicked again", () => {
+    // Escape leaves DOM focus on the input, so onFocus alone never fires again
+    // and the box looks dead.
+    expect(hub).toMatch(/onClick=\{\(\) => setIsFocused\(true\)\}/);
+  });
+
+  it("keeps the panel above the hero CTAs", () => {
+    // The entrance animation applies a transform, which creates a stacking
+    // context; without an explicit z-index the panel is trapped beneath the
+    // buttons that follow it.
+    expect(hero).toContain("al-in relative z-40");
+  });
+
+  it("renders the panel opaque", () => {
+    // A translucent panel let the buttons behind it show through, which read
+    // as a rendering fault rather than a design.
+    expect(hub).not.toContain("bg-white/95 p-3 text-left");
+  });
+});
+
+describe("hero artwork", () => {
+  it("comes from the slides CMS with a bundled fallback", () => {
+    const hero = readSrc("src/components/homepage/homepage-hero.tsx");
+    expect(hero).toContain("leadSlide?.image_url");
+    expect(hero).toContain("HOMEPAGE_HERO_DESKTOP");
+    // Only https sources are honoured — anything else would render broken.
+    expect(hero).toMatch(/slideImage\.startsWith\("https:\/\/"\)/);
+  });
+});

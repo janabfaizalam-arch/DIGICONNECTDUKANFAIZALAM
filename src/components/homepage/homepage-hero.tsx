@@ -79,6 +79,18 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
   const secondaryUrl = sanitizeHref(leadSlide?.cta_secondary_url || "", "/track-application");
   const secondaryLabel = leadSlide?.cta_secondary_label?.trim() || "Track application";
 
+  // Hero artwork is admin-managed through Homepage CMS -> Slides. Only https
+  // sources are honoured; anything else falls back to the bundled asset rather
+  // than rendering a broken image on the busiest page of the site.
+  const slideImage = (leadSlide?.image_url ?? "").trim();
+  const slideMobileImage = (leadSlide?.mobile_image_url ?? "").trim();
+  const desktopImage = slideImage.startsWith("https://") ? slideImage : HOMEPAGE_HERO_DESKTOP;
+  const mobileImage = slideMobileImage.startsWith("https://")
+    ? slideMobileImage
+    : slideImage.startsWith("https://")
+      ? slideImage
+      : HOMEPAGE_HERO_MOBILE;
+
   return (
     <section className="relative isolate overflow-hidden text-white" aria-labelledby="home-hero-heading">
       <div
@@ -101,7 +113,7 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
       />
       <div className="pointer-events-none absolute inset-0 -z-10 lg:hidden" aria-hidden="true">
         <Image
-          src={HOMEPAGE_HERO_MOBILE}
+          src={mobileImage}
           alt=""
           fill
           priority
@@ -192,7 +204,7 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
             <div className="relative overflow-hidden rounded-[26px] shadow-[0_36px_70px_-24px_rgba(2,12,40,0.8)] ring-1 ring-white/20">
               <div className="relative aspect-[4/3.1]">
                 <Image
-                  src={HOMEPAGE_HERO_DESKTOP}
+                  src={desktopImage}
                   alt="DigiConnect advisor assisting a customer with digital documentation"
                   fill
                   priority
