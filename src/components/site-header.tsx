@@ -1006,7 +1006,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                 href={DIGI_PARTNER_LOGIN_ROUTE}
                 aria-label={DIGI_PARTNER_CTA_LABEL}
                 title={DIGI_PARTNER_CTA_LABEL}
-                className="hidden h-9 items-center gap-1.5 rounded-xl border border-[var(--al-line)] bg-[var(--al-surface)] px-3 text-xs font-semibold text-[var(--al-ink-2)] transition hover:border-[var(--al-line-strong)] hover:text-[var(--al-ink)] active:scale-[0.98] lg:inline-flex"
+                className="hidden h-9 items-center gap-1.5 rounded-xl border border-indigo-200/70 bg-white/60 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-800 active:scale-[0.98] lg:inline-flex"
               >
                 <BadgeCheck className="h-3.5 w-3.5" />
                 Digi Partner
@@ -1017,14 +1017,14 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
             {isLoggedIn ? (
               <Link
                 href={dashboardHref}
-                className="hidden h-9 items-center gap-1.5 rounded-xl bg-[var(--al-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[#22232b] active:scale-[0.98] md:inline-flex"
+                className="hidden h-9 items-center gap-1.5 rounded-xl bg-[var(--dc-blue-700)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--dc-blue-600)] active:scale-[0.98] md:inline-flex"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 Dashboard
               </Link>
             ) : (
               <details className="relative hidden md:block">
-                <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl bg-[var(--al-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[#22232b] active:scale-[0.98] [&::-webkit-details-marker]:hidden">
+                <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl bg-[var(--dc-blue-700)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--dc-blue-600)] active:scale-[0.98] [&::-webkit-details-marker]:hidden">
                   <LogIn className="h-3.5 w-3.5" />
                   Login
                   <ChevronDown className="h-3.5 w-3.5 opacity-80" />
@@ -1083,7 +1083,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
             {/* Mobile Login/Dashboard */}
             <Link
               href={isLoggedIn ? dashboardHref : "/customer/login"}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--al-ink)] text-white transition hover:bg-[#22232b] active:scale-95 md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] active:scale-95 md:hidden"
               aria-label={isLoggedIn ? "Dashboard" : "Customer Login"}
             >
               {isLoggedIn ? (

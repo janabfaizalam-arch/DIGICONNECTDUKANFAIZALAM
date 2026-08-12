@@ -369,7 +369,7 @@ export function SmartSearchHub({
                     document.getElementById("homepage-search-input")?.focus();
                   }
                 }}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--al-ink)] text-white transition hover:bg-[#22232b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--al-line-strong)] sm:w-auto sm:px-4"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-200 sm:w-auto sm:px-4"
                 aria-label="Search"
               >
                 <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
@@ -428,7 +428,7 @@ export function SmartSearchHub({
             id="homepage-search-results"
             role="listbox"
             aria-label="Search suggestions"
-            className="absolute top-full left-0 right-0 z-30 mt-2 max-h-[min(360px,55vh)] space-y-3.5 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-150 bg-white/95 p-3 text-left shadow-2xl backdrop-blur-xl no-scrollbar sm:p-4"
+            className="absolute top-full left-0 right-0 z-30 mt-2 max-h-[min(360px,55vh)] space-y-3.5 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-150 bg-white p-3 text-left shadow-2xl no-scrollbar sm:p-4"
           >
             {/* Case A: Empty Input State (Popular, Recents, and Default Quick Actions) */}
             {!searchQuery.trim() ? (

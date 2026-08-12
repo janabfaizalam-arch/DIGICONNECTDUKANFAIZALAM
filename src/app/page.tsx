@@ -126,7 +126,7 @@ export default async function Home() {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(reelsJsonLd) }} />
       ) : null}
 
-      <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--al-canvas)] md:pb-10">
+      <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
         <HomepageHero catalog={searchCatalog} slides={slides} />
 
         <QuickActions />
