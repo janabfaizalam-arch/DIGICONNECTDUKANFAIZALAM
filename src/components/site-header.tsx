@@ -1017,14 +1017,14 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
             {isLoggedIn ? (
               <Link
                 href={dashboardHref}
-                className="hidden h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] md:inline-flex"
+                className="hidden h-9 items-center gap-1.5 rounded-xl bg-[var(--dc-blue-700)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--dc-blue-600)] active:scale-[0.98] md:inline-flex"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 Dashboard
               </Link>
             ) : (
               <details className="relative hidden md:block">
-                <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] [&::-webkit-details-marker]:hidden">
+                <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl bg-[var(--dc-blue-700)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--dc-blue-600)] active:scale-[0.98] [&::-webkit-details-marker]:hidden">
                   <LogIn className="h-3.5 w-3.5" />
                   Login
                   <ChevronDown className="h-3.5 w-3.5 opacity-80" />
@@ -1083,7 +1083,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
             {/* Mobile Login/Dashboard */}
             <Link
               href={isLoggedIn ? dashboardHref : "/customer/login"}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 active:scale-95 md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] active:scale-95 md:hidden"
               aria-label={isLoggedIn ? "Dashboard" : "Customer Login"}
             >
               {isLoggedIn ? (

@@ -15,7 +15,15 @@ interface FaqItem {
   answer: string;
 }
 
-const faqs: FaqItem[] = [
+/**
+ * Built-in questions.
+ *
+ * These are the fallback, not the source of truth: when the homepage_faqs
+ * table has rows, admin-managed questions replace this list entirely. Keeping
+ * them means the section still reads sensibly on a deployment where the CMS
+ * has not been populated yet.
+ */
+const FALLBACK_FAQS: FaqItem[] = [
   {
     question: "What is DigiConnect Dukan?",
     answer:
@@ -47,7 +55,10 @@ const faqs: FaqItem[] = [
   },
 ];
 
-export function FaqAccordion() {
+export function FaqAccordion({ items }: { items?: FaqItem[] } = {}) {
+  // Admin-managed questions win outright; an empty CMS falls back to the
+  // built-in list rather than rendering an empty section.
+  const faqs = items?.length ? items : FALLBACK_FAQS;
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState("");
   const whatsappUrl = buildWhatsAppUrl(

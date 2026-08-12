@@ -11,7 +11,9 @@ const LINKS = [
   {
     href: "/admin/homepage-slides",
     title: "Homepage Slides",
-    description: "Hero banners and slide order",
+    // The first active slide now supplies the hero photo, headline, subtitle
+    // and both buttons, so this is where the hero image is changed.
+    description: "Hero image, headline and buttons",
     icon: Image,
   },
   {

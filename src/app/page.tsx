@@ -12,6 +12,7 @@ import { RewardCenter } from "@/components/homepage/reward-center";
 import { TrustStrip } from "@/components/homepage/trust-strip";
 import { GoogleReviews } from "@/components/homepage/google-reviews";
 import { VideoTestimonials } from "@/components/homepage/video-testimonials";
+import { ReelsRail } from "@/components/homepage/reels-rail";
 import { GovernmentSchemesHub } from "@/components/homepage/government-schemes-hub";
 import { KnowledgeCenter } from "@/components/homepage/knowledge-center";
 import { FaqAccordion } from "@/components/homepage/faq-accordion";
@@ -24,6 +25,9 @@ import { MarketingFooter } from "@/components/marketing-footer";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { getPublicServices } from "@/lib/services";
 import { getActiveHomepageSlides } from "@/lib/homepage-slides";
+import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
+import { buildAggregateRatingJsonLd, getHomepageTestimonials } from "@/lib/homepage/testimonials";
+import { buildReelsJsonLd, getHomepageReels } from "@/lib/homepage/reels";
 import { contactDetails } from "@/lib/constants";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -65,7 +69,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [publicServices, slides] = await Promise.all([getPublicServices(), getActiveHomepageSlides(5)]);
+  const [publicServices, slides, faqs, testimonials, reels] = await Promise.all([
+    getPublicServices(),
+    getActiveHomepageSlides(5),
+    getHomepageFaqs(),
+    getHomepageTestimonials(),
+    getHomepageReels(),
+  ]);
 
   const searchCatalog = publicServices.map((s) => ({
     slug: s.slug,
@@ -95,10 +105,26 @@ export default async function Home() {
     url: siteUrl,
   };
 
+  // Both are null until real content exists — an empty FAQPage or a rating
+  // built from one review is worse than no structured data at all.
+  const faqJsonLd = buildFaqJsonLd(faqs);
+  const ratingJsonLd = buildAggregateRatingJsonLd(testimonials, "RNOS India Private Limited");
+  // Reels have no per-row publish date, so the page render date stands in.
+  const reelsJsonLd = buildReelsJsonLd(reels, new Date().toISOString());
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+      {faqJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      ) : null}
+      {ratingJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ratingJsonLd) }} />
+      ) : null}
+      {reelsJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(reelsJsonLd) }} />
+      ) : null}
 
       <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
         <HomepageHero catalog={searchCatalog} slides={slides} />
@@ -106,6 +132,8 @@ export default async function Home() {
         <QuickActions />
 
         <HomepageTrustChips />
+
+        <ReelsRail reels={reels} />
 
         <TrendingNow />
 
@@ -140,7 +168,7 @@ export default async function Home() {
           <GoogleReviews />
         </ScrollReveal>
 
-        <VideoTestimonials />
+        <VideoTestimonials testimonials={testimonials} />
 
         <ScrollReveal>
           <GovernmentSchemesHub />
@@ -151,7 +179,7 @@ export default async function Home() {
         </ScrollReveal>
 
         <ScrollReveal>
-          <FaqAccordion />
+          <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />
         </ScrollReveal>
 
         <ScrollReveal>
