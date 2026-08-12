@@ -179,10 +179,11 @@ export function assessOtpHealth(input: {
       explanation:
         "AiSensy accepted these sends but WhatsApp refused to deliver them. The reason code is shown against each attempt below — this is a template or account problem, not an app bug.",
       nextSteps: [
-        "Check your AiSensy wallet balance — a zero or expired balance accepts submits and silently drops them.",
-        "Open AiSensy → Campaigns → your signup campaign and confirm it is Live and API-enabled.",
-        "Confirm the linked template is Authentication category and still Approved (Meta pauses templates for quality).",
+        "Open AiSensy → Manage → Template Message and check the signup template's status. Anything other than Approved (Rejected, Paused, Pending) is accepted by AiSensy and then dropped by WhatsApp.",
+        "If it is Rejected, open it for Meta's reason. Authentication templates must use Meta's fixed wording — custom body text like \"Welcome to <brand>, your OTP is {{1}}\" is rejected on sight.",
+        "Confirm the campaign itself is Live and API-enabled.",
         "Compare the campaign's Test Campaign cURL against the payload contract shown above — the templateParams count must match exactly.",
+        "Check the AiSensy wallet balance and plan status.",
       ],
     };
   }
@@ -208,6 +209,7 @@ export function assessOtpHealth(input: {
       explanation:
         "AISENSY_WEBHOOK_SECRET is not set, so AiSensy never tells this app what WhatsApp did. Customers reporting 'OTP nahi aaya' cannot be confirmed or ruled out from here — the app shows 'sent' either way.",
       nextSteps: [
+        "First: AiSensy → Manage → Template Message. If the signup template is Rejected or Paused, that alone explains it — AiSensy accepts the send and WhatsApp discards it, with no error visible here.",
         "Set AISENSY_WEBHOOK_SECRET (16+ characters) in Vercel and redeploy.",
         "In AiSensy, point the delivery webhook at /api/webhooks/aisensy and send the same secret as the x-aisensy-webhook-secret header.",
         "Until then, confirm delivery manually in AiSensy → Campaigns → Sent using the submitted message id shown below.",
@@ -231,8 +233,9 @@ export function assessOtpHealth(input: {
     explanation:
       "Sends are being accepted but no delivery confirmation has arrived yet. If this stays unchanged for more than a few minutes, treat it as undelivered.",
     nextSteps: [
-      "Check the AiSensy wallet balance first — it is the most common cause of accepted-but-never-delivered.",
-      "Confirm the signup campaign is Live and its template is still Approved.",
+      "Check the signup template's status in AiSensy first — a Rejected or Paused template is the most common cause of accepted-but-never-delivered.",
+      "Confirm the signup campaign is Live and API-enabled.",
+      "Check the AiSensy wallet balance and plan status.",
     ],
   };
 }

@@ -113,6 +113,9 @@ describe("assessing overall health", () => {
     expect(verdict.severity).toBe("blind");
     expect(verdict.explanation).toContain("AISENSY_WEBHOOK_SECRET");
     expect(verdict.nextSteps.some((step) => /wallet balance/i.test(step))).toBe(true);
+    // Template status leads: a Rejected template is accepted by AiSensy and
+    // silently discarded by WhatsApp, which is exactly this symptom.
+    expect(verdict.nextSteps[0]).toMatch(/template/i);
   });
 
   it("calls out WhatsApp rejections as the top problem", () => {
@@ -125,7 +128,10 @@ describe("assessing overall health", () => {
       ),
     });
     expect(verdict.severity).toBe("broken");
-    expect(verdict.nextSteps[0]).toMatch(/wallet balance/i);
+    // The message reached WhatsApp, so wallet balance cannot be the cause —
+    // template status is what to check first.
+    expect(verdict.nextSteps[0]).toMatch(/template/i);
+    expect(verdict.nextSteps[0]).not.toMatch(/wallet/i);
   });
 
   it("only reports healthy when a delivery was actually confirmed", () => {
