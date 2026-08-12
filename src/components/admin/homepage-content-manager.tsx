@@ -6,9 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 import type { HomepageFaq } from "@/lib/homepage/faqs";
+import type { HomepageReel } from "@/lib/homepage/reels";
 import type { HomepageTestimonial } from "@/lib/homepage/testimonials";
 
-type Tab = "faqs" | "testimonials";
+type Tab = "faqs" | "testimonials" | "reels";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-[var(--primary)] disabled:opacity-50";
@@ -18,6 +19,10 @@ const LABEL = "mb-1 block text-xs font-bold text-slate-600";
 
 function emptyFaq(): Partial<HomepageFaq> {
   return { question: "", answer: "", category: "General", sort_order: 0, is_active: true };
+}
+
+function emptyReel(): Partial<HomepageReel> {
+  return { title: "", caption: "", video_url: "", sort_order: 0, is_active: true };
 }
 
 function emptyTestimonial(): Partial<HomepageTestimonial> {
@@ -48,19 +53,22 @@ export function HomepageContentManager() {
 
   const [faqs, setFaqs] = useState<HomepageFaq[]>([]);
   const [testimonials, setTestimonials] = useState<HomepageTestimonial[]>([]);
+  const [reels, setReels] = useState<HomepageReel[]>([]);
   const [setupHint, setSetupHint] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [faqDraft, setFaqDraft] = useState<Partial<HomepageFaq>>(emptyFaq());
   const [testimonialDraft, setTestimonialDraft] = useState<Partial<HomepageTestimonial>>(emptyTestimonial());
+  const [reelDraft, setReelDraft] = useState<Partial<HomepageReel>>(emptyReel());
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [faqRes, testimonialRes] = await Promise.all([
+      const [faqRes, testimonialRes, reelRes] = await Promise.all([
         fetch("/api/admin/homepage/faqs", { cache: "no-store" }),
         fetch("/api/admin/homepage/testimonials", { cache: "no-store" }),
+        fetch("/api/admin/homepage/reels", { cache: "no-store" }),
       ]);
       const faqBody = (await faqRes.json().catch(() => ({}))) as {
         rows?: HomepageFaq[];
@@ -71,9 +79,15 @@ export function HomepageContentManager() {
         setupHint?: string | null;
       };
 
+      const reelBody = (await reelRes.json().catch(() => ({}))) as {
+        rows?: HomepageReel[];
+        setupHint?: string | null;
+      };
+
       setFaqs(faqBody.rows ?? []);
       setTestimonials(testimonialBody.rows ?? []);
-      setSetupHint(faqBody.setupHint ?? testimonialBody.setupHint ?? null);
+      setReels(reelBody.rows ?? []);
+      setSetupHint(faqBody.setupHint ?? testimonialBody.setupHint ?? reelBody.setupHint ?? null);
     } finally {
       setLoading(false);
     }
@@ -100,6 +114,7 @@ export function HomepageContentManager() {
 
       success("Saved.");
       if (kind === "faqs") setFaqDraft(emptyFaq());
+      else if (kind === "reels") setReelDraft(emptyReel());
       else setTestimonialDraft(emptyTestimonial());
       await load();
       return true;
@@ -135,7 +150,7 @@ export function HomepageContentManager() {
       {setupHint ? <SetupNotice hint={setupHint} /> : null}
 
       <div className="flex gap-2">
-        {(["faqs", "testimonials"] as Tab[]).map((value) => (
+        {(["faqs", "testimonials", "reels"] as Tab[]).map((value) => (
           <button
             key={value}
             type="button"
@@ -146,7 +161,11 @@ export function HomepageContentManager() {
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            {value === "faqs" ? `FAQs (${faqs.length})` : `Testimonials (${testimonials.length})`}
+            {value === "faqs"
+              ? `FAQs (${faqs.length})`
+              : value === "testimonials"
+                ? `Testimonials (${testimonials.length})`
+                : `Reels (${reels.length})`}
           </button>
         ))}
       </div>
@@ -229,7 +248,7 @@ export function HomepageContentManager() {
             )}
           </Card>
         </>
-      ) : (
+      ) : tab === "testimonials" ? (
         <>
           <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.12em] text-slate-500">
@@ -342,6 +361,113 @@ export function HomepageContentManager() {
             ) : (
               <p className="bg-slate-50 p-8 text-center text-sm font-semibold text-slate-500">
                 No testimonials yet — the homepage section stays hidden until one is added.
+              </p>
+            )}
+          </Card>
+        </>
+      ) : (
+        <>
+          <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.12em] text-slate-500">
+              {reelDraft.id ? "Edit reel" : "Add a reel"}
+            </h2>
+            <div className="grid gap-3">
+              <div>
+                <label className={LABEL} htmlFor="r-title">Title</label>
+                <input id="r-title" className={INPUT} value={reelDraft.title ?? ""} disabled={saving}
+                  placeholder="GST registration in 3 days"
+                  onChange={(e) => setReelDraft((d) => ({ ...d, title: e.target.value }))} />
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="r-caption">Caption</label>
+                <input id="r-caption" className={INPUT} value={reelDraft.caption ?? ""} disabled={saving}
+                  onChange={(e) => setReelDraft((d) => ({ ...d, caption: e.target.value }))} />
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="r-video">Video link</label>
+                <input id="r-video" className={INPUT} value={reelDraft.video_url ?? ""} disabled={saving}
+                  placeholder="https://…/reel.mp4 or a YouTube Shorts link"
+                  onChange={(e) => setReelDraft((d) => ({ ...d, video_url: e.target.value }))} />
+                <p className="mt-1 pl-1 text-[11px] text-slate-500">
+                  A direct .mp4 file plays inline and autoplays on scroll. A YouTube Shorts or Vimeo link works too,
+                  but shows that player&apos;s own controls.
+                </p>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="r-poster">Cover image (recommended)</label>
+                <input id="r-poster" className={INPUT} value={reelDraft.poster_url ?? ""} disabled={saving}
+                  placeholder="https://…/cover.jpg"
+                  onChange={(e) => setReelDraft((d) => ({ ...d, poster_url: e.target.value }))} />
+                <p className="mt-1 pl-1 text-[11px] text-slate-500">
+                  Without a cover the card is black until the video loads.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={LABEL} htmlFor="r-cta-label">Button text (optional)</label>
+                  <input id="r-cta-label" className={INPUT} value={reelDraft.cta_label ?? ""} disabled={saving}
+                    placeholder="Apply now"
+                    onChange={(e) => setReelDraft((d) => ({ ...d, cta_label: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="r-cta-href">Button link</label>
+                  <input id="r-cta-href" className={INPUT} value={reelDraft.cta_href ?? ""} disabled={saving}
+                    placeholder="/services/gst-registration"
+                    onChange={(e) => setReelDraft((d) => ({ ...d, cta_href: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="r-order">Order</label>
+                  <input id="r-order" type="number" className={INPUT} value={reelDraft.sort_order ?? 0} disabled={saving}
+                    onChange={(e) => setReelDraft((d) => ({ ...d, sort_order: Number(e.target.value) || 0 }))} />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <input type="checkbox" checked={reelDraft.is_active ?? true} disabled={saving}
+                  onChange={(e) => setReelDraft((d) => ({ ...d, is_active: e.target.checked }))}
+                  className="h-4 w-4 rounded border-slate-300" />
+                Show on homepage
+              </label>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button type="button" disabled={saving || !reelDraft.title?.trim() || !reelDraft.video_url?.trim()}
+                onClick={() => void save("reels", reelDraft)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--primary)] px-5 text-sm font-bold text-white disabled:opacity-50">
+                {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {reelDraft.id ? "Update" : "Add reel"}
+              </button>
+              {reelDraft.id ? (
+                <button type="button" onClick={() => setReelDraft(emptyReel())}
+                  className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600">
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </Card>
+
+          <Card className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+            {reels.length ? (
+              reels.map((row) => (
+                <div key={row.id} className="flex items-start justify-between gap-3 p-4">
+                  <button type="button" onClick={() => setReelDraft(row)} className="min-w-0 flex-1 text-left">
+                    <p className="text-sm font-bold text-slate-900">{row.title}</p>
+                    <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{row.caption || row.video_url}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                      order {row.sort_order}
+                      {row.poster_url ? "" : " · no cover image"}
+                      {row.is_active ? "" : " · hidden"}
+                    </p>
+                  </button>
+                  <button type="button" aria-label="Delete" onClick={() => void remove("reels", row.id, row.title)}
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="bg-slate-50 p-8 text-center text-sm font-semibold text-slate-500">
+                No reels yet — the homepage section stays hidden until one is added.
               </p>
             )}
           </Card>
