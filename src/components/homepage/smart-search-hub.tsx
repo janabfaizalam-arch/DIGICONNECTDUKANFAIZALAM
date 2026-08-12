@@ -369,11 +369,11 @@ export function SmartSearchHub({
                     document.getElementById("homepage-search-input")?.focus();
                   }
                 }}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-200 sm:w-auto sm:px-4"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--al-ink)] text-white transition hover:bg-[#22232b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--al-line-strong)] sm:w-auto sm:px-4"
                 aria-label="Search"
               >
                 <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
-                <span className="hidden text-sm font-black sm:inline">Search</span>
+                <span className="hidden text-sm font-semibold sm:inline">Search</span>
               </button>
             ) : (
               <button
