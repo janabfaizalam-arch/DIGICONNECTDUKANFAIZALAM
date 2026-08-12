@@ -72,6 +72,17 @@ const categoryLinks = [
   { label: "Knowledge Center", href: "/#blog" },
 ];
 
+/** Drop repeats when two link lists are merged into one footer column. */
+function dedupeLinks<T extends { label: string; href: string }>(links: T[]): T[] {
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    const key = `${link.label}|${link.href}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const partnerLinks = [
   { label: "Become a Digi Partner", href: "/digi-partner" },
   { label: "Partner login", href: "/ap/login" },
@@ -171,8 +182,17 @@ export function MarketingFooter({ variant = "default" }: { variant?: "default" |
             {[
               { title: "Services", links: servicesLinks },
               { title: "Explore", links: categoryLinks },
-              { title: "Company", links: [...partnerLinks, ...companyLinks.slice(0, 3).map((l) => ({ label: l.label, href: l.href }))] },
-              { title: "Help & Legal", links: [...helpLinks.slice(0, 3), ...legalLinks.slice(0, 4)] },
+              {
+                title: "Company",
+                // partnerLinks and companyLinks both carry the Digi Partner
+                // entries, so merging them listed the same link twice and
+                // collided on the React key.
+                links: dedupeLinks([
+                  ...partnerLinks,
+                  ...companyLinks.slice(0, 3).map((l) => ({ label: l.label, href: l.href })),
+                ]),
+              },
+              { title: "Help & Legal", links: dedupeLinks([...helpLinks.slice(0, 3), ...legalLinks.slice(0, 4)]) },
             ].map((group) => (
               <div key={group.title}>
                 <p className="text-xs font-extrabold uppercase tracking-wider text-[var(--dc-orange-400)]">{group.title}</p>
