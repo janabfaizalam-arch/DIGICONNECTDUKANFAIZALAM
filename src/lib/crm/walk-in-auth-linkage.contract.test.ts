@@ -107,7 +107,10 @@ describe("Walk-in production customer schema contracts", () => {
     });
     expect(actorAsOwner).toEqual({ ok: false, error: "actor_cannot_own_customer_application" });
 
-    expect(readSrc("src/app/api/customer-auth/login/route.ts")).toMatch(/sub: customer\.id/);
+    // The PIN login that minted `sub: customer.id` is gone. The same guarantee
+    // now comes from signup writing the customers row keyed on the auth user
+    // id, so the session subject and customers.id stay the same value.
+    expect(readSrc("src/lib/auth/customer-account.ts")).toMatch(/id: input\.userId/);
     // Vault rows stay scoped to the signed-in user's own customer id, however
     // that id is resolved (customers.id == auth user, mobile, or legacy user_id).
     const vault = readSrc("src/app/api/customer/vault/route.ts");

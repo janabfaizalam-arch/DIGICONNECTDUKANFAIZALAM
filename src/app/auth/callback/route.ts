@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   const referralCode = String(requestUrl.searchParams.get("ref") ?? "").trim().toUpperCase();
 
   if (error) {
-    return NextResponse.redirect(new URL("/login/customer?error=oauth", requestUrl.origin));
+    return NextResponse.redirect(new URL("/customer/login?error=oauth", requestUrl.origin));
   }
 
   if (!code) {
@@ -62,13 +62,13 @@ export async function GET(request: Request) {
   const supabase = await getSupabaseRouteHandlerClient();
 
   if (!supabase) {
-    return NextResponse.redirect(new URL("/login/customer?error=oauth", requestUrl.origin));
+    return NextResponse.redirect(new URL("/customer/login?error=oauth", requestUrl.origin));
   }
 
   const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (exchangeError || !data.user) {
-    return NextResponse.redirect(new URL("/login/customer?error=oauth", requestUrl.origin));
+    return NextResponse.redirect(new URL("/customer/login?error=oauth", requestUrl.origin));
   }
 
   const cookieStore = await cookies();

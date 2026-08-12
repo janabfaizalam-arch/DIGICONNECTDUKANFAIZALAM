@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 
 import { AuthScene } from "@/components/auth/ui";
-import { CustomerSignupFlow } from "@/components/auth/customer-signup-flow";
+import { CustomerEmailSignupFlow } from "@/components/auth/customer-email-signup-flow";
 
-export const metadata: Metadata = { title: "Customer Signup" };
+export const metadata: Metadata = { title: "Create your account" };
 
 export default function CustomerSignupPage() {
   return (
     <AuthScene eyebrow="New Customer">
-      <CustomerSignupFlow />
+      <CustomerEmailSignupFlow />
     </AuthScene>
   );
 }

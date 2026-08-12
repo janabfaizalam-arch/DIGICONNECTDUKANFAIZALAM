@@ -77,12 +77,9 @@ describe("argon2 client-boundary contracts", () => {
 
   it("API routes that execute Argon2 declare Node.js runtime", () => {
     const routes = [
+      // Customer PIN routes were retired with the WhatsApp-OTP auth system;
+      // customer credentials are now hashed by Supabase Auth, not by us.
       "src/app/api/auth/admin/login/route.ts",
-      "src/app/api/auth/customer/login/route.ts",
-      "src/app/api/auth/customer/forgot-pin/reset/route.ts",
-      "src/app/api/customer-auth/login/route.ts",
-      "src/app/api/customer-auth/set-pin/route.ts",
-      "src/app/api/customer-auth/reset-pin/route.ts",
     ];
 
     for (const route of routes) {

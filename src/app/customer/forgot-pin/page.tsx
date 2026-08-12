@@ -1,14 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { AuthScene } from "@/components/auth/ui";
-import { CustomerForgotPinFlow } from "@/components/auth/customer-forgot-pin-flow";
-
-export const metadata: Metadata = { title: "Forgot / Create PIN" };
-
-export default function CustomerForgotPinPage() {
-  return (
-    <AuthScene eyebrow="Account Recovery">
-      <CustomerForgotPinFlow />
-    </AuthScene>
-  );
+/** Retired PIN/OTP customer auth — kept so existing links and bookmarks land on the new flow. */
+export default function Page() {
+  redirect("/customer/forgot-password");
 }
