@@ -8,8 +8,6 @@ import {
   Phone,
   Mail,
   ShieldCheck,
-  Clock,
-  Lock,
   Play,
   ArrowRight,
   CheckCircle2,
@@ -118,127 +116,41 @@ export function MarketingFooter({
 
   if (isHomepage) {
     return (
-      <footer className="relative isolate overflow-hidden bg-[var(--dc-navy-950)] pb-8 pb-safe-bottom pt-12 text-white print:hidden md:pb-10">
-        {/* Depth, not decoration: two brand washes and a masked grid keep the
-            footer from reading as a flat navy slab at the end of the page. */}
+      <footer className="relative isolate overflow-hidden bg-[var(--dc-navy-950)] pb-6 pb-safe-bottom pt-8 text-white print:hidden md:pb-8">
+        {/* One soft brand wash. The previous version stacked several and still
+            read as a flat slab, only taller. */}
         <div
-          className="al-drift pointer-events-none absolute -left-40 -top-40 -z-10 h-[460px] w-[460px] rounded-full opacity-40 blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(255,104,0,0.45) 0%, transparent 68%)" }}
-          aria-hidden="true"
-        />
-        <div
-          className="al-drift pointer-events-none absolute -bottom-48 right-[-10%] -z-10 h-[480px] w-[480px] rounded-full opacity-35 blur-3xl"
-          style={{
-            background: "radial-gradient(circle, rgba(56,189,248,0.4) 0%, transparent 68%)",
-            animationDelay: "-13s",
-          }}
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.14]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            maskImage: "radial-gradient(ellipse 70% 60% at 50% 0%, #000 20%, transparent 78%)",
-            WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 0%, #000 20%, transparent 78%)",
-          }}
+          className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-[320px] w-[720px] -translate-x-1/2 rounded-full opacity-30 blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(255,104,0,0.4) 0%, transparent 70%)" }}
           aria-hidden="true"
         />
 
         <div className="mx-auto max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] sm:px-6 md:px-8">
-          {/* Real support desk, not an invented mailing list. */}
-          <div className="overflow-hidden rounded-[1.75rem] border border-white/15 bg-gradient-to-br from-[var(--dc-blue-800)] via-[var(--dc-blue-700)] to-[var(--dc-navy-900)] p-6 shadow-2xl sm:p-8">
-            <div className="grid gap-6 lg:grid-cols-[1.3fr_auto] lg:items-center">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--dc-orange-400)]">
-                  Talk to a person
-                </p>
-                <h3 className="mt-1.5 text-2xl font-black tracking-tight md:text-[1.75rem]">
-                  Stuck somewhere? Message us on WhatsApp.
-                </h3>
-                <p className="mt-2 max-w-xl text-[15px] font-medium leading-relaxed text-white/80">
-                  Service questions, application status, document help — the support desk replies during
-                  business hours. No bots, no mailing list.
-                </p>
-              </div>
-              <a
-                id="footer-whatsapp-support"
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex h-13 items-center justify-center gap-2 rounded-2xl bg-[var(--dc-orange-500)] px-7 py-3.5 text-[15px] font-black shadow-lg shadow-orange-900/30 transition hover:-translate-y-0.5 hover:bg-[var(--dc-orange-600)]"
-              >
-                <MessageCircle className="h-5 w-5" aria-hidden="true" />
-                WhatsApp support
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </a>
+          {/* Support strip — a row, not a full-width card. */}
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-[15px] font-black">Need help? Message us on WhatsApp.</p>
+              <p className="mt-0.5 text-[13px] text-white/65">
+                Mon–Sat · 10:00 AM – 6:00 PM IST · +91 {contactDetails.primaryPhone}
+              </p>
             </div>
+            <a
+              id="footer-whatsapp-support"
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--dc-orange-500)] px-5 text-[14px] font-black transition hover:bg-[var(--dc-orange-600)]"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              WhatsApp support
+            </a>
           </div>
 
-          <div className="mt-12 grid gap-10 md:grid-cols-[1.35fr_repeat(4,1fr)]">
-            <div>
-              <span className="inline-flex rounded-xl bg-white px-3 py-2 shadow-lg">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-8 w-auto" />
-              </span>
-              <p className="mt-4 text-base font-black">RNOS India Private Limited</p>
-              <p className="mt-2 max-w-sm text-[14.5px] font-medium leading-relaxed text-white/70">
-                Private digital assistance for tax, business, identity and government scheme paperwork
-                across India. We are not an official government portal.
-              </p>
-
-              <div className="mt-5 space-y-1">
-                <a
-                  href={`tel:+91${contactDetails.primaryPhone}`}
-                  className="flex min-h-10 items-center gap-2.5 text-[14.5px] font-bold text-white/85 transition hover:text-[var(--dc-orange-400)]"
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                    <Phone className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  +91 {contactDetails.primaryPhone}
-                </a>
-                <a
-                  href={`mailto:${contactDetails.email}`}
-                  className="flex min-h-10 items-center gap-2.5 text-[14.5px] font-bold text-white/85 transition hover:text-[var(--dc-orange-400)]"
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                    <Mail className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  {contactDetails.email}
-                </a>
-                <p className="flex min-h-10 items-center gap-2.5 text-[14.5px] font-medium text-white/60">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                    <Clock className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  Mon–Sat · 10:00 AM – 6:00 PM IST
-                </p>
-              </div>
-
-              {enabledSocial.length ? (
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                  {enabledSocial.map((link) => {
-                    const Icon = socialIcon[link.platform] ?? ExternalLink;
-                    return (
-                      <a
-                        key={link.platform}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`Visit DigiConnect on ${link.label}`}
-                        title={link.handle ? `${link.label} · ${link.handle}` : link.label}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-[var(--dc-orange-500)]"
-                      >
-                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-
+          {/* Two columns on a phone rather than one endless list — the previous
+              single-column stack ran to several screens of scrolling. */}
+          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">
             {[
-              { title: "Services", links: servicesLinks },
+              { title: "Services", links: servicesLinks.slice(0, 5) },
               { title: "Explore", links: categoryLinks },
               {
                 title: "Company",
@@ -248,20 +160,20 @@ export function MarketingFooter({
                 links: dedupeLinks([
                   ...partnerLinks,
                   ...companyLinks.slice(0, 3).map((l) => ({ label: l.label, href: l.href })),
-                ]),
+                ]).slice(0, 5),
               },
-              { title: "Help & Legal", links: dedupeLinks([...helpLinks.slice(0, 3), ...legalLinks.slice(0, 4)]) },
+              { title: "Help & Legal", links: dedupeLinks([...helpLinks.slice(0, 2), ...legalLinks.slice(0, 3)]) },
             ].map((group) => (
               <div key={group.title}>
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--dc-orange-400)]">
+                <p className="text-[10.5px] font-black uppercase tracking-[0.14em] text-[var(--dc-orange-400)]">
                   {group.title}
                 </p>
-                <nav className="mt-3.5 grid gap-2.5">
+                <nav className="mt-3 grid gap-2">
                   {group.links.map((link) => (
                     <Link
                       key={`${group.title}-${link.label}`}
                       href={link.href}
-                      className="w-fit text-[14.5px] font-medium text-white/75 transition hover:translate-x-0.5 hover:text-white"
+                      className="w-fit text-[13.5px] font-medium text-white/70 transition hover:text-white"
                     >
                       {link.label}
                     </Link>
@@ -271,43 +183,51 @@ export function MarketingFooter({
             ))}
           </div>
 
-          {/* What a customer actually wants reassurance about before paying. */}
-          <div className="mt-10 grid gap-3 border-t border-white/12 pt-8 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { icon: ShieldCheck, title: "Razorpay secured", body: "UPI, cards and net banking. Card details never touch our servers." },
-              { icon: Lock, title: "Documents encrypted", body: "Uploads are stored privately and shared only with your application." },
-              { icon: CheckCircle2, title: "Human verification", body: "Every filing is checked by our team before it is submitted." },
-              { icon: Globe, title: "PAN India", body: "Assistance available across states, in Hindi and English." },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className="rounded-2xl border border-white/12 bg-white/[0.05] p-4">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--dc-orange-500)]/20 text-[var(--dc-orange-400)]">
-                    <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                  </span>
-                  <p className="mt-3 text-[13.5px] font-black">{item.title}</p>
-                  <p className="mt-1 text-[12.5px] font-medium leading-relaxed text-white/60">{item.body}</p>
-                </div>
-              );
-            })}
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-white/12 pt-6">
+            <span className="inline-flex rounded-lg bg-white px-2.5 py-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-6 w-auto" />
+            </span>
+
+            <a
+              href={`mailto:${contactDetails.email}`}
+              className="inline-flex items-center gap-2 text-[13.5px] font-bold text-white/75 transition hover:text-[var(--dc-orange-400)]"
+            >
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              {contactDetails.email}
+            </a>
+
+            {enabledSocial.length ? (
+              <div className="ml-auto flex items-center gap-2">
+                {enabledSocial.map((link) => {
+                  const Icon = socialIcon[link.platform] ?? ExternalLink;
+                  return (
+                    <a
+                      key={link.platform}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Visit DigiConnect on ${link.label}`}
+                      title={link.handle ? `${link.label} · ${link.handle}` : link.label}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/10 transition hover:border-white/30 hover:bg-[var(--dc-orange-500)]"
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-white/12 pt-6 text-[13.5px] font-medium text-white/60 sm:flex-row sm:items-center">
-            <div>
-              <p className="font-bold text-white/75">
-                &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited
-              </p>
-              <p className="mt-1">
-                Private assistance platform — not affiliated with any government department.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              {legalLinks.slice(0, 3).map((link) => (
-                <Link key={link.label} href={link.href} className="transition hover:text-white">
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+          <div className="mt-5 flex flex-col gap-2 border-t border-white/12 pt-5 text-[12.5px] text-white/55 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited — private
+              assistance platform, not a government portal.
+            </p>
+            <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold">
+              <ShieldCheck className="h-3.5 w-3.5 text-[var(--dc-teal)]" aria-hidden="true" />
+              Razorpay secured · SSL
+            </span>
           </div>
         </div>
       </footer>
