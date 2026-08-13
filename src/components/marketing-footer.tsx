@@ -8,6 +8,9 @@ import {
   Phone,
   Mail,
   ShieldCheck,
+  Printer,
+  Radar,
+  Zap,
   Play,
   ArrowRight,
   CheckCircle2,
@@ -58,19 +61,7 @@ const legalLinks = [
   { label: "Sitemap", href: "/sitemap.xml" },
 ];
 
-const helpLinks = [
-  { label: "FAQ Center", href: "/#faq" },
-  { label: "Track application", href: "/track-application" },
-  { label: "Smart Print", href: "/print" },
-  { label: "Support desk", href: "/#support" },
-];
 
-const categoryLinks = [
-  { label: "Browse categories", href: "/#categories" },
-  { label: "All services", href: "/services" },
-  { label: "Government schemes", href: "/#schemes" },
-  { label: "Knowledge Center", href: "/#blog" },
-];
 
 /** Drop repeats when two link lists are merged into one footer column. */
 function dedupeLinks<T extends { label: string; href: string }>(links: T[]): T[] {
@@ -83,10 +74,6 @@ function dedupeLinks<T extends { label: string; href: string }>(links: T[]): T[]
   });
 }
 
-const partnerLinks = [
-  { label: "Become a Digi Partner", href: "/digi-partner" },
-  { label: "Partner login", href: "/ap/login" },
-];
 
 export function MarketingFooter({
   variant = "default",
@@ -116,82 +103,125 @@ export function MarketingFooter({
 
   if (isHomepage) {
     return (
-      <footer className="relative isolate overflow-hidden bg-[var(--dc-navy-950)] pb-6 pb-safe-bottom pt-8 text-white print:hidden md:pb-8">
-        {/* One soft brand wash. The previous version stacked several and still
-            read as a flat slab, only taller. */}
+      <footer className="relative isolate overflow-hidden bg-white pb-6 pb-safe-bottom pt-10 text-[#0d1b3e] print:hidden md:pb-8 md:pt-14">
+        {/* A light footer, deliberately. The previous versions were both dark
+            slabs of link columns; the page already ends on a dark section, and
+            a second one made the whole bottom read as one heavy block. */}
         <div
-          className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-[320px] w-[720px] -translate-x-1/2 rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(255,104,0,0.4) 0%, transparent 70%)" }}
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-[var(--dc-orange-500)]/40 to-transparent"
           aria-hidden="true"
         />
 
         <div className="mx-auto max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] sm:px-6 md:px-8">
-          {/* Support strip — a row, not a full-width card. */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <div className="min-w-0">
-              <p className="text-[15px] font-black">Need help? Message us on WhatsApp.</p>
-              <p className="mt-0.5 text-[13px] text-white/65">
-                Mon–Sat · 10:00 AM – 6:00 PM IST · +91 {contactDetails.primaryPhone}
-              </p>
-            </div>
-            <a
-              id="footer-whatsapp-support"
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--dc-orange-500)] px-5 text-[14px] font-black transition hover:bg-[var(--dc-orange-600)]"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              WhatsApp support
-            </a>
-          </div>
+          {/* Action-first: the footer asks what you want to do next, instead of
+              handing you a directory and leaving you to find it. */}
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--dc-orange-600)]">
+            What next?
+          </p>
+          <h2 className="mt-1.5 text-[1.6rem] font-black leading-tight tracking-tight sm:text-[2rem]">
+            Pick up where you left off.
+          </h2>
 
-          {/* Two columns on a phone rather than one endless list — the previous
-              single-column stack ran to several screens of scrolling. */}
-          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { title: "Services", links: servicesLinks.slice(0, 5) },
-              { title: "Explore", links: categoryLinks },
               {
-                title: "Company",
-                // partnerLinks and companyLinks both carry the Digi Partner
-                // entries, so merging them listed the same link twice and
-                // collided on the React key.
-                links: dedupeLinks([
-                  ...partnerLinks,
-                  ...companyLinks.slice(0, 3).map((l) => ({ label: l.label, href: l.href })),
-                ]).slice(0, 5),
+                href: "/services",
+                icon: Zap,
+                title: "Apply for a service",
+                body: "GST, ITR, passport, licence, insurance and schemes.",
+                ring: "from-blue-500 to-indigo-600",
               },
-              { title: "Help & Legal", links: dedupeLinks([...helpLinks.slice(0, 2), ...legalLinks.slice(0, 3)]) },
-            ].map((group) => (
-              <div key={group.title}>
-                <p className="text-[10.5px] font-black uppercase tracking-[0.14em] text-[var(--dc-orange-400)]">
-                  {group.title}
-                </p>
-                <nav className="mt-3 grid gap-2">
-                  {group.links.map((link) => (
-                    <Link
-                      key={`${group.title}-${link.label}`}
-                      href={link.href}
-                      className="w-fit text-[13.5px] font-medium text-white/70 transition hover:text-white"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-            ))}
+              {
+                href: "/track-application",
+                icon: Radar,
+                title: "Track an application",
+                body: "Status, document requests and receipts in one place.",
+                ring: "from-emerald-500 to-teal-600",
+              },
+              {
+                href: "/print",
+                icon: Printer,
+                title: "Smart Print",
+                body: "Scan a QR or upload from your phone, collect at the counter.",
+                ring: "from-orange-500 to-amber-600",
+              },
+              {
+                href: whatsappUrl,
+                external: true,
+                icon: MessageCircle,
+                title: "Talk to us",
+                body: `Mon–Sat, 10–6 · +91 ${contactDetails.primaryPhone}`,
+                ring: "from-green-500 to-emerald-600",
+              },
+            ].map((action) => {
+              const Icon = action.icon;
+              const inner = (
+                <>
+                  <span
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md ${action.ring}`}
+                  >
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="mt-3 flex items-center gap-1.5 text-[15px] font-black">
+                    {action.title}
+                    <ArrowRight
+                      className="h-3.5 w-3.5 text-slate-400 transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span className="mt-1 block text-[13px] font-medium leading-relaxed text-slate-500">
+                    {action.body}
+                  </span>
+                </>
+              );
+
+              const className =
+                "group flex flex-col rounded-2xl border border-slate-200 bg-white p-4 transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg";
+
+              return action.external ? (
+                <a
+                  key={action.title}
+                  href={action.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={className}
+                >
+                  {inner}
+                </a>
+              ) : (
+                <Link key={action.title} href={action.href} className={className}>
+                  {inner}
+                </Link>
+              );
+            })}
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-white/12 pt-6">
-            <span className="inline-flex rounded-lg bg-white px-2.5 py-1.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-6 w-auto" />
-            </span>
+          {/* Everything else is one quiet line of links, not four columns. */}
+          <nav className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2.5 border-t border-slate-200 pt-6 text-[13.5px] font-semibold text-slate-600">
+            {dedupeLinks([
+              { label: "All services", href: "/services" },
+              { label: "Government schemes", href: "/#schemes" },
+              { label: "Knowledge Center", href: "/#blog" },
+              { label: "Become a Digi Partner", href: "/digi-partner" },
+              { label: "Partner login", href: "/ap/login" },
+              { label: "FAQ", href: "/#faq" },
+              { label: "Support", href: "/#support" },
+              { label: "Privacy Policy", href: "/privacy-policy" },
+              { label: "Terms & Conditions", href: "/terms-and-conditions" },
+            ]).map((link) => (
+              <Link key={link.label} href={link.href} className="transition hover:text-[var(--dc-blue-700)]">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-slate-200 pt-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-7 w-auto" />
 
             <a
               href={`mailto:${contactDetails.email}`}
-              className="inline-flex items-center gap-2 text-[13.5px] font-bold text-white/75 transition hover:text-[var(--dc-orange-400)]"
+              className="inline-flex items-center gap-2 text-[13.5px] font-bold text-slate-600 transition hover:text-[var(--dc-blue-700)]"
             >
               <Mail className="h-4 w-4" aria-hidden="true" />
               {contactDetails.email}
@@ -209,7 +239,7 @@ export function MarketingFooter({
                       rel="noopener noreferrer"
                       aria-label={`Visit DigiConnect on ${link.label}`}
                       title={link.handle ? `${link.label} · ${link.handle}` : link.label}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/10 transition hover:border-white/30 hover:bg-[var(--dc-orange-500)]"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-[var(--dc-orange-500)] hover:bg-[var(--dc-orange-500)] hover:text-white"
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
                     </a>
@@ -219,13 +249,13 @@ export function MarketingFooter({
             ) : null}
           </div>
 
-          <div className="mt-5 flex flex-col gap-2 border-t border-white/12 pt-5 text-[12.5px] text-white/55 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-5 flex flex-col gap-2 text-[12.5px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>
               &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited — private
               assistance platform, not a government portal.
             </p>
-            <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold">
-              <ShieldCheck className="h-3.5 w-3.5 text-[var(--dc-teal)]" aria-hidden="true" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 font-bold text-slate-600">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
               Razorpay secured · SSL
             </span>
           </div>
