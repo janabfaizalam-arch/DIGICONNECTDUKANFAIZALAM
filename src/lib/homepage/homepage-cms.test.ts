@@ -198,3 +198,38 @@ describe("hero artwork", () => {
     expect(hero).toMatch(/slideImage\.startsWith\("https:\/\/"\)/);
   });
 });
+
+describe("footer social links", () => {
+  const lib = readSrc("src/lib/homepage/social.ts");
+  const route = readSrc("src/app/api/admin/homepage/social/route.ts");
+  const footer = readSrc("src/components/marketing-footer.tsx");
+
+  it("only publishes https profile links", () => {
+    // These render as anchors on every page; a typo or a javascript: value
+    // must not reach a customer.
+    expect(lib).toMatch(/url\.startsWith\("https:\/\/"\)/);
+    expect(route).toMatch(/Links must start with https:\/\//);
+  });
+
+  it("refuses to show a profile with no link", () => {
+    expect(route).toMatch(/is_active && !url\.startsWith\("https:\/\/"\)/);
+  });
+
+  it("never lets a saved row override the generated WhatsApp link", () => {
+    // WhatsApp's URL is built from the real support number, not typed in.
+    expect(lib).toContain('link.platform !== "whatsapp"');
+  });
+
+  it("ignores platforms the footer cannot render", () => {
+    expect(lib).toContain("KNOWN.get(row.platform)");
+  });
+
+  it("falls back to the code defaults when the table is absent", () => {
+    expect(lib).toContain("42P01");
+    expect(lib).toMatch(/return fallback;/);
+  });
+
+  it("lets the server supply links to the client footer", () => {
+    expect(footer).toMatch(/socialLinks\?\.length \? socialLinks : getEnabledSocialLinks\(\)/);
+  });
+});
