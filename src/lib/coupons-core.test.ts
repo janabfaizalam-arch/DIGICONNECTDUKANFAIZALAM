@@ -178,3 +178,46 @@ describe("redemption is atomic in the database", () => {
     expect(migration).toMatch(/coupons_deny_all[\s\S]{0,120}using \(false\)/);
   });
 });
+
+describe("checkout wiring", () => {
+  const applications = readSrc("src/app/api/applications/route.ts");
+  const createOrder = readSrc("src/app/api/create-order/route.ts");
+  const validate = readSrc("src/app/api/coupons/validate/route.ts");
+
+  it("checks coupons against the database, not the JSON file", () => {
+    for (const [name, source] of [
+      ["applications", applications],
+      ["create-order", createOrder],
+      ["validate", validate],
+    ] as const) {
+      expect(source, name).toContain("coupons-store");
+      expect(source, name).not.toMatch(/from "@\/lib\/coupons"/);
+    }
+  });
+
+  it("consumes the coupon only once the applications exist", () => {
+    // Redeeming when the Razorpay order is created would spend the coupon on
+    // checkouts the customer abandons.
+    expect(applications).toContain("redeemCoupon");
+    expect(createOrder).not.toContain("redeemCoupon");
+    // Compare the call site, not the import at the top of the file.
+    expect(applications.indexOf("await redeemCoupon({")).toBeGreaterThan(
+      applications.indexOf(".insert(applicationsToInsert)"),
+    );
+  });
+
+  it("does not strand a paid customer when redemption fails", () => {
+    // The money has moved and the applications exist by this point.
+    const block = applications.slice(applications.indexOf("if (!redemption.ok)"));
+    expect(block.slice(0, 400)).toContain("coupon_redeem_failed");
+    expect(block.slice(0, 400)).not.toMatch(/return jsonError/);
+  });
+
+  it("takes the customer identity from the session, not the request", () => {
+    // The endpoint used to read userId from the body, so anyone could pass a
+    // stranger's id — or omit it — to dodge the per-customer limit.
+    expect(validate).toContain("getCurrentUser");
+    expect(validate).not.toMatch(/body\?\.userId/);
+    expect(validate).not.toMatch(/searchParams\.get\("userId"\)/);
+  });
+});
