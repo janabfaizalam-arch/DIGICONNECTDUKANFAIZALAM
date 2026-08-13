@@ -46,10 +46,15 @@ export function ScrollReveal({ children, className = "", delay = 0 }: ScrollReve
   return (
     <div
       ref={ref}
-      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity,filter] ${
-        isRevealed
-          ? "opacity-100 translate-y-0 blur-0"
-          : "opacity-0 translate-y-8 blur-[3px]"
+      /*
+        Transform and opacity only. The reveal used to animate a 3px blur as
+        well, which forces the compositor to re-rasterise the whole section on
+        every frame — the most expensive thing on the page, on the cheapest
+        phones, seventeen times per scroll. Shorter and shallower too: 700ms
+        with an 8px lift reads as sluggish once every band does it.
+      */
+      className={`motion-safe:transition-[opacity,transform] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[transform,opacity] ${
+        isRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5 motion-reduce:opacity-100 motion-reduce:translate-y-0"
       } ${className}`}
     >
       {children}

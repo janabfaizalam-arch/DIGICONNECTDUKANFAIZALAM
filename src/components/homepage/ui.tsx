@@ -14,16 +14,30 @@ export type HomepageSurface =
   | "blue"
   | "aqua";
 
+/**
+ * Section backgrounds.
+ *
+ * The page previously used seven different tints across seventeen sections —
+ * cream, aqua, teal, violet, orange, sky and white — so every band announced
+ * itself and the page read as a stack of unrelated pages. The tinted variants
+ * now all resolve to one soft tint, leaving a simple alternation of white and
+ * tint with the dark surfaces as deliberate punctuation.
+ *
+ * The names are kept so no section has to change; only what they resolve to
+ * has been narrowed.
+ */
+const TINT = "bg-[var(--dc-sky-soft)] text-[var(--dc-ink)]";
+
 const SURFACE: Record<HomepageSurface, string> = {
   white: "bg-white text-[var(--dc-ink)]",
-  sky: "bg-[var(--dc-sky-soft)] text-[var(--dc-ink)]",
-  cream: "bg-[var(--dc-cream)] text-[var(--dc-ink)]",
-  tealSoft: "bg-[var(--dc-teal-soft)] text-[var(--dc-ink)]",
-  violetSoft: "bg-[var(--dc-violet-soft)] text-[var(--dc-ink)]",
-  orangeSoft: "bg-[var(--dc-orange-soft)] text-[var(--dc-ink)]",
+  sky: TINT,
+  cream: TINT,
+  tealSoft: TINT,
+  violetSoft: TINT,
+  orangeSoft: TINT,
+  aqua: TINT,
   navy: "bg-[var(--dc-navy-950)] text-white",
   blue: "bg-[var(--dc-blue-700)] text-white",
-  aqua: "bg-[var(--dc-cyan-soft)] text-[var(--dc-ink)]",
 };
 
 /** Shared homepage section with consistent mobile gutters and desktop rhythm. */
@@ -75,12 +89,12 @@ export function HomepageSectionHeader({
   light?: boolean;
 }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4 sm:mb-8 md:mb-10">
+    <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6 md:mb-8">
       <div className="min-w-0 max-w-3xl">
         {eyebrow ? (
           <p
             className={cn(
-              "text-xs font-black uppercase tracking-[0.14em]",
+              "text-[11px] font-bold uppercase tracking-[0.16em]",
               light ? "text-[var(--dc-orange-400)]" : "text-[var(--dc-blue-600)]",
             )}
           >
@@ -89,7 +103,7 @@ export function HomepageSectionHeader({
         ) : null}
         <h2
           className={cn(
-            "mt-1.5 text-[1.65rem] font-black tracking-tight sm:text-[2rem] md:text-[2.25rem] md:leading-[1.15]",
+            "mt-2 text-[1.5rem] font-black leading-[1.15] tracking-tight sm:text-[1.85rem] md:text-[2.05rem]",
             light ? "text-white" : "text-[var(--dc-ink)]",
           )}
         >
@@ -98,8 +112,8 @@ export function HomepageSectionHeader({
         {description ? (
           <p
             className={cn(
-              "mt-3 max-w-2xl text-[15px] font-semibold leading-relaxed sm:text-base",
-              light ? "text-white/90" : "text-[var(--dc-body)]",
+              "mt-2.5 max-w-2xl text-[14.5px] font-medium leading-relaxed sm:text-[15px]",
+              light ? "text-white/75" : "text-[var(--dc-body)]",
             )}
           >
             {description}
