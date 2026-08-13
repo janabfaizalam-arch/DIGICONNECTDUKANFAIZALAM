@@ -28,6 +28,7 @@ import { getActiveHomepageSlides } from "@/lib/homepage-slides";
 import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
 import { buildAggregateRatingJsonLd, getHomepageTestimonials } from "@/lib/homepage/testimonials";
 import { buildReelsJsonLd, getHomepageReels } from "@/lib/homepage/reels";
+import { getFooterSocialLinks } from "@/lib/homepage/social";
 import { contactDetails } from "@/lib/constants";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -69,12 +70,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [publicServices, slides, faqs, testimonials, reels] = await Promise.all([
+  const [publicServices, slides, faqs, testimonials, reels, socialLinks] = await Promise.all([
     getPublicServices(),
     getActiveHomepageSlides(5),
     getHomepageFaqs(),
     getHomepageTestimonials(),
     getHomepageReels(),
+    getFooterSocialLinks(),
   ]);
 
   const searchCatalog = publicServices.map((s) => ({
@@ -195,7 +197,7 @@ export default async function Home() {
         </ScrollReveal>
       </main>
 
-      <MarketingFooter variant="homepage" />
+      <MarketingFooter variant="homepage" socialLinks={socialLinks} />
       <HomepageContactActions />
     </>
   );

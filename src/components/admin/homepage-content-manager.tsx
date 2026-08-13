@@ -9,7 +9,16 @@ import type { HomepageFaq } from "@/lib/homepage/faqs";
 import type { HomepageReel } from "@/lib/homepage/reels";
 import type { HomepageTestimonial } from "@/lib/homepage/testimonials";
 
-type Tab = "faqs" | "testimonials" | "reels";
+type SocialRow = {
+  platform: string;
+  label: string;
+  url: string;
+  handle: string;
+  is_active: boolean;
+  sort_order: number;
+};
+
+type Tab = "faqs" | "testimonials" | "reels" | "social";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-[var(--primary)] disabled:opacity-50";
@@ -61,14 +70,16 @@ export function HomepageContentManager() {
   const [faqDraft, setFaqDraft] = useState<Partial<HomepageFaq>>(emptyFaq());
   const [testimonialDraft, setTestimonialDraft] = useState<Partial<HomepageTestimonial>>(emptyTestimonial());
   const [reelDraft, setReelDraft] = useState<Partial<HomepageReel>>(emptyReel());
+  const [social, setSocial] = useState<SocialRow[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [faqRes, testimonialRes, reelRes] = await Promise.all([
+      const [faqRes, testimonialRes, reelRes, socialRes] = await Promise.all([
         fetch("/api/admin/homepage/faqs", { cache: "no-store" }),
         fetch("/api/admin/homepage/testimonials", { cache: "no-store" }),
         fetch("/api/admin/homepage/reels", { cache: "no-store" }),
+        fetch("/api/admin/homepage/social", { cache: "no-store" }),
       ]);
       const faqBody = (await faqRes.json().catch(() => ({}))) as {
         rows?: HomepageFaq[];
@@ -84,10 +95,16 @@ export function HomepageContentManager() {
         setupHint?: string | null;
       };
 
+      const socialBody = (await socialRes.json().catch(() => ({}))) as {
+        rows?: SocialRow[];
+        setupHint?: string | null;
+      };
+
       setFaqs(faqBody.rows ?? []);
       setTestimonials(testimonialBody.rows ?? []);
       setReels(reelBody.rows ?? []);
-      setSetupHint(faqBody.setupHint ?? testimonialBody.setupHint ?? reelBody.setupHint ?? null);
+      setSocial(socialBody.rows ?? []);
+      setSetupHint(faqBody.setupHint ?? testimonialBody.setupHint ?? reelBody.setupHint ?? socialBody.setupHint ?? null);
     } finally {
       setLoading(false);
     }
@@ -150,7 +167,7 @@ export function HomepageContentManager() {
       {setupHint ? <SetupNotice hint={setupHint} /> : null}
 
       <div className="flex gap-2">
-        {(["faqs", "testimonials", "reels"] as Tab[]).map((value) => (
+        {(["faqs", "testimonials", "reels", "social"] as Tab[]).map((value) => (
           <button
             key={value}
             type="button"
@@ -165,7 +182,9 @@ export function HomepageContentManager() {
               ? `FAQs (${faqs.length})`
               : value === "testimonials"
                 ? `Testimonials (${testimonials.length})`
-                : `Reels (${reels.length})`}
+                : value === "reels"
+                  ? `Reels (${reels.length})`
+                  : `Social (${social.filter((r) => r.is_active).length})`}
           </button>
         ))}
       </div>
@@ -365,7 +384,7 @@ export function HomepageContentManager() {
             )}
           </Card>
         </>
-      ) : (
+      ) : tab === "reels" ? (
         <>
           <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.12em] text-slate-500">
@@ -472,6 +491,59 @@ export function HomepageContentManager() {
             )}
           </Card>
         </>
+      ) : (
+        <Card className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+          <div className="p-5">
+            <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Social profiles</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Paste the full https:// link to each profile and tick Show. Only ticked profiles appear in
+              the website footer. WhatsApp is not listed here — it always uses the support number.
+            </p>
+          </div>
+
+          {social.map((row) => (
+            <div key={row.platform} className="grid gap-3 p-4 sm:grid-cols-[130px_1fr_auto] sm:items-center">
+              <p className="text-sm font-bold text-slate-900">{row.label}</p>
+              <input
+                className={INPUT}
+                value={row.url}
+                disabled={saving}
+                placeholder={`https://…/${row.platform}-profile`}
+                onChange={(e) =>
+                  setSocial((rows) =>
+                    rows.map((r) => (r.platform === row.platform ? { ...r, url: e.target.value } : r)),
+                  )
+                }
+              />
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={row.is_active}
+                    disabled={saving}
+                    onChange={(e) =>
+                      setSocial((rows) =>
+                        rows.map((r) =>
+                          r.platform === row.platform ? { ...r, is_active: e.target.checked } : r,
+                        ),
+                      )
+                    }
+                    className="h-4 w-4 rounded border-slate-300"
+                  />
+                  Show
+                </label>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void save("social", row)}
+                  className="inline-flex h-9 items-center rounded-lg bg-[var(--primary)] px-4 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ))}
+        </Card>
       )}
     </div>
   );
