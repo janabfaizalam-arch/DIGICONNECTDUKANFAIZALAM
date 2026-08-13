@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { getCurrentUser } from "@/lib/auth";
-import { validateCoupon } from "@/lib/coupons";
+import { checkCoupon } from "@/lib/coupons-store";
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/razorpay";
 import { createWalletIfMissing, redeemWalletForApplication as redeemRewardWalletDirect, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
@@ -277,8 +277,8 @@ export async function POST(request: Request) {
       const couponCode = String(body?.couponCode ?? "").trim();
       let couponDiscount = 0;
       if (couponCode) {
-        const validation = validateCoupon({
-          couponCode,
+        const validation = await checkCoupon({
+          code: couponCode,
           serviceSlug: serviceSlugs[0],
           amount: serviceAmount,
           userId: user.id,

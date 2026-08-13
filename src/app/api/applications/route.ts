@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 
 import { createAdminNotifications, type CreateAdminNotificationInput } from "@/lib/admin-notifications";
 import { getCurrentUser, getCurrentUserRole, syncUserProfile } from "@/lib/auth";
-import { validateCoupon } from "@/lib/coupons";
+import { checkCoupon, redeemCoupon } from "@/lib/coupons-store";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
@@ -418,8 +418,8 @@ export async function POST(request: Request) {
     const couponCode = String(body.couponCode ?? "").trim();
     let couponDiscount = 0;
     if (couponCode) {
-      const validation = validateCoupon({
-        couponCode,
+      const validation = await checkCoupon({
+        code: couponCode,
         serviceSlug: serviceSlugs[0],
         amount: orderAmount,
         userId: user.id,
@@ -1106,6 +1106,30 @@ export async function POST(request: Request) {
         reason: "application_insert_failed",
       });
       return jsonError("Application submission failed.", 500);
+    }
+
+    // Consume the coupon only now that the applications exist. Redeeming at
+    // order-creation time would spend it on abandoned checkouts, and the
+    // database re-checks every limit under a row lock here — the pre-checkout
+    // validation above is only a friendly early rejection.
+    if (couponCode && couponDiscount > 0) {
+      const redemption = await redeemCoupon({
+        code: couponCode,
+        userId: user.id,
+        applicationId: applications[0]?.id ?? null,
+        orderId: body.razorpayPayment?.razorpay_order_id ?? null,
+        discountAmount: couponDiscount,
+      });
+      if (!redemption.ok) {
+        // The order is already paid and the applications exist; refusing here
+        // would strand the customer. Record it for reconciliation instead.
+        console.error("[applications] coupon_redeem_failed", {
+          userId: user.id,
+          code: couponCode,
+          reason: redemption.reason,
+          applicationId: applications[0]?.id ?? null,
+        });
+      }
     }
 
     if (referralId && referrerApId) {
