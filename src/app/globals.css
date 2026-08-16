@@ -1663,108 +1663,66 @@ input[id*="email"],
   text-transform: none !important;
 }
 
-/* ── Homepage hero (v2) ───────────────────────────────────────────────────
+/* ── Homepage hero ────────────────────────────────────────────────────────
    Transform/opacity only, so the entrance stays on the compositor and does
-   not trigger layout on low-end phones. */
+   not trigger layout on low-end phones. Everything here is switched off under
+   prefers-reduced-motion at the bottom of the block. */
 
-@keyframes hero-rise {
+@keyframes dc-hero-rise {
   from { opacity: 0; transform: translate3d(0, 18px, 0); }
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
-@keyframes hero-aurora {
+@keyframes dc-hero-drift {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(3%, -4%, 0) scale(1.12); }
+  50%      { transform: translate3d(3%, -4%, 0) scale(1.1); }
 }
 
-.hero-rise {
+@keyframes dc-hero-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes dc-hero-node {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
+.dc-hero-rise {
   opacity: 0;
-  animation: hero-rise 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: dc-hero-rise 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.hero-aurora {
-  animation: hero-aurora 18s ease-in-out infinite;
+.dc-hero-drift {
+  animation: dc-hero-drift 24s ease-in-out infinite;
   will-change: transform;
 }
 
-/* Tilted media card. The tilt is removed under 1024px because the card goes
-   full-width there and a rotated edge would clip against the gutter. */
-.hero-tilt {
-  transform: perspective(1400px) rotateY(-7deg) rotateX(2deg);
-  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+/* The spokes rotate about their own centre, which for an SVG group means the
+   transform box has to be told where that is. */
+.dc-hero-spin {
+  transform-origin: 1180px 200px;
+  animation: dc-hero-spin 150s linear infinite;
 }
-.hero-tilt:hover {
-  transform: perspective(1400px) rotateY(-3deg) rotateX(1deg) translateY(-4px);
+
+.dc-hero-node {
+  animation: dc-hero-node 5.5s ease-in-out infinite;
 }
-@media (max-width: 1023px) {
-  .hero-tilt { transform: none; }
+
+/* The headline's closing clause. A display serif italic against the sans
+   headline; the size is nudged up because serif lowercase reads smaller at the
+   same point size, and the weight stays mid so it never out-shouts the line. */
+.dc-hero-accent {
+  font-family: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-size: 1.06em;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-rise {
-    opacity: 1;
-    animation: none;
-  }
-  .hero-aurora { animation: none; }
-  .hero-tilt,
-  .hero-tilt:hover { transform: none; transition: none; }
-}
-
-/* ── Theme: Aurora Light ──────────────────────────────────────────────────
-   A deliberate break from the saturated blue/orange, card-dense look.
-   Light canvas, ink typography, hairline borders, almost no drop shadows,
-   one accent used sparingly. Premium here means restraint, not more colour. */
-
-:root {
-  --al-canvas: #fbfbf9;
-  --al-surface: #ffffff;
-  --al-ink: #0b0b0d;
-  --al-ink-2: #45464d;
-  --al-ink-3: #85868f;
-  --al-line: rgba(11, 11, 13, 0.08);
-  --al-line-strong: rgba(11, 11, 13, 0.14);
-  --al-accent: #1b3bd6;
-  --al-accent-soft: #eef1ff;
-  --al-warm: #ff6800;
-  --al-radius: 14px;
-  --al-radius-lg: 22px;
-  /* One easing everywhere, so motion feels like a single system. */
-  --al-ease: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes al-in {
-  from { opacity: 0; transform: translate3d(0, 14px, 0); }
-  to   { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-
-@keyframes al-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(-2%, 3%, 0) scale(1.08); }
-}
-
-.al-in {
-  opacity: 0;
-  animation: al-in 640ms var(--al-ease) forwards;
-}
-
-.al-drift {
-  animation: al-drift 22s ease-in-out infinite;
-  will-change: transform;
-}
-
-/* Hairline that survives dark backgrounds and retina rounding. */
-.al-hairline { border: 1px solid var(--al-line); }
-
-.al-lift {
-  transition: transform 420ms var(--al-ease), border-color 420ms var(--al-ease);
-}
-.al-lift:hover {
-  transform: translateY(-3px);
-  border-color: var(--al-line-strong);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .al-in { opacity: 1; animation: none; }
-  .al-drift { animation: none; }
-  .al-lift, .al-lift:hover { transform: none; transition: none; }
+  .dc-hero-rise { opacity: 1; animation: none; }
+  .dc-hero-drift,
+  .dc-hero-spin,
+  .dc-hero-node { animation: none; }
 }

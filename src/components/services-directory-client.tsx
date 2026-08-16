@@ -183,9 +183,11 @@ const faqData = [
 
 interface ServicesDirectoryClientProps {
   initialServices?: Omit<ServiceItem, "icon">[];
+  /** Query carried over from another search box, e.g. the homepage hero. */
+  initialQuery?: string;
 }
 
-export function ServicesDirectoryClient({ initialServices }: ServicesDirectoryClientProps) {
+export function ServicesDirectoryClient({ initialServices, initialQuery }: ServicesDirectoryClientProps) {
   const services = useMemo(() => {
     const baseList = initialServices || servicesData;
     return baseList.map(s => {
@@ -196,7 +198,7 @@ export function ServicesDirectoryClient({ initialServices }: ServicesDirectoryCl
       } as ServiceItem;
     });
   }, [initialServices]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialQuery ?? "");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedSort, setSelectedSort] = useState("popularity");
   const [searchFocused, setSearchFocused] = useState(false);

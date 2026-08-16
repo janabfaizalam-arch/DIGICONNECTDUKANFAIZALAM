@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Inter, Poppins } from "next/font/google";
+import { Inter, Playfair_Display, Poppins } from "next/font/google";
 import Script from "next/script";
 
 import { GoogleAnalytics } from "@/components/google-analytics";
@@ -27,6 +27,19 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-body",
+});
+
+/**
+ * Display serif, used only for the emphasised clause of the homepage headline.
+ * A single italic weight, self-hosted by next/font with display: swap, so it
+ * adds one small file and never blocks the first paint.
+ */
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["500"],
+  style: ["italic"],
+  display: "swap",
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -105,7 +118,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
+      <body className={`${poppins.variable} ${inter.variable} ${playfair.variable} font-sans antialiased`}>
         {process.env.NODE_ENV === "production" && gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
         {metaPixelId ? (
           <>
