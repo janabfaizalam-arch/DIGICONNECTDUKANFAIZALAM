@@ -33,6 +33,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ApMobileBottomNav } from "@/components/ap/ap-mobile-bottom-nav";
 import { createClient } from "@/lib/supabase/browser";
+import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { cn } from "@/lib/utils";
 
 interface NotificationItem {
@@ -218,11 +219,7 @@ export function APPanelNav() {
   };
 
   // Auth pages skip chrome
-  if (
-    pathname === "/ap/login" ||
-    pathname === "/ap/forgot-password" ||
-    pathname === "/ap/reset-password"
-  ) {
+  if (isAuthRoutePath(pathname)) {
     return null;
   }
 

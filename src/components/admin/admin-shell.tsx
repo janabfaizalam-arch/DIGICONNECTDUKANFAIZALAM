@@ -28,13 +28,11 @@ import { AdminNotificationsBell } from "@/components/admin/admin-notifications-b
 import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ADMIN_NAV_GROUPS, isAdminNavActive } from "@/lib/admin/nav";
+import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { cn } from "@/lib/utils";
 
 const COLLAPSE_KEY = "dcd_admin_sidebar_collapsed";
 const GROUP_COLLAPSE_KEY = "dcd_admin_nav_groups";
-
-/** Routes under /admin that are signed-out pages: they render without admin chrome. */
-const AUTH_PATHS = new Set(["/admin/login"]);
 
 function AdminNav({
   collapsed,
@@ -201,7 +199,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const isAuthPage = AUTH_PATHS.has(pathname);
+  const isAuthPage = isAuthRoutePath(pathname);
 
   useEffect(() => {
     try {
