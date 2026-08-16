@@ -33,6 +33,9 @@ import { cn } from "@/lib/utils";
 const COLLAPSE_KEY = "dcd_admin_sidebar_collapsed";
 const GROUP_COLLAPSE_KEY = "dcd_admin_nav_groups";
 
+/** Routes under /admin that are signed-out pages: they render without admin chrome. */
+const AUTH_PATHS = new Set(["/admin/login"]);
+
 function AdminNav({
   collapsed,
   onNavigate,
@@ -194,9 +197,11 @@ function AdminNav({
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() || "/admin";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const isAuthPage = AUTH_PATHS.has(pathname);
 
   useEffect(() => {
     try {
@@ -227,6 +232,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
+
+  // Signed-out pages own the full viewport — no sidebar, topbar, or logout button.
+  if (isAuthPage) return <>{children}</>;
 
   return (
     <div
