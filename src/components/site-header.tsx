@@ -17,6 +17,7 @@ import {
   DIGI_PARTNER_LOGIN_ROUTE,
 } from "@/lib/auth/partner-access";
 import { AUTH_LOGOUT_EVENT } from "@/lib/auth/logout-destinations";
+import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 
 type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
@@ -639,21 +640,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
   }, []);
 
   // Don't render on admin/dashboard pages or auth routes
-  const isAuthRoute =
-    pathname === "/login" ||
-    pathname.startsWith("/login/") ||
-    pathname === "/signup" ||
-    pathname.startsWith("/signup/") ||
-    pathname === "/forgot-password" ||
-    pathname.startsWith("/forgot-password/") ||
-    pathname === "/reset-password" ||
-    pathname.startsWith("/reset-password/") ||
-    pathname === "/admin-login" ||
-    pathname.startsWith("/admin-login/") ||
-    pathname === "/agent-login" ||
-    pathname.startsWith("/agent-login/") ||
-    pathname === "/customer-login" ||
-    pathname.startsWith("/customer-login/");
+  const isAuthRoute = isAuthRoutePath(pathname);
 
   if (
     pathname === "/admin" ||

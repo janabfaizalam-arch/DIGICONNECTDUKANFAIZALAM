@@ -7,6 +7,7 @@ import { Home, FileText, Wallet, PlusCircle, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/browser";
+import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 
 type AppRole = "admin" | "agent" | "customer" | "agency_partner";
 
@@ -53,9 +54,10 @@ async function resolveRole(user: User | null): Promise<AppRole | null> {
   }
 }
 
-const hiddenPrefixes = ["/admin", "/agent", "/login", "/signup", "/ap", "/forgot-password", "/reset-password", "/staff", "/customer-login", "/apply"];
+const hiddenPrefixes = ["/admin", "/agent", "/ap", "/staff", "/apply"];
 
 function shouldHide(pathname: string) {
+  if (isAuthRoutePath(pathname)) return true;
   return hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

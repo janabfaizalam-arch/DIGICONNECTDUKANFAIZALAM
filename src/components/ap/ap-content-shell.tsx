@@ -2,16 +2,15 @@
 
 import { usePathname } from "next/navigation";
 
+import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { cn } from "@/lib/utils";
-
-const AUTH_PATHS = new Set(["/ap/login", "/ap/forgot-password", "/ap/reset-password"]);
 
 /**
  * Reserves space above the floating mobile dock so last-page cards stay scrollable.
  */
 export function ApContentShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuth = AUTH_PATHS.has(pathname);
+  const isAuth = isAuthRoutePath(pathname);
 
   return (
     <div
