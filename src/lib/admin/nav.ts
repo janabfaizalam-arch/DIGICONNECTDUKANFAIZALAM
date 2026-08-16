@@ -6,6 +6,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BadgePercent,
+  BanknoteArrowUp,
   BarChart3,
   Bell,
   ClipboardList,
@@ -108,6 +109,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: "/admin/wallet", label: "Wallet", description: "Liability ledger", icon: WalletCards },
       { href: "/admin/coupons", label: "Coupons", description: "Discount codes", icon: BadgePercent },
       { href: "/admin/ap-commissions", label: "Partner Commissions", description: "Approve to credit partner wallets", icon: ShieldCheck },
+      {
+        href: "/admin/ap-payouts",
+        label: "Partner Payouts",
+        description: "Pay or reject partner withdrawal requests",
+        icon: BanknoteArrowUp,
+      },
       { href: "/admin/commissions", label: "Agent Commissions", description: "Legacy agent ledger", icon: ShieldCheck },
       { href: "/admin/payment-reconciliation", label: "Reconciliation", description: "Razorpay match", icon: ReceiptText },
     ],
