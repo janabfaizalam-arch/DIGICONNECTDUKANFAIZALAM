@@ -21,6 +21,18 @@ import { postJson } from "@/components/auth/ui/request";
 
 type Mode = "email" | "pin";
 type Stage = "idle" | "validating" | "requesting" | "redirecting";
+/** Which control a failure belongs to; "form" renders above the submit button. */
+type FailureField = "email" | "password" | "phone" | "pin" | "form";
+type FieldFailure = AdminLoginFailure & { field: FailureField };
+
+/**
+ * Rejected credentials point at the secret the user can retype; everything else
+ * (access denied, timeouts, server errors) is about the request, not one field.
+ */
+function fieldForFailure(failure: AdminLoginFailure, mode: Mode): FailureField {
+  if (failure.category !== "invalid_credentials") return "form";
+  return mode === "email" ? "password" : "pin";
+}
 
 export function AdminLoginForm() {
   const { error: toastError } = useToast();
@@ -29,7 +41,7 @@ export function AdminLoginForm() {
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
-  const [failure, setFailure] = useState<AdminLoginFailure | null>(null);
+  const [failure, setFailure] = useState<FieldFailure | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [stage, setStage] = useState<Stage>("idle");
@@ -39,9 +51,16 @@ export function AdminLoginForm() {
   const isDev = process.env.NODE_ENV === "development";
 
   function fail(failure: AdminLoginFailure) {
-    setFailure(failure);
+    setFailure({ ...failure, field: fieldForFailure(failure, mode) });
     toastError(failure.message);
   }
+
+  /** Client-side validation error, shown inline on the field that caused it. */
+  function invalidate(field: FailureField, message: string) {
+    setFailure({ category: "invalid_credentials", message, field });
+  }
+
+  const errorFor = (field: FailureField) => (failure?.field === field ? failure.message : null);
 
   async function submit() {
     if (submittingRef.current) return;
@@ -54,20 +73,20 @@ export function AdminLoginForm() {
     try {
       if (mode === "email") {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-          setFailure({ category: "invalid_credentials", message: "Enter a valid email address." });
+          invalidate("email", "Enter a valid email address.");
           return;
         }
         if (password.length < 6) {
-          setFailure({ category: "invalid_credentials", message: "Password must be at least 6 characters." });
+          invalidate("password", "Password must be at least 6 characters.");
           return;
         }
       } else {
         if (!/^[6-9]\d{9}$/.test(phone)) {
-          setFailure({ category: "invalid_credentials", message: "Enter a valid 10-digit mobile number." });
+          invalidate("phone", "Enter a valid 10-digit mobile number.");
           return;
         }
         if (!/^\d{6}$/.test(pin)) {
-          setFailure({ category: "invalid_credentials", message: "PIN must be exactly 6 digits." });
+          invalidate("pin", "PIN must be exactly 6 digits.");
           return;
         }
       }
@@ -145,6 +164,7 @@ export function AdminLoginForm() {
               autoComplete="email"
               placeholder="janabfaizalam@gmail.com"
               onChange={(e) => setEmail(e.target.value)}
+              error={errorFor("email")}
             />
             <TextField
               label="Password"
@@ -154,7 +174,7 @@ export function AdminLoginForm() {
               disabled={loading}
               autoComplete="current-password"
               onChange={(e) => setPassword(e.target.value)}
-              error={failure?.message ?? null}
+              error={errorFor("password")}
             />
           </>
         ) : (
@@ -166,10 +186,20 @@ export function AdminLoginForm() {
               disabled={loading}
               success={/^[6-9]\d{9}$/.test(phone)}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              error={errorFor("phone")}
             />
-            <PinField value={pin} onChange={setPin} disabled={loading} error={failure?.message ?? null} />
+            <PinField value={pin} onChange={setPin} disabled={loading} error={errorFor("pin")} />
           </>
         )}
+
+        {failure?.field === "form" ? (
+          <p
+            role="alert"
+            className="rounded-xl bg-rose-50 px-3 py-2 text-center text-xs font-semibold text-rose-600"
+          >
+            {failure.message}
+          </p>
+        ) : null}
 
         <AuthButton
           type="submit"
