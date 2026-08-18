@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageSquare,
+  Percent,
   ReceiptText,
   Settings,
   Sheet,
@@ -108,6 +109,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: "/admin/offline-invoices", label: "Offline Invoices", description: "Manual invoices", icon: FileText },
       { href: "/admin/wallet", label: "Wallet", description: "Liability ledger", icon: WalletCards },
       { href: "/admin/coupons", label: "Coupons", description: "Discount codes", icon: BadgePercent },
+      {
+        href: "/admin/commission-rules",
+        label: "Commission Rules",
+        description: "What a partner earns per sale",
+        icon: Percent,
+      },
       { href: "/admin/ap-commissions", label: "Partner Commissions", description: "Approve to credit partner wallets", icon: ShieldCheck },
       {
         href: "/admin/ap-payouts",

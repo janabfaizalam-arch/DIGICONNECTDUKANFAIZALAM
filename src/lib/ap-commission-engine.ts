@@ -199,8 +199,23 @@ export async function createCommissionForApplication(params: {
     saleAmount: params.saleAmount,
   });
 
+  // A sale that prices at zero writes no commission row at all, so the partner
+  // sees nothing in their panel and nothing ever reaches their wallet. That is
+  // almost always a missing or misconfigured rule rather than a genuinely
+  // unpaid sale, and returning a bare `ok: true` made it indistinguishable from
+  // success in the logs. Say which it was, loudly.
   if (calc.amount <= 0) {
-    return { ok: true, amount: 0 };
+    const reason = calc.ruleUsed
+      ? `rule "${calc.ruleUsed.name}" (${calc.ruleUsed.id}) priced this sale at 0`
+      : "no commission rule matched — check /admin/commission-rules for an active global fallback";
+    console.warn("[ap-commission] zero_commission_not_recorded", {
+      applicationId: params.applicationId,
+      agencyPartnerId: params.agencyPartnerId,
+      serviceSlug: params.serviceSlug,
+      saleAmount: params.saleAmount,
+      reason,
+    });
+    return { ok: true, amount: 0, error: reason };
   }
 
   const { data, error } = await supabase

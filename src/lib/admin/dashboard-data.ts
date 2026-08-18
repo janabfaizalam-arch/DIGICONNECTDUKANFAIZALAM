@@ -653,7 +653,12 @@ export async function getAdminDashboardPayload(range: AdminDateRange): Promise<A
 
   if (commissionPending.available) {
     metrics.push(
-      metric("partner_commission", "Pending Partner Commission", commissionPending.amount, commissionPending.amount, "/admin/commissions", "commission", {
+      // Partner commissions live in ap_commissions and only credit a partner's
+      // wallet when approved through /admin/ap-commissions. The legacy
+      // /admin/commissions screen drives the separate `commissions` table and
+      // never touches a wallet, so pointing this tile there sent admins to
+      // approve in a place where the money never moved.
+      metric("partner_commission", "Pending Partner Commission", commissionPending.amount, commissionPending.amount, "/admin/ap-commissions", "commission", {
         money: true,
         increaseIsGood: false,
       }),
