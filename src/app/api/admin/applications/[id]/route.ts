@@ -13,6 +13,7 @@ import {
   uploadFinalDocumentObject,
 } from "@/lib/documents/final-document-storage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { settleCommissionForCompletedApplication } from "@/lib/ap-commission-settlement";
 import { creditCashbackForApplication } from "@/lib/wallet";
 import { validateFileSignature } from "@/lib/file-validation";
 import { recordApplicationAssignmentEvent } from "@/lib/automation/producers/assignment";
@@ -307,6 +308,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         },
         { onConflict: "application_id,agent_id" },
       );
+    }
+
+    // Pay the agency partner the same way the AP panel does. Completing from
+    // here used to skip commissions entirely — only the AP's own transition
+    // route paid out — so a partner's sale closed by an admin earned them
+    // nothing. Settlement is idempotent, so the two paths cannot double-pay if
+    // an application is completed from both.
+    if (nextStatus === "completed") {
+      const settlement = await settleCommissionForCompletedApplication({
+        applicationId: id,
+        actorId: user?.id ?? null,
+      });
+
+      if (!settlement.ok) {
+        console.error("[admin-applications-patch] commission_settlement_failed", {
+          applicationId: id,
+          error: settlement.error,
+        });
+      }
     }
 
     if (assignedAgentId && assignedAgentId !== "none") {
