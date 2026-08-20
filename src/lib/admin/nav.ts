@@ -98,6 +98,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: "Team & Partners",
     items: [
       { href: ADMIN_DIGI_PARTNERS_ROUTE, label: "Digi Partners", description: "KYC and partner CRM", icon: UserCheck },
+      {
+        href: "/admin/partner-applications",
+        label: "Partner Applications",
+        description: "Review and approve new partner signups",
+        icon: UserPlus,
+      },
       { href: "/admin/partner-banners", label: "Partner Banners", description: "Digi Partner home slider", icon: Image },
     ],
   },

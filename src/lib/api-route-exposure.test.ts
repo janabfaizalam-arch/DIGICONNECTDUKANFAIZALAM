@@ -53,6 +53,13 @@ const KNOWN_UNAUTHENTICATED_WRITES = [
   "lead",
   "services/track",
 
+  // "Become a Digi Partner" signup. Writes only a pending
+  // agency_partner_applications row: it creates no auth user and no
+  // agency_partners record, so a submission grants nothing until an admin
+  // approves it at /admin/partner-applications. Rate limited per IP, and the
+  // partial unique index on (mobile) caps one open application per number.
+  "partner-applications",
+
   // Public print-shop counter: a walk-up customer creates a job and pays for it.
   "print/jobs/create",
   "print/payment/create-order",

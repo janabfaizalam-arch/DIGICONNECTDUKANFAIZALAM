@@ -177,7 +177,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
             Partner support
           </Link>
         </div>
-        <Link href="/services" className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:underline">
+        <Link href="/digi-partner/apply" className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:underline">
           Become a DigiConnect Partner <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
       </div>

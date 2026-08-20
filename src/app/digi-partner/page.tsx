@@ -15,12 +15,12 @@ import {
 
 import { MarketingFooter } from "@/components/marketing-footer";
 import {
+  DIGI_PARTNER_APPLY_ROUTE,
   DIGI_PARTNER_BECOME_CTA_LABEL,
   DIGI_PARTNER_CTA_LABEL,
   DIGI_PARTNER_LANDING_ROUTE,
   DIGI_PARTNER_LOGIN_ROUTE,
 } from "@/lib/auth/partner-access";
-import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const metadata: Metadata = {
   title: "Digi Partner | DigiConnect Dukan",
@@ -39,12 +39,6 @@ const trustPoints = [
 ];
 
 export default function DigiPartnerLandingPage() {
-  const becomeUrl = buildWhatsAppUrl(
-    buildSupportWhatsAppMessage({
-      page: "digi_partner_landing",
-      topic: "I want to become a Digi Partner with DigiConnect Dukan",
-    }),
-  );
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-[#f6f8fc]">
@@ -100,15 +94,13 @@ export default function DigiPartnerLandingPage() {
           </p>
 
           <div className="mt-9 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
-            <a
-              href={becomeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href={DIGI_PARTNER_APPLY_ROUTE}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-extrabold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
             >
               {DIGI_PARTNER_BECOME_CTA_LABEL}
               <ArrowRight className="h-4 w-4" />
-            </a>
+            </Link>
             <Link
               href={DIGI_PARTNER_LOGIN_ROUTE}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/75 px-6 text-sm font-extrabold text-indigo-700 shadow-sm backdrop-blur-md transition hover:bg-white active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
