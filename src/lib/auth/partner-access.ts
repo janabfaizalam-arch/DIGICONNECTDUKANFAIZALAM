@@ -14,6 +14,9 @@ export const DIGI_PARTNER_LANDING_ROUTE = "/digi-partner";
 /** The one canonical Digi Partner login route. */
 export const DIGI_PARTNER_LOGIN_ROUTE = "/ap/login";
 
+/** Public self-signup form for people who want to become a partner. */
+export const DIGI_PARTNER_APPLY_ROUTE = "/digi-partner/apply";
+
 /** Where an authenticated, active Digi Partner lands after login. */
 export const DIGI_PARTNER_DASHBOARD_ROUTE = "/ap/dashboard";
 
