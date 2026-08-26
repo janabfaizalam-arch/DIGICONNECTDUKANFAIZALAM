@@ -1,43 +1,77 @@
 import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
 import { ServiceCard } from "@/components/homepage/service-card";
 import { Stagger, StaggerItem } from "@/components/homepage/motion";
-import { getPublicHomepageServices } from "@/lib/services";
+import { getPublicHomepageServices, getPublicServices } from "@/lib/services";
 import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
+
+/** How many services Trending now shows. Kept in step with `trending-now.tsx`. */
+const TRENDING_COUNT = 6;
+
+/** Lead plus a 2×2 of supporting cards. */
+const FEATURED_COUNT = 5;
 
 /**
  * Featured digital assistance.
  *
- * The old layout was a tall lead card beside a 2×2 of small ones, and the lead
- * card's copy stopped well short of its own bottom edge — so the section had a
- * column of dead white space running down the middle of it at every desktop
- * width, roughly the height of a card.
+ * Two problems, one of layout and one of content.
  *
- * Two changes close it. The lead card's image is `flex-1`, so it stretches to
- * whatever height the neighbouring column ends up being instead of leaving the
- * slack at the bottom. And the supporting cards now sit in a 2×2 grid whose
- * rows are equal height, so both columns finish on the same line.
+ * **Layout.** A tall lead card beside a 2×2 of small ones, where the lead's
+ * copy stopped well short of its own bottom edge — so a column of dead white
+ * space ran down the middle of the section at every desktop width. The lead
+ * card's image is now `flex-1`, so it stretches to whatever height the
+ * neighbouring column ends up being instead of leaving the slack at the bottom.
  *
- * The section deliberately shows five services, not eight: this band sits
- * directly under Trending now, and a second long list reads as the same section
- * repeated rather than a curated shortlist.
+ * **Content, and this was the worse one.** Both this section and Trending now
+ * called `getPublicHomepageServices`, so both rendered the same six services in
+ * the same order — two consecutive bands of identical cards, which reads as a
+ * bug rather than a curation.
+ *
+ * This section now starts where Trending stops. It takes the homepage-flagged
+ * services beyond the first six, and when there are not enough of those it
+ * fills from the wider published catalogue, skipping anything Trending already
+ * showed. So the two bands never repeat each other, and this one always has
+ * something to say.
  */
 export async function FeaturedServices() {
-  const featuredServices = await getPublicHomepageServices(8);
-  if (!featuredServices.length) return null;
+  const [homepageServices, allServices] = await Promise.all([
+    // One more than Trending needs, so the overlap can be computed exactly.
+    getPublicHomepageServices(TRENDING_COUNT + FEATURED_COUNT),
+    getPublicServices(),
+  ]);
 
-  const [lead, ...rest] = featuredServices;
-  const leadImage = resolveHomepageServiceImage(lead.slug, lead.title, lead.heroImageUrl);
-  const supporting = rest.slice(0, 4).map((service) => ({
-    service,
-    imageSrc: resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl),
-  }));
+  const shownInTrending = new Set(homepageServices.slice(0, TRENDING_COUNT).map((s) => s.slug));
+
+  const picked = [
+    // First choice: homepage-flagged services Trending did not reach.
+    ...homepageServices.slice(TRENDING_COUNT),
+    // Then anything else published, so the band is never thin.
+    ...allServices.filter((service) => !shownInTrending.has(service.slug)),
+  ];
+
+  // De-duplicate: the two sources overlap by construction.
+  const seen = new Set<string>();
+  const featured = picked
+    .filter((service) => {
+      if (shownInTrending.has(service.slug) || seen.has(service.slug)) return false;
+      seen.add(service.slug);
+      return true;
+    })
+    .slice(0, FEATURED_COUNT)
+    .map((service) => ({
+      service,
+      imageSrc: resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl),
+    }));
+
+  if (!featured.length) return null;
+
+  const [lead, ...supporting] = featured;
 
   return (
     <HomepageSection id="top-services" surface="sky" wash="dual">
       <HomepageSectionHeader
-        eyebrow="Featured assistance"
+        eyebrow="More from the catalog"
         title="Featured digital assistance"
-        description="Selected services from the live catalog. Fees shown are RNOS assistance fees where listed."
+        description="Beyond the trending filings — more services from the live catalog. Fees shown are RNOS assistance fees where listed."
         actionHref="/services"
         actionLabel="All services"
       />
@@ -46,38 +80,39 @@ export async function FeaturedServices() {
       <Stagger className="hidden gap-4 lg:grid lg:grid-cols-[1.05fr_1.2fr] lg:items-stretch">
         <StaggerItem className="h-full">
           <ServiceCard
-            service={lead}
-            imageSrc={leadImage}
+            service={lead.service}
+            imageSrc={lead.imageSrc}
             featured
             sizes="(max-width: 1280px) 45vw, 560px"
           />
         </StaggerItem>
 
-        <StaggerItem className="h-full">
-          <div className="grid h-full auto-rows-fr grid-cols-2 gap-4">
-            {supporting.map((item) => (
-              <ServiceCard
-                key={item.service.slug}
-                service={item.service}
-                imageSrc={item.imageSrc}
-                sizes="(max-width: 1280px) 28vw, 300px"
-              />
-            ))}
-          </div>
-        </StaggerItem>
+        {supporting.length ? (
+          <StaggerItem className="h-full">
+            <div className="grid h-full auto-rows-fr grid-cols-2 gap-4">
+              {supporting.map((item) => (
+                <ServiceCard
+                  key={item.service.slug}
+                  service={item.service}
+                  imageSrc={item.imageSrc}
+                  sizes="(max-width: 1280px) 28vw, 300px"
+                />
+              ))}
+            </div>
+          </StaggerItem>
+        ) : null}
       </Stagger>
 
       {/* Tablet — a plain three-up, no lead treatment */}
       <div className="hidden gap-4 md:grid md:grid-cols-3 lg:hidden">
-        <ServiceCard service={lead} imageSrc={leadImage} sizes="32vw" />
-        {supporting.slice(0, 2).map((item) => (
+        {featured.slice(0, 3).map((item) => (
           <ServiceCard key={item.service.slug} service={item.service} imageSrc={item.imageSrc} sizes="32vw" />
         ))}
       </div>
 
       {/* Phones — one rail */}
       <HomepageMobileRail className="md:hidden">
-        {[{ service: lead, imageSrc: leadImage }, ...supporting].map((item) => (
+        {featured.map((item) => (
           <div key={item.service.slug} className="w-[80%] max-w-[290px] shrink-0 snap-start">
             <ServiceCard service={item.service} imageSrc={item.imageSrc} />
           </div>

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
+import { categoryGlyph } from "@/components/homepage/category-art";
 import type { ServiceItem } from "@/lib/services-data";
 import { cn } from "@/lib/utils";
 
@@ -74,9 +75,7 @@ export function ServiceCard({
               className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
             />
           ) : (
-            <span className="absolute inset-0 flex items-center justify-center">
-              <Sparkles className="h-9 w-9 text-white/70" aria-hidden="true" />
-            </span>
+            <ArtlessBand subject={`${service.slug} ${service.title} ${service.category}`} />
           )}
 
           {badge ? (
@@ -86,8 +85,17 @@ export function ServiceCard({
           ) : null}
         </span>
 
-        {/* Copy */}
-        <span className="flex flex-1 flex-col p-4">
+        {/*
+          Copy.
+
+          `flex-1` deliberately only on the non-featured card. When both this
+          and the image band above carried it, the two split the leftover
+          column height between them — so the featured card grew a block of
+          empty white between its description and its price row, which is the
+          dead space this layout was supposed to remove. On the featured card
+          the image takes all the slack and the copy stays its natural height.
+        */}
+        <span className={cn("flex flex-col p-4", featured ? "" : "flex-1")}>
           <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-muted)]">
             {service.category}
           </span>
@@ -114,8 +122,8 @@ export function ServiceCard({
 
           {/* Foot — pushed to the bottom so cards of different copy length still
               line their prices and buttons up across the row. */}
-          <span className="mt-auto flex items-end justify-between gap-3 pt-4">
-            <span className="min-w-0">
+          <span className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-2.5 pt-4">
+            <span className="min-w-[6.5rem] flex-1">
               {hasPrice ? (
                 <>
                   <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--dc-muted)]">
@@ -126,10 +134,13 @@ export function ServiceCard({
                   </span>
                 </>
               ) : (
+                /* No hard line break. On the 290px-wide phone rail card the
+                   forced two-liner plus the button could not share a row, so
+                   the text broke to four lines and crushed the button; letting
+                   it wrap naturally — and letting the row wrap — keeps both
+                   readable at every card width. */
                 <span className="block text-[12.5px] font-bold leading-snug text-[var(--dc-body)]">
-                  Fee shared after
-                  <br />
-                  a free assessment
+                  Fee shared after a free assessment
                 </span>
               )}
             </span>
@@ -148,5 +159,57 @@ export function ServiceCard({
         </span>
       </Link>
     </article>
+  );
+}
+
+/**
+ * What a card shows when the catalogue has no photograph for that service.
+ *
+ * The catalogue only carries artwork for a handful of services, so most cards
+ * outside the top few have none — and the first version of this card filled
+ * that gap with one small sparkle on a flat gradient, which read as a broken
+ * image rather than a design.
+ *
+ * This uses the vocabulary the category tiles already established: the jaali
+ * lattice at low opacity, a large glyph chosen from the service's own subject,
+ * and the connector dots from the logo. It is drawn, so it costs nothing, and
+ * it differs per service rather than showing the same placeholder six times.
+ */
+function ArtlessBand({ subject }: { subject: string }) {
+  // The category is part of the subject on purpose. Matching on slug and title
+  // alone gave "Voter ID" a document glyph, because "id" reaches the generic
+  // certificate rule before anything notices it is a card; adding
+  // "Cards & PVC Printing" gets it the card.
+  const Glyph = categoryGlyph(subject, "");
+
+  return (
+    <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+      <span className="dc-jaali absolute inset-0 opacity-[0.13]" />
+
+      <svg
+        viewBox="0 0 200 130"
+        preserveAspectRatio="xMidYMid slice"
+        className="absolute inset-0 h-full w-full"
+        focusable="false"
+      >
+        <g fill="none" stroke="#ffffff" strokeOpacity="0.14">
+          <circle cx="100" cy="65" r="46" />
+          <rect x="72" y="37" width="56" height="56" rx="8" transform="rotate(45 100 65)" />
+        </g>
+        <g fill="#ffffff" fillOpacity="0.4">
+          <circle cx="26" cy="30" r="2.5" />
+          <circle cx="176" cy="102" r="2" />
+        </g>
+        <path
+          d="M26 30 L100 65 L176 102"
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity="0.14"
+          strokeDasharray="3 5"
+        />
+      </svg>
+
+      <Glyph className="relative h-12 w-12 text-white/85" strokeWidth={1.5} />
+    </span>
   );
 }

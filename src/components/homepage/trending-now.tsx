@@ -51,23 +51,22 @@ export async function TrendingNow() {
         ))}
       </HomepageMobileRail>
 
-      {/* Tablet and up — lead spans two columns on the first row */}
-      <Stagger className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-4">
-        <StaggerItem className="md:col-span-2">
-          <ServiceCard
-            service={lead.service}
-            imageSrc={lead.imageSrc}
-            featured
-            sizes="(max-width: 1024px) 60vw, 620px"
-          />
-        </StaggerItem>
+      {/* Tablet and up — a uniform grid.
 
-        {rest.map((item) => (
+          The lead card used to span two columns. That was an attempt to fix an
+          empty cell and it just moved it: with six services, a spanning lead
+          occupies seven cells, and seven tiles into neither three columns nor
+          four without a gap. Six equal cards tile perfectly into both (2×3 and
+          3×2), and the lead is still obviously the lead — it carries the flame
+          ramp and a larger title while every other card is blue. */}
+      <Stagger className="hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-3">
+        {[lead, ...rest].map((item, index) => (
           <StaggerItem key={item.service.slug}>
             <ServiceCard
               service={item.service}
               imageSrc={item.imageSrc}
-              sizes="(max-width: 1024px) 32vw, 300px"
+              featured={index === 0}
+              sizes="(max-width: 1024px) 46vw, 400px"
             />
           </StaggerItem>
         ))}
