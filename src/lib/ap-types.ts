@@ -351,7 +351,8 @@ export type AuditAction =
   | "payout_failed"
   | "application_created_by_ap"
   | "application_reassigned"
-  | "customer_linked";
+  | "customer_linked"
+  | "ap_exported";
 
 export type AuditLog = {
   id: string;
