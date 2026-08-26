@@ -20,9 +20,9 @@ import { BecomeDigiPartner } from "@/components/homepage/become-digi-partner";
 import { SupportCenter } from "@/components/homepage/support-center";
 import { AboutRnos } from "@/components/homepage/about-rnos";
 
+import { MotionRoot, Reveal } from "@/components/homepage/motion";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
-import { ScrollReveal } from "@/components/scroll-reveal";
 import { getPublicServices } from "@/lib/services";
 import { getActiveHomepageSlides } from "@/lib/homepage-slides";
 import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
@@ -128,74 +128,78 @@ export default async function Home() {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(reelsJsonLd) }} />
       ) : null}
 
-      <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
-        <HomepageHero catalog={searchCatalog} slides={slides} />
+      <MotionRoot>
+        <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
+          {/* Above the fold — no scroll reveal here. A section that fades in on
+              first paint is a section the user waits for. */}
+          <HomepageHero catalog={searchCatalog} slides={slides} />
 
-        <QuickActions />
+          <QuickActions />
 
-        <HomepageTrustChips />
+          <HomepageTrustChips />
 
-        <ReelsRail reels={reels} />
+          <ReelsRail reels={reels} />
 
-        <TrendingNow />
+          <TrendingNow />
 
-        <QuickServiceGrid />
+          <QuickServiceGrid />
 
-        <ScrollReveal>
-          <FeaturedServices />
-        </ScrollReveal>
+          <Reveal>
+            <FeaturedServices />
+          </Reveal>
 
-        <ScrollReveal>
-          <HowItWorks />
-        </ScrollReveal>
+          <Reveal>
+            <HowItWorks />
+          </Reveal>
 
-        <ScrollReveal>
-          <TrustStrip />
-        </ScrollReveal>
+          <Reveal>
+            <TrustStrip />
+          </Reveal>
 
-        <ScrollReveal>
-          <ApplicationTrackingCta />
-        </ScrollReveal>
+          <Reveal>
+            <ApplicationTrackingCta />
+          </Reveal>
 
-        <ScrollReveal>
-          <RewardCenter />
-        </ScrollReveal>
+          <Reveal>
+            <RewardCenter />
+          </Reveal>
 
-        {/* CMS/API sections render only when real data exists */}
-        <ScrollReveal>
-          <RecentSuccessStories />
-        </ScrollReveal>
+          {/* CMS/API sections render only when real data exists */}
+          <Reveal>
+            <RecentSuccessStories />
+          </Reveal>
 
-        <ScrollReveal>
-          <GoogleReviews />
-        </ScrollReveal>
+          <Reveal>
+            <GoogleReviews />
+          </Reveal>
 
-        <VideoTestimonials testimonials={testimonials} />
+          <VideoTestimonials testimonials={testimonials} />
 
-        <ScrollReveal>
-          <GovernmentSchemesHub />
-        </ScrollReveal>
+          <Reveal>
+            <GovernmentSchemesHub />
+          </Reveal>
 
-        <ScrollReveal>
-          <KnowledgeCenter />
-        </ScrollReveal>
+          <Reveal>
+            <KnowledgeCenter />
+          </Reveal>
 
-        <ScrollReveal>
-          <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />
-        </ScrollReveal>
+          <Reveal>
+            <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />
+          </Reveal>
 
-        <ScrollReveal>
-          <BecomeDigiPartner />
-        </ScrollReveal>
+          <Reveal>
+            <BecomeDigiPartner />
+          </Reveal>
 
-        <ScrollReveal>
-          <SupportCenter />
-        </ScrollReveal>
+          <Reveal>
+            <SupportCenter />
+          </Reveal>
 
-        <ScrollReveal>
-          <AboutRnos />
-        </ScrollReveal>
-      </main>
+          <Reveal>
+            <AboutRnos />
+          </Reveal>
+        </main>
+      </MotionRoot>
 
       <MarketingFooter variant="homepage" socialLinks={socialLinks} />
       <HomepageContactActions />

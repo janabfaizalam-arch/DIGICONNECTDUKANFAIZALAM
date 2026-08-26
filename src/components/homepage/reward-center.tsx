@@ -107,21 +107,24 @@ export function RewardCenter() {
       />
 
       <div className="grid items-stretch gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:gap-6">
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-gradient-to-br from-white/12 to-white/5 p-6 md:p-8">
-          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[var(--dc-orange-500)]/20 blur-2xl" aria-hidden="true" />
+        <div className="lg-card-dark relative rounded-[1.75rem] p-6 md:p-8">
+          <div className="dc-orb dc-orb-flame lg-drift pointer-events-none -right-10 -top-10 h-52 w-52" aria-hidden="true" />
           <div className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <h3 className="flex items-center gap-2 text-lg font-black text-white md:text-xl">
               <Gift className="h-6 w-6 text-[var(--dc-orange-400)]" aria-hidden="true" />
               Reward rules
             </h3>
             <div className="relative h-28 w-36 shrink-0 sm:h-32 sm:w-40">
-              <Image src={HOMEPAGE_REWARDS_ILLUSTRATION} alt="" fill className="object-contain drop-shadow-xl" sizes="160px" />
+              <Image src={HOMEPAGE_REWARDS_ILLUSTRATION} alt="" fill loading="lazy" className="object-contain drop-shadow-xl" sizes="160px" />
             </div>
           </div>
           <ul className="relative space-y-4">
             {rules.map((rule) => (
               <li key={rule.text} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--dc-orange-500)] text-xs font-black text-white">
+                <span
+                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white"
+                  style={{ background: "var(--dc-grad-flame)" }}
+                >
                   ✓
                 </span>
                 <div>
@@ -141,7 +144,7 @@ export function RewardCenter() {
           </a>
         </div>
 
-        <div className="flex flex-col rounded-[1.75rem] border border-white/15 bg-white p-6 text-[var(--dc-ink)] shadow-[0_16px_40px_rgba(7,31,77,0.2)] md:p-7">
+        <div className="lg-card flex flex-col rounded-[1.75rem] p-6 text-[var(--dc-ink)] md:p-7">
           {isLoggedIn ? (
             <div className="flex h-full flex-col gap-5">
               <p className="text-xs font-black uppercase tracking-wider text-[var(--dc-muted)]">Your wallet</p>
@@ -150,7 +153,7 @@ export function RewardCenter() {
                   <p className="text-[11px] font-black uppercase text-[var(--dc-muted)]">Balance</p>
                   <p className="mt-2 text-lg font-black text-[var(--dc-blue-700)]">₹{walletBalance.toLocaleString("en-IN")}</p>
                 </div>
-                <div className="rounded-2xl bg-[var(--dc-teal-soft)] p-3.5">
+                <div className="rounded-2xl bg-[var(--dc-blue-soft)] p-3.5">
                   <p className="text-[11px] font-black uppercase text-[var(--dc-muted)]">Cashback</p>
                   <p className="mt-2 text-lg font-black text-[var(--dc-teal)]">₹{cashbackEarned.toLocaleString("en-IN")}</p>
                 </div>
@@ -176,7 +179,8 @@ export function RewardCenter() {
                     <button
                       type="button"
                       onClick={handleCopy}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--dc-navy-950)] text-white"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white transition duration-300 hover:brightness-110"
+                      style={{ background: "var(--dc-grad-blue)" }}
                       aria-label="Copy referral link"
                     >
                       {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
@@ -188,13 +192,13 @@ export function RewardCenter() {
                 <button
                   type="button"
                   onClick={handleWhatsAppShare}
-                  className="inline-flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-teal)] text-sm font-black text-white"
+                  className="inline-flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-teal)] text-sm font-extrabold text-white transition duration-300 hover:brightness-110"
                 >
                   <MessageCircle className="h-4 w-4" aria-hidden="true" /> Invite
                 </button>
                 <Link
                   href="/customer/wallet"
-                  className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-black"
+                  className="lg-pill lg-raise inline-flex h-12 items-center justify-center rounded-xl px-4 text-sm font-extrabold"
                 >
                   Open wallet
                 </Link>
@@ -215,7 +219,8 @@ export function RewardCenter() {
               </div>
               <Link
                 href="/login/customer"
-                className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-orange-500)] text-[15px] font-black text-white hover:bg-[var(--dc-orange-600)]"
+                className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-xl text-[15px] font-extrabold text-white shadow-[0_12px_26px_-12px_rgba(247,74,1,0.95)] transition duration-300 hover:brightness-110"
+                style={{ background: "var(--dc-grad-flame)" }}
               >
                 Login to start earning <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>

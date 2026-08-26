@@ -8,14 +8,22 @@ import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
 import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
 import { cn } from "@/lib/utils";
 
-const ACCENT_BY_INDEX = [
-  "from-[#0757c9]/90 to-[#071f4d]/95",
-  "from-[#078b75]/85 to-[#0f766e]/95",
-  "from-[#7048d8]/85 to-[#4c1d95]/95",
-  "from-[#0284c7]/85 to-[#0757c9]/95",
-  "from-[#0757c9]/90 to-[#071f4d]/95",
-  "from-[#ff6500]/90 to-[#c2410c]/95",
-] as const;
+/**
+ * The bed a card's artwork sits on — and all a card shows when the catalogue
+ * has no image for that service.
+ *
+ * Two ramps, both taken from the logo: the blue of the "D" and the orange of
+ * the "C". The row used to cycle six unrelated gradients (teal, violet, sky,
+ * navy, orange) which turned a service list into a colour chart and meant the
+ * featured card had no way to stand out. Now the flame ramp belongs to the
+ * featured card alone.
+ */
+const ACCENT_LEAD = "from-[#fe8602]/92 to-[#f74a01]/95";
+const ACCENT_REST = "from-[#0159c7]/92 to-[#001d5f]/96";
+
+function accentFor(index: number) {
+  return index === 0 ? ACCENT_LEAD : ACCENT_REST;
+}
 
 function shouldShowBadge(badge: string | undefined) {
   if (!badge?.trim()) return false;
@@ -40,7 +48,7 @@ function HomepageServiceCard({
   return (
     <article
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_10px_28px_rgba(7,31,77,0.08)]",
+        "lg-card lg-raise group relative flex h-full flex-col",
         featured ? "min-h-[260px] md:min-h-[280px]" : "min-h-[230px] md:min-h-[240px]",
       )}
     >
@@ -91,12 +99,8 @@ function HomepageServiceCard({
         </div>
         <Link
           href={href}
-          className={cn(
-            "inline-flex h-10 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-black text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-            featured
-              ? "bg-white text-[var(--dc-blue-700)] ring-1 ring-[var(--dc-blue-500)]/20 hover:bg-[var(--dc-blue-soft)] focus-visible:outline-[var(--dc-blue-600)]"
-              : "bg-[var(--dc-navy-950)] hover:bg-[var(--dc-blue-800)] focus-visible:outline-[var(--dc-blue-600)]",
-          )}
+          className="inline-flex h-10 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-extrabold text-white transition duration-300 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)]"
+          style={{ background: featured ? "var(--dc-grad-flame)" : "var(--dc-grad-blue)" }}
         >
           {featured && service.amount > 0 ? "File Now" : cta}
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -125,7 +129,7 @@ export async function TrendingNow() {
   const rest = withImages.filter((_, i) => i !== featuredIndex);
 
   return (
-    <HomepageSection surface="sky" aria-labelledby="trending-heading">
+    <HomepageSection surface="sky" wash="dual" aria-labelledby="trending-heading">
       <HomepageSectionHeader
         eyebrow="Priority services"
         title="Trending now"
@@ -139,7 +143,7 @@ export async function TrendingNow() {
             <HomepageServiceCard
               service={item.service}
               imageSrc={item.imageSrc}
-              accent={ACCENT_BY_INDEX[index % ACCENT_BY_INDEX.length]}
+              accent={accentFor(index)}
               featured={index === 0}
             />
           </div>
@@ -152,7 +156,7 @@ export async function TrendingNow() {
             service={featured.service}
             imageSrc={featured.imageSrc}
             featured
-            accent={ACCENT_BY_INDEX[0]}
+            accent={accentFor(0)}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 md:col-span-7 lg:col-span-8 lg:grid-cols-3">
@@ -161,7 +165,7 @@ export async function TrendingNow() {
               key={item.service.slug}
               service={item.service}
               imageSrc={item.imageSrc}
-              accent={ACCENT_BY_INDEX[(index + 1) % ACCENT_BY_INDEX.length]}
+              accent={accentFor(index + 1)}
             />
           ))}
         </div>

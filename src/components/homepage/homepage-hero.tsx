@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CreditCard, Headphones, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, CreditCard, Headphones, Radio, ShieldCheck } from "lucide-react";
 
-import { HeroBackground } from "@/components/homepage/hero-background";
+import { BrandField, BrandWash } from "@/components/homepage/brand-backdrop";
 import { HeroPopularServices } from "@/components/homepage/hero-popular-services";
 import { HeroServiceSearch } from "@/components/homepage/hero-service-search";
 import { HeroTrustStrip } from "@/components/homepage/hero-trust-strip";
@@ -13,10 +13,10 @@ type HomepageHeroProps = {
   slides: HomepageSlide[];
 };
 
-const DEFAULT_BADGE = "India's Digital Service Platform";
+const DEFAULT_BADGE = "All Digital & Government Services";
 const DEFAULT_HEADING = "Har Zaroori Digital Service, Ek Hi Jagah";
 const DEFAULT_SUBTITLE =
-  "Government services, tax filing, business registration, insurance and more — simple, transparent and online.";
+  "GST se passport tak — filing, registration, insurance aur government forms, sab kuch ek hi jagah. Transparent fees, secure payment, live tracking.";
 
 /** Entrance delay, as an inline style so one utility class covers every row. */
 function rise(delayMs: number) {
@@ -47,10 +47,16 @@ function splitHeadline(heading: string): { lead: string; accent: string | null }
 /**
  * Homepage hero.
  *
- * One centred column on a deep, layered blue field: pill badge, oversized
- * headline, one line of supporting copy, the service search, the six services
- * people actually arrive for, two calls to action, and a trust strip. Nothing
- * else — the rest of the homepage is where the detail lives.
+ * One centred column on the brand field: a glass badge, an oversized headline
+ * whose closing clause carries the logo's flame gradient, one line of support,
+ * the search dock, the six services people actually arrive for, two calls to
+ * action, and a factual trust strip. Nothing else — the rest of the homepage is
+ * where the detail lives.
+ *
+ * The search sits inside a clear-glass dock rather than floating on the field:
+ * the dock gives the input an edge to sit against, and the blur pulls the
+ * colour of the mesh behind it through the panel, which is what makes the
+ * glass read as glass rather than as a grey rectangle.
  *
  * Headline, subtitle, CTAs and the atmosphere image still come from the lead
  * Homepage CMS slide when an admin has set one, so this redesign does not take
@@ -81,37 +87,43 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
 
   return (
     <section
-      className="relative isolate flex min-h-[min(88svh,720px)] items-center overflow-hidden text-white lg:min-h-[820px]"
+      className="relative isolate flex min-h-[min(92svh,760px)] items-center overflow-hidden text-white lg:min-h-[860px]"
       aria-labelledby="home-hero-heading"
     >
-      <HeroBackground imageUrl={atmosphereImage} />
+      <BrandField imageUrl={atmosphereImage} />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-[var(--dc-max)] flex-col items-center px-[var(--mobile-page-gutter)] py-12 text-center sm:px-6 sm:py-16 md:px-8 lg:py-20">
+      <div className="relative z-10 mx-auto flex w-full max-w-[var(--dc-max)] flex-col items-center px-[var(--mobile-page-gutter)] py-14 text-center sm:px-6 sm:py-16 md:px-8 lg:py-20">
         <Link
           href="/services"
-          className="dc-hero-rise inline-flex max-w-full items-center gap-2 rounded-full border border-white/25 bg-white/10 py-1.5 pl-2.5 pr-4 text-[11px] font-bold backdrop-blur-sm transition hover:border-white/45 hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-xs"
+          className="lg-pill-dark lg-raise-dark dc-hero-rise inline-flex max-w-full items-center gap-2 py-1.5 pl-2 pr-4 text-[11px] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-xs"
           style={rise(0)}
         >
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--dc-orange-400)]" aria-hidden="true" />
-          <span className="truncate">{DEFAULT_BADGE}</span>
+          {/* The logo's own D–C bridge, reduced to its connector. */}
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "var(--dc-grad-flame)" }}
+          >
+            <Radio className="h-3 w-3 text-white" aria-hidden="true" />
+          </span>
+          <span className="truncate tracking-[0.01em]">{DEFAULT_BADGE}</span>
         </Link>
 
         <h1
           id="home-hero-heading"
-          className="dc-hero-rise mt-5 max-w-[18ch] text-balance text-[2.15rem] font-bold leading-[1.06] tracking-[-0.02em] sm:max-w-[20ch] sm:text-[3.2rem] lg:max-w-[16ch] lg:text-[4.4rem]"
+          className="dc-hero-rise mt-6 max-w-[18ch] text-balance text-[2.3rem] font-extrabold leading-[1.04] tracking-[-0.028em] sm:max-w-[20ch] sm:text-[3.35rem] lg:max-w-[16ch] lg:text-[4.6rem]"
           style={rise(80)}
         >
           {lead}
           {accent ? (
             <>
               {" "}
-              <span className="dc-hero-accent">{accent}</span>
+              <span className="dc-hero-accent dc-text-flame">{accent}</span>
             </>
           ) : null}
         </h1>
 
         <p
-          className="dc-hero-rise mt-4 max-w-[52ch] text-pretty text-[14px] font-medium leading-relaxed text-white/75 sm:mt-5 sm:text-[16.5px]"
+          className="dc-hero-rise mt-5 max-w-[56ch] text-pretty text-[14.5px] font-medium leading-relaxed text-white/72 sm:text-[17px]"
           style={rise(150)}
         >
           {subtitle}
@@ -124,8 +136,10 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
           otherwise trap the panel's own z-index inside it, painting the
           suggestions underneath the buttons that follow.
         */}
-        <div className="dc-hero-rise relative z-40 mt-7 w-full max-w-2xl sm:mt-9" style={rise(220)}>
-          <HeroServiceSearch catalog={catalog} />
+        <div className="dc-hero-rise relative z-40 mt-8 w-full max-w-2xl sm:mt-10" style={rise(220)}>
+          <div className="lg-card-dark rounded-[1.85rem] p-1.5 sm:rounded-full sm:p-2.5">
+            <HeroServiceSearch catalog={catalog} />
+          </div>
         </div>
 
         <div className="dc-hero-rise relative z-10 mt-5 w-full max-w-5xl" style={rise(290)}>
@@ -133,25 +147,32 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
         </div>
 
         <div
-          className="dc-hero-rise relative z-10 mt-7 flex w-full max-w-md flex-col gap-2.5 sm:mt-9 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center"
+          className="dc-hero-rise relative z-10 mt-8 flex w-full max-w-md flex-col gap-2.5 sm:mt-10 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center"
           style={rise(350)}
         >
           <Link
             href={primaryUrl}
-            className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-bold text-[var(--dc-navy-950)] shadow-[0_16px_36px_-12px_rgba(3,20,54,0.8)] transition hover:-translate-y-0.5 hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-[3.25rem]"
+            className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white pl-7 pr-2 text-sm font-bold text-[var(--dc-blue-deep)] shadow-[0_18px_40px_-14px_rgba(0,10,40,0.85)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_26px_54px_-16px_rgba(0,10,40,0.9)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-[3.35rem]"
           >
             {primaryLabel}
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            {/* The arrow chip carries the logo's flame ramp — the one place the
+                orange appears at full strength in the hero. */}
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform duration-300 group-hover:translate-x-0.5"
+              style={{ background: "var(--dc-grad-flame)" }}
+            >
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </span>
           </Link>
           <Link
             href={secondaryUrl}
-            className="inline-flex h-12 items-center justify-center rounded-full border border-white/30 bg-white/5 px-7 text-sm font-bold text-white backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-[3.25rem]"
+            className="lg-pill-dark lg-raise-dark inline-flex h-12 items-center justify-center px-7 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-[3.35rem]"
           >
             {secondaryLabel}
           </Link>
         </div>
 
-        <div className="dc-hero-rise relative z-10 mt-9 w-full max-w-4xl sm:mt-14" style={rise(420)}>
+        <div className="dc-hero-rise relative z-10 mt-10 w-full max-w-4xl sm:mt-14" style={rise(420)}>
           <HeroTrustStrip />
         </div>
       </div>
@@ -159,24 +180,39 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
   );
 }
 
-/** Compact assurance strip for mobile placement after Quick Actions. */
+const TRUST_CHIPS = [
+  { label: "Secure payments", icon: ShieldCheck },
+  { label: "Expert verification", icon: BadgeCheck },
+  { label: "PAN India assistance", icon: CreditCard },
+  { label: "WhatsApp support", icon: Headphones },
+] as const;
+
+/**
+ * Compact assurance strip for mobile placement after Quick Actions.
+ *
+ * Phone-only: on desktop the hero's own trust strip is still on screen at this
+ * scroll position, and saying the same thing twice in one viewport reads as
+ * padding rather than reassurance.
+ */
 export function HomepageTrustChips() {
   return (
-    <section aria-label="Trust benefits" className="bg-[var(--dc-cream)] px-[var(--mobile-page-gutter)] py-3 lg:hidden">
+    <section
+      aria-label="Trust benefits"
+      className="dc-ambient bg-[var(--dc-sky-soft)] px-[var(--mobile-page-gutter)] py-4 lg:hidden"
+    >
+      <BrandWash variant="dual" />
       <ul className="mx-auto grid max-w-[var(--dc-max)] grid-cols-2 gap-2">
-        {[
-          { label: "Secure payments", icon: ShieldCheck },
-          { label: "Expert verification", icon: BadgeCheck },
-          { label: "PAN India assistance", icon: CreditCard },
-          { label: "WhatsApp support", icon: Headphones },
-        ].map((item) => {
+        {TRUST_CHIPS.map((item) => {
           const Icon = item.icon;
           return (
             <li
               key={item.label}
-              className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--dc-blue-500)]/10 bg-white px-2.5 py-2 text-[11px] font-bold text-[var(--dc-ink)]"
+              className="lg-card flex min-h-11 items-center gap-2 rounded-xl px-2.5 py-2 text-[11px] font-bold text-[var(--dc-ink)]"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--dc-blue-soft)] text-[var(--dc-blue-700)]">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white"
+                style={{ background: "var(--dc-grad-blue)" }}
+              >
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
               {item.label}

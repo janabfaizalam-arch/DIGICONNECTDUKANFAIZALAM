@@ -9,71 +9,61 @@ import {
 } from "lucide-react";
 
 import { createWhatsappLink } from "@/lib/constants";
-import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
+import {
+  BrandIcon,
+  HomepageSection,
+  HomepageSectionHeader,
+  HomepageMobileRail,
+} from "@/components/homepage/ui";
 
-const actions = [
-  {
-    title: "Track",
-    subtitle: "Application / Order",
-    href: "/track-application",
-    icon: ClipboardList,
-    tone: "bg-[var(--dc-teal-soft)] text-[var(--dc-teal)] border-[var(--dc-teal)]/15",
-    iconTone: "bg-[var(--dc-teal)] text-white",
-  },
-  {
-    title: "Services",
-    subtitle: "All services",
-    href: "/services",
-    icon: LayoutGrid,
-    tone: "bg-[var(--dc-blue-soft)] text-[var(--dc-blue-700)] border-[var(--dc-blue-500)]/15",
-    iconTone: "bg-[var(--dc-blue-700)] text-white",
-  },
-  {
-    title: "Print",
-    subtitle: "Scan & print",
-    href: "/print",
-    icon: Printer,
-    tone: "bg-[var(--dc-orange-soft)] text-[var(--dc-orange-600)] border-[var(--dc-orange-500)]/20",
-    iconTone: "bg-[var(--dc-orange-500)] text-white",
-  },
+/**
+ * The five things people come back to do.
+ *
+ * Only "Expert" carries the flame ramp. The colour used to be a five-way
+ * rainbow — teal, blue, orange, violet, cyan — which made the row look like a
+ * palette swatch and, worse, made every tile equally loud, so none of them led.
+ * One warm tile against four blue ones tells you where to go when you are
+ * stuck, which is the actual job of this row.
+ */
+const ACTIONS = [
+  { title: "Track", subtitle: "Application / Order", href: "/track-application", icon: ClipboardList },
+  { title: "Services", subtitle: "All services", href: "/services", icon: LayoutGrid },
+  { title: "Print", subtitle: "Scan & print", href: "/print", icon: Printer },
   {
     title: "Expert",
     subtitle: "Help & support",
     href: createWhatsappLink(),
     icon: MessageCircle,
-    tone: "bg-[var(--dc-violet-soft)] text-[var(--dc-violet)] border-[var(--dc-violet)]/15",
-    iconTone: "bg-[var(--dc-violet)] text-white",
+    tone: "flame" as const,
     external: true,
   },
-  {
-    title: "Wallet",
-    subtitle: "Balance & history",
-    href: "/customer/dashboard?tab=wallet",
-    icon: Wallet,
-    tone: "bg-[var(--dc-cyan-soft)] text-[var(--dc-cyan)] border-[var(--dc-cyan)]/20",
-    iconTone: "bg-[var(--dc-cyan)] text-white",
-  },
+  { title: "Wallet", subtitle: "Balance & history", href: "/customer/dashboard?tab=wallet", icon: Wallet },
 ] as const;
 
 export function QuickActions() {
   return (
-    <HomepageSection id="quick-actions" surface="cream" compact>
+    <HomepageSection id="quick-actions" surface="sky" wash="dual" compact eager>
       <HomepageSectionHeader eyebrow="Shortcuts" title="Quick actions" />
 
       <HomepageMobileRail className="sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-3 sm:overflow-visible sm:px-0 sm:pr-0">
-        {actions.map((action) => {
+        {ACTIONS.map((action) => {
           const Icon = action.icon;
-          const className = `group flex min-h-[4.75rem] w-[74%] max-w-[220px] shrink-0 snap-start items-center gap-3 rounded-[var(--dc-card-radius)] border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-600)] sm:w-auto sm:max-w-none ${action.tone}`;
+          const tone = "tone" in action ? action.tone : "blue";
+          const className =
+            "lg-card lg-raise lg-sheen group flex min-h-[4.75rem] w-[74%] max-w-[220px] shrink-0 snap-start items-center gap-3 px-3 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)] sm:w-auto sm:max-w-none";
+
           const body = (
             <>
-              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${action.iconTone}`}>
+              <BrandIcon tone={tone}>
                 <Icon className="h-5 w-5" aria-hidden="true" />
-              </span>
+              </BrandIcon>
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-sm font-extrabold text-[var(--dc-ink)]">{action.title}</span>
-                <span className="mt-0.5 hidden text-[12px] font-semibold opacity-80 sm:block">{action.subtitle}</span>
+                <span className="mt-0.5 hidden text-[12px] font-semibold text-[var(--dc-body)] sm:block">
+                  {action.subtitle}
+                </span>
               </span>
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-current shadow-sm transition group-hover:bg-white">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[var(--dc-blue-mid)] shadow-sm transition duration-300 group-hover:bg-white group-hover:text-[var(--dc-flame)]">
                 <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
               </span>
             </>

@@ -70,7 +70,7 @@ function ReelCard({ reel }: { reel: HomepageReel }) {
   return (
     <article
       ref={containerRef}
-      className="group relative w-[190px] shrink-0 snap-start overflow-hidden rounded-[22px] bg-slate-900 shadow-lg ring-1 ring-slate-900/10 transition duration-300 hover:-translate-y-1 hover:shadow-2xl sm:w-[220px]"
+      className="group relative w-[190px] shrink-0 snap-start overflow-hidden rounded-[22px] bg-[var(--dc-blue-deep)] shadow-[0_16px_36px_-18px_rgba(0,29,95,0.8)] ring-1 ring-white/10 transition duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-[0_26px_52px_-20px_rgba(0,29,95,0.9)] sm:w-[220px]"
     >
       <div className="relative aspect-[9/16]">
         {source.kind === "file" ? (
@@ -93,7 +93,7 @@ function ReelCard({ reel }: { reel: HomepageReel }) {
               aria-label={playing ? "Pause video" : "Play video"}
               className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100"
             >
-              <span className="rounded-full bg-black/45 p-3 backdrop-blur-sm">
+              <span className="lg-pill-dark p-3">
                 {playing ? (
                   <Pause className="h-5 w-5 text-white" aria-hidden="true" />
                 ) : (
@@ -106,7 +106,7 @@ function ReelCard({ reel }: { reel: HomepageReel }) {
               type="button"
               onClick={() => setMuted((value) => !value)}
               aria-label={muted ? "Unmute video" : "Mute video"}
-              className="absolute right-2.5 top-2.5 rounded-full bg-black/45 p-2 text-white backdrop-blur-sm transition hover:bg-black/65"
+              className="lg-pill-dark lg-raise-dark absolute right-2.5 top-2.5 p-2 text-white"
             >
               {muted ? (
                 <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />
@@ -139,7 +139,7 @@ function ReelCard({ reel }: { reel: HomepageReel }) {
           {href && reel.cta_label ? (
             <Link
               href={href}
-              className="pointer-events-auto mt-2 inline-flex h-8 items-center gap-1 rounded-full bg-white px-3 text-[11px] font-bold text-slate-900 transition hover:bg-white/90"
+              className="pointer-events-auto mt-2 inline-flex h-8 items-center gap-1 rounded-full bg-white px-3 text-[11px] font-bold text-[var(--dc-blue-deep)] transition duration-300 hover:bg-white/90"
             >
               {reel.cta_label}
               <ArrowRight className="h-3 w-3" aria-hidden="true" />

@@ -23,9 +23,19 @@ const poppins = Poppins({
   variable: "--font-heading",
 });
 
+/**
+ * Body face, loaded as a variable font.
+ *
+ * It used to pin weight: ["400", "500"], which meant every `font-bold`,
+ * `font-extrabold` and `font-black` on the site — and the homepage is built
+ * almost entirely out of them — was synthesised by the browser smearing the
+ * 500. One variable file is about the size of the two static ones it replaces
+ * and gives real 600/700/800/900 cuts, which is most of the difference
+ * between the page looking premium and looking approximate.
+ */
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500"],
+  display: "swap",
   variable: "--font-body",
 });
 

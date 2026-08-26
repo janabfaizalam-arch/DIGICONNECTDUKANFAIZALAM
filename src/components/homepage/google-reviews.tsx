@@ -74,7 +74,7 @@ export function GoogleReviews() {
       />
 
       {rating != null ? (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--dc-blue-500)]/15 bg-white p-4">
+        <div className="lg-card mb-6 flex flex-wrap items-center gap-3 rounded-2xl p-4">
           <span className="text-2xl font-black text-[var(--dc-ink)]">{rating.toFixed(1)}</span>
           <span className="flex items-center gap-0.5 text-amber-500">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -119,13 +119,13 @@ export function GoogleReviews() {
                     &ldquo;{test.text}&rdquo;
                   </p>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <div className="flex items-center justify-between border-t border-[var(--dc-blue-bright)]/10 pt-3">
                   <div className="flex items-center gap-2.5">
                     {test.profilePhoto ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={test.profilePhoto} alt="" className="h-8 w-8 rounded-full object-cover" />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--dc-blue-soft)] text-xs font-black text-[var(--dc-blue-700)]">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--dc-blue-soft)] text-xs font-extrabold text-[var(--dc-blue-mid)]">
                         {test.name.slice(0, 1)}
                       </div>
                     )}

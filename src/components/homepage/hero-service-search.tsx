@@ -288,7 +288,7 @@ export function HeroServiceSearch({ catalog }: HeroServiceSearchProps) {
   return (
     <div ref={rootRef} className="relative w-full">
       <div
-        className="flex items-center gap-1.5 rounded-[26px] border border-white/50 bg-white p-1.5 shadow-[0_24px_60px_-20px_rgba(3,20,54,0.65)] transition focus-within:border-white focus-within:shadow-[0_28px_70px_-18px_rgba(3,20,54,0.75)] sm:rounded-full sm:p-2"
+        className="flex items-center gap-1.5 rounded-[1.5rem] border border-white/70 bg-white p-1.5 shadow-[0_18px_44px_-22px_rgba(0,10,40,0.55)] transition duration-300 focus-within:border-white focus-within:shadow-[0_24px_60px_-20px_rgba(0,10,40,0.7)] focus-within:ring-2 focus-within:ring-[var(--dc-amber)]/45 sm:rounded-full sm:p-2"
       >
         <Search className="ml-3 h-[18px] w-[18px] shrink-0 text-slate-400 sm:ml-4" aria-hidden="true" />
 
@@ -340,7 +340,8 @@ export function HeroServiceSearch({ catalog }: HeroServiceSearchProps) {
           type="button"
           onClick={submit}
           disabled={isNavigating}
-          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--dc-orange-500)] px-4 text-sm font-bold text-white transition hover:bg-[var(--dc-orange-600)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70 sm:h-12 sm:px-6"
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold text-white shadow-[0_10px_24px_-10px_rgba(247,74,1,0.9)] transition duration-300 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-flame)] disabled:opacity-70 sm:h-12 sm:px-6"
+          style={{ background: "var(--dc-grad-flame)" }}
         >
           {isNavigating ? (
             <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -357,7 +358,7 @@ export function HeroServiceSearch({ catalog }: HeroServiceSearchProps) {
           id={listboxId}
           role="listbox"
           aria-label="Service suggestions"
-          className="absolute left-0 right-0 top-full z-50 mt-2.5 max-h-[min(58vh,420px)] space-y-3 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-[0_30px_70px_-20px_rgba(3,20,54,0.5)] sm:p-4"
+          className="absolute left-0 right-0 top-full z-50 mt-2.5 max-h-[min(58vh,420px)] space-y-3 overflow-y-auto overflow-x-hidden rounded-2xl border border-[var(--dc-blue-bright)]/12 bg-white p-3 text-left shadow-[0_28px_64px_-24px_rgba(0,10,40,0.55)] sm:p-4"
         >
           {!hasQuery ? (
             <>

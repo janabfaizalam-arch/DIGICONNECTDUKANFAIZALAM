@@ -26,7 +26,7 @@ export async function KnowledgeCenter() {
   const [featured, ...rest] = display;
 
   return (
-    <HomepageSection id="blog" surface="white">
+    <HomepageSection id="blog" surface="white" wash="blue">
       <HomepageSectionHeader
         eyebrow="Guides & updates"
         title="Knowledge Center"
@@ -38,7 +38,7 @@ export async function KnowledgeCenter() {
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <Link
           href={`/blog/${featured.slug}`}
-          className="group overflow-hidden rounded-3xl border border-[var(--dc-blue-500)]/10 bg-[var(--dc-sky-soft)] shadow-[0_8px_24px_rgba(7,31,77,0.04)] transition hover:shadow-md"
+          className="lg-card lg-raise lg-sheen group overflow-hidden rounded-[1.75rem] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)]"
         >
           <div className="relative aspect-[16/9] bg-[var(--dc-blue-soft)]">
             {featured.featured_image_url ? (
@@ -46,7 +46,7 @@ export async function KnowledgeCenter() {
                 src={featured.featured_image_url}
                 alt=""
                 fill
-                className="object-cover transition duration-300 group-hover:scale-[1.02]"
+                className="object-cover transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
                 sizes="(max-width: 1024px) 100vw, 720px"
               />
             ) : (
@@ -59,7 +59,7 @@ export async function KnowledgeCenter() {
             <span className="text-[10px] font-black uppercase tracking-wider text-[var(--dc-blue-600)]">
               {featured.category || "Resources"}
             </span>
-            <h3 className="mt-1 text-xl font-black tracking-tight text-[var(--dc-ink)] group-hover:text-[var(--dc-blue-700)]">
+            <h3 className="mt-1 text-xl font-extrabold tracking-[-0.02em] text-[var(--dc-ink)] transition-colors group-hover:text-[var(--dc-blue-mid)]">
               {featured.title}
             </h3>
             <p className="mt-2 line-clamp-2 text-sm font-semibold text-[var(--dc-body)]">
@@ -93,11 +93,11 @@ export async function KnowledgeCenter() {
               <li key={art.id || art.slug}>
                 <Link
                   href={`/blog/${art.slug}`}
-                  className="group flex gap-3 rounded-2xl border border-slate-200/70 bg-white p-3 transition hover:border-[var(--dc-blue-500)]/25 hover:shadow-md"
+                  className="lg-card lg-raise group flex gap-3 rounded-2xl p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)]"
                 >
                   <span className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-[var(--dc-blue-soft)]">
                     {art.featured_image_url ? (
-                      <Image src={art.featured_image_url} alt="" fill className="object-cover" sizes="96px" />
+                      <Image src={art.featured_image_url} alt="" fill loading="lazy" className="object-cover" sizes="96px" />
                     ) : (
                       <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
                         <BookOpen className="h-5 w-5" aria-hidden="true" />

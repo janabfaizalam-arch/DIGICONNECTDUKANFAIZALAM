@@ -7,7 +7,7 @@ import {
   REPEAT_CASHBACK_PERCENT,
   MAX_WALLET_REDEEM_PERCENT,
 } from "@/lib/reward-rules";
-import { HomepageSection } from "@/components/homepage/ui";
+import { BrandIcon, HomepageSection } from "@/components/homepage/ui";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 interface FaqItem {
@@ -75,7 +75,10 @@ export function FaqAccordion({ items }: { items?: FaqItem[] } = {}) {
     return faqs.filter(
       (faq) => faq.question.toLowerCase().includes(q) || faq.answer.toLowerCase().includes(q),
     );
-  }, [searchQuery]);
+    // `faqs` is in the dependency list because it is derived from props: when
+    // the CMS list arrives, the filter has to re-run against it rather than
+    // keep serving a memo built from the fallback questions.
+  }, [faqs, searchQuery]);
 
   const schema = {
     "@context": "https://schema.org",
@@ -91,30 +94,32 @@ export function FaqAccordion({ items }: { items?: FaqItem[] } = {}) {
   };
 
   return (
-    <HomepageSection id="faq" surface="sky">
+    <HomepageSection id="faq" surface="sky" wash="dual">
       <div className="grid gap-8 lg:grid-cols-[0.9fr_1.2fr] lg:gap-12">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--dc-blue-600)]">Help centre</p>
-          <h2 className="mt-2 text-[1.65rem] font-black tracking-tight text-[var(--dc-ink)] sm:text-[2rem] md:text-[2.25rem]">
+          <p className="dc-eyebrow-rule-start inline-flex items-center text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--dc-flame)]">
+            Help centre
+          </p>
+          <h2 className="mt-2.5 text-[1.65rem] font-extrabold tracking-[-0.025em] text-[var(--dc-ink)] sm:text-[2rem] md:text-[2.25rem]">
             Frequently asked questions
           </h2>
-          <p className="mt-3 max-w-md text-[15px] font-semibold leading-relaxed text-[var(--dc-body)] sm:text-base">
+          <p className="mt-3 max-w-md text-[15px] font-medium leading-relaxed text-[var(--dc-body)] sm:text-base">
             Clear answers about private digital assistance, payments, tracking and support.
           </p>
 
-          <div className="mt-6 rounded-[1.5rem] border border-[var(--dc-blue-500)]/15 bg-white p-5 shadow-[0_12px_32px_rgba(7,31,77,0.05)] md:p-6">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--dc-teal-soft)] text-[var(--dc-teal)]">
+          <div className="lg-card mt-6 rounded-[1.5rem] p-5 md:p-6">
+            <BrandIcon tone="flame" className="h-12 w-12 rounded-2xl">
               <Headphones className="h-6 w-6" aria-hidden="true" />
-            </span>
+            </BrandIcon>
             <h3 className="mt-4 text-lg font-extrabold text-[var(--dc-ink)]">Still need help?</h3>
-            <p className="mt-2 text-[15px] font-semibold leading-relaxed text-[var(--dc-body)]">
+            <p className="mt-2 text-[15px] font-medium leading-relaxed text-[var(--dc-body)]">
               Chat with DigiConnect support on WhatsApp for screenshots, status questions and document guidance.
             </p>
             <a
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--dc-teal)] px-4 text-[15px] font-black text-white sm:w-auto"
+              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--dc-teal)] px-4 text-[15px] font-extrabold text-white shadow-[0_12px_26px_-12px_rgba(7,139,117,0.8)] transition duration-300 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-teal)] sm:w-auto"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp support
             </a>
@@ -136,7 +141,7 @@ export function FaqAccordion({ items }: { items?: FaqItem[] } = {}) {
               }}
               placeholder="Search FAQs..."
               aria-label="Search frequently asked questions"
-              className="h-12 w-full rounded-xl border border-[var(--dc-blue-500)]/15 bg-white pl-10 pr-4 text-[15px] font-semibold text-[var(--dc-ink)] outline-none transition placeholder:text-[var(--dc-muted)] focus:border-[var(--dc-blue-500)] focus:ring-4 focus:ring-[var(--dc-blue-500)]/15"
+              className="lg-field h-12 w-full rounded-xl pl-10 pr-4 text-[15px] font-semibold text-[var(--dc-ink)] outline-none placeholder:text-[var(--dc-muted)] focus:border-[var(--dc-blue-bright)] focus:ring-4 focus:ring-[var(--dc-blue-bright)]/18"
             />
           </div>
 
@@ -148,29 +153,34 @@ export function FaqAccordion({ items }: { items?: FaqItem[] } = {}) {
               return (
                 <div
                   key={faq.question}
-                  className={`rounded-[1.25rem] bg-white transition ${
-                    isOpen
-                      ? "shadow-[0_10px_28px_rgba(7,31,77,0.07)] ring-2 ring-[var(--dc-orange-500)]/35"
-                      : "ring-1 ring-slate-200/80"
+                  className={`lg-card relative overflow-hidden rounded-[1.25rem] ${
+                    isOpen ? "ring-1 ring-[var(--dc-flame)]/35" : ""
                   }`}
                 >
+                  {isOpen ? (
+                    <span
+                      className="absolute inset-y-2 left-0 w-1 rounded-r-full"
+                      style={{ background: "var(--dc-grad-flame)" }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   <button
                     id={buttonId}
                     type="button"
                     aria-expanded={isOpen}
                     aria-controls={panelId}
                     onClick={() => toggle(idx)}
-                    className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 p-4 text-left text-base font-black text-[var(--dc-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--dc-blue-600)] md:p-5"
+                    className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-[1.25rem] p-4 text-left text-base font-extrabold text-[var(--dc-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--dc-blue-bright)] md:p-5"
                   >
                     <span className="flex items-center gap-2.5">
                       <HelpCircle
-                        className={`h-5 w-5 shrink-0 ${isOpen ? "text-[var(--dc-orange-500)]" : "text-[var(--dc-muted)]"}`}
+                        className={`h-5 w-5 shrink-0 transition-colors ${isOpen ? "text-[var(--dc-flame)]" : "text-[var(--dc-muted)]"}`}
                         aria-hidden="true"
                       />
                       <span>{faq.question}</span>
                     </span>
                     <ChevronRight
-                      className={`h-5 w-5 shrink-0 text-[var(--dc-muted)] transition-transform ${isOpen ? "rotate-90 text-[var(--dc-blue-600)]" : ""}`}
+                      className={`h-5 w-5 shrink-0 text-[var(--dc-muted)] transition-transform duration-300 ${isOpen ? "rotate-90 text-[var(--dc-blue-bright)]" : ""}`}
                       aria-hidden="true"
                     />
                   </button>
@@ -183,7 +193,7 @@ export function FaqAccordion({ items }: { items?: FaqItem[] } = {}) {
                   >
                     <div className="overflow-hidden">
                       <div className="px-4 pb-5 pl-12 md:px-5 md:pl-14">
-                        <p className="text-[15px] font-semibold leading-relaxed text-[var(--dc-body)]">{faq.answer}</p>
+                        <p className="text-[15px] font-medium leading-relaxed text-[var(--dc-body)]">{faq.answer}</p>
                       </div>
                     </div>
                   </div>

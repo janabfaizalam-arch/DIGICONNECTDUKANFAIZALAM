@@ -24,6 +24,10 @@ const POPULAR_SERVICES = [
  *
  * On phones it scrolls horizontally rather than wrapping into a tall block
  * that would push the hero's trust strip off the first screen.
+ *
+ * Each pill is glass over the mesh, and the icon sits in its own flame-ramp
+ * disc — the same device as the hero's primary button, so the orange reads as
+ * one deliberate accent across the whole first screen rather than six.
  */
 export function HeroPopularServices() {
   return (
@@ -35,9 +39,14 @@ export function HeroPopularServices() {
             <li key={service.slug} className="snap-start">
               <Link
                 href={serviceHref(service.slug)}
-                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-white/25 bg-white/10 px-4 text-[13px] font-bold text-white backdrop-blur-sm transition hover:border-white/50 hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="lg-pill-dark lg-raise-dark group inline-flex h-11 items-center gap-2 whitespace-nowrap py-1 pl-1.5 pr-4 text-[13px] font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                <Icon className="h-4 w-4 text-[var(--dc-orange-400)]" aria-hidden="true" />
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-transform duration-300 group-hover:scale-105"
+                  style={{ background: "var(--dc-grad-flame)" }}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </span>
                 {service.label}
               </Link>
             </li>
