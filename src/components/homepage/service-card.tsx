@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, type LucideIcon } from "lucide-react";
 
 import { categoryGlyph } from "@/components/homepage/category-art";
 import type { ServiceItem } from "@/lib/services-data";
@@ -34,6 +34,28 @@ import { cn } from "@/lib/utils";
 const BED_LEAD = "linear-gradient(150deg, #fe8602 0%, #f74a01 100%)";
 const BED_REST = "linear-gradient(150deg, #0159c7 0%, #001d5f 100%)";
 
+/**
+ * A small, stable number for a service.
+ *
+ * Used only to pick between equivalent decorative treatments, so that a grid of
+ * cards with no photograph does not render the same tile thirty times. It must
+ * be deterministic — the same service has to look the same on every render and
+ * on the server as on the client — so it is a hash of the slug, not a random.
+ */
+function slugSeed(value: string): number {
+  let h = 0;
+  for (let i = 0; i < value.length; i += 1) h = (h * 31 + value.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/** Blue beds, all inside the logo's own ramp, differing only in depth and angle. */
+const BEDS = [
+  "linear-gradient(150deg, #0f6de0 0%, #001d5f 100%)",
+  "linear-gradient(165deg, #0159c7 0%, #00164a 100%)",
+  "linear-gradient(135deg, #1170dd 0%, #012456 100%)",
+  "linear-gradient(158deg, #0b5fce 0%, #001936 100%)",
+];
+
 export function ServiceCard({
   service,
   imageSrc,
@@ -50,6 +72,10 @@ export function ServiceCard({
   const href = `/services/${service.slug}`;
   const hasPrice = service.amount > 0;
   const badge = service.badge?.trim();
+  const seed = slugSeed(service.slug);
+  // Only the drawn band varies its bed; a card with a photograph keeps the one
+  // flat blue behind it, because nothing of it is visible anyway.
+  const bed = featured ? BED_LEAD : imageSrc ? BED_REST : BEDS[seed % BEDS.length];
 
   return (
     <article
@@ -63,7 +89,7 @@ export function ServiceCard({
             "relative block overflow-hidden",
             featured ? "aspect-[16/10] lg:aspect-auto lg:min-h-[13rem] lg:flex-1" : "aspect-[16/10]",
           )}
-          style={{ background: featured ? BED_LEAD : BED_REST }}
+          style={{ background: bed }}
         >
           {imageSrc ? (
             <Image
@@ -75,7 +101,11 @@ export function ServiceCard({
               className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
             />
           ) : (
-            <ArtlessBand subject={`${service.slug} ${service.title} ${service.category}`} />
+            <ArtlessBand
+              subject={`${service.slug} ${service.title} ${service.category}`}
+              seed={seed}
+              Glyph={service.icon}
+            />
           )}
 
           {badge ? (
@@ -178,16 +208,26 @@ export function ServiceCard({
  * image rather than a design.
  *
  * This uses the vocabulary the category tiles already established: the jaali
- * lattice at low opacity, a large glyph chosen from the service's own subject,
- * and the connector dots from the logo. It is drawn, so it costs nothing, and
- * it differs per service rather than showing the same placeholder six times.
+ * lattice at low opacity, a large glyph, and the connector dots from the logo.
+ * It is drawn, so it costs nothing.
+ *
+ * Everything below the jaali varies with the service's slug. On the homepage,
+ * showing six cards, one fixed composition was enough. The services directory
+ * shows thirty-four at once, and a fixed composition there produced a wall of
+ * tiles that were pixel-identical apart from the words underneath — which is
+ * exactly the "padded catalogue" look the drawn band was supposed to avoid. So
+ * the bed's depth and angle, the ornament, its rotation and the placement of
+ * the connector nodes are all chosen from a hash of the slug: stable for a
+ * given service, different from its neighbours.
  */
-function ArtlessBand({ subject }: { subject: string }) {
-  // The category is part of the subject on purpose. Matching on slug and title
-  // alone gave "Voter ID" a document glyph, because "id" reaches the generic
-  // certificate rule before anything notices it is a card; adding
-  // "Cards & PVC Printing" gets it the card.
-  const Glyph = categoryGlyph(subject, "");
+function ArtlessBand({ subject, seed, Glyph }: { subject: string; seed: number; Glyph?: LucideIcon }) {
+  // The service's own icon first. The category is part of the fallback subject
+  // on purpose: matching on slug and title alone gave "Voter ID" a document
+  // glyph, because "id" reaches the generic certificate rule before anything
+  // notices it is a card; adding "Cards & PVC Printing" gets it the card.
+  const Mark = Glyph ?? categoryGlyph(subject, "");
+  const variant = seed % 4;
+  const spin = (seed % 8) * 11 - 44;
 
   return (
     <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
@@ -199,16 +239,65 @@ function ArtlessBand({ subject }: { subject: string }) {
         className="absolute inset-0 h-full w-full"
         focusable="false"
       >
-        <g fill="none" stroke="#ffffff" strokeOpacity="0.14">
-          <circle cx="100" cy="65" r="46" />
-          <rect x="72" y="37" width="56" height="56" rx="8" transform="rotate(45 100 65)" />
+        <g
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity="0.14"
+          transform={`rotate(${spin} 100 65)`}
+        >
+          {variant === 0 ? (
+            <>
+              <circle cx="100" cy="65" r="46" />
+              <circle cx="100" cy="65" r="32" />
+              <rect x="72" y="37" width="56" height="56" rx="8" transform="rotate(45 100 65)" />
+            </>
+          ) : null}
+
+          {variant === 1 ? (
+            <>
+              {/* Ashtakona — two squares, eight points. */}
+              <rect x="66" y="31" width="68" height="68" rx="6" />
+              <rect x="66" y="31" width="68" height="68" rx="6" transform="rotate(45 100 65)" />
+              <circle cx="100" cy="65" r="15" />
+            </>
+          ) : null}
+
+          {variant === 2 ? (
+            <>
+              {/* Rays, like the spokes of a rangoli laid over a half circle. */}
+              <circle cx="100" cy="65" r="50" />
+              {[0, 45, 90, 135].map((a) => (
+                <line
+                  key={a}
+                  x1="100"
+                  y1="15"
+                  x2="100"
+                  y2="115"
+                  transform={`rotate(${a} 100 65)`}
+                  strokeOpacity="0.1"
+                />
+              ))}
+            </>
+          ) : null}
+
+          {variant === 3 ? (
+            <>
+              {/* Nested diamonds, the kolam's simplest repeat. */}
+              <rect x="74" y="39" width="52" height="52" transform="rotate(45 100 65)" />
+              <rect x="60" y="25" width="80" height="80" transform="rotate(45 100 65)" />
+              <circle cx="100" cy="65" r="7" />
+            </>
+          ) : null}
         </g>
+
+        {/* Connector nodes and dashed link, from the logo's own mark. Their
+            placement shifts with the seed so no two neighbours line up. */}
         <g fill="#ffffff" fillOpacity="0.4">
-          <circle cx="26" cy="30" r="2.5" />
-          <circle cx="176" cy="102" r="2" />
+          <circle cx={18 + (seed % 5) * 9} cy={22 + (seed % 3) * 8} r="2.5" />
+          <circle cx={168 - (seed % 4) * 8} cy={98 - (seed % 3) * 7} r="2" />
         </g>
         <path
-          d="M26 30 L100 65 L176 102"
+          d={`M${18 + (seed % 5) * 9} ${22 + (seed % 3) * 8} L100 65 L${168 - (seed % 4) * 8} ${98 - (seed % 3) * 7}`}
           fill="none"
           stroke="#ffffff"
           strokeOpacity="0.14"
@@ -216,7 +305,7 @@ function ArtlessBand({ subject }: { subject: string }) {
         />
       </svg>
 
-      <Glyph className="relative h-12 w-12 text-white/85" strokeWidth={1.5} />
+      <Mark className="relative h-12 w-12 text-white/85" strokeWidth={1.5} />
     </span>
   );
 }

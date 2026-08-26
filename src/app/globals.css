@@ -1782,10 +1782,31 @@ input[id*="email"],
    for a hover tint change, and it is pointer-events:none so it never eats a
    click meant for the card's link. */
 
+/* Positioning context for the ::before specular layer.
+   It lives in @layer components, and that is the whole point. Everything else
+   in this file is unlayered, and unlayered CSS outranks *every* layered rule
+   no matter how specific — Tailwind v4 emits `.absolute { position: absolute }`
+   into @layer utilities, so an unlayered `position: relative` here beat it
+   outright. Put both classes on one element and it silently stopped being
+   positioned: it dropped into the flow and pushed its neighbours around. A
+   badge sitting flush in a card's corner instead of inset by 12px was this,
+   and so was a quick-view button shoving a whole grid tile down its row.
+   Declared in a layer, any position utility now wins, while an element with no
+   position utility still gets its context.
+   Specificity is not the lever here; layer order is. */
+@layer components {
+  .lg-card,
+  .lg-pill,
+  .lg-field,
+  .lg-card-dark,
+  .lg-pill-dark {
+    position: relative;
+  }
+}
+
 .lg-card,
 .lg-pill,
 .lg-field {
-  position: relative;
   isolation: isolate;
   background: var(--lg-tint);
   backdrop-filter: var(--lg-blur);
@@ -1843,7 +1864,6 @@ input[id*="email"],
 /* On-navy variant: the same physics against a dark field. */
 .lg-card-dark,
 .lg-pill-dark {
-  position: relative;
   isolation: isolate;
   background: var(--lg-tint-dark);
   backdrop-filter: var(--lg-blur);
