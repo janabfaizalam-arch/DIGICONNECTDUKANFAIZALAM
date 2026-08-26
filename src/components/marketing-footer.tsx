@@ -14,25 +14,12 @@ import {
   Play,
   ArrowRight,
   CheckCircle2,
-  Facebook,
-  Instagram,
-  Youtube,
-  Linkedin,
-  Send,
-  ExternalLink,
 } from "lucide-react";
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
-import { getEnabledSocialLinks, type SocialLink, type SocialPlatform } from "@/lib/social-links";
+import { getEnabledSocialLinks, type SocialLink } from "@/lib/social-links";
+import { FooterSocial } from "@/components/footer-social";
 
-const socialIcon: Partial<Record<SocialPlatform, typeof Facebook>> = {
-  facebook: Facebook,
-  instagram: Instagram,
-  youtube: Youtube,
-  linkedin: Linkedin,
-  telegram: Send,
-  whatsapp: MessageCircle,
-};
 
 const servicesLinks = [
   { label: "GST Registration", href: "/services/gst-registration" },
@@ -227,26 +214,12 @@ export function MarketingFooter({
               {contactDetails.email}
             </a>
 
-            {enabledSocial.length ? (
-              <div className="ml-auto flex items-center gap-2">
-                {enabledSocial.map((link) => {
-                  const Icon = socialIcon[link.platform] ?? ExternalLink;
-                  return (
-                    <a
-                      key={link.platform}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Visit DigiConnect on ${link.label}`}
-                      title={link.handle ? `${link.label} · ${link.handle}` : link.label}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-[var(--dc-orange-500)] hover:bg-[var(--dc-orange-500)] hover:text-white"
-                    >
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </a>
-                  );
-                })}
-              </div>
-            ) : null}
+          </div>
+
+          {/* Social — the marks with their handles, so a customer can tell our
+              account from an impersonator before they click. */}
+          <div className="mt-6">
+            <FooterSocial links={enabledSocial} />
           </div>
 
           <div className="mt-5 flex flex-col gap-2 text-[12.5px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">

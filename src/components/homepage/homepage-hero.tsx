@@ -15,8 +15,19 @@ type HomepageHeroProps = {
 
 const DEFAULT_BADGE = "All Digital & Government Services";
 const DEFAULT_HEADING = "Har Zaroori Digital Service, Ek Hi Jagah";
+/*
+  The headline already says "Ek Hi Jagah". This line must not say it again —
+  the previous copy closed on "sab kuch ek hi jagah", so the two largest pieces
+  of text on the first screen made the same point, and the subtitle bought
+  nothing. It now answers the question the headline provokes instead: fine, one
+  place — but who actually does the work, and what do I get?
+
+  Three concrete promises, in the order a first-time customer worries about
+  them: what it costs, whether the money is safe, and whether they will be left
+  in the dark afterwards.
+*/
 const DEFAULT_SUBTITLE =
-  "GST se passport tak — filing, registration, insurance aur government forms, sab kuch ek hi jagah. Transparent fees, secure payment, live tracking.";
+  "GST, ITR, passport, licence ya insurance — application se delivery tak poora kaam hamari team sambhaalti hai. Fees pehle se saaf, payment secure, aur status har waqt aapke saamne.";
 
 /** Entrance delay, as an inline style so one utility class covers every row. */
 function rise(delayMs: number) {

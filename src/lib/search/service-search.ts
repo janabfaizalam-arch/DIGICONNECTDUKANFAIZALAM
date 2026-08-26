@@ -37,7 +37,6 @@ export const SERVICE_SYNONYMS: Record<string, string[]> = {
   "learning-driving-license": ["driving licence", "driving license", "dl", "d l", "license", "licence", "rto", "vehicle driving", "learner", "chalan", "gaadi", "rto exam"],
   "pvc-card": ["pvc", "pvc card", "smart card", "plastic card", "print card", "identity card print", "plastic printing", "smart print"],
   "voter-id": ["voter", "voter id", "voter card", "epic", "election card", "vote card", "pehchan patra"],
-  "eshram-card": ["eshram", "e shram", "shram card", "labor card", "uan", "labour card"],
   "labour-card": ["labour", "labor", "labour card", "labor card", "shramik", "majdoor", "majdoor card"],
   "pmegp-loan": ["pmegp", "subsidy loan", "business loan", "government loan", "pmegp loan", "loan"],
   "mudra-loan": ["mudra", "mudra loan", "business loan", "micro loan", "bank loan", "loan"],
@@ -56,6 +55,18 @@ export const SERVICE_SYNONYMS: Record<string, string[]> = {
   "opc-registration": ["opc", "one person company", "opc registration"],
   "private-limited-compliance": ["compliance", "roc compliance", "dir 3 kyc", "annual compliance"],
   "detailed-project-report": ["dpr", "project report", "detailed project report", "bank project report", "pmegp report", "loan project report", "prozect report"],
+  // These were live in the catalogue with no synonym row at all, which meant a
+  // customer typing the only word they know for them — "aadhar", "ration",
+  // "fssai" — got nothing back.
+  "pan-card": ["pan", "pan card", "pancard", "permanent account number", "new pan", "pan correction"],
+  "aadhaar-services": ["aadhaar", "aadhar", "adhar", "aadhaar card", "aadhar card", "uidai", "aadhaar update", "aadhar correction"],
+  "ayushman-card": ["ayushman", "ayushman card", "ayushman bharat", "golden card", "health card", "pmjay"],
+  "food-license": ["fssai", "food license", "food licence", "food registration", "restaurant license", "hotel license", "khana license"],
+  "eshram-card": ["eshram", "e shram", "shram card", "labor card", "uan", "labour card"],
+  "caste-certificate": ["caste", "caste certificate", "jati praman patra", "sc st obc certificate"],
+  "income-certificate": ["income certificate", "aay praman patra", "income praman"],
+  "domicile-certificate": ["domicile", "domicile certificate", "nivas praman patra", "residence certificate"],
+  "csc-olympiad": ["olympiad", "csc olympiad", "student exam", "school olympiad"],
 };
 
 /** Edit distance, used only for short strings (a query word against a title word). */
@@ -96,52 +107,162 @@ export function fallbackCatalog(): SearchCatalogItem[] {
 }
 
 /**
+ * Words that carry no intent, so they must not be allowed to match anything.
+ *
+ * Without this, "gst registration ke liye apply karna hai" scores every service
+ * whose description happens to contain "apply" as highly as the one the person
+ * actually asked for.
+ */
+const STOPWORDS = new Set([
+  // English
+  "a", "an", "and", "for", "from", "how", "i", "in", "is", "me", "my", "need",
+  "of", "on", "online", "or", "please", "the", "to", "want", "what", "with",
+  // Hinglish
+  "aur", "chahiye", "hai", "ka", "kaise", "karna", "karwana", "ke", "ki", "ko",
+  "kya", "liye", "mein", "mujhe", "par", "se",
+]);
+
+/** Query terms split into scoreable tokens. */
+function tokenize(normalized: string): string[] {
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const meaningful = words.filter((w) => !STOPWORDS.has(w));
+  // A query that is nothing but stopwords ("kaise karna hai") still deserves a
+  // try rather than an empty result, so fall back to the raw words.
+  return meaningful.length ? meaningful : words;
+}
+
+/** The initials of a multi-word title — "Detailed Project Report" → "dpr". */
+function initialsOf(title: string): string {
+  const words = title.split(/\s+/).filter(Boolean);
+  return words.length >= 2 ? words.map((w) => w[0]).join("") : "";
+}
+
+/**
+ * How well one query token matches one candidate word, 0 when it does not.
+ *
+ * The edit-distance thresholds scale with token length on purpose. Forgiving
+ * one edit in a four-letter word makes "card" match "cars", "cart" and "care";
+ * forgiving one edit in "licence" is the difference between finding the driving
+ * licence and not. Long tokens are where typo tolerance pays for itself.
+ */
+function tokenScore(token: string, word: string): number {
+  if (!token || !word) return 0;
+  if (token === word) return 30;
+  if (token.length >= 3 && word.startsWith(token)) return 22;
+  if (token.length >= 4) {
+    const distance = levenshtein(token, word);
+    if (distance === 1) return 14;
+    if (distance === 2 && token.length >= 7) return 7;
+  }
+  return 0;
+}
+
+export type RankOptions = {
+  /** Maximum results to return. */
+  limit?: number;
+  /**
+   * Drop results scoring below this fraction of the best result. A long tail of
+   * weak matches is worse than a short list: it buries the right answer and
+   * teaches people the search does not work.
+   */
+  minScoreRatio?: number;
+};
+
+/**
  * Rank the catalog against a query, best match first.
  *
- * Exact title beats a title prefix, which beats a title substring; a synonym
- * hit scores near an exact title so "dl" still finds the driving licence, and
- * a one-character typo in a long word is forgiven rather than dropped.
+ * Scoring has two halves. The *phrase* half rewards the whole query matching a
+ * title or a synonym, and is what makes "dl" and "pasport" land instantly. The
+ * *token* half scores each meaningful word of the query against the best word
+ * it can find in the service, then scales the total by how much of the query
+ * was covered.
+ *
+ * That coverage term is the important part, and it exists because of a real
+ * failure: typing "driving licence" used to return **Food License** alongside
+ * the driving licence, because "licence" is one edit from "license" and a
+ * single fuzzy word was enough to qualify a service on its own. Squaring
+ * coverage means a service that answers half the query scores a quarter, not a
+ * half — enough to keep genuinely partial matches alive while pushing
+ * accidental single-word collisions below the relevance floor.
  */
-export function rankServices(catalog: SearchCatalogItem[], rawQuery: string): SearchCatalogItem[] {
+export function rankServices(
+  catalog: SearchCatalogItem[],
+  rawQuery: string,
+  options: RankOptions = {},
+): SearchCatalogItem[] {
+  const { limit, minScoreRatio = 0.22 } = options;
+
   const q = normalizeQuery(rawQuery);
   if (!q) return [];
 
-  return catalog
+  const tokens = tokenize(q);
+
+  const scored = catalog
     .map((service) => {
-      let score = 0;
       const title = service.title.toLowerCase();
       const desc = (service.shortDescription || "").toLowerCase();
       const category = (service.category || "").toLowerCase();
+      const synonyms = (SERVICE_SYNONYMS[service.slug] ?? []).map((s) => s.toLowerCase());
 
-      if (title === q) score += 100;
-      else if (title.startsWith(q)) score += 80;
-      else if (title.includes(q)) score += 50;
+      // ── Phrase half — the whole query against the whole field ──────────
+      let phrase = 0;
 
-      if (desc.includes(q)) score += 15;
-      if (category.includes(q)) score += 10;
+      if (title === q) phrase += 100;
+      else if (title.startsWith(q)) phrase += 80;
+      else if (title.includes(q)) phrase += 50;
 
-      for (const synonym of SERVICE_SYNONYMS[service.slug] ?? []) {
-        const syn = synonym.toLowerCase();
-        if (syn === q) score += 95;
-        else if (syn.includes(q)) score += 40;
-        else if (q.includes(syn)) score += 30;
+      if (desc.includes(q)) phrase += 15;
+      if (category.includes(q)) phrase += 10;
+
+      for (const syn of synonyms) {
+        if (syn === q) phrase += 95;
+        else if (syn.includes(q)) phrase += 40;
+        else if (q.includes(syn)) phrase += 30;
       }
 
-      const queryWords = q.split(/\s+/);
-      const titleWords = title.split(/\s+/);
-      for (const qw of queryWords) {
-        for (const tw of titleWords) {
-          const distance = levenshtein(qw, tw);
-          if (distance === 1 && qw.length > 3) score += 35;
-          else if (distance === 2 && qw.length > 5) score += 15;
+      // An acronym typed for a multi-word title, without needing a synonym row.
+      if (q.length >= 2 && q === initialsOf(title)) phrase += 90;
+
+      // ── Token half — each query word against its best candidate ────────
+      const candidates = [
+        ...title.split(/\s+/),
+        ...category.split(/\s+/),
+        ...synonyms.flatMap((syn) => syn.split(/\s+/)),
+      ].filter((w) => w.length > 1);
+
+      let tokenTotal = 0;
+      let matched = 0;
+
+      for (const token of tokens) {
+        let best = 0;
+        for (const candidate of candidates) {
+          const value = tokenScore(token, candidate);
+          if (value > best) best = value;
+        }
+        // A word appearing only in the description is weak evidence, but it is
+        // evidence — enough to break a tie, not enough to qualify alone.
+        if (best === 0 && token.length >= 4 && desc.includes(token)) best = 5;
+
+        if (best > 0) {
+          tokenTotal += best;
+          matched += 1;
         }
       }
+
+      const coverage = tokens.length ? matched / tokens.length : 0;
+      const score = phrase + tokenTotal * coverage * coverage;
 
       return { service, score };
     })
     .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .map((entry) => entry.service);
+    .sort((a, b) => b.score - a.score);
+
+  if (!scored.length) return [];
+
+  const floor = scored[0].score * minScoreRatio;
+  const relevant = scored.filter((entry) => entry.score >= floor).map((entry) => entry.service);
+
+  return typeof limit === "number" ? relevant.slice(0, limit) : relevant;
 }
 
 /**

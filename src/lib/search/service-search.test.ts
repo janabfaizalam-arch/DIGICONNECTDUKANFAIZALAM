@@ -45,6 +45,38 @@ describe("service search ranking", () => {
     expect(normalizeQuery("पासपोर्ट!")).toBe("पासपोर्ट");
   });
 
+  it("does not surface an unrelated service that shares one fuzzy word", () => {
+    // Reported from the live preview: typing "Driving Licence" returned
+    // "Food License (FSSAI)" as a peer result, because "licence" is one edit
+    // from "license" and a single fuzzy word used to qualify a service on its
+    // own. Coverage weighting is what keeps it out.
+    const slugs = rankServices(catalog, "Driving Licence").map((s) => s.slug);
+    expect(slugs[0]).toBe("learning-driving-license");
+    expect(slugs).not.toContain("food-license");
+  });
+
+  it("prefers the service that matches every word of the query", () => {
+    expect(topSlug("gst return filing")).toBe("gst-return-filing");
+    expect(topSlug("gst registration")).toBe("gst-registration");
+  });
+
+  it("ignores filler words around the real query", () => {
+    expect(topSlug("mujhe gst registration karna hai")).toBe("gst-registration");
+    expect(topSlug("how to apply for passport online")).toBe("passport");
+  });
+
+  it("reads an acronym off a multi-word title without a synonym row", () => {
+    // "Detailed Project Report" has a synonym row, so prove the generic path
+    // on a title that does not: initials alone should reach it.
+    expect(topSlug("Private Limited Registration")).toBe("private-limited-registration");
+    const byInitials = rankServices(catalog, "opc").map((s) => s.slug);
+    expect(byInitials).toContain("opc-registration");
+  });
+
+  it("honours a result limit", () => {
+    expect(rankServices(catalog, "loan", { limit: 2 })).toHaveLength(2);
+  });
+
   it("offers a correction only when it is close", () => {
     expect(suggestSpelling("passpot")).toMatch(/pass/i);
     expect(suggestSpelling("qwertyuiop")).toBeNull();
