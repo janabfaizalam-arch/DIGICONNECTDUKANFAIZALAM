@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Landmark, Briefcase, FileCheck } from "lucide-react";
 
-import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
+import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
 import { getPublicServices } from "@/lib/services";
 import { type ServiceItem } from "@/lib/services-data";
 import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
@@ -47,17 +47,24 @@ function SchemeCard({ scheme }: { scheme: ServiceItem }) {
   return (
     <Link
       href={`/services/${scheme.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--dc-teal)]/20 bg-white shadow-[0_10px_28px_rgba(7,31,77,0.05)] transition hover:-translate-y-0.5 hover:shadow-md"
+      className="lg-card lg-raise lg-sheen group flex h-full flex-col overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)]"
     >
-      <span className="relative block aspect-[16/10] bg-[var(--dc-teal-soft)]">
+      <span className="relative block aspect-[16/10] bg-[var(--dc-blue-soft)]">
         {imageSrc ? (
-          <Image src={imageSrc} alt="" fill className="object-cover transition duration-300 group-hover:scale-[1.03]" sizes="360px" />
+          <Image
+            src={imageSrc}
+            alt=""
+            fill
+            loading="lazy"
+            className="object-cover transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.05]"
+            sizes="360px"
+          />
         ) : (
-          <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-teal)]">
+          <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-mid)]">
             <Icon className="h-10 w-10" aria-hidden="true" />
           </span>
         )}
-        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-[var(--dc-teal)]">
+        <span className="lg-pill absolute left-3 top-3 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-[var(--dc-flame)]">
           Scheme assistance
         </span>
       </span>
@@ -69,12 +76,15 @@ function SchemeCard({ scheme }: { scheme: ServiceItem }) {
             {scheme.shortDescription}
           </span>
         ) : null}
-        <span className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-3.5">
+        <span className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--dc-blue-bright)]/10 pt-3.5">
           <span>
             <span className="block text-[11px] font-bold uppercase text-[var(--dc-muted)]">RNOS assistance fee</span>
             <span className="mt-0.5 block text-base font-black text-[var(--dc-ink)]">{scheme.priceLabel}</span>
           </span>
-          <span className="inline-flex h-10 items-center gap-1 rounded-xl bg-[var(--dc-navy-950)] px-3 text-sm font-bold text-white">
+          <span
+            className="inline-flex h-10 items-center gap-1 rounded-xl px-3 text-sm font-bold text-white"
+            style={{ background: "var(--dc-grad-blue)" }}
+          >
             Apply
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
@@ -96,7 +106,7 @@ export async function GovernmentSchemesHub() {
   if (!schemesList.length) return null;
 
   return (
-    <HomepageSection id="schemes" surface="tealSoft">
+    <HomepageSection id="schemes" surface="sky" wash="dual">
       <HomepageSectionHeader
         eyebrow="Scheme assistance"
         title="Government schemes support"
@@ -105,7 +115,7 @@ export async function GovernmentSchemesHub() {
         actionLabel="Browse schemes"
       />
 
-      <p className="mb-5 rounded-2xl border border-[var(--dc-teal)]/25 bg-white/70 px-4 py-3 text-sm font-bold text-[var(--dc-ink)] md:text-[15px]">
+      <p className="lg-card mb-5 rounded-2xl px-4 py-3 text-sm font-bold text-[var(--dc-ink)] md:text-[15px]">
         Private assistance only — DigiConnect does not claim government affiliation or portal status.
       </p>
 
@@ -118,16 +128,16 @@ export async function GovernmentSchemesHub() {
         ))}
       </ul>
 
-      {/* Mobile horizontal rail */}
-      <div className="md:hidden">
-        <HomepageMobileRail>
-          {schemesList.map((scheme) => (
-            <div key={scheme.slug} className="w-[82%] max-w-[300px] shrink-0 snap-start">
-              <SchemeCard scheme={scheme} />
-            </div>
-          ))}
-        </HomepageMobileRail>
-      </div>
+      {/* Phones — a grid, for the same reason as Trending and Featured: a rail
+          showed one scheme and a sliver of the next, so the rest were invisible
+          unless you knew to swipe. */}
+      <ul className="grid grid-cols-2 gap-3 md:hidden">
+        {schemesList.map((scheme) => (
+          <li key={scheme.slug}>
+            <SchemeCard scheme={scheme} />
+          </li>
+        ))}
+      </ul>
     </HomepageSection>
   );
 }

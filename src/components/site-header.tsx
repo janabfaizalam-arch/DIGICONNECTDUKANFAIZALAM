@@ -2,18 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck, ChevronDown, ShieldCheck } from "lucide-react";
+import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
+import { HeaderNav } from "@/components/header-nav";
 import { cn } from "@/lib/utils";
 import {
-  DIGI_PARTNER_BECOME_CTA_LABEL,
   DIGI_PARTNER_CTA_LABEL,
-  DIGI_PARTNER_LANDING_ROUTE,
   DIGI_PARTNER_LOGIN_ROUTE,
 } from "@/lib/auth/partner-access";
 import { AUTH_LOGOUT_EVENT } from "@/lib/auth/logout-destinations";
@@ -689,41 +688,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
           {/* CENTER — Primary nav (desktop) + compact search trigger */}
           {!agentShell && (
             <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-2 lg:flex lg:gap-3 lg:px-6">
-              <nav aria-label="Primary" className="flex max-w-full flex-wrap items-center justify-center gap-0.5 xl:flex-nowrap">
-                {(
-                  [
-                    { href: "/services", label: "Services" },
-                    { href: isHome ? "#categories" : "/services", label: "Categories" },
-                    { href: isHome ? "#schemes" : "/services", label: "Schemes" },
-                    { href: "/print", label: "Smart Print" },
-                    { href: "/track-application", label: "Track" },
-                    { href: isHome ? "#support" : "/#support", label: "Help" },
-                    ...(!isLoggedIn
-                      ? [{ href: DIGI_PARTNER_LANDING_ROUTE, label: DIGI_PARTNER_BECOME_CTA_LABEL }]
-                      : []),
-                  ] as const
-                ).map((item) => {
-                  const active =
-                    item.href.startsWith("#") || item.href.includes("#")
-                      ? false
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Link
-                      key={`${item.href}-${item.label}`}
-                      href={item.href}
-                      className={cn(
-                        "rounded-lg px-2.5 py-2 text-[11px] font-bold transition xl:px-3 xl:text-xs",
-                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
-                        active
-                          ? "bg-slate-900 text-white"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
+              <HeaderNav isHome={isHome} isLoggedIn={isLoggedIn} />
 
               {/* Compact search trigger — homepage focuses primary hub; elsewhere opens header search */}
               <button
@@ -1010,42 +975,21 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                 Dashboard
               </Link>
             ) : (
-              <details className="relative hidden md:block">
-                <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl bg-[var(--dc-blue-700)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--dc-blue-600)] active:scale-[0.98] [&::-webkit-details-marker]:hidden">
-                  <LogIn className="h-3.5 w-3.5" />
-                  Login
-                  <ChevronDown className="h-3.5 w-3.5 opacity-80" />
-                </summary>
-                <div
-                  role="menu"
-                  aria-label="Choose login type"
-                  className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl"
-                >
-                  {[
-                    { href: "/customer/login", label: "Customer", icon: UserRound, hint: "Mobile + PIN" },
-                    { href: DIGI_PARTNER_LOGIN_ROUTE, label: "Digi Partner", icon: BadgeCheck, hint: "Username + password" },
-                    { href: "/admin/login", label: "Admin", icon: ShieldCheck, hint: "Email or mobile + PIN" },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        role="menuitem"
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-slate-50"
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 text-left">
-                          <span className="block text-xs font-bold text-slate-800">{item.label}</span>
-                          <span className="block text-[10px] font-semibold text-slate-400">{item.hint}</span>
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </details>
+              /*
+                One button, one destination. This used to be a three-item
+                dropdown — Customer, Digi Partner, Admin — which asked a
+                first-time visitor to classify themselves before they could
+                sign in, and advertised the admin login on the public
+                homepage. Digi Partner already has its own button beside this
+                one, and administrators can reach /admin/login directly.
+              */
+              <Link
+                href="/customer/login"
+                className="hidden h-9 items-center gap-1.5 rounded-xl bg-[var(--dc-blue-700)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--dc-blue-600)] active:scale-[0.98] md:inline-flex"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Login
+              </Link>
             )}
 
             {/* Profile / Logout (desktop) */}

@@ -1,9 +1,10 @@
-import Image from "next/image";
-import { ShieldCheck, Headphones, Globe, CheckCircle2, Route } from "lucide-react";
-import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
-import { HOMEPAGE_TRUST_ILLUSTRATION } from "@/lib/homepage-visual-assets";
+import { ShieldCheck, Headphones, Globe, CheckCircle2, Route, FileLock2 } from "lucide-react";
 
-const primary = [
+import { BrandIcon, HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
+import { Stagger, StaggerItem } from "@/components/homepage/motion";
+import { TrustIllustration } from "@/components/homepage/brand-illustration";
+
+const PRIMARY = [
   {
     label: "Secure Razorpay payments",
     text: "UPI, cards and net banking when checkout is enabled.",
@@ -12,7 +13,7 @@ const primary = [
   {
     label: "Private document handling",
     text: "Uploaded files are handled carefully for assistance only.",
-    icon: CheckCircle2,
+    icon: FileLock2,
   },
   {
     label: "Expert verification",
@@ -24,13 +25,26 @@ const primary = [
     text: "Live status updates inside your customer dashboard.",
     icon: Route,
   },
-];
+] as const;
 
-const chips = ["PAN India online assistance", "WhatsApp & call support", "Private platform — not a government portal"];
+const CHIPS = [
+  "PAN India online assistance",
+  "WhatsApp & call support",
+  "Private platform — not a government portal",
+] as const;
 
+/**
+ * Why this platform, stated only in things that are checkable.
+ *
+ * Every claim here maps to something the product actually does. There is no
+ * customer count, no success rate and no certification badge, because none of
+ * those exist to be verified — and on a page whose entire job is persuading
+ * someone to hand over identity documents, one unverifiable number undoes the
+ * four honest claims next to it.
+ */
 export function TrustStrip() {
   return (
-    <HomepageSection id="trust" surface="aqua">
+    <HomepageSection id="trust" surface="sky" wash="dual">
       <HomepageSectionHeader
         eyebrow="Why DigiConnect"
         title="Built for secure digital assistance"
@@ -38,50 +52,44 @@ export function TrustStrip() {
       />
 
       <div className="grid items-center gap-6 lg:grid-cols-[1fr_1.05fr] lg:gap-10">
-        <div className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-white to-[var(--dc-teal-soft)] p-5 shadow-[0_16px_40px_rgba(7,31,77,0.06)] md:p-7">
-          <div className="relative mx-auto aspect-[4/3] max-w-md">
-            <Image
-              src={HOMEPAGE_TRUST_ILLUSTRATION}
-              alt=""
-              fill
-              className="object-contain"
-              sizes="(max-width: 1024px) 90vw, 480px"
-            />
+        <div className="lg-card p-5 md:p-7">
+          <div className="mx-auto aspect-square max-w-[19rem]">
+            <TrustIllustration tone="onLight" />
           </div>
-          <p className="mt-4 rounded-2xl bg-[var(--dc-navy-950)] px-4 py-3.5 text-[15px] font-bold leading-relaxed text-white">
+          {/* The disclaimer is the most important sentence on the page and it
+              is given the strongest surface on the section rather than being
+              set as fine print. */}
+          <p
+            className="mt-4 rounded-2xl px-4 py-3.5 text-[15px] font-bold leading-relaxed text-white"
+            style={{ background: "var(--dc-grad-blue)" }}
+          >
             DigiConnect Dukan is a private assistance platform by RNOS India Pvt Ltd — not an official government portal.
           </p>
         </div>
 
         <div>
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {primary.map((item) => {
+          <Stagger as="ul" className="grid gap-4 sm:grid-cols-2">
+            {PRIMARY.map((item, index) => {
               const Icon = item.icon;
               return (
-                <li
-                  key={item.label}
-                  className="rounded-[1.35rem] border border-[var(--dc-cyan)]/15 bg-white p-5 shadow-[0_8px_24px_rgba(7,31,77,0.04)]"
-                >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--dc-teal-soft)] text-[var(--dc-teal)]">
+                <StaggerItem as="li" key={item.label} className="lg-card lg-raise lg-sheen p-5">
+                  <BrandIcon tone={index === 0 ? "flame" : "blue"} className="h-12 w-12 rounded-2xl">
                     <Icon className="h-6 w-6" aria-hidden="true" />
-                  </span>
+                  </BrandIcon>
                   <h3 className="mt-4 text-base font-extrabold text-[var(--dc-ink)] md:text-lg">{item.label}</h3>
-                  <p className="mt-2 text-[15px] font-semibold leading-relaxed text-[var(--dc-body)]">{item.text}</p>
-                </li>
+                  <p className="mt-2 text-[15px] font-medium leading-relaxed text-[var(--dc-body)]">{item.text}</p>
+                </StaggerItem>
               );
             })}
-          </ul>
+          </Stagger>
 
           <ul className="mt-5 flex flex-wrap gap-2.5">
-            {chips.map((chip) => (
-              <li
-                key={chip}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--dc-teal)]/20 bg-white px-3.5 py-2 text-sm font-bold text-[var(--dc-ink)]"
-              >
+            {CHIPS.map((chip) => (
+              <li key={chip} className="lg-pill inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold text-[var(--dc-ink)]">
                 {chip.includes("WhatsApp") ? (
-                  <Headphones className="h-3.5 w-3.5 text-[var(--dc-teal)]" aria-hidden="true" />
+                  <Headphones className="h-3.5 w-3.5 text-[var(--dc-flame)]" aria-hidden="true" />
                 ) : (
-                  <Globe className="h-3.5 w-3.5 text-[var(--dc-teal)]" aria-hidden="true" />
+                  <Globe className="h-3.5 w-3.5 text-[var(--dc-blue-bright)]" aria-hidden="true" />
                 )}
                 {chip}
               </li>

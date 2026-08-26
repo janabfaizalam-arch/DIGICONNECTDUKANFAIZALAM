@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+
+import { BrandWash } from "@/components/homepage/brand-backdrop";
 import { cn } from "@/lib/utils";
 
 export type HomepageSurface =
@@ -17,14 +19,15 @@ export type HomepageSurface =
 /**
  * Section backgrounds.
  *
- * The page previously used seven different tints across seventeen sections —
- * cream, aqua, teal, violet, orange, sky and white — so every band announced
- * itself and the page read as a stack of unrelated pages. The tinted variants
- * now all resolve to one soft tint, leaving a simple alternation of white and
- * tint with the dark surfaces as deliberate punctuation.
+ * The page once used seven different tints across seventeen sections — cream,
+ * aqua, teal, violet, orange, sky and white — so every band announced itself
+ * and the page read as a stack of unrelated pages. The tinted variants all
+ * resolve to one soft tint, leaving a simple alternation of white and tint
+ * with the dark surfaces as deliberate punctuation.
  *
  * The names are kept so no section has to change; only what they resolve to
- * has been narrowed.
+ * has been narrowed. `navy` and `blue` now both carry the logo's own blue ramp
+ * rather than two flat blues that were nearly the same colour anyway.
  */
 const TINT = "bg-[var(--dc-sky-soft)] text-[var(--dc-ink)]";
 
@@ -36,17 +39,36 @@ const SURFACE: Record<HomepageSurface, string> = {
   violetSoft: TINT,
   orangeSoft: TINT,
   aqua: TINT,
-  navy: "bg-[var(--dc-navy-950)] text-white",
-  blue: "bg-[var(--dc-blue-700)] text-white",
+  navy: "text-white",
+  blue: "text-white",
 };
 
-/** Shared homepage section with consistent mobile gutters and desktop rhythm. */
+const DARK_SURFACES: ReadonlySet<HomepageSurface> = new Set(["navy", "blue"]);
+
+/**
+ * Shared homepage section.
+ *
+ * Consistent gutters and vertical rhythm, plus two things every band gets for
+ * free:
+ *
+ *   • an ambient wash behind the content, because clear glass takes its colour
+ *     from what is behind it — a glass card on flat white is just grey plastic;
+ *   • `content-visibility: auto`, so the browser can skip laying out and
+ *     rasterising a band until it is near the viewport. With this many blurred
+ *     surfaces on one page that is the single largest scroll-performance win
+ *     available, and the intrinsic size keeps the scrollbar from jumping.
+ *
+ * `eager` opts a band out of the deferral — use it for anything within the
+ * first screen or two, where deferring would cost a paint rather than save one.
+ */
 export function HomepageSection({
   id,
   surface = "white",
   className,
   children,
   compact,
+  eager,
+  wash = "blue",
   "aria-labelledby": ariaLabelledby,
 }: {
   id?: string;
@@ -54,25 +76,48 @@ export function HomepageSection({
   className?: string;
   children: ReactNode;
   compact?: boolean;
+  eager?: boolean;
+  wash?: "blue" | "flame" | "dual" | "none";
   "aria-labelledby"?: string;
 }) {
+  const dark = DARK_SURFACES.has(surface);
+
   return (
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
       className={cn(
+        "dc-ambient relative overflow-hidden",
         SURFACE[surface],
+        !eager && "lg-defer",
         compact
-          ? "px-[var(--mobile-page-gutter)] py-7 sm:px-6 sm:py-8 md:px-8 md:py-10"
-          : "px-[var(--mobile-page-gutter)] py-10 sm:px-6 sm:py-12 md:px-8 md:py-16",
+          ? "px-[var(--mobile-page-gutter)] py-8 sm:px-6 sm:py-9 md:px-8 md:py-11"
+          : "px-[var(--mobile-page-gutter)] py-12 sm:px-6 sm:py-14 md:px-8 md:py-20",
         className,
       )}
+      style={dark ? { background: "var(--dc-grad-blue)" } : undefined}
     >
-      <div className="mx-auto w-full max-w-[var(--dc-max)]">{children}</div>
+      {dark ? (
+        <div className="dc-ambient-layer" aria-hidden="true">
+          <div className="dc-jaali absolute inset-0 opacity-[0.06]" />
+          <div className="dc-orb dc-orb-flame lg-drift-slow -right-[12%] -top-[40%] h-[34rem] w-[34rem] opacity-55" />
+        </div>
+      ) : wash !== "none" ? (
+        <BrandWash variant={wash} />
+      ) : null}
+
+      <div className="relative mx-auto w-full max-w-[var(--dc-max)]">{children}</div>
     </section>
   );
 }
 
+/**
+ * Section header.
+ *
+ * The eyebrow carries the flame rule from the logo's "DUKAN" lockup, the title
+ * is set tight and heavy, and the optional action link gets a proper 44px tap
+ * target with the arrow nudging on hover.
+ */
 export function HomepageSectionHeader({
   eyebrow,
   title,
@@ -80,6 +125,7 @@ export function HomepageSectionHeader({
   actionHref,
   actionLabel,
   light,
+  center,
 }: {
   eyebrow?: string;
   title: string;
@@ -87,66 +133,133 @@ export function HomepageSectionHeader({
   actionHref?: string;
   actionLabel?: string;
   light?: boolean;
+  center?: boolean;
 }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6 md:mb-8">
-      <div className="min-w-0 max-w-3xl">
+    <div
+      className={cn(
+        "mb-6 gap-4 sm:mb-7 md:mb-9",
+        center
+          ? "flex flex-col items-center text-center"
+          : // Stacked on phones. Side by side, the action pill sat hard against
+            // a two-line description with nowhere to go, and the two read as
+            // one collided block.
+            "flex flex-col items-start sm:flex-row sm:items-end sm:justify-between",
+      )}
+    >
+      <div className={cn("min-w-0", center ? "max-w-2xl" : "max-w-3xl")}>
         {eyebrow ? (
           <p
             className={cn(
-              "text-[11px] font-bold uppercase tracking-[0.16em]",
-              light ? "text-[var(--dc-orange-400)]" : "text-[var(--dc-blue-600)]",
+              "inline-flex items-center text-[11px] font-extrabold uppercase tracking-[0.18em]",
+              // The rule is drawn from the flame ramp on both surfaces; only
+              // the text colour has to change.
+              center ? "dc-eyebrow-rule" : "dc-eyebrow-rule-start",
+              light ? "text-[var(--dc-amber)]" : "text-[var(--dc-flame)]",
             )}
           >
             {eyebrow}
           </p>
         ) : null}
+
         <h2
           className={cn(
-            "mt-2 text-[1.5rem] font-black leading-[1.15] tracking-tight sm:text-[1.85rem] md:text-[2.05rem]",
+            "mt-2.5 text-[1.6rem] font-extrabold leading-[1.12] tracking-[-0.025em] sm:text-[2rem] md:text-[2.3rem]",
             light ? "text-white" : "text-[var(--dc-ink)]",
           )}
         >
           {title}
         </h2>
+
         {description ? (
           <p
             className={cn(
-              "mt-2.5 max-w-2xl text-[14.5px] font-medium leading-relaxed sm:text-[15px]",
-              light ? "text-white/75" : "text-[var(--dc-body)]",
+              "mt-3 max-w-2xl text-[14.5px] font-medium leading-relaxed sm:text-[15.5px]",
+              light ? "text-white/72" : "text-[var(--dc-body)]",
             )}
           >
             {description}
           </p>
         ) : null}
       </div>
+
       {actionHref && actionLabel ? (
         <Link
           href={actionHref}
           className={cn(
-            "inline-flex min-h-11 shrink-0 items-center gap-0.5 text-sm font-bold hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 md:text-[15px]",
+            "group inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 md:text-[15px]",
             light
-              ? "text-white focus-visible:outline-white"
-              : "text-[var(--dc-blue-600)] focus-visible:outline-[var(--dc-blue-600)]",
+              ? "lg-pill-dark lg-raise-dark text-white focus-visible:outline-white"
+              : "lg-pill lg-raise text-[var(--dc-blue-mid)] focus-visible:outline-[var(--dc-blue-bright)]",
           )}
         >
           {actionLabel}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowRight
+            className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
         </Link>
       ) : null}
     </div>
   );
 }
 
-export function HomepageMobileRail({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * The homepage's one card.
+ *
+ * Every tile on the page — a shortcut, a category, a step, a reward — is this
+ * component with different contents. That is the whole reason the redesign
+ * reads as one page: seventeen bands, one surface treatment.
+ */
+export function GlassTile({
+  children,
+  className,
+  interactive = true,
+  dark,
+}: {
+  children: ReactNode;
+  className?: string;
+  interactive?: boolean;
+  dark?: boolean;
+}) {
   return (
     <div
       className={cn(
-        "no-scrollbar -mx-[var(--mobile-page-gutter)] flex snap-x snap-mandatory gap-3 overflow-x-auto px-[var(--mobile-page-gutter)] pb-2 pr-[calc(var(--mobile-page-gutter)+4.75rem+env(safe-area-inset-right))]",
+        dark ? "lg-card-dark" : "lg-card",
+        interactive && (dark ? "lg-raise-dark" : "lg-raise lg-sheen"),
+        "h-full overflow-hidden",
         className,
       )}
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * Icon disc in one of the two logo ramps.
+ *
+ * Blue is the default and orange is reserved for the primary action in a
+ * group, mirroring the mark itself: one blue D, one orange C.
+ */
+export function BrandIcon({
+  children,
+  tone = "blue",
+  className,
+}: {
+  children: ReactNode;
+  tone?: "blue" | "flame";
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] text-white shadow-[0_8px_18px_-8px_rgba(0,29,95,0.7)]",
+        className,
+      )}
+      style={{ background: tone === "flame" ? "var(--dc-grad-flame)" : "var(--dc-grad-blue)" }}
+    >
+      {children}
+    </span>
   );
 }

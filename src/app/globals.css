@@ -800,8 +800,23 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   .homepage-mobile-shell {
     overflow-x: clip;
     padding-top: var(--header-height);
-    /* Bottom nav + FAB clearance so final cards are not covered */
-    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--whatsapp-fab-size) + 1.75rem);
+    /*
+      The bottom-nav and FAB clearance used to live here. It does not belong
+      on <main>, because the footer comes *after* main — so the padding never
+      cleared anything, it just opened a 136px band of empty page between the
+      last section and the footer, on every phone, every visit. The clearance
+      moved to .dc-bottom-nav-clearance, which the footer wears instead.
+    */
+  }
+
+  /*
+    Whatever ends the page has to clear the fixed bottom nav and the floating
+    WhatsApp button, or its last row sits underneath them.
+  */
+  .dc-bottom-nav-clearance {
+    padding-bottom: calc(
+      var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--whatsapp-fab-size) + 1.75rem
+    );
   }
 
   .homepage-mobile-shell img,
@@ -1673,40 +1688,9 @@ input[id*="email"],
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
-@keyframes dc-hero-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(3%, -4%, 0) scale(1.1); }
-}
-
-@keyframes dc-hero-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@keyframes dc-hero-node {
-  0%, 100% { opacity: 0.35; }
-  50%      { opacity: 1; }
-}
-
 .dc-hero-rise {
   opacity: 0;
   animation: dc-hero-rise 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.dc-hero-drift {
-  animation: dc-hero-drift 24s ease-in-out infinite;
-  will-change: transform;
-}
-
-/* The spokes rotate about their own centre, which for an SVG group means the
-   transform box has to be told where that is. */
-.dc-hero-spin {
-  transform-origin: 1180px 200px;
-  animation: dc-hero-spin 150s linear infinite;
-}
-
-.dc-hero-node {
-  animation: dc-hero-node 5.5s ease-in-out infinite;
 }
 
 /* The headline's closing clause. A display serif italic against the sans
@@ -1722,7 +1706,410 @@ input[id*="email"],
 
 @media (prefers-reduced-motion: reduce) {
   .dc-hero-rise { opacity: 1; animation: none; }
-  .dc-hero-drift,
-  .dc-hero-spin,
-  .dc-hero-node { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DigiConnect Liquid Glass — homepage design layer
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Everything below is scoped to the marketing homepage. Three ideas hold it
+   together:
+
+   1. The palette is sampled from the logo rather than approximated. The "D"
+      runs #0159c7 → #001d5f top to bottom and the "C" runs #fe8602 → #f74a01,
+      so the page's blues and oranges are literally the mark's own gradients.
+      Nothing on the page invents a third brand colour.
+
+   2. Surfaces are clear glass, not frosted plastic: a light tint, a wide blur
+      with heavy saturation so the colour behind bleeds through, a bright
+      specular top edge and a thin rim light. The colour comes from what is
+      *behind* the panel, which is why the ambient wash underneath matters.
+
+   3. The ornament is Indian and geometric — an eight-point sitara lattice
+      (jaali) and kolam dot fields — never a flag, tricolour or state emblem,
+      which a private company may not imply.
+
+   Motion is transform/opacity only so it stays on the compositor, and every
+   loop is switched off under prefers-reduced-motion at the end of the block. */
+
+:root {
+  /* ── Logo-exact brand ramps ─────────────────────────────────────────── */
+  --dc-blue-bright: #0159c7;
+  --dc-blue-mid: #003f9e;
+  --dc-blue-deep: #001d5f;
+  --dc-brand-navy: #012e7b;
+  --dc-amber: #fe8602;
+  --dc-flame: #f74a01;
+  --dc-flame-deep: #d63f01;
+
+  --dc-grad-blue: linear-gradient(155deg, #0f6de0 0%, #0159c7 38%, #001d5f 100%);
+  --dc-grad-flame: linear-gradient(155deg, #ffa02c 0%, #fe8602 40%, #f74a01 100%);
+  --dc-grad-mark: linear-gradient(103deg, #0159c7 0%, #012e7b 46%, #f74a01 100%);
+  --dc-grad-field: linear-gradient(178deg, #001536 0%, #012456 24%, #013a8e 58%, #0159c7 88%, #1170dd 100%);
+
+  /* ── Clear glass ────────────────────────────────────────────────────── */
+  --lg-tint: rgba(255, 255, 255, 0.58);
+  --lg-tint-strong: rgba(255, 255, 255, 0.76);
+  --lg-tint-dark: rgba(255, 255, 255, 0.09);
+  --lg-blur: blur(26px) saturate(185%);
+  --lg-blur-sm: blur(14px) saturate(160%);
+  --lg-edge: rgba(255, 255, 255, 0.62);
+  --lg-edge-dark: rgba(255, 255, 255, 0.2);
+  --lg-rim: inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1px 0 rgba(255, 255, 255, 0.26);
+  --lg-rim-dark: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  --lg-cast:
+    0 1px 1px rgba(0, 29, 95, 0.03),
+    0 8px 22px -10px rgba(0, 29, 95, 0.14),
+    0 26px 54px -28px rgba(0, 29, 95, 0.22);
+  --lg-cast-lift:
+    0 2px 3px rgba(0, 29, 95, 0.04),
+    0 16px 34px -12px rgba(0, 29, 95, 0.18),
+    0 40px 72px -32px rgba(0, 29, 95, 0.26);
+  --lg-radius: 1.375rem;
+  --lg-radius-lg: 1.75rem;
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --lg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lg-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --lg-quick: 180ms;
+  --lg-base: 320ms;
+  --lg-slow: 520ms;
+}
+
+/* ── Glass surfaces ───────────────────────────────────────────────────────
+   .lg-card is the workhorse: one class, no per-section tint. The ::before
+   carries the specular highlight so the element's own background stays free
+   for a hover tint change, and it is pointer-events:none so it never eats a
+   click meant for the card's link. */
+
+.lg-card,
+.lg-pill,
+.lg-field {
+  position: relative;
+  isolation: isolate;
+  background: var(--lg-tint);
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
+  border: 1px solid var(--lg-edge);
+  box-shadow: var(--lg-cast), var(--lg-rim);
+  transition:
+    background var(--lg-base) var(--lg-ease),
+    border-color var(--lg-base) var(--lg-ease),
+    box-shadow var(--lg-base) var(--lg-ease),
+    transform var(--lg-base) var(--lg-ease);
+}
+
+.lg-card {
+  border-radius: var(--lg-radius);
+}
+
+.lg-card::before,
+.lg-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(148deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0) 58%);
+}
+
+.lg-pill {
+  border-radius: 999px;
+  backdrop-filter: var(--lg-blur-sm);
+  -webkit-backdrop-filter: var(--lg-blur-sm);
+}
+
+.lg-field {
+  border-radius: 999px;
+  background: var(--lg-tint-strong);
+}
+
+/* Hover lift. Kept on its own class so a static panel can be glass without
+   pretending to be interactive. */
+.lg-raise:hover,
+.lg-raise:focus-visible {
+  background: var(--lg-tint-strong);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--lg-cast-lift), var(--lg-rim);
+  transform: translate3d(0, -3px, 0);
+}
+
+.lg-raise:active {
+  transform: translate3d(0, -1px, 0) scale(0.995);
+  transition-duration: var(--lg-quick);
+}
+
+/* On-navy variant: the same physics against a dark field. */
+.lg-card-dark,
+.lg-pill-dark {
+  position: relative;
+  isolation: isolate;
+  background: var(--lg-tint-dark);
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
+  border: 1px solid var(--lg-edge-dark);
+  box-shadow: 0 20px 44px -26px rgba(0, 8, 30, 0.8), var(--lg-rim-dark);
+  transition:
+    background var(--lg-base) var(--lg-ease),
+    border-color var(--lg-base) var(--lg-ease),
+    transform var(--lg-base) var(--lg-ease);
+}
+
+.lg-card-dark {
+  border-radius: var(--lg-radius);
+}
+
+.lg-pill-dark {
+  border-radius: 999px;
+  backdrop-filter: var(--lg-blur-sm);
+  -webkit-backdrop-filter: var(--lg-blur-sm);
+}
+
+.lg-card-dark::before,
+.lg-pill-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(148deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 56%);
+}
+
+.lg-raise-dark:hover,
+.lg-raise-dark:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.42);
+  transform: translate3d(0, -3px, 0);
+}
+
+/* Specular sweep. A single translated gradient, no filter, so it composites. */
+.lg-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 32%,
+    rgba(255, 255, 255, 0.5) 48%,
+    transparent 64%
+  );
+  transform: translate3d(-120%, 0, 0);
+}
+
+.lg-sheen:hover::after,
+.lg-sheen:focus-visible::after {
+  opacity: 1;
+  animation: lg-sheen 900ms var(--lg-ease) forwards;
+}
+
+@keyframes lg-sheen {
+  to { transform: translate3d(120%, 0, 0); }
+}
+
+/* ── Brand text and rules ─────────────────────────────────────────────── */
+.dc-text-mark {
+  background: var(--dc-grad-mark);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dc-text-flame {
+  background: var(--dc-grad-flame);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The logo sets "DUKAN" between two short orange rules. This reuses that
+   device for section eyebrows. */
+.dc-eyebrow-rule::before,
+.dc-eyebrow-rule::after {
+  content: "";
+  display: inline-block;
+  width: 1.25rem;
+  height: 2px;
+  border-radius: 2px;
+  vertical-align: middle;
+  background: var(--dc-grad-flame);
+}
+
+.dc-eyebrow-rule::before { margin-right: 0.6rem; }
+.dc-eyebrow-rule::after { margin-left: 0.6rem; }
+
+/* Left-aligned headers only want the leading rule; a trailing one there reads
+   as a strikethrough rather than a flourish. */
+.dc-eyebrow-rule-start::before {
+  content: "";
+  display: inline-block;
+  width: 1.25rem;
+  height: 2px;
+  margin-right: 0.6rem;
+  border-radius: 2px;
+  vertical-align: middle;
+  background: var(--dc-grad-flame);
+}
+
+/* Gradient-bordered surface: a brand-ramp hairline that a plain border can't
+   do, painted with two backgrounds and box-decoration clipping. */
+.dc-ring-brand {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--dc-card-bg, #ffffff), var(--dc-card-bg, #ffffff)) padding-box,
+    var(--dc-grad-mark) border-box;
+}
+
+/* ── Indian ornament ──────────────────────────────────────────────────────
+   An eight-point sitara (star) jaali and a kolam dot field, both as data-URI
+   or gradient backgrounds so they cost bytes rather than a network request.
+   Held at very low opacity: texture the eye reads before it notices. */
+
+.dc-jaali {
+  /* An ashtakona — the eight-point star of a Mughal jaali screen, drawn the
+     way the stone is actually cut: two squares of the same size, one turned
+     45°, with a roundel at the centre. The first attempt at this used a
+     twelve-vertex star path, which resolves to a hexagram and reads as a Star
+     of David rather than as Indian latticework. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1'%3E%3Crect x='14' y='14' width='44' height='44'/%3E%3Crect x='14' y='14' width='44' height='44' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='9'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 72px 72px;
+}
+
+.dc-kolam {
+  background-image: radial-gradient(circle at center, currentColor 1.1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+/* ── Ambient field ────────────────────────────────────────────────────────
+   The wash that the clear glass refracts. Without something coloured behind
+   them the panels read as grey plastic, so every glass band sits on one. */
+
+.dc-ambient {
+  position: relative;
+  isolation: isolate;
+}
+
+.dc-ambient > .dc-ambient-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dc-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  will-change: transform;
+}
+
+.dc-orb-blue { background: radial-gradient(circle, rgba(1, 89, 199, 0.3) 0%, transparent 70%); }
+.dc-orb-flame { background: radial-gradient(circle, rgba(254, 134, 2, 0.26) 0%, transparent 70%); }
+.dc-orb-sky { background: radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, transparent 70%); }
+
+/* ── Motion primitives ────────────────────────────────────────────────── */
+
+@keyframes lg-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(4%, -5%, 0) scale(1.12); }
+}
+
+@keyframes lg-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -9px, 0); }
+}
+
+@keyframes lg-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lg-node {
+  0%, 100% { opacity: 0.28; transform: scale(0.9); }
+  50%      { opacity: 1; transform: scale(1.12); }
+}
+
+@keyframes lg-dash {
+  to { stroke-dashoffset: -220; }
+}
+
+@keyframes lg-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+.lg-drift { animation: lg-drift 26s ease-in-out infinite; }
+.lg-drift-slow { animation: lg-drift 38s ease-in-out infinite reverse; }
+.lg-float { animation: lg-float 7s ease-in-out infinite; will-change: transform; }
+.lg-spin-slow { animation: lg-spin 140s linear infinite; }
+.lg-node { animation: lg-node 5.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.lg-dash { stroke-dasharray: 5 9; animation: lg-dash 9s linear infinite; }
+
+/* Seamless brand marquee: the track holds the list twice and slides exactly
+   half its width, so the loop has no visible seam. */
+.lg-marquee {
+  display: flex;
+  width: max-content;
+  animation: lg-marquee var(--lg-marquee-duration, 42s) linear infinite;
+}
+
+.lg-marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.lg-marquee-mask:hover .lg-marquee,
+.lg-marquee-mask:focus-within .lg-marquee {
+  animation-play-state: paused;
+}
+
+/* ── Rendering budget ─────────────────────────────────────────────────────
+   `content-visibility: auto` with a 620px intrinsic size used to live here, to
+   let the browser skip rasterising off-screen bands — blur being the expensive
+   part of glass.
+
+   It was removed because it was visibly wrong on real phones. The homepage's
+   sections are nothing like uniform: at 390px they run from 237px to 1655px,
+   so a single reserved height is too small for half of them and too large for
+   the rest. The `auto` keyword lets the browser learn the true size, but only
+   *after* it has rendered the band once — and until then every short section
+   sat in a 716px hole. A page that reserves blank space it does not need reads
+   as broken, which costs more than the paint it saved.
+
+   The class is kept as a no-op so the sections that reference it do not need
+   touching, and so this note stays attached to the decision. */
+.lg-defer {
+  /* intentionally empty — see above */
+}
+
+/* Cheap phones and browsers without backdrop-filter both need a fallback that
+   is still legible: drop the blur, raise the tint to near-opaque. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-card, .lg-pill, .lg-field { background: rgba(255, 255, 255, 0.94); }
+  .lg-card-dark, .lg-pill-dark { background: rgba(3, 22, 60, 0.82); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-drift,
+  .lg-drift-slow,
+  .lg-float,
+  .lg-spin-slow,
+  .lg-node,
+  .lg-dash,
+  .lg-marquee {
+    animation: none !important;
+  }
+
+  .lg-sheen:hover::after,
+  .lg-sheen:focus-visible::after { animation: none; opacity: 0; }
+
+  .lg-raise:hover,
+  .lg-raise:focus-visible,
+  .lg-raise-dark:hover,
+  .lg-raise-dark:focus-visible { transform: none; }
 }

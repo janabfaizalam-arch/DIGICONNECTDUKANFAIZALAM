@@ -65,18 +65,18 @@ export function RecentSuccessStories() {
         {items.map((item, idx) => (
           <article
             key={`${item.service_name}-${item.created_at}-${idx}`}
-            className="flex w-[230px] shrink-0 snap-start flex-col justify-between rounded-2xl border border-[var(--dc-orange-500)]/15 bg-white p-4 shadow-[0_6px_18px_rgba(7,31,77,0.04)] md:w-[250px]"
+            className="lg-card lg-raise flex w-[230px] shrink-0 snap-start flex-col justify-between rounded-2xl p-4 md:w-[250px]"
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--dc-teal-soft)] text-[var(--dc-teal)]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--dc-blue-soft)] text-[var(--dc-blue-mid)]">
                   <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-wider text-[var(--dc-teal)]">Completed</span>
               </div>
               <h3 className="mt-3 line-clamp-2 text-sm font-black leading-snug text-[var(--dc-ink)]">{item.service_name}</h3>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-bold text-[var(--dc-muted)]">
+            <div className="mt-4 flex items-center justify-between border-t border-[var(--dc-blue-bright)]/10 pt-3 text-[10px] font-bold text-[var(--dc-muted)]">
               <span className="inline-flex items-center gap-1">
                 <RefreshCw className="h-3 w-3" aria-hidden="true" />
                 Verified

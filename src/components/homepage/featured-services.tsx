@@ -1,161 +1,120 @@
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-
-import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
-import { getPublicHomepageServices } from "@/lib/services";
+import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
+import { ServiceCard } from "@/components/homepage/service-card";
+import { Stagger, StaggerItem } from "@/components/homepage/motion";
+import { getPublicHomepageServices, getPublicServices } from "@/lib/services";
 import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
 
-/** Editorial featured services — large lead + image-led supporting cards. */
-export async function FeaturedServices() {
-  const featuredServices = await getPublicHomepageServices(8);
-  if (!featuredServices.length) return null;
+/** How many services Trending now shows. Kept in step with `trending-now.tsx`. */
+const TRENDING_COUNT = 6;
 
-  const [lead, ...rest] = featuredServices;
-  const LeadIcon = lead.icon;
-  const leadImage = resolveHomepageServiceImage(lead.slug, lead.title, lead.heroImageUrl);
-  const supporting = rest.slice(0, 4);
+/** Lead plus a 2×2 of supporting cards. */
+const FEATURED_COUNT = 5;
+
+/**
+ * Featured digital assistance.
+ *
+ * Two problems, one of layout and one of content.
+ *
+ * **Layout.** A tall lead card beside a 2×2 of small ones, where the lead's
+ * copy stopped well short of its own bottom edge — so a column of dead white
+ * space ran down the middle of the section at every desktop width. The lead
+ * card's image is now `flex-1`, so it stretches to whatever height the
+ * neighbouring column ends up being instead of leaving the slack at the bottom.
+ *
+ * **Content, and this was the worse one.** Both this section and Trending now
+ * called `getPublicHomepageServices`, so both rendered the same six services in
+ * the same order — two consecutive bands of identical cards, which reads as a
+ * bug rather than a curation.
+ *
+ * This section now starts where Trending stops. It takes the homepage-flagged
+ * services beyond the first six, and when there are not enough of those it
+ * fills from the wider published catalogue, skipping anything Trending already
+ * showed. So the two bands never repeat each other, and this one always has
+ * something to say.
+ */
+export async function FeaturedServices() {
+  const [homepageServices, allServices] = await Promise.all([
+    // One more than Trending needs, so the overlap can be computed exactly.
+    getPublicHomepageServices(TRENDING_COUNT + FEATURED_COUNT),
+    getPublicServices(),
+  ]);
+
+  const shownInTrending = new Set(homepageServices.slice(0, TRENDING_COUNT).map((s) => s.slug));
+
+  const picked = [
+    // First choice: homepage-flagged services Trending did not reach.
+    ...homepageServices.slice(TRENDING_COUNT),
+    // Then anything else published, so the band is never thin.
+    ...allServices.filter((service) => !shownInTrending.has(service.slug)),
+  ];
+
+  // De-duplicate: the two sources overlap by construction.
+  const seen = new Set<string>();
+  const featured = picked
+    .filter((service) => {
+      if (shownInTrending.has(service.slug) || seen.has(service.slug)) return false;
+      seen.add(service.slug);
+      return true;
+    })
+    .slice(0, FEATURED_COUNT)
+    .map((service) => ({
+      service,
+      imageSrc: resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl),
+    }));
+
+  if (!featured.length) return null;
+
+  const [lead, ...supporting] = featured;
 
   return (
-    <HomepageSection id="top-services" surface="sky">
+    <HomepageSection id="top-services" surface="sky" wash="dual">
       <HomepageSectionHeader
-        eyebrow="Featured assistance"
+        eyebrow="More from the catalog"
         title="Featured digital assistance"
-        description="Selected services from the live catalog. Fees shown are RNOS assistance fees where listed."
+        description="Beyond the trending filings — more services from the live catalog. Fees shown are RNOS assistance fees where listed."
         actionHref="/services"
         actionLabel="All services"
       />
 
-      {/* Desktop editorial layout */}
-      <div className="hidden gap-5 lg:grid lg:grid-cols-[1.15fr_1fr]">
-        <article className="overflow-hidden rounded-[1.5rem] border border-[var(--dc-blue-500)]/12 bg-white shadow-[0_16px_40px_rgba(7,31,77,0.08)]">
-          <div className="relative aspect-[16/10] bg-gradient-to-br from-[var(--dc-blue-700)] to-[var(--dc-navy-950)]">
-            {leadImage ? (
-              <Image src={leadImage} alt="" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 680px" priority={false} />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <LeadIcon className="h-16 w-16 text-white/80" aria-hidden="true" />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" aria-hidden="true" />
-            {lead.badge ? (
-              <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-xs font-black uppercase tracking-wide text-[var(--dc-blue-700)]">
-                {lead.badge}
-              </span>
-            ) : null}
-          </div>
-          <div className="p-6 md:p-8">
-            <p className="text-xs font-black uppercase tracking-wider text-[var(--dc-blue-600)]">{lead.category}</p>
-            <h3 className="mt-2 text-2xl font-black tracking-tight text-[var(--dc-ink)] md:text-[1.75rem]">{lead.title}</h3>
-            {lead.shortDescription ? (
-              <p className="mt-3 line-clamp-3 text-base font-semibold leading-relaxed text-[var(--dc-body)]">
-                {lead.shortDescription}
-              </p>
-            ) : null}
-            <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[var(--dc-muted)]">Assistance fee</p>
-                <p className="mt-1 text-xl font-black text-[var(--dc-ink)]">{lead.priceLabel}</p>
-              </div>
-              <Link
-                href={`/services/${lead.slug}`}
-                className="inline-flex h-12 min-w-[9rem] items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-orange-500)] px-6 text-[15px] font-black text-white transition hover:bg-[var(--dc-orange-600)]"
-              >
-                View service
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </article>
-
-        <ul className="grid grid-cols-2 gap-4 content-start">
-          {supporting.map((service) => {
-            const Icon = service.icon;
-            const imageSrc = resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl);
-            return (
-              <li key={service.slug}>
-                <Link
-                  href={`/services/${service.slug}`}
-                  className="group flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--dc-blue-500)]/10 bg-white shadow-[0_8px_24px_rgba(7,31,77,0.05)] transition hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <span className="relative block aspect-[16/11] bg-[var(--dc-blue-soft)]">
-                    {imageSrc ? (
-                      <Image src={imageSrc} alt="" fill className="object-cover transition duration-300 group-hover:scale-[1.03]" sizes="280px" />
-                    ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
-                        <Icon className="h-8 w-8" aria-hidden="true" />
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex flex-1 flex-col p-4">
-                    <span className="line-clamp-2 text-[15px] font-extrabold leading-snug text-[var(--dc-ink)] group-hover:text-[var(--dc-blue-700)]">
-                      {service.title}
-                    </span>
-                    <span className="mt-2 text-sm font-bold text-[var(--dc-body)]">{service.priceLabel}</span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {/* Mobile: lead card + snap rail */}
-      <div className="lg:hidden">
-        <article className="overflow-hidden rounded-[1.35rem] border border-[var(--dc-blue-500)]/12 bg-white shadow-sm">
-          <div className="relative aspect-[16/10] bg-[var(--dc-blue-soft)]">
-            {leadImage ? (
-              <Image src={leadImage} alt="" fill className="object-cover" sizes="100vw" />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
-                <LeadIcon className="h-10 w-10" aria-hidden="true" />
-              </div>
-            )}
-          </div>
-          <div className="p-4">
-            <h3 className="text-xl font-black tracking-tight text-[var(--dc-ink)]">{lead.title}</h3>
-            <p className="mt-1 text-sm font-bold text-[var(--dc-body)]">{lead.priceLabel}</p>
-            <Link
-              href={`/services/${lead.slug}`}
-              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--dc-orange-500)] text-sm font-black text-white"
-            >
-              View service
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </article>
+      {/* Desktop — lead beside an equal-height 2×2 */}
+      <Stagger className="hidden gap-4 lg:grid lg:grid-cols-[1.05fr_1.2fr] lg:items-stretch">
+        <StaggerItem className="h-full">
+          <ServiceCard
+            service={lead.service}
+            imageSrc={lead.imageSrc}
+            featured
+            sizes="(max-width: 1280px) 45vw, 560px"
+          />
+        </StaggerItem>
 
         {supporting.length ? (
-          <div className="mt-4">
-            <HomepageMobileRail>
-              {supporting.map((service) => {
-                const Icon = service.icon;
-                const imageSrc = resolveHomepageServiceImage(service.slug, service.title, service.heroImageUrl);
-                return (
-                  <Link
-                    key={service.slug}
-                    href={`/services/${service.slug}`}
-                    className="w-[78%] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[1.25rem] border border-[var(--dc-blue-500)]/10 bg-white shadow-sm"
-                  >
-                    <span className="relative block aspect-[16/10] bg-[var(--dc-blue-soft)]">
-                      {imageSrc ? (
-                        <Image src={imageSrc} alt="" fill className="object-cover" sizes="280px" />
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[var(--dc-blue-700)]">
-                          <Icon className="h-8 w-8" aria-hidden="true" />
-                        </span>
-                      )}
-                    </span>
-                    <span className="block p-3.5">
-                      <span className="line-clamp-2 text-[15px] font-extrabold text-[var(--dc-ink)]">{service.title}</span>
-                      <span className="mt-1 block text-sm font-bold text-[var(--dc-body)]">{service.priceLabel}</span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </HomepageMobileRail>
-          </div>
+          <StaggerItem className="h-full">
+            <div className="grid h-full auto-rows-fr grid-cols-2 gap-4">
+              {supporting.map((item) => (
+                <ServiceCard
+                  key={item.service.slug}
+                  service={item.service}
+                  imageSrc={item.imageSrc}
+                  sizes="(max-width: 1280px) 28vw, 300px"
+                />
+              ))}
+            </div>
+          </StaggerItem>
         ) : null}
+      </Stagger>
+
+      {/* Phone and tablet — a plain grid, no lead treatment and nothing
+          hidden off the right edge. The lead/2×2 composition only earns its
+          complexity at a width that can show both columns at once. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:hidden">
+        {featured.map((item) => (
+          <ServiceCard
+            key={item.service.slug}
+            service={item.service}
+            imageSrc={item.imageSrc}
+            sizes="(max-width: 768px) 46vw, 32vw"
+          />
+        ))}
       </div>
     </HomepageSection>
   );

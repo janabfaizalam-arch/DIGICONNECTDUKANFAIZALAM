@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Image, Megaphone, Sparkles } from "lucide-react";
+import { Image, Megaphone, Share2, Sparkles } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -27,6 +27,12 @@ const LINKS = [
     title: "Offer Strip",
     description: "Promotional offer strip",
     icon: Sparkles,
+  },
+  {
+    href: "/admin/social-links",
+    title: "Social Links",
+    description: "Footer profile links and handles",
+    icon: Share2,
   },
 ];
 

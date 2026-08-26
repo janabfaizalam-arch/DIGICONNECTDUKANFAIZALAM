@@ -8,31 +8,19 @@ import {
   Phone,
   Mail,
   ShieldCheck,
+  Lock,
   Printer,
   Radar,
   Zap,
   Play,
   ArrowRight,
   CheckCircle2,
-  Facebook,
-  Instagram,
-  Youtube,
-  Linkedin,
-  Send,
-  ExternalLink,
 } from "lucide-react";
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
-import { getEnabledSocialLinks, type SocialLink, type SocialPlatform } from "@/lib/social-links";
+import { getEnabledSocialLinks, type SocialLink } from "@/lib/social-links";
+import { FooterSocial } from "@/components/footer-social";
 
-const socialIcon: Partial<Record<SocialPlatform, typeof Facebook>> = {
-  facebook: Facebook,
-  instagram: Instagram,
-  youtube: Youtube,
-  linkedin: Linkedin,
-  telegram: Send,
-  whatsapp: MessageCircle,
-};
 
 const servicesLinks = [
   { label: "GST Registration", href: "/services/gst-registration" },
@@ -103,47 +91,63 @@ export function MarketingFooter({
 
   if (isHomepage) {
     return (
-      <footer className="relative isolate overflow-hidden bg-white pb-6 pb-safe-bottom pt-10 text-[#0d1b3e] print:hidden md:pb-8 md:pt-14">
-        {/* A light footer, deliberately. The previous versions were both dark
-            slabs of link columns; the page already ends on a dark section, and
-            a second one made the whole bottom read as one heavy block. */}
+      <footer className="dc-ambient dc-bottom-nav-clearance relative isolate overflow-hidden bg-[var(--dc-sky-soft)] pb-6 pb-safe-bottom pt-10 text-[#0d1b3e] print:hidden md:pb-8 md:pt-14">
+        {/* A light footer, deliberately. The page already ends on a dark
+            section, and a second dark slab made the whole bottom read as one
+            heavy block.
+
+            Light does not have to mean bare, though — it used to be flat white
+            with a hairline on top, which is where the page's design stopped.
+            It now carries the same vocabulary as every band above it: the
+            kolam dot field, both brand orbs, and a flame hairline where the
+            page hands over. */}
+        <div className="dc-ambient-layer" aria-hidden="true">
+          <div className="dc-kolam absolute inset-0 text-[var(--dc-blue-bright)] opacity-[0.06]" />
+          <div className="dc-orb dc-orb-blue lg-drift -left-[14%] -top-[22%] h-[34rem] w-[34rem] opacity-55" />
+          <div className="dc-orb dc-orb-flame lg-drift-slow -bottom-[34%] -right-[10%] h-[30rem] w-[30rem] opacity-45" />
+        </div>
+
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-[var(--dc-orange-500)]/40 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, var(--dc-flame), transparent)" }}
           aria-hidden="true"
         />
 
         <div className="mx-auto max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] sm:px-6 md:px-8">
           {/* Action-first: the footer asks what you want to do next, instead of
               handing you a directory and leaving you to find it. */}
-          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--dc-orange-600)]">
+          <p className="dc-eyebrow-rule-start inline-flex items-center text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--dc-flame)]">
             What next?
           </p>
-          <h2 className="mt-1.5 text-[1.6rem] font-black leading-tight tracking-tight sm:text-[2rem]">
+          <h2 className="mt-2.5 text-[1.6rem] font-extrabold leading-tight tracking-[-0.025em] sm:text-[2rem]">
             Pick up where you left off.
           </h2>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Two columns from the smallest screen. One column made four tall
+              cards out of four short ones and added most of a screen's worth of
+              scrolling to the bottom of the page for no extra information. */}
+          <div className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
             {[
               {
                 href: "/services",
                 icon: Zap,
                 title: "Apply for a service",
                 body: "GST, ITR, passport, licence, insurance and schemes.",
-                ring: "from-blue-500 to-indigo-600",
+                tone: "blue" as const,
               },
               {
                 href: "/track-application",
                 icon: Radar,
                 title: "Track an application",
                 body: "Status, document requests and receipts in one place.",
-                ring: "from-emerald-500 to-teal-600",
+                tone: "blue" as const,
               },
               {
                 href: "/print",
                 icon: Printer,
                 title: "Smart Print",
                 body: "Scan a QR or upload from your phone, collect at the counter.",
-                ring: "from-orange-500 to-amber-600",
+                tone: "flame" as const,
               },
               {
                 href: whatsappUrl,
@@ -151,32 +155,46 @@ export function MarketingFooter({
                 icon: MessageCircle,
                 title: "Talk to us",
                 body: `Mon–Sat, 10–6 · +91 ${contactDetails.primaryPhone}`,
-                ring: "from-green-500 to-emerald-600",
+                tone: "whatsapp" as const,
               },
             ].map((action) => {
               const Icon = action.icon;
               const inner = (
                 <>
+                  {/* Four icons, four gradients, four unrelated hues — blue,
+                      emerald, amber, green — was the rainbow the rest of the
+                      redesign removed. Blue is the default, the flame ramp
+                      marks Smart Print as the one thing people do not expect a
+                      documentation company to offer, and WhatsApp keeps its
+                      own green because that colour is the channel's identity. */}
                   <span
-                    className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md ${action.ring}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-[0_8px_18px_-8px_rgba(0,29,95,0.6)]"
+                    style={{
+                      background:
+                        action.tone === "flame"
+                          ? "var(--dc-grad-flame)"
+                          : action.tone === "whatsapp"
+                            ? "var(--dc-teal)"
+                            : "var(--dc-grad-blue)",
+                    }}
                   >
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </span>
-                  <span className="mt-3 flex items-center gap-1.5 text-[15px] font-black">
+                  <span className="mt-3 flex items-start gap-1.5 text-[14px] font-extrabold leading-tight sm:text-[15px]">
                     {action.title}
                     <ArrowRight
-                      className="h-3.5 w-3.5 text-slate-400 transition-transform group-hover:translate-x-0.5"
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
                       aria-hidden="true"
                     />
                   </span>
-                  <span className="mt-1 block text-[13px] font-medium leading-relaxed text-slate-500">
+                  <span className="mt-1.5 block text-[12px] font-medium leading-snug text-[var(--dc-muted)] sm:text-[13px]">
                     {action.body}
                   </span>
                 </>
               );
 
               const className =
-                "group flex flex-col rounded-2xl border border-slate-200 bg-white p-4 transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg";
+                "lg-card lg-raise lg-sheen group flex flex-col p-3.5 sm:p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)]";
 
               return action.external ? (
                 <a
@@ -197,7 +215,7 @@ export function MarketingFooter({
           </div>
 
           {/* Everything else is one quiet line of links, not four columns. */}
-          <nav className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2.5 border-t border-slate-200 pt-6 text-[13.5px] font-semibold text-slate-600">
+          <nav className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2.5 border-t border-[var(--dc-blue-bright)]/12 pt-6 text-[13.5px] font-semibold text-[var(--dc-body)]">
             {dedupeLinks([
               { label: "All services", href: "/services" },
               { label: "Government schemes", href: "/#schemes" },
@@ -215,50 +233,69 @@ export function MarketingFooter({
             ))}
           </nav>
 
-          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-slate-200 pt-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-7 w-auto" />
+          {/* The sign-off, as one glass panel rather than three loose rows.
 
-            <a
-              href={`mailto:${contactDetails.email}`}
-              className="inline-flex items-center gap-2 text-[13.5px] font-bold text-slate-600 transition hover:text-[var(--dc-blue-700)]"
-            >
-              <Mail className="h-4 w-4" aria-hidden="true" />
-              {contactDetails.email}
-            </a>
+              It used to be a logo and an email floating on a hairline with the
+              right two-thirds of the row empty, the socials orphaned below, and
+              the security line pinned to the far edge with nothing to anchor
+              it. Two columns give each half something to be: who we are on the
+              left, how to reach and verify us on the right. */}
+          <div className="lg-card mt-8 grid gap-6 p-5 md:grid-cols-[1.1fr_0.9fr] md:gap-8 md:p-7">
+            <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-navbar.png" alt="DigiConnect Dukan" className="h-7 w-auto" />
+              <p className="mt-3.5 max-w-sm text-[13.5px] font-medium leading-relaxed text-[var(--dc-body)]">
+                Private digital assistance for tax, business, identity, insurance and selected government scheme
+                filings — by RNOS India Private Limited.
+              </p>
 
-            {enabledSocial.length ? (
-              <div className="ml-auto flex items-center gap-2">
-                {enabledSocial.map((link) => {
-                  const Icon = socialIcon[link.platform] ?? ExternalLink;
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2.5">
+                <a
+                  href={`mailto:${contactDetails.email}`}
+                  className="inline-flex min-h-11 items-center gap-2 text-[13.5px] font-bold text-[var(--dc-body)] transition hover:text-[var(--dc-blue-mid)]"
+                >
+                  <Mail className="h-4 w-4 text-[var(--dc-blue-bright)]" aria-hidden="true" />
+                  {contactDetails.email}
+                </a>
+                <a
+                  href={`tel:+91${contactDetails.primaryPhone}`}
+                  className="inline-flex min-h-11 items-center gap-2 text-[13.5px] font-bold text-[var(--dc-body)] transition hover:text-[var(--dc-blue-mid)]"
+                >
+                  <Phone className="h-4 w-4 text-[var(--dc-blue-bright)]" aria-hidden="true" />
+                  +91 {contactDetails.primaryPhone}
+                </a>
+              </div>
+            </div>
+
+            <div className="md:border-l md:border-[var(--dc-blue-bright)]/12 md:pl-8">
+              {/* Social — the marks with their handles, so a customer can tell
+                  our account from an impersonator before they click. */}
+              <FooterSocial links={enabledSocial} />
+
+              <ul className="mt-5 flex flex-wrap gap-2">
+                {[
+                  { icon: ShieldCheck, label: "Razorpay secured" },
+                  { icon: Lock, label: "SSL encrypted" },
+                ].map((item) => {
+                  const Icon = item.icon;
                   return (
-                    <a
-                      key={link.platform}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Visit DigiConnect on ${link.label}`}
-                      title={link.handle ? `${link.label} · ${link.handle}` : link.label}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-[var(--dc-orange-500)] hover:bg-[var(--dc-orange-500)] hover:text-white"
+                    <li
+                      key={item.label}
+                      className="lg-pill inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-[var(--dc-ink)]"
                     >
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </a>
+                      <Icon className="h-3.5 w-3.5 text-[var(--dc-teal)]" aria-hidden="true" />
+                      {item.label}
+                    </li>
                   );
                 })}
-              </div>
-            ) : null}
+              </ul>
+            </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-2 text-[12.5px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited — private
-              assistance platform, not a government portal.
-            </p>
-            <span className="inline-flex shrink-0 items-center gap-1.5 font-bold text-slate-600">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-              Razorpay secured · SSL
-            </span>
-          </div>
+          <p className="mt-5 text-[12.5px] font-medium leading-relaxed text-[var(--dc-muted)]">
+            &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited — private assistance
+            platform, not a government portal.
+          </p>
         </div>
       </footer>
     );
