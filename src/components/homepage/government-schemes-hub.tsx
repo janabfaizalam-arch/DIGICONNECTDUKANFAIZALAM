@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Landmark, Briefcase, FileCheck } from "lucide-react";
 
-import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
+import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
 import { getPublicServices } from "@/lib/services";
 import { type ServiceItem } from "@/lib/services-data";
 import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
@@ -128,16 +128,16 @@ export async function GovernmentSchemesHub() {
         ))}
       </ul>
 
-      {/* Mobile horizontal rail */}
-      <div className="md:hidden">
-        <HomepageMobileRail>
-          {schemesList.map((scheme) => (
-            <div key={scheme.slug} className="w-[82%] max-w-[300px] shrink-0 snap-start">
-              <SchemeCard scheme={scheme} />
-            </div>
-          ))}
-        </HomepageMobileRail>
-      </div>
+      {/* Phones — a grid, for the same reason as Trending and Featured: a rail
+          showed one scheme and a sliver of the next, so the rest were invisible
+          unless you knew to swipe. */}
+      <ul className="grid grid-cols-2 gap-3 md:hidden">
+        {schemesList.map((scheme) => (
+          <li key={scheme.slug}>
+            <SchemeCard scheme={scheme} />
+          </li>
+        ))}
+      </ul>
     </HomepageSection>
   );
 }

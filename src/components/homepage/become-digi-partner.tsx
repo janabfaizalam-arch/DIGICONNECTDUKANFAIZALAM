@@ -1,10 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Handshake, ArrowRight, LogIn, Check, LayoutDashboard, LifeBuoy, Store } from "lucide-react";
 
 import { DIGI_PARTNER_BECOME_CTA_LABEL, DIGI_PARTNER_LANDING_ROUTE } from "@/lib/auth/partner-access";
 import { HomepageSection } from "@/components/homepage/ui";
-import { HOMEPAGE_PARTNER_ILLUSTRATION } from "@/lib/homepage-visual-assets";
+import { PartnerIllustration } from "@/components/homepage/brand-illustration";
 
 const BENEFITS = [
   "Offer DigiConnect assistance services from your shop or desk",
@@ -139,17 +138,10 @@ export function BecomeDigiPartner() {
               drop shadow, which left its rectangular edge visible against the
               orbs. In a glass frame the edge becomes deliberate. */}
           <div className="lg-card-dark lg-float overflow-hidden rounded-[1.6rem] p-5 md:p-6">
-            <div className="relative mx-auto aspect-square max-w-[300px] overflow-hidden rounded-[1.25rem]">
-              <Image
-                src={HOMEPAGE_PARTNER_ILLUSTRATION}
-                alt=""
-                fill
-                loading="lazy"
-                className="object-cover"
-                sizes="(max-width: 1024px) 70vw, 300px"
-              />
+            <div className="mx-auto aspect-square max-w-[19rem]">
+              <PartnerIllustration tone="onDark" />
             </div>
-            <p className="mt-4 text-center text-[13.5px] font-bold leading-relaxed text-white/85">
+            <p className="mt-2 text-center text-[13.5px] font-bold leading-relaxed text-white/85">
               Partner tools, support desk access and application workflows in one portal.
             </p>
           </div>

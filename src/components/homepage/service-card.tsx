@@ -95,15 +95,18 @@ export function ServiceCard({
           dead space this layout was supposed to remove. On the featured card
           the image takes all the slack and the copy stays its natural height.
         */}
-        <span className={cn("flex flex-col p-4", featured ? "" : "flex-1")}>
-          <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-muted)]">
+        <span className={cn("flex flex-col p-3 sm:p-4", featured ? "" : "flex-1")}>
+          {/* One line, always. "Company Registration & Compliance" wrapped to
+              three lines in a 180px column and shoved the title halfway down
+              the card, so cards in the same row no longer lined up. */}
+          <span className="block truncate text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--dc-muted)] sm:text-[10.5px] sm:tracking-[0.14em]">
             {service.category}
           </span>
 
           <span
             className={cn(
               "mt-1.5 block font-extrabold leading-snug tracking-[-0.015em] text-[var(--dc-ink)] transition-colors group-hover:text-[var(--dc-blue-mid)]",
-              featured ? "text-[1.35rem]" : "line-clamp-2 text-[15.5px]",
+              featured ? "text-[1.2rem] sm:text-[1.35rem]" : "line-clamp-2 text-[14px] sm:text-[15.5px]",
             )}
           >
             {service.title}
@@ -113,7 +116,7 @@ export function ServiceCard({
             <span
               className={cn(
                 "mt-2 block font-medium leading-relaxed text-[var(--dc-body)]",
-                featured ? "line-clamp-3 text-[14.5px]" : "line-clamp-2 text-[13px]",
+                featured ? "line-clamp-3 text-[13px] sm:text-[14.5px]" : "line-clamp-2 text-[12px] sm:text-[13px]",
               )}
             >
               {service.shortDescription}
@@ -122,14 +125,18 @@ export function ServiceCard({
 
           {/* Foot — pushed to the bottom so cards of different copy length still
               line their prices and buttons up across the row. */}
-          <span className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-2.5 pt-4">
-            <span className="min-w-[6.5rem] flex-1">
+          {/* Below sm the grid is two columns on a 390px phone, so each card
+              is about 180px wide — not enough for a price and a button to
+              share a row. The foot stacks there and goes side-by-side from sm
+              up, where there is room. */}
+          <span className="mt-auto flex flex-col items-stretch gap-2 pt-3.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-x-3 sm:gap-y-2.5 sm:pt-4">
+            <span className="min-w-0 sm:min-w-[6.5rem] sm:flex-1">
               {hasPrice ? (
                 <>
                   <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--dc-muted)]">
                     Assistance fee
                   </span>
-                  <span className="mt-0.5 block truncate text-[17px] font-extrabold text-[var(--dc-ink)]">
+                  <span className="mt-0.5 block truncate text-[15px] font-extrabold text-[var(--dc-ink)] sm:text-[17px]">
                     {service.priceLabel}
                   </span>
                 </>
@@ -139,14 +146,14 @@ export function ServiceCard({
                    the text broke to four lines and crushed the button; letting
                    it wrap naturally — and letting the row wrap — keeps both
                    readable at every card width. */
-                <span className="block text-[12.5px] font-bold leading-snug text-[var(--dc-body)]">
+                <span className="block text-[11.5px] font-bold leading-snug text-[var(--dc-body)] sm:text-[12.5px]">
                   Fee shared after a free assessment
                 </span>
               )}
             </span>
 
             <span
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-4 text-[13px] font-extrabold text-white transition duration-300 group-hover:brightness-110"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-[12.5px] font-extrabold text-white transition duration-300 group-hover:brightness-110 sm:px-4 sm:text-[13px]"
               style={{ background: featured ? BED_LEAD : BED_REST }}
             >
               {hasPrice ? "Apply now" : "Get a quote"}

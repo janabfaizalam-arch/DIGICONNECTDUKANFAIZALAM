@@ -1,9 +1,8 @@
-import Image from "next/image";
 import { ShieldCheck, Headphones, Globe, CheckCircle2, Route, FileLock2 } from "lucide-react";
 
 import { BrandIcon, HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
 import { Stagger, StaggerItem } from "@/components/homepage/motion";
-import { HOMEPAGE_TRUST_ILLUSTRATION } from "@/lib/homepage-visual-assets";
+import { TrustIllustration } from "@/components/homepage/brand-illustration";
 
 const PRIMARY = [
   {
@@ -54,15 +53,8 @@ export function TrustStrip() {
 
       <div className="grid items-center gap-6 lg:grid-cols-[1fr_1.05fr] lg:gap-10">
         <div className="lg-card p-5 md:p-7">
-          <div className="relative mx-auto aspect-[4/3] max-w-md">
-            <Image
-              src={HOMEPAGE_TRUST_ILLUSTRATION}
-              alt=""
-              fill
-              loading="lazy"
-              className="object-contain"
-              sizes="(max-width: 1024px) 90vw, 480px"
-            />
+          <div className="mx-auto aspect-square max-w-[19rem]">
+            <TrustIllustration tone="onLight" />
           </div>
           {/* The disclaimer is the most important sentence on the page and it
               is given the strongest surface on the section rather than being

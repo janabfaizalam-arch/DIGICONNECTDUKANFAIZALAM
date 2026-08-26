@@ -1,4 +1,4 @@
-import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
+import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
 import { ServiceCard } from "@/components/homepage/service-card";
 import { Stagger, StaggerItem } from "@/components/homepage/motion";
 import { getPublicHomepageServices, getPublicServices } from "@/lib/services";
@@ -103,21 +103,19 @@ export async function FeaturedServices() {
         ) : null}
       </Stagger>
 
-      {/* Tablet — a plain three-up, no lead treatment */}
-      <div className="hidden gap-4 md:grid md:grid-cols-3 lg:hidden">
-        {featured.slice(0, 3).map((item) => (
-          <ServiceCard key={item.service.slug} service={item.service} imageSrc={item.imageSrc} sizes="32vw" />
+      {/* Phone and tablet — a plain grid, no lead treatment and nothing
+          hidden off the right edge. The lead/2×2 composition only earns its
+          complexity at a width that can show both columns at once. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:hidden">
+        {featured.map((item) => (
+          <ServiceCard
+            key={item.service.slug}
+            service={item.service}
+            imageSrc={item.imageSrc}
+            sizes="(max-width: 768px) 46vw, 32vw"
+          />
         ))}
       </div>
-
-      {/* Phones — one rail */}
-      <HomepageMobileRail className="md:hidden">
-        {featured.map((item) => (
-          <div key={item.service.slug} className="w-[80%] max-w-[290px] shrink-0 snap-start">
-            <ServiceCard service={item.service} imageSrc={item.imageSrc} />
-          </div>
-        ))}
-      </HomepageMobileRail>
     </HomepageSection>
   );
 }

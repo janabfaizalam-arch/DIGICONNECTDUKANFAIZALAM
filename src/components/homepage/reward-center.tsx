@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { Gift, Wallet, ArrowRight, Check, Copy, MessageCircle, HelpCircle } from "lucide-react";
+import { Gift, ArrowRight, Check, Copy, MessageCircle, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import {
   FIRST_SERVICE_CASHBACK_PERCENT,
@@ -13,7 +12,7 @@ import {
   MAX_WALLET_REDEEM_PERCENT,
 } from "@/lib/reward-rules";
 import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
-import { HOMEPAGE_REWARDS_ILLUSTRATION } from "@/lib/homepage-visual-assets";
+import { RewardsIllustration } from "@/components/homepage/brand-illustration";
 
 export function RewardCenter() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -115,7 +114,7 @@ export function RewardCenter() {
               Reward rules
             </h3>
             <div className="relative h-28 w-36 shrink-0 sm:h-32 sm:w-40">
-              <Image src={HOMEPAGE_REWARDS_ILLUSTRATION} alt="" fill loading="lazy" className="object-contain drop-shadow-xl" sizes="160px" />
+              <RewardsIllustration tone="onDark" />
             </div>
           </div>
           <ul className="relative space-y-4">
@@ -206,12 +205,11 @@ export function RewardCenter() {
             </div>
           ) : (
             <div className="flex h-full flex-col justify-between gap-6">
-              <div className="rounded-[1.35rem] bg-[var(--dc-blue-soft)] p-6 text-center">
-                <div className="relative mx-auto mb-3 h-32 w-36">
-                  <Image src={HOMEPAGE_REWARDS_ILLUSTRATION} alt="" fill className="object-contain" sizes="144px" />
+              <div className="lg-card rounded-[1.35rem] p-6 text-center">
+                <div className="mx-auto mb-1 aspect-square w-40">
+                  <RewardsIllustration tone="onLight" />
                 </div>
-                <Wallet className="mx-auto h-6 w-6 text-[var(--dc-blue-700)]" aria-hidden="true" />
-                <h4 className="mt-3 text-lg font-black text-[var(--dc-ink)]">Login to view wallet & referrals</h4>
+                <h4 className="text-lg font-extrabold text-[var(--dc-ink)]">Login to view wallet &amp; referrals</h4>
                 <p className="mt-2 text-[15px] font-semibold leading-relaxed text-[var(--dc-body)]">
                   Signup referral bonus is ₹{REFERRER_SIGNUP_BONUS_AMOUNT} when configured rules apply. No fabricated
                   earnings are shown to guests.

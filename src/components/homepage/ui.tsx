@@ -139,7 +139,12 @@ export function HomepageSectionHeader({
     <div
       className={cn(
         "mb-6 gap-4 sm:mb-7 md:mb-9",
-        center ? "flex flex-col items-center text-center" : "flex items-end justify-between",
+        center
+          ? "flex flex-col items-center text-center"
+          : // Stacked on phones. Side by side, the action pill sat hard against
+            // a two-line description with nowhere to go, and the two read as
+            // one collided block.
+            "flex flex-col items-start sm:flex-row sm:items-end sm:justify-between",
       )}
     >
       <div className={cn("min-w-0", center ? "max-w-2xl" : "max-w-3xl")}>
@@ -195,25 +200,6 @@ export function HomepageSectionHeader({
           />
         </Link>
       ) : null}
-    </div>
-  );
-}
-
-/**
- * Horizontal rail for phones.
- *
- * The right padding clears the floating WhatsApp button, so the last card in a
- * rail can still be scrolled fully into view instead of sitting under it.
- */
-export function HomepageMobileRail({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "no-scrollbar -mx-[var(--mobile-page-gutter)] flex snap-x snap-mandatory gap-3 overflow-x-auto px-[var(--mobile-page-gutter)] pb-2 pr-[calc(var(--mobile-page-gutter)+4.75rem+env(safe-area-inset-right))]",
-        className,
-      )}
-    >
-      {children}
     </div>
   );
 }

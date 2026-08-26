@@ -1,7 +1,7 @@
 import { getPublicHomepageServices } from "@/lib/services";
 import { resolveHomepageServiceImage } from "@/lib/homepage-visual-assets";
 import { ServiceCard } from "@/components/homepage/service-card";
-import { HomepageSection, HomepageSectionHeader, HomepageMobileRail } from "@/components/homepage/ui";
+import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";
 import { Stagger, StaggerItem } from "@/components/homepage/motion";
 
 /**
@@ -42,31 +42,26 @@ export async function TrendingNow() {
         actionLabel="All services"
       />
 
-      {/* Phones — one rail, lead first */}
-      <HomepageMobileRail className="md:hidden">
-        {[lead, ...rest].map((item, index) => (
-          <div key={item.service.slug} className="w-[82%] max-w-[300px] shrink-0 snap-start">
-            <ServiceCard service={item.service} imageSrc={item.imageSrc} featured={index === 0} />
-          </div>
-        ))}
-      </HomepageMobileRail>
+      {/* One uniform grid at every width.
 
-      {/* Tablet and up — a uniform grid.
+          Two things were wrong before. The lead card spanned two columns,
+          which was an attempt to fix an empty cell and only moved it: with six
+          services a spanning lead occupies seven cells, and seven tiles into
+          neither three columns nor four without a gap. And phones got a
+          horizontal rail that showed one card and a sliver of the next, so
+          five of the six were invisible unless you knew to swipe.
 
-          The lead card used to span two columns. That was an attempt to fix an
-          empty cell and it just moved it: with six services, a spanning lead
-          occupies seven cells, and seven tiles into neither three columns nor
-          four without a gap. Six equal cards tile perfectly into both (2×3 and
-          3×2), and the lead is still obviously the lead — it carries the flame
-          ramp and a larger title while every other card is blue. */}
-      <Stagger className="hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-3">
+          Six equal cards tile perfectly into two columns and three, so the
+          same grid serves the phone, the tablet and the desktop. The lead is
+          still unmistakably the lead: it alone carries the flame ramp. */}
+      <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {[lead, ...rest].map((item, index) => (
           <StaggerItem key={item.service.slug}>
             <ServiceCard
               service={item.service}
               imageSrc={item.imageSrc}
               featured={index === 0}
-              sizes="(max-width: 1024px) 46vw, 400px"
+              sizes="(max-width: 640px) 46vw, (max-width: 1024px) 46vw, 400px"
             />
           </StaggerItem>
         ))}

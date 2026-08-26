@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Route } from "lucide-react";
 import { HomepageSection } from "@/components/homepage/ui";
-import { HOMEPAGE_TRACKING_ILLUSTRATION } from "@/lib/homepage-visual-assets";
+import { TrackingIllustration } from "@/components/homepage/brand-illustration";
 
 export function ApplicationTrackingCta() {
   return (
@@ -37,15 +36,8 @@ export function ApplicationTrackingCta() {
             </Link>
           </div>
         </div>
-        <div className="lg-card-dark lg-float relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-[1.35rem]">
-          <Image
-            src={HOMEPAGE_TRACKING_ILLUSTRATION}
-            alt=""
-            fill
-            loading="lazy"
-            className="object-contain drop-shadow-xl"
-            sizes="(max-width: 768px) 80vw, 360px"
-          />
+        <div className="lg-float mx-auto aspect-square w-full max-w-[19rem]">
+          <TrackingIllustration tone="onDark" />
         </div>
       </div>
     </HomepageSection>
