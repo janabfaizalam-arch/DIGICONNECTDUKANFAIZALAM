@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ExternalLink, Eye, Search, UserPlus } from "lucide-react";
+import { ExternalLink, Eye, FileSpreadsheet, Search, UserPlus } from "lucide-react";
 
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 import {
   ADMIN_AGENCY_PARTNERS_NEW_ROUTE,
   adminAgencyPartnerDetailPath,
+  adminAgencyPartnerExportPath,
 } from "@/lib/admin/agency-partner-routes";
+import {
+  filterAgencyPartners,
+  parseAgencyPartnerFilters,
+} from "@/lib/admin/agency-partner-filters";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
@@ -15,36 +20,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { safeCurrency } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getAdminAgencyPartnerList } from "@/lib/ap-data";
-import { AP_PARTNER_TYPE_LABELS, type APListItem } from "@/lib/ap-types";
-import {
-  DIGI_PARTNER_TYPE_VALUES,
-  normalizePartnerType,
-  partnerTypeDisplayLabel,
-} from "@/lib/ap/partner-type";
+import { AP_PARTNER_TYPE_LABELS } from "@/lib/ap-types";
+import { DIGI_PARTNER_TYPE_VALUES, partnerTypeDisplayLabel } from "@/lib/ap/partner-type";
 
 export const dynamic = "force-dynamic";
 
 type AdminAPPageProps = {
   searchParams?: Promise<{ q?: string; type?: string }>;
 };
-
-function matchesAPSearch(ap: APListItem, query: string) {
-  const haystack = [
-    ap.full_name,
-    ap.mobile,
-    ap.email,
-    ap.partner_code,
-    ap.business_name,
-    ap.address,
-    ap.district,
-    ap.state,
-    partnerTypeDisplayLabel(ap.partner_type),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  return haystack.includes(query.toLowerCase());
-}
 
 export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPPageProps) {
   const user = await getCurrentUser();
@@ -54,15 +37,12 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
   if (!isAdminRole(role)) redirect("/dashboard");
 
   const params = await searchParams;
-  const query = String(params?.q ?? "").trim();
-  const typeFilter = normalizePartnerType(String(params?.type ?? "").trim());
+  const filters = parseAgencyPartnerFilters({ q: params?.q, type: params?.type });
+  const { query, type: typeFilter } = filters;
   const partners = await getAdminAgencyPartnerList();
 
-  const visiblePartners = partners.filter((ap) => {
-    if (typeFilter && normalizePartnerType(ap.partner_type) !== typeFilter) return false;
-    if (query && !matchesAPSearch(ap, query)) return false;
-    return true;
-  });
+  const visiblePartners = filterAgencyPartners(partners, filters);
+  const exportHref = adminAgencyPartnerExportPath({ q: query, type: typeFilter });
 
   const totalCommissions = partners.reduce((total, ap) => total + ap.pendingCommission + ap.totalPaidCommission, 0);
   const pendingCommissions = partners.reduce((total, ap) => total + ap.pendingCommission, 0);
@@ -84,6 +64,14 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
             >
               <ExternalLink className="h-4 w-4 text-indigo-500" />
               Open Partner Portal
+            </a>
+            <a
+              href={exportHref}
+              title={`Download full details for ${visiblePartners.length} Digi Partner${visiblePartners.length === 1 ? "" : "s"} as an Excel workbook`}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Download Excel
             </a>
             <Link href={ADMIN_AGENCY_PARTNERS_NEW_ROUTE} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
               <UserPlus className="h-4 w-4" />

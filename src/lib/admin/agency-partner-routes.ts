@@ -5,6 +5,23 @@
 
 export const ADMIN_AGENCY_PARTNERS_ROUTE = "/admin/agency-partners";
 export const ADMIN_AGENCY_PARTNERS_NEW_ROUTE = "/admin/agency-partners/new";
+export const ADMIN_AGENCY_PARTNERS_EXPORT_ROUTE = "/api/admin/agency-partners/export";
+
+/** Excel export URL carrying the console's current search / partner-type filters. */
+export function adminAgencyPartnerExportPath(filters?: {
+  q?: string | null;
+  type?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  const query = String(filters?.q ?? "").trim();
+  const type = String(filters?.type ?? "").trim();
+  if (query) params.set("q", query);
+  if (type) params.set("type", type);
+  const search = params.toString();
+  return search
+    ? `${ADMIN_AGENCY_PARTNERS_EXPORT_ROUTE}?${search}`
+    : ADMIN_AGENCY_PARTNERS_EXPORT_ROUTE;
+}
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
