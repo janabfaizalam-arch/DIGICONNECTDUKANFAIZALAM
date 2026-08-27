@@ -3,11 +3,12 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import {
   Bell,
+  ChevronLeft,
   FileText,
   FolderOpen,
   HelpCircle,
@@ -121,11 +122,37 @@ function greeting() {
 
 export function CustomerPortal(data: CustomerPortalData) {
   const { applications, profileStatus, profile, user, notifications = [] } = data;
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { error: toastError } = useToast();
 
-  const section = resolveSection(searchParams.get("tab"));
+  /**
+   * Which section is showing.
+   *
+   * This is local state, and the URL is updated with `history.pushState`
+   * rather than `router.push`. That is the whole reason a tap feels instant:
+   * this page is `force-dynamic`, so a router navigation re-runs the server
+   * component and re-reads the profile, applications, wallet and documents
+   * from Supabase before anything changes on screen. Every tab click paid for
+   * a full round trip to show data that was already in the browser.
+   *
+   * The URL still changes, so links, refreshes and the back button all keep
+   * working — `popstate` below puts the section back in step.
+   */
+  const urlSection = resolveSection(searchParams.get("tab"));
+  const [section, setSection] = useState<CustomerSection>(urlSection);
+
+  useEffect(() => {
+    setSection(urlSection);
+  }, [urlSection]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const tab = new URLSearchParams(window.location.search).get("tab");
+      setSection(resolveSection(tab));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const [trayOpen, setTrayOpen] = useState(false);
   const [localNotifications, setLocalNotifications] = useState<CustomerNotification[]>(notifications);
@@ -149,12 +176,11 @@ export function CustomerPortal(data: CustomerPortalData) {
     [user.email, user.phone, profileStatus],
   );
 
-  const goToSection = useCallback(
-    (next: CustomerSection) => {
-      router.push(sectionHref(next), { scroll: true });
-    },
-    [router],
-  );
+  const goToSection = useCallback((next: CustomerSection) => {
+    setSection(next);
+    window.history.pushState(null, "", sectionHref(next));
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   const markAllRead = useCallback(async () => {
     const unreadIds = localNotifications.filter((item) => !item.read_at).map((item) => item.id);
@@ -205,7 +231,16 @@ export function CustomerPortal(data: CustomerPortalData) {
 
   return (
     <MotionRoot>
-      <div className="dc-ambient min-h-screen bg-[var(--dc-sky-soft)] text-[var(--dc-ink)] md:flex">
+      {/*
+        `overflow-x-clip`, for the same reason the marketing shell has it. The
+        ambient orbs are sized in `vw`, and `vw` counts the classic scrollbar
+        that Windows Chrome draws — so on a desktop with real scrollbars the
+        decoration sat a few pixels past the content box and the whole page
+        grew a horizontal scrollbar. `clip` rather than `hidden`: it does not
+        create a scroll container, so the fixed sidebar and any sticky element
+        inside keep working.
+      */}
+      <div className="dc-ambient min-h-screen overflow-x-clip bg-[var(--dc-sky-soft)] text-[var(--dc-ink)] md:flex">
         <PortalSidebar section={section} counts={counts} onNavigate={goToSection} onSignOut={signOut} />
 
         <div className="min-w-0 flex-1 md:pl-64">
@@ -361,6 +396,35 @@ function PortalHeader({
       <BrandField />
 
       <div className="relative mx-auto w-full max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] pb-5 pt-6 sm:px-6 md:px-8 md:pb-6 md:pt-8">
+        {/*
+          Top bar, phones only.
+
+          The desktop sidebar carries the logo and it links to the website, but
+          it is hidden below `md` — which left a customer on a phone with no way
+          out of the portal at all. No back link, no logo, nothing. This is that
+          way out, and it is the first thing in the header rather than tucked
+          beside the bell, because leaving is a thing people look for at the top
+          left of a screen.
+        */}
+        <div className="mb-4 flex items-center justify-between gap-3 md:hidden">
+          <Link
+            href="/"
+            className="lg-pill-dark inline-flex h-9 items-center gap-1.5 pl-2.5 pr-3.5 text-[12.5px] font-extrabold text-white"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            Website
+          </Link>
+          <Link href="/" className="block h-7 w-32" aria-label="DigiConnect Dukan home">
+            <Image
+              src="/logo-navbar.png"
+              alt="DigiConnect Dukan"
+              width={160}
+              height={28}
+              className="h-full w-auto object-contain brightness-0 invert"
+            />
+          </Link>
+        </div>
+
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span
@@ -380,19 +444,6 @@ function PortalHeader({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {/* The logo only appears here on phones; on desktop the sidebar
-                already carries it, and two lockups on one screen is one too
-                many. */}
-            <Link href="/" className="hidden h-7 w-32 sm:block md:hidden" aria-label="DigiConnect Dukan home">
-              <Image
-                src="/logo-navbar.png"
-                alt="DigiConnect Dukan"
-                width={160}
-                height={28}
-                className="h-full w-auto object-contain brightness-0 invert"
-              />
-            </Link>
-
             <button
               type="button"
               onClick={onOpenTray}
@@ -430,9 +481,14 @@ function PortalHeader({
                   type="button"
                   onClick={() => onNavigate(item.id)}
                   aria-current={active ? "page" : undefined}
+                  /* Inactive pills were `text-white/75` on a translucent dark
+                     pill, which on a phone in daylight read as disabled rather
+                     than tappable. Full-strength text and a firmer fill. */
                   className={cn(
-                    "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-extrabold transition duration-300",
-                    active ? "bg-white text-[var(--dc-blue-mid)]" : "lg-pill-dark text-white/75",
+                    "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-extrabold transition duration-300",
+                    active
+                      ? "bg-white text-[var(--dc-blue-mid)] shadow-[0_6px_16px_-8px_rgba(0,10,40,0.9)]"
+                      : "border border-white/25 bg-white/[0.14] text-white",
                   )}
                 >
                   <item.icon className="h-[15px] w-[15px]" aria-hidden="true" />

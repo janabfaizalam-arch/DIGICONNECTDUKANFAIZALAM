@@ -2,10 +2,9 @@
 
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileText, FolderOpen, Loader2, ShieldCheck, UploadCloud, X } from "lucide-react";
+import { Download, FileText, FolderOpen, Loader2, UploadCloud, X } from "lucide-react";
 
 import { Reveal } from "@/components/homepage/motion";
-import { CustomerVault } from "@/components/portal/customer-vault";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -23,15 +22,23 @@ import {
 /**
  * Documents.
  *
- * "Documents Hub" and "Secure Vault" were separate tabs, and neither name told
- * a customer which one held what. They are genuinely different things, so they
- * are still separate — but as two labelled parts of one section, with the
- * difference spelled out rather than left to the names:
+ * Only what a specific filing needs: the files a customer sends us for one
+ * application, and the files we send back on it.
  *
- *   • Application files — what you sent us for a specific filing, and what we
- *     have sent back.
- *   • Your vault — identity documents you keep once and reuse, so the next
- *     application does not ask for your Aadhaar again.
+ * The "Secure Vault" — a permanent store of Aadhaar, PAN, photographs and
+ * signatures held indefinitely and reused across applications — was removed at
+ * the owner's instruction. It is worth writing down why, because it is a
+ * tempting feature to add back: keeping a customer's identity documents after
+ * the filing that needed them is finished means holding sensitive personal
+ * data with no live purpose, which is exactly the kind of retention that turns
+ * a small breach into a serious one and is hard to justify under India's data
+ * protection rules. Per-application uploads stay because a filing genuinely
+ * cannot be completed without them, and they belong to a specific piece of
+ * work with a beginning and an end.
+ *
+ * Removing the screen does not remove what was already stored. The
+ * `vault_documents` rows and the files in the `vault-documents/` storage
+ * prefix are still there and need a deliberate decision of their own.
  */
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -343,31 +350,6 @@ export function DocumentsSection({ applications, documents = [], user }: Custome
         </section>
       </Reveal>
 
-      {/* ── Vault ────────────────────────────────────────────────────── */}
-      <Reveal>
-        <section id="vault" className="scroll-mt-24" aria-labelledby="vault-heading">
-          <PortalHeading
-            eyebrow="Secure vault"
-            title="Documents you reuse"
-            description="Save your identity documents once. Every future application can draw on them instead of asking again."
-          />
-          <h2 id="vault-heading" className="sr-only">
-            Secure vault
-          </h2>
-
-          <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-[var(--dc-blue-soft)] px-3.5 py-3">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--dc-blue-mid)]" aria-hidden="true" />
-            <p className="text-[12px] font-semibold leading-snug text-[var(--dc-body)]">
-              Vault files are stored for your applications only, and are never shared outside the assistance we
-              provide you.
-            </p>
-          </div>
-
-          <div className="mt-4">
-            <CustomerVault user={user} hideHeader />
-          </div>
-        </section>
-      </Reveal>
     </div>
   );
 }

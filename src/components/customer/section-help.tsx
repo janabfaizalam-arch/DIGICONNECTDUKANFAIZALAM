@@ -23,21 +23,22 @@ import {
 import { cn } from "@/lib/utils";
 
 import type { CustomerPortalData } from "@/components/customer/types";
-import { PortalButton, PortalCard, PortalHeading, PortalIcon } from "@/components/customer/ui";
+import { PortalButton, PortalHeading, PortalIcon } from "@/components/customer/ui";
 
 /**
  * Help.
  *
- * Two fixes beyond the styling.
- *
- * **The phone numbers are not typed in here.** The old support tab had
+ * The phone numbers are not typed in here. The old support tab had
  * "+91 7007595931" and two others written into the JSX, in three places, next
  * to a `contactDetails` module that already held all three. A number changing
  * meant finding every copy; this reads the one source.
  *
- * **Credit reports are reachable.** `/customer/credit-reports` has existed the
- * whole time, fully built, with nothing anywhere linking to it — a customer
- * could only find it by typing the URL. It is a card in this section now.
+ * There is deliberately no link to `/customer/credit-reports`. That screen was
+ * never reachable from anywhere, and rather than surface it, the owner's call
+ * was that it does not earn its place in the portal: a bureau score shown
+ * beside a filing invites a customer to read it as advice we are not offering.
+ * The route still exists for the CIBIL service itself; it is simply not part
+ * of what the portal presents.
  */
 
 type SupportLine = {
@@ -164,27 +165,6 @@ export function HelpSection({ profileStatus, user }: CustomerPortalData) {
           <ArrowRight className="h-4 w-4 shrink-0 text-[var(--dc-muted)]" aria-hidden="true" />
         </a>
       </section>
-
-      {/* ── Credit reports ───────────────────────────────────────────── */}
-      <Reveal>
-        <PortalCard className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <PortalIcon tone="flame">
-              <Gauge className="h-[18px] w-[18px]" aria-hidden="true" />
-            </PortalIcon>
-            <div className="min-w-0">
-              <p className="text-[14px] font-extrabold text-[var(--dc-ink)]">Your credit reports</p>
-              <p className="mt-1 text-[12.5px] font-medium leading-relaxed text-[var(--dc-body)]">
-                Every bureau check we have run for you, with the score history.
-              </p>
-            </div>
-          </div>
-          <PortalButton href="/customer/credit-reports" tone="ghost" className="shrink-0">
-            Open reports
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </PortalButton>
-        </PortalCard>
-      </Reveal>
 
       {/* ── FAQs ─────────────────────────────────────────────────────── */}
       <Reveal>

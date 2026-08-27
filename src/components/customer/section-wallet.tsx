@@ -8,6 +8,7 @@ import {
   Check,
   Copy,
   Gift,
+  Loader2,
   Share2,
   Sparkles,
   UserPlus,
@@ -76,8 +77,41 @@ export function WalletSection({ walletSnapshot, stats }: CustomerPortalData) {
   const used = walletSnapshot?.cashbackUsed ?? wallet?.total_reward_redeemed ?? 0;
   const expiringSoon = walletSnapshot?.expiringSoonAmount ?? 0;
 
-  const code = referral?.code || stats.code || "";
-  const link = referral?.link || stats.link || "";
+  /**
+   * The code can arrive after render.
+   *
+   * When the server could not issue one, the panel below offers a button that
+   * asks for it — so this has to be state rather than a straight read of the
+   * props.
+   */
+  const [issuedCode, setIssuedCode] = useState("");
+  const [issuing, setIssuing] = useState(false);
+
+  const code = referral?.code || stats.code || issuedCode;
+  const link = useMemo(() => {
+    const fromServer = referral?.link || stats.link;
+    if (fromServer) return fromServer;
+    if (!code || typeof window === "undefined") return "";
+    return `${window.location.origin}/signup?ref=${encodeURIComponent(code)}`;
+  }, [referral?.link, stats.link, code]);
+
+  const requestCode = useCallback(async () => {
+    if (issuing) return;
+    setIssuing(true);
+    try {
+      const response = await fetch("/api/customer/referral-code", { method: "POST" });
+      const result = (await response.json().catch(() => ({}))) as { ok?: boolean; code?: string; error?: string };
+      if (!response.ok || !result.ok || !result.code) {
+        throw new Error(result.error || "Could not create your code.");
+      }
+      setIssuedCode(result.code);
+      toastSuccess("Your referral code is ready.");
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not create your code.");
+    } finally {
+      setIssuing(false);
+    }
+  }, [issuing, toastSuccess, toastError]);
 
   /**
    * Referral earnings, from what was actually credited.
@@ -262,13 +296,26 @@ export function WalletSection({ walletSnapshot, stats }: CustomerPortalData) {
               </div>
             </PortalCard>
           ) : (
-            <div className="mt-5">
-              <EmptyState
-                icon={<Gift className="h-5 w-5" aria-hidden="true" />}
-                title="Your referral code is on its way"
-                description="Codes are created with your account. Refresh in a moment, or contact support if it does not appear."
-              />
-            </div>
+            <PortalCard className="mt-5 flex flex-col items-center gap-3 py-8 text-center">
+              <PortalIcon tone="flame" className="h-12 w-12 rounded-2xl">
+                <Gift className="h-5 w-5" aria-hidden="true" />
+              </PortalIcon>
+              <p className="text-[15.5px] font-extrabold text-[var(--dc-ink)]">You do not have a code yet</p>
+              <p className="max-w-sm text-[13px] font-medium leading-relaxed text-[var(--dc-body)]">
+                Create one now and share it — you earn {formatINR(REFERRER_SIGNUP_BONUS_AMOUNT)} for every friend who
+                signs up with it.
+              </p>
+              <PortalButton onClick={() => void requestCode()} disabled={issuing} tone="flame" className="mt-1">
+                {issuing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Creating…
+                  </>
+                ) : (
+                  "Create my code"
+                )}
+              </PortalButton>
+            </PortalCard>
           )}
 
           {referral?.referrals?.length ? (

@@ -7,6 +7,8 @@ export type SummarisableApplication = {
   status: unknown;
   payment_status?: string | null;
   created_at: string;
+  amount?: number;
+  total_amount?: number | null;
 };
 
 export type ApplicationCounts = {
@@ -49,6 +51,14 @@ export type CustomerTask = {
   applicationId: string;
   serviceName: string;
   action: CustomerNextAction;
+  /**
+   * The fee, when the task is a payment.
+   *
+   * A card that says only "Pay Now" under a service name is indistinguishable
+   * from a navigation tab — which is exactly how the first version of this
+   * screen was read. The amount is what makes it obviously a bill.
+   */
+  amount?: number;
   /** Lower sorts first. Money and blocked paperwork come before progress. */
   urgency: number;
 };
@@ -88,10 +98,13 @@ export function collectTasks(applications: SummarisableApplication[]): CustomerT
     const urgency = URGENCY[action.key];
     if (urgency === undefined) continue;
 
+    const fee = application.total_amount ?? application.amount ?? 0;
+
     tasks.push({
       applicationId: application.id,
       serviceName: application.service_name,
       action,
+      amount: action.key === "pay_now" && Number.isFinite(fee) && fee > 0 ? fee : undefined,
       urgency,
     });
   }

@@ -100,6 +100,15 @@ export function HomeSection({
         </h2>
 
         {tasks.length ? (
+          /*
+            These are actions, not tabs.
+
+            The first version was a service name with "Pay Now" under it in a
+            plain card, twice over, side by side — which read as two navigation
+            tabs rather than two bills. Three things fix it: the amount is on
+            the card, the action is drawn as a button rather than a caption,
+            and the label says what happens.
+          */
           <Stagger as="ul" className="mt-5 grid gap-2.5 sm:grid-cols-2">
             {tasks.map((task) => {
               const Icon = TASK_ICON[task.action.key as keyof typeof TASK_ICON] ?? ClipboardList;
@@ -109,22 +118,45 @@ export function HomeSection({
                   <Link
                     href={task.action.href}
                     className={cn(
-                      "lg-card lg-raise lg-sheen flex h-full items-center gap-3 p-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)] sm:p-4",
-                      urgent && "ring-1 ring-[var(--dc-flame)]/35",
+                      "lg-card lg-raise lg-sheen flex h-full flex-col gap-3 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)]",
+                      urgent && "ring-1 ring-[var(--dc-flame)]/40",
                     )}
                   >
-                    <PortalIcon tone={urgent ? "flame" : "blue"}>
-                      <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </PortalIcon>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-extrabold text-[var(--dc-ink)]">
-                        {task.serviceName}
+                    <span className="flex items-start gap-3">
+                      <PortalIcon tone={urgent ? "flame" : "blue"}>
+                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      </PortalIcon>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-extrabold text-[var(--dc-ink)]">
+                          {task.serviceName}
+                        </span>
+                        <span className="mt-0.5 block text-[12px] font-semibold text-[var(--dc-body)]">
+                          {urgent
+                            ? "Fee pending — your filing is on hold"
+                            : task.action.key === "upload_documents"
+                              ? "We need a document from you"
+                              : "Our team has a question for you"}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-[12px] font-bold text-[var(--dc-body)]">
-                        {task.action.label}
-                      </span>
+                      {task.amount ? (
+                        <span className="shrink-0 text-right">
+                          <span className="block text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--dc-muted)]">
+                            Due
+                          </span>
+                          <span className="block text-[16px] font-extrabold text-[var(--dc-ink)]">
+                            {formatINR(task.amount)}
+                          </span>
+                        </span>
+                      ) : null}
                     </span>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-[var(--dc-muted)]" aria-hidden="true" />
+
+                    <span
+                      className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13.5px] font-extrabold text-white transition duration-300"
+                      style={{ background: urgent ? "var(--dc-grad-flame)" : "var(--dc-grad-blue)" }}
+                    >
+                      {task.action.label}
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </span>
                   </Link>
                 </StaggerItem>
               );
