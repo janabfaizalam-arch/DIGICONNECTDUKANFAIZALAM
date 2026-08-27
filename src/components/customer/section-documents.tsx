@@ -36,9 +36,18 @@ import {
  * cannot be completed without them, and they belong to a specific piece of
  * work with a beginning and an end.
  *
- * Removing the screen does not remove what was already stored. The
- * `vault_documents` rows and the files in the `vault-documents/` storage
- * prefix are still there and need a deliberate decision of their own.
+ * What this change does and does not reach, precisely:
+ *
+ *   • The vault screen and its uploader component are gone, so nothing in the
+ *     app can put a new document into the vault any more.
+ *   • `/api/customer/vault` and its OCR route still exist. The service
+ *     application form reads them to offer autofill from documents a customer
+ *     saved earlier, which is why they were not pulled out here — removing
+ *     them is a change to the apply flow, not to this screen.
+ *   • The `vault_documents` rows and the files under the `vault-documents/`
+ *     storage prefix are untouched. Deleting stored personal data is a
+ *     decision with its own consequences and needs to be made deliberately,
+ *     not as a side effect of removing a screen.
  */
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
