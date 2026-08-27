@@ -22,6 +22,14 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface CustomerVaultProps {
   user: SupabaseUser;
+  /**
+   * Suppress the component's own title.
+   *
+   * The vault is embedded in the portal's Documents section, which already
+   * heads it — and explains what makes it different from the per-application
+   * files above. Rendering both put two titles on one panel.
+   */
+  hideHeader?: boolean;
 }
 
 interface OCRJob {
@@ -56,7 +64,7 @@ const DOC_TYPES = [
   { value: "other", label: "Other Verification Document" }
 ];
 
-export function CustomerVault({ user }: CustomerVaultProps) {
+export function CustomerVault({ user, hideHeader }: CustomerVaultProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -353,14 +361,16 @@ export function CustomerVault({ user }: CustomerVaultProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-          Secure Vault & Identity Hub
-        </h2>
-        <p className="text-xs text-slate-500 font-semibold mt-1">
-          Store, verify, and auto-parse essential documents safely for instant service application fillings.
-        </p>
-      </div>
+      {hideHeader ? null : (
+        <div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            Secure Vault & Identity Hub
+          </h2>
+          <p className="text-xs text-slate-500 font-semibold mt-1">
+            Store, verify, and auto-parse essential documents safely for instant service application fillings.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px] items-start">
         {/* Gallery / List */}

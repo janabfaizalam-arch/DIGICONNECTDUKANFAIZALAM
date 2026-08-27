@@ -819,6 +819,15 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
     );
   }
 
+  /*
+    The same job on a screen with no floating WhatsApp button — the signed-in
+    portal. Reusing the class above there would reserve room for a button that
+    is not on the page, which is a 56px strip of nothing under the last card.
+  */
+  .dc-nav-clearance {
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 1.25rem);
+  }
+
   .homepage-mobile-shell img,
   .homepage-mobile-shell svg,
   .homepage-mobile-shell video,
