@@ -153,6 +153,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const loggedOut = new URLSearchParams(window.location.search).get("loggedOut") === "1";
     if (loggedOut) signOut();
 
+    /*
+      Two steps, and the order matters.
+
+      `getSession()` reads the session already in local storage: no network,
+      an answer in the same tick. `getUser()` validates that session against
+      the auth server, which is a round trip and can be slow — and while it
+      was the only source, the chrome sat in its signed-out shape until it
+      came back. On the bottom tab bar that is not a cosmetic delay: signed
+      out, it shows an entirely different set of tabs, so a customer watched
+      their bar say Services / Track / Sign in and then change under them.
+      Worse, when the auth call was slow enough it never changed at all.
+
+      So the local session paints first, and the server has the final word: if
+      it comes back with no user, the session was stale and `adopt(null)`
+      signs the chrome out.
+    */
+    void supabase.auth.getSession().then(({ data }) => {
+      if (loggedOut || !data.session?.user) return;
+      void adopt(data.session.user);
+    });
+
     void supabase.auth.getUser().then(({ data }) => {
       if (loggedOut) {
         signOut();

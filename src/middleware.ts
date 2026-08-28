@@ -160,6 +160,31 @@ function getLegacyAgentRedirect(pathname: string): string | null {
   return null;
 }
 
+/**
+ * A ceiling on how long middleware will wait for a role lookup.
+ *
+ * Middleware sits in front of every protected route, and Vercel kills the
+ * invocation if it overruns — which surfaces as a 504 on the page, not as a
+ * degraded one. A lookup that has not answered in this long is not going to
+ * save the request; giving up on it and falling back to the role in the token
+ * lets the page render, and the page does its own authorisation anyway.
+ */
+const ROLE_LOOKUP_TIMEOUT_MS = 2_500;
+
+function withLookupTimeout<T>(query: PromiseLike<{ data: T | null }>): Promise<{ data: T | null }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<{ data: T | null }>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn("MIDDLEWARE_ROLE_LOOKUP_TIMEOUT", { ms: ROLE_LOOKUP_TIMEOUT_MS });
+      resolve({ data: null });
+    }, ROLE_LOOKUP_TIMEOUT_MS);
+  });
+
+  return Promise.race([Promise.resolve(query).then((result) => result ?? { data: null }), timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request,
@@ -408,21 +433,62 @@ export async function middleware(request: NextRequest) {
   let adminMembership = false;
 
   if (user) {
-    const { data: profileRow } = await supabase
-      .from("profiles")
-      .select("role, kyc_status, active, is_active, mobile, pincode")
-      .eq("id", user.id)
-      .maybeSingle();
+    /*
+      Two reads, run together, and the partner one only where it can change
+      the answer.
 
-    profile = (profileRow as ProfileAuthShape | null) ?? null;
+      This used to be up to three round trips to Supabase, one after another,
+      inside middleware: `profiles`, then an `agency_partners` probe, then
+      `agency_partners` again — for the same row the probe had just looked at.
+      Added to `getUser()` above, that is four serial calls to another service
+      before a single byte of the page is produced, on a matcher that covers
+      every protected route. When the database was slow it spent the whole
+      middleware budget and Vercel returned 504 MIDDLEWARE_INVOCATION_TIMEOUT
+      for everything behind it, the customer dashboard included.
+
+      The probe is gone — it selected `id` from exactly the row the second
+      query already returns, so the second one answers both questions. What is
+      left runs concurrently, which makes the cost one round trip rather than
+      the sum of two, and it is skipped where nothing reads it.
+    */
+    const metadataRole =
+      normalizeAppRole((user.app_metadata as Record<string, unknown> | undefined)?.role) ??
+      normalizeAppRole(user.user_metadata?.role);
+
+    // Membership matters on the partner-facing paths, for a user whose token
+    // already says partner, and when the token records no role at all — that
+    // last case is the one the removed probe existed to answer.
+    const needsPartnerData =
+      matchesRoute(pathname, "/ap") ||
+      matchesRoute(pathname, "/agent") ||
+      matchesRoute(pathname, "/apply") ||
+      matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE) ||
+      metadataRole === "agency_partner" ||
+      !metadataRole;
+
+    const [profileResult, partnerResult] = await Promise.all([
+      withLookupTimeout(
+        supabase
+          .from("profiles")
+          .select("role, kyc_status, active, is_active, mobile, pincode")
+          .eq("id", user.id)
+          .maybeSingle(),
+      ),
+      needsPartnerData
+        ? withLookupTimeout(
+            supabase.from("agency_partners").select("id, status, kyc_status").eq("user_id", user.id).maybeSingle(),
+          )
+        : Promise.resolve({ data: null }),
+    ]);
+
+    profile = (profileResult.data as ProfileAuthShape | null) ?? null;
+    const apRecord = partnerResult.data as { id: string; status: string; kyc_status: string } | null;
+
     const profileRole = normalizeAppRole(profile?.role);
     if (profileRole) {
       role = profileRole;
-    } else if (!normalizeAppRole(user.user_metadata?.role) && !normalizeAppRole((user.app_metadata as Record<string, unknown> | undefined)?.role)) {
-      const { data: apProbe } = await supabase.from("agency_partners").select("id").eq("user_id", user.id).maybeSingle();
-      if (apProbe) {
-        role = "agency_partner";
-      }
+    } else if (apRecord && !metadataRole) {
+      role = "agency_partner";
     }
 
     const userEmail = String(user.email ?? "").toLowerCase();
@@ -439,13 +505,6 @@ export async function middleware(request: NextRequest) {
         role = "admin";
       }
     }
-
-    // Canonical Digi Partner membership probe (independent of profiles.role)
-    const { data: apRecord } = await supabase
-      .from("agency_partners")
-      .select("id, status, kyc_status")
-      .eq("user_id", user.id)
-      .maybeSingle();
 
     if (apRecord) {
       partnerLinked = true;
