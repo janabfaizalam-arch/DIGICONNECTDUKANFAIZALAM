@@ -128,13 +128,27 @@ describe("the customer document vault", () => {
     expect(form).not.toContain("handleOcrAutofill");
   });
 
-  it("has its stored rows and files dropped by a migration", () => {
+  it("has its tables dropped by a migration", () => {
     const sql = read("supabase/migrations/20260828090000_drop_customer_document_vault.sql");
     expect(sql).toMatch(/DROP TABLE IF EXISTS public\.customer_vault_documents/);
     expect(sql).toMatch(/DROP TABLE IF EXISTS public\.vault_ocr_jobs/);
-    // Narrow by prefix: the vault shared its bucket with per-application
-    // uploads, and those must survive.
-    expect(sql).toMatch(/name LIKE 'vault-documents\/%'/);
-    expect(sql).toMatch(/bucket_id = 'application-documents'/);
+    // Supabase blocks a direct DELETE against storage.objects
+    // (storage.protect_delete raises 42501), so the migration must not try —
+    // it failed outright when it did, and took the table drops down with it.
+    expect(sql).not.toMatch(/DELETE FROM storage\.objects/);
+  });
+
+  it("has its stored files removed by a script that only touches its own prefix", () => {
+    const script = read("scripts/delete-vault-storage-files.mjs");
+    expect(script).toMatch(/const BUCKET = "application-documents"/);
+    expect(script).toMatch(/const PREFIX = "vault-documents\/"/);
+    // The bucket is shared with per-application uploads, which must survive,
+    // so nothing outside the vault's prefix may be passed to remove().
+    expect(script).toMatch(/filter\(\(path\) => path\.startsWith\(PREFIX\)\)/);
+    // Deleting is opt-in; a bare run reports what it would do.
+    expect(script).toMatch(/--confirm/);
+    // storage.list pages at 100, so a single call would silently miss most of
+    // a large vault and the script would claim success.
+    expect(script).toMatch(/offset/);
   });
 });
