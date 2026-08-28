@@ -18,16 +18,23 @@
 
 BEGIN;
 
--- 1. The stored files.
+-- 1. The stored files are NOT deleted here.
 --
--- The vault shared the `application-documents` bucket with per-application
--- uploads, and is distinguished from them only by its key prefix — the
--- uploader wrote `vault-documents/<user id>/<random>.<ext>`. Deleting by that
--- prefix is what keeps this from touching a filing's own documents, so the
--- predicate is deliberately narrow and matches nothing else in the bucket.
-DELETE FROM storage.objects
-WHERE bucket_id = 'application-documents'
-  AND name LIKE 'vault-documents/%';
+-- Supabase refuses a direct DELETE against `storage.objects`: a trigger,
+-- `storage.protect_delete()`, raises 42501 "Direct deletion from storage
+-- tables is not allowed. Use the Storage API instead." It is guarding against
+-- exactly the failure mode a bare SQL delete creates — rows removed while the
+-- objects they describe stay in the bucket, orphaned and unreachable.
+--
+-- So the files go through the Storage API instead:
+--
+--     node scripts/delete-vault-storage-files.mjs
+--
+-- Run that BEFORE this migration. Once these tables are dropped, the list of
+-- which objects belonged to the vault is gone with them — the script reads
+-- `storage_path` from `customer_vault_documents` and falls back to listing the
+-- `vault-documents/` prefix, but the first of those is by far the safer of the
+-- two, and it only exists until this runs.
 
 -- 2. The tables.
 --
