@@ -279,10 +279,21 @@ function Tab({ item, active, inPlace }: { item: Item; active: boolean; inPlace: 
     );
   }
 
-  // `prefetch` so the dashboard's chunk and data are already on their way by
-  // the time the tab is tapped, rather than starting when it is.
+  /*
+    No `prefetch`.
+
+    I added it to get the dashboard chunk moving before the tap, and it made
+    things worse in a way that was not visible from a bundle report. This bar
+    is mounted by the root layout, so it renders on every page — and an
+    explicit prefetch of `/customer/dashboard` and `/apply` fetches the render
+    payload of two `force-dynamic`, auth-protected routes. Every one of those
+    goes through middleware, which talks to Supabase. One page view became
+    several authenticated round trips, on every page of the site, and it
+    helped push middleware into the invocation timeout that took the portal
+    down. Next's default prefetching is enough.
+  */
   return (
-    <Link href={item.href} prefetch aria-current={active ? "page" : undefined} className={className}>
+    <Link href={item.href} aria-current={active ? "page" : undefined} className={className}>
       {inner}
     </Link>
   );
@@ -292,7 +303,7 @@ function Tab({ item, active, inPlace }: { item: Item; active: boolean; inPlace: 
 function ApplyTab({ item, active }: { item: Item; active: boolean }) {
   const Icon = item.icon;
   return (
-    <Link href={item.href} prefetch aria-current={active ? "page" : undefined} className="dc-tab dc-tab-apply">
+    <Link href={item.href} aria-current={active ? "page" : undefined} className="dc-tab dc-tab-apply">
       <span className="dc-tab-fab" aria-hidden="true">
         <Icon className="h-[22px] w-[22px] stroke-[2.3]" />
       </span>
