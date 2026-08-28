@@ -205,12 +205,15 @@ export function HomeSection({
               tone="flame"
               onClick={() => onNavigate("wallet")}
             />
+            {/* Documents no longer has a section of its own — a filing's
+                paperwork sits on the filing — so this counts the files and
+                sends the customer to the list that holds them. */}
             <StatTile
               label="Documents"
               value={documents.length}
               hint="Files on your applications"
               icon={<FolderOpen className="h-4 w-4" aria-hidden="true" />}
-              onClick={() => onNavigate("documents")}
+              onClick={() => onNavigate("applications")}
             />
           </div>
         </section>

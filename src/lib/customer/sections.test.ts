@@ -16,7 +16,10 @@ describe("customer portal sections", () => {
   it("keeps every old tab name working", () => {
     expect(resolveSection("dashboard")).toBe("home");
     expect(resolveSection("referral")).toBe("wallet");
-    expect(resolveSection("vault")).toBe("documents");
+    // Documents stopped being a section: a filing's paperwork lives on the
+    // filing. Both old names land on the list that holds those filings.
+    expect(resolveSection("documents")).toBe("applications");
+    expect(resolveSection("vault")).toBe("applications");
     expect(resolveSection("support")).toBe("help");
     expect(resolveSection("profile")).toBe("account");
   });

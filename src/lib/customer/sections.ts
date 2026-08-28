@@ -14,7 +14,6 @@
  *                  need from me?
  *   applications — all my filings
  *   wallet       — my money, referrals included
- *   documents    — my files, as uploaded to and returned on my applications
  *   help         — support, FAQs, and my credit reports
  *   account      — my details, security and preferences
  *
@@ -24,7 +23,7 @@
  * falling back to the home screen.
  */
 
-export const CUSTOMER_SECTIONS = ["home", "applications", "wallet", "documents", "help", "account"] as const;
+export const CUSTOMER_SECTIONS = ["home", "applications", "wallet", "help", "account"] as const;
 
 export type CustomerSection = (typeof CUSTOMER_SECTIONS)[number];
 
@@ -34,12 +33,13 @@ export const LEGACY_TAB_SECTION: Record<string, CustomerSection> = {
   applications: "applications",
   wallet: "wallet",
   referral: "wallet",
-  documents: "documents",
-  // The vault is gone, but `?tab=vault` was a real URL people could have
-  // bookmarked or been sent. Resolving it to the documents section costs one
-  // line and is better than dropping them on the home screen with no
-  // explanation.
-  vault: "documents",
+  // Documents no longer has a section: a filing's paperwork is on the filing
+  // itself, at /customer/applications/[id]#documents. Both of these were real
+  // URLs people could have bookmarked, so they resolve to the list of
+  // applications — one tap from the file they were after — rather than
+  // silently dropping them on the home screen.
+  documents: "applications",
+  vault: "applications",
   support: "help",
   profile: "account",
 };

@@ -47,17 +47,47 @@ describe("the app's bottom tab bar", () => {
   it("switches sections in place instead of navigating, while on the dashboard", () => {
     expect(nav).toContain("requestSection");
     expect(nav).toMatch(/onDashboard = pathname === "\/customer\/dashboard"/);
-    // The section entries carry a section, not just a URL.
-    for (const section of ["home", "wallet", "applications", "documents", "help", "account"]) {
-      expect(nav, `no tab or More entry for ${section}`).toContain(`section: "${section}"`);
+    // Every section the bar carries switches in place rather than linking.
+    for (const section of ["home", "wallet", "help"]) {
+      expect(nav, `no tab for ${section}`).toContain(`section: "${section}"`);
     }
   });
 
-  it("reaches every section of the portal", () => {
-    const reachable = new Set([...nav.matchAll(/section: "([a-z]+)"/g)].map((match) => match[1]));
+  /**
+   * Five tabs cannot hold five sections plus a website exit plus Apply, so
+   * two sections are reached from elsewhere. This is the test that stops
+   * "elsewhere" from quietly becoming "nowhere" — which is how the Secure
+   * Vault ended up being a screen nobody could find.
+   */
+  it("leaves every section reachable, from the bar or from the chrome", () => {
+    const header = code("src/components/site-header.tsx");
+    const shell = code("src/components/customer/portal-shell.tsx");
+
+    const fromBar = new Set([...nav.matchAll(/section: "([a-z]+)"/g)].map((match) => match[1]));
+    // The desktop sidebar renders NAV, which lists the sections by id.
+    const fromSidebar = new Set(
+      [...shell.matchAll(/\{ id: "([a-z]+)", label:/g)].map((match) => match[1]),
+    );
+    // The header's person button opens the account section.
+    const fromHeader = new Set<string>();
+    if (/sectionHref\("account"\)/.test(header)) fromHeader.add("account");
+    // Home lists the applications and links to them.
+    const fromHome = new Set(
+      [...code("src/components/customer/section-home.tsx").matchAll(/onNavigate\("([a-z]+)"\)/g)].map(
+        (match) => match[1],
+      ),
+    );
+
     for (const section of CUSTOMER_SECTIONS) {
-      expect(reachable.has(section), `${section} is unreachable from the tab bar`).toBe(true);
+      const reachable =
+        fromBar.has(section) || fromSidebar.has(section) || fromHeader.has(section) || fromHome.has(section);
+      expect(reachable, `${section} is unreachable from anywhere`).toBe(true);
     }
+  });
+
+  it("has no More sheet left to hide sections in", () => {
+    expect(nav).not.toContain("MoreSheet");
+    expect(nav).not.toContain("CUSTOMER_MORE");
   });
 
   /**

@@ -707,6 +707,21 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   transform: translateY(-100%);
 }
 
+/* ===== Customer portal, under the site header =====
+   The portal used to be one of the routes the header refused to render on,
+   so it could lay itself out from the very top of the viewport. It has a
+   navbar now, and the header is fixed — so the shell has to start below it
+   and the sidebar has to be shortened by the same amount, or the header
+   simply draws over the top of both. */
+.dc-portal {
+  padding-top: var(--header-height);
+}
+
+.dc-portal-sidebar {
+  top: var(--header-height);
+  height: calc(100% - var(--header-height));
+}
+
 /* ===== Bottom Navigation — floating glass tab bar =====
    The old rule set here styled `.bottom-nav` / `.bottom-nav-item`, which no
    markup has used for some time: the component had moved to utility classes

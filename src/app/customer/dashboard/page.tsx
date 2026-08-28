@@ -72,25 +72,32 @@ export default async function CustomerDashboardPage() {
     redirect("/login/customer");
   }
 
-  try {
-    await syncUserProfile(user);
-  } catch (error) {
-    logDashboardLoadFailed("sync_user_profile", user.id, error);
-  }
-
-  const role = await getCurrentUserRole(user);
-
-  if (!isCustomerRole(role)) {
-    redirect(getRoleHome(role));
-  }
-
   const metadataName = textValue(user.user_metadata.full_name) || textValue(user.user_metadata.name);
   const metadataMobile = textValue(user.phone) || textValue(user.user_metadata.mobile) || textValue(user.user_metadata.phone);
   const metadataEmail = user.email ?? "";
 
-  if (user.email_confirmed_at && metadataEmail && metadataMobile) {
-    const supabase = await getSupabaseServerClient();
-    if (supabase) {
+  /**
+   * Three independent pieces of setup, run together.
+   *
+   * They used to be three sequential awaits in front of everything else, so
+   * every visit paid for a profile mirror, then a role read, then the claim
+   * RPC, and only then asked for any of the data the page actually renders.
+   * None of the three needs the others.
+   *
+   * The claim RPC does have to finish before the loaders below: it attaches
+   * applications that were filed before the customer had an account, and a
+   * read that overtook it would show a newly signed-up customer an empty
+   * dashboard on the one visit where it matters most. So it is hoisted into
+   * this group rather than moved after the reads.
+   */
+  const [, , role] = await Promise.all([
+    syncUserProfile(user).catch((error) => {
+      logDashboardLoadFailed("sync_user_profile", user.id, error);
+    }),
+    (async () => {
+      if (!user.email_confirmed_at || !metadataEmail || !metadataMobile) return;
+      const supabase = await getSupabaseServerClient();
+      if (!supabase) return;
       const { error } = await supabase.rpc("claim_customer_applications");
       if (error) {
         console.warn("CUSTOMER_SYNC_WARNING", {
@@ -99,7 +106,12 @@ export default async function CustomerDashboardPage() {
           code: error.code,
         });
       }
-    }
+    })(),
+    getCurrentUserRole(user),
+  ]);
+
+  if (!isCustomerRole(role)) {
+    redirect(getRoleHome(role));
   }
 
   const supabaseAdmin = getSupabaseAdmin();
