@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, MessageCircle, RotateCcw } from "lucide-react";
 
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { RatingForm } from "@/components/portal/rating-form";
+import { CustomerDocumentUpload } from "@/components/portal/customer-document-upload";
 import { DprApplicationDetails } from "@/components/services/dpr/dpr-application-details";
 import { ItrApplicationDetails } from "@/components/services/itr/itr-application-details";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole } from "@/lib/auth";
@@ -323,6 +324,19 @@ export default async function CustomerApplicationDetailPage({ params }: { params
               </div>
             </section>
 
+            {/*
+              Documents live on the filing they belong to.
+
+              The portal used to carry a separate Documents section whose
+              first job was asking which application a file was for — a
+              question this page already knows the answer to. The uploader and
+              its API both existed and had simply never been wired to
+              anything; the API checks that the application is the signed-in
+              customer's, validates the file's actual signature rather than
+              trusting its extension, and notifies the team. That is stronger
+              than what the section did, which was insert the row from the
+              browser.
+            */}
             <section id="documents" className="rounded-xl border border-slate-200 bg-white p-4 shadow-none md:p-5">
               <h2 className="text-sm font-bold text-slate-950">Documents</h2>
               <p className="mt-0.5 text-xs text-slate-500">Your uploaded files for this application.</p>
@@ -351,6 +365,7 @@ export default async function CustomerApplicationDetailPage({ params }: { params
                   </p>
                 )}
               </div>
+              <CustomerDocumentUpload applicationId={application.id} />
             </section>
 
             <section id="activity" className="rounded-xl border border-slate-200 bg-white p-4 shadow-none md:p-5">

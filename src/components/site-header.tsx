@@ -5,95 +5,20 @@ import Image from "next/image";
 import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/browser";
+import { useAppSession } from "@/components/providers/session-provider";
 import { HeaderNav } from "@/components/header-nav";
 import { cn } from "@/lib/utils";
 import {
   DIGI_PARTNER_CTA_LABEL,
   DIGI_PARTNER_LOGIN_ROUTE,
 } from "@/lib/auth/partner-access";
-import { AUTH_LOGOUT_EVENT } from "@/lib/auth/logout-destinations";
 import { isAuthRoutePath } from "@/lib/auth/auth-routes";
+import { sectionHref } from "@/lib/customer/sections";
 
-type AppRole = "admin" | "agent" | "customer" | "agency_partner";
-
-const roleValues = ["admin", "agent", "customer", "agency_partner"];
-const adminRoleAliases = new Set(["super_admin", "staff", "team", "employee", "processor"]);
-const apRoleAliases = new Set(["agent", "agency_partner"]);
-
-function isAppRole(role: string): role is AppRole {
-  return roleValues.includes(role);
-}
-
-function getMetadataRole(user: User | null) {
-  const role = String(user?.user_metadata.role ?? "").toLowerCase();
-
-  if (adminRoleAliases.has(role)) {
-    return "admin";
-  }
-  if (apRoleAliases.has(role)) {
-    return "agency_partner";
-  }
-
-  return isAppRole(role) ? role : null;
-}
-
-async function resolveRole(user: User | null): Promise<AppRole | null> {
-  if (!user) {
-    return null;
-  }
-
-  const metadataRole = getMetadataRole(user);
-
-  if (metadataRole) {
-    return metadataRole;
-  }
-
-  const email = (user.email ?? "").toLowerCase();
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((adminEmail) => adminEmail.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (adminEmails.includes(email)) {
-    return "admin";
-  }
-
-  const supabase = createClient();
-
-  if (!supabase) {
-    return "customer";
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  const profileRole = String(profile?.role ?? "").toLowerCase();
-
-  if (adminRoleAliases.has(profileRole)) {
-    return "admin";
-  }
-  if (apRoleAliases.has(profileRole)) {
-    return "agency_partner";
-  }
-
-  if (isAppRole(profileRole)) {
-    return profileRole;
-  }
-
-  const { data: portalUser } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
-  const portalRole = String(portalUser?.role ?? "").toLowerCase();
-
-  if (adminRoleAliases.has(portalRole)) {
-    return "admin";
-  }
-  if (apRoleAliases.has(portalRole)) {
-    return "agency_partner";
-  }
-
-  return isAppRole(portalRole) ? portalRole : "customer";
-}
+import type { AppRole } from "@/components/providers/session-provider";
 
 function getPanelConfig(role: AppRole | null) {
   if (role === "admin") {
@@ -171,8 +96,13 @@ function getRelativeTime(dateStr: string) {
 }
 
 export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
+  /*
+    The header used to run its own `getUser()` and its own role lookup, and
+    the bottom navigation ran an identical pair a few lines further down the
+    same layout — four network round trips per page to answer one question
+    twice. Both read the shared provider now.
+  */
+  const { user, role } = useAppSession();
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const panelConfig = getPanelConfig(role);
@@ -278,69 +208,6 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
   }, [pathname, focusHomepageSearch]);
 
   // Auth sync — never trust a stale client session after logout
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let isMounted = true;
-
-    if (!supabase) {
-      setUser(null);
-      setRole(null);
-      return;
-    }
-
-    async function syncUser(nextUser: User | null) {
-      if (!isMounted) return;
-      setUser(nextUser);
-      const nextRole = nextUser ? await resolveRole(nextUser) : null;
-      if (isMounted) setRole(nextRole);
-    }
-
-    // Force guest UI immediately after logout in the same document (before hard reload).
-    const onLogout = () => {
-      setUser(null);
-      setRole(null);
-      setWalletBalance(null);
-      setNotifications([]);
-      setUnreadCount(0);
-    };
-    window.addEventListener(AUTH_LOGOUT_EVENT, onLogout);
-
-    // loggedOut=1 means treat as guest even if a stale getSession() briefly returns data.
-    const loggedOutIntent = new URLSearchParams(window.location.search).get("loggedOut") === "1";
-    if (loggedOutIntent) {
-      onLogout();
-    }
-
-    // Prefer getUser() over getSession() — validates against the auth server when possible.
-    void supabase.auth.getUser().then(({ data }) => {
-      if (loggedOutIntent) {
-        onLogout();
-        return;
-      }
-      void syncUser(data.user ?? null);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session?.user) {
-        onLogout();
-        return;
-      }
-      if (new URLSearchParams(window.location.search).get("loggedOut") === "1") {
-        onLogout();
-        return;
-      }
-      void syncUser(session.user);
-    });
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-      window.removeEventListener(AUTH_LOGOUT_EVENT, onLogout);
-    };
-  }, [supabase]);
 
   // Wallet balance
   useEffect(() => {
@@ -641,11 +508,19 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
   // Don't render on admin/dashboard pages or auth routes
   const isAuthRoute = isAuthRoutePath(pathname);
 
+  /*
+    The customer portal used to be on this list, which is why it had no
+    navbar: signed in, a customer lost the site's own navigation entirely —
+    no Services, no Schemes, no search, and on desktop nothing but the logo
+    to get back out. The portal's sidebar and tab bar move you *within* the
+    portal; this moves you around the site. Both belong.
+
+    The admin and partner shells stay excluded: they carry their own full
+    chrome and are not part of the public site.
+  */
   if (
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
-    pathname === "/customer/dashboard" ||
-    pathname.startsWith("/customer/dashboard") ||
     pathname === "/ap" ||
     pathname.startsWith("/ap/") ||
     isAuthRoute
@@ -654,6 +529,13 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
   }
 
   const dashboardHref = panelConfig?.href ?? "/login/customer";
+  /*
+    The person button is where people go looking for their own details, and it
+    was opening the dashboard home — the same screen the Dashboard tab opens.
+    For a customer it goes to their account; the other roles keep their own
+    panel, which is the only account screen they have.
+  */
+  const accountHref = role === "customer" ? sectionHref("account") : dashboardHref;
   const isLoggedIn = !!user;
 
   const isHome = pathname === "/";
@@ -1013,9 +895,9 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
 
             {/* Mobile Login/Dashboard */}
             <Link
-              href={isLoggedIn ? dashboardHref : "/customer/login"}
+              href={isLoggedIn ? accountHref : "/customer/login"}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] active:scale-95 md:hidden"
-              aria-label={isLoggedIn ? "Dashboard" : "Customer Login"}
+              aria-label={isLoggedIn ? "My account" : "Customer Login"}
             >
               {isLoggedIn ? (
                 <UserRound className="h-[18px] w-[18px]" />

@@ -6,6 +6,7 @@ import Script from "next/script";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { MetaPixelEvents } from "@/components/meta-pixel-events";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
@@ -163,6 +164,7 @@ export default function RootLayout({
             <MetaPixelEvents />
           </>
         ) : null}
+        <SessionProvider>
         <ToastProvider>
           <a
             href="#main-content"
@@ -183,6 +185,7 @@ export default function RootLayout({
             {JSON.stringify(organizationSchema)}
           </Script>
         </ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );

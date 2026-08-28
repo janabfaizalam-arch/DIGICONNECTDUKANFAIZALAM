@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +8,6 @@ import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import {
   Bell,
   FileText,
-  FolderOpen,
   Globe,
   HelpCircle,
   Home,
@@ -53,10 +51,6 @@ const ApplicationsSection = dynamic(
 );
 const WalletSection = dynamic(
   () => import("@/components/customer/section-wallet").then((m) => m.WalletSection),
-  { loading: SectionSkeleton },
-);
-const DocumentsSection = dynamic(
-  () => import("@/components/customer/section-documents").then((m) => m.DocumentsSection),
   { loading: SectionSkeleton },
 );
 const HelpSection = dynamic(() => import("@/components/customer/section-help").then((m) => m.HelpSection), {
@@ -103,7 +97,6 @@ const NAV: { id: CustomerSection; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "applications", label: "Applications", icon: FileText },
   { id: "wallet", label: "Wallet", icon: WalletCards },
-  { id: "documents", label: "Documents", icon: FolderOpen },
   { id: "help", label: "Help", icon: HelpCircle },
   { id: "account", label: "Account", icon: UserRound },
 ];
@@ -223,7 +216,7 @@ export function CustomerPortal(data: CustomerPortalData) {
         create a scroll container, so the fixed sidebar and any sticky element
         inside keep working.
       */}
-      <div className="dc-ambient min-h-screen overflow-x-clip bg-[var(--dc-sky-soft)] text-[var(--dc-ink)] md:flex">
+      <div className="dc-portal dc-ambient min-h-screen overflow-x-clip bg-[var(--dc-sky-soft)] text-[var(--dc-ink)] md:flex">
         <PortalSidebar section={section} counts={counts} onNavigate={goToSection} onSignOut={signOut} />
 
         <div className="min-w-0 flex-1 md:pl-64">
@@ -242,7 +235,6 @@ export function CustomerPortal(data: CustomerPortalData) {
             {section === "home" ? <HomeSection {...data} onNavigate={goToSection} /> : null}
             {section === "applications" ? <ApplicationsSection {...data} /> : null}
             {section === "wallet" ? <WalletSection {...data} /> : null}
-            {section === "documents" ? <DocumentsSection {...data} /> : null}
             {section === "help" ? <HelpSection {...data} /> : null}
             {section === "account" ? <AccountSection {...data} onSignOut={signOut} /> : null}
           </main>
@@ -281,7 +273,7 @@ function PortalSidebar({
 
   return (
     <aside
-      className="fixed left-0 top-0 z-30 hidden h-full w-64 flex-col justify-between overflow-hidden p-5 text-white md:flex"
+      className="dc-portal-sidebar fixed left-0 z-30 hidden w-64 flex-col justify-between overflow-hidden p-5 text-white md:flex"
       style={{ background: "var(--dc-grad-blue)" }}
     >
       <div className="dc-ambient-layer" aria-hidden="true">
@@ -290,17 +282,9 @@ function PortalSidebar({
       </div>
 
       <div className="relative space-y-8">
-        <Link href="/" className="block h-8 w-44" aria-label="DigiConnect Dukan home">
-          <Image
-            src="/logo-navbar.png"
-            alt="DigiConnect Dukan"
-            width={192}
-            height={32}
-            priority
-            className="h-full w-auto object-contain brightness-0 invert"
-          />
-        </Link>
-
+        {/* No logo here any more: the site header sits directly above this
+            panel and carries one, and two logos stacked in the top-left
+            corner read as a mistake rather than as branding. */}
         <nav className="space-y-1" aria-label="Portal sections">
           {NAV.map((item) => {
             const Icon = item.icon;
@@ -387,29 +371,6 @@ function PortalHeader({
       <BrandField />
 
       <div className="relative mx-auto w-full max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] pb-5 pt-6 sm:px-6 md:px-8 md:pb-6 md:pt-8">
-        {/*
-          Logo, phones only — the desktop sidebar carries its own.
-
-          This header used to also hold a "‹ Website" pill and, below the
-          greeting, a scrolling rail of all six section pills. Both said the
-          same thing as the app's bottom tab bar, which now carries the whole
-          portal: Home leaves for the website, and the rest of the sections
-          are tabs or live in its More sheet. Two navigations stacked on one
-          screen made the phone layout read as a wall of buttons, so the
-          duplicate is gone and the tab bar is the one place to look.
-        */}
-        <div className="mb-4 flex items-center justify-start gap-3 md:hidden">
-          <Link href="/" className="block h-7 w-32" aria-label="DigiConnect Dukan home">
-            <Image
-              src="/logo-navbar.png"
-              alt="DigiConnect Dukan"
-              width={160}
-              height={28}
-              className="h-full w-auto object-contain brightness-0 invert"
-            />
-          </Link>
-        </div>
-
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span
