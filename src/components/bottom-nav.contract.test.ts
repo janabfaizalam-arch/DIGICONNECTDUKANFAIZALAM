@@ -1,0 +1,110 @@
+import { existsSync, readFileSync } from "fs";
+import { join, resolve } from "path";
+import { describe, expect, it } from "vitest";
+
+import { CUSTOMER_SECTIONS } from "@/lib/customer/sections";
+
+const root = process.cwd();
+const read = (rel: string) => readFileSync(join(root, rel), "utf8");
+
+/** The file with its comments taken out, so a docblock can never satisfy — or
+ *  break — an assertion about the code. */
+function code(rel: string) {
+  return read(rel)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+    .join("\n");
+}
+
+const nav = code("src/components/bottom-nav.tsx");
+const shell = code("src/components/customer/portal-shell.tsx");
+
+describe("the app's bottom tab bar", () => {
+  /**
+   * The reported bug, and the one most likely to come back: a signed-in
+   * customer tapped Home and was sent to the dashboard instead of the
+   * website, so from inside the portal there was no way out at all.
+   */
+  it("sends Home to the website's home page, for every kind of visitor", () => {
+    expect(nav).toMatch(/HOME_ITEM[^;]*href: "\/"/s);
+
+    // And nothing re-points it per role.
+    for (const list of ["CUSTOMER_TABS", "ADMIN_TABS", "PARTNER_TABS", "GUEST_TABS"]) {
+      const body = nav.slice(nav.indexOf(`const ${list}`), nav.indexOf("];", nav.indexOf(`const ${list}`)));
+      expect(body, `${list} should start from HOME_ITEM`).toContain("HOME_ITEM");
+      expect(body, `${list} must not define its own home`).not.toMatch(/id: "home"/);
+    }
+  });
+
+  /**
+   * `/customer/dashboard` is `force-dynamic`. A `Link` to `?tab=…` therefore
+   * re-runs the server component and re-reads the profile, applications,
+   * wallet and documents from Supabase before the screen changes — which is
+   * exactly the delay a customer feels on every tab press. While already on
+   * the dashboard the bar has to switch in place instead.
+   */
+  it("switches sections in place instead of navigating, while on the dashboard", () => {
+    expect(nav).toContain("requestSection");
+    expect(nav).toMatch(/onDashboard = pathname === "\/customer\/dashboard"/);
+    // The section entries carry a section, not just a URL.
+    for (const section of ["home", "wallet", "applications", "documents", "help", "account"]) {
+      expect(nav, `no tab or More entry for ${section}`).toContain(`section: "${section}"`);
+    }
+  });
+
+  it("reaches every section of the portal", () => {
+    const reachable = new Set([...nav.matchAll(/section: "([a-z]+)"/g)].map((match) => match[1]));
+    for (const section of CUSTOMER_SECTIONS) {
+      expect(reachable.has(section), `${section} is unreachable from the tab bar`).toBe(true);
+    }
+  });
+
+  /**
+   * The portal used to print its own rail of section pills above the content,
+   * saying the same thing as the bar below it. One navigation per screen.
+   */
+  it("is the portal's only section navigation on a phone", () => {
+    // NAV is rendered exactly once, by the desktop sidebar. A second render
+    // is the phone rail coming back.
+    expect([...shell.matchAll(/NAV\.map/g)]).toHaveLength(1);
+    expect(shell).not.toContain("Section rail");
+  });
+
+  /**
+   * This component is mounted by the root layout, so it is on every page. As
+   * long as it imports the full `motion` build, no amount of converting the
+   * other components can take the site off it — which is the only reason this
+   * is worth pinning. It is not a size win on its own: thirty other files
+   * still import `motion` directly, and every route measured byte-identical
+   * when this one was converted.
+   */
+  it("uses the lazy motion bundle rather than the full one", () => {
+    expect(nav).toContain("LazyMotion");
+    expect(nav).toContain("domAnimation");
+    expect(nav).not.toMatch(/\bmotion\.[a-z]/);
+  });
+});
+
+describe("the customer document vault", () => {
+  it("has no API left", () => {
+    expect(existsSync(resolve(root, "src/app/api/customer/vault"))).toBe(false);
+  });
+
+  it("is read by nothing in the app", () => {
+    const form = code("src/components/portal/service-application-form.tsx");
+    expect(form).not.toContain("/api/customer/vault");
+    expect(form).not.toContain("vault_ocr_jobs");
+    expect(form).not.toContain("handleOcrAutofill");
+  });
+
+  it("has its stored rows and files dropped by a migration", () => {
+    const sql = read("supabase/migrations/20260828090000_drop_customer_document_vault.sql");
+    expect(sql).toMatch(/DROP TABLE IF EXISTS public\.customer_vault_documents/);
+    expect(sql).toMatch(/DROP TABLE IF EXISTS public\.vault_ocr_jobs/);
+    // Narrow by prefix: the vault shared its bucket with per-application
+    // uploads, and those must survive.
+    expect(sql).toMatch(/name LIKE 'vault-documents\/%'/);
+    expect(sql).toMatch(/bucket_id = 'application-documents'/);
+  });
+});

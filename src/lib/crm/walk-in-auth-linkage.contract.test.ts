@@ -1,5 +1,5 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync } from "fs";
+import { join, resolve } from "path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -111,11 +111,11 @@ describe("Walk-in production customer schema contracts", () => {
     // now comes from signup writing the customers row keyed on the auth user
     // id, so the session subject and customers.id stay the same value.
     expect(readSrc("src/lib/auth/customer-account.ts")).toMatch(/id: input\.userId/);
-    // Vault rows stay scoped to the signed-in user's own customer id, however
-    // that id is resolved (customers.id == auth user, mobile, or legacy user_id).
-    const vault = readSrc("src/app/api/customer/vault/route.ts");
-    expect(vault).toMatch(/\.eq\("customer_id", (customer\.id|customerId)\)/);
-    expect(vault).toMatch(/resolveCustomerIdForUser\(supabase, user\)|\.eq\("user_id", user\.id\)/);
+    // There used to be a second assertion here, that the document vault's API
+    // scoped its rows to the signed-in user's own customer id. The vault is
+    // gone — route, tables and stored files — so the strongest form of that
+    // guarantee now holds: there is no endpoint left to scope.
+    expect(existsSync(resolve(process.cwd(), "src/app/api/customer/vault"))).toBe(false);
   });
 
   it("12. Auth/customer create rolls back orphan auth on failure", () => {

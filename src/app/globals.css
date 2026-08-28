@@ -707,76 +707,132 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   transform: translateY(-100%);
 }
 
-/* ===== Bottom Navigation — Edge-to-Edge ===== */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  height: var(--bottom-nav-height);
-  padding-bottom: env(safe-area-inset-bottom);
-  border-top: 1px solid rgba(226, 232, 240, 0.6);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+/* ===== Bottom Navigation — floating glass tab bar =====
+   The old rule set here styled `.bottom-nav` / `.bottom-nav-item`, which no
+   markup has used for some time: the component had moved to utility classes
+   and an edge-to-edge white strip. This is the bar itself — one floating
+   glass slab, the same surface language as the cards it sits over.
+
+   `overflow: visible` is load-bearing. The Apply control is lifted above the
+   bar's own box, and a clipped container would cut it in half. */
+.dc-tabbar {
+  position: relative;
+  overflow: visible;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 10px 34px -12px rgba(1, 36, 86, 0.42),
+    0 2px 10px -4px rgba(1, 36, 86, 0.18);
 }
 
-.bottom-nav.nav-hidden {
-  transform: translateY(100%);
+/* The specular top edge that every other glass surface on the site carries. */
+.dc-tabbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(178deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 46%);
 }
 
-.bottom-nav-item {
+.dc-tab {
+  position: relative;
   display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.75rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  flex: 1;
-  min-width: 0;
-  padding: 8px 0 4px;
-  color: #94a3b8;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
+  color: color-mix(in srgb, var(--dc-ink) 52%, transparent);
   text-decoration: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.2s ease;
+  transition: color 0.22s var(--lg-ease, ease);
 }
 
-.bottom-nav-item.active {
-  color: var(--electric-blue);
+.dc-tab.is-active {
+  color: var(--dc-blue-mid);
 }
 
-.bottom-nav-item .nav-icon {
+@media (hover: hover) {
+  .dc-tab:hover {
+    color: var(--dc-blue-mid);
+  }
+}
+
+.dc-tab:active {
+  transform: scale(0.94);
+}
+
+.dc-tab:focus-visible {
+  outline: 2px solid var(--dc-blue-bright, #0159c7);
+  outline-offset: -3px;
+  border-radius: 1rem;
+}
+
+/* The lozenge behind the active tab. Inset rather than full-bleed so the
+   bar keeps its rhythm and the labels stay on one line. */
+.dc-tab-pill {
+  position: absolute;
+  inset: 0.3rem 0.2rem;
+  z-index: 0;
+  border-radius: 0.95rem;
+  background: var(--dc-blue-soft);
+  pointer-events: none;
+}
+
+/* Apply — the one raised control. */
+.dc-tab-apply {
+  justify-content: flex-end;
+  padding-bottom: 0.35rem;
+}
+
+.dc-tab-fab {
   position: relative;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 3.15rem;
+  height: 3.15rem;
+  margin-top: -1.55rem;
+  border-radius: 1.15rem;
+  color: #fff;
+  background: var(--dc-grad-flame);
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 10px 22px -8px rgba(247, 74, 1, 0.62),
+    0 2px 6px -2px rgba(1, 36, 86, 0.25);
+  transition: transform 0.24s var(--lg-ease, ease), box-shadow 0.24s var(--lg-ease, ease);
 }
 
-.bottom-nav-item.active .nav-icon::after {
-  content: "";
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--electric-blue);
+.dc-tab-apply:active .dc-tab-fab {
+  transform: translateY(1px) scale(0.96);
 }
 
-@media (min-width: 768px) {
-  .bottom-nav {
-    display: none;
+/* The More sheet. */
+.dc-sheet {
+  border-radius: 1.6rem 1.6rem 0 0;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 -18px 46px -18px rgba(1, 36, 86, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-tab,
+  .dc-tab-fab {
+    transition: none;
+  }
+  .dc-tab:active,
+  .dc-tab-apply:active .dc-tab-fab {
+    transform: none;
   }
 }
 
@@ -825,7 +881,10 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
     is not on the page, which is a 56px strip of nothing under the last card.
   */
   .dc-nav-clearance {
-    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 1.25rem);
+    /* The bar now floats clear of the edge and the Apply control is lifted
+       above it, so the reserved strip is the bar's height plus that overhang
+       — otherwise the last card of a section slid under the raised button. */
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 2.75rem);
   }
 
   .homepage-mobile-shell img,
