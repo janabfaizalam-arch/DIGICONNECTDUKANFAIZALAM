@@ -36,18 +36,18 @@ import {
  * cannot be completed without them, and they belong to a specific piece of
  * work with a beginning and an end.
  *
- * What this change does and does not reach, precisely:
+ * The removal is now complete, in both directions:
  *
- *   • The vault screen and its uploader component are gone, so nothing in the
- *     app can put a new document into the vault any more.
- *   • `/api/customer/vault` and its OCR route still exist. The service
- *     application form reads them to offer autofill from documents a customer
- *     saved earlier, which is why they were not pulled out here — removing
- *     them is a change to the apply flow, not to this screen.
- *   • The `vault_documents` rows and the files under the `vault-documents/`
- *     storage prefix are untouched. Deleting stored personal data is a
- *     decision with its own consequences and needs to be made deliberately,
- *     not as a side effect of removing a screen.
+ *   • The vault screen, its uploader, `/api/customer/vault` and its OCR route
+ *     are gone. Nothing reads or writes a vault document any more.
+ *   • The apply form's "auto-fill from your vault documents" banner went with
+ *     them. It was the last reader, and it could only ever have worked for a
+ *     customer who had uploaded to a screen that no longer exists.
+ *   • `customer_vault_documents`, `vault_ocr_jobs` and every file under the
+ *     `vault-documents/` prefix are dropped by migration
+ *     `20260828090000_drop_customer_document_vault.sql`. The stored copies of
+ *     customers' Aadhaar and PAN are deleted, not merely unreachable — an
+ *     unreachable copy is still a copy, and it is the copy that leaks.
  */
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;

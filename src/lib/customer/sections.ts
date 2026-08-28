@@ -4,8 +4,9 @@
  * There were eight tabs: Dashboard, Applications, Wallet, Refer & Earn,
  * Documents Hub, Secure Vault, Support Center, Profile Settings. Two of those
  * pairs were one idea split in half — referral rewards *are* wallet money, and
- * both document screens hold the customer's files — so a customer chasing
- * their cashback had to know which of two tabs it had landed in.
+ * both document screens held the customer's files — so a customer chasing
+ * their cashback had to know which of two tabs it had landed in. (The Secure
+ * Vault has since been removed outright, on the owner's instruction.)
  *
  * Six sections, each answering one question a customer actually arrives with:
  *
@@ -13,7 +14,7 @@
  *                  need from me?
  *   applications — all my filings
  *   wallet       — my money, referrals included
- *   documents    — my files: per-application uploads and the reusable vault
+ *   documents    — my files, as uploaded to and returned on my applications
  *   help         — support, FAQs, and my credit reports
  *   account      — my details, security and preferences
  *
@@ -34,6 +35,10 @@ export const LEGACY_TAB_SECTION: Record<string, CustomerSection> = {
   wallet: "wallet",
   referral: "wallet",
   documents: "documents",
+  // The vault is gone, but `?tab=vault` was a real URL people could have
+  // bookmarked or been sent. Resolving it to the documents section costs one
+  // line and is better than dropping them on the home screen with no
+  // explanation.
   vault: "documents",
   support: "help",
   profile: "account",
@@ -65,11 +70,10 @@ export function sectionHref(section: CustomerSection): string {
 /**
  * Deep links within a section.
  *
- * The two merged sections keep an anchor for the half that used to be its own
- * tab, so "Refer & Earn" and "Secure Vault" remain linkable by name.
+ * A merged section keeps an anchor for the half that used to be its own tab,
+ * so "Refer & Earn" stays linkable by name.
  */
 export const SECTION_ANCHORS = {
   referral: "/customer/dashboard?tab=wallet#referral",
-  vault: "/customer/dashboard?tab=documents#vault",
   security: "/customer/dashboard?tab=account#security",
 } as const;

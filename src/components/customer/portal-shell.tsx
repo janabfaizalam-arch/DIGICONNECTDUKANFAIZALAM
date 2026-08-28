@@ -8,9 +8,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import {
   Bell,
-  ChevronLeft,
   FileText,
   FolderOpen,
+  Globe,
   HelpCircle,
   Home,
   LogOut,
@@ -27,7 +27,8 @@ import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { getCustomerAccountStatus } from "@/lib/customer/account-status";
 import { countApplications } from "@/lib/customer/application-summary";
-import { resolveSection, sectionHref, type CustomerSection } from "@/lib/customer/sections";
+import { requestSection, useActiveSection } from "@/lib/customer/section-bus";
+import { resolveSection, type CustomerSection } from "@/lib/customer/sections";
 import { cn } from "@/lib/utils";
 
 import { HomeSection } from "@/components/customer/section-home";
@@ -138,21 +139,7 @@ export function CustomerPortal(data: CustomerPortalData) {
    * The URL still changes, so links, refreshes and the back button all keep
    * working — `popstate` below puts the section back in step.
    */
-  const urlSection = resolveSection(searchParams.get("tab"));
-  const [section, setSection] = useState<CustomerSection>(urlSection);
-
-  useEffect(() => {
-    setSection(urlSection);
-  }, [urlSection]);
-
-  useEffect(() => {
-    const onPopState = () => {
-      const tab = new URLSearchParams(window.location.search).get("tab");
-      setSection(resolveSection(tab));
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
+  const section = useActiveSection(resolveSection(searchParams.get("tab")));
 
   const [trayOpen, setTrayOpen] = useState(false);
   const [localNotifications, setLocalNotifications] = useState<CustomerNotification[]>(notifications);
@@ -176,11 +163,7 @@ export function CustomerPortal(data: CustomerPortalData) {
     [user.email, user.phone, profileStatus],
   );
 
-  const goToSection = useCallback((next: CustomerSection) => {
-    setSection(next);
-    window.history.pushState(null, "", sectionHref(next));
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, []);
+  const goToSection = requestSection;
 
   const markAllRead = useCallback(async () => {
     const unreadIds = localNotifications.filter((item) => !item.read_at).map((item) => item.id);
@@ -250,8 +233,6 @@ export function CustomerPortal(data: CustomerPortalData) {
             badge={accountStatus.badge}
             unread={unread}
             onOpenTray={() => setTrayOpen(true)}
-            section={section}
-            onNavigate={goToSection}
           />
 
           <main
@@ -357,6 +338,20 @@ function PortalSidebar({
           <Plus className="h-4 w-4" aria-hidden="true" />
           Apply for a service
         </PortalButton>
+        {/*
+          The way back to the website, spelled out.
+
+          On a phone the tab bar's Home tab does this job. There is no tab bar
+          at this width, and the only exit was the logo at the top of the
+          sidebar — which is an exit if you already know it is one.
+        */}
+        <Link
+          href="/"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-bold text-white/60 transition hover:bg-white/10 hover:text-white"
+        >
+          <Globe className="h-4 w-4" aria-hidden="true" />
+          Go to website
+        </Link>
         <button
           type="button"
           onClick={onSignOut}
@@ -376,16 +371,12 @@ function PortalHeader({
   badge,
   unread,
   onOpenTray,
-  section,
-  onNavigate,
 }: {
   name: string;
   initials: string;
   badge: { label: string; tone: "complete" | "partial" | "empty" };
   unread: number;
   onOpenTray: () => void;
-  section: CustomerSection;
-  onNavigate: (next: CustomerSection) => void;
 }) {
   // A finished profile is stated in the brand amber; anything short of it is
   // held back to a quieter white, because it is a nudge and not an alarm.
@@ -397,23 +388,17 @@ function PortalHeader({
 
       <div className="relative mx-auto w-full max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] pb-5 pt-6 sm:px-6 md:px-8 md:pb-6 md:pt-8">
         {/*
-          Top bar, phones only.
+          Logo, phones only — the desktop sidebar carries its own.
 
-          The desktop sidebar carries the logo and it links to the website, but
-          it is hidden below `md` — which left a customer on a phone with no way
-          out of the portal at all. No back link, no logo, nothing. This is that
-          way out, and it is the first thing in the header rather than tucked
-          beside the bell, because leaving is a thing people look for at the top
-          left of a screen.
+          This header used to also hold a "‹ Website" pill and, below the
+          greeting, a scrolling rail of all six section pills. Both said the
+          same thing as the app's bottom tab bar, which now carries the whole
+          portal: Home leaves for the website, and the rest of the sections
+          are tabs or live in its More sheet. Two navigations stacked on one
+          screen made the phone layout read as a wall of buttons, so the
+          duplicate is gone and the tab bar is the one place to look.
         */}
-        <div className="mb-4 flex items-center justify-between gap-3 md:hidden">
-          <Link
-            href="/"
-            className="lg-pill-dark inline-flex h-9 items-center gap-1.5 pl-2.5 pr-3.5 text-[12.5px] font-extrabold text-white"
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            Website
-          </Link>
+        <div className="mb-4 flex items-center justify-start gap-3 md:hidden">
           <Link href="/" className="block h-7 w-32" aria-label="DigiConnect Dukan home">
             <Image
               src="/logo-navbar.png"
@@ -463,41 +448,6 @@ function PortalHeader({
           </div>
         </div>
 
-        {/*
-          Section rail, phones only.
-
-          The app's own bottom navigation already carries Home, Applications,
-          Wallet and Account, but not Documents or Help — without this rail
-          those two are unreachable on a phone, which is how the Secure Vault
-          ends up being a screen nobody visits.
-        */}
-        <div className="-mx-[var(--mobile-page-gutter)] mt-5 overflow-x-auto px-[var(--mobile-page-gutter)] pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 md:hidden [&::-webkit-scrollbar]:hidden">
-          <div className="flex w-max gap-1.5">
-            {NAV.map((item) => {
-              const active = section === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onNavigate(item.id)}
-                  aria-current={active ? "page" : undefined}
-                  /* Inactive pills were `text-white/75` on a translucent dark
-                     pill, which on a phone in daylight read as disabled rather
-                     than tappable. Full-strength text and a firmer fill. */
-                  className={cn(
-                    "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-extrabold transition duration-300",
-                    active
-                      ? "bg-white text-[var(--dc-blue-mid)] shadow-[0_6px_16px_-8px_rgba(0,10,40,0.9)]"
-                      : "border border-white/25 bg-white/[0.14] text-white",
-                  )}
-                >
-                  <item.icon className="h-[15px] w-[15px]" aria-hidden="true" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </header>
   );
