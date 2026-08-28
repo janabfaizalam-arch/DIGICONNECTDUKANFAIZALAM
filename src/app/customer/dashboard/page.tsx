@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { CustomerDashboard } from "@/components/portal/customer-dashboard";
+import { CustomerPortal } from "@/components/customer/portal-shell";
 import { getCurrentUser, getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import { getCustomerDashboardProfile, getCustomerProfileStatus } from "@/lib/customer-profile";
 import { getCustomerDashboardData } from "@/lib/customer-dashboard-data";
@@ -143,12 +143,11 @@ export default async function CustomerDashboardPage() {
     metadataMobile ||
     "Customer";
 
-  const profileForIncomplete = profileStatus?.profile;
-  const isProfileIncomplete =
-    !textValue(profileForIncomplete?.mobile) ||
-    !textValue(profileForIncomplete?.pincode) ||
-    !textValue(profileForIncomplete?.city) ||
-    !textValue(profileForIncomplete?.state);
+  // Profile completeness is derived from `profileStatus.completion`, which
+  // `getCustomerProfileStatus` already computes from the one list of required
+  // fields. This page used to re-check four of those fields by hand and pass
+  // its own boolean, so the header and the profile form could disagree about
+  // whether a profile was finished.
 
   let documents: ApplicationDocument[] = [];
   let notifications: CustomerNotification[] = [];
@@ -190,11 +189,10 @@ export default async function CustomerDashboardPage() {
   };
 
   return (
-    <CustomerDashboard
+    <CustomerPortal
       applications={applications}
       stats={mergedStats}
       profile={{ name }}
-      isProfileIncomplete={isProfileIncomplete}
       walletSnapshot={walletSnapshot}
       profileStatus={profileStatus}
       documents={documents}

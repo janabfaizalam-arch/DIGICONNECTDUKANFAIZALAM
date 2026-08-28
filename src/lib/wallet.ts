@@ -180,7 +180,18 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
     return null;
   }
 
-  const code = await ensureReferralCodeForUser(userId).catch(() => "");
+  // A referral code that never arrives is invisible to the customer *and* to
+  // us if the failure is swallowed — which is how a live account ended up
+  // showing "your code is on its way" indefinitely. The empty string still
+  // stands so the wallet renders, but the reason is now in the logs.
+  const code = await ensureReferralCodeForUser(userId).catch((error: unknown) => {
+    console.error("REFERRAL_CODE_UNAVAILABLE", {
+      userId,
+      source: "getReferralSummary",
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return "";
+  });
   const [{ data: profile }, { data: referralEventRows }, { data: legacyReferralRows }, { data: referrerRewardRows }] = await Promise.all([
     supabase.from("profiles").select("referral_code").eq("id", userId).maybeSingle(),
     supabase

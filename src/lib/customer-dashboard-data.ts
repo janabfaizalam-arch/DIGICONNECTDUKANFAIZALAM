@@ -106,7 +106,14 @@ export async function getCustomerReferralStats(userId: string): Promise<Customer
 
   const [{ data: profile }, referralCode, totalReferrals, { data: rewardRows, error: rewardError }] = await Promise.all([
     supabase.from("profiles").select("referral_code").eq("id", userId).maybeSingle(),
-    ensureReferralCodeForUser(userId).catch(() => ""),
+    ensureReferralCodeForUser(userId).catch((error: unknown) => {
+      console.error("REFERRAL_CODE_UNAVAILABLE", {
+        userId,
+        source: "getCustomerReferralStats",
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return "";
+    }),
     getReferralCount(userId),
     supabase
       .from("wallet_transactions")
