@@ -36,8 +36,10 @@ describe("homepage no-fake-data contracts", () => {
   it("homepage uses Option 3 hero with public services for search", () => {
     const source = read("src/app/page.tsx");
     expect(source).toContain("HomepageHero");
-    expect(source).toContain("getPublicServices");
-    expect(source).toContain("getActiveHomepageSlides");
+    // Read through the cache now; what matters to this contract is that the
+    // catalogue comes from the published services and not a hardcoded list.
+    expect(source).toContain("getCachedPublicServices");
+    expect(source).toContain("getCachedHomepageSlides");
     expect(source).toContain("catalog={searchCatalog}");
     expect(source).not.toMatch(/20% Wallet Cashback on every service/);
   });

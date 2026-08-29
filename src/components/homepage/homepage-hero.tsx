@@ -80,10 +80,29 @@ export function HomepageHero({ catalog, slides }: HomepageHeroProps) {
   const { lead, accent } = splitHeadline(heading);
   const subtitle = leadSlide?.subtitle?.trim() || DEFAULT_SUBTITLE;
 
-  const primaryUrl = sanitizeHref(leadSlide?.cta_primary_url || "", "/services");
-  const primaryLabel = leadSlide?.cta_primary_label?.trim() || "Explore Services";
-  const secondaryUrl = sanitizeHref(leadSlide?.cta_secondary_url || "", "/track-application");
-  const secondaryLabel = leadSlide?.cta_secondary_label?.trim() || "Track Application";
+  /**
+   * A button's words and its destination come from the same decision.
+   *
+   * These used to be resolved independently, each with its own fallback, and
+   * that produced a button that lied. In the admin panel the field behind
+   * `cta_primary_url` is labelled "Click link" and means *where this slide
+   * goes when you tap the image* — so a slide pointed at, say, the PVC card
+   * service, with no CTA label set, gave the hero a button reading
+   * "Explore Services" that opened the PVC card. The label fell back; the URL
+   * did not.
+   *
+   * A slide's URL is only used when the slide also names it. Otherwise both
+   * halves are the default, and the button goes where it says it goes.
+   */
+  const slidePrimaryLabel = leadSlide?.cta_primary_label?.trim() ?? "";
+  const primaryLabel = slidePrimaryLabel || "Explore Services";
+  const primaryUrl = slidePrimaryLabel ? sanitizeHref(leadSlide?.cta_primary_url || "", "/services") : "/services";
+
+  const slideSecondaryLabel = leadSlide?.cta_secondary_label?.trim() ?? "";
+  const secondaryLabel = slideSecondaryLabel || "Track Application";
+  const secondaryUrl = slideSecondaryLabel
+    ? sanitizeHref(leadSlide?.cta_secondary_url || "", "/track-application")
+    : "/track-application";
 
   // Only https artwork is honoured. Anything else falls through to the pure
   // CSS/SVG composition rather than rendering a broken image on the busiest

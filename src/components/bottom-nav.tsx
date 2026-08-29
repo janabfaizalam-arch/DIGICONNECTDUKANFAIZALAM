@@ -25,6 +25,14 @@ import { resolveSection, sectionHref, type CustomerSection } from "@/lib/custome
 
 const hiddenPrefixes = ["/admin", "/agent", "/ap", "/staff", "/apply"];
 
+/**
+ * How long after a navigation a scroll event is read as the browser restoring
+ * a position rather than as the customer moving the page. Long enough to cover
+ * scroll restoration, short enough that a deliberate flick right after landing
+ * still hides the bar.
+ */
+const SETTLE_MS = 700;
+
 function shouldHide(pathname: string) {
   if (isAuthRoutePath(pathname)) return true;
   return hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -112,6 +120,7 @@ export function BottomNav() {
   const { user, role } = useAppSession();
   const [navHidden, setNavHidden] = useState(false);
   const lastScrollYRef = useRef(0);
+  const settledAtRef = useRef(0);
 
   const onDashboard = pathname === "/customer/dashboard";
   const activeSection = useActiveSection(resolveSection(searchParams.get("tab")));
@@ -119,31 +128,40 @@ export function BottomNav() {
   /**
    * Hide on the way down, come back on the way up.
    *
-   * `lastScrollYRef` is re-seeded from the live scroll position whenever the
-   * path changes, and that is the whole fix for a real bug: opening Apply and
-   * coming back left the reference at whatever it held on the previous
-   * screen, so the very first scroll event after the return computed a delta
-   * of several hundred pixels and hid the bar immediately — on a page the
-   * customer had not scrolled at all. The bar looked broken because it was
-   * reacting to a movement that never happened.
+   * The settling window is the fix for a bug that survived one attempt. Open
+   * Apply, come back, and the bar hid itself on a screen nobody had touched.
+   *
+   * My first go re-seeded `lastScrollYRef` from `window.scrollY` when the path
+   * changed, which is right but too early: the browser restores the previous
+   * scroll position *after* that, asynchronously. So the seed was 0, the
+   * restoration jumped the page to wherever it had been, and the scroll event
+   * that announced it looked like the customer had just flicked down several
+   * hundred pixels. The bar did exactly what it was told.
+   *
+   * A scroll that arrives in the first moments after a navigation is
+   * therefore treated as position, not as movement: it updates the reference
+   * and decides nothing. Only scrolling the customer actually does gets a
+   * vote.
    */
   useEffect(() => {
     if (shouldHide(pathname)) return;
 
     lastScrollYRef.current = window.scrollY;
+    settledAtRef.current = Date.now();
     setNavHidden(false);
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       const scrollDelta = currentScrollY - lastScrollYRef.current;
+      lastScrollYRef.current = currentScrollY;
+
+      if (Date.now() - settledAtRef.current < SETTLE_MS) return;
 
       if (scrollDelta > 15 && currentScrollY > 60) {
         setNavHidden(true);
       } else if (scrollDelta < -10) {
         setNavHidden(false);
       }
-
-      lastScrollYRef.current = currentScrollY;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -157,6 +175,7 @@ export function BottomNav() {
    */
   useEffect(() => {
     lastScrollYRef.current = 0;
+    settledAtRef.current = Date.now();
     setNavHidden(false);
   }, [activeSection]);
 

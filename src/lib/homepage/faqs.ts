@@ -101,3 +101,4 @@ export function buildFaqJsonLd(faqs: HomepageFaq[]): Record<string, unknown> | n
     })),
   };
 }
+

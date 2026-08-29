@@ -1,9 +1,11 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { listHomepageReelsForAdmin, resolveReelSource, safeReelHref } from "@/lib/homepage/reels";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { HOMEPAGE_TAGS } from "@/lib/homepage/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +106,9 @@ export async function POST(request: Request) {
   }
 
   console.info("[admin-homepage-reels] saved", { id: data?.id, adminId: auth.user.id });
+  // The public page reads this through a cache; clear it now rather
+  // than leaving an admin to wonder why their edit has not appeared.
+  revalidateTag(HOMEPAGE_TAGS.reels);
   return NextResponse.json({ ok: true, id: data?.id });
 }
 
@@ -124,5 +129,8 @@ export async function DELETE(request: Request) {
   }
 
   console.info("[admin-homepage-reels] deleted", { id, adminId: auth.user.id });
+  // The public page reads this through a cache; clear it now rather
+  // than leaving an admin to wonder why their edit has not appeared.
+  revalidateTag(HOMEPAGE_TAGS.reels);
   return NextResponse.json({ ok: true });
 }
