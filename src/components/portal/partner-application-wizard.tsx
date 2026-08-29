@@ -21,6 +21,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
 import { cn } from "@/lib/utils";
 import { servicesData } from "@/lib/services-data";
+import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -312,48 +313,7 @@ export function PartnerApplicationWizard({
   });
 
   // Dynamic layout heights measurement using ResizeObserver
-  useEffect(() => {
-    const update = () => {
-      const header = document.querySelector(".site-header");
-      const stepper = document.querySelector(".wizard-stepper");
-      const bottomNav = document.querySelector(".bottom-nav-container");
-      const stickyActions = document.querySelector(".wizard-sticky-actions");
-
-      const root = document.documentElement;
-
-      const headerHeight = header ? header.getBoundingClientRect().height : 0;
-      const stepperHeight = stepper ? stepper.getBoundingClientRect().height : 0;
-      const isBottomNavVisible = bottomNav && window.getComputedStyle(bottomNav).display !== "none";
-      const bottomNavHeight = isBottomNavVisible ? bottomNav.getBoundingClientRect().height : 0;
-      const stickyActionsHeight = stickyActions ? stickyActions.getBoundingClientRect().height : 0;
-
-      root.style.setProperty("--site-header-height", `${headerHeight}px`);
-      root.style.setProperty("--stepper-height", `${stepperHeight}px`);
-      root.style.setProperty("--bottom-nav-height", `${bottomNavHeight}px`);
-      root.style.setProperty("--sticky-action-bar-height", `${stickyActionsHeight}px`);
-    };
-
-    update();
-
-    const observer = new ResizeObserver(() => update());
-    
-    const header = document.querySelector(".site-header");
-    const stepper = document.querySelector(".wizard-stepper");
-    const bottomNav = document.querySelector(".bottom-nav-container");
-    const stickyActions = document.querySelector(".wizard-sticky-actions");
-
-    if (header) observer.observe(header);
-    if (stepper) observer.observe(stepper);
-    if (bottomNav) observer.observe(bottomNav);
-    if (stickyActions) observer.observe(stickyActions);
-
-    window.addEventListener("resize", update);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [currentStep]);
+  useWizardLayoutMetrics([currentStep]);
 
   // Visual viewport height adjusting bottom actions for soft keyboard on mobile devices
   useEffect(() => {
@@ -1286,7 +1246,7 @@ export function PartnerApplicationWizard({
         className="min-h-screen bg-slate-50/40 transition-all duration-300"
         style={{
           paddingTop: "calc(var(--site-header-height, 0px) + 16px + env(safe-area-inset-top))",
-          paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
+          paddingBottom: "calc(var(--wizard-bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
         }}
       >
         <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">

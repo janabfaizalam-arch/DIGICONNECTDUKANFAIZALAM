@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "fs";
-import { join, resolve } from "path";
+import { existsSync, readFileSync, readdirSync } from "fs";
+import { join, relative, resolve } from "path";
 import { describe, expect, it } from "vitest";
 
 import { CUSTOMER_SECTIONS } from "@/lib/customer/sections";
@@ -97,6 +97,68 @@ describe("the app's bottom tab bar", () => {
   });
 
   /**
+   * The bar was reported broken four times: open Apply, come back, and it was
+   * gone. Three fixes went into the scroll logic and none of them worked,
+   * because the scroll logic was never the cause. The wizards published their
+   * measured chrome heights by writing custom properties onto the document —
+   * `--bottom-nav-height` among them — and on /apply the bar is hidden, so the
+   * measured value was 0px. Nothing ever cleared it, so every page afterwards
+   * rendered a tab bar with `height: 0`.
+   *
+   * The token belongs to the bar. Nothing outside globals.css may write it.
+   */
+  it("owns --bottom-nav-height: no component may overwrite it", () => {
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else if (/\.tsx?$/.test(entry.name)) {
+          const body = readCode(relative(root, path));
+          if (/setProperty\(\s*["'`]--bottom-nav-height/.test(body)) offenders.push(path);
+        }
+      }
+    };
+    walk(join(root, "src"));
+    expect(offenders, "these write the tab bar's own height token").toEqual([]);
+  });
+
+  /**
+   * The wizards still need their measurements, so they publish them under
+   * their own name and take them back down on the way out.
+   */
+  it("leaves the document as it found it when a wizard unmounts", () => {
+    const hook = code("src/lib/layout/use-wizard-layout-metrics.ts");
+    expect(hook).toContain("--wizard-bottom-nav-height");
+    expect(hook).not.toContain('"--bottom-nav-height"');
+    expect(hook, "the properties must be removed on unmount").toMatch(/removeProperty/);
+  });
+
+  /**
+   * Hiding on scroll is wanted, and was asked for again after being removed.
+   * It is safe to have only because both bars read one hook, and that hook
+   * ignores the scroll the browser performs when restoring a position on a
+   * back navigation — the jump that used to leave the bar stranded off screen
+   * on a page nobody had scrolled.
+   */
+  it("hides and returns on scroll, from the same source as the header", () => {
+    const header = code("src/components/site-header.tsx");
+    const hook = code("src/lib/ui/use-chrome-visibility.ts");
+
+    expect(nav).toContain("useChromeHiddenOnScroll");
+    expect(header).toContain("useChromeHiddenOnScroll");
+
+    // Neither bar may measure scrolling for itself again.
+    expect(nav).not.toMatch(/addEventListener\("scroll"/);
+    expect(header).not.toMatch(/scrollDelta/);
+
+    // The guards that make it safe.
+    expect(hook, "a route change must reset to visible").toMatch(/setHidden\(false\)/);
+    expect(hook, "restored scroll positions must be ignored").toContain("SETTLE_MS");
+    expect(hook, "the top of a page always shows the chrome").toContain("ENGAGE_PX");
+  });
+
+  /**
    * This component is mounted by the root layout, so it is on every page. As
    * long as it imports the full `motion` build, no amount of converting the
    * other components can take the site off it — which is the only reason this
@@ -104,24 +166,6 @@ describe("the app's bottom tab bar", () => {
    * still import `motion` directly, and every route measured byte-identical
    * when this one was converted.
    */
-  /**
-   * Every complaint this navigation has had came from one behaviour: it slid
-   * away on scroll. It hid itself after a trip to Apply and back, it hid
-   * itself on a page nobody had scrolled, and it was reported broken three
-   * times across two attempted fixes. A five-tab bar is 64px; reclaiming that
-   * is not worth a navigation a customer cannot trust to be there.
-   */
-  it("is always on screen — it does not hide on scroll", () => {
-    expect(nav, "a scroll listener is how this came back twice").not.toMatch(
-      /addEventListener\("scroll"/,
-    );
-    expect(nav).not.toContain("navHidden");
-    expect(nav).not.toContain("lastScrollYRef");
-    // No transform variants on the bar itself: the only thing that animates
-    // is the pill behind the active tab.
-    expect(nav).not.toMatch(/hidden: \{ y:/);
-  });
-
   it("uses the lazy motion bundle rather than the full one", () => {
     expect(nav).toContain("LazyMotion");
     expect(nav).toContain("domAnimation");

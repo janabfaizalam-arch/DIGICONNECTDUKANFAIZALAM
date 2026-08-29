@@ -26,7 +26,7 @@ export default async function AdminHomepageNoticesPage() {
       <AdminPageHeader
         eyebrow="Homepage"
         title="Homepage Notices"
-        description="Manage the compact offer announcement bar shown below the navbar and above the homepage slider."
+        description="Manage the offer announcement bar. Note: the bar is not currently displayed on the site — it was removed from the header to keep the top of a phone screen clear. Notices saved here are kept and will appear again if the bar is re-enabled."
       />
       <AdminHomepageNoticesManager initialNotices={notices} />
     </div>

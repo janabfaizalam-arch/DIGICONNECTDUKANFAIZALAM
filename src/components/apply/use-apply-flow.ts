@@ -25,6 +25,7 @@ import {
   type DocSlotId,
   type SuccessDetails,
 } from "@/components/apply/shared";
+import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
 
 /**
  * Everything the apply flow does, separated from everything it looks like.
@@ -99,49 +100,7 @@ export function useApplyFlow({
     aadhaar: null, pan: null, other: null,
   });
 
-  // Dynamic layout heights measurement using ResizeObserver
-  useEffect(() => {
-    const update = () => {
-      const header = document.querySelector(".site-header");
-      const stepper = document.querySelector(".wizard-stepper");
-      const bottomNav = document.querySelector(".bottom-nav-container");
-      const stickyActions = document.querySelector(".wizard-sticky-actions");
-
-      const root = document.documentElement;
-
-      const headerHeight = header ? header.getBoundingClientRect().height : 0;
-      const stepperHeight = stepper ? stepper.getBoundingClientRect().height : 0;
-      const isBottomNavVisible = bottomNav && window.getComputedStyle(bottomNav).display !== "none";
-      const bottomNavHeight = isBottomNavVisible ? bottomNav.getBoundingClientRect().height : 0;
-      const stickyActionsHeight = stickyActions ? stickyActions.getBoundingClientRect().height : 0;
-
-      root.style.setProperty("--site-header-height", `${headerHeight}px`);
-      root.style.setProperty("--stepper-height", `${stepperHeight}px`);
-      root.style.setProperty("--bottom-nav-height", `${bottomNavHeight}px`);
-      root.style.setProperty("--sticky-action-bar-height", `${stickyActionsHeight}px`);
-    };
-
-    update();
-
-    const observer = new ResizeObserver(() => update());
-    
-    const header = document.querySelector(".site-header");
-    const stepper = document.querySelector(".wizard-stepper");
-    const bottomNav = document.querySelector(".bottom-nav-container");
-    const stickyActions = document.querySelector(".wizard-sticky-actions");
-
-    if (header) observer.observe(header);
-    if (stepper) observer.observe(stepper);
-    if (bottomNav) observer.observe(bottomNav);
-    if (stickyActions) observer.observe(stickyActions);
-
-    window.addEventListener("resize", update);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [currentStep]);
+  useWizardLayoutMetrics([currentStep]);
 
   /*
     The action bar is no longer moved by hand when the keyboard opens.

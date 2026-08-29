@@ -707,6 +707,31 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   transform: translateY(-100%);
 }
 
+/* ===== Chrome that slides out of the way while reading =====
+   The tab bar's counterpart to `.site-header`'s transform. It carries its own
+   safe-area padding, so 130% clears the bar and its shadow on every device.
+   `visibility` is delayed until the slide finishes so nothing under it is
+   caught by a tap that lands on a bar already on its way out. */
+.dc-chrome-slide-down {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s ease-out;
+  will-change: transform;
+}
+
+.dc-chrome-slide-down[data-hidden="true"] {
+  transform: translateY(130%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header,
+  .dc-chrome-slide-down {
+    transition: none;
+  }
+}
+
 /* ===== Apply, under the site header =====
    The header is fixed and does render on /apply, so the flow has to start
    below it. This used to be done with a --site-header-height variable that a

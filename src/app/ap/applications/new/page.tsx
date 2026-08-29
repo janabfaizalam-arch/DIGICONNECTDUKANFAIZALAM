@@ -30,7 +30,7 @@ export default async function NewAPApplicationPage({
       className="min-h-screen bg-[#F7F8FA] text-slate-800 px-3 md:px-8 transition-all duration-300"
       style={{
         paddingTop: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top) + 12px)",
-        paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
+        paddingBottom: "calc(var(--wizard-bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
       }}
     >
       <div className="mx-auto max-w-7xl">

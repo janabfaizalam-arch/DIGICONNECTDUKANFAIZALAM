@@ -90,9 +90,18 @@ export function HomepageSection({
         "dc-ambient relative overflow-hidden",
         SURFACE[surface],
         !eager && "lg-defer",
+        /*
+          The phone column is tighter than the desktop one.
+
+          Seventeen bands at 48px of padding each is 1600px of empty space
+          before a single card is drawn, and on a phone that reads as one
+          crowded thing stacked on the next rather than as breathing room. Only
+          the base step is reduced; from `sm` up the rhythm is unchanged,
+          because the wide layout has the room to use it.
+        */
         compact
-          ? "px-[var(--mobile-page-gutter)] py-8 sm:px-6 sm:py-9 md:px-8 md:py-11"
-          : "px-[var(--mobile-page-gutter)] py-12 sm:px-6 sm:py-14 md:px-8 md:py-20",
+          ? "px-[var(--mobile-page-gutter)] py-6 sm:px-6 sm:py-9 md:px-8 md:py-11"
+          : "px-[var(--mobile-page-gutter)] py-8 sm:px-6 sm:py-14 md:px-8 md:py-20",
         className,
       )}
       style={dark ? { background: "var(--dc-grad-blue)" } : undefined}
@@ -138,7 +147,7 @@ export function HomepageSectionHeader({
   return (
     <div
       className={cn(
-        "mb-6 gap-4 sm:mb-7 md:mb-9",
+        "mb-4 gap-3 sm:mb-7 sm:gap-4 md:mb-9",
         center
           ? "flex flex-col items-center text-center"
           : // Stacked on phones. Side by side, the action pill sat hard against
@@ -151,7 +160,7 @@ export function HomepageSectionHeader({
         {eyebrow ? (
           <p
             className={cn(
-              "inline-flex items-center text-[11px] font-extrabold uppercase tracking-[0.18em]",
+              "inline-flex items-center text-[10px] font-extrabold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]",
               // The rule is drawn from the flame ramp on both surfaces; only
               // the text colour has to change.
               center ? "dc-eyebrow-rule" : "dc-eyebrow-rule-start",
@@ -164,7 +173,7 @@ export function HomepageSectionHeader({
 
         <h2
           className={cn(
-            "mt-2.5 text-[1.6rem] font-extrabold leading-[1.12] tracking-[-0.025em] sm:text-[2rem] md:text-[2.3rem]",
+            "mt-2 text-[1.35rem] font-extrabold leading-[1.15] tracking-[-0.025em] sm:mt-2.5 sm:text-[2rem] sm:leading-[1.12] md:text-[2.3rem]",
             light ? "text-white" : "text-[var(--dc-ink)]",
           )}
         >
@@ -174,7 +183,7 @@ export function HomepageSectionHeader({
         {description ? (
           <p
             className={cn(
-              "mt-3 max-w-2xl text-[14.5px] font-medium leading-relaxed sm:text-[15.5px]",
+              "mt-2 max-w-2xl text-[13.5px] font-medium leading-[1.55] sm:mt-3 sm:text-[15.5px] sm:leading-relaxed",
               light ? "text-white/72" : "text-[var(--dc-body)]",
             )}
           >
@@ -187,7 +196,7 @@ export function HomepageSectionHeader({
         <Link
           href={actionHref}
           className={cn(
-            "group inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 md:text-[15px]",
+            "group inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-bold transition duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-11 sm:px-4 sm:text-sm md:text-[15px]",
             light
               ? "lg-pill-dark lg-raise-dark text-white focus-visible:outline-white"
               : "lg-pill lg-raise text-[var(--dc-blue-mid)] focus-visible:outline-[var(--dc-blue-bright)]",
