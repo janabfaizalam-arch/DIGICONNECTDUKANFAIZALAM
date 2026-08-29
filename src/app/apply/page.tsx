@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { CustomerApplicationWizard } from "@/components/portal/customer-application-wizard";
+import { ApplyFlow } from "@/components/apply/apply-flow";
 
 export const dynamic = "force-dynamic";
 
@@ -31,21 +31,13 @@ export default async function ApplyIndexPage() {
   }
 
   return (
-    <main 
-      className="min-h-screen bg-slate-50/30 px-0 md:px-8 transition-all duration-300"
-      style={{
-        paddingTop: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top))",
-        paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
+    <ApplyFlow
+      initialProfileFields={{
+        mobile: userProfile?.mobile ?? "",
+        pincode: userProfile?.pincode ?? "",
+        city: userProfile?.city ?? "",
+        state: userProfile?.state ?? "",
       }}
-    >
-      <CustomerApplicationWizard
-        initialProfileFields={{
-          mobile: userProfile?.mobile ?? "",
-          pincode: userProfile?.pincode ?? "",
-          city: userProfile?.city ?? "",
-          state: userProfile?.state ?? "",
-        }}
-      />
-    </main>
+    />
   );
 }

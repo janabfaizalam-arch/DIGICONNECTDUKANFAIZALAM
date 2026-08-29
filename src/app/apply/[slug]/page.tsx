@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { portalServices } from "@/lib/portal-data";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { CustomerApplicationWizard } from "@/components/portal/customer-application-wizard";
+import { ApplyFlow } from "@/components/apply/apply-flow";
 import { DprApplicationWizard } from "@/components/services/dpr/dpr-application-wizard";
 import { ItrApplicationWizard } from "@/components/services/itr/itr-application-wizard";
 import { DPR_SERVICE_SLUG } from "@/lib/dpr/constants";
@@ -89,29 +89,32 @@ export default async function ApplySlugPage({ params }: PageProps) {
     itrCmsDocuments = itrCms.documents;
   }
 
-  return (
-    <main 
-      className="min-h-screen bg-slate-50/30 px-0 md:px-8 transition-all duration-300"
-      style={{
-        paddingTop: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top))",
-        paddingBottom: "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
-      }}
-    >
-      {isItrServiceSlug(slug) ? (
+  /*
+    The generic flow brings its own full-page shell — brand header, progress
+    rail, action bar — so it renders on its own. The two service-specific
+    wizards are still plain forms and keep the wrapper that gives them a
+    background and room for the fixed chrome.
+  */
+  if (isItrServiceSlug(slug)) {
+    return (
+      <main className="dc-apply-shell min-h-screen bg-slate-50/30 px-0 md:px-8">
         <ItrApplicationWizard
           initialProfileFields={profileFields}
           assessmentYear={itrAssessmentYear}
           customerDeclaration={itrCustomerDeclaration}
           cmsDocuments={itrCmsDocuments}
         />
-      ) : resolvedSlug === DPR_SERVICE_SLUG ? (
+      </main>
+    );
+  }
+
+  if (resolvedSlug === DPR_SERVICE_SLUG) {
+    return (
+      <main className="dc-apply-shell min-h-screen bg-slate-50/30 px-0 md:px-8">
         <DprApplicationWizard initialProfileFields={profileFields} />
-      ) : (
-        <CustomerApplicationWizard
-          initialServiceSlug={resolvedSlug}
-          initialProfileFields={profileFields}
-        />
-      )}
-    </main>
-  );
+      </main>
+    );
+  }
+
+  return <ApplyFlow initialServiceSlug={resolvedSlug} initialProfileFields={profileFields} />;
 }

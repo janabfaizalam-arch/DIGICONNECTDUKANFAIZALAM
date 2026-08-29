@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
+import { readCode } from "@/lib/testing/source";
 
 const root = process.cwd();
 
@@ -16,13 +17,7 @@ function read(rel: string) {
  * the very prose that documents their removal. The contract is about what the
  * page renders, so it reads the code without the commentary.
  */
-function code(rel: string) {
-  return read(rel)
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join("\n");
-}
+const code = readCode;
 
 /**
  * The services page used to print numbers nobody had measured: a star rating

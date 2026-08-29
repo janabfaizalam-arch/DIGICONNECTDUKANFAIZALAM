@@ -1,17 +1,12 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
+import { readCode } from "@/lib/testing/source";
 
 const root = process.cwd();
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 
-function code(rel: string) {
-  return read(rel)
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join("\n");
-}
+const code = readCode;
 
 /**
  * The homepage and the services directory are force-dynamic and between them

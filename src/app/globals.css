@@ -707,6 +707,15 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   transform: translateY(-100%);
 }
 
+/* ===== Apply, under the site header =====
+   The header is fixed and does render on /apply, so the flow has to start
+   below it. This used to be done with a --site-header-height variable that a
+   ResizeObserver in the wizard wrote on every step change; the header's height
+   is a token, so it can just be read. */
+.dc-apply-shell {
+  padding-top: calc(var(--header-height) + env(safe-area-inset-top));
+}
+
 /* ===== Customer portal, under the site header =====
    The portal used to be one of the routes the header refused to render on,
    so it could lay itself out from the very top of the viewport. It has a
