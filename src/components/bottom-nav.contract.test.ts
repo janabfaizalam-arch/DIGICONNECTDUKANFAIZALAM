@@ -3,19 +3,14 @@ import { join, resolve } from "path";
 import { describe, expect, it } from "vitest";
 
 import { CUSTOMER_SECTIONS } from "@/lib/customer/sections";
+import { readCode } from "@/lib/testing/source";
 
 const root = process.cwd();
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 
 /** The file with its comments taken out, so a docblock can never satisfy — or
  *  break — an assertion about the code. */
-function code(rel: string) {
-  return read(rel)
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join("\n");
-}
+const code = readCode;
 
 const nav = code("src/components/bottom-nav.tsx");
 const shell = code("src/components/customer/portal-shell.tsx");

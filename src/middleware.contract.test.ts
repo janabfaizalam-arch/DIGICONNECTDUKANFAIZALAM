@@ -1,16 +1,8 @@
-import { readFileSync } from "fs";
-import { join } from "path";
 import { describe, expect, it } from "vitest";
+import { readCode } from "@/lib/testing/source";
 
-const root = process.cwd();
 
-function code(rel: string) {
-  return readFileSync(join(root, rel), "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join("\n");
-}
+const code = readCode;
 
 const middleware = code("src/middleware.ts");
 const nav = code("src/components/bottom-nav.tsx");

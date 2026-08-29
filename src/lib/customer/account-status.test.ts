@@ -1,10 +1,7 @@
-import { readFileSync } from "fs";
-import { join } from "path";
 import { describe, expect, it } from "vitest";
 
 import { getCustomerAccountStatus, hasIndianMobile } from "@/lib/customer/account-status";
-
-const root = process.cwd();
+import { readCode } from "@/lib/testing/source";
 
 describe("customer account status", () => {
   it("never claims verification, in any state", () => {
@@ -67,13 +64,10 @@ describe("customer account status", () => {
     ];
 
     for (const rel of files) {
-      const source = readFileSync(join(root, rel), "utf8")
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .split("\n")
-        .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-        .join("\n");
-
-      expect(source, `${rel} hardcodes a verification claim`).not.toMatch(/>\s*Verified\s*</);
+      // This is a `not.toMatch`, so a comment stripper that swallows too much
+      // makes it pass for the wrong reason. `readCode` drops comments line by
+      // line rather than with a regex that a `/*` inside a string can derail.
+      expect(readCode(rel), `${rel} hardcodes a verification claim`).not.toMatch(/>\s*Verified\s*</);
     }
   });
 });
