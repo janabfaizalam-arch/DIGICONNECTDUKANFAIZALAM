@@ -85,6 +85,7 @@ export function ApplyFlow(options: ApplyFlowOptions) {
     isScriptReady,
     setIsScriptReady,
     autoSaved,
+    keyboardHeight,
     canvasRef,
     videoRef,
     cameraSlot,
@@ -193,9 +194,22 @@ export function ApplyFlow(options: ApplyFlowOptions) {
         </main>
 
         {/* ── Actions ────────────────────────────────────────────────── */}
+        {/*
+          The bar steps aside while the keyboard is up.
+
+          `keyboardHeight` is measured from a real shrink of the visual
+          viewport, so it is zero on a desktop where focusing a field opens
+          nothing — the bar only moves on the device that has the problem.
+          Dismissing the keyboard, or tapping away from the field, brings it
+          straight back.
+        */}
         {!done ? (
           <div
-            className="wizard-sticky-actions fixed inset-x-0 z-40 px-3 print:hidden"
+            aria-hidden={keyboardHeight > 0 || undefined}
+            className={cn(
+              "wizard-sticky-actions fixed inset-x-0 z-40 px-3 transition-[transform,opacity] duration-200 ease-out print:hidden",
+              keyboardHeight > 0 && "pointer-events-none translate-y-[140%] opacity-0",
+            )}
             style={{
               bottom: 0,
               paddingBottom: "calc(var(--bottom-nav-height, 0px) + max(0.6rem, env(safe-area-inset-bottom)))",

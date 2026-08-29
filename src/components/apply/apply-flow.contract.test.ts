@@ -81,6 +81,19 @@ describe("the apply flow keeps its behaviour out of its markup", () => {
     }
   });
 
+  /**
+   * The action bar used to be positioned by hand when the keyboard opened,
+   * with `window.innerHeight - visualViewport.height`. That is not the
+   * keyboard's height on iOS — it also counts the accessory strip above it —
+   * and the bar has its own bottom padding on top. The Continue button ended
+   * up floating in the middle of the form, over the fields it belongs under.
+   */
+  it("never positions the action bar by hand", () => {
+    const flow = readCode(`${APPLY}/use-apply-flow.ts`);
+    expect(flow).not.toContain("stickyActions.style.bottom");
+    expect(shell, "the bar steps aside from a measured viewport shrink").toContain("keyboardHeight > 0");
+  });
+
   it("uses the lazy motion bundle", () => {
     expect(shell).toContain("LazyMotion");
     expect(shell).toContain("domAnimation");

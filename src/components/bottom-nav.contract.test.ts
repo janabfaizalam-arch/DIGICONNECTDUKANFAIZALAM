@@ -104,6 +104,24 @@ describe("the app's bottom tab bar", () => {
    * still import `motion` directly, and every route measured byte-identical
    * when this one was converted.
    */
+  /**
+   * Every complaint this navigation has had came from one behaviour: it slid
+   * away on scroll. It hid itself after a trip to Apply and back, it hid
+   * itself on a page nobody had scrolled, and it was reported broken three
+   * times across two attempted fixes. A five-tab bar is 64px; reclaiming that
+   * is not worth a navigation a customer cannot trust to be there.
+   */
+  it("is always on screen — it does not hide on scroll", () => {
+    expect(nav, "a scroll listener is how this came back twice").not.toMatch(
+      /addEventListener\("scroll"/,
+    );
+    expect(nav).not.toContain("navHidden");
+    expect(nav).not.toContain("lastScrollYRef");
+    // No transform variants on the bar itself: the only thing that animates
+    // is the pill behind the active tab.
+    expect(nav).not.toMatch(/hidden: \{ y:/);
+  });
+
   it("uses the lazy motion bundle rather than the full one", () => {
     expect(nav).toContain("LazyMotion");
     expect(nav).toContain("domAnimation");

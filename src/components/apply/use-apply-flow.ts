@@ -143,32 +143,21 @@ export function useApplyFlow({
     };
   }, [currentStep]);
 
-  // Visual viewport height adjusting bottom actions for soft keyboard on mobile devices
-  useEffect(() => {
-    if (!window.visualViewport) return;
+  /*
+    The action bar is no longer moved by hand when the keyboard opens.
 
-    const handleVisualViewportResize = () => {
-      const vv = window.visualViewport;
-      if (!vv) return;
-      const stickyActions = document.querySelector(".wizard-sticky-actions") as HTMLElement;
-      if (stickyActions) {
-        const keyboardHeight = window.innerHeight - vv.height;
-        if (keyboardHeight > 60) {
-          stickyActions.style.bottom = `${keyboardHeight}px`;
-        } else {
-          stickyActions.style.bottom = "0px";
-        }
-      }
-    };
+    This used to set `style.bottom` to `window.innerHeight - visualViewport.height`,
+    which is not the keyboard's height on iOS: it also counts the accessory
+    strip above it — the "AutoFill Contact" row — and the bar carries its own
+    bottom padding on top of that. The three added up and the Continue button
+    ended up floating in the middle of the form, over the fields it was meant
+    to sit below.
 
-    window.visualViewport.addEventListener("resize", handleVisualViewportResize);
-    window.visualViewport.addEventListener("scroll", handleVisualViewportResize);
-
-    return () => {
-      window.visualViewport?.removeEventListener("resize", handleVisualViewportResize);
-      window.visualViewport?.removeEventListener("scroll", handleVisualViewportResize);
-    };
-  }, []);
+    The bar steps out of the way while somebody is typing instead. See
+    `keyboardHeight` below, which the shell uses to decide that: it is derived
+    from an actual viewport shrink, so it stays zero on a desktop where
+    focusing a field opens nothing.
+  */
 
   // Keyboard scroll assistance: auto-scroll inputs into center of view upon focus
   useEffect(() => {
