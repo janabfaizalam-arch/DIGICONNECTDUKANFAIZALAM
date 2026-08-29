@@ -2,14 +2,25 @@
 
 import {
   BadgeCheck,
-  BarChart3,
-  CheckCircle,
+  Banknote,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
   ClipboardList,
+  Factory,
   FileCheck2,
+  FileSpreadsheet,
+  Landmark,
   Layers,
+  LineChart,
+  Lock,
+  Paperclip,
   ShieldCheck,
   Sparkles,
+  Users,
+  Wallet,
 } from "lucide-react";
+
 import {
   DPR_BENEFITS,
   DPR_DOCUMENTS,
@@ -20,144 +31,244 @@ import {
   DPR_WHY_US,
 } from "@/lib/dpr/defaults";
 import type { DprBanner, DprSection } from "@/lib/dpr/types";
-import { Counter, GlassCard, SectionBanners, SectionShell } from "./shared";
+import { Counter, DprIcon, GlassCard, SectionBanners, SectionShell } from "./shared";
 
-const whyIcons = [Sparkles, FileCheck2, BadgeCheck, ShieldCheck];
+/* Icon per entry, in the order the defaults declare them. Anything an admin
+   adds beyond the list falls back to the first icon rather than breaking. */
+const WHY_ICONS = [Sparkles, FileCheck2, BadgeCheck, ShieldCheck];
+const SCHEME_ICONS = [Landmark, Wallet, Users, Factory, Building2, Banknote];
+const INCLUDE_ICONS = [ClipboardList, Banknote, Wallet, Factory, LineChart, Paperclip];
+const BADGE_ICONS = [Lock, FileCheck2, ShieldCheck, Building2, BadgeCheck];
+const STAT_ICONS = [Wallet, Layers, CalendarClock, FileSpreadsheet];
+
+function pick<T>(list: T[], index: number) {
+  return list[index % list.length];
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Why us
+   ───────────────────────────────────────────────────────────────────────── */
 
 export function DprWhyUsSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   return (
     <SectionShell section={section}>
       <SectionBanners banners={banners} />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {DPR_WHY_US.map((item, idx) => {
-          const Icon = whyIcons[idx % whyIcons.length];
+      <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        {DPR_WHY_US.map((item, index) => {
+          const Icon = pick(WHY_ICONS, index);
           return (
-            <GlassCard key={item.title} className="p-6 group hover:shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-shadow">
-              <div className="h-11 w-11 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 mb-4">
-                <Icon className="h-5 w-5" />
-              </div>
-              <h3 className="font-bold text-slate-800 mb-2">{item.title}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">{item.detail}</p>
-            </GlassCard>
+            <li key={item.title}>
+              <GlassCard className="h-full p-4 sm:p-5">
+                <DprIcon tone={index === 0 ? "flame" : "blue"}>
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                </DprIcon>
+                <h3 className="mt-3.5 text-[14px] font-extrabold leading-snug text-[var(--dc-ink)] sm:text-[15px]">
+                  {item.title}
+                </h3>
+                <p className="mt-1.5 text-[12.5px] font-medium leading-[1.6] text-[var(--dc-body)] sm:text-[13.5px]">
+                  {item.detail}
+                </p>
+              </GlassCard>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </SectionShell>
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Schemes
+   ───────────────────────────────────────────────────────────────────────── */
+
 export function DprSchemesSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   return (
-    <SectionShell section={section} altBg>
+    <SectionShell section={section} surface="sky">
       <SectionBanners banners={banners} />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {DPR_SCHEMES.map((scheme) => (
-          <GlassCard key={scheme.name} className="p-5">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs shrink-0">
-                {scheme.name.slice(0, 2).toUpperCase()}
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800">{scheme.name}</h3>
-                <p className="text-sm text-slate-500 mt-1 leading-relaxed">{scheme.blurb}</p>
-              </div>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
+      <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        {DPR_SCHEMES.map((scheme, index) => {
+          const Icon = pick(SCHEME_ICONS, index);
+          return (
+            <li key={scheme.name}>
+              <GlassCard className="h-full p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <DprIcon tone={index % 3 === 0 ? "flame" : "blue"}>
+                    <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </DprIcon>
+                  <div className="min-w-0">
+                    <h3 className="text-[14px] font-extrabold leading-snug text-[var(--dc-ink)] sm:text-[15px]">
+                      {scheme.name}
+                    </h3>
+                    <p className="mt-1 text-[12.5px] font-medium leading-[1.6] text-[var(--dc-body)] sm:text-[13.5px]">
+                      {scheme.blurb}
+                    </p>
+                  </div>
+                </div>
+              </GlassCard>
+            </li>
+          );
+        })}
+      </ul>
     </SectionShell>
   );
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   What the report contains
+   ───────────────────────────────────────────────────────────────────────── */
 
 export function DprIncludesSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   return (
     <SectionShell section={section}>
       <SectionBanners banners={banners} />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
-        {DPR_INCLUDES.map((item) => (
-          <GlassCard key={item.title} className="p-5 flex gap-3">
-            <Layers className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-slate-800">{item.title}</h3>
-              <p className="text-sm text-slate-500 mt-1">{item.detail}</p>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
+      <ol className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        {DPR_INCLUDES.map((item, index) => {
+          const Icon = pick(INCLUDE_ICONS, index);
+          return (
+            <li key={item.title}>
+              <GlassCard className="relative h-full p-4 sm:p-5">
+                {/* The chapter number, set as a watermark rather than a badge:
+                    it orders the list without competing with the title. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-2 text-[2.25rem] font-extrabold leading-none text-[var(--dc-blue-bright)]/10"
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <DprIcon>
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                </DprIcon>
+                <h3 className="mt-3.5 pr-8 text-[14px] font-extrabold leading-snug text-[var(--dc-ink)] sm:text-[15px]">
+                  {item.title}
+                </h3>
+                <p className="mt-1.5 text-[12.5px] font-medium leading-[1.6] text-[var(--dc-body)] sm:text-[13.5px]">
+                  {item.detail}
+                </p>
+              </GlassCard>
+            </li>
+          );
+        })}
+      </ol>
     </SectionShell>
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Benefits
+   ───────────────────────────────────────────────────────────────────────── */
+
 export function DprBenefitsSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   return (
-    <SectionShell section={section} altBg>
+    <SectionShell section={section} surface="sky">
       <SectionBanners banners={banners} />
-      <div className="grid md:grid-cols-2 gap-3 max-w-4xl mx-auto">
+      <ul className="mx-auto grid max-w-4xl gap-2.5 sm:grid-cols-2 sm:gap-3">
         {DPR_BENEFITS.map((benefit) => (
-          <GlassCard key={benefit} className="p-4 flex items-start gap-3">
-            <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-slate-600">{benefit}</p>
-          </GlassCard>
+          <li key={benefit}>
+            <GlassCard className="flex h-full items-start gap-2.5 p-3.5 sm:p-4">
+              <CheckCircle2
+                className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[var(--dc-flame)]"
+                aria-hidden="true"
+              />
+              <p className="text-[12.5px] font-semibold leading-[1.55] text-[var(--dc-ink)] sm:text-[13.5px]">
+                {benefit}
+              </p>
+            </GlassCard>
+          </li>
         ))}
-      </div>
+      </ul>
     </SectionShell>
   );
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Documents checklist
+   ───────────────────────────────────────────────────────────────────────── */
 
 export function DprDocumentsSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   return (
     <SectionShell section={section}>
       <SectionBanners banners={banners} />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
+      <ul className="mx-auto grid max-w-5xl gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
         {DPR_DOCUMENTS.map((doc) => (
-          <GlassCard key={doc} className="p-4 flex items-center gap-3">
-            <ClipboardList className="h-4.5 w-4.5 text-sky-600 shrink-0" />
-            <span className="text-sm font-medium text-slate-700">{doc}</span>
-          </GlassCard>
-        ))}
-      </div>
-    </SectionShell>
-  );
-}
-
-export function DprStatsSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
-  return (
-    <SectionShell section={section} altBg>
-      <SectionBanners banners={banners} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-        {DPR_STATS.map((stat) => (
-          <GlassCard key={stat.label} className="p-6 text-center">
-            <div className="text-3xl md:text-4xl text-slate-900">
-              <Counter
-                value={stat.value}
-                prefix={stat.prefix}
-                suffix={stat.suffix}
-                decimals={stat.label === "Customer rating" ? 1 : 0}
+          <li key={doc}>
+            <GlassCard className="flex h-full items-center gap-2.5 p-3.5 sm:p-4">
+              <ClipboardList
+                className="h-[17px] w-[17px] shrink-0 text-[var(--dc-blue-mid)]"
+                aria-hidden="true"
               />
-            </div>
-            <p className="text-sm text-slate-500 mt-2">{stat.label}</p>
-          </GlassCard>
+              <span className="text-[12.5px] font-bold leading-snug text-[var(--dc-ink)] sm:text-[13.5px]">
+                {doc}
+              </span>
+            </GlassCard>
+          </li>
         ))}
-      </div>
+      </ul>
+      <p className="mt-5 text-center text-[12.5px] font-medium text-[var(--dc-muted)]">
+        Missing one? Start anyway — the application saves as you go, and documents can be added before payment.
+      </p>
     </SectionShell>
   );
 }
 
-export function DprTrustBadgesSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
+/* ─────────────────────────────────────────────────────────────────────────
+   Numbers
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Four figures, each of which is a fact about the service rather than a claim
+ * about its popularity. There is deliberately no customer count and no star
+ * rating here: neither can be verified from outside, and an unverifiable
+ * number on a page selling a loan document costs more trust than it buys.
+ */
+export function DprStatsSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   return (
     <SectionShell section={section}>
       <SectionBanners banners={banners} />
-      <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
-        {DPR_TRUST_BADGES.map((badge) => (
-          <span
-            key={badge}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-100 bg-white/80 text-sm font-medium text-slate-600 shadow-[0_4px_16px_rgba(15,23,42,0.04)]"
-          >
-            <BarChart3 className="h-4 w-4 text-sky-600" />
-            {badge}
-          </span>
-        ))}
-      </div>
+      <ul className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {DPR_STATS.map((stat, index) => {
+          const Icon = pick(STAT_ICONS, index);
+          return (
+            <li key={stat.label}>
+              <GlassCard className="h-full p-4 text-center sm:p-5">
+                <DprIcon tone={index % 2 === 0 ? "blue" : "flame"} className="mx-auto">
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                </DprIcon>
+                <p className="mt-3 text-[1.5rem] font-extrabold leading-none text-[var(--dc-ink)] sm:text-[2rem]">
+                  <Counter value={stat.value} prefix={stat.prefix} suffix={stat.suffix} />
+                </p>
+                <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-[var(--dc-body)] sm:text-[12.5px]">
+                  {stat.label}
+                </p>
+              </GlassCard>
+            </li>
+          );
+        })}
+      </ul>
+    </SectionShell>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Trust badges
+   ───────────────────────────────────────────────────────────────────────── */
+
+export function DprTrustBadgesSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
+  return (
+    <SectionShell section={section} surface="sky">
+      <SectionBanners banners={banners} />
+      <ul className="mx-auto flex max-w-4xl flex-wrap justify-center gap-2 sm:gap-3">
+        {DPR_TRUST_BADGES.map((badge, index) => {
+          const Icon = pick(BADGE_ICONS, index);
+          return (
+            <li key={badge}>
+              <span className="lg-pill lg-raise inline-flex min-h-10 items-center gap-2 px-3.5 text-[12px] font-bold text-[var(--dc-ink)] sm:text-[13px]">
+                <Icon className="h-4 w-4 shrink-0 text-[var(--dc-flame)]" aria-hidden="true" />
+                {badge}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </SectionShell>
   );
 }

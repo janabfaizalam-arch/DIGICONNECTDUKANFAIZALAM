@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Phone } from "lucide-react";
+import { ArrowRight, Phone } from "lucide-react";
+
 import { DPR_LAUNCH_PRICE } from "@/lib/dpr/constants";
 import type { DprSection } from "@/lib/dpr/types";
+import { useChromeHiddenOnScroll } from "@/lib/ui/use-chrome-visibility";
+import { cn } from "@/lib/utils";
 import { WhatsAppIcon, type DprSectionContext } from "./shared";
 
 type Props = {
@@ -12,58 +15,77 @@ type Props = {
   launchPrice?: number;
 };
 
+/**
+ * The always-visible apply bar, on phones.
+ *
+ * Two things about where this sits:
+ *
+ * 1. It stacks *above* the site's tab bar rather than on top of it. Both are
+ *    `fixed bottom-0` and both are phone-only, so pinned to the same edge this
+ *    one covered Home, Dashboard and Apply completely. It is offset by
+ *    `--bottom-nav-height`, the tab bar's own token, so the two stay in step
+ *    if the bar is ever resized.
+ *
+ * 2. It rides the same scroll behaviour as the rest of the chrome. When the
+ *    header and tab bar slide away for reading, this goes with them and comes
+ *    back with them, instead of being the one element that never leaves.
+ */
 export function DprStickyCta({ section, ctx, launchPrice = DPR_LAUNCH_PRICE }: Props) {
-  const label = section.ctaLabel || `Apply for DPR — ₹${launchPrice}`;
+  const hidden = useChromeHiddenOnScroll();
+
+  const label = section.ctaLabel || "Apply now";
   const href = section.ctaUrl || ctx.applyUrl;
 
   return (
     <div
-      className="fixed bottom-0 left-0 w-full bg-white/95 border-t border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.05)] px-4 py-3 z-50 flex items-center justify-between gap-3 md:hidden backdrop-blur-md"
+      data-hidden={hidden ? "true" : undefined}
+      className={cn(
+        "dc-chrome-slide-down fixed inset-x-0 z-[49] px-3 print:hidden md:hidden",
+      )}
+      style={{
+        bottom: 0,
+        paddingBottom: "calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 0.5rem)",
+      }}
       role="region"
-      aria-label="Apply for DPR"
+      aria-label="Apply for a Detailed Project Report"
     >
-      <div className="flex flex-col">
-        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">DPR</span>
-        <span className="text-base font-bold text-slate-900">₹{launchPrice}</span>
-      </div>
-      <div className="flex items-center gap-2 grow max-w-[240px]">
+      <div className="dc-tabbar mx-auto flex max-w-md items-center gap-2 p-2">
+        <span className="min-w-0 pl-1.5">
+          <span className="block text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-[var(--dc-muted)]">
+            DPR
+          </span>
+          <span className="block text-[15px] font-extrabold leading-none text-[var(--dc-ink)]">
+            ₹{launchPrice.toLocaleString("en-IN")}
+          </span>
+        </span>
+
         <a
           href={`tel:${ctx.supportPhone}`}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--dc-blue-mid)] transition active:scale-95"
           aria-label="Call support"
         >
-          <Phone className="h-4 w-4" />
+          <Phone className="h-[18px] w-[18px]" aria-hidden="true" />
         </a>
+
         <a
           href={ctx.whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-emerald-600"
-          aria-label="WhatsApp support"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--dc-flame)] transition active:scale-95"
+          aria-label="Ask on WhatsApp"
         >
-          <WhatsAppIcon className="h-4.5 w-4.5" />
+          <WhatsAppIcon className="h-[18px] w-[18px]" />
         </a>
+
         <Link
           href={href}
-          className="flex h-10 grow items-center justify-center rounded-full bg-sky-600 text-white text-xs font-bold shadow-xs active:scale-[0.98] transition-transform px-3 text-center"
+          className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[12.5px] font-extrabold text-white shadow-[0_12px_26px_-14px_rgba(0,29,95,0.95)] transition active:scale-[0.98]"
+          style={{ background: "var(--dc-grad-flame)" }}
         >
-          {label}
+          <span className="truncate">{label}</span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         </Link>
       </div>
     </div>
-  );
-}
-
-export function DprFloatingWhatsApp({ whatsappUrl }: { whatsappUrl: string }) {
-  return (
-    <a
-      href={whatsappUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 hidden md:flex items-center justify-center h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:scale-105 active:scale-95 transition-all z-50"
-      aria-label="Contact support on WhatsApp"
-    >
-      <WhatsAppIcon className="h-6 w-6" />
-    </a>
   );
 }

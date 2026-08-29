@@ -92,6 +92,20 @@ export type DprRelatedService = {
   sortOrder: number;
 };
 
+/**
+ * One published blog article, reduced to what the landing page renders.
+ *
+ * The DPR page links to the site's own `/blog`, so this is a projection of a
+ * real `articles` row rather than a second copy of the content.
+ */
+export type DprArticleCard = {
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  category: string | null;
+  imageUrl: string | null;
+};
+
 export type DprCmsPayload = {
   settings: DprPageSettings;
   sections: DprSection[];

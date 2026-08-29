@@ -587,6 +587,23 @@ textarea {
   }
 }
 
+/*
+  Pages that carry their own action bar on a phone — the DPR landing page,
+  whose apply bar occupies this exact corner — ask for the button on wide
+  screens only. This is set here rather than with a `hidden md:flex` utility
+  because the rule below is unlayered, and unlayered CSS beats every Tailwind
+  utility regardless of specificity: the utility was simply ignored.
+*/
+.whatsapp-floating-button[data-desktop-only="true"] {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .whatsapp-floating-button[data-desktop-only="true"] {
+    display: flex;
+  }
+}
+
 .whatsapp-floating-button {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));

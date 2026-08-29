@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+
+import { MarketingFooter } from "@/components/marketing-footer";
+import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { getPublishedArticles } from "@/lib/articles";
+import { getCachedFooterSocialLinks } from "@/lib/homepage/cached";
 import { getDprCmsPayload } from "@/lib/dpr/cms";
 import { DPR_LANDING_PATH, DPR_LAUNCH_PRICE } from "@/lib/dpr/constants";
+import type { DprArticleCard } from "@/lib/dpr/types";
 import DprLandingClient from "./dpr-landing-client";
 
 export const dynamic = "force-dynamic";
@@ -62,11 +68,19 @@ function buildSchemas(cms: Awaited<ReturnType<typeof getDprCmsPayload>>) {
     cms.pricing.find((p) => p.isFeatured) ??
     cms.pricing[0];
   const price = featuredPlan?.price ?? DPR_LAUNCH_PRICE;
+  /*
+    A rating is published only when there are real reviews to average.
+
+    This used to fall back to 4.9 with a review count of 3 when the list was
+    empty, which put a rating into structured data that no customer had ever
+    given. An aggregate rating is a claim about other people's experience; it
+    is emitted here when, and only when, an administrator has entered reviews.
+  */
   const ratingValues = activeReviews.map((r) => r.rating);
   const avgRating =
     ratingValues.length > 0
       ? Number((ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length).toFixed(1))
-      : 4.9;
+      : null;
 
   return [
     {
@@ -95,13 +109,17 @@ function buildSchemas(cms: Awaited<ReturnType<typeof getDprCmsPayload>>) {
         priceCurrency: "INR",
         availability: "https://schema.org/InStock",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: avgRating,
-        reviewCount: activeReviews.length || 3,
-        bestRating: 5,
-        worstRating: 1,
-      },
+      ...(avgRating != null
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: avgRating,
+              reviewCount: activeReviews.length,
+              bestRating: 5,
+              worstRating: 1,
+            },
+          }
+        : {}),
     },
     {
       "@context": "https://schema.org",
@@ -161,14 +179,50 @@ function buildSchemas(cms: Awaited<ReturnType<typeof getDprCmsPayload>>) {
   ];
 }
 
+/**
+ * The DPR guides band reads the site's own blog.
+ *
+ * Anything filed under a project-report, loan or scheme category — or written
+ * about one in its title — surfaces here, newest first. Nothing is invented:
+ * with no matching published article the band does not render.
+ */
+const ARTICLE_TOPICS = ["dpr", "project report", "loan", "scheme", "pmegp", "mudra", "msme", "subsidy"];
+
+function pickDprArticles(articles: Awaited<ReturnType<typeof getPublishedArticles>>): DprArticleCard[] {
+  const matches = articles.filter((article) => {
+    const haystack = `${article.category ?? ""} ${article.title} ${(article.keywords ?? []).join(" ")}`.toLowerCase();
+    return ARTICLE_TOPICS.some((topic) => haystack.includes(topic));
+  });
+
+  return matches.slice(0, 6).map((article) => ({
+    slug: article.slug,
+    title: article.title,
+    excerpt: article.excerpt,
+    category: article.category,
+    imageUrl: article.featured_image_url,
+  }));
+}
+
 export default async function DetailedProjectReportPage() {
-  const [user, cms] = await Promise.all([getCurrentUser(), getDprCmsPayload()]);
+  const [user, cms, articles, socialLinks] = await Promise.all([
+    getCurrentUser(),
+    getDprCmsPayload(),
+    getPublishedArticles(),
+    getCachedFooterSocialLinks(),
+  ]);
 
   return (
     <>
-      <main className="min-h-screen">
-        <DprLandingClient isLoggedIn={Boolean(user)} cms={cms} />
+      <main id="main-content" className="homepage-mobile-shell home-option3 min-h-screen bg-white">
+        <DprLandingClient
+          isLoggedIn={Boolean(user)}
+          cms={cms}
+          articles={pickDprArticles(articles)}
+        />
       </main>
+
+      <MarketingFooter socialLinks={socialLinks} />
+      <HomepageContactActions desktopOnly />
 
       {buildSchemas(cms).map((schema, index) => (
         <script

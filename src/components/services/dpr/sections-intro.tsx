@@ -1,29 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   ArrowRight,
+  BadgeCheck,
   Building2,
-  CheckCircle,
+  CheckCircle2,
   Clock,
   FileText,
   Landmark,
   Lock,
-  Play,
-  Shield,
-  Sparkles,
+  ShieldCheck,
   TrendingUp,
   UserCheck,
 } from "lucide-react";
+
+import { BrandWash } from "@/components/homepage/brand-backdrop";
 import { DPR_LAUNCH_PRICE } from "@/lib/dpr/constants";
 import type { DprBanner, DprSection } from "@/lib/dpr/types";
 import {
   CtaButton,
+  DprIcon,
   GlassCard,
   SectionBanners,
   SectionShell,
-  WhatsAppIcon,
   type DprSectionContext,
 } from "./shared";
 
@@ -35,150 +36,195 @@ type IntroProps = {
   videoUrl?: string | null;
 };
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Hero
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The page opener.
+ *
+ * Built on the same dark brand field as the homepage hero — the logo's blue
+ * ramp, the jaali lattice, a flame orb — so a customer arriving here from the
+ * services directory lands somewhere that plainly belongs to the same site.
+ * The right-hand card is a preview of the artefact being sold: the document,
+ * with its actual chapter names.
+ */
 export function DprHeroSection({ section, ctx, banners, launchPrice = DPR_LAUNCH_PRICE }: IntroProps) {
-  const ctaLabel = section.ctaLabel || "Apply Now";
+  const ctaLabel = section.ctaLabel || "Apply now";
   const ctaUrl = section.ctaUrl || ctx.applyUrl;
 
-  return (
-    <section id="hero" className="relative pt-28 pb-20 md:pt-36 md:pb-28 bg-gradient-to-b from-slate-50/70 to-white overflow-hidden">
-      <div className="absolute top-1/4 left-[8%] w-80 h-80 bg-sky-100/35 rounded-full blur-3xl -translate-y-1/2" />
-      <div className="absolute top-1/3 right-[8%] w-80 h-80 bg-emerald-100/25 rounded-full blur-3xl translate-y-1/2" />
+  const chapters = [
+    { icon: FileText, title: "Cost of project & means of finance", sub: "The table the branch reads first" },
+    { icon: TrendingUp, title: "Three-year projections", sub: "Sales, profit and repayment capacity" },
+    { icon: BadgeCheck, title: "Scheme annexures", sub: "Aligned to PMEGP, Mudra and CM Yuva" },
+  ];
 
-      <div className="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+  return (
+    <section
+      id="hero"
+      className="dc-ambient relative isolate overflow-hidden text-white"
+      style={{ background: "var(--dc-grad-blue)" }}
+    >
+      <div className="dc-ambient-layer" aria-hidden="true">
+        <div className="dc-jaali absolute inset-0 opacity-[0.07]" />
+        <div className="dc-orb dc-orb-flame lg-drift-slow -right-[14%] -top-[36%] h-[36rem] w-[36rem] opacity-55" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] py-10 sm:px-6 sm:py-16 md:px-8 lg:py-20">
         <SectionBanners banners={banners} lazy={false} />
 
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          <div className="lg:col-span-7 space-y-8">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
+        <div className="grid items-center gap-9 lg:grid-cols-12 lg:gap-14">
+          <div className="lg:col-span-7">
+            <nav aria-label="Breadcrumb" className="mb-4">
+              <ol className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-white/55">
+                <li>
+                  <Link href="/" className="transition hover:text-white">
+                    Home
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li>
+                  <Link href="/services" className="transition hover:text-white">
+                    Services
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="text-white/80">Detailed Project Report</li>
+              </ol>
+            </nav>
+
+            <m.span
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-100 bg-white/90 shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+              className="lg-pill-dark lg-raise-dark inline-flex max-w-full items-center gap-2 py-1.5 pl-2 pr-4 text-[11px] font-bold sm:text-xs"
             >
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[12px] font-medium text-slate-600 tracking-wide">
-                Bank-ready DPR for PMEGP, Mudra & MSME schemes
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                style={{ background: "var(--dc-grad-flame)" }}
+              >
+                <Landmark className="h-3 w-3 text-white" aria-hidden="true" />
               </span>
-            </motion.div>
+              <span className="truncate">Bank-ready DPR for PMEGP, Mudra, CM Yuva &amp; MSME</span>
+            </m.span>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+            <m.h1
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.08 }}
-              className="space-y-4"
+              className="mt-4 text-balance text-[1.95rem] font-extrabold leading-[1.06] tracking-[-0.028em] sm:mt-6 sm:text-[3rem] lg:text-[3.6rem]"
             >
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold text-slate-900 tracking-tight leading-[1.08]">
-                {section.heading || "Detailed Project Report"}
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-sky-700 via-sky-600 to-emerald-600 mt-1">
-                  Launch offer ₹{launchPrice}
-                </span>
-              </h1>
-              <p className="text-lg md:text-xl text-slate-500 leading-relaxed max-w-2xl">
-                {section.description}
-              </p>
-            </motion.div>
+              {section.heading || "Detailed Project Report"}
+            </m.h1>
 
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.16 }}
-              className="flex flex-wrap items-center gap-4 bg-white/70 p-4 rounded-[22px] border border-slate-100 max-w-lg shadow-[0_8px_30px_rgba(15,23,42,0.04)]"
-            >
-              <div className="space-y-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-heading font-bold text-slate-900">₹{launchPrice}</span>
-                  <span className="text-slate-400 line-through text-sm">₹999</span>
-                  <span className="text-emerald-700 text-xs font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/60">
-                    Launch offer
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">Scheme-aligned DPR with portal tracking</p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.24 }}
-              className="flex flex-wrap gap-4"
-            >
-              <CtaButton href={ctaUrl} label={ctaLabel} />
-              <a
-                href={ctx.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-11 md:h-12 items-center justify-center gap-2 px-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold transition-all text-[15px]"
+            {section.description ? (
+              <m.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.55, delay: 0.14 }}
+                className="mt-3 max-w-[56ch] text-pretty text-[13.5px] font-medium leading-[1.6] text-white/72 sm:mt-5 sm:text-[17px]"
               >
-                <WhatsAppIcon className="h-5 w-5 text-emerald-500" />
-                Talk to Expert
-              </a>
-            </motion.div>
+                {section.description}
+              </m.p>
+            ) : null}
+
+            <m.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.2 }}
+              className="lg-card-dark mt-5 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[1.25rem] px-4 py-3 sm:mt-7"
+            >
+              <span className="text-[1.6rem] font-extrabold leading-none sm:text-[2rem]">
+                ₹{launchPrice.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[13px] font-bold text-white/45 line-through">₹999</span>
+              <span
+                className="rounded-full px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-white"
+                style={{ background: "var(--dc-grad-flame)" }}
+              >
+                Launch offer
+              </span>
+              <span className="w-full text-[12px] font-medium text-white/60">
+                Scheme-aligned report, delivered through your portal
+              </span>
+            </m.div>
+
+            <m.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.26 }}
+              className="mt-5 flex flex-row gap-2 sm:mt-8 sm:gap-3"
+            >
+              <CtaButton href={ctaUrl} label={ctaLabel} variant="primary" className="flex-1 sm:flex-none" />
+              <CtaButton
+                href={ctx.whatsappUrl}
+                label="Talk to an expert"
+                variant="ghostDark"
+                external
+                className="flex-1 whitespace-nowrap sm:flex-none"
+              />
+            </m.div>
           </div>
 
-          <div className="lg:col-span-5 relative mt-4 lg:mt-0 flex justify-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.15 }}
-              className="relative w-full max-w-[420px] aspect-[4/5] bg-gradient-to-tr from-slate-50 to-white rounded-[28px] border border-slate-100 p-7 shadow-[0_20px_50px_rgba(0,0,0,0.04)] flex flex-col justify-between overflow-hidden"
+          {/* The document, previewed. */}
+          <div className="lg:col-span-5">
+            <m.div
+              initial={{ opacity: 0, scale: 0.97, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.18 }}
+              className="lg-card-dark mx-auto flex w-full max-w-[420px] flex-col gap-4 rounded-[1.6rem] p-4 sm:p-6"
             >
-              <div className="absolute -top-10 -right-10 w-44 h-44 bg-sky-100/30 rounded-full blur-2xl" />
-              <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-emerald-100/25 rounded-full blur-2xl" />
-
-              <div className="flex justify-between items-center border-b border-slate-100/80 pb-4 relative z-10">
+              <div className="flex items-center justify-between gap-3 border-b border-white/12 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 font-bold text-xs">
-                    DPR
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Loan-ready</p>
-                    <p className="text-xs font-bold text-slate-700">Project Report Draft</p>
-                  </div>
-                </div>
-                <span className="px-2 py-0.5 rounded bg-emerald-50 text-[10px] font-bold text-emerald-700 border border-emerald-100/60">
-                  In review
-                </span>
-              </div>
-
-              <div className="my-auto space-y-4 relative z-10">
-                {[
-                  { icon: FileText, title: "Cost & means of finance", sub: "Bank-standard structure", color: "sky" },
-                  { icon: TrendingUp, title: "3-year projections", sub: "Sales & repayment view", color: "emerald" },
-                  { icon: CheckCircle, title: "Scheme annexures", sub: "PMEGP / Mudra aligned", color: "sky" },
-                ].map((item, idx) => (
-                  <motion.div
-                    key={item.title}
-                    animate={ctx.reduceMotion ? undefined : { y: [0, idx % 2 === 0 ? -3 : 3, 0] }}
-                    transition={ctx.reduceMotion ? undefined : { repeat: Infinity, duration: 4 + idx, ease: "easeInOut" }}
-                    className="flex items-center justify-between p-3.5 bg-white rounded-[18px] border border-slate-100 shadow-sm"
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-extrabold text-white"
+                    style={{ background: "var(--dc-grad-flame)" }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-xl border ${
-                          item.color === "emerald"
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100/60"
-                            : "bg-sky-50 text-sky-600 border-sky-100/60"
-                        }`}
-                      >
-                        <item.icon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-800">{item.title}</p>
-                        <p className="text-[10px] text-slate-400">{item.sub}</p>
-                      </div>
-                    </div>
-                    <CheckCircle className="h-4 w-4 text-emerald-500" />
-                  </motion.div>
-                ))}
+                    DPR
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/45">
+                      Loan-ready
+                    </span>
+                    <span className="block truncate text-[13px] font-bold">Project Report</span>
+                  </span>
+                </div>
+                <span className="lg-pill-dark shrink-0 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/75">
+                  Draft
+                </span>
               </div>
 
-              <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-100/80 pt-4 relative z-10">
-                <span className="flex items-center gap-1">
-                  <Lock className="h-3 w-3" /> Secure document handling
+              <ul className="space-y-2.5">
+                {chapters.map((chapter, index) => (
+                  <m.li
+                    key={chapter.title}
+                    animate={ctx.reduceMotion ? undefined : { y: [0, index % 2 === 0 ? -3 : 3, 0] }}
+                    transition={
+                      ctx.reduceMotion
+                        ? undefined
+                        : { repeat: Infinity, duration: 4 + index, ease: "easeInOut" }
+                    }
+                    className="flex items-center gap-3 rounded-[1.1rem] bg-white/[0.07] p-3"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[var(--dc-amber)]">
+                      <chapter.icon className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12.5px] font-bold leading-tight">{chapter.title}</span>
+                      <span className="block text-[11px] font-medium leading-tight text-white/55">{chapter.sub}</span>
+                    </span>
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--dc-amber)]" aria-hidden="true" />
+                  </m.li>
+                ))}
+              </ul>
+
+              <p className="flex items-center justify-between gap-2 border-t border-white/12 pt-3 text-[10.5px] font-bold text-white/45">
+                <span className="inline-flex items-center gap-1.5">
+                  <Lock className="h-3 w-3" aria-hidden="true" /> Secure document handling
                 </span>
-                <span className="font-semibold text-slate-600">DigiConnect Dukan</span>
-              </div>
-            </motion.div>
+                <span className="text-white/70">DigiConnect Dukan</span>
+              </p>
+            </m.div>
           </div>
         </div>
       </div>
@@ -186,108 +232,160 @@ export function DprHeroSection({ section, ctx, banners, launchPrice = DPR_LAUNCH
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Trust rail
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The strip directly under the hero.
+ *
+ * Statements about how the service works, not borrowed credibility: no press
+ * logos, no awards, no counter. Each one is something a customer can hold the
+ * company to.
+ */
 export function DprTrustSection({ section }: { section: DprSection }) {
   const items = [
     { icon: Landmark, label: "Scheme-aware drafting" },
     { icon: UserCheck, label: "Expert document review" },
-    { icon: Shield, label: "Secure uploads & payments" },
-    { icon: Clock, label: "Fast 24–72h turnaround" },
+    { icon: ShieldCheck, label: "Secure uploads & payments" },
+    { icon: Clock, label: "24–72 hour turnaround" },
     { icon: Building2, label: "PAN India partner network" },
-    { icon: Sparkles, label: "Transparent launch pricing" },
+    { icon: BadgeCheck, label: "Transparent launch pricing" },
   ];
 
   return (
-    <section id="trust" className="py-6 border-y border-slate-100 bg-white">
-      <div className="max-w-7xl mx-auto px-6 md:px-8">
-        {(section.heading || section.description) && (
-          <p className="text-center text-sm text-slate-500 mb-5 md:mb-0 md:hidden">{section.heading}</p>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-y-5 gap-x-6">
-          {items.map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-slate-500 text-sm">
-              <item.icon className="h-4 w-4 text-sky-600 shrink-0" />
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+    <section
+      id="trust"
+      aria-label={section.heading || "Why customers choose this service"}
+      className="dc-ambient relative overflow-hidden bg-[var(--dc-sky-soft)] px-[var(--mobile-page-gutter)] py-4 sm:px-6 sm:py-5 md:px-8"
+    >
+      <BrandWash variant="dual" />
+      <ul className="relative mx-auto grid max-w-[var(--dc-max)] grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-5 sm:gap-y-3">
+        {items.map((item) => (
+          <li
+            key={item.label}
+            className="lg-card flex min-h-11 items-center gap-2 rounded-xl px-2.5 py-2 text-[11px] font-bold text-[var(--dc-ink)] sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-[13px] sm:shadow-none sm:backdrop-blur-none"
+          >
+            <item.icon className="h-4 w-4 shrink-0 text-[var(--dc-flame)]" aria-hidden="true" />
+            <span className="min-w-0">{item.label}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   What a DPR is
+   ───────────────────────────────────────────────────────────────────────── */
+
 export function DprWhatIsSection({ section, banners }: { section: DprSection; banners: DprBanner[] }) {
   const points = [
-    "Formal project document required by banks and departments",
-    "Covers cost of project, means of finance, and projections",
-    "Scheme-specific annexures for subsidy-linked loans",
-    "Improves appraisal clarity and reduces rework cycles",
+    {
+      title: "The document the bank actually asks for",
+      detail:
+        "Branches and departments will not move a subsidy-linked file without a project report in their own format. This is that document.",
+    },
+    {
+      title: "Your idea, written as numbers",
+      detail:
+        "Cost of project, means of finance, machinery schedule and three-year projections — the four tables an appraisal officer turns to first.",
+    },
+    {
+      title: "Annexures matched to your scheme",
+      detail:
+        "PMEGP, Mudra, CM Yuva and PM Vishwakarma each expect different supporting notes. The report is drafted against the one you name.",
+    },
+    {
+      title: "Fewer rounds of rework",
+      detail:
+        "A complete file moves. Most delays customers report are a missing table or an unexplained cost, both of which are handled before submission.",
+    },
   ];
 
   return (
-    <SectionShell section={section} altBg>
+    <SectionShell section={section} surface="sky" center={false}>
       <SectionBanners banners={banners} />
-      <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-        <GlassCard className="p-6 md:p-8 space-y-4">
-          <p className="text-slate-600 leading-relaxed">
-            A Detailed Project Report (DPR) is the structured business case lenders review before approving
-            PMEGP, Mudra, CM Yuva, and other MSME-linked credit files. It translates your idea into bank-ready
-            numbers, machinery schedules, and repayment capacity.
+      <div className="grid gap-4 lg:grid-cols-12 lg:gap-6">
+        <GlassCard className="p-5 sm:p-7 lg:col-span-5" interactive={false}>
+          <DprIcon tone="flame">
+            <FileText className="h-[18px] w-[18px]" aria-hidden="true" />
+          </DprIcon>
+          <p className="mt-4 text-[14px] font-medium leading-[1.65] text-[var(--dc-body)] sm:text-[15px]">
+            A Detailed Project Report is the structured business case a lender reads before approving a
+            PMEGP, Mudra, CM Yuva or MSME-linked loan. It turns a plan — a unit, a machine list, a rough
+            idea of turnover — into the costed, projected, annexure-backed document a credit officer can
+            sign off on.
+          </p>
+          <p className="mt-3 text-[13.5px] font-medium leading-[1.65] text-[var(--dc-muted)] sm:text-[14.5px]">
+            It is not a formality. It is the difference between a file that is appraised and a file that
+            is returned.
           </p>
         </GlassCard>
-        <div className="grid gap-3">
+
+        <ul className="grid gap-3 sm:grid-cols-2 lg:col-span-7 lg:grid-cols-2">
           {points.map((point) => (
-            <GlassCard key={point} className="p-4 flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-slate-600 leading-relaxed">{point}</p>
-            </GlassCard>
+            <li key={point.title}>
+              <GlassCard className="h-full p-4 sm:p-5">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2
+                    className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[var(--dc-flame)]"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-[13.5px] font-extrabold leading-snug text-[var(--dc-ink)] sm:text-[14.5px]">
+                      {point.title}
+                    </h3>
+                    <p className="mt-1.5 text-[12.5px] font-medium leading-[1.6] text-[var(--dc-body)] sm:text-[13.5px]">
+                      {point.detail}
+                    </p>
+                  </div>
+                </div>
+              </GlassCard>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </SectionShell>
   );
 }
 
-export function DprVideoSection({
-  section,
-  ctx,
-  banners,
-  videoUrl,
-}: IntroProps) {
+/* ─────────────────────────────────────────────────────────────────────────
+   Video
+   ───────────────────────────────────────────────────────────────────────── */
+
+export function DprVideoSection({ section, ctx, banners, videoUrl }: IntroProps) {
   const embedUrl = videoUrl ? toEmbedUrl(videoUrl) : null;
+
+  // Nothing to show and nothing to promise: the band is skipped entirely
+  // rather than printing a "coming soon" placeholder on a sales page.
+  if (!embedUrl) return null;
 
   return (
     <SectionShell section={section}>
       <SectionBanners banners={banners} />
-      <div className="max-w-4xl mx-auto">
-        {embedUrl ? (
-          <GlassCard className="overflow-hidden aspect-video">
-            <iframe
-              src={embedUrl}
-              title={section.heading || "DPR process video"}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              loading="lazy"
-            />
-          </GlassCard>
-        ) : (
-          <GlassCard className="aspect-video flex flex-col items-center justify-center gap-4 p-8 text-center">
-            <div className="h-16 w-16 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
-              <Play className="h-7 w-7 ml-1" />
-            </div>
-            <p className="text-slate-500 max-w-md">
-              Video overview coming soon. Meanwhile, chat with our team on WhatsApp for a walkthrough.
-            </p>
-            <Link
-              href={ctx.whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sky-600 font-semibold hover:text-sky-700"
-            >
-              Request a demo <ArrowRight className="h-4 w-4" />
-            </Link>
-          </GlassCard>
-        )}
+      <div className="mx-auto max-w-4xl">
+        <GlassCard className="aspect-video" interactive={false}>
+          <iframe
+            src={embedUrl}
+            title={section.heading || "How your DPR is prepared"}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+          />
+        </GlassCard>
+        <p className="mt-4 text-center text-[13px] font-medium text-[var(--dc-muted)]">
+          Prefer to ask directly?{" "}
+          <a
+            href={ctx.whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-bold text-[var(--dc-blue-mid)] hover:underline"
+          >
+            Message us on WhatsApp <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        </p>
       </div>
     </SectionShell>
   );
