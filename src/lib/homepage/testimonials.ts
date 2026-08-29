@@ -137,3 +137,4 @@ export function toEmbedUrl(rawUrl: string | null | undefined): string | null {
   // Anything else is only embedded when it is already an https URL.
   return url.startsWith("https://") ? url : null;
 }
+

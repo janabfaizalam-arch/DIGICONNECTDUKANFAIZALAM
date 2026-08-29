@@ -1,7 +1,8 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { ServiceSectionType } from "@/lib/services";
+import { HOMEPAGE_TAGS } from "@/lib/homepage/cache";
 
 export function slugifyService(value: string) {
   return value.toLowerCase().replace(/&/g, "and").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
@@ -216,6 +217,7 @@ export async function syncServiceBuilderRows(supabase: SupabaseClient, serviceId
 
 export function revalidateServicePaths(slug?: string) {
   revalidatePath("/");
+  revalidateTag(HOMEPAGE_TAGS.services);
   revalidatePath("/services");
   revalidatePath("/admin/services");
   if (slug) {

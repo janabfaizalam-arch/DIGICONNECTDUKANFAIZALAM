@@ -1,10 +1,11 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { validateFileSignature } from "@/lib/file-validation";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { homepageSlidesBucketName } from "@/lib/homepage-slides";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { HOMEPAGE_TAGS } from "@/lib/homepage/cache";
 
 const allowedImageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const maxImageSize = 8 * 1024 * 1024;
@@ -266,6 +267,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     revalidatePath("/");
+
+    revalidateTag(HOMEPAGE_TAGS.slides);
     revalidatePath("/admin/homepage-slides");
 
     return NextResponse.json({ slide, message: "Homepage slide updated successfully." });
@@ -323,6 +326,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     }
 
     revalidatePath("/");
+
+    revalidateTag(HOMEPAGE_TAGS.slides);
     revalidatePath("/admin/homepage-slides");
 
     return NextResponse.json({ message: "Homepage slide deleted successfully." });

@@ -23,13 +23,11 @@ import { AboutRnos } from "@/components/homepage/about-rnos";
 import { MotionRoot, Reveal } from "@/components/homepage/motion";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
-import { getPublicServices } from "@/lib/services";
-import { getActiveHomepageSlides } from "@/lib/homepage-slides";
 import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
 import { buildAggregateRatingJsonLd, getHomepageTestimonials } from "@/lib/homepage/testimonials";
 import { buildReelsJsonLd, getHomepageReels } from "@/lib/homepage/reels";
-import { getFooterSocialLinks } from "@/lib/homepage/social";
 import { contactDetails } from "@/lib/constants";
+import { getCachedFooterSocialLinks, getCachedHomepageFaqs, getCachedHomepageReels, getCachedHomepageSlides, getCachedHomepageTestimonials, getCachedPublicServices } from "@/lib/homepage/cached";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
 
@@ -71,13 +69,16 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const [publicServices, slides, faqs, testimonials, reels, socialLinks] = await Promise.all([
-    getPublicServices(),
-    getActiveHomepageSlides(5),
-    getHomepageFaqs(),
-    getHomepageTestimonials(),
-    getHomepageReels(),
-    getFooterSocialLinks(),
+    getCachedPublicServices(),
+    getCachedHomepageSlides(),
+    getCachedHomepageFaqs(),
+    getCachedHomepageTestimonials(),
+    getCachedHomepageReels(),
+    getCachedFooterSocialLinks(),
   ]);
+
+  // The hero uses the first few; the loader caches the whole short list.
+  const heroSlides = slides.slice(0, 5);
 
   const searchCatalog = publicServices.map((s) => ({
     slug: s.slug,
@@ -132,7 +133,7 @@ export default async function Home() {
         <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
           {/* Above the fold — no scroll reveal here. A section that fades in on
               first paint is a section the user waits for. */}
-          <HomepageHero catalog={searchCatalog} slides={slides} />
+          <HomepageHero catalog={searchCatalog} slides={heroSlides} />
 
           <QuickActions />
 

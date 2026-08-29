@@ -9,9 +9,8 @@ import { SupportCenter } from "@/components/homepage/support-center";
 import { MotionRoot, Reveal } from "@/components/homepage/motion";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
-import { getPublicServices } from "@/lib/services";
 import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
-import { getFooterSocialLinks } from "@/lib/homepage/social";
+import { getCachedFooterSocialLinks, getCachedHomepageFaqs, getCachedPublicServices } from "@/lib/homepage/cached";
 
 export const metadata: Metadata = {
   title: "All Digital Services | DigiConnect Dukan",
@@ -55,9 +54,9 @@ export default async function ServicesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const [rawServices, faqs, socialLinks, { q }] = await Promise.all([
-    getPublicServices(),
-    getHomepageFaqs(),
-    getFooterSocialLinks(),
+    getCachedPublicServices(),
+    getCachedHomepageFaqs(),
+    getCachedFooterSocialLinks(),
     searchParams,
   ]);
 

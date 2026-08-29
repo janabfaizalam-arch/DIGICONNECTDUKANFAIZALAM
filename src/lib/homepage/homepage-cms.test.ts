@@ -130,6 +130,9 @@ describe("publication safety", () => {
   it("filters unconsented testimonials in code, not only in RLS", () => {
     // The public read path uses the service-role client, which bypasses RLS —
     // so the policy alone would not stop an unconsented row being published.
+    // The public page reads this through a cache, which makes the filter more
+    // important rather than less: a cache in front of an unfiltered query
+    // would publish an unconsented row and then keep serving it.
     const lib = readSrc("src/lib/homepage/testimonials.ts");
     const publicFn = lib.slice(
       lib.indexOf("export async function getHomepageTestimonials"),
