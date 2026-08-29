@@ -11,7 +11,6 @@ import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
 import { BottomNav } from "@/components/bottom-nav";
-import { HomepageOfferNoticeBar } from "@/components/homepage-offer-notice-bar";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -175,7 +174,17 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <NavigationProgress />
           </Suspense>
-          <SiteHeader announcement={<HomepageOfferNoticeBar />} />
+          {/*
+            No announcement strip above the header.
+
+            The homepage carried a scrolling offer ticker on top of the navbar.
+            Stacked with the header, the search row and the hero it made the
+            top of a phone screen read as three bars before any content, and it
+            was the first thing asked to go. The notices themselves are still
+            managed at /admin/homepage-notices, so putting the strip back is one
+            prop — it is not rendered anywhere today.
+          */}
+          <SiteHeader />
           {children}
           <Suspense fallback={null}>
             <BottomNav />

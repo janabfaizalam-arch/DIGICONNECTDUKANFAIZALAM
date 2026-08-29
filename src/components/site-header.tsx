@@ -17,6 +17,7 @@ import {
 } from "@/lib/auth/partner-access";
 import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { sectionHref } from "@/lib/customer/sections";
+import { useChromeHiddenOnScroll } from "@/lib/ui/use-chrome-visibility";
 
 import type { AppRole } from "@/components/providers/session-provider";
 
@@ -110,7 +111,6 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
 
   // Scroll-aware hide/show state
   const [scrolled, setScrolled] = useState(false);
-  const [navHidden, setNavHidden] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,9 +167,11 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
   const [notifLoading, setNotifLoading] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  const lastScrollYRef = useRef(0);
   const scrolledRef = useRef(false);
   const ticking = useRef(false);
+
+  // An open notification panel or search overlay pins the header in place.
+  const navHidden = useChromeHiddenOnScroll(!notifOpen && !searchOpen);
 
   const focusHomepageSearch = useCallback(() => {
     if (typeof document === "undefined") return false;
@@ -461,30 +463,24 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
     }
   };
 
-  // Scroll handler — Apple-style hide on scroll down, show on scroll up
+  /*
+    Only the glass state is measured here. Whether the header is on screen at
+    all comes from `useChromeHiddenOnScroll`, which the tab bar reads too, so
+    the two pieces of chrome leave and return as one movement instead of two
+    that nearly agree.
+  */
   const handleScroll = useCallback(() => {
     if (ticking.current) return;
 
     ticking.current = true;
     window.requestAnimationFrame(() => {
       ticking.current = false;
-      const currentScrollY = window.scrollY;
-      const isScrolled = currentScrollY > 8;
-      const scrollDelta = currentScrollY - lastScrollYRef.current;
+      const isScrolled = window.scrollY > 8;
 
       if (isScrolled !== scrolledRef.current) {
         scrolledRef.current = isScrolled;
         setScrolled(isScrolled);
       }
-
-      // Hide on scroll down (>10px), show on scroll up
-      if (scrollDelta > 10 && currentScrollY > 80) {
-        setNavHidden(true);
-      } else if (scrollDelta < -5) {
-        setNavHidden(false);
-      }
-
-      lastScrollYRef.current = currentScrollY;
     });
   }, []);
 

@@ -3,6 +3,10 @@ import { Building2, Landmark, Lock, Receipt, ShieldCheck } from "lucide-react";
 /**
  * What DigiConnect Dukan actually covers.
  *
+ * On a phone this is not rendered: `HomepageTrustChips` sits one screen below
+ * and covers the same ground for that width, and stacking both put nine badges
+ * into the first two screens of the page.
+ *
  * These are service categories that exist in the catalogue, not press logos or
  * awards: a private documentation-assistance company has no business borrowing
  * a publication's credibility, and an unsupported claim on the busiest page of

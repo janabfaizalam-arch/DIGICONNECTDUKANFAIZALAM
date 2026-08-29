@@ -19,6 +19,7 @@ import {
 import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 
 import { isAuthRoutePath } from "@/lib/auth/auth-routes";
+import { useChromeHiddenOnScroll } from "@/lib/ui/use-chrome-visibility";
 import { useAppSession } from "@/components/providers/session-provider";
 import { requestSection, useActiveSection } from "@/lib/customer/section-bus";
 import { resolveSection, sectionHref, type CustomerSection } from "@/lib/customer/sections";
@@ -116,20 +117,21 @@ export function BottomNav() {
   const activeSection = useActiveSection(resolveSection(searchParams.get("tab")));
 
   /*
-    The bar does not hide on scroll any more.
+    The bar slides away on the way down and comes back on the way up.
 
-    It used to slide away on the way down and come back on the way up, and
-    that one behaviour produced every complaint this navigation has had: it
-    hid itself after a trip to Apply and back, it hid itself on a page nobody
-    had scrolled, and it was reported as broken three separate times. Two
-    fixes went in — re-seeding the scroll reference on a path change, then a
-    settling window to ignore the browser restoring a position — and it came
-    back a third time.
+    The measuring lives in `useChromeHiddenOnScroll`, shared with the site
+    header so the two move together. Everything that made this behaviour a
+    liability before — reacting to the browser restoring a scroll position on
+    a back navigation, hiding on a page nobody had scrolled — is handled
+    there, in one place, rather than twice slightly differently.
 
-    A five-tab bar on a floating pill is 64px. Reclaiming that is not worth a
-    navigation that a customer cannot trust to be there, so the whole
-    mechanism is gone rather than patched again. Nobody asked for it.
+    The real cause of the bar "breaking" after a trip to Apply was never this:
+    the wizard was writing `--bottom-nav-height: 0px` onto the document and
+    never clearing it, so the bar came back with no height at all. That is
+    fixed at the source in `useWizardLayoutMetrics`.
   */
+  const chromeHidden = useChromeHiddenOnScroll();
+
 
   const isCustomer = role === "customer" || (!role && !!user);
 
@@ -163,7 +165,8 @@ export function BottomNav() {
   return (
     <LazyMotion features={domAnimation} strict>
       <nav
-        className="bottom-nav-container fixed bottom-0 left-0 right-0 z-[50] px-3 print:hidden md:hidden"
+        data-hidden={chromeHidden ? "true" : undefined}
+        className="bottom-nav-container dc-chrome-slide-down fixed bottom-0 left-0 right-0 z-[50] px-3 print:hidden md:hidden"
         style={{ paddingBottom: "max(0.45rem, env(safe-area-inset-bottom))" }}
         aria-label="Primary mobile navigation"
       >

@@ -35,6 +35,7 @@ import {
   type DprProjectForm,
   type MachineryRow,
 } from "@/components/services/dpr/dpr-wizard-steps";
+import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
 
 const DRAFT_KEY = "dpr_wizard_draft_v1";
 
@@ -185,31 +186,7 @@ export function DprApplicationWizard({ initialProfileFields }: DprApplicationWiz
 
   const servicePrice = dbService?.customer_fee ?? DPR_LAUNCH_PRICE;
 
-  // Layout height vars (match customer wizard)
-  useEffect(() => {
-    const update = () => {
-      const header = document.querySelector(".site-header");
-      const stepper = document.querySelector(".wizard-stepper");
-      const bottomNav = document.querySelector(".bottom-nav-container");
-      const stickyActions = document.querySelector(".wizard-sticky-actions");
-      const root = document.documentElement;
-      root.style.setProperty("--site-header-height", `${header ? header.getBoundingClientRect().height : 0}px`);
-      root.style.setProperty("--stepper-height", `${stepper ? stepper.getBoundingClientRect().height : 0}px`);
-      root.style.setProperty("--bottom-nav-height", `${bottomNav && window.getComputedStyle(bottomNav).display !== "none" ? bottomNav.getBoundingClientRect().height : 0}px`);
-      root.style.setProperty("--sticky-action-bar-height", `${stickyActions ? stickyActions.getBoundingClientRect().height : 0}px`);
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    ["site-header", "wizard-stepper", "bottom-nav-container", "wizard-sticky-actions"].forEach((cls) => {
-      const el = document.querySelector(`.${cls}`);
-      if (el) observer.observe(el);
-    });
-    window.addEventListener("resize", update);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [currentStep, successDetails]);
+  useWizardLayoutMetrics([currentStep, successDetails]);
 
   // Load agent service price
   useEffect(() => {

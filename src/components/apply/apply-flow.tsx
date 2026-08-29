@@ -172,7 +172,7 @@ export function ApplyFlow(options: ApplyFlowOptions) {
           className="relative mx-auto w-full max-w-[var(--dc-max)] px-[var(--mobile-page-gutter)] pt-5 sm:px-6 md:px-8"
           style={{
             paddingBottom:
-              "calc(var(--bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 2rem)",
+              "calc(var(--wizard-bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 2rem)",
           }}
         >
           <AnimatePresence mode="wait">
@@ -212,7 +212,7 @@ export function ApplyFlow(options: ApplyFlowOptions) {
             )}
             style={{
               bottom: 0,
-              paddingBottom: "calc(var(--bottom-nav-height, 0px) + max(0.6rem, env(safe-area-inset-bottom)))",
+              paddingBottom: "calc(var(--wizard-bottom-nav-height, 0px) + max(0.6rem, env(safe-area-inset-bottom)))",
             }}
           >
             <div className="dc-tabbar mx-auto flex max-w-md items-center gap-2.5 p-2.5">
