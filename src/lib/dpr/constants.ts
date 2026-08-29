@@ -18,6 +18,7 @@ export const DPR_SECTION_KEYS = [
   "samples",
   "reviews",
   "success",
+  "articles",
   "faq",
   "trust_badges",
   "documents",

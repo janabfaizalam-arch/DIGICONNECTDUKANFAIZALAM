@@ -86,8 +86,13 @@ const SECTION_COPY: Record<
     description: "Real entrepreneurs who got loan-ready reports.",
   },
   success: {
-    heading: "Success stories",
-    description: "From application to sanctioned funding support.",
+    heading: "What the report looks like",
+    description: "The chapters change with the kind of business you are building.",
+  },
+  articles: {
+    heading: "Guides & articles",
+    description:
+      "Longer reads on schemes, costings and what a bank looks for in a project file.",
   },
   faq: {
     heading: "Frequently asked questions",
@@ -106,8 +111,8 @@ const SECTION_COPY: Record<
     description: "Higher clarity for banks and faster file movement.",
   },
   stats: {
-    heading: "Numbers that matter",
-    description: "Applications supported, schemes covered, turnaround.",
+    heading: "The service, in four numbers",
+    description: "What it costs, what it covers, how long it takes, and what you receive.",
   },
   cta: {
     heading: "Ready to get your DPR?",
@@ -266,32 +271,20 @@ export const DEFAULT_DPR_FAQS: DprFaq[] = [
   },
 ];
 
-export const DEFAULT_DPR_REVIEWS: DprReview[] = [
-  {
-    name: "Ravi Kumar",
-    location: "Patna, Bihar",
-    rating: 5,
-    text: "Got my PMEGP DPR quickly. Bank accepted the format without asking for major changes.",
-    isActive: true,
-    sortOrder: 10,
-  },
-  {
-    name: "Sneha Patil",
-    location: "Nashik, Maharashtra",
-    rating: 5,
-    text: "Clear pricing and WhatsApp updates. Machinery table was exactly what I needed.",
-    isActive: true,
-    sortOrder: 20,
-  },
-  {
-    name: "Mohd. Imran",
-    location: "Lucknow, UP",
-    rating: 4.8,
-    text: "Professional team. Helped me correct cost projections before submission.",
-    isActive: true,
-    sortOrder: 30,
-  },
-];
+/**
+ * No reviews ship with the code.
+ *
+ * This list used to hold three invented testimonials — a name, a city and a
+ * quote for each — which the page also fed into `Review` and `AggregateRating`
+ * structured data. Publishing fabricated reviews as machine-readable ratings
+ * is a misrepresentation to every customer who reads them and to the search
+ * engines that index them, and it is the same thing that was removed from the
+ * homepage and the services directory.
+ *
+ * Real reviews are entered by an administrator at /admin/services/dpr. Until
+ * there are some, the reviews band does not render and no rating is claimed.
+ */
+export const DEFAULT_DPR_REVIEWS: DprReview[] = [];
 
 export const DEFAULT_DPR_COMPARISON: DprComparisonRow[] = [
   { feature: "Scheme-aware DPR drafting", digiconnect: "Yes", others: "Generic templates", isActive: true, sortOrder: 10 },
@@ -378,11 +371,20 @@ export const DPR_BENEFITS = [
   "Partner-assisted option for local help",
 ];
 
+/**
+ * Four facts about the service.
+ *
+ * Each is something the business sets and can be held to — the price it
+ * charges, the schemes it drafts against, the window it works to, the number
+ * of chapters in the report. The fourth used to be a "4.9 customer rating"
+ * that nothing produced and nobody could check; a number like that on a page
+ * selling a loan document costs more trust than it buys.
+ */
 export const DPR_STATS = [
   { label: "Launch price", value: DPR_LAUNCH_PRICE, prefix: "₹", suffix: "" },
-  { label: "Schemes covered", value: 6, prefix: "", suffix: "+" },
+  { label: "Schemes drafted for", value: 6, prefix: "", suffix: "+" },
   { label: "Typical turnaround", value: 48, prefix: "", suffix: "h" },
-  { label: "Customer rating", value: 4.9, prefix: "", suffix: "★" },
+  { label: "Chapters in the report", value: 6, prefix: "", suffix: "" },
 ];
 
 export const DPR_WHY_US = [
@@ -400,18 +402,29 @@ export const DPR_TRUST_BADGES = [
   "RNOS-backed operations",
 ];
 
+/**
+ * What the report looks like for three shapes of business.
+ *
+ * These describe the deliverable — which chapters a manufacturing file carries
+ * that a service file does not — rather than claiming outcomes on behalf of
+ * customers who were never named. An approval is the bank's decision, and this
+ * page does not promise one.
+ */
 export const DPR_SUCCESS_STORIES = [
   {
-    title: "Fabrication unit — PMEGP",
-    detail: "Complete DPR with machinery schedule helped secure branch appraisal.",
+    title: "Manufacturing unit",
+    detail:
+      "Item-wise machinery schedule, power and space requirements, and a capacity-linked sales projection — the three tables a term-loan appraisal turns on.",
   },
   {
-    title: "Beauty salon — Mudra",
-    detail: "Compact working-capital projections ready within two working days.",
+    title: "Shop or service unit",
+    detail:
+      "Working-capital cycle, fit-out and stock costing, and a monthly break-even view, sized for a Mudra file rather than a factory one.",
   },
   {
-    title: "Food processing — CM Yuva",
-    detail: "Subsidy note and cost break-up accepted in first review cycle.",
+    title: "Artisan or micro enterprise",
+    detail:
+      "A short-form report with the subsidy note and cost break-up that PM Vishwakarma and state MSME schemes ask for, without the annexures they do not.",
   },
 ];
 
