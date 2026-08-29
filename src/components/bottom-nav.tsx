@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -25,13 +25,6 @@ import { resolveSection, sectionHref, type CustomerSection } from "@/lib/custome
 
 const hiddenPrefixes = ["/admin", "/agent", "/ap", "/staff", "/apply"];
 
-/**
- * How long after a navigation a scroll event is read as the browser restoring
- * a position rather than as the customer moving the page. Long enough to cover
- * scroll restoration, short enough that a deliberate flick right after landing
- * still hides the bar.
- */
-const SETTLE_MS = 700;
 
 function shouldHide(pathname: string) {
   if (isAuthRoutePath(pathname)) return true;
@@ -118,66 +111,25 @@ export function BottomNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, role } = useAppSession();
-  const [navHidden, setNavHidden] = useState(false);
-  const lastScrollYRef = useRef(0);
-  const settledAtRef = useRef(0);
 
   const onDashboard = pathname === "/customer/dashboard";
   const activeSection = useActiveSection(resolveSection(searchParams.get("tab")));
 
-  /**
-   * Hide on the way down, come back on the way up.
-   *
-   * The settling window is the fix for a bug that survived one attempt. Open
-   * Apply, come back, and the bar hid itself on a screen nobody had touched.
-   *
-   * My first go re-seeded `lastScrollYRef` from `window.scrollY` when the path
-   * changed, which is right but too early: the browser restores the previous
-   * scroll position *after* that, asynchronously. So the seed was 0, the
-   * restoration jumped the page to wherever it had been, and the scroll event
-   * that announced it looked like the customer had just flicked down several
-   * hundred pixels. The bar did exactly what it was told.
-   *
-   * A scroll that arrives in the first moments after a navigation is
-   * therefore treated as position, not as movement: it updates the reference
-   * and decides nothing. Only scrolling the customer actually does gets a
-   * vote.
-   */
-  useEffect(() => {
-    if (shouldHide(pathname)) return;
+  /*
+    The bar does not hide on scroll any more.
 
-    lastScrollYRef.current = window.scrollY;
-    settledAtRef.current = Date.now();
-    setNavHidden(false);
+    It used to slide away on the way down and come back on the way up, and
+    that one behaviour produced every complaint this navigation has had: it
+    hid itself after a trip to Apply and back, it hid itself on a page nobody
+    had scrolled, and it was reported as broken three separate times. Two
+    fixes went in — re-seeding the scroll reference on a path change, then a
+    settling window to ignore the browser restoring a position — and it came
+    back a third time.
 
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const scrollDelta = currentScrollY - lastScrollYRef.current;
-      lastScrollYRef.current = currentScrollY;
-
-      if (Date.now() - settledAtRef.current < SETTLE_MS) return;
-
-      if (scrollDelta > 15 && currentScrollY > 60) {
-        setNavHidden(true);
-      } else if (scrollDelta < -10) {
-        setNavHidden(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [pathname]);
-
-  /**
-   * A section switch does not change the path, so the effect above does not
-   * re-run — but it does scroll the page to the top, which would otherwise
-   * read as a large upward movement and is not one.
-   */
-  useEffect(() => {
-    lastScrollYRef.current = 0;
-    settledAtRef.current = Date.now();
-    setNavHidden(false);
-  }, [activeSection]);
+    A five-tab bar on a floating pill is 64px. Reclaiming that is not worth a
+    navigation that a customer cannot trust to be there, so the whole
+    mechanism is gone rather than patched again. Nobody asked for it.
+  */
 
   const isCustomer = role === "customer" || (!role && !!user);
 
@@ -210,13 +162,7 @@ export function BottomNav() {
 
   return (
     <LazyMotion features={domAnimation} strict>
-      <m.nav
-        animate={navHidden ? "hidden" : "visible"}
-        initial="visible"
-        variants={{
-          visible: { y: 0, transition: { type: "spring", stiffness: 280, damping: 26 } },
-          hidden: { y: "135%", transition: { ease: "easeInOut", duration: 0.25 } },
-        }}
+      <nav
         className="bottom-nav-container fixed bottom-0 left-0 right-0 z-[50] px-3 print:hidden md:hidden"
         style={{ paddingBottom: "max(0.45rem, env(safe-area-inset-bottom))" }}
         aria-label="Primary mobile navigation"
@@ -240,7 +186,7 @@ export function BottomNav() {
             ),
           )}
         </div>
-      </m.nav>
+      </nav>
     </LazyMotion>
   );
 }
