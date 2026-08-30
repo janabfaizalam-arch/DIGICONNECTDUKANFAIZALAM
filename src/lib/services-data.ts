@@ -218,11 +218,19 @@ export const serviceCategories: ServiceCategory[] = [
   },
 ];
 
-const fixedReviews: ServiceReview[] = [
-  { name: "Amit Kumar", location: "Lucknow", text: "Fast service and proper guidance." },
-  { name: "Shabana Parveen", location: "Barabanki", text: "Documents process bahut easy ho gaya." },
-  { name: "Rohit Verma", location: "Kanpur", text: "Good support on WhatsApp." },
-];
+/**
+ * No reviews ship with the code.
+ *
+ * Three testimonials used to be attached here — a name, a town and a quote —
+ * and because this builder runs for every service in the catalogue, the same
+ * three people appeared to have reviewed all twenty-five of them. The service
+ * page then printed five filled stars beside them, a rating nothing produced.
+ *
+ * Reviews come from the `reviews` column an administrator maintains per
+ * service. With none entered, the band does not render. This is the same rule
+ * already enforced on the homepage, the services directory and the DPR page.
+ */
+const fixedReviews: ServiceReview[] = [];
 
 const fixedProcess = ["Apply Online", "Submit details & documents", "Verification by experts", "Get service completed"];
 

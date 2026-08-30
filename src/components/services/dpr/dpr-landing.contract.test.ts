@@ -20,6 +20,7 @@ const intro = code("src/components/services/dpr/sections-intro.tsx");
 const core = code("src/components/services/dpr/sections-core.tsx");
 const convert = code("src/components/services/dpr/sections-convert.tsx");
 const sticky = code("src/components/services/dpr/sticky-cta.tsx");
+const shell = code("src/components/services/shell.tsx");
 
 const SECTION_FILES = { intro, core, convert };
 
@@ -85,13 +86,17 @@ describe("the DPR landing page invents nothing", () => {
  */
 describe("the DPR landing page uses the site's design system", () => {
   it("builds its bands on the shared section, not a private one", () => {
-    expect(shared).toContain("HomepageSection");
-    expect(shared).toContain("HomepageSectionHeader");
+    // The section, card and button all come from the service-page shell, which
+    // the CM YUVA page reads too; this file only shapes them around a CMS row.
+    expect(shared).toContain("@/components/services/shell");
+    expect(shared).toContain("ServiceSection");
+    expect(shell).toContain("HomepageSection");
+    expect(shell).toContain("HomepageSectionHeader");
   });
 
   it("uses the shared card and pill classes", () => {
-    expect(shared).toMatch(/lg-card/);
-    expect(shared).toMatch(/lg-pill/);
+    expect(shell).toMatch(/lg-card/);
+    expect(shell).toMatch(/lg-pill/);
   });
 
   it("carries no sky/slate palette of its own", () => {

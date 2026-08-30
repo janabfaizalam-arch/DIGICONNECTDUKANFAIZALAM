@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, Star, UserCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileCheck2, HelpCircle, MessageCircle, ShieldCheck, UserCheck } from "lucide-react";
 
 import { ServicePrice } from "@/components/service-card";
 import type { DbService, DbServiceSection, DbServiceVariant } from "@/lib/services";
@@ -247,14 +247,19 @@ function RenderSection({ section, service }: { section: DbServiceSection; servic
 
   if (section.section_type === "testimonials") {
     const reviews = service.reviews;
+    /*
+      No reviews, no band.
+
+      This used to render regardless, above five hardcoded filled stars — a
+      rating no customer gave, on a page for a service nobody had reviewed yet.
+      The stars are gone with them: reviews are stored without a score, so
+      there is nothing here to draw a rating from.
+    */
+    if (!reviews.length) return null;
+
     return (
       <div className="rounded-3xl border border-slate-100 bg-white/78 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.02)] backdrop-blur-sm md:p-8">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Customer Reviews"}</h2>
-          <div className="flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-orange-600">
-            {[1, 2, 3, 4, 5].map((item) => <Star key={item} className="h-3.5 w-3.5 fill-orange-400 text-orange-400" />)}
-          </div>
-        </div>
+        <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{title || "Customer Reviews"}</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {reviews.map((review) => (
             <article key={`${review.name}-${review.text}`} className="rounded-2xl bg-slate-50 border border-slate-100/50 p-5">
