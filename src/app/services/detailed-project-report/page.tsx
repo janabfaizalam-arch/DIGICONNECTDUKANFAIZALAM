@@ -190,7 +190,11 @@ const ARTICLE_TOPICS = ["dpr", "project report", "loan", "scheme", "pmegp", "mud
 
 function pickDprArticles(articles: Awaited<ReturnType<typeof getPublishedArticles>>): DprArticleCard[] {
   const matches = articles.filter((article) => {
-    const haystack = `${article.category ?? ""} ${article.title} ${(article.keywords ?? []).join(" ")}`.toLowerCase();
+    // `keywords` is typed as an array but comes straight out of the row, so it
+    // can be a string on a text column. Joining a string throws, during the
+    // server render, taking the page down with it.
+    const keywords = Array.isArray(article.keywords) ? article.keywords.join(" ") : "";
+    const haystack = `${article.category ?? ""} ${article.title} ${keywords}`.toLowerCase();
     return ARTICLE_TOPICS.some((topic) => haystack.includes(topic));
   });
 

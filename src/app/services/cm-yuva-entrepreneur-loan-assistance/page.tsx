@@ -124,8 +124,10 @@ function buildSchemas() {
 function pickArticles(articles: Awaited<ReturnType<typeof getPublishedArticles>>): CmYuvaArticle[] {
   return articles
     .filter((article) => {
-      const haystack =
-        `${article.category ?? ""} ${article.title} ${(article.keywords ?? []).join(" ")}`.toLowerCase();
+      // `keywords` is typed as an array but comes straight out of the row, so
+      // it can be a string on a text column. Joining a string throws.
+      const keywords = Array.isArray(article.keywords) ? article.keywords.join(" ") : "";
+      const haystack = `${article.category ?? ""} ${article.title} ${keywords}`.toLowerCase();
       return ARTICLE_TOPICS.some((topic) => haystack.includes(topic));
     })
     .slice(0, 6)
@@ -146,14 +148,24 @@ export default async function CmYuvaPage() {
     getCachedFooterSocialLinks(),
   ]);
 
-  // Reviews come from the service row an administrator maintains. There is no
-  // seeded list behind this: with none entered the band does not render.
-  const reviews: CmYuvaReview[] = (serviceRow?.reviews ?? [])
+  /*
+    Reviews come from the service row an administrator maintains. There is no
+    seeded list behind this: with none entered the band does not render.
+
+    `normalizeServiceRow` casts this column rather than checking it, so what
+    arrives here is whatever the database holds — an array on a jsonb column, a
+    string on a text one, null when unset. Calling .filter on a string throws,
+    and it throws during the server render, which takes the whole page down
+    with it. The guard is the difference between an empty band and a 500 on a
+    page that renders perfectly against static fallback data locally.
+  */
+  const rawReviews = serviceRow?.reviews;
+  const reviews: CmYuvaReview[] = (Array.isArray(rawReviews) ? rawReviews : [])
     .filter((review) => review?.name && review?.text)
     .map((review) => ({
-      name: review.name,
-      location: review.location || null,
-      text: review.text,
+      name: String(review.name),
+      location: review.location ? String(review.location) : null,
+      text: String(review.text),
     }));
 
   return (
