@@ -69,6 +69,12 @@ describe("the DPR landing page invents nothing", () => {
     expect(convert).toMatch(/if \(!articles\.length\) return null;/);
   });
 
+  /** Same guard as the CM YUVA page: a text column would throw on .join. */
+  it("survives a keywords column that is not an array", () => {
+    expect(page).toMatch(/Array\.isArray\(article\.keywords\)/);
+    expect(page).not.toMatch(/\(article\.keywords \?\? \[\]\)\.join/);
+  });
+
   it("does not promise loan approvals on a customer's behalf", () => {
     const stories = code("src/lib/dpr/defaults.ts");
     expect(stories).not.toMatch(/sanction|approved in|secure branch appraisal|accepted in first/i);

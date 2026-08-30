@@ -80,6 +80,22 @@ describe("the CM YUVA page invents nothing", () => {
     expect(sections).toMatch(/if \(!reviews\.length\) return null;/);
   });
 
+  /**
+   * `normalizeServiceRow` and the article row both cast their JSON columns
+   * rather than checking them, so what reaches the page is whatever the
+   * database holds — an array on a jsonb column, a string on a text one.
+   * Calling .filter or .join on a string throws during the server render and
+   * takes the whole page down, on a page that renders perfectly against the
+   * static fallback data used locally.
+   */
+  it("survives a JSON column that is not an array", () => {
+    expect(page).toMatch(/Array\.isArray\(rawReviews\)/);
+    expect(page).toMatch(/Array\.isArray\(article\.keywords\)/);
+    expect(page, "an unguarded .join would throw on a text column").not.toMatch(
+      /\(article\.keywords \?\? \[\]\)\.join/,
+    );
+  });
+
   it("reads guides from the site's own blog, and hides the band without them", () => {
     expect(page).toContain("getPublishedArticles");
     expect(sections).toMatch(/if \(!articles\.length\) return null;/);
