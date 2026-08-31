@@ -29,23 +29,42 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   /*
-    One CM YUVA page, at the slug customers actually reach.
+    One page per service, at the slug customers actually reach.
 
-    The site carried two CM YUVA services: `cm-yuva-loan`, the row an
-    administrator created and which the services directory links to, and the
-    older `cm-yuva-entrepreneur-loan-assistance`, which the navigation menu,
-    the DGCNT5K coupon and the search synonyms still point at. Two URLs for one
-    service splits the traffic, splits the SEO, and is how the redesigned page
-    ended up built on the slug nobody visits.
+    Two services shipped as two rows each, and in both cases the redesigned
+    page was built on one slug while some links pointed at the other:
 
-    The old slug now redirects permanently to the live one, so every existing
-    link, bookmark and indexed result lands on the single page.
+      • CM YUVA — `cm-yuva-loan` is the row an administrator created and the
+        one the services directory links to; `cm-yuva-entrepreneur-loan-
+        assistance` is what the navigation menu, the DGCNT5K coupon and the
+        search synonyms still point at.
+
+      • DPR — `detailed-project-report` is the published row, the one with the
+        dedicated page and the thirteen configured application questions;
+        `dpr-report` is an older duplicate whose `status` was never set, so it
+        is missing from every listing yet still resolves if somebody has the
+        link. Anyone reaching the application through it was asked the six
+        shared questions and none of the thirteen.
+
+    Both old slugs now redirect permanently to the live one — the service page
+    and the application alike, since a stale link is as likely to point at the
+    form as at the page.
   */
   async redirects() {
     return [
       {
         source: "/services/cm-yuva-entrepreneur-loan-assistance",
         destination: "/services/cm-yuva-loan",
+        permanent: true,
+      },
+      {
+        source: "/services/dpr-report",
+        destination: "/services/detailed-project-report",
+        permanent: true,
+      },
+      {
+        source: "/apply/dpr-report",
+        destination: "/apply/detailed-project-report",
         permanent: true,
       },
     ];
