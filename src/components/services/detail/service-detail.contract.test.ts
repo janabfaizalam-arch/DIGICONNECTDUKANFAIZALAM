@@ -173,6 +173,25 @@ describe("every service page has the same shape", () => {
   it("has retired the old page rather than leaving two", () => {
     expect(existsSync(join(root, "src/components/services/dynamic-service-page.tsx"))).toBe(false);
   });
+
+  it("sends every duplicate slug to the one live page, form included", () => {
+    /*
+      Two services shipped as two rows each. A duplicate whose `status` is NULL
+      is missing from every listing but still resolves for anyone holding the
+      link — and `/apply/dpr-report` asked the six shared questions and none of
+      the thirteen configured for the real DPR service.
+    */
+    const config = code("next.config.ts");
+    for (const [from, to] of [
+      ["/services/cm-yuva-entrepreneur-loan-assistance", "/services/cm-yuva-loan"],
+      ["/services/dpr-report", "/services/detailed-project-report"],
+      ["/apply/dpr-report", "/apply/detailed-project-report"],
+    ]) {
+      const at = config.indexOf(`source: "${from}"`);
+      expect(at, `no redirect from ${from}`).toBeGreaterThan(-1);
+      expect(config.slice(at, at + 200), `${from} does not land on ${to}`).toContain(`destination: "${to}"`);
+    }
+  });
 });
 
 /* ─────────────────────────────────────────────────────────────────────────
