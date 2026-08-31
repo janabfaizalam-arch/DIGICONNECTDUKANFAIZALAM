@@ -22,8 +22,9 @@ const root = process.cwd();
  */
 const code = readCode;
 
-const page = code("src/app/services/cm-yuva-entrepreneur-loan-assistance/page.tsx");
-const client = code("src/app/services/cm-yuva-entrepreneur-loan-assistance/cm-yuva-client.tsx");
+const page = code("src/components/services/cm-yuva/cm-yuva-page.tsx");
+const route = code("src/app/services/cm-yuva-loan/page.tsx");
+const client = code("src/components/services/cm-yuva/cm-yuva-client.tsx");
 const sections = code("src/components/services/cm-yuva/sections.tsx");
 const sticky = code("src/components/services/cm-yuva/sticky-cta.tsx");
 const content = code("src/lib/cm-yuva/content.ts");
@@ -146,9 +147,24 @@ describe("the CM YUVA page is honest about what it can promise", () => {
     expect(PROCESS_STAGES).toHaveLength(10);
   });
 
-  it("quotes the same fee the application form charges", () => {
-    const form = code("src/components/portal/service-application-form.tsx");
-    expect(form, "the form no longer charges this amount").toContain(String(CM_YUVA_PRICE));
+  /**
+   * The two CM YUVA services are priced differently, so no figure is written
+   * into the copy: the page prints the row's own price, and the FAQ points at
+   * the pricing section instead of repeating a number that would go stale.
+   */
+  it("never writes DigiConnect's own fee into its copy", () => {
+    // Scheme figures — the ₹10 lakh ceiling, the ₹50,000 margin money — are
+    // published by the state and belong in the copy. What must not be written
+    // in is the service fee, which differs per service and changes in admin.
+    const fee = CM_YUVA_PRICE.toLocaleString("en-IN");
+    for (const faq of FAQS) {
+      expect(faq.answer, `"${faq.question}" hardcodes the fee`).not.toContain(fee);
+    }
+    const feeFaq = FAQS.find((faq) => /charge/i.test(faq.question));
+    expect(feeFaq, "no FAQ explains the fee").toBeTruthy();
+    expect(feeFaq!.answer, "the fee FAQ should point at the pricing section").toMatch(
+      /pricing section/i,
+    );
   });
 });
 
@@ -215,11 +231,41 @@ describe("the CM YUVA apply bar shares the bottom of the screen", () => {
    ───────────────────────────────────────────────────────────────────────── */
 
 describe("the CM YUVA page is wired into the site", () => {
-  it("sits at the slug the rest of the app already uses", () => {
+  /**
+   * The redesigned page was first built at `cm-yuva-entrepreneur-loan-
+   * assistance`, the older slug the navigation menu and the coupon point at.
+   * Customers reach `cm-yuva-loan` — the row an administrator created, which
+   * the services directory links to — so for a week the new page existed and
+   * nobody could see it.
+   *
+   * There is one page now, at the slug people actually visit, and the old one
+   * redirects to it.
+   */
+  it("sits at the slug customers actually reach", () => {
     expect(
-      existsSync(join(root, "src/app/services/cm-yuva-entrepreneur-loan-assistance/page.tsx")),
-      "the route folder does not match the service slug",
+      existsSync(join(root, "src/app/services/cm-yuva-loan/page.tsx")),
+      "the route folder does not match the live service slug",
     ).toBe(true);
+    expect(route).toContain('"cm-yuva-loan"');
+  });
+
+  it("keeps exactly one CM YUVA page, with the old slug redirecting to it", () => {
+    expect(
+      existsSync(join(root, "src/app/services/cm-yuva-entrepreneur-loan-assistance")),
+      "a second CM YUVA page is back",
+    ).toBe(false);
+
+    const config = code("next.config.ts");
+    expect(config).toContain("/services/cm-yuva-entrepreneur-loan-assistance");
+    expect(config).toContain("/services/cm-yuva-loan");
+    expect(config).toMatch(/permanent: true/);
+  });
+
+  /** The fee is the service row's, so each page quotes what it really charges. */
+  it("takes the price from the service row rather than a constant", () => {
+    expect(page).toMatch(/offer_price/);
+    expect(client).toContain("price: number");
+    expect(client).not.toContain("CM_YUVA_PRICE");
   });
 
   it("renders every band it defines", () => {
