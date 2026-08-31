@@ -35,9 +35,9 @@ export const STEPS = [
   {
     id: 3,
     label: "Documents",
-    title: "Your documents",
+    title: "Your documents — all optional",
     description:
-      "Add what you have now. Anything missing, our team will ask you for it — this will not hold up your application.",
+      "Add what you have to hand. Nothing here is required to submit: whatever is missing, our team asks you for it on WhatsApp afterwards.",
   },
   {
     id: 4,
@@ -80,6 +80,13 @@ export const CATEGORIES = [
   { id: "cards", name: "Cards" },
 ] as const;
 
+/**
+ * Three slots, all optional.
+ *
+ * Nothing here blocks submission. Whatever is missing, the team asks for it
+ * afterwards on WhatsApp — which is what actually happened anyway, so the form
+ * stops pretending otherwise.
+ */
 export const DOC_SLOTS = [
   { id: "aadhaar", label: "Aadhaar Card", hint: "Front and back. JPG or PDF.", icon: UserCheck },
   { id: "pan", label: "PAN Card", hint: "A clear photo of the card.", icon: CreditCard },
@@ -88,15 +95,27 @@ export const DOC_SLOTS = [
 
 export type DocSlotId = "aadhaar" | "pan" | "other";
 
+/**
+ * What every application asks, whatever the service.
+ *
+ * Six things, and nothing else. An alternate number and a free-text note used
+ * to sit here; both were asked of everybody and read by nobody, and a form
+ * that asks for what it will not use is a form people abandon. Anything a
+ * particular service needs beyond this is configured per service in admin and
+ * rendered by the same step — see `@/lib/apply/fields`.
+ *
+ * `city`, `district` and `state` are filled from the pincode rather than
+ * typed. They stay editable because the lookup is right most of the time, not
+ * all of the time.
+ */
 export interface CustomerForm {
   name: string;
   mobile: string;
-  altMobile: string;
   pincode: string;
-  state: string;
+  city: string;
   district: string;
+  state: string;
   address: string;
-  note: string;
 }
 
 export interface CartEntry {

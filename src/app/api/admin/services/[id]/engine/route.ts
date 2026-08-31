@@ -66,14 +66,34 @@ export async function POST(
 
     // Insert new service fields if provided
     if (Array.isArray(fields) && fields.length > 0) {
-      const fieldsToInsert = fields.map((f: { field_key?: string; label?: string; field_type?: string; sort_order?: number; validation_chains?: unknown[]; default_value?: string | null }, index: number) => ({
+      /*
+        These rows are what the customer-facing application form asks, so the
+        three presentation columns travel with them: the choices a dropdown
+        offers, the ghost text in the input, and the line under it.
+      */
+      const fieldsToInsert = fields.map((f: {
+        field_key?: string;
+        label?: string;
+        field_type?: string;
+        sort_order?: number;
+        validation_chains?: unknown[];
+        default_value?: string | null;
+        options?: unknown;
+        placeholder?: string | null;
+        help_text?: string | null;
+      }, index: number) => ({
         service_id: id,
         field_key: String(f.field_key || "").trim(),
         label: String(f.label || "").trim(),
         field_type: f.field_type,
         sort_order: typeof f.sort_order === "number" ? f.sort_order : index,
         validation_chains: Array.isArray(f.validation_chains) ? f.validation_chains : [],
-        default_value: f.default_value === null ? null : String(f.default_value ?? "").trim() || null
+        default_value: f.default_value === null ? null : String(f.default_value ?? "").trim() || null,
+        options: Array.isArray(f.options)
+          ? f.options.map((option) => String(option ?? "").trim()).filter(Boolean)
+          : [],
+        placeholder: String(f.placeholder ?? "").trim() || null,
+        help_text: String(f.help_text ?? "").trim() || null
       }));
 
       const { error: fieldsInsertError } = await supabase

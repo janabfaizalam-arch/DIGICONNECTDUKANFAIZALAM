@@ -179,10 +179,22 @@ describe("the customer document vault", () => {
   });
 
   it("is read by nothing in the app", () => {
-    const form = code("src/components/portal/service-application-form.tsx");
-    expect(form).not.toContain("/api/customer/vault");
-    expect(form).not.toContain("vault_ocr_jobs");
-    expect(form).not.toContain("handleOcrAutofill");
+    // The 3,161-line form that used to read the vault has itself been
+    // deleted — every service files through one flow now — so the check is
+    // against the whole tree rather than that one file.
+    const walk = (dir: string): string[] => {
+      const found: string[] = [];
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) found.push(...walk(path));
+        else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+          const body = readCode(relative(root, path));
+          if (/\/api\/customer\/vault|vault_ocr_jobs|handleOcrAutofill/.test(body)) found.push(path);
+        }
+      }
+      return found;
+    };
+    expect(walk(join(root, "src")), "these still reach for the vault").toEqual([]);
   });
 
   it("has its tables dropped by a migration", () => {
