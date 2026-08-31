@@ -11,12 +11,16 @@ interface AdminServicePageBuilderProps {
 
 const SECTION_TYPES: { value: ServiceSectionType; label: string }[] = [
   { value: "overview", label: "Service Overview" },
+  { value: "who_is_it_for", label: "Who Is It For" },
   { value: "benefits", label: "Benefits & Advantages" },
+  { value: "eligibility", label: "Eligibility Criteria" },
   { value: "documents", label: "Required Documents List" },
   { value: "process", label: "Step-by-Step Processing" },
   { value: "faq", label: "Frequently Asked Questions" },
   { value: "pricing", label: "Pricing Table Override" },
   { value: "stats", label: "Key Statistics Badge" },
+  { value: "success_stories", label: "Success Stories" },
+  { value: "important_info", label: "Important Information" },
   { value: "rich_text", label: "Rich Text blog guide" },
   { value: "video", label: "Video embed" },
   { value: "trust_badges", label: "Security & Trust Badges" }

@@ -162,7 +162,14 @@ export type ServiceSectionType =
   | "video"
   | "trust_badges"
   | "offer_strip"
-  | "contact_cta";
+  | "contact_cta"
+  // Slots the page blueprint asks for that the CMS had no type for. Before
+  // these, an administrator wanting an eligibility list had to write it into
+  // a rich-text blob and hope it landed somewhere sensible.
+  | "who_is_it_for"
+  | "eligibility"
+  | "success_stories"
+  | "important_info";
 
 export type DbServiceSection = {
   id: string;

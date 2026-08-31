@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { CategoryServicesPage } from "@/components/category-services-page";
-import { DynamicServicePage } from "@/components/services/dynamic-service-page";
+import { HomepageContactActions } from "@/components/homepage-contact-actions";
+import { MarketingFooter } from "@/components/marketing-footer";
+import { ServiceDetailPage } from "@/components/services/detail/service-detail-page";
+import { getPublishedArticles } from "@/lib/articles";
+import { getCachedFooterSocialLinks } from "@/lib/homepage/cached";
+import { pickRelatedArticles, toServiceLinkCards } from "@/lib/services/detail-blueprint";
 import { getPublicCategoryBySlug, getPublicServiceBySlug, getPublicServiceRowBySlug, getPublicServicesByCategory, rowFromFallback } from "@/lib/services";
-import { serviceFromDb } from "@/lib/services";
+import { serviceFromDb, type DbService } from "@/lib/services";
 import { type ServiceItem } from "@/lib/services-data";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -101,7 +106,49 @@ function buildSchemas(service: ServiceItem) {
 }
 
 
-export default async function ServiceDetailPage({ params, searchParams }: PageProps) {
+/**
+ * Everything the page needs that is not the service row itself.
+ *
+ * Fetched in parallel, and each one degrading to nothing rather than throwing:
+ * a service page must still render when the articles table is unreachable.
+ */
+async function loadPageExtras(service: ServiceItem) {
+  const [articles, siblings, socialLinks] = await Promise.all([
+    getPublishedArticles().catch(() => []),
+    getPublicServicesByCategory(service.categorySlug).catch(() => [] as ServiceItem[]),
+    getCachedFooterSocialLinks().catch(() => undefined),
+  ]);
+
+  // Narrowed here, not in the client component: a ServiceItem carries its
+  // Lucide icon as a React component, and handing one to a client component
+  // fails serialization and renders an empty page under a 200.
+  return {
+    blogs: pickRelatedArticles(articles, service),
+    related: toServiceLinkCards(siblings, service.slug),
+    socialLinks,
+  };
+}
+
+async function renderService(row: DbService, service: ServiceItem, isLoggedIn: boolean) {
+  const { blogs, related, socialLinks } = await loadPageExtras(service);
+
+  return (
+    <>
+      <main id="main-content" className="homepage-mobile-shell home-option3 min-h-screen bg-white">
+        <ServiceDetailPage row={row} isLoggedIn={isLoggedIn} blogs={blogs} related={related} />
+      </main>
+
+      <MarketingFooter socialLinks={socialLinks} />
+      <HomepageContactActions desktopOnly />
+
+      {buildSchemas(service).map((schema, index) => (
+        <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
+    </>
+  );
+}
+
+export default async function ServiceDetailRoute({ params, searchParams }: PageProps) {
   const [{ slug }, user] = await Promise.all([params, getCurrentUser()]);
 
   // Read searchParams (e.g., ref) so Next.js treats this page as fully dynamic without caching issues
@@ -119,29 +166,10 @@ export default async function ServiceDetailPage({ params, searchParams }: PagePr
   }
 
   const row = await getPublicServiceRowBySlug(slug);
-
-  if (row) {
-    const service = serviceFromDb(row);
-    return (
-      <>
-        <DynamicServicePage row={row} isLoggedIn={Boolean(user)} />
-        {buildSchemas(service).map((schema, index) => (
-          <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-        ))}
-      </>
-    );
-  }
+  if (row) return renderService(row, serviceFromDb(row), Boolean(user));
 
   const fallback = await getPublicServiceBySlug(slug);
   if (!fallback) notFound();
 
-  const fallbackRow = rowFromFallback(fallback);
-  return (
-    <>
-      <DynamicServicePage row={fallbackRow} isLoggedIn={Boolean(user)} />
-      {buildSchemas(fallback).map((schema, index) => (
-        <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-      ))}
-    </>
-  );
+  return renderService(rowFromFallback(fallback), fallback, Boolean(user));
 }
