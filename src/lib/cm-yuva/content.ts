@@ -23,8 +23,14 @@ export const CM_YUVA_SLUG = "cm-yuva-entrepreneur-loan-assistance";
 export const CM_YUVA_PATH = `/services/${CM_YUVA_SLUG}`;
 export const CM_YUVA_APPLY_PATH = `/apply/${CM_YUVA_SLUG}`;
 
-/** What DigiConnect charges for the assistance package. Matches the amount the
- *  application form and the payment route both compute. */
+/**
+ * Fallback fee, used only when the service row carries no price.
+ *
+ * The page reads the amount from the row it is rendering, so what a customer
+ * sees is what that service actually charges. Nothing in the copy repeats a
+ * figure — the FAQ points at the pricing section rather than quoting a number
+ * that would go stale the moment an administrator changes it.
+ */
 export const CM_YUVA_PRICE = 13499;
 
 export const CM_YUVA_SUPPORT_PHONE = "+917007595931";
@@ -489,7 +495,7 @@ export const FAQS: { question: string; answer: string }[] = [
   {
     question: "What does DigiConnect charge, and what is included?",
     answer:
-      `₹${CM_YUVA_PRICE.toLocaleString("en-IN")}, paid once. It covers the Detailed Project Report, MSME/Udyam registration, document review, portal submission and follow-up with the department. Government and bank charges, if any, are separate and paid to them directly.`,
+      "One fee, paid once — the amount shown in the pricing section above. It covers the Detailed Project Report, MSME/Udyam registration, document review, portal submission and follow-up with the department. Government and bank charges, if any, are separate and paid to them directly.",
   },
   {
     question: "How do I track my application?",

@@ -30,9 +30,7 @@ import {
 } from "@/components/services/cm-yuva/sections";
 import { CmYuvaStickyCta } from "@/components/services/cm-yuva/sticky-cta";
 import {
-  CM_YUVA_APPLY_PATH,
   CM_YUVA_IMAGES,
-  CM_YUVA_PRICE,
   CM_YUVA_SUPPORT_PHONE,
   CM_YUVA_WHATSAPP_NUMBER,
   SCHEME_TERMS,
@@ -51,25 +49,34 @@ import {
  * reveal — and the rest fade up as they are reached.
  */
 export default function CmYuvaClient({
+  slug,
+  price,
   isLoggedIn,
   articles,
   reviews,
 }: {
+  /** The service this page is for. Apply goes to this one, not a fixed slug. */
+  slug: string;
+  /** Read from the service row, so each URL quotes its own fee. */
+  price: number;
   isLoggedIn: boolean;
   articles: CmYuvaArticle[];
   reviews: CmYuvaReview[];
 }) {
   const ctx: CmYuvaCtx = useMemo(
-    () => ({
+    () => {
+      const applyPath = `/apply/${slug}`;
+      return ({
       applyUrl: isLoggedIn
-        ? CM_YUVA_APPLY_PATH
-        : `/login/customer?redirect=${encodeURIComponent(CM_YUVA_APPLY_PATH)}`,
+        ? applyPath
+        : `/login/customer?redirect=${encodeURIComponent(applyPath)}`,
       whatsappUrl: `https://wa.me/${CM_YUVA_WHATSAPP_NUMBER}?text=${encodeURIComponent(
         "Hi, I want to apply for the CM YUVA entrepreneur loan. Please guide me.",
       )}`,
       supportPhone: CM_YUVA_SUPPORT_PHONE,
-    }),
-    [isLoggedIn],
+      });
+    },
+    [isLoggedIn, slug],
   );
 
   return (
@@ -108,7 +115,7 @@ export default function CmYuvaClient({
           <CmYuvaRejections />
         </Reveal>
         <Reveal>
-          <CmYuvaPricing ctx={ctx} price={CM_YUVA_PRICE} />
+          <CmYuvaPricing ctx={ctx} price={price} />
         </Reveal>
         <Reveal>
           <CmYuvaComparison />
@@ -132,7 +139,7 @@ export default function CmYuvaClient({
           <CmYuvaTrustBadges />
         </Reveal>
         <Reveal>
-          <CmYuvaCta ctx={ctx} price={CM_YUVA_PRICE} />
+          <CmYuvaCta ctx={ctx} price={price} />
         </Reveal>
         <Reveal>
           <CmYuvaRelated />
@@ -141,7 +148,7 @@ export default function CmYuvaClient({
           <CmYuvaContact ctx={ctx} />
         </Reveal>
 
-        <CmYuvaStickyCta ctx={ctx} price={CM_YUVA_PRICE} />
+        <CmYuvaStickyCta ctx={ctx} price={price} />
 
         {/* Room for the apply bar, which sits above the tab bar on a phone. */}
         <div className="h-16 md:hidden" aria-hidden="true" />
