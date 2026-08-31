@@ -16,7 +16,7 @@ type Flow = ReturnType<typeof useApplyFlow>;
  * mistake but not the way to fix it is worse than no review screen.
  */
 export function StepReview({ flow }: { flow: Flow }) {
-  const { customer, cartItems, cartTotal, docFiles, setCurrentStep } = flow;
+  const { customer, cartItems, cartTotal, docFiles, setCurrentStep, extraFields, extraValues } = flow;
 
   return (
     <div className="space-y-5">
@@ -69,12 +69,16 @@ export function StepReview({ flow }: { flow: Flow }) {
         <div className="mt-1.5 divide-y divide-[var(--dc-ink)]/[0.07]">
           <SummaryRow label="Name" value={customer.name} />
           <SummaryRow label="Mobile" value={customer.mobile} />
-          {customer.altMobile ? <SummaryRow label="Alternate" value={customer.altMobile} /> : null}
           <SummaryRow
             label="Address"
-            value={`${customer.address}, ${customer.district}, ${customer.state} — ${customer.pincode}`}
+            value={`${customer.address}, ${customer.city}, ${customer.district}, ${customer.state} — ${customer.pincode}`}
           />
-          {customer.note ? <SummaryRow label="Note" value={customer.note} /> : null}
+          {/* Whatever this service asked beyond the six, echoed back under the
+              question the customer was actually asked. */}
+          {extraFields.map((field) => {
+            const answer = extraValues[field.id];
+            return answer ? <SummaryRow key={field.id} label={field.label} value={answer} /> : null;
+          })}
         </div>
       </PortalCard>
 

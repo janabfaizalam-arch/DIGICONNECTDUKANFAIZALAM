@@ -16,6 +16,12 @@ import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
 import {
+  collectApplyAnswers,
+  validateApplyFields,
+  type ApplyField,
+  type ApplyFieldValues,
+} from "@/lib/apply/fields";
+import {
   CATEGORY_ICONS,
   DOC_SLOTS,
   payLog,
@@ -78,15 +84,25 @@ export function useApplyFlow({
   const [keyboardHeight,    setKeyboardHeight]    = useState(0);
 
   const [customer, setCustomer] = useState<CustomerForm>({
-    name:      "",
-    mobile:    initialProfileFields?.mobile   ?? "",
-    altMobile: "",
-    pincode:   initialProfileFields?.pincode  ?? "",
-    state:     initialProfileFields?.state    ?? "",
-    district:  initialProfileFields?.city     ?? "",
-    address:   "",
-    note:      "",
+    name:     "",
+    mobile:   initialProfileFields?.mobile  ?? "",
+    pincode:  initialProfileFields?.pincode ?? "",
+    city:     initialProfileFields?.city    ?? "",
+    district: "",
+    state:    initialProfileFields?.state   ?? "",
+    address:  "",
   });
+
+  /*
+    The extra questions this service asks.
+
+    Fetched as the chosen services change rather than at mount, because the
+    services are picked on step one. A failed fetch leaves the list empty and
+    the base form still submits: a configuration problem must not stop somebody
+    applying.
+  */
+  const [extraFields, setExtraFields] = useState<ApplyField[]>([]);
+  const [extraValues, setExtraValues] = useState<ApplyFieldValues>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [pincodeLoading,   setPincodeLoading]   = useState(false);
 
@@ -101,6 +117,53 @@ export function useApplyFlow({
   });
 
   useWizardLayoutMetrics([currentStep]);
+
+  /*
+    Load this service's extra questions whenever the selection changes.
+
+    Keyed on the sorted slug list so re-ordering the cart does not refetch, and
+    answers to fields that are no longer asked are dropped rather than
+    submitted invisibly.
+  */
+  const cartKey = useMemo(
+    () => [...new Set(cart.map((entry) => entry.slug))].sort().join(","),
+    [cart],
+  );
+
+  useEffect(() => {
+    if (!cartKey) {
+      setExtraFields([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/apply/fields?services=${encodeURIComponent(cartKey)}`);
+        const data = await res.json();
+        if (cancelled) return;
+
+        const fields: ApplyField[] = Array.isArray(data?.fields) ? data.fields : [];
+        setExtraFields(fields);
+        setExtraValues((previous) => {
+          const kept: ApplyFieldValues = {};
+          for (const field of fields) {
+            if (previous[field.id] != null) kept[field.id] = previous[field.id];
+          }
+          return kept;
+        });
+      } catch {
+        // The base form still submits. A configuration problem must not stop
+        // somebody applying.
+        if (!cancelled) setExtraFields([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cartKey]);
 
   /*
     The action bar is no longer moved by hand when the keyboard opens.
@@ -397,27 +460,51 @@ export function useApplyFlow({
     try {
       const r = await fetch(`/api/pincode?pincode=${pincode}`);
       const d = await r.json();
-      if (d?.state || d?.district) {
+      if (d?.state || d?.district || d?.city) {
         setCustomer(p => ({
           ...p,
+          city:     d.city     ?? d.district ?? p.city,
+          district: d.district ?? d.city     ?? p.district,
           state:    d.state    ?? p.state,
-          district: d.district ?? d.city ?? p.district,
         }));
       }
     } catch { /* silent */ } finally { setPincodeLoading(false); }
   }, []);
 
+  /*
+    One validation pass over the base fields and the service's own.
+
+    Extra-field errors are keyed by field id into the same map the base fields
+    use, so the shell's "scroll to the first invalid input" behaviour finds
+    them without knowing they are configured rather than coded.
+  */
+  const setExtraValue = useCallback((id: string, value: string) => {
+    setExtraValues((previous) => ({ ...previous, [id]: value }));
+    // Clear the error as soon as the answer is given, the way the base fields
+    // behave — an error that outlives its cause is noise.
+    setValidationErrors((previous) => {
+      if (!previous[id]) return previous;
+      const next = { ...previous };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
   const validateCustomer = useCallback((): boolean => {
     const e: Record<string, string> = {};
-    if (!customer.name.trim())                        e.name     = "Full name is required.";
-    if (!/^[6-9]\d{9}$/.test(customer.mobile))       e.mobile   = "Enter valid 10-digit mobile.";
-    if (!/^\d{6}$/.test(customer.pincode))            e.pincode  = "Enter valid 6-digit pincode.";
-    if (!customer.state.trim())                       e.state    = "State is required.";
-    if (!customer.district.trim())                    e.district = "City / District is required.";
-    if (!customer.address.trim())                     e.address  = "Address is required.";
+    if (!customer.name.trim())                  e.name     = "Full name is required.";
+    if (!/^[6-9]\d{9}$/.test(customer.mobile)) e.mobile   = "Enter valid 10-digit mobile.";
+    if (!/^\d{6}$/.test(customer.pincode))      e.pincode  = "Enter valid 6-digit pincode.";
+    if (!customer.city.trim())                  e.city     = "City is required.";
+    if (!customer.district.trim())              e.district = "District is required.";
+    if (!customer.state.trim())                 e.state    = "State is required.";
+    if (!customer.address.trim())               e.address  = "Address is required.";
+
+    Object.assign(e, validateApplyFields(extraFields, extraValues));
+
     setValidationErrors(e);
     return Object.keys(e).length === 0;
-  }, [customer]);
+  }, [customer, extraFields, extraValues]);
 
   const handleFileChange = useCallback((slotId: DocSlotId, file: File) => {
     // Check if file is too large (> 5MB)
@@ -530,15 +617,19 @@ export function useApplyFlow({
           name:    customer.name,
           mobile:  customer.mobile,
           email:   "",
-          city:    customer.district || customer.state,
-          message: customer.note || "",
+          city:    customer.city || customer.district || customer.state,
+          message: "",
         },
         details: {
-          address:      customer.address,
-          pincode:      customer.pincode,
-          state:        customer.state,
-          district:     customer.district,
-          altMobile:    customer.altMobile,
+          address:  customer.address,
+          pincode:  customer.pincode,
+          city:     customer.city,
+          district: customer.district,
+          state:    customer.state,
+          // The service's own answers, stored under the question that was
+          // asked rather than its id, so the file still reads correctly if a
+          // field is later renamed or removed in admin.
+          ...collectApplyAnswers(extraFields, extraValues),
           paymentMethod: razorpayDetails ? "razorpay" : "cash",
         },
         walletUseAmount: 0,
@@ -613,14 +704,16 @@ export function useApplyFlow({
             customer: {
               name:   customer.name,
               mobile: customer.mobile,
-              email:  customer.altMobile || "",
-              city:   customer.district || customer.state,
+              email:  "",
+              city:   customer.city || customer.district || customer.state,
             },
             details: {
               address:  customer.address,
               pincode:  customer.pincode,
-              state:    customer.state,
+              city:     customer.city,
               district: customer.district,
+              state:    customer.state,
+              ...collectApplyAnswers(extraFields, extraValues),
             },
           },
         }),
@@ -789,6 +882,10 @@ export function useApplyFlow({
     validationErrors,
     pincodeLoading,
     handlePincodeChange,
+    // this service's own questions, configured in admin
+    extraFields,
+    extraValues,
+    setExtraValue,
     // documents
     docFiles,
     uploadProgress,

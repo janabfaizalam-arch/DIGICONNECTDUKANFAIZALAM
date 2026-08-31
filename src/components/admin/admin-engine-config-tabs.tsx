@@ -78,7 +78,10 @@ export function AdminEngineConfigTabs({
   const [fields, setFields] = useState<ServiceField[]>(() =>
     initialFields.map((f) => ({
       ...f,
-      validation_chains: Array.isArray(f.validation_chains) ? f.validation_chains : []
+      validation_chains: Array.isArray(f.validation_chains) ? f.validation_chains : [],
+      options: Array.isArray(f.options) ? f.options : [],
+      placeholder: f.placeholder ?? null,
+      help_text: f.help_text ?? null
     }))
   );
 
@@ -114,7 +117,10 @@ export function AdminEngineConfigTabs({
       field_type: "text",
       sort_order: nextSort,
       validation_chains: [],
-      default_value: null
+      default_value: null,
+      options: [],
+      placeholder: null,
+      help_text: null
     };
     setFields([...fields, newField]);
   };
@@ -337,7 +343,10 @@ export function AdminEngineConfigTabs({
               field_type: f.field_type,
               sort_order: f.sort_order,
               validation_chains: f.validation_chains,
-              default_value: f.default_value
+              default_value: f.default_value,
+              options: f.options,
+              placeholder: f.placeholder,
+              help_text: f.help_text
             })),
             workflows: workflows.map((w) => ({
               step_key: w.step_key.trim(),
@@ -630,6 +639,56 @@ export function AdminEngineConfigTabs({
                         </Button>
                       </div>
                     </div>
+
+                    {/*
+                      How the question appears on the customer's application
+                      form. These rows drive that form directly now, so what is
+                      typed here is what an applicant reads.
+                    */}
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                          Placeholder (shown inside the empty box)
+                        </label>
+                        <Input
+                          value={field.placeholder || ""}
+                          onChange={(e) => updateField(field.id, { placeholder: e.target.value || null })}
+                          placeholder="e.g. ABCDE1234F"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                          Help text (one line under the box)
+                        </label>
+                        <Input
+                          value={field.help_text || ""}
+                          onChange={(e) => updateField(field.id, { help_text: e.target.value || null })}
+                          placeholder="e.g. As printed on your certificate."
+                        />
+                      </div>
+                    </div>
+
+                    {(field.field_type === "dropdown" || field.field_type === "radio") && (
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                          Choices — one per line
+                        </label>
+                        <Textarea
+                          rows={4}
+                          value={(field.options || []).join("\n")}
+                          onChange={(e) =>
+                            updateField(field.id, {
+                              options: e.target.value.split("\n").map((o) => o.trim()).filter(Boolean)
+                            })
+                          }
+                          placeholder={"Proprietorship\nPartnership\nPrivate Limited"}
+                        />
+                        <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                          A dropdown with no choices is shown to the customer as a plain text box.
+                        </p>
+                      </div>
+                    )}
 
                     <div className="grid gap-3 md:grid-cols-2">
                       <div>

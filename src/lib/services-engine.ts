@@ -20,6 +20,14 @@ export interface ServiceField {
   sort_order: number;
   validation_chains: ValidationRule[];
   default_value: string | null;
+  /*
+    These three are how the field presents on the customer's application form,
+    which is what `service_fields` now drives. Choices for a dropdown, ghost
+    text in the input, and the line underneath it.
+  */
+  options: string[];
+  placeholder: string | null;
+  help_text: string | null;
 }
 
 export interface ServiceWorkflow {
@@ -54,6 +62,9 @@ interface DBServiceField {
   sort_order: number;
   validation_chains: unknown;
   default_value: string | null;
+  options: unknown;
+  placeholder: string | null;
+  help_text: string | null;
 }
 
 interface DBServiceWorkflow {
@@ -125,7 +136,13 @@ export async function getServiceConfig(serviceIdOrSlug: string): Promise<Service
       field_type: f.field_type,
       sort_order: f.sort_order,
       validation_chains: (f.validation_chains ?? []) as ValidationRule[],
-      default_value: f.default_value
+      default_value: f.default_value,
+      // A jsonb column reads back as an array; a text one reads back as a
+      // string. Anything that is not an array becomes an empty list rather
+      // than something the editor will later call .map on.
+      options: Array.isArray(f.options) ? (f.options as string[]) : [],
+      placeholder: f.placeholder ?? null,
+      help_text: f.help_text ?? null
     })),
     workflows: ((workflowsData ?? []) as unknown as DBServiceWorkflow[]).map((w) => ({
       id: w.id,

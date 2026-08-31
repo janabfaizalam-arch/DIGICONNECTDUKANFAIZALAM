@@ -5,12 +5,7 @@ import { portalServices } from "@/lib/portal-data";
 import { getPublicServiceBySlug } from "@/lib/services";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { ApplyFlow } from "@/components/apply/apply-flow";
-import { DprApplicationWizard } from "@/components/services/dpr/dpr-application-wizard";
-import { ItrApplicationWizard } from "@/components/services/itr/itr-application-wizard";
-import { DPR_SERVICE_SLUG } from "@/lib/dpr/constants";
-import { isItrServiceSlug, resolveItrServiceSlug } from "@/lib/itr/constants";
-import { getItrCmsPayload } from "@/lib/itr/cms";
-import { DEFAULT_ITR_SETTINGS } from "@/lib/itr/defaults";
+import { resolveItrServiceSlug } from "@/lib/itr/constants";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -78,43 +73,14 @@ export default async function ApplySlugPage({ params }: PageProps) {
     state: userProfile?.state ?? "",
   };
 
-  let itrAssessmentYear = DEFAULT_ITR_SETTINGS.assessmentYear;
-  let itrCustomerDeclaration = DEFAULT_ITR_SETTINGS.customerDeclaration ?? undefined;
-  let itrCmsDocuments = undefined;
-
-  if (isItrServiceSlug(slug)) {
-    const itrCms = await getItrCmsPayload();
-    itrAssessmentYear = itrCms.settings.assessmentYear;
-    itrCustomerDeclaration = itrCms.settings.customerDeclaration ?? itrCustomerDeclaration;
-    itrCmsDocuments = itrCms.documents;
-  }
-
   /*
-    The generic flow brings its own full-page shell — brand header, progress
-    rail, action bar — so it renders on its own. The two service-specific
-    wizards are still plain forms and keep the wrapper that gives them a
-    background and room for the fixed chrome.
+    Every service is filed through the same flow.
+
+    ITR and the Detailed Project Report each used to open a wizard of their
+    own — twelve steps, their own layout, their own validation, their own
+    payment call. Their questions are configured against the service now, and
+    this one flow asks them, so there is a single form to maintain and a single
+    place a question can be added from.
   */
-  if (isItrServiceSlug(slug)) {
-    return (
-      <main className="dc-apply-shell min-h-screen bg-slate-50/30 px-0 md:px-8">
-        <ItrApplicationWizard
-          initialProfileFields={profileFields}
-          assessmentYear={itrAssessmentYear}
-          customerDeclaration={itrCustomerDeclaration}
-          cmsDocuments={itrCmsDocuments}
-        />
-      </main>
-    );
-  }
-
-  if (resolvedSlug === DPR_SERVICE_SLUG) {
-    return (
-      <main className="dc-apply-shell min-h-screen bg-slate-50/30 px-0 md:px-8">
-        <DprApplicationWizard initialProfileFields={profileFields} />
-      </main>
-    );
-  }
-
   return <ApplyFlow initialServiceSlug={resolvedSlug} initialProfileFields={profileFields} />;
 }
