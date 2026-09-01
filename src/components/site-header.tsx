@@ -519,6 +519,15 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
     pathname.startsWith("/admin/") ||
     pathname === "/ap" ||
     pathname.startsWith("/ap/") ||
+    /*
+      A shop's print counter, reached by scanning the QR taped to it.
+
+      Somebody standing at that counter with a document on their phone wants
+      one thing. "Apply", "Track" and "Sign in" are not it — they cover the
+      price they are deciding on and invite them away from a job they have
+      not finished. The page carries the shop's own name and nothing else.
+    */
+    pathname.startsWith("/p/") ||
     isAuthRoute
   ) {
     return null;
