@@ -32,10 +32,46 @@ describe("an application is a card, not ten cells", () => {
     expect(queue).not.toMatch(/>\s*View\s*</);
   });
 
-  it("drops the opaque application id", () => {
-    // "c08ecef1" told nobody anything; the customer's name is the identifier
-    // a shop actually recognises.
+  it("shows a reference that says something instead of a uuid fragment", () => {
+    // "c08ecef1" told nobody anything. "AAD-260830-C08E" carries the service
+    // and the day, and can be read down a phone.
     expect(queue).not.toContain("shortId");
+    expect(queue).toContain("applicationReference(row)");
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Act without opening it
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Moving one file forward used to be: open it, find the sidebar, change the
+ * dropdown, press Save Changes, go back. For a queue of a hundred that is
+ * five hundred clicks.
+ */
+describe("status and assignment change from the list", () => {
+  it("patches the application in place", () => {
+    expect(queue).toContain("/api/admin/applications/${target}");
+    expect(queue).toContain('method: "PATCH"');
+    expect(queue).toContain("assignedAgentId");
+  });
+
+  it("offers the real status list rather than a hand-written one", () => {
+    // A second copy of the statuses drifts from the one the rest of the panel
+    // validates against.
+    expect(queue).toContain("APPLICATION_STATUS_OPTIONS.map");
+  });
+
+  it("refreshes the list so the card shows what was saved", () => {
+    expect(queue).toContain("router.refresh()");
+  });
+
+  it("blocks a second change while one is in flight", () => {
+    expect(queue).toContain("disabled={saving !== null}");
+  });
+
+  it("says when a save failed rather than looking like it worked", () => {
+    expect(queue).toContain('error(caught instanceof Error ? caught.message : "Could not save.")');
   });
 });
 

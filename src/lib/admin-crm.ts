@@ -1,4 +1,5 @@
 import { safeCurrency, safeDate, safeDateTime } from "@/lib/admin-format";
+import { referenceTail } from "@/lib/applications/reference";
 import { getApplicationCustomerIdentity } from "@/lib/admin/customer-resolver";
 import { loadAdminApplicationRow } from "@/lib/admin/load-admin-application-row";
 import { resolveApplicationSourceInfo } from "@/lib/applications/source";
@@ -596,7 +597,17 @@ export async function getAdminApplications(filters: AdminApplicationFilters = {}
 
   const search = String(filters.query ?? "").trim();
   if (search) {
-    const escaped = search.replace(/[%_]/g, "\\$&");
+    /*
+      A reference read off a receipt searches too.
+
+      Staff now quote "AAD-260830-C08E" rather than a raw uuid, and somebody
+      typing that back in expects to find the file. The reference is derived
+      rather than stored, so what is matchable in the database is its last
+      part — the four characters taken from the id — and searching for those
+      finds the row exactly as pasting the id fragment always did.
+    */
+    const term = referenceTail(search) ?? search;
+    const escaped = term.replace(/[%_]/g, "\\$&");
     query = query.or(`id.ilike.%${escaped}%,service_name.ilike.%${escaped}%,service_slug.ilike.%${escaped}%,razorpay_payment_id.ilike.%${escaped}%,razorpay_order_id.ilike.%${escaped}%,form_data->>name.ilike.%${escaped}%,form_data->>mobile.ilike.%${escaped}%,form_data->>email.ilike.%${escaped}%`);
   }
 

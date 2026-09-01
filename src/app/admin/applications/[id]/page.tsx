@@ -12,6 +12,7 @@ import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
 import { getAdminApplicationDetail } from "@/lib/admin-crm";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
+import { applicationReference } from "@/lib/applications/reference";
 import { resolveApplicationSourceInfo } from "@/lib/applications/source";
 import { isFinalApplicationDocument } from "@/lib/applications/document-visibility";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -441,12 +442,31 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
       <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
-          <Card className="rounded-xl border border-slate-200 p-4 shadow-none">
+          {/*
+            The customer first, then what they asked for.
+
+            This opened with the service in the largest type and the customer's
+            name under it in grey, above a full uuid — so the one line telling
+            you whose file this is was the third thing read. The reference has
+            replaced the uuid: it says the service and the day out loud, which
+            is what somebody reads down a phone.
+          */}
+          <div className="lg-card p-4 sm:p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
-                <h1 className="truncate text-xl font-bold text-slate-950 md:text-2xl">{application.service_name}</h1>
-                <p className="mt-1 truncate text-sm font-semibold text-slate-700">{customer.name || text(formData.name) || "Customer"}</p>
-                <p className="mt-0.5 font-mono text-[11px] text-slate-500">{application.application_code || application.id}</p>
+                <h1 className="truncate text-[1.35rem] font-extrabold leading-tight tracking-[-0.025em] text-[var(--dc-ink)] md:text-[1.7rem]">
+                  {customer.name || text(formData.name) || "Customer"}
+                </h1>
+                <p className="mt-1 truncate text-[14px] font-bold text-[var(--dc-body)]">
+                  {application.service_name}
+                </p>
+                <p className="mt-1.5 font-mono text-[12px] font-bold tracking-tight text-[var(--dc-blue-mid)]">
+                  {applicationReference({
+                    id: application.id,
+                    service_name: application.service_name,
+                    created_at: application.created_at,
+                  })}
+                </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${sourceInfo.badgeClass}`}>
@@ -456,7 +476,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 <PaymentBadge status={paymentStatus} />
               </div>
             </div>
-            <div className="mt-3 grid gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-4">
+
+            <div className="mt-4 grid gap-2 rounded-xl bg-[var(--dc-sky-soft)] p-3 sm:grid-cols-2 lg:grid-cols-4">
               <DetailRow label="Amount" value={safeCurrency(facts.totalAmount)} />
               <DetailRow label="Created" value={facts.createdAt} mono />
               <DetailRow label="Assigned" value={assignedLabel} />
@@ -469,7 +490,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 }
               />
             </div>
-          </Card>
+          </div>
 
           <AdminApplicationTabs
             overviewContent={overviewContent}
@@ -483,8 +504,8 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
         </div>
 
         <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-          <Card className="rounded-xl border border-slate-200 p-4 shadow-none">
-            <h2 className="text-sm font-bold text-slate-950">Actions</h2>
+          <div className="lg-card p-4 sm:p-5">
+            <h2 className="text-[14px] font-extrabold text-[var(--dc-ink)]">Actions</h2>
             <div className="mt-3">
               <AdminUpdateForm
                 applicationId={application.id}
@@ -514,7 +535,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
               </div>
             ) : null}
             {!invoice ? <div className="mt-3"><GenerateInvoiceButton applicationId={application.id} /></div> : null}
-          </Card>
+          </div>
         </aside>
       </div>
     </div>
