@@ -3,26 +3,51 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, MessageCircle, ReceiptText, Search } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  LoaderCircle,
+  MessageCircle,
+  ReceiptText,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 
-import { AdminEmptyState, AdminStatCard } from "@/components/admin/admin-shell";
+import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import type { AdminApplicationsCommandStats, AdminApplicationsFilterOptions } from "@/lib/admin-crm";
-import { APPLICATION_STATUS_OPTIONS } from "@/lib/application-status";
 import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
+import { cn } from "@/lib/utils";
 import { buildAdminCustomerWhatsAppMessage, buildCustomerWhatsAppUrl } from "@/lib/whatsapp";
 
-const statusFilters = [
-  { value: "all", label: "All statuses" },
-  ...APPLICATION_STATUS_OPTIONS,
-];
+/**
+ * The applications queue.
+ *
+ * It used to be five counter cards above a ten-column table, with three
+ * buttons stacked in every row and an Apply button that had to be pressed
+ * before any filter took effect. On a phone the table scrolled sideways past
+ * the columns that mattered; on a desktop the eye travelled the full width to
+ * pair a name with its status.
+ *
+ * Two changes carry most of the difference.
+ *
+ * The counters *are* the filter. "102 unassigned" was a number you read and
+ * then went looking for a dropdown to act on; it is the button that shows you
+ * those 102 now, which is what anybody was going to do with it anyway.
+ *
+ * Every application is one card rather than a row of ten cells — the customer,
+ * what they asked for, where it has reached and what it is worth, in the order
+ * somebody says it aloud. The card is the link; the two things you do without
+ * opening it, message the customer and reach the invoice, are icon buttons on
+ * it. Nothing scrolls sideways at any width.
+ */
 
-const dateRanges = [
-  { value: "all", label: "All time" },
+const DATE_RANGES = [
+  { value: "all", label: "Any time" },
   { value: "today", label: "Today" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
@@ -35,10 +60,6 @@ type FiltersState = {
   agentId: string;
   dateRange: string;
 };
-
-function shortId(id?: string | null) {
-  return id ? id.slice(0, 8) : "-";
-}
 
 function rowHref(row: AdminApplicationRow) {
   return row.application_id ? `/admin/applications/${row.application_id}` : "/admin/applications";
@@ -65,39 +86,13 @@ function pageHref(page: number, filters: FiltersState) {
   if (filters.query.trim()) params.set("q", filters.query.trim());
   if (filters.status !== "all") params.set("status", filters.status);
   if (filters.paymentStatus !== "all") params.set("payment", filters.paymentStatus);
-  if (filters.agentId !== "all") params.set("agent", filters.agentId === "none" ? "unassigned" : `agent:${filters.agentId}`);
+  if (filters.agentId !== "all") {
+    params.set("agent", filters.agentId === "none" ? "unassigned" : `agent:${filters.agentId}`);
+  }
   if (filters.dateRange !== "all") params.set("range", filters.dateRange);
   if (page > 1) params.set("page", String(page));
   const suffix = params.toString();
   return suffix ? `/admin/applications?${suffix}` : "/admin/applications";
-}
-
-function RowActions({ row }: { row: AdminApplicationRow }) {
-  const whatsapp = whatsappHref(row);
-
-  return (
-    <div className="flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
-      <Link href={rowHref(row)} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-xs font-bold text-white">
-        <ExternalLink className="h-3.5 w-3.5" />
-        View
-      </Link>
-      {whatsapp ? (
-        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-600 px-3 text-xs font-bold text-white">
-          <MessageCircle className="h-3.5 w-3.5" />
-          WhatsApp
-        </a>
-      ) : (
-        <span title="Customer mobile is missing" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-400">
-          <MessageCircle className="h-3.5 w-3.5" />
-          No mobile
-        </span>
-      )}
-      <Link href={invoiceHref(row)} className="inline-flex h-8 items-center gap-1.5 rounded-full border bg-white px-3 text-xs font-bold text-slate-800">
-        <ReceiptText className="h-3.5 w-3.5" />
-        {row.invoice_id ? "Invoice" : "Generate"}
-      </Link>
-    </div>
-  );
 }
 
 export function AdminApplications({
@@ -134,6 +129,7 @@ export function AdminApplications({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [showMore, setShowMore] = useState(false);
   const [filters, setFilters] = useState<FiltersState>({
     query: initialSearch,
     status: initialStatus || "all",
@@ -141,181 +137,349 @@ export function AdminApplications({
     agentId: initialAgentId || "all",
     dateRange: initialDateRange || "all",
   });
-  const agentOptions = useMemo(() => agents.map((item) => ({ id: item.id, label: item.full_name || item.email || item.agent_code || item.id })), [agents]);
+
+  const agentOptions = useMemo(
+    () => agents.map((item) => ({ id: item.id, label: item.full_name || item.email || item.agent_code || item.id })),
+    [agents],
+  );
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function go(nextFilters: FiltersState, nextPage = 1) {
-    setFilters(nextFilters);
-    startTransition(() => router.push(pageHref(nextPage, nextFilters)));
-  }
+  const go = (next: FiltersState, nextPage = 1) => {
+    setFilters(next);
+    startTransition(() => router.push(pageHref(nextPage, next)));
+  };
 
-  function submitFilters(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    go(filters);
-  }
+  /**
+   * The counters, as the filter.
+   *
+   * Each is a view of the queue rather than a statistic about it, so the
+   * active one is pressed rather than merely coloured.
+   */
+  const views = [
+    { key: "all", label: "Everything", count: stats.totalApplications, status: "all", agentId: "all" },
+    { key: "unassigned", label: "Needs assigning", count: stats.unassignedApplications, status: "all", agentId: "none" },
+    { key: "payment", label: "Payment pending", count: stats.paymentPending, status: "payment_pending", agentId: "all" },
+    { key: "progress", label: "In progress", count: stats.inProgress, status: "in_progress", agentId: "all" },
+    { key: "done", label: "Completed", count: stats.completed, status: "completed", agentId: "all" },
+  ] as const;
 
-  const kpis = [
-    { title: "Total Applications", value: stats.totalApplications, icon: "fileText" as const, tone: "blue" as const, status: "all", agentId: "all" as const },
-    { title: "Unassigned", value: stats.unassignedApplications, icon: "repeat" as const, tone: "orange" as const, status: "all", agentId: "none" as const },
-    { title: "Payment Pending", value: stats.paymentPending, icon: "receiptText" as const, tone: "orange" as const, status: "payment_pending", agentId: "all" as const },
-    { title: "In Progress", value: stats.inProgress, icon: "repeat" as const, tone: "blue" as const, status: "in_progress", agentId: "all" as const },
-    { title: "Completed", value: stats.completed, icon: "clipboardList" as const, tone: "green" as const, status: "completed", agentId: "all" as const },
-  ];
+  const activeView =
+    views.find((view) => view.status === filters.status && view.agentId === filters.agentId)?.key ?? null;
+
+  const extraFilters =
+    (filters.paymentStatus !== "all" ? 1 : 0) +
+    (filters.dateRange !== "all" ? 1 : 0) +
+    (filters.agentId !== "all" && filters.agentId !== "none" ? 1 : 0);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-950">Applications</h1>
-            <p className="mt-1 text-sm text-slate-600">Search, filter, assign, invoice, and open customer applications.</p>
-          </div>
-          <Link href="/ap/applications/new" className="inline-flex h-10 items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-bold text-white">
-            New Application
-          </Link>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-[1.5rem] font-extrabold leading-tight tracking-[-0.025em] text-[var(--dc-ink)] sm:text-[1.9rem]">
+            Applications
+          </h1>
+          <p className="mt-1 text-[13px] font-medium text-[var(--dc-body)] sm:text-[14px]">
+            {total} in this view. Tap one to open it.
+          </p>
         </div>
-      </section>
+        <Link
+          href="/ap/applications/new"
+          className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl px-4 text-[13.5px] font-bold text-white shadow-[0_12px_26px_-14px_rgba(0,29,95,0.9)] transition hover:-translate-y-px"
+          style={{ background: "var(--dc-grad-blue)" }}
+        >
+          New application
+        </Link>
+      </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {kpis.map((kpi) => (
-          <button
-            key={kpi.title}
-            type="button"
-            onClick={() => go({ ...filters, status: kpi.status, agentId: kpi.agentId })}
-            className="text-left"
-          >
-            <AdminStatCard title={kpi.title} value={kpi.value} icon={kpi.icon} tone={kpi.tone} />
-          </button>
-        ))}
-      </section>
+      {/* ── The views ─────────────────────────────────────────────────── */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {views.map((view) => {
+          const active = activeView === view.key;
+          return (
+            <button
+              key={view.key}
+              type="button"
+              onClick={() => go({ ...filters, status: view.status, agentId: view.agentId })}
+              aria-pressed={active}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-left transition",
+                active ? "text-white shadow-[0_12px_26px_-16px_rgba(0,29,95,0.9)]" : "lg-card",
+              )}
+              style={active ? { background: "var(--dc-grad-blue)" } : undefined}
+            >
+              <span className="text-[1.15rem] font-extrabold leading-none tabular-nums">{view.count}</span>
+              <span
+                className={cn(
+                  "text-[12.5px] font-bold leading-tight",
+                  active ? "text-white/85" : "text-[var(--dc-body)]",
+                )}
+              >
+                {view.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <form onSubmit={submitFilters} className="grid gap-3 lg:grid-cols-[1fr_180px_180px_220px_160px_auto]">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
+      {/* ── Search ────────────────────────────────────────────────────── */}
+      <div className="space-y-2.5">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            go(filters);
+          }}
+          className="flex gap-2"
+        >
+          <label className="relative block min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dc-body)]"
+              aria-hidden="true"
+            />
+            <input
               value={filters.query}
               onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
-              placeholder="Search ID, customer, mobile, email, service, payment..."
-              className="h-10 pl-11"
+              placeholder="Name, mobile, service…"
+              aria-label="Search applications"
+              className="lg-field h-12 w-full rounded-xl pl-10 pr-3.5 text-[14px] font-semibold text-[var(--dc-ink)] outline-none placeholder:font-medium placeholder:text-[var(--dc-body)] focus-visible:ring-2 focus-visible:ring-[var(--dc-blue-bright)]/40"
             />
           </label>
-          <Select value={filters.status} onValueChange={(value) => go({ ...filters, status: value })} disabled={isPending}>
-            <SelectTrigger aria-label="Status filter" className="h-10"><SelectValue /></SelectTrigger>
-            <SelectContent>{statusFilters.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={filters.paymentStatus} onValueChange={(value) => go({ ...filters, paymentStatus: value })} disabled={isPending}>
-            <SelectTrigger aria-label="Payment filter" className="h-10"><SelectValue placeholder="Payment" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All payments</SelectItem>
-              {filterOptions.paymentStatuses.map((item) => <SelectItem key={item} value={item}>{item.replace(/_/g, " ")}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filters.agentId} onValueChange={(value) => go({ ...filters, agentId: value })} disabled={isPending}>
-            <SelectTrigger aria-label="Agent filter" className="h-10"><SelectValue placeholder="Agent" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All agents</SelectItem>
-              <SelectItem value="none">Unassigned</SelectItem>
-              {agentOptions.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filters.dateRange} onValueChange={(value) => go({ ...filters, dateRange: value })} disabled={isPending}>
-            <SelectTrigger aria-label="Date filter" className="h-10"><SelectValue /></SelectTrigger>
-            <SelectContent>{dateRanges.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
-          </Select>
-          <Button type="submit" disabled={isPending} className="h-10 rounded-full">
-            {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Apply"}
-          </Button>
+          <button
+            type="button"
+            onClick={() => setShowMore((open) => !open)}
+            aria-expanded={showMore}
+            className={cn(
+              "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition",
+              showMore || extraFilters ? "text-white" : "lg-card text-[var(--dc-body)]",
+            )}
+            style={showMore || extraFilters ? { background: "var(--dc-grad-blue)" } : undefined}
+            aria-label="More filters"
+          >
+            <SlidersHorizontal className="h-4.5 w-4.5" />
+            {extraFilters && !showMore ? (
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-extrabold text-white"
+                style={{ background: "var(--dc-grad-flame)" }}
+              >
+                {extraFilters}
+              </span>
+            ) : null}
+          </button>
         </form>
 
-        {!rows.length ? (
-          <div className="mt-4">
-            <AdminEmptyState title="No applications found" description="Try a different search, status, payment, agent, or date filter." />
+        {/* The three filters that are reached for rarely, folded away rather
+            than sitting across the top of the screen every day. */}
+        {showMore ? (
+          <div className="lg-card grid gap-2.5 p-3 sm:grid-cols-3">
+            <Select
+              value={filters.paymentStatus}
+              onValueChange={(value) => go({ ...filters, paymentStatus: value })}
+              disabled={isPending}
+            >
+              <SelectTrigger aria-label="Payment" className="h-11">
+                <SelectValue placeholder="Any payment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any payment</SelectItem>
+                {filterOptions.paymentStatuses.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item.replace(/_/g, " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.agentId}
+              onValueChange={(value) => go({ ...filters, agentId: value })}
+              disabled={isPending}
+            >
+              <SelectTrigger aria-label="Assigned to" className="h-11">
+                <SelectValue placeholder="Anyone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Anyone</SelectItem>
+                <SelectItem value="none">Nobody yet</SelectItem>
+                {agentOptions.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    {agent.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.dateRange}
+              onValueChange={(value) => go({ ...filters, dateRange: value })}
+              disabled={isPending}
+            >
+              <SelectTrigger aria-label="When" className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DATE_RANGES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : null}
 
-        <div className="mt-4 hidden overflow-hidden rounded-xl border border-slate-100 lg:block">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-3 py-2.5">Application ID</th>
-                <th className="px-3 py-2.5">Customer</th>
-                <th className="px-3 py-2.5">Service</th>
-                <th className="px-3 py-2.5">Source</th>
-                <th className="px-3 py-2.5">Status</th>
-                <th className="px-3 py-2.5">Payment</th>
-                <th className="px-3 py-2.5 text-right">Amount</th>
-                <th className="px-3 py-2.5">Agent</th>
-                <th className="px-3 py-2.5">Created</th>
-                <th className="px-3 py-2.5">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((row) => (
-                <tr key={row.id} onClick={() => router.push(rowHref(row))} className="cursor-pointer bg-white hover:bg-slate-50">
-                  <td className="px-3 py-2.5 font-mono text-xs font-bold text-blue-700">{shortId(row.application_id ?? row.id)}</td>
-                  <td className="px-3 py-2.5">
-                    <p className="max-w-44 truncate font-bold text-slate-950">{row.customer_name || "Customer"}</p>
-                    <p className="mt-0.5 font-mono text-xs text-slate-500">{row.mobile || row.customer_email || "-"}</p>
-                  </td>
-                  <td className="max-w-52 truncate px-3 py-2.5 text-slate-700">{row.service}</td>
-                  <td className="px-3 py-2.5">
-                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.source_badge_class || "border-slate-200 bg-slate-100 text-slate-700"}`}>
-                      {row.source_label || "Customer"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5"><AdminStatusBadge status={row.application_status} /></td>
-                  <td className="px-3 py-2.5"><AdminStatusBadge status={row.payment_status} /></td>
-                  <td className="px-3 py-2.5 text-right font-bold text-slate-900">{safeCurrency(row.total_amount)}</td>
-                  <td className="px-3 py-2.5 text-slate-700">{row.agent_name || <span className="text-orange-600">Unassigned</span>}</td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-slate-500">{safeDateTime(row.created_at)}</td>
-                  <td className="px-3 py-2.5"><RowActions row={row} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* What is currently narrowing the list, and one tap to drop it. */}
+        {filters.query || extraFilters ? (
+          <button
+            type="button"
+            onClick={() =>
+              go({ query: "", status: filters.status, paymentStatus: "all", agentId: filters.agentId === "none" ? "none" : "all", dateRange: "all" })
+            }
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dc-sky-soft)] px-3 py-1.5 text-[12px] font-bold text-[var(--dc-body)] transition hover:text-[var(--dc-ink)]"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear search and filters
+          </button>
+        ) : null}
+      </div>
 
-        <div className="mt-4 grid gap-3 lg:hidden">
+      {/* ── The queue ─────────────────────────────────────────────────── */}
+      {isPending ? (
+        <p className="flex items-center justify-center gap-2 py-8 text-[13px] font-bold text-[var(--dc-body)]">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          Loading…
+        </p>
+      ) : rows.length ? (
+        <ul className="space-y-2">
           {rows.map((row) => (
-            <article key={row.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-              <Link href={rowHref(row)} className="block">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-bold text-slate-950">{row.service}</p>
-                    <p className="mt-1 truncate text-sm font-semibold text-slate-700">{row.customer_name || "Customer"}</p>
-                    <p className="mt-1 font-mono text-xs text-slate-500">{shortId(row.application_id ?? row.id)} · {safeDateTime(row.created_at)}</p>
-                  </div>
-                  <AdminStatusBadge status={row.application_status} />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <AdminStatusBadge status={row.payment_status} />
-                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${row.source_badge_class || "border-slate-200 bg-slate-100 text-slate-700"}`}>
-                    {row.source_label || "Customer"}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{safeCurrency(row.total_amount)}</span>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{row.agent_name || "Unassigned"}</span>
-                </div>
-              </Link>
-              <div className="mt-3"><RowActions row={row} /></div>
-            </article>
+            <li key={row.id}>
+              <ApplicationCard row={row} />
+            </li>
           ))}
+        </ul>
+      ) : (
+        <AdminEmptyState
+          title="Nothing here"
+          description="No application matches this view. Try another view above, or clear the search."
+        />
+      )}
+
+      {totalPages > 1 ? (
+        <nav className="flex items-center justify-between gap-3 pt-1" aria-label="Pages">
+          <Link
+            href={pageHref(Math.max(1, page - 1), filters)}
+            aria-disabled={page <= 1}
+            className={cn(
+              "inline-flex h-11 items-center gap-1.5 rounded-xl px-4 text-[13px] font-bold transition",
+              page <= 1 ? "pointer-events-none opacity-40" : "lg-card text-[var(--dc-ink)]",
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Link>
+          <span className="text-[12.5px] font-bold text-[var(--dc-body)]">
+            Page {page} of {totalPages}
+          </span>
+          <Link
+            href={pageHref(Math.min(totalPages, page + 1), filters)}
+            aria-disabled={page >= totalPages}
+            className={cn(
+              "inline-flex h-11 items-center gap-1.5 rounded-xl px-4 text-[13px] font-bold transition",
+              page >= totalPages ? "pointer-events-none opacity-40" : "lg-card text-[var(--dc-ink)]",
+            )}
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </nav>
+      ) : null}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   One application
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The card is the link, so the whole thing is the tap target rather than a
+ * "View" button inside a row. The two actions worth taking without opening it
+ * sit on top of that link and stop the click from propagating.
+ */
+function ApplicationCard({ row }: { row: AdminApplicationRow }) {
+  const whatsapp = whatsappHref(row);
+  const amount = row.total_amount ?? row.payment_amount;
+  const unassigned = !row.agent_name;
+
+  return (
+    <div className="lg-card lg-raise relative">
+      <Link href={rowHref(row)} className="block p-3.5 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14.5px] font-extrabold leading-tight text-[var(--dc-ink)] sm:text-[15.5px]">
+              {row.customer_name || "Customer"}
+            </p>
+            <p className="mt-0.5 truncate text-[12.5px] font-semibold text-[var(--dc-body)]">
+              {row.service}
+            </p>
+          </div>
+
+          {/* Room kept clear for the action buttons pinned at the corner. */}
+          <div className="w-[4.75rem] shrink-0" aria-hidden="true" />
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500">Page {page} of {totalPages} - {total} matching applications</p>
-          <div className="flex gap-2">
-            <Link href={pageHref(Math.max(1, page - 1), filters)} aria-disabled={page <= 1} className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-bold text-slate-700 aria-disabled:pointer-events-none aria-disabled:opacity-40">
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </Link>
-            <Link href={pageHref(Math.min(totalPages, page + 1), filters)} aria-disabled={page >= totalPages} className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-bold text-slate-700 aria-disabled:pointer-events-none aria-disabled:opacity-40">
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <AdminStatusBadge status={row.application_status} />
+          {amount ? (
+            <span className="text-[13px] font-extrabold text-[var(--dc-ink)] tabular-nums">
+              {safeCurrency(amount)}
+            </span>
+          ) : null}
+          {row.payment_status ? (
+            <span className="text-[12px] font-bold capitalize text-[var(--dc-body)]">
+              {row.payment_status.replace(/_/g, " ")}
+            </span>
+          ) : null}
         </div>
-      </section>
+
+        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] font-semibold text-[var(--dc-body)]">
+          {row.mobile ? <span className="tabular-nums">{row.mobile}</span> : null}
+          <span aria-hidden="true">·</span>
+          <span>{safeDateTime(row.created_at)}</span>
+          <span aria-hidden="true">·</span>
+          {unassigned ? (
+            <span className="font-extrabold text-[var(--dc-flame)]">Nobody assigned</span>
+          ) : (
+            <span>{row.agent_name}</span>
+          )}
+        </div>
+      </Link>
+
+      <div className="absolute right-3 top-3 flex items-center gap-1.5">
+        {whatsapp ? (
+          <a
+            href={whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Message ${row.customer_name || "the customer"} on WhatsApp`}
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#25D366]/12 text-[#128C7E] transition hover:bg-[#25D366]/20"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </a>
+        ) : (
+          <span
+            title="No mobile number on this application"
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--dc-ink)]/5 text-[var(--dc-body)]/40"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </span>
+        )}
+        <Link
+          href={invoiceHref(row)}
+          aria-label={row.invoice_id ? "Open the invoice" : "Generate an invoice"}
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--dc-ink)]/5 text-[var(--dc-blue-mid)] transition hover:bg-[var(--dc-ink)]/10"
+        >
+          {row.invoice_id ? <ReceiptText className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+        </Link>
+      </div>
     </div>
   );
 }
