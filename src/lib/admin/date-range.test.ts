@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { formatDelta, parseAdminDatePreset, resolveAdminDateRange } from "./date-range";
-import { ADMIN_NAV_GROUPS, flattenAdminNav, isAdminNavActive, resolveAdminBreadcrumbs } from "./nav";
+import {
+  ADMIN_WORKSPACES,
+  flattenAdminNav,
+  getAdminWorkspace,
+  isAdminNavActive,
+  navigableGroups,
+  resolveAdminBreadcrumbs,
+} from "./nav";
 
 describe("admin date ranges (IST / FY)", () => {
   it("defaults unknown presets to last_7_days", () => {
@@ -24,14 +31,32 @@ describe("admin date ranges (IST / FY)", () => {
 });
 
 describe("admin nav IA", () => {
-  it("excludes tickets and core-config from active navigation", () => {
-    const hrefs = flattenAdminNav().map((item) => item.href);
-    expect(hrefs).not.toContain("/admin/tickets");
-    expect(hrefs).not.toContain("/admin/settings/core-config");
-    expect(hrefs).toContain("/admin/agency-partners");
-    expect(hrefs).toContain("/admin/payment-reconciliation");
-    expect(hrefs).toContain("/admin/homepage");
-    expect(hrefs).toContain("/admin/communications");
+  it("keeps tickets and core-config out of the sidebar without hiding them", () => {
+    /*
+      Both screens exist and neither saves anything: the ticket desk writes to
+      `localStorage`, and core-config's save button persists nothing. They used
+      to be deleted from the nav outright, which is how the panel ended up with
+      screens nobody could find. They are marked `unfinished` now — listed on
+      the workspace home with a "not connected yet" label, and kept out of the
+      sidebar so nobody is led into one by accident.
+    */
+    const sidebar = ADMIN_WORKSPACES.flatMap((workspace) =>
+      navigableGroups(workspace).flatMap((group) => group.items.map((item) => item.href)),
+    );
+    expect(sidebar).not.toContain("/admin/tickets");
+    expect(sidebar).not.toContain("/admin/settings/core-config");
+
+    const all = flattenAdminNav();
+    for (const href of ["/admin/tickets", "/admin/settings/core-config"]) {
+      const item = all.find((entry) => entry.href === href);
+      expect(item, `${href} vanished instead of being marked`).toBeTruthy();
+      expect(item!.unfinished, `${href} is listed without saying it does not work`).toBeTruthy();
+    }
+
+    expect(sidebar).toContain("/admin/agency-partners");
+    expect(sidebar).toContain("/admin/payment-reconciliation");
+    expect(sidebar).toContain("/admin/homepage");
+    expect(sidebar).toContain("/admin/communications");
   });
 
   it("uses Digi Partners label", () => {
@@ -39,18 +64,27 @@ describe("admin nav IA", () => {
     expect(partners?.label).toBe("Digi Partners");
   });
 
-  it("groups navigation sections", () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.id)).toEqual([
+  it("groups the customer workspace in the order the day runs", () => {
+    expect(getAdminWorkspace("customer").groups.map((group) => group.id)).toEqual([
       "overview",
       "customers",
-      "leads-sales",
-      "applications",
-      "team-partners",
-      "payments-finance",
-      "communications",
-      "automation-ai",
-      "reports",
+      "leads",
+      "work",
+      "catalogue",
+      "website",
+      "money",
+      "messages",
+      "insight",
       "settings",
+    ]);
+  });
+
+  it("groups the partner workspace separately", () => {
+    expect(getAdminWorkspace("partner").groups.map((group) => group.id)).toEqual([
+      "partner-overview",
+      "partners",
+      "earnings",
+      "network",
     ]);
   });
 

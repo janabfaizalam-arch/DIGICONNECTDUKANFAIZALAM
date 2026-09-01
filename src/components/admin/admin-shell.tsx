@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  ExternalLink,
   FolderCheck,
   ListChecks,
   Menu,
@@ -25,19 +26,40 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AdminBreadcrumbs } from "@/components/admin/admin-breadcrumbs";
 import { AdminGlobalSearch } from "@/components/admin/admin-global-search";
 import { AdminNotificationsBell } from "@/components/admin/admin-notifications-bell";
+import { AdminWorkspaceSwitch } from "@/components/admin/admin-workspace-switch";
 import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { ADMIN_NAV_GROUPS, isAdminNavActive } from "@/lib/admin/nav";
+import {
+  getAdminWorkspace,
+  isAdminNavActive,
+  navigableGroups,
+  workspaceForPath,
+  type AdminNavGroup,
+} from "@/lib/admin/nav";
 import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { cn } from "@/lib/utils";
 
 const COLLAPSE_KEY = "dcd_admin_sidebar_collapsed";
 const GROUP_COLLAPSE_KEY = "dcd_admin_nav_groups";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Navigation
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The sidebar for whichever workspace you are in.
+ *
+ * Only that workspace's groups render, which is the point of having two: the
+ * customer list is no longer half partner screens. Groups remember whether
+ * they were open, and the group holding the current page opens itself, so
+ * arriving from a link never leaves you looking at a collapsed list.
+ */
 function AdminNav({
+  groups,
   collapsed,
   onNavigate,
 }: {
+  groups: AdminNavGroup[];
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
@@ -47,33 +69,23 @@ function AdminNav({
 
   const defaults = useMemo(() => {
     const map: Record<string, boolean> = {};
-    for (const group of ADMIN_NAV_GROUPS) {
-      map[group.id] = !group.defaultCollapsed;
-    }
+    for (const group of groups) map[group.id] = !group.defaultCollapsed;
     return map;
-  }, []);
+  }, [groups]);
 
-  useEffect(() => {
-    setLoadingHref(null);
-  }, [pathname]);
+  useEffect(() => setLoadingHref(null), [pathname]);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(GROUP_COLLAPSE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, boolean>;
-        setGroupOpen({ ...defaults, ...parsed });
-      } else {
-        setGroupOpen(defaults);
-      }
+      setGroupOpen(raw ? { ...defaults, ...(JSON.parse(raw) as Record<string, boolean>) } : defaults);
     } catch {
       setGroupOpen(defaults);
     }
   }, [defaults]);
 
-  // Auto-expand group containing the active route.
   useEffect(() => {
-    const activeGroup = ADMIN_NAV_GROUPS.find((group) =>
+    const activeGroup = groups.find((group) =>
       group.items.some((item) => isAdminNavActive(pathname, item.href)),
     );
     if (!activeGroup) return;
@@ -83,13 +95,13 @@ function AdminNav({
       try {
         window.localStorage.setItem(GROUP_COLLAPSE_KEY, JSON.stringify(next));
       } catch {
-        /* ignore */
+        /* a nav that cannot remember is still a nav */
       }
       return next;
     });
-  }, [pathname]);
+  }, [pathname, groups]);
 
-  const toggleGroup = (id: string) => {
+  const toggleGroup = (id: string) =>
     setGroupOpen((prev) => {
       const next = { ...prev, [id]: !prev[id] };
       try {
@@ -99,11 +111,10 @@ function AdminNav({
       }
       return next;
     });
-  };
 
   return (
-    <nav className="space-y-1.5 px-1.5" aria-label="Admin">
-      {ADMIN_NAV_GROUPS.map((group) => {
+    <nav className="space-y-1 px-1" aria-label="Admin sections">
+      {groups.map((group) => {
         const open = collapsed ? true : Boolean(groupOpen[group.id] ?? !group.defaultCollapsed);
         const groupHasActive = group.items.some((item) => isAdminNavActive(pathname, item.href));
 
@@ -113,79 +124,104 @@ function AdminNav({
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
-                className={cn(
-                  "mb-0.5 flex h-7 w-full items-center justify-between rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40",
-                  groupHasActive ? "bg-slate-50" : "hover:bg-slate-50",
-                )}
                 aria-expanded={open}
+                className={cn(
+                  "mb-0.5 flex h-8 w-full items-center justify-between rounded-lg px-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--dc-blue-bright)]",
+                  groupHasActive ? "bg-[var(--dc-sky-soft)]" : "hover:bg-[var(--dc-sky-soft)]",
+                )}
               >
                 <span
                   className={cn(
-                    "text-[9px] font-bold uppercase tracking-[0.12em]",
-                    groupHasActive ? "text-blue-700" : "text-slate-400",
+                    "text-[10px] font-extrabold uppercase tracking-[0.15em]",
+                    groupHasActive ? "text-[var(--dc-flame)]" : "text-[var(--dc-body)]",
                   )}
                 >
                   {group.label}
                 </span>
-                <ChevronDown className={cn("h-3 w-3 text-slate-400 transition", open && "rotate-180")} />
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-[var(--dc-body)] transition-transform duration-200",
+                    open && "rotate-180",
+                  )}
+                  aria-hidden="true"
+                />
               </button>
             ) : (
-              <div className="my-1 border-t border-slate-100 first:mt-0 first:border-0" />
+              <div className="my-1.5 h-px bg-[var(--dc-ink)]/8" aria-hidden="true" />
             )}
 
             {open ? (
-              <div className="space-y-0.5">
-                {group.items.map(({ href, label, description, icon: Icon, emphasis }) => {
-                  const active = isAdminNavActive(pathname, href);
+              <ul className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isAdminNavActive(pathname, item.href);
+                  const Icon = item.icon;
+
                   return (
-                    <Link
-                      key={href}
-                      href={href}
-                      title={collapsed ? `${label} — ${description}` : description}
-                      onClick={() => {
-                        if (!active) setLoadingHref(href.split("#")[0] || href);
-                        onNavigate?.();
-                      }}
-                      className={cn(
-                        "group/link relative flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 transition outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40",
-                        active
-                          ? "bg-blue-600 text-white font-semibold shadow-sm shadow-blue-600/20"
-                          : emphasis
-                            ? "border border-indigo-200 bg-indigo-50/80 text-indigo-800 font-semibold hover:bg-indigo-100"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-                        collapsed && "justify-center px-1.5",
-                      )}
-                    >
-                      <span
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        title={collapsed ? `${item.label} — ${item.description}` : undefined}
+                        onClick={() => {
+                          if (!active) setLoadingHref(item.href);
+                          onNavigate?.();
+                        }}
+                        aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                          "group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition",
+                          collapsed && "justify-center px-0",
                           active
-                            ? "bg-white/15 text-white"
-                            : emphasis
-                              ? "bg-indigo-600 text-white"
-                              : "bg-slate-100 text-slate-500 group-hover/link:bg-slate-200 group-hover/link:text-slate-700",
+                            ? "bg-[var(--dc-sky-soft)] text-[var(--dc-blue-deep)]"
+                            : "text-[var(--dc-ink)] hover:bg-[var(--dc-sky-soft)]",
                         )}
                       >
-                        {loadingHref === (href.split("#")[0] || href) ? (
-                          <DigiConnectLoader variant="inline" size="xs" label="Opening..." showLabel={false} />
-                        ) : (
-                          <Icon className="h-3.5 w-3.5" />
-                        )}
-                      </span>
-                      {!collapsed ? (
-                        <span className="min-w-0 flex-1 truncate text-[13px]">
-                          {loadingHref === (href.split("#")[0] || href) ? "Opening…" : label}
+                        {/* The active marker is a bar, not a colour change:
+                            colour alone is not a signal everybody receives. */}
+                        {active ? (
+                          <span
+                            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full"
+                            style={{ background: "var(--dc-grad-flame)" }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <span
+                          className={cn(
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
+                            active
+                              ? "text-white"
+                              : "bg-[var(--dc-ink)]/5 text-[var(--dc-blue-mid)] group-hover:bg-[var(--dc-ink)]/8",
+                          )}
+                          style={active ? { background: "var(--dc-grad-blue)" } : undefined}
+                        >
+                          {loadingHref === item.href ? (
+                            <DigiConnectLoader className="h-3.5 w-3.5" />
+                          ) : (
+                            <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
+                          )}
                         </span>
-                      ) : null}
-                      {!collapsed && emphasis && !active ? (
-                        <span className="rounded bg-indigo-600/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-700">
-                          Quick
-                        </span>
-                      ) : null}
-                    </Link>
+                        {!collapsed ? (
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={cn(
+                                "block truncate text-[13px] leading-tight",
+                                active ? "font-extrabold" : "font-bold",
+                              )}
+                            >
+                              {item.label}
+                            </span>
+                          </span>
+                        ) : null}
+                        {!collapsed && item.emphasis ? (
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ background: "var(--dc-grad-flame)" }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </Link>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             ) : null}
           </div>
         );
@@ -194,12 +230,22 @@ function AdminNav({
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Shell
+   ───────────────────────────────────────────────────────────────────────── */
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/admin";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const isAuthPage = isAuthRoutePath(pathname);
+
+  const workspaceId = workspaceForPath(pathname);
+  const workspace = getAdminWorkspace(workspaceId);
+  // Half-built screens are listed on the workspace home with a label, never
+  // offered here as though they worked.
+  const groups = navigableGroups(workspace);
 
   useEffect(() => {
     try {
@@ -209,7 +255,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Lock background scroll only while the mobile drawer is open.
+  useEffect(() => setMobileOpen(false), [pathname]);
+
   useEffect(() => {
     if (!mobileOpen) return;
     const previous = document.body.style.overflow;
@@ -219,7 +266,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [mobileOpen]);
 
-  const toggleCollapsed = () => {
+  const toggleCollapsed = () =>
     setCollapsed((prev) => {
       const next = !prev;
       try {
@@ -229,53 +276,88 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  };
 
-  // Signed-out pages own the full viewport — no sidebar, topbar, or logout button.
+  // Signed-out pages own the full viewport — no sidebar, header or logout.
   if (isAuthPage) return <>{children}</>;
+
+  const brand = (
+    <Link href="/admin" className="min-w-0">
+      <span className="block text-[15px] font-extrabold leading-tight tracking-tight text-[var(--dc-ink)]">
+        DigiConnect <span className="text-[var(--dc-flame)]">Dukan</span>
+      </span>
+      <span className="block text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-[var(--dc-body)]">
+        Admin Control
+      </span>
+    </Link>
+  );
 
   return (
     <div
       data-admin-chrome
-      className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_40%,#f8fafc_100%)] text-slate-900 relative overflow-x-hidden font-sans antialiased"
+      className="dc-ambient relative min-h-screen overflow-x-hidden bg-[var(--dc-sky-soft)] font-sans text-[var(--dc-ink)] antialiased"
     >
-      <div className="flex min-h-screen w-full min-w-0">
+      <div className="dc-ambient-layer" aria-hidden="true">
+        <div className="dc-orb dc-orb-blue -left-[18%] -top-[22%] h-[30rem] w-[30rem] opacity-30" />
+        <div className="dc-orb dc-orb-flame -right-[16%] top-[38%] h-[26rem] w-[26rem] opacity-20" />
+      </div>
+
+      <div className="relative flex min-h-screen w-full min-w-0">
+        {/* Desktop sidebar */}
         <aside
           className={cn(
-            "sticky top-0 hidden h-screen shrink-0 border-r border-slate-200/80 bg-white/95 backdrop-blur px-3 py-5 lg:flex lg:flex-col justify-between transition-[width]",
-            collapsed ? "w-[4.5rem]" : "w-72",
+            "sticky top-0 hidden h-screen shrink-0 flex-col justify-between border-r border-[var(--dc-ink)]/8 bg-white/70 px-2.5 py-4 backdrop-blur-xl transition-[width] duration-300 lg:flex",
+            collapsed ? "w-[4.75rem]" : "w-[17.5rem]",
           )}
         >
-          <div className="space-y-4 min-h-0 flex-1 flex flex-col">
-            <div className={cn("flex items-start gap-2 px-2", collapsed && "justify-center px-0")}>
-              <Link href="/admin" className={cn("min-w-0", collapsed && "sr-only")}>
-                <p className="text-base font-bold tracking-tight text-slate-900">DigiConnect Dukan</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Admin Control</p>
-              </Link>
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className={cn("flex items-start gap-2 px-1.5", collapsed && "justify-center px-0")}>
+              {collapsed ? null : brand}
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--dc-ink)]/10 bg-white/70 text-[var(--dc-body)] transition hover:text-[var(--dc-ink)]"
               >
                 {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-              <AdminNav collapsed={collapsed} />
+
+            <div className={cn(collapsed ? "px-0" : "px-1")}>
+              <AdminWorkspaceSwitch active={workspaceId} collapsed={collapsed} />
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto pb-3">
+              <AdminNav groups={groups} collapsed={collapsed} />
             </div>
           </div>
-          <div className="px-1 pt-2 border-t border-slate-100">
+
+          <div className="space-y-1.5 border-t border-[var(--dc-ink)]/8 px-1 pt-3">
+            <Link
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open the live website"
+              className={cn(
+                "flex h-9 items-center gap-2 rounded-xl px-2.5 text-[12.5px] font-bold text-[var(--dc-body)] transition hover:bg-[var(--dc-sky-soft)] hover:text-[var(--dc-ink)]",
+                collapsed && "justify-center px-0",
+              )}
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {collapsed ? null : "View website"}
+            </Link>
+            {/* The ramp is painted, not inherited: the label is white, and a
+                white label on the default surface is an invisible button. */}
             <LogoutButton
               portal="admin"
               className={cn(
-                "h-10 w-full justify-center rounded-xl bg-slate-900 text-white text-sm font-bold",
+                "h-10 w-full justify-center rounded-xl border-0 bg-[var(--dc-blue-deep)] text-[13px] font-bold text-white shadow-[0_10px_22px_-14px_rgba(0,29,95,0.9)] hover:bg-[var(--dc-blue-mid)]",
                 collapsed && "px-0",
               )}
             />
           </div>
         </aside>
 
+        {/* Mobile drawer */}
         <AnimatePresence>
           {mobileOpen ? (
             <div className="fixed inset-0 z-50 flex lg:hidden">
@@ -283,64 +365,82 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-slate-900/40"
+                className="absolute inset-0 bg-[var(--dc-blue-deep)]/45 backdrop-blur-sm"
                 onClick={() => setMobileOpen(false)}
               />
               <motion.aside
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
-                transition={{ type: "spring", damping: 26, stiffness: 240 }}
-                className="relative z-10 flex h-full w-[min(20rem,88vw)] flex-col bg-white p-4 shadow-2xl"
+                transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                className="relative z-10 flex h-full w-[min(20.5rem,88vw)] flex-col bg-white p-3.5 shadow-2xl"
               >
-                <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">DigiConnect Dukan</p>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Admin</p>
-                  </div>
+                <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--dc-ink)]/8 pb-3">
+                  {brand}
                   <button
                     type="button"
                     aria-label="Close menu"
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--dc-ink)]/10"
                     onClick={() => setMobileOpen(false)}
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  <AdminNav onNavigate={() => setMobileOpen(false)} />
+
+                <div className="mb-3">
+                  <AdminWorkspaceSwitch active={workspaceId} onNavigate={() => setMobileOpen(false)} />
                 </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <LogoutButton portal="admin" className="h-10 w-full justify-center rounded-xl text-sm font-bold" onLoggedOut={() => setMobileOpen(false)} />
+
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <AdminNav groups={groups} onNavigate={() => setMobileOpen(false)} />
+                </div>
+
+                <div className="space-y-1.5 border-t border-[var(--dc-ink)]/8 pt-3">
+                  <Link
+                    href="/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-[12.5px] font-bold text-[var(--dc-body)]"
+                  >
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    View website
+                  </Link>
+                  <LogoutButton
+                    portal="admin"
+                    className="h-10 w-full justify-center rounded-xl border-0 bg-[var(--dc-blue-deep)] text-[13px] font-bold text-white shadow-[0_10px_22px_-14px_rgba(0,29,95,0.9)]"
+                    onLoggedOut={() => setMobileOpen(false)}
+                  />
                 </div>
               </motion.aside>
             </div>
           ) : null}
         </AnimatePresence>
 
-        <div className="min-w-0 flex-1 flex flex-col overflow-x-hidden">
-          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur px-4 py-3 lg:px-6">
+        {/* Content */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+          <header className="sticky top-0 z-40 border-b border-[var(--dc-ink)]/8 bg-white/80 px-3.5 py-2.5 backdrop-blur-xl lg:px-6 lg:py-3">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 aria-label="Open menu"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white lg:hidden"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--dc-ink)]/10 bg-white lg:hidden"
                 onClick={() => setMobileOpen(true)}
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="min-w-0 flex-1 space-y-0.5 overflow-hidden">
+
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <AdminBreadcrumbs />
-                <p className="hidden truncate text-[11px] font-medium text-slate-400 sm:block">DigiConnect Dukan · RNOS India Pvt. Ltd.</p>
               </div>
+
               <AdminGlobalSearch className="hidden lg:block" />
               <button
                 type="button"
-                aria-label="Search CRM"
+                aria-label="Search"
                 aria-expanded={mobileSearchOpen}
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 lg:hidden",
-                  mobileSearchOpen && "border-blue-300 bg-blue-50 text-blue-700",
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--dc-ink)]/10 bg-white text-[var(--dc-ink)] lg:hidden",
+                  mobileSearchOpen && "border-[var(--dc-blue-bright)]/40 bg-[var(--dc-sky-soft)]",
                 )}
                 onClick={() => setMobileSearchOpen((open) => !open)}
               >
@@ -348,19 +448,32 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </button>
               <AdminNotificationsBell />
             </div>
+
             {mobileSearchOpen ? (
               <div className="mt-2 min-w-0 lg:hidden">
-                <AdminGlobalSearch className="max-w-none" autoFocus placeholder="Search CRM…" />
+                <AdminGlobalSearch className="max-w-none" autoFocus placeholder="Search customers, applications…" />
               </div>
             ) : null}
           </header>
-          <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-5 md:px-6 md:py-6">{children}</main>
+
+          <main className="min-w-0 flex-1 overflow-x-hidden px-3.5 py-4 md:px-6 md:py-6">{children}</main>
         </div>
       </div>
     </div>
   );
 }
+/* ─────────────────────────────────────────────────────────────────────────
+   Page furniture
+   ───────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The top of an admin screen.
+ *
+ * Every one of the panel's screens renders through these four components, so
+ * restyling them is how sixty-odd pages pick up the liquid glass system at
+ * once rather than one edit at a time. Their props are unchanged — an existing
+ * screen gets the new look without being touched.
+ */
 export function AdminPageHeader({
   eyebrow,
   title,
@@ -373,44 +486,55 @@ export function AdminPageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
-      <div>
+    <div className="mb-5 flex flex-col gap-3 border-b border-[var(--dc-ink)]/8 pb-4 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:pb-5">
+      <div className="min-w-0">
         {eyebrow ? (
-          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+          <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--dc-flame)]">
             {eyebrow}
           </span>
         ) : null}
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-[1.75rem]">{title}</h1>
-        {description ? <p className="mt-1 max-w-2xl text-sm font-medium text-slate-500">{description}</p> : null}
+        <h1 className="mt-1.5 text-[1.4rem] font-extrabold leading-[1.15] tracking-[-0.025em] text-[var(--dc-ink)] sm:text-[1.75rem]">
+          {title}
+        </h1>
+        {description ? (
+          <p className="mt-1.5 max-w-2xl text-[13px] font-medium leading-[1.55] text-[var(--dc-body)] sm:text-[14px]">
+            {description}
+          </p>
+        ) : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
 
+/** Nothing here yet — and why that is fine. */
 export function AdminEmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
-      <p className="text-sm font-bold text-slate-900">{title}</p>
-      <p className="mx-auto mt-1.5 max-w-sm text-xs leading-normal text-slate-500">{description}</p>
-    </div>
-  );
-}
-
-export function AdminUnderSetup({ title, description }: { title: string; description?: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-      <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
-        Under Setup
-      </span>
-      <h2 className="mt-3 text-xl font-bold text-slate-900">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-500">
-        {description ?? "This admin section is ready, but its database tables or columns are not available yet."}
+    <div className="rounded-[1.25rem] border border-dashed border-[var(--dc-ink)]/15 bg-white/60 p-8 text-center backdrop-blur-sm">
+      <p className="text-[14px] font-extrabold text-[var(--dc-ink)]">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-[12.5px] font-medium leading-[1.55] text-[var(--dc-body)]">
+        {description}
       </p>
     </div>
   );
 }
 
+/** The screen is built, but the database behind it is not ready. */
+export function AdminUnderSetup({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="lg-card p-8 text-center">
+      <span className="inline-flex items-center rounded-full bg-[var(--dc-amber)]/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-flame)]">
+        Under setup
+      </span>
+      <h2 className="mt-3 text-[1.15rem] font-extrabold text-[var(--dc-ink)]">{title}</h2>
+      <p className="mx-auto mt-2 max-w-md text-[12.5px] font-medium leading-[1.6] text-[var(--dc-body)]">
+        {description ?? "This screen is ready, but its database tables or columns are not available yet."}
+      </p>
+    </div>
+  );
+}
+
+/** One number, on a glass card. */
 export function AdminStatCard({
   title,
   value,
@@ -423,22 +547,28 @@ export function AdminStatCard({
   tone?: "blue" | "orange" | "green" | "slate";
 }) {
   const Icon = typeof icon === "string" ? (statIconMap[icon as keyof typeof statIconMap] ?? UsersRound) : icon;
-  const toneClass = {
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-    orange: "bg-orange-50 text-orange-600 border-orange-100",
-    green: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    slate: "bg-slate-50 text-slate-600 border-slate-100",
-  }[tone];
+
+  const ramp: Record<string, string> = {
+    blue: "var(--dc-grad-blue)",
+    orange: "var(--dc-grad-flame)",
+    green: "linear-gradient(135deg,#0f9d58,#34c77b)",
+    slate: "linear-gradient(135deg,#475569,#94a3b8)",
+  };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{title}</p>
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg border", toneClass)}>
-          <Icon className="h-4 w-4" />
+    <div className="lg-card lg-raise p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[var(--dc-body)]">{title}</p>
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.65rem] text-white"
+          style={{ background: ramp[tone] ?? ramp.blue }}
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
-      <p className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-3 text-[1.6rem] font-extrabold leading-none tracking-[-0.02em] text-[var(--dc-ink)] tabular-nums">
+        {value}
+      </p>
     </div>
   );
 }
