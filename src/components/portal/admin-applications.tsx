@@ -9,6 +9,7 @@ import {
   FileText,
   LoaderCircle,
   MessageCircle,
+  Pencil,
   ReceiptText,
   Search,
   SlidersHorizontal,
@@ -16,9 +17,12 @@ import {
 } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
+import { useToast } from "@/components/providers/toast-provider";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
+import { applicationReference } from "@/lib/applications/reference";
+import { APPLICATION_STATUS_OPTIONS } from "@/lib/application-status";
 import type { AdminApplicationsCommandStats, AdminApplicationsFilterOptions } from "@/lib/admin-crm";
 import type { AdminApplicationRow, PortalUser } from "@/lib/portal-types";
 import { cn } from "@/lib/utils";
@@ -351,7 +355,7 @@ export function AdminApplications({
         <ul className="space-y-2">
           {rows.map((row) => (
             <li key={row.id}>
-              <ApplicationCard row={row} />
+              <ApplicationCard row={row} agents={agentOptions} />
             </li>
           ))}
         </ul>
@@ -404,10 +408,52 @@ export function AdminApplications({
  * "View" button inside a row. The two actions worth taking without opening it
  * sit on top of that link and stop the click from propagating.
  */
-function ApplicationCard({ row }: { row: AdminApplicationRow }) {
+function ApplicationCard({
+  row,
+  agents,
+}: {
+  row: AdminApplicationRow;
+  agents: { id: string; label: string }[];
+}) {
+  const router = useRouter();
+  const { success, error } = useToast();
+  const [saving, setSaving] = useState<null | "status" | "agent">(null);
+  const [open, setOpen] = useState(false);
+
   const whatsapp = whatsappHref(row);
   const amount = row.total_amount ?? row.payment_amount;
   const unassigned = !row.agent_name;
+  const reference = applicationReference(row);
+
+  /**
+   * Change something without leaving the list.
+   *
+   * Moving one file forward used to be: open it, find the sidebar, change the
+   * dropdown, press Save Changes, go back. For a queue of a hundred that is
+   * five hundred clicks. The two fields that actually move work — where it has
+   * reached and who is on it — are on the card.
+   */
+  const patch = async (field: "status" | "agent", value: string) => {
+    const target = row.application_id ?? row.id;
+    setSaving(field);
+    try {
+      const response = await fetch(`/api/admin/applications/${target}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(field === "status" ? { status: value } : { assignedAgentId: value }),
+      });
+      if (!response.ok) {
+        const json = (await response.json().catch(() => ({}))) as { message?: string };
+        throw new Error(json.message || "Could not save.");
+      }
+      success(field === "status" ? "Status updated." : "Assigned.");
+      router.refresh();
+    } catch (caught) {
+      error(caught instanceof Error ? caught.message : "Could not save.");
+    } finally {
+      setSaving(null);
+    }
+  };
 
   return (
     <div className="lg-card lg-raise relative">
@@ -419,6 +465,11 @@ function ApplicationCard({ row }: { row: AdminApplicationRow }) {
             </p>
             <p className="mt-0.5 truncate text-[12.5px] font-semibold text-[var(--dc-body)]">
               {row.service}
+            </p>
+            {/* Readable, sayable, and it already tells you the service and
+                the day before you open anything. */}
+            <p className="mt-1 font-mono text-[11px] font-bold tracking-tight text-[var(--dc-blue-mid)]">
+              {reference}
             </p>
           </div>
 
@@ -452,6 +503,59 @@ function ApplicationCard({ row }: { row: AdminApplicationRow }) {
           )}
         </div>
       </Link>
+
+      {/* ── Act without opening it ─────────────────────────────────── */}
+      <div className="border-t border-[var(--dc-ink)]/8 px-3.5 py-2.5 sm:px-4">
+        {open ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-body)]">
+                Move to
+              </span>
+              <select
+                value={row.application_status}
+                disabled={saving !== null}
+                onChange={(event) => patch("status", event.target.value)}
+                className="lg-field h-10 w-full rounded-lg px-2.5 text-[13px] font-bold text-[var(--dc-ink)] outline-none disabled:opacity-50"
+              >
+                {APPLICATION_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-body)]">
+                Assign to
+              </span>
+              <select
+                value={row.agent_id ?? ""}
+                disabled={saving !== null}
+                onChange={(event) => patch("agent", event.target.value)}
+                className="lg-field h-10 w-full rounded-lg px-2.5 text-[13px] font-bold text-[var(--dc-ink)] outline-none disabled:opacity-50"
+              >
+                <option value="">Nobody yet</option>
+                {agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--dc-blue-mid)] transition hover:underline"
+          >
+            {saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+            Change status or assign
+          </button>
+        )}
+      </div>
 
       <div className="absolute right-3 top-3 flex items-center gap-1.5">
         {whatsapp ? (
