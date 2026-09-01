@@ -89,6 +89,16 @@ export type AdminNavItem = {
    * exists, know not to rely on it, and are not led into it by accident.
    */
   unfinished?: string;
+  /**
+   * A working screen this business does not use.
+   *
+   * Deleting the code would throw away something that works and that another
+   * shop might need; leaving it in the sidebar is what made the panel feel
+   * "bhara hua". Marked ones are absent from the sidebar and the directory,
+   * and the reason is written here so a later reader knows it was a decision
+   * about this business rather than an oversight.
+   */
+  hidden?: string;
 };
 
 export type AdminNavGroup = {
@@ -147,23 +157,18 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
     icon: UsersRound,
     items: [
       {
-        href: "/admin/customers/walk-in",
-        label: "New Customer",
-        description: "Create a walk-in customer from their phone number",
-        icon: UserPlus,
-        emphasis: true,
-      },
-      {
         href: "/admin/customers",
-        label: "All Customers",
-        description: "Search anybody and open their full history",
+        label: "Customers",
+        description: "Search anybody, open their history, or add a walk-in",
         icon: Contact,
+        emphasis: true,
       },
       {
         href: "/admin/documents",
         label: "Documents",
         description: "Files customers uploaded, waiting to be checked",
         icon: FileText,
+        hidden: "Documents arrive on the application itself; there is no separate queue to work.",
       },
       {
         href: "/admin/tickets",
@@ -191,6 +196,7 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "Pipeline Board",
         description: "The same leads as columns you can drag between",
         icon: ListChecks,
+        hidden: "The leads list is how this shop works its follow-ups; the board duplicates it.",
       },
     ],
   },
@@ -224,6 +230,7 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "Credit Reports",
         description: "CIBIL pulls and the consultations that follow",
         icon: BarChart3,
+        hidden: "CIBIL work is handled on WhatsApp by the finance desk, not from here.",
       },
     ],
   },
@@ -239,12 +246,6 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         description: "Every service page, its content, and its application questions",
         icon: ListChecks,
         emphasis: true,
-      },
-      {
-        href: "/admin/agent-services",
-        label: "Agent Catalogue",
-        description: "The list partners sell from, with their own pricing",
-        icon: IdCard,
       },
       {
         href: "/admin/service-builder",
@@ -315,22 +316,11 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         icon: Share2,
       },
       {
-        href: "/admin/services/dpr",
-        label: "DPR Landing CMS",
-        description: "Sections and banners on the DPR page",
-        icon: FileText,
-      },
-      {
-        href: "/admin/services/itr",
-        label: "ITR Landing CMS",
-        description: "Sections and banners on the ITR page",
-        icon: FileText,
-      },
-      {
         href: "/admin/services/csc-olympiad",
         label: "CSC Olympiad Page",
         description: "Settings for the Olympiad landing page",
         icon: ScrollText,
+        hidden: "The Olympiad page is not a service this shop runs.",
       },
     ],
   },
@@ -428,12 +418,14 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "DPR Analytics",
         description: "DPR applications, revenue and scheme split",
         icon: BarChart3,
+        hidden: "The Reports screen already covers DPR; a service-specific analytics page is not used.",
       },
       {
         href: "/admin/reports/itr",
         label: "ITR Analytics",
         description: "ITR applications, revenue and filing stats",
         icon: BarChart3,
+        hidden: "The Reports screen already covers ITR; a service-specific analytics page is not used.",
       },
       {
         href: "/admin/automation",
@@ -468,6 +460,7 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "Plans & Billing",
         description: "Subscription tiers and what each unlocks",
         icon: BadgePercent,
+        hidden: "There are no subscription tiers to sell — this is one shop, not a SaaS.",
       },
     ],
   },
@@ -523,6 +516,14 @@ const PARTNER_GROUPS: AdminNavGroup[] = [
         label: "Partner Banners",
         description: "The slider on the partner app's home screen",
         icon: Image,
+      },
+      {
+        // Belongs with the partners who sell from it, not with the customer
+        // catalogue — it carries their pricing, not the shop's.
+        href: "/admin/agent-services",
+        label: "Agent Catalogue",
+        description: "The list partners sell from, with their own pricing",
+        icon: IdCard,
       },
     ],
   },
@@ -608,6 +609,9 @@ export const ADMIN_WORKSPACES: AdminWorkspace[] = [
 export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
   { href: "/admin/login", reachedFrom: "signed out" },
   { href: "/admin/customers/new", reachedFrom: "/admin/customers" },
+  { href: "/admin/customers/walk-in", reachedFrom: "/admin/customers" },
+  { href: "/admin/services/dpr", reachedFrom: "/admin/services — the DPR service's page content" },
+  { href: "/admin/services/itr", reachedFrom: "/admin/services — the ITR service's page content" },
   { href: "/admin/articles/new", reachedFrom: "/admin/articles" },
   { href: "/admin/offline-invoices/new", reachedFrom: "/admin/offline-invoices" },
   { href: "/admin/services/new", reachedFrom: "/admin/services" },
@@ -644,8 +648,18 @@ export function flattenAdminNav(): AdminNavItem[] {
  */
 export function navigableGroups(workspace: AdminWorkspace): AdminNavGroup[] {
   return workspace.groups
-    .map((group) => ({ ...group, items: group.items.filter((item) => !item.unfinished) }))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.unfinished && !item.hidden),
+    }))
     .filter((group) => group.items.length);
+}
+
+/** The screens this business has switched off, and why. */
+export function hiddenAdminScreens(): { href: string; label: string; reason: string }[] {
+  return flattenAdminNav()
+    .filter((item) => item.hidden)
+    .map((item) => ({ href: item.href, label: item.label, reason: item.hidden! }));
 }
 
 /** Every route the nav offers, plus the child routes it deliberately omits. */

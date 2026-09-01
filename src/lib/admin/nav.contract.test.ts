@@ -8,6 +8,8 @@ import {
   allAdminRoutes,
   flattenAdminNav,
   getAdminWorkspace,
+  hiddenAdminScreens,
+  navigableGroups,
   resolveAdminBreadcrumbs,
   workspaceForPath,
 } from "@/lib/admin/nav";
@@ -180,6 +182,76 @@ describe("everything a visitor sees is edited from one group", () => {
 });
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Only what this shop uses
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The first pass placed every screen, which made the sidebar complete and
+ * long: rows for work this business does not do, and a dashboard directory
+ * that reprinted the sidebar underneath it. Complete is not the same as
+ * useful.
+ */
+describe("the sidebar carries only what this shop works", () => {
+  it("keeps the screens this business does not use out of it", () => {
+    const sidebar = ADMIN_WORKSPACES.flatMap((workspace) =>
+      navigableGroups(workspace).flatMap((group) => group.items.map((item) => item.href)),
+    );
+
+    for (const href of [
+      "/admin/documents",
+      "/admin/leads/pipeline",
+      "/admin/credit-reports",
+      "/admin/services/csc-olympiad",
+      "/admin/reports/dpr",
+      "/admin/reports/itr",
+      "/admin/settings/saas",
+    ]) {
+      expect(sidebar, `${href} is still in the sidebar`).not.toContain(href);
+    }
+  });
+
+  it("writes down why each one is switched off", () => {
+    const hidden = hiddenAdminScreens();
+    expect(hidden.length).toBeGreaterThanOrEqual(7);
+    for (const screen of hidden) {
+      // A reason, not a shrug: the next reader has to know this was decided.
+      expect(screen.reason.length, `${screen.href} gives no reason`).toBeGreaterThan(30);
+    }
+  });
+
+  it("puts the agent catalogue with the partners who sell from it", () => {
+    const customer = getAdminWorkspace("customer")
+      .groups.flatMap((group) => group.items)
+      .map((item) => item.href);
+    const partner = getAdminWorkspace("partner")
+      .groups.flatMap((group) => group.items)
+      .map((item) => item.href);
+
+    expect(customer).not.toContain("/admin/agent-services");
+    expect(partner).toContain("/admin/agent-services");
+  });
+
+  it("reaches a service's page content from that service, not from a list of its own", () => {
+    const sidebar = ADMIN_WORKSPACES.flatMap((workspace) =>
+      navigableGroups(workspace).flatMap((group) => group.items.map((item) => item.href)),
+    );
+    for (const href of ["/admin/services/dpr", "/admin/services/itr"]) {
+      expect(sidebar, `${href} is still its own sidebar row`).not.toContain(href);
+      const child = ADMIN_CHILD_ROUTES.find((route) => route.href === href);
+      expect(child, `${href} lost its parent`).toBeTruthy();
+      expect(child!.reachedFrom).toContain("/admin/services");
+    }
+  });
+
+  it("does not reprint the sidebar under the dashboard", () => {
+    // The directory listed every screen in the workspace — the same menu the
+    // sidebar shows, on the same screen, twice.
+    const dashboard = readCode("src/app/admin/page.tsx");
+    expect(dashboard).not.toContain("AdminWorkspaceDirectory");
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
    Breadcrumbs
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -193,7 +265,7 @@ describe("the breadcrumb says where you are", () => {
 
   it("shows the list a detail page came from", () => {
     const crumbs = resolveAdminBreadcrumbs("/admin/customers/9fd2").map((crumb) => crumb.label);
-    expect(crumbs).toContain("All Customers");
+    expect(crumbs).toContain("Customers");
     expect(crumbs[crumbs.length - 1]).toBe("9fd2");
   });
 
