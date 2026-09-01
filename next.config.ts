@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
-const securityHeaders = [
+/**
+ * Nothing on this site may be put in a frame by anybody.
+ *
+ * The panel and the portal both carry live sessions and one-click actions, so
+ * a page of ours inside somebody else's frame is a click a customer did not
+ * mean to make.
+ */
+const noFraming = [
   {
     key: 'Content-Security-Policy',
     value: "frame-ancestors 'none';",
@@ -9,6 +16,29 @@ const securityHeaders = [
     key: 'X-Frame-Options',
     value: 'DENY',
   },
+];
+
+/**
+ * The homepage is the one exception, and only for us.
+ *
+ * The Homepage Studio shows the real front page in a frame beside the list of
+ * its bands — the whole point being that you arrange the page while looking at
+ * it. `'self'` permits that and nothing else: another site framing rnos.in is
+ * refused exactly as before, since an attacker cannot serve a page from this
+ * origin. `SAMEORIGIN` says the same thing to browsers that predate CSP.
+ */
+const sameOriginFraming = [
+  {
+    key: 'Content-Security-Policy',
+    value: "frame-ancestors 'self';",
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'SAMEORIGIN',
+  },
+];
+
+const securityHeaders = [
   {
     key: 'X-Content-Type-Options',
     value: 'nosniff',
@@ -81,10 +111,20 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    /*
+      Both of these match "/", and for a repeated header key the last match is
+      the one that is sent — so the blanket refusal goes first and the
+      homepage's narrower rule overrides it. Written the other way round the
+      studio's preview frame stays blank, which is exactly what happened.
+    */
     return [
       {
         source: '/(.*)',
-        headers: securityHeaders,
+        headers: [...securityHeaders, ...noFraming],
+      },
+      {
+        source: '/',
+        headers: sameOriginFraming,
       },
     ];
   },

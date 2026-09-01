@@ -1,69 +1,37 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Image, Megaphone, Share2, Sparkles } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
+import { HomepageStudio } from "@/components/admin/homepage-studio";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getHomepageLayout } from "@/lib/homepage/layout-data";
 
 export const dynamic = "force-dynamic";
 
-const LINKS = [
-  {
-    href: "/admin/homepage-slides",
-    title: "Homepage Slides",
-    // The first active slide now supplies the hero photo, headline, subtitle
-    // and both buttons, so this is where the hero image is changed.
-    description: "Hero image, headline and buttons",
-    icon: Image,
-  },
-  {
-    href: "/admin/homepage-notices",
-    title: "Homepage Notices",
-    description: "Announcement strip content",
-    icon: Megaphone,
-  },
-  {
-    href: "/admin/homepage-offer-strip",
-    title: "Offer Strip",
-    description: "Promotional offer strip",
-    icon: Sparkles,
-  },
-  {
-    href: "/admin/social-links",
-    title: "Social Links",
-    description: "Footer profile links and handles",
-    icon: Share2,
-  },
-];
-
-export default async function AdminHomepageCmsHubPage() {
+/**
+ * Homepage Studio.
+ *
+ * This screen used to be a menu of four links to four other screens, which is
+ * how "change the homepage" became a job of guessing which of them held the
+ * thing you wanted and whether the result looked right. The page itself is
+ * here now, live, beside the list of its bands.
+ */
+export default async function AdminHomepagePage() {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
+
   if (!user) redirect("/admin/login");
   if (!isAdminRole(role)) redirect("/admin/login");
 
+  const layout = await getHomepageLayout();
+
   return (
-    <div className="space-y-6">
+    <div>
       <AdminPageHeader
-        eyebrow="Content"
-        title="Homepage CMS"
-        description="Manage public homepage banners, notices and offer strips. Existing editors open from these cards."
+        eyebrow="Website"
+        title="Homepage"
+        description="The front page as a visitor sees it. Drag a band to move it, switch one off with the eye, and open its own screen to change the words and pictures inside it."
       />
-      <div className="grid gap-4 md:grid-cols-3">
-        {LINKS.map(({ href, title, description, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
-          >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
-              <Icon className="h-4 w-4" />
-            </span>
-            <p className="mt-3 text-sm font-bold text-slate-900">{title}</p>
-            <p className="mt-1 text-xs text-slate-500">{description}</p>
-          </Link>
-        ))}
-      </div>
+      <HomepageStudio initialLayout={layout} />
     </div>
   );
 }

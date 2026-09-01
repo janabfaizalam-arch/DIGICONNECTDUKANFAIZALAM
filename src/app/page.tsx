@@ -23,6 +23,9 @@ import { AboutRnos } from "@/components/homepage/about-rnos";
 import { MotionRoot, Reveal } from "@/components/homepage/motion";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
+import { HomepagePreviewBridge } from "@/components/homepage/preview-bridge";
+import { getHomepageLayout } from "@/lib/homepage/layout-data";
+import type { HomepageSectionId } from "@/lib/homepage/sections";
 import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
 import { buildAggregateRatingJsonLd, getHomepageTestimonials } from "@/lib/homepage/testimonials";
 import { buildReelsJsonLd, getHomepageReels } from "@/lib/homepage/reels";
@@ -67,14 +70,30 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  const [publicServices, slides, faqs, testimonials, reels, socialLinks] = await Promise.all([
+/**
+ * The bands that render without a scroll reveal.
+ *
+ * These sit within the first screen or two on a phone, where fading in on
+ * first paint is something the visitor waits for rather than a flourish. They
+ * are named by id, so moving one further down the page in the editor keeps
+ * this correct — the set is about position on screen, not about the band.
+ */
+const EAGER_BANDS = new Set<HomepageSectionId>(["quick_actions", "trust_chips", "reels", "trending"]);
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ preview?: string }>;
+}) {
+  const isPreview = Boolean((await searchParams)?.preview);
+  const [publicServices, slides, faqs, testimonials, reels, socialLinks, layout] = await Promise.all([
     getCachedPublicServices(),
     getCachedHomepageSlides(),
     getCachedHomepageFaqs(),
     getCachedHomepageTestimonials(),
     getCachedHomepageReels(),
     getCachedFooterSocialLinks(),
+    getHomepageLayout(),
   ]);
 
   // The hero uses the first few; the loader caches the whole short list.
@@ -115,6 +134,34 @@ export default async function Home() {
   // Reels have no per-row publish date, so the page render date stands in.
   const reelsJsonLd = buildReelsJsonLd(reels, new Date().toISOString());
 
+  /*
+    Every band the homepage can draw, keyed by the id the arrangement stores.
+
+    A map rather than a switch so the render is a lookup: what is on the page
+    and in what order is data, and this is only what each id means.
+  */
+  const HOMEPAGE_BANDS: Partial<Record<HomepageSectionId, React.ReactNode>> = {
+    quick_actions: <QuickActions />,
+    trust_chips: <HomepageTrustChips />,
+    reels: <ReelsRail reels={reels} />,
+    trending: <TrendingNow />,
+    quick_services: <QuickServiceGrid />,
+    featured_services: <FeaturedServices />,
+    how_it_works: <HowItWorks />,
+    trust_strip: <TrustStrip />,
+    track_application: <ApplicationTrackingCta />,
+    rewards: <RewardCenter />,
+    success_stories: <RecentSuccessStories />,
+    google_reviews: <GoogleReviews />,
+    video_testimonials: <VideoTestimonials testimonials={testimonials} />,
+    schemes: <GovernmentSchemesHub />,
+    knowledge: <KnowledgeCenter />,
+    faq: <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />,
+    become_partner: <BecomeDigiPartner />,
+    support: <SupportCenter />,
+    about: <AboutRnos />,
+  };
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
@@ -133,74 +180,39 @@ export default async function Home() {
         <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
           {/* Above the fold — no scroll reveal here. A section that fades in on
               first paint is a section the user waits for. */}
-          <HomepageHero catalog={searchCatalog} slides={heroSlides} />
+          {/*
+            The page, in the order the shop saved.
 
-          <QuickActions />
+            These were twenty-two components written out in a fixed order, so
+            changing what appeared — or what came first — was a code edit and a
+            deploy. The arrangement lives in `homepage_sections` now and this
+            renders whatever it says, skipping the bands switched off.
 
-          <HomepageTrustChips />
+            The hero is outside the map: it is above the fold and pinned, and a
+            reveal on first paint is a section the visitor waits for.
+          */}
+          <div data-band="hero">
+            <HomepageHero catalog={searchCatalog} slides={heroSlides} />
+          </div>
 
-          <ReelsRail reels={reels} />
-
-          <TrendingNow />
-
-          <QuickServiceGrid />
-
-          <Reveal>
-            <FeaturedServices />
-          </Reveal>
-
-          <Reveal>
-            <HowItWorks />
-          </Reveal>
-
-          <Reveal>
-            <TrustStrip />
-          </Reveal>
-
-          <Reveal>
-            <ApplicationTrackingCta />
-          </Reveal>
-
-          <Reveal>
-            <RewardCenter />
-          </Reveal>
-
-          {/* CMS/API sections render only when real data exists */}
-          <Reveal>
-            <RecentSuccessStories />
-          </Reveal>
-
-          <Reveal>
-            <GoogleReviews />
-          </Reveal>
-
-          <VideoTestimonials testimonials={testimonials} />
-
-          <Reveal>
-            <GovernmentSchemesHub />
-          </Reveal>
-
-          <Reveal>
-            <KnowledgeCenter />
-          </Reveal>
-
-          <Reveal>
-            <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />
-          </Reveal>
-
-          <Reveal>
-            <BecomeDigiPartner />
-          </Reveal>
-
-          <Reveal>
-            <SupportCenter />
-          </Reveal>
-
-          <Reveal>
-            <AboutRnos />
-          </Reveal>
+          {layout
+            .filter((section) => section.enabled && section.id !== "hero")
+            .map(({ id }) => {
+              const band = HOMEPAGE_BANDS[id];
+              if (!band) return null;
+              // The first bands are on screen immediately; revealing them
+              // costs a paint rather than saving one.
+              // Tagged so the Homepage Studio can scroll its preview here.
+              return (
+                <div key={id} data-band={id}>
+                  {EAGER_BANDS.has(id) ? band : <Reveal>{band}</Reveal>}
+                </div>
+              );
+            })}
         </main>
       </MotionRoot>
+
+      {isPreview ? <HomepagePreviewBridge /> : null}
 
       <MarketingFooter variant="homepage" socialLinks={socialLinks} />
       <HomepageContactActions />
