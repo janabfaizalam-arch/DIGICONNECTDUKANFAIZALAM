@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_NAV_GROUPS, flattenAdminNav } from "@/lib/admin/nav";
+import { flattenAdminNav, getAdminWorkspace } from "@/lib/admin/nav";
 
 const root = process.cwd();
 const readSrc = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -16,8 +16,10 @@ describe("partner commissions admin nav", () => {
   });
 
   it("labels the two ledgers distinctly so they cannot be confused", () => {
-    const finance = ADMIN_NAV_GROUPS.find((g) => g.id === "payments-finance");
-    const labels = (finance?.items ?? []).map((i) => i.label);
+    // Both ledgers sit in the partner workspace now; the customer workspace's
+    // Money group is what the shop takes from customers.
+    const earnings = getAdminWorkspace("partner").groups.find((g) => g.id === "earnings");
+    const labels = (earnings?.items ?? []).map((i) => i.label);
     expect(labels).toContain("Partner Commissions");
     expect(labels).toContain("Agent Commissions");
   });

@@ -1,6 +1,28 @@
 /**
- * Admin sidebar information architecture — operations-first CRM.
- * All existing authorized routes remain reachable; legacy hubs preserved.
+ * What the admin panel contains, and where each thing lives.
+ *
+ * The panel had grown to sixty-odd screens reached through a single flat
+ * sidebar, and twenty-five of them were not in that sidebar at all — the
+ * gallery, the homepage slides, the social links, the branches console, the
+ * print desk. They existed, they worked, and the only way to reach one was to
+ * already know its URL. That is the whole of "kuchh to dikh hi nahin rahe":
+ * the features were never missing, the doors were.
+ *
+ * Two things fix it and both live in this file.
+ *
+ * **Every screen is placed.** `ADMIN_WORKSPACES` below is the complete map of
+ * the panel. A screen is either in a group here or named in
+ * `ADMIN_CHILD_ROUTES` as something reached from its parent — and a contract
+ * test walks `src/app/admin` and fails the build if a screen is in neither.
+ * A new screen cannot become invisible the way these did.
+ *
+ * **Customer work and partner work are separated.** They were interleaved in
+ * one list, so running the customer business meant reading past partner
+ * payouts and commission rules to find the applications queue. There are two
+ * workspaces now with a toggle between them: `customer`, which is the whole
+ * customer-facing business, and `partner`, which is the Digi Partner and staff
+ * side. The partner workspace is a move, not a build — the same screens as
+ * before, gathered where they belong.
  */
 
 import type { LucideIcon } from "lucide-react";
@@ -9,15 +31,26 @@ import {
   BanknoteArrowUp,
   BarChart3,
   Bell,
+  Building2,
   ClipboardList,
+  Contact,
+  FileSpreadsheet,
   FileText,
+  Gauge,
+  Globe,
+  IdCard,
   Image,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   MessageSquare,
+  Newspaper,
   Percent,
+  Printer,
   ReceiptText,
+  ScrollText,
   Settings,
+  Share2,
   Sheet,
   ShieldCheck,
   Sparkles,
@@ -30,168 +63,597 @@ import {
   Workflow,
 } from "lucide-react";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Types
+   ───────────────────────────────────────────────────────────────────────── */
+
+export type AdminWorkspaceId = "customer" | "partner";
+
 export type AdminNavItem = {
   href: string;
   label: string;
+  /** One line, in plain words, saying what the screen is for. */
   description: string;
   icon: LucideIcon;
-  /** Emphasize in nav (e.g. New Customer). */
+  /** Emphasised in the nav and on the workspace home. */
   emphasis?: boolean;
+  /**
+   * A screen that exists but is not wired to the database yet.
+   *
+   * These were previously just deleted from the nav, which is how the panel
+   * ended up with screens nobody could find. Hiding a half-built feature and
+   * linking to it as though it worked are both wrong: the support ticket desk
+   * saves to `localStorage`, so answering a customer there loses the answer on
+   * the next device. Marked ones are listed on the workspace home with a plain
+   * "not connected yet" label and kept out of the sidebar, so you know it
+   * exists, know not to rely on it, and are not led into it by accident.
+   */
+  unfinished?: string;
 };
 
 export type AdminNavGroup = {
   id: string;
   label: string;
-  /** Start collapsed on desktop when true (user can expand). */
+  /** One line describing the group, shown on the workspace home. */
+  blurb: string;
+  icon: LucideIcon;
   defaultCollapsed?: boolean;
   items: AdminNavItem[];
 };
 
-/** Canonical Digi Partner hub (legacy /admin/agents redirects here). */
+export type AdminWorkspace = {
+  id: AdminWorkspaceId;
+  label: string;
+  /** Shown under the label in the workspace switcher. */
+  tagline: string;
+  icon: LucideIcon;
+  /** Where the toggle lands when this workspace is chosen. */
+  home: string;
+  groups: AdminNavGroup[];
+};
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Canonical routes
+   ───────────────────────────────────────────────────────────────────────── */
+
 export const ADMIN_DIGI_PARTNERS_ROUTE = "/admin/agency-partners";
-
-/** Canonical Services destination for Phase B (unification deferred to Phase D). */
-export const ADMIN_SERVICES_ROUTE = "/admin/agent-services";
-
-/** Homepage CMS hub (links existing CMS pages). */
+export const ADMIN_SERVICES_ROUTE = "/admin/services";
 export const ADMIN_HOMEPAGE_CMS_ROUTE = "/admin/homepage";
+export const ADMIN_PARTNER_HOME = "/admin/partners";
 
-export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
+/* ─────────────────────────────────────────────────────────────────────────
+   Workspace 1 — the customer business
+   ───────────────────────────────────────────────────────────────────────── */
+
+const CUSTOMER_GROUPS: AdminNavGroup[] = [
   {
     id: "overview",
     label: "Overview",
+    blurb: "Where the day starts.",
+    icon: LayoutDashboard,
     items: [
-      { href: "/admin", label: "Dashboard", description: "Operations command center", icon: LayoutDashboard },
+      {
+        href: "/admin",
+        label: "Dashboard",
+        description: "Today's applications, payments and follow-ups at a glance",
+        icon: Gauge,
+      },
     ],
   },
   {
     id: "customers",
     label: "Customers",
+    blurb: "Everyone who has walked in or signed up.",
+    icon: UsersRound,
     items: [
       {
         href: "/admin/customers/walk-in",
         label: "New Customer",
-        description: "Walk-in phone-first create",
+        description: "Create a walk-in customer from their phone number",
         icon: UserPlus,
         emphasis: true,
       },
-      { href: "/admin/customers", label: "Customers", description: "Customer 360", icon: UsersRound },
+      {
+        href: "/admin/customers",
+        label: "All Customers",
+        description: "Search anybody and open their full history",
+        icon: Contact,
+      },
+      {
+        href: "/admin/documents",
+        label: "Documents",
+        description: "Files customers uploaded, waiting to be checked",
+        icon: FileText,
+      },
+      {
+        href: "/admin/tickets",
+        label: "Support Tickets",
+        description: "Questions and complaints raised from the portal",
+        icon: LifeBuoy,
+        unfinished: "Saves to this browser only — not to the database yet.",
+      },
     ],
   },
   {
-    id: "leads-sales",
+    id: "leads",
     label: "Leads & Sales",
+    blurb: "People who asked but have not yet paid.",
+    icon: TrendingUp,
     items: [
-      { href: "/admin/leads", label: "Leads", description: "Pipeline, follow-ups, convert", icon: TrendingUp },
-    ],
-  },
-  {
-    id: "applications",
-    label: "Applications",
-    items: [
-      { href: "/admin/applications", label: "Applications", description: "Workflow engine", icon: ClipboardList },
-      { href: ADMIN_SERVICES_ROUTE, label: "Services", description: "Catalog and pricing", icon: ListChecks },
-    ],
-  },
-  {
-    id: "team-partners",
-    label: "Team & Partners",
-    items: [
-      { href: ADMIN_DIGI_PARTNERS_ROUTE, label: "Digi Partners", description: "KYC and partner CRM", icon: UserCheck },
       {
-        href: "/admin/partner-applications",
-        label: "Partner Applications",
-        description: "Review and approve new partner signups",
-        icon: UserPlus,
+        href: "/admin/leads",
+        label: "Leads",
+        description: "Enquiries to follow up and convert",
+        icon: TrendingUp,
       },
-      { href: "/admin/partner-banners", label: "Partner Banners", description: "Digi Partner home slider", icon: Image },
-    ],
-  },
-  {
-    id: "payments-finance",
-    label: "Payments & Finance",
-    items: [
-      { href: "/admin/payments", label: "Payments", description: "Payment ledger", icon: ReceiptText },
-      { href: "/admin/offline-invoices", label: "Offline Invoices", description: "Manual invoices", icon: FileText },
-      { href: "/admin/wallet", label: "Wallet", description: "Liability ledger", icon: WalletCards },
-      { href: "/admin/coupons", label: "Coupons", description: "Discount codes", icon: BadgePercent },
       {
-        href: "/admin/commission-rules",
-        label: "Commission Rules",
-        description: "What a partner earns per sale",
-        icon: Percent,
-      },
-      { href: "/admin/ap-commissions", label: "Partner Commissions", description: "Approve to credit partner wallets", icon: ShieldCheck },
-      {
-        href: "/admin/ap-payouts",
-        label: "Partner Payouts",
-        description: "Pay or reject partner withdrawal requests",
-        icon: BanknoteArrowUp,
-      },
-      { href: "/admin/commissions", label: "Agent Commissions", description: "Legacy agent ledger", icon: ShieldCheck },
-      { href: "/admin/payment-reconciliation", label: "Reconciliation", description: "Razorpay match", icon: ReceiptText },
-    ],
-  },
-  {
-    id: "communications",
-    label: "Communications",
-    items: [
-      { href: "/admin/communications", label: "Communications", description: "WhatsApp outbox ops", icon: MessageSquare },
-      { href: "/admin/notifications", label: "Notifications", description: "System alerts", icon: Bell },
-      { href: "/admin/crm-sync", label: "CRM Sync Logs", description: "Google Sheets mirror", icon: Sheet },
-      {
-        href: "/admin/diagnostics/otp",
-        label: "OTP Delivery",
-        description: "Why signup OTPs do or don't reach WhatsApp",
-        icon: Stethoscope,
+        href: "/admin/leads/pipeline",
+        label: "Pipeline Board",
+        description: "The same leads as columns you can drag between",
+        icon: ListChecks,
       },
     ],
   },
   {
-    id: "automation-ai",
-    label: "Automation & AI",
+    id: "work",
+    label: "Work in progress",
+    blurb: "Everything currently being filed.",
+    icon: ClipboardList,
     items: [
-      { href: "/admin/automation", label: "Automation", description: "Events, alerts, summaries", icon: Workflow },
       {
-        href: "/admin/automation#insights",
-        label: "AI Insights",
-        description: "Deterministic insights · generative AI off until configured",
+        href: "/admin/applications",
+        label: "Applications",
+        description: "Every filing and the stage it has reached",
+        icon: ClipboardList,
+        emphasis: true,
+      },
+      {
+        href: "/admin/print-jobs",
+        label: "Print Jobs",
+        description: "PVC cards and prints queued at the shop",
+        icon: Printer,
+      },
+      {
+        href: "/admin/insurance-quotations",
+        label: "Insurance Quotations",
+        description: "Quotes raised for motor and health cover",
+        icon: ShieldCheck,
+      },
+      {
+        href: "/admin/credit-reports",
+        label: "Credit Reports",
+        description: "CIBIL pulls and the consultations that follow",
+        icon: BarChart3,
+      },
+    ],
+  },
+  {
+    id: "catalogue",
+    label: "Services",
+    blurb: "What you sell, what it costs, and what you ask for it.",
+    icon: ListChecks,
+    items: [
+      {
+        href: ADMIN_SERVICES_ROUTE,
+        label: "Services",
+        description: "Every service page, its content, and its application questions",
+        icon: ListChecks,
+        emphasis: true,
+      },
+      {
+        href: "/admin/agent-services",
+        label: "Agent Catalogue",
+        description: "The list partners sell from, with their own pricing",
+        icon: IdCard,
+      },
+      {
+        href: "/admin/service-builder",
+        label: "Service Builder",
+        description: "Build a new service end to end in one flow",
         icon: Sparkles,
       },
     ],
   },
   {
-    id: "reports",
-    label: "Reports",
-    defaultCollapsed: true,
+    id: "website",
+    label: "Website",
+    blurb: "Everything a visitor sees on rnos.in, editable here.",
+    icon: Globe,
     items: [
-      { href: "/admin/reports", label: "Reports", description: "Operational reports", icon: BarChart3 },
-      { href: "/admin/reports/dpr", label: "DPR Analytics", description: "DPR apps, revenue, schemes", icon: BarChart3 },
-      { href: "/admin/reports/itr", label: "ITR Analytics", description: "ITR apps, revenue, filing stats", icon: BarChart3 },
-      { href: ADMIN_HOMEPAGE_CMS_ROUTE, label: "Homepage CMS", description: "Banners and notices", icon: Image },
+      {
+        href: ADMIN_HOMEPAGE_CMS_ROUTE,
+        label: "Homepage",
+        description: "The banners and blocks on the front page",
+        icon: LayoutDashboard,
+      },
+      {
+        href: "/admin/homepage-slides",
+        label: "Hero Slides",
+        description: "The big rotating images at the top of the homepage",
+        icon: Image,
+      },
+      {
+        href: "/admin/homepage-notices",
+        label: "Notices",
+        description: "The announcement line above the header",
+        icon: Bell,
+      },
+      {
+        href: "/admin/homepage-offer-strip",
+        label: "Offer Strip",
+        description: "The running offer bar and what it advertises",
+        icon: BadgePercent,
+      },
       {
         href: "/admin/homepage/content",
         label: "FAQ & Testimonials",
-        description: "Homepage questions and customer reviews",
+        description: "Homepage questions and the reviews shown under them",
         icon: MessageSquare,
       },
-      { href: "/admin/services/dpr", label: "DPR CMS", description: "DPR landing sections & banners", icon: FileText },
-      { href: "/admin/services/itr", label: "ITR CMS", description: "ITR landing sections & banners", icon: FileText },
-      { href: "/admin/articles", label: "Articles", description: "Knowledge content", icon: FileText },
+      {
+        href: "/admin/gallery",
+        label: "Gallery",
+        description: "Photos used across the site",
+        icon: Image,
+      },
+      {
+        href: "/admin/about-page-images",
+        label: "About Page Images",
+        description: "Artwork on the About us page",
+        icon: Image,
+      },
+      {
+        href: "/admin/articles",
+        label: "Blog & Guides",
+        description: "Articles that appear under related services",
+        icon: Newspaper,
+      },
+      {
+        href: "/admin/social-links",
+        label: "Social Links",
+        description: "The handles linked from the footer",
+        icon: Share2,
+      },
+      {
+        href: "/admin/services/dpr",
+        label: "DPR Landing CMS",
+        description: "Sections and banners on the DPR page",
+        icon: FileText,
+      },
+      {
+        href: "/admin/services/itr",
+        label: "ITR Landing CMS",
+        description: "Sections and banners on the ITR page",
+        icon: FileText,
+      },
+      {
+        href: "/admin/services/csc-olympiad",
+        label: "CSC Olympiad Page",
+        description: "Settings for the Olympiad landing page",
+        icon: ScrollText,
+      },
+    ],
+  },
+  {
+    id: "money",
+    label: "Money",
+    blurb: "What came in, what is owed, and what was discounted.",
+    icon: WalletCards,
+    items: [
+      {
+        href: "/admin/payments",
+        label: "Payments",
+        description: "Every payment taken, online and at the counter",
+        icon: ReceiptText,
+      },
+      {
+        href: "/admin/offline-invoices",
+        label: "Offline Invoices",
+        description: "Bills raised by hand for walk-in work",
+        icon: FileSpreadsheet,
+      },
+      {
+        href: "/admin/wallet",
+        label: "Wallet & Cashback",
+        description: "Customer wallet balances and the cashback you owe",
+        icon: WalletCards,
+      },
+      {
+        href: "/admin/coupons",
+        label: "Coupons",
+        description: "Discount codes and how often each has been used",
+        icon: BadgePercent,
+      },
+      {
+        href: "/admin/referrals",
+        label: "Referrals & Pay Links",
+        description: "Referral codes and one-off payment links",
+        icon: Share2,
+      },
+      {
+        href: "/admin/payment-reconciliation",
+        label: "Reconciliation",
+        description: "Match what Razorpay says against what you recorded",
+        icon: Sheet,
+      },
+    ],
+  },
+  {
+    id: "messages",
+    label: "Messages",
+    blurb: "What the system sends, and whether it arrived.",
+    icon: MessageSquare,
+    items: [
+      {
+        href: "/admin/communications",
+        label: "WhatsApp Outbox",
+        description: "Messages sent to customers and their delivery state",
+        icon: MessageSquare,
+      },
+      {
+        href: "/admin/notifications",
+        label: "Notifications",
+        description: "Alerts the system raised for you",
+        icon: Bell,
+      },
+      {
+        href: "/admin/crm-sync",
+        label: "Sheet Sync Log",
+        description: "What was mirrored to Google Sheets, and what failed",
+        icon: Sheet,
+      },
+      {
+        href: "/admin/diagnostics/otp",
+        label: "OTP Delivery",
+        description: "Why a signup OTP did or did not reach WhatsApp",
+        icon: Stethoscope,
+      },
+    ],
+  },
+  {
+    id: "insight",
+    label: "Reports & Automation",
+    blurb: "What the numbers say, and what runs on its own.",
+    icon: BarChart3,
+    defaultCollapsed: true,
+    items: [
+      {
+        href: "/admin/reports",
+        label: "Reports",
+        description: "Revenue, volumes and conversion over a date range",
+        icon: BarChart3,
+      },
+      {
+        href: "/admin/reports/dpr",
+        label: "DPR Analytics",
+        description: "DPR applications, revenue and scheme split",
+        icon: BarChart3,
+      },
+      {
+        href: "/admin/reports/itr",
+        label: "ITR Analytics",
+        description: "ITR applications, revenue and filing stats",
+        icon: BarChart3,
+      },
+      {
+        href: "/admin/automation",
+        label: "Automation",
+        description: "Rules that fire on an event without you touching it",
+        icon: Workflow,
+      },
     ],
   },
   {
     id: "settings",
     label: "Settings",
+    blurb: "How the platform itself behaves.",
+    icon: Settings,
     defaultCollapsed: true,
     items: [
-      { href: "/admin/settings", label: "Settings", description: "Platform settings", icon: Settings },
+      {
+        href: "/admin/settings",
+        label: "Settings",
+        description: "Business details, contact numbers and defaults",
+        icon: Settings,
+      },
+      {
+        href: "/admin/settings/core-config",
+        label: "Core Config",
+        description: "Templates and low-level switches",
+        icon: Workflow,
+        unfinished: "The save button does not persist anything yet.",
+      },
+      {
+        href: "/admin/settings/saas",
+        label: "Plans & Billing",
+        description: "Subscription tiers and what each unlocks",
+        icon: BadgePercent,
+      },
     ],
   },
 ];
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Workspace 2 — partners and staff
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A move, not a build.
+ *
+ * Every screen here already existed and already worked; it was sitting in the
+ * customer sidebar making that list longer. Nothing new is added until the
+ * partner side is designed on its own terms.
+ */
+const PARTNER_GROUPS: AdminNavGroup[] = [
+  {
+    id: "partner-overview",
+    label: "Overview",
+    blurb: "What this workspace holds.",
+    icon: LayoutDashboard,
+    items: [
+      {
+        href: ADMIN_PARTNER_HOME,
+        label: "Partner Home",
+        description: "Every partner and commission screen, in one list",
+        icon: Gauge,
+      },
+    ],
+  },
+  {
+    id: "partners",
+    label: "Digi Partners",
+    blurb: "The people selling on your behalf.",
+    icon: UserCheck,
+    items: [
+      {
+        href: ADMIN_DIGI_PARTNERS_ROUTE,
+        label: "Digi Partners",
+        description: "Every partner, their KYC and their performance",
+        icon: UserCheck,
+        emphasis: true,
+      },
+      {
+        href: "/admin/partner-applications",
+        label: "Applications to Join",
+        description: "New partner signups waiting to be approved",
+        icon: UserPlus,
+      },
+      {
+        href: "/admin/partner-banners",
+        label: "Partner Banners",
+        description: "The slider on the partner app's home screen",
+        icon: Image,
+      },
+    ],
+  },
+  {
+    id: "earnings",
+    label: "Commissions & Payouts",
+    blurb: "What partners earn and how it reaches them.",
+    icon: Percent,
+    items: [
+      {
+        href: "/admin/commission-rules",
+        label: "Commission Rules",
+        description: "What a partner earns on each service",
+        icon: Percent,
+      },
+      {
+        href: "/admin/ap-commissions",
+        label: "Partner Commissions",
+        description: "Approve earnings to credit a partner's wallet",
+        icon: ShieldCheck,
+      },
+      {
+        href: "/admin/ap-payouts",
+        label: "Partner Payouts",
+        description: "Pay or reject withdrawal requests",
+        icon: BanknoteArrowUp,
+      },
+      {
+        href: "/admin/commissions",
+        label: "Agent Commissions",
+        description: "The older agent commission ledger, kept for history",
+        icon: ReceiptText,
+      },
+    ],
+  },
+  {
+    id: "network",
+    label: "Network",
+    blurb: "Where your people are.",
+    icon: Building2,
+    items: [
+      {
+        href: "/admin/branches",
+        label: "Branches",
+        description: "Regional offices and who runs each",
+        icon: Building2,
+      },
+    ],
+  },
+];
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The map
+   ───────────────────────────────────────────────────────────────────────── */
+
+export const ADMIN_WORKSPACES: AdminWorkspace[] = [
+  {
+    id: "customer",
+    label: "Customer",
+    tagline: "The shop, the website and everyone you file for",
+    icon: UsersRound,
+    home: "/admin",
+    groups: CUSTOMER_GROUPS,
+  },
+  {
+    id: "partner",
+    label: "Partners & Staff",
+    tagline: "Digi Partners, commissions and branches",
+    icon: UserCheck,
+    home: ADMIN_PARTNER_HOME,
+    groups: PARTNER_GROUPS,
+  },
+];
+
+/**
+ * Screens reached from inside another screen rather than from the nav.
+ *
+ * A create form opened by the "New" button on its list, a redirect kept so an
+ * old bookmark still works, the signed-out login page. These are deliberately
+ * absent from the sidebar; the contract test checks this list so that being
+ * absent is always a decision somebody wrote down.
+ */
+export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
+  { href: "/admin/login", reachedFrom: "signed out" },
+  { href: "/admin/customers/new", reachedFrom: "/admin/customers" },
+  { href: "/admin/articles/new", reachedFrom: "/admin/articles" },
+  { href: "/admin/offline-invoices/new", reachedFrom: "/admin/offline-invoices" },
+  { href: "/admin/services/new", reachedFrom: "/admin/services" },
+  { href: "/admin/services/new-v5", reachedFrom: "/admin/services" },
+  { href: "/admin/service-builder/create", reachedFrom: "/admin/service-builder" },
+  { href: "/admin/agency-partners/new", reachedFrom: ADMIN_DIGI_PARTNERS_ROUTE },
+  { href: "/admin/agents", reachedFrom: `redirect → ${ADMIN_DIGI_PARTNERS_ROUTE}` },
+  { href: "/admin/agents/new", reachedFrom: `redirect → ${ADMIN_DIGI_PARTNERS_ROUTE}/new` },
+  { href: "/admin/cashback", reachedFrom: "redirect → /admin/wallet" },
+  { href: "/admin/rewards", reachedFrom: "redirect → /admin/wallet" },
+  { href: "/admin/rewards-referrals", reachedFrom: "redirect → /admin/wallet" },
+];
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Lookups
+   ───────────────────────────────────────────────────────────────────────── */
+
+export function getAdminWorkspace(id: AdminWorkspaceId): AdminWorkspace {
+  return ADMIN_WORKSPACES.find((workspace) => workspace.id === id) ?? ADMIN_WORKSPACES[0];
+}
+
+/** Every nav item across both workspaces, finished or not. */
 export function flattenAdminNav(): AdminNavItem[] {
-  return ADMIN_NAV_GROUPS.flatMap((group) => group.items).filter((item) => !item.href.includes("#"));
+  return ADMIN_WORKSPACES.flatMap((workspace) =>
+    workspace.groups.flatMap((group) => group.items),
+  ).filter((item) => !item.href.includes("#"));
+}
+
+/**
+ * A workspace's groups with the unfinished screens removed.
+ *
+ * What the sidebar draws. The workspace home still lists them, labelled, so
+ * they are visible without being a route somebody takes by mistake.
+ */
+export function navigableGroups(workspace: AdminWorkspace): AdminNavGroup[] {
+  return workspace.groups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.unfinished) }))
+    .filter((group) => group.items.length);
+}
+
+/** Every route the nav offers, plus the child routes it deliberately omits. */
+export function allAdminRoutes(): string[] {
+  return [
+    ...flattenAdminNav().map((item) => item.href),
+    ...ADMIN_CHILD_ROUTES.map((route) => route.href),
+  ];
 }
 
 export function isAdminNavActive(pathname: string, href: string) {
@@ -200,20 +662,54 @@ export function isAdminNavActive(pathname: string, href: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
+/**
+ * Which workspace a path belongs to.
+ *
+ * Longest match wins, so `/admin/agency-partners` resolves to the partner
+ * workspace rather than to `/admin`, which every path starts with. A path in
+ * neither — a child route, an unknown page — stays in the customer workspace,
+ * which is the one somebody is in by default.
+ */
+export function workspaceForPath(pathname: string): AdminWorkspaceId {
+  let best: { id: AdminWorkspaceId; length: number } | null = null;
+
+  for (const workspace of ADMIN_WORKSPACES) {
+    for (const group of workspace.groups) {
+      for (const item of group.items) {
+        const base = item.href.split("#")[0] || item.href;
+        if (base === "/admin") continue;
+        if (!isAdminNavActive(pathname, base)) continue;
+        if (!best || base.length > best.length) best = { id: workspace.id, length: base.length };
+      }
+    }
+  }
+
+  return best?.id ?? "customer";
+}
+
 export function resolveAdminBreadcrumbs(pathname: string): { label: string; href?: string }[] {
+  const workspace = getAdminWorkspace(workspaceForPath(pathname));
   const crumbs: { label: string; href?: string }[] = [{ label: "Admin", href: "/admin" }];
+
   if (pathname === "/admin") {
     crumbs.push({ label: "Dashboard" });
     return crumbs;
   }
 
-  const match = flattenAdminNav().find((item) => isAdminNavActive(pathname, item.href) && item.href !== "/admin");
+  if (workspace.id !== "customer") {
+    crumbs.push({ label: workspace.label, href: workspace.home });
+  }
+
+  // The most specific nav item that covers this path, so a detail page shows
+  // its list rather than a slug on its own.
+  const match = flattenAdminNav()
+    .filter((item) => item.href !== "/admin" && isAdminNavActive(pathname, item.href))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
   if (match) {
     crumbs.push({ label: match.label, href: match.href });
     const rest = pathname.slice(match.href.length).split("/").filter(Boolean);
-    if (rest.length) {
-      crumbs.push({ label: rest[rest.length - 1] });
-    }
+    if (rest.length) crumbs.push({ label: rest[rest.length - 1] });
     return crumbs;
   }
 
@@ -229,14 +725,3 @@ export function resolveAdminBreadcrumbs(pathname: string): { label: string; href
   });
   return crumbs;
 }
-
-/** Legacy routes retained but removed from nav — redirect or hub targets. */
-export const ADMIN_LEGACY_ROUTE_NOTES = [
-  { from: "/admin/agents", to: ADMIN_DIGI_PARTNERS_ROUTE, note: "Legacy agent list → Digi Partners" },
-  { from: "/admin/agents/new", to: `${ADMIN_DIGI_PARTNERS_ROUTE}/new`, note: "Legacy agent create" },
-  { from: "/admin/tickets", to: null, note: "Hidden — localStorage stub only" },
-  { from: "/admin/settings/core-config", to: null, note: "Hidden — mock save UI" },
-  { from: "/admin/cashback", to: "/admin/wallet", note: "Alias redirect already present" },
-  { from: "/admin/rewards", to: "/admin/wallet", note: "Alias redirect already present" },
-  { from: "/admin/services", to: ADMIN_SERVICES_ROUTE, note: "Phase D unification; nav points to agent-services" },
-] as const;
