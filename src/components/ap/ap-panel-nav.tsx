@@ -256,6 +256,7 @@ export function APPanelNav() {
               { href: "/ap/dashboard", label: "Dashboard" },
               { href: "/ap/applications", label: "Applications" },
               { href: "/ap/customers", label: "Customers" },
+              { href: "/ap/print", label: "Print Station" },
               { href: "/ap/wallet", label: "Wallet" },
               { href: "/ap/commissions", label: "Commissions" },
               { href: "/ap/payouts", label: "Payouts" },

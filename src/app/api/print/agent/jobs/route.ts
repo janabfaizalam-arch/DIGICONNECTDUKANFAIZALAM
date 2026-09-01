@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getStationByAgentToken, touchAgent } from "@/lib/print/stations";
 import { getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
@@ -34,8 +35,23 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. Authenticate the Bearer token
-    if (!authHeader || authHeader !== `Bearer ${secretKey}`) {
+    /*
+      Two kinds of caller.
+
+      A partner's Print Station presents its own station token, and gets only
+      that shop's jobs. The platform's own counter still presents the single
+      environment key it always has, so the existing installation keeps
+      working while shops are onboarded one at a time.
+    */
+    const presented = (authHeader ?? "").replace(/^Bearer\s+/i, "").trim();
+    const station = presented ? await getStationByAgentToken(presented) : null;
+
+    if (station) {
+      // Its heartbeat, so the partner's screen can say "connected".
+      await touchAgent(station.id);
+    }
+
+    if (!station && (!authHeader || authHeader !== `Bearer ${secretKey}`)) {
       addLog(`Unauthorized request attempt. Provided header: ${authHeader ? authHeader.substring(0, 15) + "..." : "none"}`, true);
       return NextResponse.json(
         {
@@ -198,6 +214,16 @@ export async function GET(request: Request) {
       .eq("print_status", "queued")
       .eq("payment_status", "verified")
       .or(`claimed_by_agent.is.null,claim_expires_at.lt.${now}`)
+      /*
+        A shop's Print Station sees only that shop's jobs.
+
+        This is the line that keeps two partners on one platform apart: with
+        it missing, any station token would pull down every other shop's
+        customers' documents. The platform's own counter — authenticated by
+        the environment key rather than a station token — takes the jobs that
+        belong to no station, which is every job that existed before this.
+      */
+      .filter("station_id", station ? "eq" : "is", station ? station.id : null)
       .order("created_at", { ascending: true });
 
     if (jobsError) {

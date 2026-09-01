@@ -24,7 +24,15 @@ import { useAppSession } from "@/components/providers/session-provider";
 import { requestSection, useActiveSection } from "@/lib/customer/section-bus";
 import { resolveSection, sectionHref, type CustomerSection } from "@/lib/customer/sections";
 
-const hiddenPrefixes = ["/admin", "/agent", "/ap", "/staff", "/apply"];
+/*
+  Where the bar has no business being.
+
+  `/p` is a shop's print counter, reached by scanning the QR taped to it.
+  Somebody standing there with a document on their phone wants one thing;
+  "Apply", "Track" and "Sign in" cover the price they are deciding on and
+  invite them away from a job they have not finished.
+*/
+const hiddenPrefixes = ["/admin", "/agent", "/ap", "/staff", "/apply", "/p"];
 
 
 function shouldHide(pathname: string) {
