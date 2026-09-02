@@ -75,3 +75,38 @@ describe("the one-line install", () => {
     expect(SHIPPED_FILES).toContain("install.ps1");
   });
 });
+
+describe("knowing which build is running", () => {
+  /*
+    A shop chased an already-fixed bug for an afternoon because nothing said
+    which version was running, and every download had produced a folder with
+    the same name. The version now appears in the log's first line, on the
+    settings page, and in the downloaded file's name.
+  */
+  const version = readFileSync(join(source, "lib", "version.mjs"), "utf8");
+  const station = readFileSync(join(source, "station.mjs"), "utf8");
+  const generated = readFileSync(join(root, "src", "lib", "print", "bundle-version.generated.ts"), "utf8");
+  const download = readFileSync(join(root, "src", "app", "api", "ap", "print-station", "download", "route.ts"), "utf8");
+
+  it("ships the version file, or the program cannot start", () => {
+    expect(SHIPPED_FILES).toContain("lib/version.mjs");
+    expect(station).toContain("PRINT_STATION_VERSION");
+  });
+
+  it("says the version in the log's first line", () => {
+    expect(station).toContain("log.push(\"info\", `DigiConnect Print Station v${PRINT_STATION_VERSION}`)");
+  });
+
+  it("names the version and the date in the download, so the newest is obvious", () => {
+    expect(download).toContain("PRINT_STATION_VERSION");
+    expect(download).toContain("toISOString().slice(0, 10)");
+  });
+
+  it("keeps the site's copy of the version identical to the program's", () => {
+    // Generated from the same file, so the filename can never claim a build
+    // the program does not report.
+    const declared = /PRINT_STATION_VERSION = "([^"]+)"/.exec(version)?.[1];
+    expect(declared).toBeTruthy();
+    expect(generated).toContain(`"${declared}"`);
+  });
+});

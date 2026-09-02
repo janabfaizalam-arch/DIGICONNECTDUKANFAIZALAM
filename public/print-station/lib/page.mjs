@@ -93,7 +93,7 @@ export function renderPage() {
       <span class="mark">&#128424;</span>
       <div>
         <h1>DigiConnect Print Station</h1>
-        <p class="muted">This computer prints what your customers order.</p>
+        <p class="muted">This computer prints what your customers order. <span id="version"></span></p>
       </div>
     </div>
     <div class="row" id="status-row">
@@ -166,6 +166,7 @@ export function renderPage() {
       $("station-pill").textContent = state.stationName;
     }
 
+    if (state.version) $("version").textContent = "\u00b7 v" + state.version;
     $("s-queued").textContent = state.queued ?? 0;
     $("s-printed").textContent = state.printed ?? 0;
     $("s-failed").textContent = state.failed ?? 0;

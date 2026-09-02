@@ -23,7 +23,8 @@ $Files   = @(
   "lib/worker.mjs",
   "lib/printer.mjs",
   "lib/page.mjs",
-  "lib/log.mjs"
+  "lib/log.mjs",
+  "lib/version.mjs"
 )
 
 Write-Host ""

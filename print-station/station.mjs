@@ -11,6 +11,7 @@ import { createLog } from "./lib/log.mjs";
 import { createWorker, diagnose } from "./lib/worker.mjs";
 import { ensurePrintHelper, listPrinters, printFile } from "./lib/printer.mjs";
 import { renderPage } from "./lib/page.mjs";
+import { PRINT_STATION_VERSION } from "./lib/version.mjs";
 
 /**
  * DigiConnect Print Station.
@@ -181,6 +182,7 @@ const server = createServer(async (request, response) => {
       ...state,
       config,
       printers,
+      version: PRINT_STATION_VERSION,
       problems: configProblems(config),
       configPath: configPath(),
       log: log.lines(),
@@ -256,10 +258,13 @@ function openBrowser(url) {
 */
 server.listen(PORT, "127.0.0.1", async () => {
   console.log("");
-  console.log("  DigiConnect Print Station");
+  console.log(`  DigiConnect Print Station  v${PRINT_STATION_VERSION}`);
   console.log(`  Settings: http://localhost:${PORT}`);
   console.log(`  Config file: ${configPath()}`);
   console.log("");
+
+  // First line in the log, so a screenshot always says which build this is.
+  log.push("info", `DigiConnect Print Station v${PRINT_STATION_VERSION}`);
 
   if (adoptedBundledKey(config)) {
     log.push("info", "Key taken from this downloaded folder.");
