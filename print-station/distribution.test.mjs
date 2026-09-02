@@ -53,3 +53,25 @@ describe("the downloadable copy", () => {
     expect(published.sort()).toEqual(shipped.sort());
   });
 });
+
+describe("the one-line install", () => {
+  const config = readFileSync(join(root, "next.config.ts"), "utf8");
+
+  it("serves the installer as text, not as a download", () => {
+    /*
+      A .ps1 has no registered media type, so Next serves it as
+      application/octet-stream — and PowerShell 7's Invoke-RestMethod returns
+      a byte array for that, which `| iex` cannot execute. Windows PowerShell
+      5.1 happens to tolerate it, so without this header the documented
+      install line fails only on some shop owners' computers.
+    */
+    expect(config).toContain("/print-station/install.ps1");
+    expect(config).toContain("text/plain; charset=utf-8");
+  });
+
+  it("keeps the installer at the path the docs tell people to run", () => {
+    const readme = readFileSync(join(source, "README.md"), "utf8");
+    expect(readme).toContain("/print-station/install.ps1");
+    expect(SHIPPED_FILES).toContain("install.ps1");
+  });
+});
