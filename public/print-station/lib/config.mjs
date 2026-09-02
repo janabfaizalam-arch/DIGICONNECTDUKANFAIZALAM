@@ -31,6 +31,15 @@ export const DEFAULTS = {
   duplex: false,
   /** Path to SumatraPDF, if the shop uses it. Found automatically when blank. */
   sumatraPath: "",
+  /*
+    The download key this computer has already taken.
+
+    Not a setting anybody edits — it is how the program tells "the folder I
+    was started from carries a newer key" from "the shop typed its own key
+    in". Without it a bundle's key would either be ignored forever, or
+    clobber a hand-entered one on every restart.
+  */
+  seededFrom: "",
 };
 
 export function configDir() {
@@ -81,6 +90,7 @@ export function normalizeConfig(raw) {
     pollSeconds: Number.isFinite(pollRaw) ? Math.min(60, Math.max(2, Math.round(pollRaw))) : DEFAULTS.pollSeconds,
     duplex: Boolean(input.duplex),
     sumatraPath: String(input.sumatraPath ?? "").trim(),
+    seededFrom: String(input.seededFrom ?? "").trim(),
   };
 }
 
@@ -103,9 +113,7 @@ export function isReady(config) {
  *
  * A partner who downloads from their own dashboard gets a bundle with their
  * key and their site address already in it, so there is nothing to paste and
- * nothing to mistype. This is read only when the computer has no settings of
- * its own yet: a shop that has since changed its printer must not have that
- * choice undone every time the program starts.
+ * nothing to mistype.
  */
 function bundledConfig() {
   try {
@@ -117,28 +125,61 @@ function bundledConfig() {
   }
 }
 
-export function loadConfig() {
+function readStored() {
   const path = configPath();
-
-  if (!existsSync(path)) {
-    const bundled = bundledConfig();
-    if (bundled) {
-      // Written out immediately, so the very first save from the settings
-      // page edits a real file rather than silently re-seeding from the
-      // download on the next restart.
-      return saveConfig(bundled);
-    }
-    return normalizeConfig({});
-  }
-
+  if (!existsSync(path)) return null;
   try {
-    return normalizeConfig(JSON.parse(readFileSync(path, "utf8")));
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    return parsed && typeof parsed === "object" ? parsed : null;
   } catch {
-    // A corrupt file must not stop the shop from opening: fall back to
-    // defaults and let the setup page ask for the key again.
-    return normalizeConfig({});
+    // A corrupt file must not stop the shop from opening.
+    return null;
   }
 }
+
+/**
+ * The settings this computer runs on.
+ *
+ * The awkward case, and the one that actually bit a shop: a partner who had
+ * already set the program up by hand downloaded a fresh bundle. Downloading
+ * issues a new key and retires the old one — so the saved settings now held a
+ * key certain to be refused, while the working key sat unread in the folder
+ * they had just double-clicked. "Your key was refused", on the very action
+ * meant to make keys somebody else's problem.
+ *
+ * So a bundle's key beats a saved one — but only once per bundle, and only
+ * the key. Which printer this shop picked on this computer is not something a
+ * download knows, and not something it should overwrite.
+ */
+export function loadConfig() {
+  const stored = readStored();
+  const bundled = bundledConfig();
+  const bundledToken = String(bundled?.agentToken ?? "").trim();
+
+  if (!stored) {
+    // Written out now, so the first save from the settings page edits a real
+    // file rather than re-seeding from the folder on every restart.
+    return bundled ? saveConfig({ ...bundled, seededFrom: bundledToken }) : normalizeConfig({});
+  }
+
+  if (bundledToken && bundledToken !== String(stored.seededFrom ?? "").trim()) {
+    return saveConfig({
+      ...stored,
+      agentToken: bundledToken,
+      serverUrl: bundled.serverUrl || stored.serverUrl,
+      seededFrom: bundledToken,
+    });
+  }
+
+  return normalizeConfig(stored);
+}
+
+/** Did this start take its key from the folder it was run out of? */
+export function adoptedBundledKey(config, bundled = bundledConfig()) {
+  const token = String(bundled?.agentToken ?? "").trim();
+  return Boolean(token) && token === config.agentToken && token === config.seededFrom;
+}
+
 
 export function saveConfig(config) {
   const clean = normalizeConfig(config);

@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { configPath, configProblems, isReady, loadConfig, saveConfig } from "./lib/config.mjs";
+import { adoptedBundledKey, configPath, configProblems, isReady, loadConfig, saveConfig } from "./lib/config.mjs";
 import { createApi } from "./lib/api.mjs";
 import { createLog } from "./lib/log.mjs";
 import { createWorker } from "./lib/worker.mjs";
@@ -242,6 +242,10 @@ server.listen(PORT, "127.0.0.1", async () => {
   console.log(`  Settings: http://localhost:${PORT}`);
   console.log(`  Config file: ${configPath()}`);
   console.log("");
+
+  if (adoptedBundledKey(config)) {
+    log.push("info", "Key taken from this downloaded folder.");
+  }
 
   printers = await listPrinters();
   if (!printers.length) log.push("warn", "No printer found on this computer yet.");

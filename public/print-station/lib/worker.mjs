@@ -44,7 +44,15 @@ export function describeFailure(error) {
   const status = error?.status;
   const raw = String(error?.message ?? error ?? "Something went wrong");
 
-  if (status === 401) return "Your key was refused. Issue a new one from your partner dashboard and paste it in again.";
+  if (status === 401) {
+    /*
+      Almost always the same story: a newer download was made, which issues a
+      new key and retires this one, and the older folder is still the one
+      being run. Naming that is far more use than "issue a new one", which is
+      what this used to say and what sent a shop round the loop again.
+    */
+    return "Your key was refused. A newer download replaced it — run the newest downloaded folder, or download again from your dashboard.";
+  }
   if (status === 409) return "Another computer took that job first. Nothing to do.";
   if (status === 404) return "That job is no longer on the server.";
   if (status === 503) return "The server is busy. Trying again shortly.";

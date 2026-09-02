@@ -56,8 +56,12 @@ describe("nextJob", () => {
 });
 
 describe("describeFailure", () => {
-  it("turns a refused key into the thing the shop owner should do", () => {
-    expect(describeFailure({ status: 401 })).toMatch(/new one from your partner dashboard/i);
+  it("names the real cause of a refused key, not a loop back to the dashboard", () => {
+    // "Issue a new one" sent a shop round the same loop: downloading again
+    // retires the key the older folder is still presenting.
+    const message = describeFailure({ status: 401 });
+    expect(message).toMatch(/newer download/i);
+    expect(message).toMatch(/newest downloaded folder/i);
   });
 
   it("says a lost race is nothing to worry about", () => {
