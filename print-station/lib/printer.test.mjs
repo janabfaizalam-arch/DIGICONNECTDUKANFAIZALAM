@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   SUMATRA_CANDIDATES,
   appFolderSumatra,
+  imagePrintScript,
+  isImageFile,
   looksLikeWindowsProgram,
   shellVerbScript,
   choosePrintCommand,
@@ -134,8 +136,13 @@ describe("choosePrintCommand", () => {
     const script = plan.args.at(-1);
     expect(script).toContain("-PaperSize A4");
     expect(script).toContain("-Color $true");
-    expect(plan.degraded).toMatch(/slower|one copy at a time/i);
-    expect(plan.degraded).not.toMatch(/cannot be set/i);
+    /*
+      The message used to promise this route "works fine". A shop owner read
+      that reassurance minutes before a job died on it. It now names the one
+      thing that actually goes wrong.
+    */
+    expect(plan.degraded).toMatch(/PDFs will fail/i);
+    expect(plan.degraded).not.toMatch(/works fine/i);
   });
 
   it("uses lp everywhere else", () => {
@@ -238,5 +245,117 @@ describe("looksLikeWindowsProgram", () => {
   it("rejects an empty or missing download", () => {
     expect(looksLikeWindowsProgram(Buffer.alloc(0))).toBe(false);
     expect(looksLikeWindowsProgram(null)).toBe(false);
+  });
+});
+
+describe("printing a photo on Windows", () => {
+  /*
+    The job that failed at a real counter:
+
+      Printing PJ-10015: 1 × 1 pages, A4 mono.
+      ! No application is associated with the specified file for this operation.
+
+    A customer had paid for a .webp. Windows registers no PrintTo handler for
+    webp, so the shell verb — which I had called a safe fallback — had nothing
+    to hand the file to. .NET can print an image with no helper at all.
+  */
+
+  it("recognises the photo formats a phone sends", () => {
+    for (const name of ["a.webp", "IMG_2744.WEBP", "b.jpg", "c.jpeg", "d.png", "e.tiff"]) {
+      expect(isImageFile(name), name).toBe(true);
+    }
+  });
+
+  it("does not treat a document as a photo", () => {
+    for (const name of ["a.pdf", "b.docx", "c", "d.txt"]) {
+      expect(isImageFile(name), name).toBe(false);
+    }
+  });
+
+  it("prints a photo through .NET rather than handing it to an application", () => {
+    const plan = choosePrintCommand({
+      filePath: "C:\\t\\IMG_2744.webp",
+      printerName: "EPSONECDDF2 (L8050 Series)",
+      job: { copies: 1, paper_size: "A4", color_mode: "mono" },
+      config: {},
+      os: "win32",
+      exists: () => false,
+    });
+
+    expect(plan.kind).toBe("dotnet-image");
+    expect(plan.args.at(-1)).toContain("System.Drawing");
+    // The exact call that failed must not be on this path at all.
+    expect(plan.args.at(-1)).not.toContain("Start-Process");
+  });
+
+  it("takes the photo path even when SumatraPDF is installed", () => {
+    // Drawing it directly is better than launching a viewer, not a fallback.
+    const plan = choosePrintCommand({
+      filePath: "a.png",
+      printerName: "HP",
+      job: {},
+      config: {},
+      os: "win32",
+      exists: () => true,
+    });
+    expect(plan.kind).toBe("dotnet-image");
+  });
+
+  it("asks the printer for the copies the customer paid for", () => {
+    const script = imagePrintScript({ filePath: "a.png", printerName: "HP", job: { copies: 3 } });
+    expect(script).toContain("$doc.PrinterSettings.Copies = 3");
+  });
+
+  it("never asks for fewer than one copy, or an absurd number", () => {
+    expect(imagePrintScript({ filePath: "a.png", printerName: "HP", job: { copies: 0 } })).toContain("Copies = 1");
+    expect(imagePrintScript({ filePath: "a.png", printerName: "HP", job: { copies: 5000 } })).toContain("Copies = 99");
+  });
+
+  it("sets colour and paper size from the job", () => {
+    const colour = imagePrintScript({ filePath: "a.png", printerName: "HP", job: { color_mode: "color", paper_size: "A3" } });
+    expect(colour).toContain("$doc.DefaultPageSettings.Color = $true");
+    expect(colour).toContain("$_.PaperName -eq 'A3'");
+
+    const mono = imagePrintScript({ filePath: "a.png", printerName: "HP", job: { color_mode: "mono" } });
+    expect(mono).toContain("$doc.DefaultPageSettings.Color = $false");
+    expect(mono).toContain("$_.PaperName -eq 'A4'");
+  });
+
+  it("stops rather than printing to whatever the default printer happens to be", () => {
+    expect(imagePrintScript({ filePath: "a.png", printerName: "Gone", job: {} })).toContain("IsValid");
+  });
+
+  it("scales the photo to fit without distorting it", () => {
+    // A customer's photo stretched to the page edges is a sheet they paid for
+    // and would not accept.
+    const script = imagePrintScript({ filePath: "a.png", printerName: "HP", job: {} });
+    expect(script).toContain("[Math]::Min($area.Width / $script:img.Width");
+    expect(script).toContain("$e.Graphics.DrawImage");
+  });
+
+  it("exits non-zero on failure, or the shop is told a page printed that did not", () => {
+    const script = imagePrintScript({ filePath: "a.png", printerName: "HP", job: {} });
+    expect(script).toContain("exit 1");
+    expect(script).toContain("$ErrorActionPreference = 'Stop'");
+  });
+
+  it("quotes a path so a space or a quote cannot break the command", () => {
+    const script = imagePrintScript({ filePath: "C:\\Users\\O'Brien\\a b.png", printerName: "HP", job: {} });
+    expect(script).toContain("'C:\\Users\\O''Brien\\a b.png'");
+  });
+});
+
+describe("what the shop is told about the fallback", () => {
+  it("no longer claims the shell route works fine", () => {
+    const plan = choosePrintCommand({
+      filePath: "a.pdf",
+      printerName: "HP",
+      job: {},
+      config: {},
+      os: "win32",
+      exists: () => false,
+    });
+    expect(plan.degraded).toMatch(/PDFs will fail/i);
+    expect(plan.degraded).not.toMatch(/works fine/i);
   });
 });

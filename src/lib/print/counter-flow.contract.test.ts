@@ -155,3 +155,39 @@ describe("where the payment key comes from", () => {
     expect(flow).toMatch(/pay at the desk/i);
   });
 });
+
+describe("a photo the printer can actually read", () => {
+  it("converts webp in the browser, where a decoder definitely exists", () => {
+    /*
+      PJ-10015 died on the shop's computer: "No application is associated
+      with the specified file for this operation." Windows' own drawing
+      library has no webp decoder either, so fixing the print path alone
+      would not have printed this customer's page. The browser holding the
+      photo can decode it — that is how it is on screen — so it converts
+      before the file is ever sent.
+    */
+    expect(flow).toContain("async function toPrintableImage");
+    expect(flow).toContain("createImageBitmap(file)");
+    expect(flow).toContain('canvas.toBlob(resolve, type, quality)');
+  });
+
+  it("converts before uploading, not after", () => {
+    expect(flow).toContain("const sending = await toPrintableImage(picked)");
+    expect(flow).toContain('form.append("file", sending)');
+  });
+
+  it("leaves every other format exactly as the customer chose it", () => {
+    expect(flow).toContain("if (!isWebp) return file");
+  });
+
+  it("uploads the original rather than nothing if converting fails", () => {
+    // A job that fails at the printer can be reprinted. A customer who
+    // cannot upload at all just leaves.
+    expect(flow).toMatch(/catch \{\s*return file;\s*\}/);
+  });
+
+  it("caps the long edge so a lossless copy stays uploadable", () => {
+    expect(flow).toContain("longest > 3000");
+    expect(flow).toContain("15 * 1024 * 1024");
+  });
+});

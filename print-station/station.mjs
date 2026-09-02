@@ -268,7 +268,7 @@ server.listen(PORT, "127.0.0.1", async () => {
   printers = await listPrinters();
   if (!printers.length) log.push("warn", "No printer found on this computer yet.");
 
-  // Best effort, and never blocking: the shop can print either way.
+  // Best effort, and never blocking: photos print without it either way.
   await ensurePrintHelper({ serverUrl: config.serverUrl, config, log: log.push });
 
   startWorker();

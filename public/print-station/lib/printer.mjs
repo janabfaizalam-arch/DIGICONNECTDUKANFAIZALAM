@@ -93,6 +93,21 @@ export function lpArgs({ filePath, printerName, job, duplex = false }) {
  */
 export function choosePrintCommand({ filePath, printerName, job, config, os = platform(), exists = existsSync }) {
   if (os === "win32") {
+    /*
+      Photos first, because Windows can print them itself.
+
+      This is not a fallback — it is better than handing an image to a
+      viewer, which is how a real job died: no application on that computer
+      was associated with .webp, and there was nothing to hand it to.
+    */
+    if (isImageFile(filePath)) {
+      return {
+        kind: "dotnet-image",
+        command: "powershell.exe",
+        args: ["-NoProfile", "-NonInteractive", "-Command", imagePrintScript({ filePath, printerName, job })],
+      };
+    }
+
     const sumatra = findSumatra(config?.sumatraPath, exists);
     if (sumatra) {
       return { kind: "sumatra", command: sumatra, args: sumatraArgs({ filePath, printerName, job, duplex: config?.duplex }) };
@@ -115,11 +130,88 @@ export function choosePrintCommand({ filePath, printerName, job, config, os = pl
       kind: "shell-verb",
       command: "powershell.exe",
       args: ["-NoProfile", "-NonInteractive", "-Command", shellVerbScript({ filePath, printerName, job })],
-      degraded: "Printing through Windows' own PDF viewer. Slower, and one copy at a time.",
+      /*
+        Honest about what this can and cannot do.
+
+        It works only if some application on that computer has registered
+        itself to print this file type. For PDFs that usually means Adobe
+        Reader; Edge does not. When nothing has, the job fails with a message
+        about no associated application — which is what happened at a real
+        counter while the log claimed this route "works fine".
+      */
+      degraded:
+        "No fast printing helper found, so this goes through whichever app opens PDFs on this computer. If nothing does, PDFs will fail — photos are unaffected.",
     };
   }
 
   return { kind: IS_MAC ? "lp" : "lp", command: "lp", args: lpArgs({ filePath, printerName, job, duplex: config?.duplex }) };
+}
+
+/** Photos, which Windows can print itself — see below. */
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "bmp", "gif", "tif", "tiff"];
+
+export function isImageFile(filePath) {
+  const extension = /\.([a-z0-9]+)$/i.exec(String(filePath ?? ""))?.[1]?.toLowerCase();
+  return Boolean(extension && IMAGE_EXTENSIONS.includes(extension));
+}
+
+/**
+ * Print a photo using Windows' own drawing library.
+ *
+ * The lesson from a real counter: a customer paid for a .webp and the job
+ * died on "No application is associated with the specified file for this
+ * operation." Windows has no PrintTo handler for webp — and often none for
+ * PDF either — so handing the file to the shell was never the safe fallback
+ * I claimed it was.
+ *
+ * .NET can print an image directly, with no helper application involved at
+ * all. It also takes the copies, the paper size and the colour setting
+ * properly, which the shell verb never could. Photos and screenshots are most
+ * of what a counter prints, so this is the path that matters most.
+ */
+export function imagePrintScript({ filePath, printerName, job }) {
+  const copies = Math.max(1, Math.min(99, Math.round(Number(job?.copies) || 1)));
+  const paper = String(job?.paper_size ?? "A4").toUpperCase() === "A3" ? "A3" : "A4";
+  const colour = job?.color_mode === "color" ? "$true" : "$false";
+
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    "try {",
+    "  Add-Type -AssemblyName System.Drawing",
+    `  $script:img = [System.Drawing.Image]::FromFile(${quoteForPowerShell(filePath)})`,
+    "  $doc = New-Object System.Drawing.Printing.PrintDocument",
+    `  $doc.PrinterSettings.PrinterName = ${quoteForPowerShell(printerName)}`,
+    // A printer name that no longer matches anything must say so, rather than
+    // silently printing to whatever Windows considers the default.
+    `  if (-not $doc.PrinterSettings.IsValid) { throw 'Printer not found: ' + ${quoteForPowerShell(printerName)} }`,
+    `  $doc.PrinterSettings.Copies = ${copies}`,
+    `  $doc.DefaultPageSettings.Color = ${colour}`,
+    `  $paper = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq '${paper}' } | Select-Object -First 1`,
+    "  if ($paper) { $doc.DefaultPageSettings.PaperSize = $paper }",
+    "  $doc.DocumentName = 'DigiConnect print'",
+    "  $doc.add_PrintPage({",
+    "    param($sender, $e)",
+    // Fit inside the printable area without distorting it: a customer's
+    // photo stretched to the page edges is a wasted sheet they paid for.
+    "    $area = $e.MarginBounds",
+    "    $scale = [Math]::Min($area.Width / $script:img.Width, $area.Height / $script:img.Height)",
+    "    $w = [int]($script:img.Width * $scale)",
+    "    $h = [int]($script:img.Height * $scale)",
+    "    $x = $area.X + [int](($area.Width - $w) / 2)",
+    "    $y = $area.Y + [int](($area.Height - $h) / 2)",
+    "    $e.Graphics.DrawImage($script:img, $x, $y, $w, $h)",
+    "    $e.HasMorePages = $false",
+    "  })",
+    "  $doc.Print()",
+    "  $doc.Dispose()",
+    "  $script:img.Dispose()",
+    "} catch {",
+    // Without an explicit non-zero exit, powershell.exe reports success and
+    // the shop is told the page printed when it did not.
+    "  Write-Error $_.Exception.Message",
+    "  exit 1",
+    "}",
+  ].join("\n");
 }
 
 /**
@@ -199,9 +291,14 @@ export async function ensurePrintHelper({ serverUrl, config, log, fetchImpl = fe
     } catch {
       /* Nothing to clean up. */
     }
+    /*
+      Said precisely, because the old wording — "works fine" — was read by a
+      shop owner as reassurance right before a job failed for exactly the
+      reason this line should have warned about.
+    */
     log?.(
       "info",
-      "Printing through Windows' own PDF viewer. Works fine, just one copy at a time.",
+      "No fast printing helper. Photos print normally; PDFs need an app on this computer that can print them.",
     );
     return null;
   }
@@ -268,6 +365,16 @@ export async function listPrinters() {
  */
 export async function printFile({ filePath, printerName, job, config }) {
   const plan = choosePrintCommand({ filePath, printerName, job, config });
+
+  /*
+    The .NET path prints every copy itself through PrinterSettings.Copies, so
+    it runs once. Looping it would charge a customer for three and give them
+    nine.
+  */
+  if (plan.kind === "dotnet-image") {
+    await run(plan.command, plan.args);
+    return plan;
+  }
 
   if (plan.kind === "shell-verb") {
     // This route cannot ask for copies, so it asks the same number of times.

@@ -50,6 +50,68 @@ type StationView = {
 */
 const ACCEPTED = ".pdf,.jpg,.jpeg,.png,.webp,.docx";
 
+/**
+ * Turn a photo into something a printer can actually read.
+ *
+ * A customer paid for a .webp and the job died on the shop's computer:
+ * Windows' own drawing library has no webp decoder, and no application on
+ * that machine was registered to print one either. The browser holding the
+ * file has a decoder — it is how the photo is on screen at all — so the
+ * conversion belongs here, before the file is ever sent.
+ *
+ * Anything that is not webp is left exactly as the customer chose it. If the
+ * conversion fails for any reason, the original goes up rather than nothing:
+ * a job that fails at the printer is recoverable, a customer who cannot
+ * upload at all is not.
+ */
+async function toPrintableImage(file: File): Promise<File> {
+  const isWebp = file.type === "image/webp" || /\.webp$/i.test(file.name);
+  if (!isWebp) return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+
+    /*
+      Capped on the long edge.
+
+      A4 at 300dpi is about 2480 × 3508, so 3000 is more resolution than any
+      counter printer will use — and it keeps a phone photo from becoming a
+      lossless PNG too large to upload.
+    */
+    const longest = Math.max(bitmap.width, bitmap.height);
+    const scale = longest > 3000 ? 3000 / longest : 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+
+    const asBlob = (type: string, quality?: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+
+    // PNG first, because a webp is as often a screenshot full of text as it
+    // is a photograph, and JPEG artefacts around text are visible on paper.
+    let blob = await asBlob("image/png");
+    let extension = "png";
+    if (blob && blob.size > 15 * 1024 * 1024) {
+      const smaller = await asBlob("image/jpeg", 0.92);
+      if (smaller) {
+        blob = smaller;
+        extension = "jpg";
+      }
+    }
+    if (!blob) return file;
+
+    const base = file.name.replace(/\.webp$/i, "") || "photo";
+    return new File([blob], `${base}.${extension}`, { type: blob.type });
+  } catch {
+    return file;
+  }
+}
+
 export function StationPrintFlow({ station }: { station: StationView }) {
   const [file, setFile] = useState<File | null>(null);
   const [uploaded, setUploaded] = useState<Uploaded | null>(null);
@@ -94,8 +156,9 @@ export function StationPrintFlow({ station }: { station: StationView }) {
 
     setUploading(true);
     try {
+      const sending = await toPrintableImage(picked);
       const form = new FormData();
-      form.append("file", picked);
+      form.append("file", sending);
       const response = await fetch("/api/print/jobs/upload", { method: "POST", body: form });
       const data = (await response.json()) as Uploaded & { error?: string };
       if (!response.ok) throw new Error(data.error || "That file could not be sent.");
