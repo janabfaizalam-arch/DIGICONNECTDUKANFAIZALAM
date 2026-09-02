@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * What this computer remembers between restarts.
@@ -97,9 +98,39 @@ export function isReady(config) {
   return configProblems(config).length === 0;
 }
 
+/**
+ * The settings that came inside the download, if any.
+ *
+ * A partner who downloads from their own dashboard gets a bundle with their
+ * key and their site address already in it, so there is nothing to paste and
+ * nothing to mistype. This is read only when the computer has no settings of
+ * its own yet: a shop that has since changed its printer must not have that
+ * choice undone every time the program starts.
+ */
+function bundledConfig() {
+  try {
+    const beside = join(dirname(fileURLToPath(import.meta.url)), "..", "config.json");
+    if (!existsSync(beside)) return null;
+    return JSON.parse(readFileSync(beside, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 export function loadConfig() {
   const path = configPath();
-  if (!existsSync(path)) return normalizeConfig({});
+
+  if (!existsSync(path)) {
+    const bundled = bundledConfig();
+    if (bundled) {
+      // Written out immediately, so the very first save from the settings
+      // page edits a real file rather than silently re-seeding from the
+      // download on the next restart.
+      return saveConfig(bundled);
+    }
+    return normalizeConfig({});
+  }
+
   try {
     return normalizeConfig(JSON.parse(readFileSync(path, "utf8")));
   } catch {

@@ -9,7 +9,7 @@ import { configPath, configProblems, isReady, loadConfig, saveConfig } from "./l
 import { createApi } from "./lib/api.mjs";
 import { createLog } from "./lib/log.mjs";
 import { createWorker } from "./lib/worker.mjs";
-import { listPrinters, printFile } from "./lib/printer.mjs";
+import { ensurePrintHelper, listPrinters, printFile } from "./lib/printer.mjs";
 import { renderPage } from "./lib/page.mjs";
 
 /**
@@ -245,6 +245,9 @@ server.listen(PORT, "127.0.0.1", async () => {
 
   printers = await listPrinters();
   if (!printers.length) log.push("warn", "No printer found on this computer yet.");
+
+  // Best effort, and never blocking: the shop can print either way.
+  await ensurePrintHelper({ serverUrl: config.serverUrl, config, log: log.push });
 
   startWorker();
   if (!isReady(config)) openBrowser(`http://localhost:${PORT}`);

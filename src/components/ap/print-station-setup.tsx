@@ -508,41 +508,51 @@ function AgentBox({
    ───────────────────────────────────────────────────────────────────────── */
 
 /**
- * Three steps, in the order a shop owner does them.
+ * Getting the printer's computer connected.
  *
- * Written for somebody standing at a counter with a customer waiting, not for
- * somebody reading documentation: one command to copy, one thing to click,
- * one page to fill in. Everything that could be a paragraph is a step.
+ * The first version of this asked a shop owner to open PowerShell, paste a
+ * command, then copy a key across from another card on this same screen.
+ * Three chances to mistype something before anything printed, and the key is
+ * shown once. So the download comes first and carries the key inside it; the
+ * command stays underneath for a partner who prefers it or whose browser
+ * blocked the file.
  */
 function InstallSteps({ siteUrl }: { siteUrl: string }) {
   const { success } = useToast();
+  const [showCommand, setShowCommand] = useState(false);
   const command = `irm ${siteUrl}/print-station/install.ps1 | iex`;
 
   const steps = [
     {
-      title: "Open PowerShell on your printer's computer",
-      body: "Press the Windows key, type PowerShell, and press Enter.",
+      title: "Ye file download kijiye",
+      body: "Aapki key iske andar pehle se hai — kuch paste nahi karna.",
     },
     {
-      title: "Paste this one line and press Enter",
-      body: "It installs DigiConnect Print Station and puts a shortcut on the desktop. No admin password needed.",
-      command,
+      title: "Unzip kijiye, phir Start Print Station par double-click",
+      body: "Printer wale computer par. Pehli baar Node.js maangega — LTS install kar lijiye.",
     },
     {
-      title: "Paste your key into the page that opens",
-      body: "Pick your printer from the list, then use Print a test page. When a page comes out, this screen will say Connected.",
+      title: "Printer chuniye aur test page nikaliye",
+      body: "Kagaz nikla to yahi screen Connected dikhane lagegi.",
     },
   ];
 
   return (
     <div className="mt-4 min-w-0 rounded-2xl border border-[rgba(15,32,73,.1)] bg-[rgba(255,255,255,.6)] p-4">
-      <p className="text-[12.5px] font-extrabold text-[var(--dc-ink)]">Connect it in three steps</p>
+      <a
+        href="/api/ap/print-station/download"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[14px] font-bold text-white transition hover:opacity-95"
+        style={{ background: "var(--dc-grad-blue)" }}
+      >
+        <Download className="h-4.5 w-4.5" />
+        Print Station download kijiye
+      </a>
+      <p className="mt-2 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
+        Har download par nayi key banti hai aur purani band ho jati hai. Ek computer, ek folder.
+      </p>
 
-      <ol className="mt-3 space-y-3">
+      <ol className="mt-4 space-y-3">
         {steps.map((step, index) => (
-          /* min-w-0 all the way down: a flex item's default min-width is
-             auto, so the nowrap command below would otherwise set the width
-             of this whole column and push every card off the screen. */
           <li key={step.title} className="flex min-w-0 gap-3">
             <span
               className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-extrabold text-white"
@@ -553,37 +563,43 @@ function InstallSteps({ siteUrl }: { siteUrl: string }) {
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] font-bold text-[var(--dc-ink)]">{step.title}</p>
               <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">{step.body}</p>
-
-              {step.command ? (
-                <div className="mt-2 flex min-w-0 items-center gap-2">
-                  <code className="lg-field min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg px-3 py-2 font-mono text-[11.5px] font-bold text-[var(--dc-ink)]">
-                    {step.command}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(step.command).then(() => success("Command copied."));
-                    }}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
-                    style={{ background: "var(--dc-grad-blue)" }}
-                    aria-label="Copy the install command"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : null}
             </div>
           </li>
         ))}
       </ol>
 
-      <p className="mt-3 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
-        On a Mac or a Linux computer, download{" "}
-        <a href={`${siteUrl}/print-station/README.md`} className="font-bold text-[var(--dc-blue-deep)] underline">
-          the setup guide
-        </a>{" "}
-        instead.
-      </p>
+      <button
+        type="button"
+        onClick={() => setShowCommand((open) => !open)}
+        className="mt-3 text-[11.5px] font-bold text-[var(--dc-blue-deep)] underline"
+      >
+        {showCommand ? "Chhupaiye" : "Download nahi ho raha? Command se install kijiye"}
+      </button>
+
+      {showCommand ? (
+        <div className="mt-2">
+          <p className="text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
+            PowerShell kholiye (Windows key &rarr; PowerShell &rarr; Enter) aur ye paste kijiye. Iske baad
+            key khud paste karni padegi.
+          </p>
+          <div className="mt-2 flex min-w-0 items-center gap-2">
+            <code className="lg-field min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg px-3 py-2 font-mono text-[11.5px] font-bold text-[var(--dc-ink)]">
+              {command}
+            </code>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(command).then(() => success("Command copied."));
+              }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
+              style={{ background: "var(--dc-grad-blue)" }}
+              aria-label="Copy the install command"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

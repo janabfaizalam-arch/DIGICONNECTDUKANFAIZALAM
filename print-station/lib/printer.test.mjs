@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   SUMATRA_CANDIDATES,
+  appFolderSumatra,
+  looksLikeWindowsProgram,
+  shellVerbScript,
   choosePrintCommand,
   findSumatra,
   lpArgs,
@@ -117,12 +120,22 @@ describe("choosePrintCommand", () => {
     expect(plan.command).toBe(SUMATRA_CANDIDATES[0]);
   });
 
-  it("falls back to the Windows shell verb, and says what that costs", () => {
+  it("falls back to the Windows shell verb, and still gets the job right", () => {
     const plan = choosePrintCommand({ ...base, os: "win32", exists: () => false });
     expect(plan.kind).toBe("shell-verb");
     expect(plan.command).toBe("powershell.exe");
-    // The shop is told rather than left to wonder why copies came out as one.
-    expect(plan.degraded).toMatch(/copies/i);
+
+    /*
+      This route used to lose the paper size and colour, which meant a
+      customer who paid for A3 colour collected an A4 page. It now sets both
+      on the printer first, so what it costs is speed, not correctness — and
+      the message says so.
+    */
+    const script = plan.args.at(-1);
+    expect(script).toContain("-PaperSize A4");
+    expect(script).toContain("-Color $true");
+    expect(plan.degraded).toMatch(/slower|one copy at a time/i);
+    expect(plan.degraded).not.toMatch(/cannot be set/i);
   });
 
   it("uses lp everywhere else", () => {
@@ -165,5 +178,65 @@ describe("printer listings", () => {
   it("returns nothing rather than a blank entry when no printer exists", () => {
     expect(parseWindowsPrinters("")).toEqual([]);
     expect(parseCupsPrinters("\n\n")).toEqual([]);
+  });
+});
+
+describe("shellVerbScript", () => {
+  it("sets the paper size on the printer, since the verb cannot carry it", () => {
+    const script = shellVerbScript({ filePath: "j.pdf", printerName: "HP", job: { paper_size: "A3" } });
+    expect(script).toContain("Set-PrintConfiguration");
+    expect(script).toContain("-PaperSize A3");
+  });
+
+  it("asks for colour only when the customer paid for it", () => {
+    expect(shellVerbScript({ filePath: "j.pdf", printerName: "HP", job: { color_mode: "color" } })).toContain("-Color $true");
+    expect(shellVerbScript({ filePath: "j.pdf", printerName: "HP", job: { color_mode: "mono" } })).toContain("-Color $false");
+  });
+
+  it("prints even when the printer refuses to be reconfigured", () => {
+    // A printer that rejects Set-PrintConfiguration must still print on its
+    // own defaults rather than fail the job outright.
+    const script = shellVerbScript({ filePath: "j.pdf", printerName: "HP", job: {} });
+    expect(script).toMatch(/try \{ Set-PrintConfiguration.*\} catch \{ \}/);
+  });
+
+  it("waits for the print, then closes the viewer it opened", () => {
+    const script = shellVerbScript({ filePath: "j.pdf", printerName: "HP", job: {} });
+    expect(script).toContain("Wait-Process");
+    expect(script).toContain("Stop-Process");
+  });
+
+  it("quotes a printer name that could otherwise end the command", () => {
+    const script = shellVerbScript({ filePath: "j.pdf", printerName: "O'Brien; Remove-Item C:\\", job: {} });
+    expect(script).toContain("'O''Brien; Remove-Item C:\\'");
+  });
+
+  it("defaults an unknown paper size to A4 rather than leaving it unset", () => {
+    expect(shellVerbScript({ filePath: "j.pdf", printerName: "HP", job: { paper_size: "Legal" } })).toContain("-PaperSize A4");
+  });
+});
+
+describe("findSumatra beside the program", () => {
+  it("prefers the copy the installer put next to the program", () => {
+    const beside = appFolderSumatra();
+    expect(beside).toContain("SumatraPDF.exe");
+    expect(findSumatra("", (p) => p === beside)).toBe(beside);
+  });
+});
+
+describe("looksLikeWindowsProgram", () => {
+  it("accepts a real executable", () => {
+    expect(looksLikeWindowsProgram(Buffer.from([0x4d, 0x5a, 0x90, 0x00]))).toBe(true);
+  });
+
+  it("rejects an HTML error page saved under the program's name", () => {
+    // The failure this prevents: a 404 page stored as SumatraPDF.exe would be
+    // found by every later lookup and fail every print, blaming the printer.
+    expect(looksLikeWindowsProgram(Buffer.from("<!doctype html><title>404</title>"))).toBe(false);
+  });
+
+  it("rejects an empty or missing download", () => {
+    expect(looksLikeWindowsProgram(Buffer.alloc(0))).toBe(false);
+    expect(looksLikeWindowsProgram(null)).toBe(false);
   });
 });
