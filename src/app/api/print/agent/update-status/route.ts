@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { authenticateAgent, stationScope } from "@/lib/print/agent-auth";
+import { authFailureResponse, authenticateAgent, stationScope } from "@/lib/print/agent-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type UpdateStatusBody = {
@@ -12,8 +12,9 @@ type UpdateStatusBody = {
 export async function POST(request: Request) {
   try {
     const caller = await authenticateAgent(request);
-    if (!caller) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!caller.ok) {
+      const failure = authFailureResponse(caller);
+      return NextResponse.json({ error: failure.error }, { status: failure.status });
     }
 
     const body = (await request.json().catch(() => null)) as UpdateStatusBody | null;

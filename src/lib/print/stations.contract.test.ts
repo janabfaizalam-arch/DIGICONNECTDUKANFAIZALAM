@@ -45,7 +45,7 @@ describe("a shop sees only its own counter", () => {
   it("still serves the platform's own counter on the environment key", () => {
     // The existing installation has to keep working while shops onboard.
     expect(agentAuth).toContain("PRINT_AGENT_SECRET_KEY");
-    expect(agentAuth).toContain('return { station: null');
+    expect(agentAuth).toContain('return { ok: true, station: null');
   });
 
   it("gives a shop its own id and the platform counter the unowned rows", () => {

@@ -38,14 +38,9 @@ foreach ($file in $Files) {
   Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
 }
 
-# SumatraPDF is what lets a print run without a window opening and a human
-# clicking Print. Without it Windows can still print, but not copies or paper
-# size — so the absence is worth naming here rather than discovering later.
-$sumatra = @(
-  "C:\Program Files\SumatraPDF\SumatraPDF.exe",
-  "C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
-  "$env:LOCALAPPDATA\SumatraPDF\SumatraPDF.exe"
-) | Where-Object { Test-Path $_ } | Select-Object -First 1
+# The printing helper is fetched by the program itself on first run — one
+# implementation, so a partner who unzipped the bundle from their dashboard
+# gets it too. Nothing to check here.
 
 $shortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "DigiConnect Print Station.lnk"
 $shell = New-Object -ComObject WScript.Shell
@@ -57,12 +52,6 @@ $link.Save()
 
 Write-Host ""
 Write-Host "  Installed. A shortcut is on your desktop." -ForegroundColor Green
-if (-not $sumatra) {
-  Write-Host ""
-  Write-Host "  Recommended: install SumatraPDF (free, 2 MB) from" -ForegroundColor Yellow
-  Write-Host "  https://www.sumatrapdfreader.org/download-free-pdf-viewer" -ForegroundColor Yellow
-  Write-Host "  Without it, copies and paper size cannot be set automatically."
-}
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Write-Host ""
   Write-Host "  Node.js is not installed yet. Get the LTS build from" -ForegroundColor Yellow

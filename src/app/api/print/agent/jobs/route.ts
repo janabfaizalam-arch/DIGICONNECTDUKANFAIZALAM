@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { authenticateAgent, stationScope } from "@/lib/print/agent-auth";
+import { authFailureResponse, authenticateAgent, stationScope } from "@/lib/print/agent-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp } from "@/lib/rate-limit";
 
@@ -30,9 +30,15 @@ export async function GET(request: Request) {
       ask the same question the same way — see src/lib/print/agent-auth.ts.
     */
     const caller = await authenticateAgent(request);
-    if (!caller) {
-      addLog("Unauthorized request: neither a known station token nor the platform key.", true);
-      return NextResponse.json({ error: "Unauthorized: Invalid secret key", serverLogs }, { status: 401 });
+    if (!caller.ok) {
+      const failure = authFailureResponse(caller);
+      addLog(
+        caller.reason === "unavailable"
+          ? "Supabase service-role configuration is missing, so no token could be checked."
+          : "Unauthorized request: neither a known station token nor the platform key.",
+        true,
+      );
+      return NextResponse.json({ error: failure.error, serverLogs }, { status: failure.status });
     }
 
     const station = caller.station;

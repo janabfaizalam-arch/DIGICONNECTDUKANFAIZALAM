@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { platform } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * The part that puts ink on paper.
@@ -15,7 +17,22 @@ import { platform } from "node:os";
 const IS_WINDOWS = platform() === "win32";
 const IS_MAC = platform() === "darwin";
 
-/** Where SumatraPDF installs itself, in the order worth looking. */
+/**
+ * Where the printing helper might be, best first.
+ *
+ * The first entry is the one that matters: the installer drops a copy beside
+ * the program, so a shop owner never has to go and find it. The rest are the
+ * places a normal install puts it, kept so a computer that already had it
+ * does not download a second copy.
+ */
+export function appFolderSumatra() {
+  try {
+    return join(dirname(fileURLToPath(import.meta.url)), "..", "SumatraPDF.exe");
+  } catch {
+    return "";
+  }
+}
+
 export const SUMATRA_CANDIDATES = [
   "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
   "C:\\Program Files (x86)\\SumatraPDF\\SumatraPDF.exe",
@@ -26,6 +43,10 @@ export const SUMATRA_CANDIDATES = [
 export function findSumatra(configuredPath, exists = existsSync) {
   const configured = String(configuredPath ?? "").trim();
   if (configured && exists(configured)) return configured;
+
+  const beside = appFolderSumatra();
+  if (beside && exists(beside)) return beside;
+
   return SUMATRA_CANDIDATES.find((candidate) => candidate.length > 20 && exists(candidate)) ?? null;
 }
 
@@ -77,33 +98,113 @@ export function choosePrintCommand({ filePath, printerName, job, config, os = pl
       return { kind: "sumatra", command: sumatra, args: sumatraArgs({ filePath, printerName, job, duplex: config?.duplex }) };
     }
     /*
-      The fallback when SumatraPDF is not installed.
+      The fallback when SumatraPDF is not there.
 
-      Windows' own PrintTo verb hands the file to whatever application is
-      registered for PDFs. It honours the printer and nothing else — no
-      copies, no paper size — so the copies are sent as separate print calls
-      by the caller and the setup page warns that this route is the lesser
-      one. It exists so a shop is never completely stuck.
+      Windows' PrintTo verb honours the printer and nothing else — it cannot
+      be told the paper size or whether to use colour. So those are set on the
+      printer itself first, with Windows' own Set-PrintConfiguration, and put
+      back afterwards. Copies are still sent as separate calls by the caller,
+      because no amount of printer configuration adds a copy count to a shell
+      verb.
+
+      This route is second choice, not a broken one: a customer who paid for
+      an A3 colour page gets an A3 colour page. What it cannot promise is
+      speed, since it opens the system's PDF viewer once per copy.
     */
     return {
       kind: "shell-verb",
       command: "powershell.exe",
-      args: [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        `Start-Process -FilePath ${quoteForPowerShell(filePath)} -Verb PrintTo -ArgumentList ${quoteForPowerShell(printerName)} -PassThru | Wait-Process -Timeout 120`,
-      ],
-      degraded: "Copies and paper size cannot be set without SumatraPDF.",
+      args: ["-NoProfile", "-NonInteractive", "-Command", shellVerbScript({ filePath, printerName, job })],
+      degraded: "Printing through Windows' own PDF viewer. Slower, and one copy at a time.",
     };
   }
 
   return { kind: IS_MAC ? "lp" : "lp", command: "lp", args: lpArgs({ filePath, printerName, job, duplex: config?.duplex }) };
 }
 
+/**
+ * The PowerShell that prints one copy through Windows' own viewer.
+ *
+ * Built as a string here rather than run, so the exact commands a shop's
+ * computer will execute can be checked in a test on a machine with no
+ * printer. Every step that touches printer settings is wrapped: a printer
+ * that refuses to be reconfigured should still print the page, on whatever
+ * its defaults are, rather than fail the job outright.
+ */
+export function shellVerbScript({ filePath, printerName, job }) {
+  const printer = quoteForPowerShell(printerName);
+  const paper = String(job?.paper_size ?? "A4").toUpperCase() === "A3" ? "A3" : "A4";
+  const colour = job?.color_mode === "color" ? "$true" : "$false";
+
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    `try { Set-PrintConfiguration -PrinterName ${printer} -PaperSize ${paper} -Color ${colour} } catch { }`,
+    `$p = Start-Process -FilePath ${quoteForPowerShell(filePath)} -Verb PrintTo -ArgumentList ${printer} -PassThru`,
+    "if ($p) { Wait-Process -Id $p.Id -Timeout 120 -ErrorAction SilentlyContinue }",
+    // The viewer can linger after the spool; closing it keeps a shop from
+    // ending the day behind two hundred open windows.
+    "if ($p -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }",
+  ].join("; ");
+}
+
 /** Single-quote a value for PowerShell, doubling any quote inside it. */
 export function quoteForPowerShell(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+/**
+ * Is this actually a Windows program, or a 404 page wearing its name?
+ *
+ * A missed download that saved the site's HTML error page as SumatraPDF.exe
+ * would be found by every later lookup and fail every print, with a message
+ * about the printer rather than about the file. Every executable begins "MZ";
+ * nothing else here does.
+ */
+export function looksLikeWindowsProgram(head) {
+  return Buffer.isBuffer(head) && head.length > 2 && head[0] === 0x4d && head[1] === 0x5a;
+}
+
+/**
+ * Fetch the printing helper once, so no shop owner ever installs anything.
+ *
+ * Best effort by design: the program prints perfectly well without it through
+ * Windows' own viewer, so every failure here logs a line and returns. The
+ * file is written under a temporary name and only moved into place once it
+ * has been checked, because a half-written or wrong file is worse than none.
+ */
+export async function ensurePrintHelper({ serverUrl, config, log, fetchImpl = fetch }) {
+  if (platform() !== "win32") return null;
+
+  const existing = findSumatra(config?.sumatraPath);
+  if (existing) return existing;
+
+  const target = appFolderSumatra();
+  if (!target) return null;
+  const temporary = `${target}.part`;
+
+  try {
+    const response = await fetchImpl(`${String(serverUrl).replace(/\/+$/, "")}/print-station/SumatraPDF.exe`);
+    if (!response.ok) throw new Error(String(response.status));
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (!looksLikeWindowsProgram(bytes)) throw new Error("not a program");
+
+    writeFileSync(temporary, bytes);
+    renameSync(temporary, target);
+    log?.("info", "Fast printing helper installed.");
+    return target;
+  } catch {
+    try {
+      rmSync(temporary, { force: true });
+    } catch {
+      /* Nothing to clean up. */
+    }
+    log?.(
+      "info",
+      "Printing through Windows' own PDF viewer. Works fine, just one copy at a time.",
+    );
+    return null;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

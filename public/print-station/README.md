@@ -12,33 +12,35 @@ is left on the computer afterwards.
 
 ## Install it (Windows)
 
-Open **PowerShell** and paste this one line:
+**The easy way.** In your partner dashboard, open **Print counter** and press
+**Print Station download kijiye**. You get a zip with your key already inside —
+nothing to paste.
+
+1. Unzip the folder somewhere you will find it again. Do not run it from
+   inside the zip.
+2. Double-click **Start Print Station**.
+3. If it asks for Node.js, install the **LTS** build from
+   [nodejs.org](https://nodejs.org/en/download) and double-click again.
+
+Every download issues a new key and retires the old one, so keep one folder on
+one computer.
+
+**The other way**, if the download is blocked. Open **PowerShell** and paste:
 
 ```powershell
 irm https://rnos.in/print-station/install.ps1 | iex
 ```
 
-It puts the program in your own user folder, adds a shortcut to your desktop
-and starts it. No administrator password needed.
+Then copy your key from the dashboard into the settings page yourself. If
+PowerShell refuses to run it, run `Set-ExecutionPolicy -Scope Process -Bypass`
+first.
 
-If PowerShell refuses to run it, run this first, then the line above:
+### Printing helper
 
-```powershell
-Set-ExecutionPolicy -Scope Process -Bypass
-```
-
-### Two things it will ask for
-
-- **Node.js** — the engine this program runs on. Free, from
-  [nodejs.org](https://nodejs.org/en/download). Pick the big green **LTS**
-  button and click Next until it finishes.
-- **SumatraPDF** — free, 2 MB, from
-  [sumatrapdfreader.org](https://www.sumatrapdfreader.org/download-free-pdf-viewer).
-  Strongly recommended: without it, Windows can still print, but it cannot be
-  told how many copies or which paper size, so a customer who paid for three
-  A3 colour copies would get one A4 page.
-
----
+The program fetches a small helper on first run, by itself. You do not install
+anything. If it cannot be fetched, printing falls back to Windows' own PDF
+viewer — still correct on copies, paper size and colour, just slower, one copy
+at a time.
 
 ## Install it (macOS or Linux)
 
@@ -66,6 +68,8 @@ The program opens a page on your own computer at **http://localhost:7171**.
 3. **Print a test page** — do this before your first customer. A page comes
    out of the tray, and you know the whole chain works.
 
+If you used the download, steps 1 and 2 are already done for you.
+
 Then leave it running. The window can be minimised, but closing it stops
 printing.
 
@@ -85,8 +89,12 @@ printing.
 ## When something goes wrong
 
 **"Your key was refused."**
-The key is wrong or has been replaced. Issue a new one from your partner
-dashboard and paste it in again.
+The key is wrong or has been replaced — most often because a newer download
+retired it. Download the bundle again, or issue a new key from the dashboard.
+
+**"The server cannot reach its database right now."**
+Not your key, and nothing to re-paste. The site is having trouble; the program
+keeps retrying and will pick up where it left off.
 
 **"No internet."**
 Nothing is lost. The jobs stay on the server and print the moment the
