@@ -5,12 +5,22 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { validateFileSignature } from "@/lib/file-validation";
 
-const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "docx"];
+/*
+  What a phone actually hands over.
+
+  The counter page promises "PDF, photo or Word", and a photo off a phone is
+  very often a .webp — WhatsApp and Android screenshots both produce them. It
+  was refused with "Invalid file extension", which reads to a customer as the
+  site being broken. The signature validator has understood webp all along;
+  only these two lists had not caught up.
+*/
+const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp", "docx"];
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "image/jpeg",
   "image/jpg",
   "image/png",
+  "image/webp",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
 ];
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -40,7 +50,7 @@ export async function POST(request: Request) {
     const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
     if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
       return NextResponse.json(
-        { error: "Invalid file extension. Supported: PDF, JPG, PNG, DOCX" },
+        { error: "That file type cannot be printed. Send a PDF, a photo (JPG, PNG or WEBP), or a Word file." },
         { status: 400 }
       );
     }

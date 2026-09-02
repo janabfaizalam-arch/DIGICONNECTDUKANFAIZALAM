@@ -2,12 +2,40 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getStationByCode, type PrintStation } from "@/lib/print/stations";
 
-// Rate pricing: A4/A3 vs Mono/Color
+/*
+  The platform's own counter's rates.
+
+  A shop's counter does not use these — it charges what the partner set, which
+  is the whole point of the product. These remain for the platform's original
+  print page, which has no station.
+*/
 const RATES = {
   A4: { mono: 2.0, color: 10.0 },
   A3: { mono: 5.0, color: 20.0 },
 };
+
+/** What one page costs at this counter, in rupees. */
+function pageRateFor(
+  station: PrintStation | null,
+  paperSize: "A4" | "A3",
+  colorMode: "mono" | "color",
+): number {
+  if (!station) return RATES[paperSize][colorMode];
+  const key = `${paperSize.toLowerCase()}_${colorMode}` as keyof PrintStation["rates"];
+  return Number(station.rates[key]);
+}
+
+/**
+ * Four digits the customer quotes to collect their pages.
+ *
+ * Not a security control — it is so two people who ordered within a minute of
+ * each other at a busy counter do not walk off with each other's documents.
+ */
+function pickupPin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
 
 type PrintJobCreateBody = {
   customer_mobile: string;
@@ -19,7 +47,17 @@ type PrintJobCreateBody = {
   file_size: number;
   mime_type: string;
   storage_path: string;
-  amount: number; // in INR
+  /*
+    What the browser thinks the price is.
+
+    Optional, and only ever a confirmation. The server computes the real
+    figure from the counter's own rates; this is compared to it so a client
+    showing a stale price fails loudly instead of charging the wrong amount.
+    A caller that omits it simply gets the server's price.
+  */
+  amount?: number; // in INR
+  /** The counter this was ordered at. Absent for the platform's own page. */
+  station_code?: string;
 };
 
 export async function POST(request: Request) {
@@ -47,6 +85,7 @@ export async function POST(request: Request) {
       mime_type,
       storage_path,
       amount,
+      station_code,
     } = body;
 
     // Validation
@@ -73,16 +112,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Uploaded file information is incomplete" }, { status: 400 });
     }
 
+    /*
+      Which counter, and therefore whose prices.
+
+      Resolved before the amount is checked, because a shop sets its own
+      rates: charging the platform's ₹2 against a shop that charges ₹3 would
+      reject every order at that counter as a price mismatch.
+    */
+    const stationCode = String(station_code ?? "").trim();
+    const station = stationCode ? await getStationByCode(stationCode) : null;
+
+    if (stationCode && !station) {
+      return NextResponse.json({ error: "That counter no longer exists." }, { status: 404 });
+    }
+
+    if (station && (!station.accepting_orders || !station.is_active)) {
+      // Said before taking money, not after.
+      return NextResponse.json(
+        { error: "This counter is closed right now. Please ask at the desk." },
+        { status: 409 },
+      );
+    }
+
     // Calculate rate
-    const pageRate = RATES[paper_size][color_mode];
+    const pageRate = pageRateFor(station, paper_size, color_mode);
     const expectedAmount = parsedPages * parsedCopies * pageRate;
 
-    // Check amount mismatch (allowing 0.01 margin for float representation)
-    if (Math.abs(amount - expectedAmount) > 0.01) {
-      return NextResponse.json(
-        { error: `Price mismatch. Server: ₹${expectedAmount.toFixed(2)}, Client: ₹${amount.toFixed(2)}` },
-        { status: 400 }
-      );
+    /*
+      Compare only when the caller offered a figure — and reject a
+      non-number outright.
+
+      `Math.abs(undefined - x)` is NaN, and `NaN > 0.01` is false, so the old
+      unconditional check silently passed for any request that left the
+      amount out. It read like a guard and was not one.
+    */
+    if (amount !== undefined && amount !== null) {
+      const claimed = Number(amount);
+      if (!Number.isFinite(claimed) || Math.abs(claimed - expectedAmount) > 0.01) {
+        return NextResponse.json(
+          { error: `Price mismatch. This counter charges ₹${expectedAmount.toFixed(2)}.` },
+          { status: 400 },
+        );
+      }
     }
 
     const supabase = getSupabaseAdmin();
@@ -103,8 +174,20 @@ export async function POST(request: Request) {
         price: expectedAmount,
         payment_status: "pending",
         print_status: "pending",
+        /*
+          Whose queue this belongs to.
+
+          Without it the job is a platform job, and the shop's own Print
+          Station — which asks only for its own station's rows — would never
+          see a single order taken at its own counter.
+        */
+        station_id: station ? station.id : null,
+        expires_at: station
+          ? new Date(Date.now() + station.auto_delete_minutes * 60_000).toISOString()
+          : null,
+        pickup_pin: station ? pickupPin() : null,
       })
-      .select("id, job_number, price")
+      .select("id, job_number, price, pickup_pin")
       .single();
 
     if (jobError || !job) {
@@ -145,6 +228,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       job_id: job.id,
       job_number: job.job_number,
+      // The customer needs this on their own screen to collect the pages.
+      pickup_pin: job.pickup_pin ?? null,
       amount: job.price,
     });
   } catch (error) {
