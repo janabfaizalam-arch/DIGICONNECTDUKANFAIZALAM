@@ -126,6 +126,20 @@ const nextConfig: NextConfig = {
         source: '/',
         headers: sameOriginFraming,
       },
+      {
+        /*
+          The installer has to arrive as text, not as a download.
+
+          A .ps1 has no registered type, so it is served as
+          application/octet-stream — and PowerShell 7's Invoke-RestMethod
+          hands back a byte array for that, which `| iex` cannot execute. The
+          shop owner sees a type-conversion error instead of an install. On
+          Windows PowerShell 5.1 it happens to work, which is exactly the kind
+          of difference that makes this fail only on somebody else's counter.
+        */
+        source: '/print-station/install.ps1',
+        headers: [{ key: 'Content-Type', value: 'text/plain; charset=utf-8' }],
+      },
     ];
   },
 };
