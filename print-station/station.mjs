@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { adoptedBundledKey, configPath, configProblems, isReady, loadConfig, saveConfig } from "./lib/config.mjs";
 import { createApi } from "./lib/api.mjs";
 import { createLog } from "./lib/log.mjs";
-import { createWorker } from "./lib/worker.mjs";
+import { createWorker, diagnose } from "./lib/worker.mjs";
 import { ensurePrintHelper, listPrinters, printFile } from "./lib/printer.mjs";
 import { renderPage } from "./lib/page.mjs";
 
@@ -198,6 +198,24 @@ const server = createServer(async (request, response) => {
     log.push("info", "Settings saved.");
     startWorker();
     json(response, 200, { ok: isReady(config), problems: configProblems(config) });
+    return;
+  }
+
+  if (url.pathname === "/api/check" && request.method === "POST") {
+    /*
+      The button that ends the guessing.
+
+      It asks the website who this key belongs to and reports the answer in
+      words, rather than leaving the shop to infer it from a status code that
+      means four different things.
+    */
+    const api = createApi({ serverUrl: config.serverUrl, agentToken: config.agentToken });
+    const findings = await diagnose({ api, config, printers });
+    for (const finding of findings) {
+      if (finding.level === "error") log.push("error", finding.text);
+      else if (finding.level === "fix") log.push("warn", finding.text);
+    }
+    json(response, 200, { findings });
     return;
   }
 

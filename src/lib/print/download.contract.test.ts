@@ -97,3 +97,32 @@ describe("a refused key versus an unreachable database", () => {
     expect(lookup).toBeGreaterThan(check);
   });
 });
+
+describe("the whoami check", () => {
+  const whoami = readCode("src/app/api/print/agent/whoami/route.ts");
+
+  it("uses the same authentication as the endpoints it is meant to predict", () => {
+    // A second implementation would drift, and then the check would pass on a
+    // key the real endpoints refuse — worse than no check at all.
+    expect(whoami).toContain("authenticateAgent(request)");
+  });
+
+  it("tells a retired key apart from a website that is down", () => {
+    expect(whoami).toContain('reason: "unknown_key"');
+    expect(whoami).toContain('reason: "server_unavailable"');
+    expect(whoami).toContain("503");
+  });
+
+  it("says a closed counter is closed, since that looks exactly like a fault", () => {
+    expect(whoami).toContain("accepting_orders");
+    expect(whoami).toMatch(/counter is switched off/i);
+  });
+
+  it("returns the shop's name and code, and nothing else about it", () => {
+    // Never the rates, the takings, or the token hash: this answers an
+    // unauthenticated-until-proven caller.
+    expect(whoami).toContain("station.display_name");
+    expect(whoami).toContain("station.code");
+    expect(whoami).not.toMatch(/rate_a4|agent_token_hash|partner_id/);
+  });
+});

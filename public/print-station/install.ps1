@@ -1,7 +1,7 @@
 <#
   DigiConnect Print Station — one-line install.
 
-      irm https://rnos.in/print-station/install.ps1 | iex
+      irm https://www.rnos.in/print-station/install.ps1 | iex
 
   Downloads the program into the shop owner's own folder, puts a shortcut on
   the desktop, and starts it. Nothing here needs administrator rights: a shop
@@ -11,7 +11,9 @@
 
 $ErrorActionPreference = "Stop"
 
-$Base    = if ($env:DCPS_BASE) { $env:DCPS_BASE.TrimEnd('/') } else { "https://rnos.in" }
+# The www matters: the bare domain redirects here, and a cross-origin
+# redirect strips the Authorization header the agent needs.
+$Base    = if ($env:DCPS_BASE) { $env:DCPS_BASE.TrimEnd('/') } else { "https://www.rnos.in" }
 $Target  = Join-Path $env:LOCALAPPDATA "DigiConnectPrintStation\app"
 $Files   = @(
   "station.mjs",

@@ -229,3 +229,78 @@ export function createWorker({ api, config, print, log, state, sleep = defaultSl
 function defaultSleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Answer "why isn't this working" once, instead of guessing at it.
+ *
+ * Returned as a list of plain findings a shop owner can act on, in the order
+ * they have to be fixed: an unreachable website makes every later question
+ * meaningless, and a dead key makes the printer question moot.
+ *
+ * The checks deliberately name the values in play — the address being called,
+ * the tail of the key being presented — because "your key was refused" with
+ * no sight of which key or which address is what sent a real shop round the
+ * same loop for an afternoon.
+ */
+export async function diagnose({ api, config, printers = [] }) {
+  const findings = [];
+  const add = (level, text) => findings.push({ level, text });
+
+  add("info", `Calling ${config.serverUrl}`);
+  add("info", `Using key ${keyTail(config.agentToken)}`);
+
+  let identity = null;
+  try {
+    identity = await api.whoami();
+  } catch (error) {
+    const status = error?.status;
+
+    if (status === 401) {
+      add("error", "This key is not the current one for any counter.");
+      add("fix", "Open your dashboard, press 'Lost the key? Issue a new one', and paste the key it shows into the box above.");
+      return findings;
+    }
+    if (status === 503) {
+      add("warn", "The website cannot reach its database. Nothing is wrong with your key.");
+      add("fix", "Leave this running — it will pick up on its own.");
+      return findings;
+    }
+    if (status === 404) {
+      // The site is up but does not have this endpoint, which means it is
+      // running a version older than this program.
+      add("warn", "The website answered, but does not know this program yet.");
+      add("fix", "The site is still updating. Try again in a few minutes.");
+      return findings;
+    }
+
+    add("error", describeFailure(error));
+    add("fix", "Check the website address above, and that this computer is online.");
+    return findings;
+  }
+
+  add("ok", identity?.message ?? "Key accepted.");
+  if (identity?.acceptingOrders === false) {
+    add("fix", "Switch your counter back on from the dashboard, or customers cannot pay.");
+  }
+
+  if (!config.printerName) {
+    add("error", "No printer chosen.");
+    add("fix", "Pick your printer from the list above and save.");
+  } else if (printers.length && !printers.includes(config.printerName)) {
+    // A printer that was unplugged, renamed, or removed. The name saved here
+    // will never match again, and jobs would fail one at a time.
+    add("error", `"${config.printerName}" is not on this computer any more.`);
+    add("fix", "Pick the printer again from the list above and save.");
+  } else if (config.printerName) {
+    add("ok", `Printing to "${config.printerName}".`);
+  }
+
+  return findings;
+}
+
+/** Enough of a key to recognise it, never enough to use it. */
+export function keyTail(token) {
+  const value = String(token ?? "").trim();
+  if (!value) return "(none)";
+  return value.length <= 12 ? "(too short to be a key)" : `${value.slice(0, 8)}…${value.slice(-4)}`;
+}

@@ -64,6 +64,24 @@ export function renderPage() {
   .log .warn { color:#b26a00; }
   .warn-box { margin-top:12px; border-left:3px solid var(--flame); padding:10px 12px;
     background:rgba(244,99,46,.07); border-radius:0 12px 12px 0; font-size:12.5px; }
+  /* Deliberately not ".mark": that class is already the 44px header tile
+     above, and reusing it made every finding sprout a blue square. */
+  .findings { margin-top:14px; display:grid; gap:6px; }
+  .finding { display:grid; grid-template-columns:5.2rem 1fr; gap:10px; align-items:baseline;
+    padding:9px 12px; border-radius:10px; border:1px solid var(--line);
+    background:rgba(255,255,255,.92); font-size:12.5px; line-height:1.5; color:var(--body); }
+  .finding .tag { font-weight:800; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; }
+  .finding.ok    { border-left:3px solid var(--ok); }
+  .finding.ok    .tag { color:var(--ok); }
+  .finding.error { border-left:3px solid var(--flame); background:rgba(244,99,46,.06); }
+  .finding.error .tag, .finding.error span:last-child { color:var(--flame); font-weight:600; }
+  .finding.warn  { border-left:3px solid #b26a00; }
+  .finding.warn  .tag { color:#b26a00; }
+  .finding.info  { opacity:.85; }
+  .finding.info  .tag { color:var(--faint, #9aa4b8); }
+  .finding.fix   { border-left:3px solid #1f4fd8; background:rgba(31,79,216,.06); }
+  .finding.fix   .tag { color:#1f4fd8; }
+  .finding.fix   span:last-child { color:var(--ink); font-weight:600; }
   .muted { font-size:12px; color:var(--body); }
   a { color:#1f4fd8; }
 </style>
@@ -88,6 +106,7 @@ export function renderPage() {
       <div class="stat"><b id="s-failed">0</b><span>Failed</span></div>
     </div>
     <div class="warn-box" id="problem" hidden></div>
+    <div class="findings" id="findings" hidden></div>
   </div>
 
   <div class="card">
@@ -117,6 +136,7 @@ export function renderPage() {
 
       <div class="row">
         <button class="primary" type="submit" id="save">Save and start</button>
+        <button class="ghost" type="button" id="check">Kya galat hai? Check kijiye</button>
         <button class="ghost" type="button" id="test">Print a test page</button>
       </div>
     </form>
@@ -203,6 +223,28 @@ export function renderPage() {
       if (json.problems && json.problems.length) alert(json.problems.join("\\n"));
     } finally {
       $("save").disabled = false;
+      refresh();
+    }
+  });
+
+  $("check").addEventListener("click", async () => {
+    $("check").disabled = true;
+    $("check").textContent = "Check kar rahe hain…";
+    try {
+      const json = await (await fetch("/api/check", { method: "POST" })).json();
+      const box = $("findings");
+      box.hidden = false;
+      const label = { ok: "Theek", error: "Gadbad", warn: "Dhyan", fix: "Ye kariye", info: "" };
+      box.innerHTML = (json.findings || [])
+        .map((f) => '<div class="finding ' + f.level + '"><span class="tag">' +
+          (label[f.level] || "") + '</span><span>' +
+          f.text.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c])) + "</span></div>")
+        .join("");
+    } catch {
+      alert("Check nahi ho paya. Kya ye program abhi bhi chal raha hai?");
+    } finally {
+      $("check").disabled = false;
+      $("check").textContent = "Kya galat hai? Check kijiye";
       refresh();
     }
   });

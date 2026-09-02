@@ -13,8 +13,16 @@ import { fileURLToPath } from "node:url";
  */
 
 export const DEFAULTS = {
-  /** Where the counter lives. Overridable so a test install can point elsewhere. */
-  serverUrl: "https://rnos.in",
+  /*
+    Where the counter lives.
+
+    The www is not decoration. The bare domain answers with a redirect to
+    this one, and a redirect across origins costs the Authorization header —
+    so every key sent to the bare domain arrived with no key at all, and the
+    server truthfully said it was refused. Overridable, so a test install can
+    point elsewhere.
+  */
+  serverUrl: "https://www.rnos.in",
   /** The key issued at /ap/print. Shown once, so it is stored here. */
   agentToken: "",
   /** The printer's name as the operating system spells it. */

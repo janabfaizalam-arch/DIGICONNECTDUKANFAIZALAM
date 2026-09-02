@@ -321,15 +321,31 @@ export async function updateStation(
 /** Issue a new agent token, invalidating the old one. */
 export async function rotateAgentToken(partnerId: string): Promise<string | null> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return null;
+  if (!supabase || !partnerId) return null;
 
   const token = newAgentToken();
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("print_stations")
       .update({ agent_token_hash: hashAgentToken(token), updated_at: new Date().toISOString() })
-      .eq("partner_id", partnerId);
-    return error ? null : token;
+      .eq("partner_id", partnerId)
+      /*
+        Confirm a row was actually written before handing the token out.
+
+        An update that matches nothing is not an error in PostgREST — it
+        succeeds, having changed nothing. Without this select, a partner whose
+        station row could not be found for any reason would be shown a brand
+        new key, told to paste it in, and then be refused by the server
+        forever, because that key exists nowhere but on their screen. There is
+        no way to tell that apart from a wrong key from the outside, which is
+        exactly the loop it put a real shop through.
+      */
+      .select("id");
+
+    if (error) return null;
+    if (!data || data.length === 0) return null;
+
+    return token;
   } catch {
     return null;
   }

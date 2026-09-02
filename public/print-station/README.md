@@ -28,7 +28,7 @@ one computer.
 **The other way**, if the download is blocked. Open **PowerShell** and paste:
 
 ```powershell
-irm https://rnos.in/print-station/install.ps1 | iex
+irm https://www.rnos.in/print-station/install.ps1 | iex
 ```
 
 Then copy your key from the dashboard into the settings page yourself. If
