@@ -4,6 +4,9 @@ import { readCode } from "@/lib/testing/source";
 
 const stations = readCode("src/lib/print/stations.ts");
 const agentJobs = readCode("src/app/api/print/agent/jobs/route.ts");
+const agentClaim = readCode("src/app/api/print/agent/claim-job/route.ts");
+const agentStatus = readCode("src/app/api/print/agent/update-status/route.ts");
+const agentAuth = readCode("src/lib/print/agent-auth.ts");
 const api = readCode("src/app/api/ap/print-station/route.ts");
 const migration = readCode("supabase/migrations/20260901160000_partner_print_stations.sql");
 const customer = readCode("src/components/print/station-print-flow.tsx");
@@ -19,18 +22,36 @@ const customer = readCode("src/components/print/station-print-flow.tsx");
  * documents.
  */
 describe("a shop sees only its own counter", () => {
-  it("filters the agent's job queue by station", () => {
-    expect(agentJobs).toContain('.filter("station_id"');
+  it("scopes all three agent endpoints by station, not just the listing", () => {
+    /*
+      Listing alone is not enough, and for a while that is all there was.
+
+      A job id is guessable and was visible to any station that had listed a
+      queue, so a shop could claim a neighbour's job — and be handed a signed
+      URL to that customer's document — or mark it printed. Every endpoint
+      that touches a job row applies the same condition.
+    */
+    for (const route of [agentJobs, agentClaim, agentStatus]) {
+      expect(route).toContain('.filter("station_id"');
+      expect(route).toContain("authenticateAgent(request)");
+      expect(route).toContain("stationScope(");
+    }
   });
 
   it("resolves the station from the token the agent presented", () => {
-    expect(agentJobs).toContain("getStationByAgentToken(presented)");
+    expect(agentAuth).toContain("getStationByAgentToken(presented)");
   });
 
   it("still serves the platform's own counter on the environment key", () => {
     // The existing installation has to keep working while shops onboard.
-    expect(agentJobs).toContain("PRINT_AGENT_SECRET_KEY");
-    expect(agentJobs).toContain("!station && (!authHeader");
+    expect(agentAuth).toContain("PRINT_AGENT_SECRET_KEY");
+    expect(agentAuth).toContain('return { station: null');
+  });
+
+  it("gives a shop its own id and the platform counter the unowned rows", () => {
+    // The pair that makes the filter above mean anything.
+    expect(agentAuth).toContain('operator: "eq"');
+    expect(agentAuth).toContain('operator: "is"');
   });
 
   it("never takes a station id from the partner's request", () => {

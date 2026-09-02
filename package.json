@@ -16,6 +16,7 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "smoke": "node scripts/smoke-test.mjs",
+    "build:print-station": "node scripts/build-print-station.mjs",
     "migrate:final-docs:dry-run": "node --experimental-strip-types --env-file=.env.local scripts/migrate-legacy-final-documents.ts --dry-run",
     "migrate:final-docs:inventory": "node --experimental-strip-types --env-file=.env.local scripts/migrate-legacy-final-documents.ts --dry-run --inventory-only --allow-linked-read",
     "snapshot:final-docs": "node --env-file=.env.local scripts/pre-migration-final-docs-snapshot.mjs",

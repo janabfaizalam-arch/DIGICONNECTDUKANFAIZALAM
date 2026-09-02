@@ -169,11 +169,11 @@ export function PrintStationSetup({
       <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
         <StationQr station={station} scanUrl={scanUrl} />
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <OpenClosed station={station} busy={busy} onToggle={(open) => save({ acceptingOrders: open })} />
           <Rates station={station} busy={busy} onSave={(rates) => save({ rates })} />
           <Privacy station={station} busy={busy} onSave={(minutes) => save({ autoDeleteMinutes: minutes })} />
-          <AgentBox station={station} busy={busy} onRotate={rotate} />
+          <AgentBox station={station} busy={busy} onRotate={rotate} siteUrl={siteUrl} />
         </div>
       </div>
     </div>
@@ -451,10 +451,12 @@ function AgentBox({
   station,
   busy,
   onRotate,
+  siteUrl,
 }: {
   station: PrintStation;
   busy: boolean;
   onRotate: () => void;
+  siteUrl: string;
 }) {
   return (
     <div className="lg-card p-4 sm:p-5">
@@ -478,6 +480,16 @@ function AgentBox({
         </div>
       </div>
 
+      {/*
+        The step that was missing.
+
+        A partner was handed a key and told to paste it into a program that
+        existed nowhere and had no download. Until the computer is connected,
+        installing it is the only thing on this screen that matters — so it
+        is shown first, in full, and collapses to a line once it is done.
+      */}
+      {station.agent_connected ? null : <InstallSteps siteUrl={siteUrl} />}
+
       <button
         type="button"
         onClick={onRotate}
@@ -487,6 +499,91 @@ function AgentBox({
         <KeyRound className="h-4 w-4" />
         {station.has_agent_token ? "Lost the key? Issue a new one" : "Issue a key"}
       </button>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Getting the printer's computer connected
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Three steps, in the order a shop owner does them.
+ *
+ * Written for somebody standing at a counter with a customer waiting, not for
+ * somebody reading documentation: one command to copy, one thing to click,
+ * one page to fill in. Everything that could be a paragraph is a step.
+ */
+function InstallSteps({ siteUrl }: { siteUrl: string }) {
+  const { success } = useToast();
+  const command = `irm ${siteUrl}/print-station/install.ps1 | iex`;
+
+  const steps = [
+    {
+      title: "Open PowerShell on your printer's computer",
+      body: "Press the Windows key, type PowerShell, and press Enter.",
+    },
+    {
+      title: "Paste this one line and press Enter",
+      body: "It installs DigiConnect Print Station and puts a shortcut on the desktop. No admin password needed.",
+      command,
+    },
+    {
+      title: "Paste your key into the page that opens",
+      body: "Pick your printer from the list, then use Print a test page. When a page comes out, this screen will say Connected.",
+    },
+  ];
+
+  return (
+    <div className="mt-4 min-w-0 rounded-2xl border border-[rgba(15,32,73,.1)] bg-[rgba(255,255,255,.6)] p-4">
+      <p className="text-[12.5px] font-extrabold text-[var(--dc-ink)]">Connect it in three steps</p>
+
+      <ol className="mt-3 space-y-3">
+        {steps.map((step, index) => (
+          /* min-w-0 all the way down: a flex item's default min-width is
+             auto, so the nowrap command below would otherwise set the width
+             of this whole column and push every card off the screen. */
+          <li key={step.title} className="flex min-w-0 gap-3">
+            <span
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-extrabold text-white"
+              style={{ background: "var(--dc-grad-blue)" }}
+            >
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12.5px] font-bold text-[var(--dc-ink)]">{step.title}</p>
+              <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">{step.body}</p>
+
+              {step.command ? (
+                <div className="mt-2 flex min-w-0 items-center gap-2">
+                  <code className="lg-field min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg px-3 py-2 font-mono text-[11.5px] font-bold text-[var(--dc-ink)]">
+                    {step.command}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(step.command).then(() => success("Command copied."));
+                    }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
+                    style={{ background: "var(--dc-grad-blue)" }}
+                    aria-label="Copy the install command"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <p className="mt-3 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
+        On a Mac or a Linux computer, download{" "}
+        <a href={`${siteUrl}/print-station/README.md`} className="font-bold text-[var(--dc-blue-deep)] underline">
+          the setup guide
+        </a>{" "}
+        instead.
+      </p>
     </div>
   );
 }
