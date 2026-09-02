@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { backoffSeconds, isRetryable } from "./api.mjs";
-import { createWorker, describeFailure, isFatal, nextJob, runJob } from "./worker.mjs";
+import { createWorker, describeFailure, diagnose, isFatal, keyTail, nextJob, runJob } from "./worker.mjs";
 
 /**
  * The behaviour a shop actually experiences.
@@ -327,5 +327,126 @@ describe("the shop's own name", () => {
     });
     await worker.tick();
     expect(s.stationName).toBe("Faiz Digital Point");
+  });
+});
+
+describe("keyTail", () => {
+  it("shows enough of a key to recognise it, never enough to use it", () => {
+    const shown = keyTail("dcp_aXCgNixYHtf-8n4YhYGPRFE31CnoDvgh");
+    expect(shown).toBe("dcp_aXCg…Dvgh");
+    expect(shown).not.toContain("NixYHtf");
+  });
+
+  it("says so plainly when there is no key at all", () => {
+    expect(keyTail("")).toBe("(none)");
+    expect(keyTail(null)).toBe("(none)");
+  });
+
+  it("calls out something far too short to be a key", () => {
+    // A station code pasted into the key box, which is a real mistake: both
+    // are on the same dashboard card.
+    expect(keyTail("K24Y5F")).toMatch(/too short/i);
+  });
+});
+
+describe("diagnose", () => {
+  const printers = ["EPSONECDDF2 (L8050 Series)"];
+  const config = {
+    serverUrl: "https://rnos.in",
+    agentToken: "dcp_aXCgNixYHtf-8n4YhYGPRFE31CnoDvgh",
+    printerName: "EPSONECDDF2 (L8050 Series)",
+  };
+  const text = (findings) => findings.map((f) => f.text).join(" | ");
+  const levels = (findings) => findings.map((f) => f.level);
+
+  it("always shows the address and the key it is actually using", () => {
+    /*
+      The pair that ends the guessing. A shop spent an afternoon re-pasting a
+      correct key because nothing on screen said which key was being sent or
+      where it was being sent.
+    */
+    return diagnose({ api: { whoami: async () => ({ ok: true, message: "Connected." }) }, config, printers }).then(
+      (findings) => {
+        expect(text(findings)).toContain("https://rnos.in");
+        expect(text(findings)).toContain("dcp_aXCg…Dvgh");
+      },
+    );
+  });
+
+  it("names a retired key as retired, and says where the current one is", async () => {
+    const api = {
+      whoami: async () => {
+        throw Object.assign(new Error("nope"), { status: 401 });
+      },
+    };
+    const findings = await diagnose({ api, config, printers });
+
+    expect(text(findings)).toMatch(/not the current one/i);
+    expect(text(findings)).toMatch(/Issue a new one/i);
+    expect(levels(findings)).toContain("fix");
+  });
+
+  it("does not blame the key when the website's database is down", async () => {
+    const api = {
+      whoami: async () => {
+        throw Object.assign(new Error("busy"), { status: 503 });
+      },
+    };
+    const findings = await diagnose({ api, config, printers });
+
+    expect(text(findings)).toMatch(/nothing is wrong with your key/i);
+    expect(text(findings)).not.toMatch(/issue a new one/i);
+  });
+
+  it("catches a printer that is no longer on this computer", async () => {
+    const api = { whoami: async () => ({ ok: true, message: "Connected to DigiConnect Dukan." }) };
+    const findings = await diagnose({ api, config: { ...config, printerName: "OLD PRINTER" }, printers });
+
+    expect(text(findings)).toMatch(/not on this computer any more/i);
+    expect(levels(findings)).toContain("error");
+  });
+
+  it("catches no printer chosen at all", async () => {
+    const api = { whoami: async () => ({ ok: true, message: "Connected." }) };
+    const findings = await diagnose({ api, config: { ...config, printerName: "" }, printers });
+    expect(text(findings)).toMatch(/no printer chosen/i);
+  });
+
+  it("warns when the counter is switched off, which looks identical to a fault", async () => {
+    const api = {
+      whoami: async () => ({ ok: true, message: "Connected, but the counter is switched off.", acceptingOrders: false }),
+    };
+    const findings = await diagnose({ api, config, printers });
+    expect(text(findings)).toMatch(/switch your counter back on/i);
+  });
+
+  it("reports a clean setup with no fixes to make", async () => {
+    const api = { whoami: async () => ({ ok: true, message: "Connected to DigiConnect Dukan.", acceptingOrders: true }) };
+    const findings = await diagnose({ api, config, printers });
+
+    expect(levels(findings)).not.toContain("error");
+    expect(levels(findings)).not.toContain("fix");
+    expect(text(findings)).toMatch(/Printing to "EPSONECDDF2/);
+  });
+
+  it("tells the shop the site is mid-update rather than blaming them", async () => {
+    // The endpoint is newer than the deployed site: a 404 here is our
+    // rollout, not their setup.
+    const api = {
+      whoami: async () => {
+        throw Object.assign(new Error("missing"), { status: 404 });
+      },
+    };
+    const findings = await diagnose({ api, config, printers });
+    expect(text(findings)).toMatch(/still updating/i);
+  });
+
+  it("never throws, whatever the network did", async () => {
+    const api = {
+      whoami: async () => {
+        throw new Error("fetch failed");
+      },
+    };
+    await expect(diagnose({ api, config, printers })).resolves.toBeInstanceOf(Array);
   });
 });

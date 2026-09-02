@@ -79,6 +79,9 @@ export function createApi({ serverUrl, agentToken, fetchImpl = fetch, timeoutMs 
     /** Take a job, and get a download link that expires in five minutes. */
     claim: (jobId) => call("/api/print/agent/claim-job", { method: "POST", body: { job_id: jobId } }),
 
+    /** "Is this key any good, and whose counter is it?" */
+    whoami: () => call("/api/print/agent/whoami"),
+
     /** Say what happened. The customer's screen is watching this. */
     report: (jobId, status, errorMessage) =>
       call("/api/print/agent/update-status", {
