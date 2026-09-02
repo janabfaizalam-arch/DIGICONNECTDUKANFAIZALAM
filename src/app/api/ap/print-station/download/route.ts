@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { PRINT_STATION_FILES } from "@/lib/print/bundle-files.generated";
+import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
 import { getStationForPartner, rotateAgentToken } from "@/lib/print/stations";
 import { createZip, type ZipEntry } from "@/lib/print/zip";
 import { getSiteUrl } from "@/lib/site-url";
@@ -62,7 +63,15 @@ export async function GET() {
     headers: {
       "Content-Type": "application/zip",
       "Content-Length": String(zip.length),
-      "Content-Disposition": `attachment; filename="DigiConnect-Print-Station-${station.code}.zip"`,
+      /*
+        The version and the date are in the name on purpose.
+
+        Every download used to be called the same thing, so a Downloads folder
+        filled with "(1)", "(2)", "(3)" and there was no way to tell which one
+        was newest — a shop ran an old copy for an afternoon chasing a bug
+        that had already been fixed.
+      */
+      "Content-Disposition": `attachment; filename="DigiConnect-Print-Station-${station.code}-v${PRINT_STATION_VERSION}-${new Date().toISOString().slice(0, 10)}.zip"`,
       // The bundle carries a live credential. It must never sit in a proxy,
       // a browser cache, or a CDN edge after the partner has saved it.
       "Cache-Control": "no-store, no-cache, must-revalidate, private",
