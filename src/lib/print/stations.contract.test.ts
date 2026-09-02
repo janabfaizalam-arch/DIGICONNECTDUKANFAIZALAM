@@ -175,3 +175,32 @@ describe("the stations table is server-only", () => {
     expect(migration).toContain("with check (false)");
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────────────
+   A key that was never stored
+   ───────────────────────────────────────────────────────────────────────── */
+
+describe("issuing a key", () => {
+  it("proves a row was written before handing the key out", () => {
+    /*
+      An update that matches nothing is not an error in PostgREST — it
+      succeeds, having changed nothing. Without checking the affected rows,
+      a partner would be shown a brand new key, told to paste it in, and then
+      be refused forever by a server that had never seen it. From outside,
+      that is indistinguishable from a wrong key, which is exactly the loop it
+      put a real shop through.
+    */
+    const rotate = stations.slice(stations.indexOf("export async function rotateAgentToken"));
+    const body = rotate.slice(0, rotate.indexOf("\n}"));
+
+    expect(body).toContain('.select("id")');
+    expect(body).toContain("data.length === 0");
+    expect(body).toMatch(/return null/);
+  });
+
+  it("refuses to issue against an empty partner id", () => {
+    // An empty id would match no row, and previously still returned a token.
+    const rotate = stations.slice(stations.indexOf("export async function rotateAgentToken"));
+    expect(rotate.slice(0, 400)).toContain("!partnerId");
+  });
+});

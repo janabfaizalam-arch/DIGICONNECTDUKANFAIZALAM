@@ -34,6 +34,39 @@ export function backoffSeconds(consecutiveFailures, base = 5) {
   return Math.min(120, base * 2 ** capped);
 }
 
+
+/**
+ * Is this redirect still the same website?
+ *
+ * rnos.in answers a request for the bare domain with a 307 to www.rnos.in.
+ * Those are different origins, so `fetch` obeys the spec and strips the
+ * Authorization header before following — the server then sees no key at all
+ * and says the key was refused. Every key a shop tried was refused for this
+ * reason, correct ones included, and nothing on either side could tell.
+ *
+ * So the redirect is followed by hand, with the header re-attached — but only
+ * when it stays on the same site. A credential must never be replayed to
+ * wherever a redirect happens to point.
+ */
+export function sameSite(fromUrl, toUrl) {
+  try {
+    const bare = (url) => new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return bare(fromUrl) === bare(toUrl);
+  } catch {
+    return false;
+  }
+}
+
+/** Where a redirect actually points, resolving a relative Location. */
+export function redirectTarget(currentUrl, location) {
+  if (!location) return null;
+  try {
+    return new URL(location, currentUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
 export function createApi({ serverUrl, agentToken, fetchImpl = fetch, timeoutMs = 30_000 }) {
   const base = String(serverUrl).replace(/\/+$/, "");
 
@@ -42,15 +75,37 @@ export function createApi({ serverUrl, agentToken, fetchImpl = fetch, timeoutMs 
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetchImpl(`${base}${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${agentToken}`,
-          ...(body ? { "Content-Type": "application/json" } : {}),
-        },
-        body: body ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
-      });
+      const send = (url) =>
+        fetchImpl(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${agentToken}`,
+            ...(body ? { "Content-Type": "application/json" } : {}),
+          },
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+          // Handled below rather than by fetch, so the credential survives.
+          redirect: "manual",
+        });
+
+      let url = `${base}${path}`;
+      let response = await send(url);
+
+      /*
+        Follow at most a couple of hops, and only within the same site.
+
+        Two is enough for the real case (bare domain to www, or http to
+        https) and a low enough ceiling that a redirect loop cannot spin
+        here. A hop that leaves the site is not followed with the key
+        attached — that would hand a shop's credential to whoever the
+        Location pointed at.
+      */
+      for (let hop = 0; hop < 2 && response.status >= 300 && response.status < 400; hop += 1) {
+        const next = redirectTarget(url, response.headers?.get?.("location"));
+        if (!next || !sameSite(url, next)) break;
+        url = next;
+        response = await send(url);
+      }
 
       const text = await response.text();
       let json = null;
