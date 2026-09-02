@@ -175,22 +175,34 @@ export function StationPrintFlow({ station }: { station: StationView }) {
       });
       const order = (await orderResponse.json()) as {
         order_id?: string;
-        amount?: number;
+        // Razorpay's SDK types this as string | number depending on version.
+        amount?: number | string;
         currency?: string;
-        key_id?: string;
         error?: string;
       };
       if (!orderResponse.ok || !order.order_id) {
         throw new Error(order.error || "Could not open payment.");
       }
 
-      if (!order.key_id || typeof order.amount !== "number") {
-        throw new Error("Payment is not configured for this counter.");
+      /*
+        The publishable key is a build-time public value, exactly as every
+        other payment on this site reads it. Expecting the order response to
+        carry one was my own invention — it never has, so this threw "Payment
+        is not configured" on a counter that was configured perfectly well.
+      */
+      const publishableKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!publishableKey) {
+        throw new Error("Payments are not switched on yet. Please pay at the desk.");
+      }
+
+      const amountPaise = Number(order.amount);
+      if (!Number.isFinite(amountPaise)) {
+        throw new Error("Could not read the amount to charge. Nothing has been charged.");
       }
 
       const checkout = new window.Razorpay({
-        key: order.key_id,
-        amount: order.amount,
+        key: publishableKey,
+        amount: amountPaise,
         currency: order.currency ?? "INR",
         name: station.displayName,
         description: `Print ${created.job_number}`,
