@@ -102,3 +102,58 @@ describe("redactConfig", () => {
     expect(redactConfig({ agentToken: "" }).agentToken).toBe("");
   });
 });
+
+describe("a bundle downloaded onto a computer that was already set up", () => {
+  /*
+    The failure this reproduces, from a real shop's screen:
+
+    A partner had set the program up by hand. They then pressed Download on
+    their dashboard, which issued a new key and retired the old one, unzipped
+    the folder and ran it — and were told "Your key was refused". The saved
+    settings held the dead key; the working one sat unread in the folder they
+    had just double-clicked.
+  */
+  const bundled = { agentToken: "dcp_newkey", serverUrl: "https://rnos.in" };
+
+  it("takes the newer key out of the folder it was run from", () => {
+    const stored = { agentToken: "dcp_oldkey", printerName: "EPSON L8050", seededFrom: "" };
+    const merged = normalizeConfig({
+      ...stored,
+      agentToken: bundled.agentToken,
+      seededFrom: bundled.agentToken,
+    });
+    expect(merged.agentToken).toBe("dcp_newkey");
+  });
+
+  it("keeps the printer this shop chose on this computer", () => {
+    // A download knows the shop's key. It does not know which of the three
+    // printers on the counter they picked, and must not guess.
+    const merged = normalizeConfig({
+      agentToken: bundled.agentToken,
+      printerName: "EPSON L8050",
+      pollSeconds: 12,
+      duplex: true,
+      seededFrom: bundled.agentToken,
+    });
+    expect(merged.printerName).toBe("EPSON L8050");
+    expect(merged.pollSeconds).toBe(12);
+    expect(merged.duplex).toBe(true);
+  });
+
+  it("remembers which bundle it took, so it adopts each one only once", () => {
+    expect(normalizeConfig({ seededFrom: "dcp_newkey" }).seededFrom).toBe("dcp_newkey");
+  });
+
+  it("treats a key typed in afterwards as the shop's own choice", () => {
+    // seededFrom still names the bundle's key, so a later restart sees no
+    // new bundle and leaves the hand-entered key alone.
+    const afterManualEdit = normalizeConfig({ agentToken: "dcp_typed", seededFrom: "dcp_newkey" });
+    expect(afterManualEdit.agentToken).toBe("dcp_typed");
+    expect(afterManualEdit.seededFrom).not.toBe(afterManualEdit.agentToken);
+  });
+
+  it("carries seededFrom through a save, or the adoption repeats forever", () => {
+    expect(DEFAULTS).toHaveProperty("seededFrom", "");
+    expect(normalizeConfig({}).seededFrom).toBe("");
+  });
+});
