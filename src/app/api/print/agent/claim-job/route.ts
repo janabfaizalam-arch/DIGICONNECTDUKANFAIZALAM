@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { authenticateAgent, stationScope } from "@/lib/print/agent-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type ClaimJobBody = {
@@ -8,17 +9,13 @@ type ClaimJobBody = {
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const secretKey = process.env.PRINT_AGENT_SECRET_KEY;
-
-    if (!secretKey) {
-      return NextResponse.json(
-        { error: "PRINT_AGENT_SECRET_KEY is not configured on the server" },
-        { status: 500 }
-      );
-    }
-
-    if (authHeader !== `Bearer ${secretKey}`) {
+    /*
+      A partner's Print Station presents its own token; the platform's own
+      counter presents the environment key. Either is a valid caller — but
+      each is confined below to the jobs that belong to it.
+    */
+    const caller = await authenticateAgent(request);
+    if (!caller) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -29,7 +26,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Job ID is required" }, { status: 400 });
     }
 
-    const agentId = request.headers.get("x-agent-id") || "default-agent";
+    const agentId = caller.agentId;
+    const scope = stationScope(caller.station);
 
     const supabase = getSupabaseAdmin();
     if (!supabase) {
@@ -67,6 +65,17 @@ export async function POST(request: Request) {
       .eq("print_status", "queued")
       .eq("payment_status", "verified")
       .or(`claimed_by_agent.is.null,claim_expires_at.lt.${nowStr}`)
+      /*
+        The line that keeps two shops apart.
+
+        A job id is guessable and, worse, was visible to any station that had
+        ever listed a queue. Without this condition a shop could claim a
+        neighbouring shop's job and be handed a signed URL to that customer's
+        document a few lines below. The claim simply does not match rows that
+        belong to somebody else, so the endpoint answers 409 exactly as it
+        does for a job another agent already took.
+      */
+      .filter("station_id", scope.operator, scope.value)
       .select("id, job_number")
       .maybeSingle();
 

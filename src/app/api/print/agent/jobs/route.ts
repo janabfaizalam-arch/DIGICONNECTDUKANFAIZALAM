@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { authenticateAgent, stationScope } from "@/lib/print/agent-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getStationByAgentToken, touchAgent } from "@/lib/print/stations";
 import { getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
@@ -18,53 +18,29 @@ export async function GET(request: Request) {
   };
 
   try {
-    const authHeader = request.headers.get("authorization");
-    const secretKey = process.env.PRINT_AGENT_SECRET_KEY;
-
     addLog("[print/agent/jobs] Received GET request");
 
-    // 1. Verify environment and secret key config
-    if (!secretKey) {
-      addLog("Server configuration error: PRINT_AGENT_SECRET_KEY is not set in environment variables.", true);
-      return NextResponse.json(
-        {
-          error: "Unauthorized: PRINT_AGENT_SECRET_KEY is not configured on the server",
-          serverLogs,
-        },
-        { status: 401 }
-      );
-    }
-
     /*
-      Two kinds of caller.
+      Two kinds of caller, resolved in one place.
 
-      A partner's Print Station presents its own station token, and gets only
-      that shop's jobs. The platform's own counter still presents the single
-      environment key it always has, so the existing installation keeps
-      working while shops are onboarded one at a time.
+      A partner's Print Station presents the token issued to that shop and
+      gets only that shop's jobs. The platform's own counter presents the
+      single environment key it always has, so the existing installation keeps
+      working while shops are onboarded one at a time. Claiming and reporting
+      ask the same question the same way — see src/lib/print/agent-auth.ts.
     */
-    const presented = (authHeader ?? "").replace(/^Bearer\s+/i, "").trim();
-    const station = presented ? await getStationByAgentToken(presented) : null;
-
-    if (station) {
-      // Its heartbeat, so the partner's screen can say "connected".
-      await touchAgent(station.id);
+    const caller = await authenticateAgent(request);
+    if (!caller) {
+      addLog("Unauthorized request: neither a known station token nor the platform key.", true);
+      return NextResponse.json({ error: "Unauthorized: Invalid secret key", serverLogs }, { status: 401 });
     }
 
-    if (!station && (!authHeader || authHeader !== `Bearer ${secretKey}`)) {
-      addLog(`Unauthorized request attempt. Provided header: ${authHeader ? authHeader.substring(0, 15) + "..." : "none"}`, true);
-      return NextResponse.json(
-        {
-          error: "Unauthorized: Invalid secret key",
-          serverLogs,
-        },
-        { status: 401 }
-      );
-    }
+    const station = caller.station;
 
     const { searchParams } = new URL(request.url);
-    const agentId = request.headers.get("x-agent-id") || searchParams.get("agent_id") || "default-agent";
+    const agentId = caller.agentId;
     const ipAddress = getClientIp(request);
+    const scope = stationScope(station);
     addLog(`Agent authenticated: ID="${agentId}", IP="${ipAddress}"`);
 
     // 3. Initialize Supabase Client
@@ -223,7 +199,7 @@ export async function GET(request: Request) {
         the environment key rather than a station token — takes the jobs that
         belong to no station, which is every job that existed before this.
       */
-      .filter("station_id", station ? "eq" : "is", station ? station.id : null)
+      .filter("station_id", scope.operator, scope.value)
       .order("created_at", { ascending: true });
 
     if (jobsError) {
@@ -248,6 +224,15 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       jobs: jobs || [],
+      /*
+        Which counter this agent is connected to.
+
+        The desktop program shows it on the shop's own screen, so a partner
+        who has just pasted a key can see it landed on their station and not
+        on somebody else's. Only the name and code — never the rates, the
+        takings, or the token.
+      */
+      station: station ? { code: station.code, display_name: station.display_name } : null,
       serverLogs,
     });
   } catch (error) {

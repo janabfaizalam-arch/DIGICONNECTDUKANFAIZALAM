@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { authenticateAgent, stationScope } from "@/lib/print/agent-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type UpdateStatusBody = {
@@ -10,17 +11,8 @@ type UpdateStatusBody = {
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const secretKey = process.env.PRINT_AGENT_SECRET_KEY;
-
-    if (!secretKey) {
-      return NextResponse.json(
-        { error: "PRINT_AGENT_SECRET_KEY is not configured on the server" },
-        { status: 500 }
-      );
-    }
-
-    if (authHeader !== `Bearer ${secretKey}`) {
+    const caller = await authenticateAgent(request);
+    if (!caller) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -33,7 +25,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Job ID and valid status ('printed' or 'failed') are required" }, { status: 400 });
     }
 
-    const agentId = request.headers.get("x-agent-id") || "default-agent";
+    const agentId = caller.agentId;
+    const scope = stationScope(caller.station);
 
     const supabase = getSupabaseAdmin();
     if (!supabase) {
@@ -63,6 +56,10 @@ export async function POST(request: Request) {
       .from("print_jobs")
       .update(updatePayload)
       .eq("id", jobId)
+      // Scoped for the same reason the claim is: a shop reports on its own
+      // jobs only. Marking a neighbour's job "printed" would hand a paying
+      // customer an empty tray and no way to see it had gone wrong.
+      .filter("station_id", scope.operator, scope.value)
       .select("id, job_number")
       .maybeSingle();
 
