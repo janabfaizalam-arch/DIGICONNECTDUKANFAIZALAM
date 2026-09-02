@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
+import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
 import type { PrintStation } from "@/lib/print/stations";
 import { cn } from "@/lib/utils";
 
@@ -481,14 +482,17 @@ function AgentBox({
       </div>
 
       {/*
-        The step that was missing.
+        The download is never hidden.
 
-        A partner was handed a key and told to paste it into a program that
-        existed nowhere and had no download. Until the computer is connected,
-        installing it is the only thing on this screen that matters — so it
-        is shown first, in full, and collapses to a line once it is done.
+        It used to disappear the moment the station connected, on the theory
+        that a connected shop had nothing left to install. Then a fix shipped,
+        the partner was told to fetch the new build, and there was no button
+        on the screen to fetch it with — they were running a fortnight-old
+        copy with no way out of it. A connected shop needs this more than a
+        new one does, not less. Connecting only collapses the first-time
+        steps; it never takes the file away.
       */}
-      {station.agent_connected ? null : <InstallSteps siteUrl={siteUrl} />}
+      <InstallSteps siteUrl={siteUrl} connected={station.agent_connected} />
 
       <button
         type="button"
@@ -508,7 +512,7 @@ function AgentBox({
    ───────────────────────────────────────────────────────────────────────── */
 
 /**
- * Getting the printer's computer connected.
+ * Getting the printer's computer connected — and keeping it current.
  *
  * The first version of this asked a shop owner to open PowerShell, paste a
  * command, then copy a key across from another card on this same screen.
@@ -516,9 +520,14 @@ function AgentBox({
  * shown once. So the download comes first and carries the key inside it; the
  * command stays underneath for a partner who prefers it or whose browser
  * blocked the file.
+ *
+ * Once the computer is connected the same download becomes the update button,
+ * because there is no auto-updater: a fix only reaches a shop when somebody
+ * fetches the file again. The first-time steps fold away, the file does not.
  */
-function InstallSteps({ siteUrl }: { siteUrl: string }) {
+function InstallSteps({ siteUrl, connected }: { siteUrl: string; connected: boolean }) {
   const { success } = useToast();
+  const [showSteps, setShowSteps] = useState(!connected);
   const [showCommand, setShowCommand] = useState(false);
   const command = `irm ${siteUrl}/print-station/install.ps1 | iex`;
 
@@ -545,33 +554,57 @@ function InstallSteps({ siteUrl }: { siteUrl: string }) {
         style={{ background: "var(--dc-grad-blue)" }}
       >
         <Download className="h-4.5 w-4.5" />
-        Print Station download kijiye
+        {connected
+          ? `Print Station update kijiye \u2014 v${PRINT_STATION_VERSION}`
+          : "Print Station download kijiye"}
       </a>
       <p className="mt-2 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
-        Har download par nayi key banti hai aur purani band ho jati hai. Ek computer, ek folder.
+        {connected ? (
+          <>
+            Zip ke naam me <b>v{PRINT_STATION_VERSION}</b> likha hoga. Purana folder band kijiye, naya
+            unzip karke usi se chalaiye &mdash; har download par nayi key banti hai aur purani band ho jati
+            hai.
+          </>
+        ) : (
+          "Har download par nayi key banti hai aur purani band ho jati hai. Ek computer, ek folder."
+        )}
       </p>
 
-      <ol className="mt-4 space-y-3">
-        {steps.map((step, index) => (
-          <li key={step.title} className="flex min-w-0 gap-3">
-            <span
-              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-extrabold text-white"
-              style={{ background: "var(--dc-grad-blue)" }}
-            >
-              {index + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12.5px] font-bold text-[var(--dc-ink)]">{step.title}</p>
-              <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">{step.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      {connected ? (
+        <button
+          type="button"
+          onClick={() => setShowSteps((open) => !open)}
+          className="mt-3 text-[11.5px] font-bold text-[var(--dc-blue-deep)] underline"
+        >
+          {showSteps ? "Steps chhupaiye" : "Naye computer par laga rahe hain? Steps dekhiye"}
+        </button>
+      ) : null}
+
+      {showSteps ? (
+        <ol className="mt-4 space-y-3">
+          {steps.map((step, index) => (
+            <li key={step.title} className="flex min-w-0 gap-3">
+              <span
+                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-extrabold text-white"
+                style={{ background: "var(--dc-grad-blue)" }}
+              >
+                {index + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-bold text-[var(--dc-ink)]">{step.title}</p>
+                <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">
+                  {step.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : null}
 
       <button
         type="button"
         onClick={() => setShowCommand((open) => !open)}
-        className="mt-3 text-[11.5px] font-bold text-[var(--dc-blue-deep)] underline"
+        className="mt-3 block text-[11.5px] font-bold text-[var(--dc-blue-deep)] underline"
       >
         {showCommand ? "Chhupaiye" : "Download nahi ho raha? Command se install kijiye"}
       </button>
