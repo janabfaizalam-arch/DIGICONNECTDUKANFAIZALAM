@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Script from "next/script";
-import { Check, Clock, FileUp, Loader2, Lock, Printer, ShieldCheck, Store, X } from "lucide-react";
+import { Check, Clock, FileUp, Loader2, Lock, Printer, RotateCcw, ShieldCheck, Store, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -318,6 +318,23 @@ export function StationPrintFlow({ station }: { station: StationView }) {
     }
   };
 
+  /**
+   * Back to an empty counter, without leaving the page.
+   *
+   * The mobile number is kept on purpose — it is the same customer standing
+   * at the same desk, and retyping it is the one thing they already did.
+   */
+  const startAnother = () => {
+    setDone(null);
+    setFile(null);
+    setUploaded(null);
+    setError(null);
+    setPages(1);
+    setCopies(1);
+    setPaperSize("A4");
+    setColorMode("mono");
+  };
+
   if (done) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--dc-sky-soft)] px-[var(--mobile-page-gutter)] py-10">
@@ -346,6 +363,30 @@ export function StationPrintFlow({ station }: { station: StationView }) {
 
           <p className="mt-4 text-[11.5px] font-semibold text-[var(--dc-body)]">
             {done.jobNumber} · your file deletes itself in {station.autoDeleteMinutes} minutes
+          </p>
+
+          {/*
+            The way off this screen.
+
+            This was the last screen and it had no exit. A customer with a
+            second page to print was stuck looking at a PIN: the browser's
+            back button leaves the shop's page entirely, because "done" is
+            state on this page rather than a route of its own. So the button
+            is here, and it starts a fresh order at the same counter instead
+            of navigating anywhere.
+          */}
+          <button
+            type="button"
+            onClick={startAnother}
+            // .lg-pill sets its own 999px radius and wins over a Tailwind utility,
+            // so no rounded-* here — it would read as set and be ignored.
+            className="lg-pill mt-5 inline-flex h-11 w-full items-center justify-center gap-2 text-[13.5px] font-bold text-[var(--dc-ink)]"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Print another file
+          </button>
+          <p className="mt-2 text-[11px] font-medium text-[var(--dc-body)]">
+            Your PIN above stays valid. Note it down before starting another.
           </p>
         </div>
       </main>

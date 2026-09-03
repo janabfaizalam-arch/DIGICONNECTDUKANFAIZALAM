@@ -9,4 +9,4 @@
  *
  * Bump it whenever the program's behaviour changes.
  */
-export const PRINT_STATION_VERSION = "1.3.0";
+export const PRINT_STATION_VERSION = "1.3.1";
