@@ -9,7 +9,7 @@ const agentStatus = readCode("src/app/api/print/agent/update-status/route.ts");
 const agentAuth = readCode("src/lib/print/agent-auth.ts");
 const api = readCode("src/app/api/ap/print-station/route.ts");
 const migration = readCode("supabase/migrations/20260901160000_partner_print_stations.sql");
-const customer = readCode("src/components/print/station-print-flow.tsx");
+const customer = readCode("src/components/print/smart-print-flow.tsx");
 
 /* ─────────────────────────────────────────────────────────────────────────
    One shop cannot reach another
@@ -160,7 +160,7 @@ describe("the privacy promise is on the page and in the schema", () => {
     */
     expect(customer).toContain("computer is not responding");
     expect(customer).toContain("const offline = !station.agentConnected");
-    expect(customer).toContain("disabled={closed || offline ||");
+    expect(customer).toMatch(/disabled=\{[^}]*\boffline\b/);
   });
 
   it("tells the customer what actually happened to the pages", () => {

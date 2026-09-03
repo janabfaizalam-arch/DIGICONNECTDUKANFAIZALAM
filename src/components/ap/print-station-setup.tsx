@@ -17,6 +17,8 @@ import {
 
 import { useToast } from "@/components/providers/toast-provider";
 import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
+import { SmartPrintSettingsCard } from "@/components/ap/smart-print-settings";
+import type { SmartPrintSettings } from "@/lib/print/smart-print";
 import type { PrintStation } from "@/lib/print/stations";
 import { cn } from "@/lib/utils";
 
@@ -177,6 +179,16 @@ export function PrintStationSetup({
           <OpenClosed station={station} busy={busy} onToggle={(open) => save({ acceptingOrders: open })} />
           <Rates station={station} busy={busy} onSave={(rates) => save({ rates })} />
           <Privacy station={station} busy={busy} onSave={(minutes) => save({ autoDeleteMinutes: minutes })} />
+          {/*
+            The shop's Smart Print presets.
+
+            Placed above the agent card on purpose: what the counter sells is
+            a daily decision, where the printer's key is a one-off.
+          */}
+          <SmartPrintSettingsCard
+            initialDefaults={station.smart_print_defaults as Record<string, Partial<SmartPrintSettings>>}
+            initialRequireApproval={station.require_approval}
+          />
           <AgentBox
             station={station}
             busy={busy}

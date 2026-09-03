@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
-import { getStationByCode, type PrintStation } from "@/lib/print/stations";
+import { DEFAULT_RATES, getStationByCode, type PrintStation } from "@/lib/print/stations";
+import { settingsFor, smartPrintService, type SmartPrintSettings } from "@/lib/print/smart-print";
+import { quote } from "@/lib/print/smart-pricing";
 
 /*
   The platform's own counter's rates.
@@ -58,6 +60,12 @@ type PrintJobCreateBody = {
   amount?: number; // in INR
   /** The counter this was ordered at. Absent for the platform's own page. */
   station_code?: string;
+  /** Which Smart Print service this was ordered as. */
+  service_type?: string;
+  /** Everything the customer chose: paper, colour, finish, quality, counts. */
+  settings?: Record<string, unknown>;
+  /** Sheets of paper this job puts through the printer. */
+  sheet_count?: number;
 };
 
 export async function POST(request: Request) {
@@ -157,9 +165,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate rate
-    const pageRate = pageRateFor(station, paper_size, color_mode);
-    const expectedAmount = parsedPages * parsedCopies * pageRate;
+    /*
+      What this costs.
+
+      A Smart Print order is priced by sheets, because that is what it puts
+      through the printer: twelve passport photos and six are the same one
+      sheet of glossy paper, and charging per photo would be charging for
+      something the shop does not spend. Anything without a service type is
+      the old per-page counter page, priced exactly as it was.
+
+      Either way the figure is computed here. The browser shows a price from
+      the same function on the same numbers, but a price a browser sends is a
+      number a browser can edit.
+    */
+    const service = smartPrintService(String(body.service_type ?? ""));
+    const smartSettings = service
+      ? ({ ...settingsFor(service, station?.smart_print_defaults ?? null), ...(body.settings ?? {}) } as SmartPrintSettings)
+      : null;
+
+    const sheetCount = Math.max(1, Math.floor(Number(body.sheet_count ?? parsedPages) || 1));
+
+    const expectedAmount = smartSettings
+      ? quote(station?.rates ?? DEFAULT_RATES, { ...smartSettings, copies: parsedCopies }, sheetCount).total
+      : parsedPages * parsedCopies * pageRateFor(station, paper_size, color_mode);
 
     /*
       Compare only when the caller offered a figure — and reject a
@@ -195,6 +223,9 @@ export async function POST(request: Request) {
         paper_size,
         color_mode,
         price: expectedAmount,
+        service_type: service?.id ?? "document",
+        settings: smartSettings ?? {},
+        sheet_count: sheetCount,
         payment_status: "pending",
         print_status: "pending",
         /*
