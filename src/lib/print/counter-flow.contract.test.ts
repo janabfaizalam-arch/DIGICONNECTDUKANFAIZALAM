@@ -38,7 +38,9 @@ describe("the pay button", () => {
   });
 
   it("cannot be tapped before there is something to print and someone to call", () => {
-    expect(flow).toContain("disabled={closed || !uploaded || uploading || paying || mobile.length < 10}");
+    expect(flow).toContain(
+      "disabled={closed || offline || !uploaded || uploading || paying || mobile.length < 10}",
+    );
   });
 
   it("loads the payment script the page depends on", () => {
@@ -189,5 +191,48 @@ describe("a photo the printer can actually read", () => {
   it("caps the long edge so a lossless copy stays uploadable", () => {
     expect(flow).toContain("longest > 3000");
     expect(flow).toContain("15 * 1024 * 1024");
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Money is not taken for pages that cannot come out
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A customer paid ₹2 at a live counter and nothing printed. The shop's
+ * computer was not running the Print Station, so the job queued where nobody
+ * was reading; the screen said "Paid. Printing now." and stayed there. The
+ * shop learnt about it from the customer.
+ *
+ * Three separate holes, one incident: the server took the order, the
+ * customer's screen lied about it, and the shop had no way to see it.
+ */
+describe("a counter that cannot print does not get to charge", () => {
+  const create = readCode("src/app/api/print/jobs/create/route.ts");
+  const panel = readCode("src/components/ap/print-station-setup.tsx");
+  const stations = readCode("src/lib/print/stations.ts");
+
+  it("refuses on the server, where the money actually moves", () => {
+    // The client can be stale, reloaded, or simply older than this deploy.
+    expect(create).toContain("station && !station.agent_connected");
+    expect(create).toContain("nothing would print");
+  });
+
+  it("says so before the payment, not after", () => {
+    const refusal = create.indexOf("station && !station.agent_connected");
+    const insert = create.indexOf('.from("print_jobs")');
+    expect(refusal).toBeGreaterThan(-1);
+    expect(refusal).toBeLessThan(insert);
+  });
+
+  it("counts what is stuck without listing anybody's document", () => {
+    expect(stations).toContain("export async function countWaitingJobs");
+    expect(stations).toContain('.select("id", { count: "exact", head: true })');
+    expect(stations).toContain('.eq("print_status", "queued")');
+  });
+
+  it("puts that number where the shop will see it", () => {
+    expect(panel).toContain("waitingJobs > 0");
+    expect(panel).toMatch(/paid \{waitingJobs === 1 \? "job" : "jobs"\} waiting to print/);
   });
 });

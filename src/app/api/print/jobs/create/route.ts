@@ -134,6 +134,29 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+      No printer on the other end, no payment.
+
+      A customer paid two rupees at a live counter and nothing came out: the
+      shop's computer was not running the Print Station, so the job simply
+      sat in the queue. The screen said "Paid. Printing now." and the first
+      anybody knew of it was the customer complaining.
+
+      The shop being open is not the same as the shop being able to print,
+      and this is the only place that can tell the difference before the
+      money moves. A counter whose computer has not spoken to us in two
+      minutes cannot honour an order, so it does not get to take one.
+    */
+    if (station && !station.agent_connected) {
+      return NextResponse.json(
+        {
+          error:
+            "This counter's computer is not responding, so nothing would print. Please ask at the desk before paying.",
+        },
+        { status: 409 },
+      );
+    }
+
     // Calculate rate
     const pageRate = pageRateFor(station, paper_size, color_mode);
     const expectedAmount = parsedPages * parsedCopies * pageRate;
