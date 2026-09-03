@@ -503,6 +503,18 @@ textarea {
   100% { transform: translateY(0); }
 }
 
+/*
+  A sheet rising from the bottom of a phone.
+
+  Used by the Digi Partner "Sab kuch" sheet. Kept in one place rather than
+  inline so `prefers-reduced-motion` below can switch it off with everything
+  else.
+*/
+@keyframes dc-sheet-up {
+  from { transform: translateY(12%); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Counter roll animation */
 @keyframes counter-roll {
   from { opacity: 0; transform: translateY(16px); }
@@ -899,6 +911,10 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   .dc-tab:active,
   .dc-tab-apply:active .dc-tab-fab {
     transform: none;
+  }
+  /* The partner "Sab kuch" sheet appears instead of rising. */
+  [style*="dc-sheet-up"] {
+    animation: none !important;
   }
 }
 

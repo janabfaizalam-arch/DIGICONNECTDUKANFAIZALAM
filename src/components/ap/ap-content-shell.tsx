@@ -15,7 +15,10 @@ export function ApContentShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        !isAuth && "pb-[calc(96px+env(safe-area-inset-bottom))] md:pb-0",
+        // min-w-0 matters: without it a wide table inside pushes the whole
+        // flex row out and takes the sidebar off screen with it.
+        "min-w-0 flex-1",
+        !isAuth && "pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-0",
       )}
     >
       {children}
