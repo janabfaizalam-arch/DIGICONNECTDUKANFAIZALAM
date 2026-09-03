@@ -110,3 +110,42 @@ describe("knowing which build is running", () => {
     expect(generated).toContain(`"${declared}"`);
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Run from the wrong place
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A shop dragged "Start Print Station" out of the zip onto the Desktop and
+ * ran it there. Node looked for station.mjs beside it, found nothing, and
+ * threw MODULE_NOT_FOUND with a stack trace — which reads as "the program is
+ * broken", not "the file is in the wrong folder". It had printed fine the
+ * evening before, from inside the extracted folder.
+ */
+describe("the launcher, when it is on its own", () => {
+  const bat = readFileSync(join(source, "Start Print Station.bat"), "utf8");
+  const sh = readFileSync(join(source, "start-print-station.sh"), "utf8");
+
+  it("checks for station.mjs before handing anything to node", () => {
+    const guard = bat.indexOf("station.mjs\" goto :nofolder");
+    const run = bat.indexOf("node \"%~dp0station.mjs\"");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(run);
+  });
+
+  it("says what to do about it instead of printing a stack trace", () => {
+    expect(bat).toContain(":nofolder");
+    expect(bat).toMatch(/Extract All/);
+    // The folder it actually tried, so a phone screenshot carries the answer.
+    expect(bat).toContain("echo   %~dp0");
+  });
+
+  it("stays plain ASCII, because a shop console is not UTF-8", () => {
+    const strange = [...bat].filter((character) => character.charCodeAt(0) > 126);
+    expect(strange, `non-ASCII in the launcher: ${strange.join("")}`).toEqual([]);
+  });
+
+  it("guards the mac and linux launcher the same way", () => {
+    expect(sh).toContain("! -f ./station.mjs");
+  });
+});
