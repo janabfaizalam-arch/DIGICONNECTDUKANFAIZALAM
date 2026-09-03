@@ -386,3 +386,33 @@ export function priceFor(
   const copies = Math.max(1, Math.round(input.copies));
   return Math.round(rate * pages * copies * 100) / 100;
 }
+
+/**
+ * Paid jobs this counter has not printed yet.
+ *
+ * The shop had no way to know. A customer paid at a counter whose computer
+ * was not running the Print Station, the job queued, and the first anybody
+ * heard of it was the customer coming back to complain. A number on the
+ * partner's own screen is the difference between finding out now and finding
+ * out from the person who paid.
+ *
+ * Counted, not listed: the shop needs to know that something is stuck, and
+ * the customer's document is nobody else's business.
+ */
+export async function countWaitingJobs(stationId: string): Promise<number> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return 0;
+
+  const { count, error } = await supabase
+    .from("print_jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("station_id", stationId)
+    .eq("payment_status", "verified")
+    .eq("print_status", "queued");
+
+  if (error) {
+    console.error("[print/stations] Could not count waiting jobs:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}

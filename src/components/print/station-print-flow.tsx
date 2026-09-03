@@ -1,8 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Script from "next/script";
-import { Check, Clock, FileUp, Loader2, Lock, Printer, RotateCcw, ShieldCheck, Store, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  Check,
+  Clock,
+  FileUp,
+  Loader2,
+  Lock,
+  Printer,
+  RefreshCw,
+  RotateCcw,
+  ShieldCheck,
+  Store,
+  X,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -113,12 +127,22 @@ async function toPrintableImage(file: File): Promise<File> {
 }
 
 export function StationPrintFlow({ station }: { station: StationView }) {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [uploaded, setUploaded] = useState<Uploaded | null>(null);
   const [uploading, setUploading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ jobNumber: string; pin: string | null } | null>(null);
+  const [done, setDone] = useState<{ jobId: string; jobNumber: string; pin: string | null } | null>(null);
+  /*
+    What actually happened to the pages, rather than what was hoped.
+
+    "Paid. Printing now." was shown the moment the payment cleared and never
+    changed again — so a job the shop's computer never picked up, and a job
+    whose print failed outright, both looked exactly like success to the
+    person who had just paid.
+  */
+  const [printState, setPrintState] = useState<"waiting" | "printed" | "failed" | "slow">("waiting");
   const [mobile, setMobile] = useState("");
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [pages, setPages] = useState(1);
@@ -136,6 +160,15 @@ export function StationPrintFlow({ station }: { station: StationView }) {
      anybody pays — the old flow took the money and queued a job nothing would
      ever pick up. */
   const closed = !station.acceptingOrders;
+  /*
+    Open, but unable to print.
+
+    The shop's computer has to be running the Print Station for anything to
+    come out. That was only ever a note at the bottom of this page while the
+    Pay button stayed live -- so a customer paid two rupees, and their page
+    sat in a queue nobody was reading.
+  */
+  const offline = !station.agentConnected;
 
   /* ── The file goes up as soon as it is chosen ────────────────────────
      A customer who picks a file and then waits at the payment step for an
@@ -292,7 +325,12 @@ export function StationPrintFlow({ station }: { station: StationView }) {
             const verified = (await verifyResponse.json()) as { error?: string };
             if (!verifyResponse.ok) throw new Error(verified.error || "Payment could not be confirmed.");
 
-            setDone({ jobNumber: created.job_number ?? "", pin: created.pickup_pin ?? null });
+            setPrintState("waiting");
+            setDone({
+              jobId: String(created.job_id ?? ""),
+              jobNumber: created.job_number ?? "",
+              pin: created.pickup_pin ?? null,
+            });
           } catch (caught) {
             setError(
               caught instanceof Error
@@ -318,6 +356,55 @@ export function StationPrintFlow({ station }: { station: StationView }) {
     }
   };
 
+  /*
+    Watch the job until the paper is out, or long enough to know it is not.
+
+    The shop's Print Station reports "printed" or "failed" when it is done,
+    and until this the customer's screen never asked. Three seconds is a
+    printer's own rhythm; seventy-five is longer than any single page takes,
+    so past that the honest thing to say is that it has not come out.
+  */
+  useEffect(() => {
+    const jobId = done?.jobId;
+    if (!jobId) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const startedAt = Date.now();
+
+    const check = async () => {
+      try {
+        const response = await fetch(`/api/print/jobs/status?job_id=${encodeURIComponent(jobId)}`, {
+          cache: "no-store",
+        });
+        const json = (await response.json()) as { print_status?: string };
+        if (cancelled) return;
+        if (json.print_status === "printed") {
+          setPrintState("printed");
+          return;
+        }
+        if (json.print_status === "failed") {
+          setPrintState("failed");
+          return;
+        }
+      } catch {
+        // A dropped request says nothing about the printer. Ask again.
+      }
+      if (cancelled) return;
+      const waited = Date.now() - startedAt;
+      if (waited > 75_000) setPrintState("slow");
+      // Stops after five minutes: by then the answer is the desk's, not this
+      // screen's, and a phone left on the counter should not poll all day.
+      if (waited < 5 * 60_000) timer = setTimeout(() => void check(), 3000);
+    };
+
+    timer = setTimeout(() => void check(), 3000);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [done?.jobId]);
+
   /**
    * Back to an empty counter, without leaving the page.
    *
@@ -326,6 +413,7 @@ export function StationPrintFlow({ station }: { station: StationView }) {
    */
   const startAnother = () => {
     setDone(null);
+    setPrintState("waiting");
     setFile(null);
     setUploaded(null);
     setError(null);
@@ -341,13 +429,46 @@ export function StationPrintFlow({ station }: { station: StationView }) {
         <div className="lg-card w-full max-w-sm p-6 text-center">
           <span
             className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-white"
-            style={{ background: "var(--dc-grad-blue)" }}
+            style={{
+              background:
+                printState === "printed" || printState === "waiting"
+                  ? "var(--dc-grad-blue)"
+                  : "var(--dc-flame)",
+            }}
           >
-            <Check className="h-7 w-7" aria-hidden="true" />
+            {printState === "failed" || printState === "slow" ? (
+              <AlertTriangle className="h-7 w-7" aria-hidden="true" />
+            ) : printState === "printed" ? (
+              <Check className="h-7 w-7" aria-hidden="true" />
+            ) : (
+              <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
+            )}
           </span>
-          <h1 className="mt-4 text-[1.3rem] font-extrabold text-[var(--dc-ink)]">Paid. Printing now.</h1>
+          <h1 className="mt-4 text-[1.3rem] font-extrabold text-[var(--dc-ink)]">
+            {printState === "printed"
+              ? "Printed. Collect your pages."
+              : printState === "failed"
+                ? "The print did not go through."
+                : printState === "slow"
+                  ? "Not printed yet."
+                  : "Paid. Printing now."}
+          </h1>
           <p className="mt-1.5 text-[13px] font-medium leading-[1.6] text-[var(--dc-body)]">
-            Your pages are coming out at {station.displayName}. Collect them at the desk.
+            {printState === "printed" ? (
+              <>Your pages are at the desk at {station.displayName}.</>
+            ) : printState === "failed" ? (
+              <>
+                Show this screen at the desk. You paid for pages you did not get, so ask them to print it or
+                return your money.
+              </>
+            ) : printState === "slow" ? (
+              <>
+                The printer at {station.displayName} has not taken this yet. Show this screen at the desk
+                before you leave.
+              </>
+            ) : (
+              <>Your pages are coming out at {station.displayName}. Collect them at the desk.</>
+            )}
           </p>
 
           {done.pin ? (
@@ -564,10 +685,34 @@ export function StationPrintFlow({ station }: { station: StationView }) {
             </p>
           ) : null}
 
+          {offline && !closed ? (
+            <div
+              role="alert"
+              className="mt-4 rounded-xl border-l-4 border-l-[var(--dc-flame)] bg-[var(--dc-flame)]/8 px-3.5 py-3 text-left"
+            >
+              <p className="flex items-start gap-2 text-[13px] font-extrabold text-[var(--dc-flame)]">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                This counter&rsquo;s computer is not responding
+              </p>
+              <p className="mt-1 text-[12px] font-semibold leading-snug text-[var(--dc-body)]">
+                Nothing would print, so paying is switched off until it is back. Ask at the desk to switch
+                the printer&rsquo;s computer on.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.refresh()}
+                className="lg-pill mt-2.5 inline-flex h-9 items-center gap-1.5 px-3.5 text-[12px] font-bold text-[var(--dc-ink)]"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                Check again
+              </button>
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={() => void payAndPrint()}
-            disabled={closed || !uploaded || uploading || paying || mobile.length < 10}
+            disabled={closed || offline || !uploaded || uploading || paying || mobile.length < 10}
             className="mt-4 inline-flex h-13 w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-bold text-white transition disabled:opacity-40"
             style={{ background: "var(--dc-grad-blue)" }}
           >
@@ -576,7 +721,11 @@ export function StationPrintFlow({ station }: { station: StationView }) {
             ) : (
               <Printer className="h-4.5 w-4.5" aria-hidden="true" />
             )}
-            {paying ? "Opening payment\u2026" : `Pay \u20b9${total} and print`}
+            {paying
+              ? "Opening payment\u2026"
+              : offline
+                ? "Printer not reachable"
+                : `Pay \u20b9${total} and print`}
           </button>
 
           <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[11.5px] font-semibold text-[var(--dc-body)]">
@@ -585,13 +734,6 @@ export function StationPrintFlow({ station }: { station: StationView }) {
           </p>
         </div>
 
-        {!station.agentConnected && !closed ? (
-          <p className="flex items-start gap-2 rounded-xl bg-[var(--dc-amber)]/15 px-3.5 py-2.5 text-[12px] font-semibold text-[var(--dc-flame)]">
-            <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            This counter&rsquo;s printer is not responding right now. Your job would wait in the queue — please
-            check at the desk before paying.
-          </p>
-        ) : null}
       </div>
     </main>
   );

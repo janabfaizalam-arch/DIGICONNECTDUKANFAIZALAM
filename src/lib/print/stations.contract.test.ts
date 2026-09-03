@@ -152,8 +152,23 @@ describe("the privacy promise is on the page and in the schema", () => {
     expect(customer).toContain("Nothing has been charged");
   });
 
-  it("warns when the shop's printer is not answering", () => {
-    expect(customer).toContain("printer is not responding");
+  it("refuses the payment outright when the shop's computer is not answering", () => {
+    /*
+      This used to be a note at the bottom of the page with the Pay button
+      still live underneath it. A customer read past it, paid two rupees, and
+      the job queued at a counter with nothing running to collect it.
+    */
+    expect(customer).toContain("computer is not responding");
+    expect(customer).toContain("const offline = !station.agentConnected");
+    expect(customer).toContain("disabled={closed || offline ||");
+  });
+
+  it("tells the customer what actually happened to the pages", () => {
+    // "Paid. Printing now." was shown the moment the payment cleared and
+    // never changed, so a job nobody printed looked exactly like success.
+    expect(customer).toContain("/api/print/jobs/status?job_id=");
+    expect(customer).toContain("Not printed yet.");
+    expect(customer).toContain("The print did not go through.");
   });
 
   it("asks a customer for no account", () => {

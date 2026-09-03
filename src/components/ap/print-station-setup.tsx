@@ -34,9 +34,12 @@ import { cn } from "@/lib/utils";
 export function PrintStationSetup({
   initialStation,
   siteUrl,
+  waitingJobs = 0,
 }: {
   initialStation: PrintStation | null;
   siteUrl: string;
+  /** Paid jobs this counter has not printed yet. */
+  waitingJobs?: number;
 }) {
   const { success, error } = useToast();
   const [station, setStation] = useState(initialStation);
@@ -174,7 +177,13 @@ export function PrintStationSetup({
           <OpenClosed station={station} busy={busy} onToggle={(open) => save({ acceptingOrders: open })} />
           <Rates station={station} busy={busy} onSave={(rates) => save({ rates })} />
           <Privacy station={station} busy={busy} onSave={(minutes) => save({ autoDeleteMinutes: minutes })} />
-          <AgentBox station={station} busy={busy} onRotate={rotate} siteUrl={siteUrl} />
+          <AgentBox
+            station={station}
+            busy={busy}
+            onRotate={rotate}
+            siteUrl={siteUrl}
+            waitingJobs={waitingJobs}
+          />
         </div>
       </div>
     </div>
@@ -453,11 +462,13 @@ function AgentBox({
   busy,
   onRotate,
   siteUrl,
+  waitingJobs,
 }: {
   station: PrintStation;
   busy: boolean;
   onRotate: () => void;
   siteUrl: string;
+  waitingJobs: number;
 }) {
   return (
     <div className="lg-card p-4 sm:p-5">
@@ -480,6 +491,29 @@ function AgentBox({
           </p>
         </div>
       </div>
+
+      {/*
+        Money taken, paper not out.
+
+        A customer paid at this counter while the computer was not running
+        the Print Station. The job queued, nothing printed, and the shop
+        found out when the customer came back. The number is here so they
+        find out first — and it stays visible while jobs are stuck, whatever
+        the connection light says, because a station that is connected and
+        failing every job looks identical from the outside.
+      */}
+      {waitingJobs > 0 ? (
+        <div className="mt-3 rounded-xl border-l-4 border-l-[var(--dc-flame)] bg-[var(--dc-flame)]/8 px-3.5 py-3">
+          <p className="flex items-center gap-2 text-[13px] font-extrabold text-[var(--dc-flame)]">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {waitingJobs} paid {waitingJobs === 1 ? "job" : "jobs"} waiting to print
+          </p>
+          <p className="mt-1 text-[12px] font-semibold leading-snug text-[var(--dc-body)]">
+            Customers ne paise de diye hain aur kagaz nahi nikla. Printer wale computer par Print Station
+            chalu kar dijiye — chalu hote hi ye khud print ho jayenge.
+          </p>
+        </div>
+      ) : null}
 
       {/*
         The download is never hidden.

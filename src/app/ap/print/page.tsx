@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { PrintStationSetup } from "@/components/ap/print-station-setup";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
-import { getStationForPartner } from "@/lib/print/stations";
+import { countWaitingJobs, getStationForPartner } from "@/lib/print/stations";
 import { getSiteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,7 @@ export default async function ApPrintStationPage() {
   if (!partner) redirect("/unauthorized");
 
   const station = await getStationForPartner(partner.id);
+  const waitingJobs = station ? await countWaitingJobs(station.id) : 0;
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -33,7 +34,7 @@ export default async function ApPrintStationPage() {
         </p>
       </div>
 
-      <PrintStationSetup initialStation={station} siteUrl={getSiteUrl()} />
+      <PrintStationSetup initialStation={station} siteUrl={getSiteUrl()} waitingJobs={waitingJobs} />
     </div>
   );
 }
