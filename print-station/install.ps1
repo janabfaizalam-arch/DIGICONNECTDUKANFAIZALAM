@@ -27,6 +27,7 @@ $Files   = @(
   "lib/page.mjs",
   "lib/log.mjs",
   "lib/version.mjs",
+  "lib/ensure-node.ps1",
   "lib/background.ps1",
   "lib/run-hidden.vbs",
   "lib/run-hidden.ps1"
@@ -60,12 +61,9 @@ $link.Save()
 
 Write-Host ""
 Write-Host "  Installed. A shortcut is on your desktop." -ForegroundColor Green
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-  Write-Host ""
-  Write-Host "  Node.js is not installed yet. Get the LTS build from" -ForegroundColor Yellow
-  Write-Host "  https://nodejs.org/en/download and then open the desktop shortcut." -ForegroundColor Yellow
-  exit
-}
 
+# Node is fetched by the launcher itself if this computer does not have it,
+# so there is nothing to warn about here any more. Sending a shop owner to
+# nodejs.org was where installs used to die.
 Write-Host "  Opening the settings page..."
 Start-Process (Join-Path $Target "Start Print Station.bat")

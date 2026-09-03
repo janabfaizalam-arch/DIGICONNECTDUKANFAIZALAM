@@ -538,7 +538,7 @@ function InstallSteps({ siteUrl, connected }: { siteUrl: string; connected: bool
     },
     {
       title: "Unzip kijiye, phir Start Print Station par double-click",
-      body: "Printer wale computer par. Pehli baar Node.js maangega — LTS install kar lijiye.",
+      body: "Printer wale computer par. Pehli baar thoda ruk jaiye - baaki wo khud kar lega.",
     },
     {
       title: "Printer chuniye aur test page nikaliye",

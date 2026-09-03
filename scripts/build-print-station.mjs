@@ -45,6 +45,7 @@ export const SHIPPED_FILES = [
   "lib/page.mjs",
   "lib/log.mjs",
   "lib/version.mjs",
+  "lib/ensure-node.ps1",
   "lib/background.ps1",
   "lib/run-hidden.vbs",
   "lib/run-hidden.ps1",

@@ -4,11 +4,6 @@ cd /d "%~dp0"
 
 REM  The shop owner double-clicks this file. Nothing else.
 REM
-REM  Node is the only thing this program needs, and a counter PC usually does
-REM  not have it. Rather than failing with "node is not recognised", which
-REM  tells a shop owner nothing -- this checks first and sends them to the one
-REM  page that fixes it.
-
 REM  Ye file akeli kaam nahi karti.
 REM
 REM  A shop opened the zip in Explorer, dragged this one file onto the
@@ -19,31 +14,40 @@ REM  It printed fine the day before, from inside the extracted folder.
 
 if not exist "%~dp0station.mjs" goto :nofolder
 
-where node >nul 2>nul
-if errorlevel 1 (
-  echo.
-  echo   DigiConnect Print Station needs Node.js, which is not installed yet.
-  echo.
-  echo   Opening the download page. Install it, then run this file again.
-  echo   Choose the "LTS" button and click Next until it finishes.
-  echo.
-  start "" "https://nodejs.org/en/download"
-  pause
-  exit /b 1
-)
+REM  Node is the only thing this program needs, and a counter PC usually does
+REM  not have it. Sending the shop to nodejs.org was where installs died: an
+REM  MSI that wants admin rights, on a page with six buttons. This fetches it
+REM  instead -- once, into our own folder, no installer, no admin.
+
+call powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0lib\ensure-node.ps1"
+
+set "DCPS_NODE_FILE=%LOCALAPPDATA%\DigiConnectPrintStation\node-path.txt"
+if not exist "%DCPS_NODE_FILE%" goto :nonode
+set "NODE="
+set /p NODE=<"%DCPS_NODE_FILE%"
+if not defined NODE goto :nonode
+if not exist "%NODE%" goto :nonode
 
 echo.
 echo   Starting DigiConnect Print Station...
-echo   Leave this window open. Closing it stops printing.
+echo   Leave this window open, or use "Background me chalaiye" once.
 echo.
 
-node "%~dp0station.mjs"
+"%NODE%" "%~dp0station.mjs"
 
 REM  If the program stops, the window stays so the reason can be read.
 echo.
 echo   Print Station has stopped.
 pause
 exit /b 0
+
+:nonode
+echo.
+echo   Node.js taiyar nahi ho paya, isliye program shuru nahi kar sakta.
+echo   Uparwala message padhiye - usme wajah likhi hai.
+echo.
+pause
+exit /b 1
 
 :nofolder
 echo.

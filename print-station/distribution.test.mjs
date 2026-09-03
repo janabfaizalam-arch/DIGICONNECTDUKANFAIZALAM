@@ -129,7 +129,7 @@ describe("the launcher, when it is on its own", () => {
 
   it("checks for station.mjs before handing anything to node", () => {
     const guard = bat.indexOf("station.mjs\" goto :nofolder");
-    const run = bat.indexOf("node \"%~dp0station.mjs\"");
+    const run = bat.indexOf('"%NODE%" "%~dp0station.mjs"');
     expect(guard).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(run);
   });
@@ -198,7 +198,9 @@ describe("the background mode", () => {
   it("starts with no window rather than a minimised one", () => {
     // WScript.Shell.Run's third argument: 0 is hidden. A minimised console
     // still sits in the taskbar waiting to be closed by mistake.
-    expect(vbs).toContain('shell.Run "node """ & folder & "\\station.mjs""", 0, False');
+    // 0 is the third argument: hidden. A minimised console still sits in the
+    // taskbar waiting to be closed by mistake.
+    expect(vbs).toMatch(/shell\.Run .*station\.mjs.*, 0, False/);
     expect(script).toContain("-WindowStyle Hidden");
   });
 
@@ -250,5 +252,83 @@ describe("the zip the dashboard hands out", () => {
 
   it("carries nothing the program does not need", () => {
     expect(Object.keys(PRINT_STATION_FILES).sort()).toEqual([...BUNDLED_FILES].sort());
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Node, without the shop installing Node
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * "Node js download nai kar pa rahe, koi aur jugaad hai kya?" There is: stop
+ * asking. Pointing a counter PC at nodejs.org was where installs died — an
+ * MSI wanting administrator rights the shop assistant does not have, on a
+ * page with six buttons and no way to tell which one. The program fetches the
+ * portable ZIP itself instead.
+ */
+describe("fetching Node by itself", () => {
+  const ensure = readFileSync(join(source, "lib", "ensure-node.ps1"), "utf8");
+  const launcher = readFileSync(join(source, "Start Print Station.bat"), "utf8");
+  const background = readFileSync(join(source, "lib", "background.ps1"), "utf8");
+  const vbs = readFileSync(join(source, "lib", "run-hidden.vbs"), "utf8");
+  const hidden = readFileSync(join(source, "lib", "run-hidden.ps1"), "utf8");
+
+  it("ships and is fetched by the one-line installer too", () => {
+    expect(SHIPPED_FILES).toContain("lib/ensure-node.ps1");
+    expect(readFileSync(join(source, "install.ps1"), "utf8")).toContain("lib/ensure-node.ps1");
+  });
+
+  it("leaves an already-installed Node alone", () => {
+    expect(ensure).toContain("Get-Command node.exe -CommandType Application");
+  });
+
+  it("takes the zip, not the installer, so no admin password is asked for", () => {
+    expect(ensure).toMatch(/win-\$arch-zip/);
+    expect(ensure).not.toMatch(/\.msi/i);
+  });
+
+  it("asks nodejs.org which version rather than hardcoding one", () => {
+    // A pinned number goes stale and then 404s on a counter PC, which is the
+    // worst possible place to discover it.
+    expect(ensure).toContain("https://nodejs.org/dist/index.json");
+    expect(ensure).toContain("$_.lts");
+  });
+
+  it("checks the download against the published checksum before running it", () => {
+    expect(ensure).toContain("SHASUMS256.txt");
+    expect(ensure).toContain("Get-FileHash");
+    expect(ensure).toContain("-Algorithm SHA256");
+  });
+
+  it("reuses the fetched copy instead of downloading 30 MB every morning", () => {
+    expect(ensure).toContain('Join-Path $env:LOCALAPPDATA "DigiConnectPrintStation"');
+    expect(ensure).toContain("if (Test-Path $nodeExe)");
+  });
+
+  it("hands the answer over in a file, never in its own output", () => {
+    // Progress messages and the answer must not share a channel, or a
+    // launcher parses "Node.js download ho raha hai" as a path.
+    expect(ensure).toContain("node-path.txt");
+    expect(launcher).toContain("set /p NODE=<");
+    expect(launcher).not.toMatch(/for \/f.*ensure-node/);
+  });
+
+  it("is used by every way of starting the program", () => {
+    expect(launcher).toContain("ensure-node.ps1");
+    expect(background).toContain("ensure-node.ps1");
+    // The hidden runners cannot call it — they must not block or show a
+    // window — so they read the path it left behind.
+    expect(vbs).toContain("node-path.txt");
+    expect(hidden).toContain("node-path.txt");
+  });
+
+  it("still refuses to start rather than pretending, when Node never arrives", () => {
+    expect(launcher).toContain(":nonode");
+    expect(background).toContain("Node.js taiyar nahi ho paya");
+  });
+
+  it("stays plain ASCII", () => {
+    const strange = [...ensure].filter((character) => character.charCodeAt(0) > 126);
+    expect(strange, `non-ASCII: ${strange.join("")}`).toEqual([]);
   });
 });

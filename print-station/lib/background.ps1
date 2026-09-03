@@ -70,10 +70,14 @@ if ($Remove) {
   exit 0
 }
 
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+# Fetches Node if this computer does not have it, and records which node.exe
+# the hidden runners should use. Nothing for the shop to install by hand.
+& (Join-Path $PSScriptRoot "ensure-node.ps1")
+$nodePathFile = Join-Path $env:LOCALAPPDATA "DigiConnectPrintStation\node-path.txt"
+if (-not (Test-Path $nodePathFile)) {
   Write-Host ""
-  Write-Host "  Pehle Node.js install kijiye: https://nodejs.org/en/download" -ForegroundColor Yellow
-  Write-Host "  ('LTS' wala button.) Uske baad ye file dobara chalaiye."
+  Write-Host "  Node.js taiyar nahi ho paya, isliye background me nahi daal saka." -ForegroundColor Yellow
+  Write-Host "  Uparwala message padhiye - usme wajah likhi hai."
   Write-Host ""
   exit 1
 }

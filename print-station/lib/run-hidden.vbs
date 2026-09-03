@@ -8,7 +8,7 @@
 ' move or rename the folder and this keeps working.
 Option Explicit
 
-Dim fso, shell, folder
+Dim fso, shell, folder, pathFile, node, stream
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
 
@@ -18,6 +18,16 @@ If Not fso.FileExists(folder & "\station.mjs") Then
   WScript.Quit 1
 End If
 
+' Which node.exe: the one ensure-node.ps1 settled on. It may be a copy this
+' program fetched itself, which is not on PATH and never will be.
+node = "node"
+pathFile = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\DigiConnectPrintStation\node-path.txt"
+If fso.FileExists(pathFile) Then
+  Set stream = fso.OpenTextFile(pathFile, 1)
+  If Not stream.AtEndOfStream Then node = Trim(stream.ReadLine)
+  stream.Close
+End If
+
 shell.CurrentDirectory = folder
 ' 0 = no window, False = do not wait for it to finish.
-shell.Run "node """ & folder & "\station.mjs""", 0, False
+shell.Run """" & node & """ """ & folder & "\station.mjs""", 0, False
