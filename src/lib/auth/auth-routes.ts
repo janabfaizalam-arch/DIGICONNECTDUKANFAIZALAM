@@ -13,6 +13,15 @@ export const AUTH_ROUTES = [
   "/customer/forgot-password",
   "/customer/reset-password",
   "/customer/forgot-pin",
+  /*
+    Applying to become a Digi Partner, and tracking that application.
+
+    Both own the full viewport now — same split-screen scene as the partner
+    login — so the site header would sit on top of the brand panel and clip
+    its first line. Listed as the parent route on purpose: the nested
+    /digi-partner/apply/status is the same scene.
+  */
+  "/digi-partner/apply",
   // Legacy aliases: they redirect to the routes above, but stay chrome-free
   // so the old URLs never flash a header on the way through.
   "/login",

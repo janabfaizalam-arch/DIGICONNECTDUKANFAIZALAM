@@ -9,13 +9,21 @@
  */
 
 import { getNextPartnerCode } from "@/lib/ap-data";
+import { agencyInternalEmail } from "@/lib/auth/phone";
 import { normalizePartnerType } from "@/lib/ap/partner-type";
 import type { DigiPartnerType } from "@/lib/ap/partner-type";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type ProvisionPartnerInput = {
   fullName: string;
-  email: string;
+  /**
+   * Contact address, and optional.
+   *
+   * It is not the credential: /api/auth/ap/login looks a partner up by
+   * username and signs in as <username>@agency.rnos.internal. Plenty of shop
+   * owners have a WhatsApp number and no working email.
+   */
+  email?: string | null;
   password: string;
   mobile: string;
   partnerType: DigiPartnerType | string;
@@ -31,6 +39,8 @@ export type ProvisionPartnerInput = {
   referralSource?: string | null;
   /** Omit to take the next free DCD-AP-#### code. */
   partnerCode?: string | null;
+  /** Omit to derive the login username from the mobile number. */
+  username?: string | null;
   /**
    * Self-signups start unverified: they can work, but `/api/ap/wallet` refuses
    * a payout until KYC is approved, so money cannot leave on an unchecked
@@ -41,7 +51,7 @@ export type ProvisionPartnerInput = {
 };
 
 export type ProvisionPartnerResult =
-  | { ok: true; partnerId: string; userId: string; partnerCode: string }
+  | { ok: true; partnerId: string; userId: string; partnerCode: string; username: string }
   | { ok: false; error: string; status: number };
 
 export async function provisionPartnerAccount(
@@ -50,19 +60,45 @@ export async function provisionPartnerAccount(
   const supabase = getSupabaseAdmin();
   if (!supabase) return { ok: false, error: "Partner provisioning is unavailable.", status: 503 };
 
-  const email = input.email.trim().toLowerCase();
+  const contactEmail = String(input.email ?? "").trim().toLowerCase();
   // The column is NOT NULL; an unrecognised legacy value must not become null
   // and fail the insert after the auth user already exists.
   const partnerType = normalizePartnerType(String(input.partnerType)) ?? "business_partner";
 
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
+  /*
+    The username is the account. This is what was missing.
 
-  if (existingProfile) {
-    return { ok: false, error: "An account with this email already exists.", status: 409 };
+    Approving a signup created an auth user at the applicant's own email
+    address and set no username at all — while /api/auth/ap/login resolves a
+    username to <username>@agency.rnos.internal and signs in with that. So
+    every approved partner got a partner code, a temporary password, and no
+    way whatsoever to log in; the admin screen did not even have a username to
+    read out. Partners created by an admin at /admin/agency-partners/new have
+    always worked, because that route does exactly what follows.
+
+    The mobile number is the username: the partner already knows it, it is
+    unique among partners, and it is what the team calls them on.
+  */
+  const username = await freeUsername(input.username?.trim().toLowerCase() || input.mobile);
+  if (!username) {
+    return { ok: false, error: "Could not allocate a partner username.", status: 409 };
+  }
+
+  // Supabase needs an address for the auth user; this is the one the login
+  // route will construct from the username, not the applicant's own.
+  const loginEmail = agencyInternalEmail(username);
+  const email = contactEmail || loginEmail;
+
+  if (contactEmail) {
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", contactEmail)
+      .maybeSingle();
+
+    if (existingProfile) {
+      return { ok: false, error: "An account with this email already exists.", status: 409 };
+    }
   }
 
   const partnerCode = (input.partnerCode?.trim() || (await getNextPartnerCode())).toUpperCase();
@@ -84,10 +120,11 @@ export async function provisionPartnerAccount(
     .maybeSingle();
 
   const { data: created, error: createError } = await supabase.auth.admin.createUser({
-    email,
+    email: loginEmail,
     password: input.password,
     email_confirm: true,
-    user_metadata: { full_name: input.fullName, role: "agency_partner" },
+    user_metadata: { full_name: input.fullName, username, role: "agency_partner" },
+    app_metadata: { role: "agency_partner" },
   });
 
   if (createError || !created?.user) {
@@ -112,6 +149,7 @@ export async function provisionPartnerAccount(
       {
         ...shared,
         user_id: userId,
+        username,
         partner_code: partnerCode,
         business_name: input.businessName || null,
         partner_type: partnerType,
@@ -124,6 +162,9 @@ export async function provisionPartnerAccount(
         tier_id: tier?.id ?? null,
         status: "active",
         kyc_status: input.kycStatus ?? "pending",
+        // The temporary password is read out over the phone. It stops being a
+        // password the moment the partner is in.
+        must_change_password: true,
       },
       { onConflict: "user_id" },
     )
@@ -136,6 +177,8 @@ export async function provisionPartnerAccount(
         ...shared,
         id: userId,
         role: "agency_partner",
+        username,
+        must_change_password: true,
         agent_code: partnerCode,
         address: input.address || null,
         area: input.address || null,
@@ -176,5 +219,31 @@ export async function provisionPartnerAccount(
     return { ok: false, error: "Partner account could not be created.", status: 500 };
   }
 
-  return { ok: true, partnerId: String(partnerRow.id), userId, partnerCode };
+  return { ok: true, partnerId: String(partnerRow.id), userId, partnerCode, username };
+}
+
+/**
+ * A username nobody else holds.
+ *
+ * The mobile number is the natural choice, and it is unique per partner — but
+ * a partner who was once created by hand may already hold it, and a collision
+ * here would fail the insert *after* the auth user exists. Two suffixed tries
+ * are enough for a case that should not happen; beyond that, refusing is
+ * better than provisioning something the login cannot find.
+ */
+async function freeUsername(seed: string): Promise<string | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const base = seed.replace(/[^a-z0-9._-]/g, "") || "partner";
+
+  for (const candidate of [base, `${base}1`, `${base}2`]) {
+    const [partner, profile] = await Promise.all([
+      supabase.from("agency_partners").select("id").eq("username", candidate).maybeSingle(),
+      supabase.from("profiles").select("id").eq("username", candidate).maybeSingle(),
+    ]);
+    if (!partner.data && !profile.data) return candidate;
+  }
+
+  return null;
 }

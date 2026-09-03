@@ -8,7 +8,7 @@
  * boundary explicit is the point of the separate table.
  */
 
-import { DIGI_PARTNER_TYPE_VALUES } from "@/lib/ap/partner-type";
+import { isPublicApplicationPartnerType } from "@/lib/ap/partner-type";
 import type { DigiPartnerType } from "@/lib/ap/partner-type";
 
 export const PARTNER_APPLICATION_STATUSES = [
@@ -68,7 +68,15 @@ export type PartnerApplicationInput = {
   partnerType: DigiPartnerType;
   mobile: string;
   whatsapp: string | null;
-  email: string;
+  /**
+   * Optional, and not a credential.
+   *
+   * The form used to demand this and promise it would be the partner login.
+   * The login is a username; see provisionPartnerAccount. A shop owner with a
+   * WhatsApp number and no working email was being turned away at the first
+   * screen for a field nothing depended on.
+   */
+  email: string | null;
   address: string | null;
   state: string | null;
   district: string | null;
@@ -146,20 +154,41 @@ export function validatePartnerApplication(raw: unknown): ValidationResult {
     return { ok: false, error: "Enter a valid 10-digit mobile number.", field: "mobile" };
   }
 
-  const email = String(body.email ?? "").trim().toLowerCase();
-  if (!isValidEmail(email)) {
-    return { ok: false, error: "Enter a valid email address.", field: "email" };
+  const emailRaw = trimmedOrNull(body.email);
+  const email = emailRaw ? emailRaw.toLowerCase() : null;
+  // Optional — but a typo in one that was offered is still worth catching.
+  if (email && !isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid email address, or leave it blank.", field: "email" };
   }
 
-  // Only the current vocabulary is accepted here. normalizePartnerType also
-  // maps legacy values, but this is a new public form — nothing should be
-  // submitting a legacy type, and silently accepting one would let the form
-  // and the table's check constraint disagree about what is valid.
+  /*
+    Only the two types a stranger may claim.
+
+    All four exist in the system, but Company Partner is a commercial
+    arrangement and Office Staff is an employee — both are created by an admin
+    or from /ap/team. Accepting them here would let anyone register themselves
+    as a strategic partner of the company by editing one field in the request.
+  */
   const partnerTypeRaw = String(body.partnerType ?? "business_partner");
-  if (!(DIGI_PARTNER_TYPE_VALUES as readonly string[]).includes(partnerTypeRaw)) {
+  if (!isPublicApplicationPartnerType(partnerTypeRaw)) {
     return { ok: false, error: "Choose how you want to partner with us.", field: "partnerType" };
   }
   const partnerType = partnerTypeRaw as DigiPartnerType;
+
+  /*
+    A shop needs a name; a person walking the field does not have one.
+
+    Requiring it of everybody would make a Field Executive invent a shop, and
+    requiring it of nobody loses the one thing that identifies a Business
+    Partner in a list of two hundred.
+  */
+  const businessName = trimmedOrNull(body.businessName);
+  if (partnerType === "business_partner" && !businessName) {
+    return { ok: false, error: "Enter your shop or business name.", field: "businessName" };
+  }
+  if (businessName && businessName.length > 160) {
+    return { ok: false, error: "Business name must be 160 characters or fewer.", field: "businessName" };
+  }
 
   const whatsappRaw = trimmedOrNull(body.whatsapp);
   const whatsapp = whatsappRaw ? normalizeMobile(whatsappRaw) : null;
@@ -194,7 +223,7 @@ export function validatePartnerApplication(raw: unknown): ValidationResult {
     ok: true,
     value: {
       fullName,
-      businessName: trimmedOrNull(body.businessName),
+      businessName,
       partnerType,
       mobile,
       whatsapp,

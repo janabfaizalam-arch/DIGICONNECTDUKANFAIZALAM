@@ -42,6 +42,30 @@ export const DIGI_PARTNER_TYPES = {
   { label: string; icon: string; description: string }
 >;
 
+/**
+ * What a stranger may apply as.
+ *
+ * All four types exist, but only two describe somebody who arrives from the
+ * website on their own: a shop, and a person who works the field. A Company
+ * Partner is a commercial arrangement signed off by us, and Office Staff is an
+ * internal employee — both are created by an admin or by a Company Partner
+ * from /ap/team, and neither should be self-selectable by whoever opens the
+ * apply page. Offering all four made the form read like an internal HR
+ * screen and let anyone claim to be a strategic partner of the company.
+ */
+export const PUBLIC_APPLICATION_PARTNER_TYPES = [
+  "business_partner",
+  "field_executive",
+] as const satisfies readonly DigiPartnerType[];
+
+export type PublicApplicationPartnerType = (typeof PUBLIC_APPLICATION_PARTNER_TYPES)[number];
+
+export function isPublicApplicationPartnerType(
+  value: string | null | undefined,
+): value is PublicApplicationPartnerType {
+  return (PUBLIC_APPLICATION_PARTNER_TYPES as readonly string[]).includes(String(value ?? ""));
+}
+
 /** Temporary API/validation boundary map for legacy incoming values. */
 export const LEGACY_PARTNER_TYPE_MAP = {
   ceo: "company_partner",
