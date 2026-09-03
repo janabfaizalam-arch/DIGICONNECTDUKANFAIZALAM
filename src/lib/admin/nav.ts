@@ -27,6 +27,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   BadgePercent,
   BanknoteArrowUp,
   BarChart3,
@@ -407,6 +408,13 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
     icon: BarChart3,
     defaultCollapsed: true,
     items: [
+      {
+        href: "/admin/analytics",
+        label: "Website visitors",
+        description: "Who opened the site, from where, and which pages they read",
+        icon: Activity,
+        emphasis: true,
+      },
       {
         href: "/admin/reports",
         label: "Reports",
