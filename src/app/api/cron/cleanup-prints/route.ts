@@ -33,7 +33,12 @@ export async function GET(request: Request) {
     }
 
     if (!files || files.length === 0) {
-      return NextResponse.json({ message: "No expired print files found.", deleted_count: 0 });
+      const visits = await purgeOldVisits();
+      return NextResponse.json({
+        message: "No expired print files found.",
+        deleted_count: 0,
+        visits_pruned: visits,
+      });
     }
 
     console.info(`[cron/cleanup-prints] Found ${files.length} expired files. Purging...`);
@@ -78,12 +83,44 @@ export async function GET(request: Request) {
       }
     }
 
+    const visits = await purgeOldVisits();
+
     return NextResponse.json({
       message: `Successfully purged ${deletedPaths.length} file(s).`,
       deleted_files: deletedPaths,
+      visits_pruned: visits,
     });
   } catch (error) {
     console.error("[cron/cleanup-prints] Unexpected error:", error);
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
+}
+
+/**
+ * Visit rows older than six months.
+ *
+ * Riding along on the print cleanup rather than taking a cron slot of its
+ * own: both are "delete what nobody needs any more", both run once a day, and
+ * a hosting plan's cron allowance is not worth spending twice on that.
+ *
+ * Six months is long enough to compare this Diwali with the last, and short
+ * enough that a table nobody looks at does not grow forever.
+ */
+async function purgeOldVisits(): Promise<number> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return 0;
+
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const { error, count } = await supabase
+    .from("site_visits")
+    .delete({ count: "exact" })
+    .lt("visit_day", cutoff);
+
+  if (error) {
+    // A missing table is not a failure worth failing the whole job for: the
+    // migration may simply not have been applied yet.
+    console.error("[cron/cleanup-prints] visit prune failed:", error.message);
+    return 0;
+  }
+  return count ?? 0;
 }

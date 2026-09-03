@@ -10,6 +10,7 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
+import { VisitTracker } from "@/components/analytics/visit-tracker";
 import { BottomNav } from "@/components/bottom-nav";
 import "./globals.css";
 
@@ -173,6 +174,16 @@ export default function RootLayout({
           </a>
           <Suspense fallback={null}>
             <NavigationProgress />
+          </Suspense>
+          {/*
+            Counts a page view for the admin panel's own analytics.
+
+            Renders nothing, sets no cookie, and hands the browser a beacon
+            rather than a request it has to wait for. See
+            src/components/analytics/visit-tracker.tsx.
+          */}
+          <Suspense fallback={null}>
+            <VisitTracker />
           </Suspense>
           {/*
             No announcement strip above the header.
