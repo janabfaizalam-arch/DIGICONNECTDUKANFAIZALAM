@@ -544,6 +544,10 @@ function InstallSteps({ siteUrl, connected }: { siteUrl: string; connected: bool
       title: "Printer chuniye aur test page nikaliye",
       body: "Kagaz nikla to yahi screen Connected dikhane lagegi.",
     },
+    {
+      title: '"Background me chalaiye" par ek baar double-click',
+      body: "Phir kaali window ki zaroorat nahi - computer on hote hi print chalu.",
+    },
   ];
 
   return (

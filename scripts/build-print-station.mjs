@@ -35,6 +35,8 @@ export const SHIPPED_FILES = [
   "install.ps1",
   "README.md",
   "Start Print Station.bat",
+  "Background me chalaiye.bat",
+  "Background band kijiye.bat",
   "start-print-station.sh",
   "lib/config.mjs",
   "lib/api.mjs",
@@ -43,6 +45,9 @@ export const SHIPPED_FILES = [
   "lib/page.mjs",
   "lib/log.mjs",
   "lib/version.mjs",
+  "lib/background.ps1",
+  "lib/run-hidden.vbs",
+  "lib/run-hidden.ps1",
 ];
 
 /**
