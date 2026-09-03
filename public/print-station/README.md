@@ -19,8 +19,8 @@ nothing to paste.
 1. Unzip the folder somewhere you will find it again. Do not run it from
    inside the zip.
 2. Double-click **Start Print Station**.
-3. If it asks for Node.js, install the **LTS** build from
-   [nodejs.org](https://nodejs.org/en/download) and double-click again.
+3. The first run takes a minute: if this computer has no Node.js, the program
+   fetches one for itself. Nothing to install, no administrator password.
 
 Every download issues a new key and retires the old one, so keep one folder on
 one computer.
@@ -34,6 +34,29 @@ irm https://www.rnos.in/print-station/install.ps1 | iex
 Then copy your key from the dashboard into the settings page yourself. If
 PowerShell refuses to run it, run `Set-ExecutionPolicy -Scope Process -Bypass`
 first.
+
+### Node.js, without installing Node.js
+
+The program is written for Node, and pointing a shop at nodejs.org was where
+installs died: an MSI that wants administrator rights the counter assistant
+does not have, on a page with half a dozen buttons.
+
+So it fetches Node itself, the first time it is run:
+
+- The official Windows **ZIP** from nodejs.org — one self-contained
+  `node.exe`. No installer, no administrator rights, nothing added to PATH.
+- The newest LTS, asked for by reading `nodejs.org/dist/index.json` rather
+  than a version number hardcoded here that would one day 404 on a counter PC.
+- Checked against the published `SHASUMS256.txt` before it is ever run.
+- Kept in `%LOCALAPPDATA%\DigiConnectPrintStation\node`, so it is fetched
+  once and reused by every later download of the Print Station.
+
+A Node already installed the normal way wins — the fetch does not happen at
+all, and nothing on the machine is touched.
+
+If the download fails it is nearly always the shop's own network. Opening
+[nodejs.org](https://nodejs.org/en/download) in a browser on that computer
+tells you which side the block is on.
 
 ### Printing helper
 
