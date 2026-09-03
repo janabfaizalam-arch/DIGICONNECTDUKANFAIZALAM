@@ -5,33 +5,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
   FileText,
   Layers,
   Users,
-  WalletCards,
-  HandCoins,
-  Headphones,
   Bell,
-  UserCog,
   Search,
   X,
-  ChevronRight,
-  Share2,
-  Settings,
   Compass,
-  Landmark,
-  Home,
-  Link as LinkIcon,
-  UsersRound,
-  Target,
-  BookOpen,
-  ClipboardList,
-  Megaphone,
+  LayoutGrid,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ApMobileBottomNav } from "@/components/ap/ap-mobile-bottom-nav";
+import { apNavGroups, isApNavItemActive } from "@/lib/ap/nav";
 import { createClient } from "@/lib/supabase/browser";
 import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { cn } from "@/lib/utils";
@@ -44,7 +30,7 @@ interface NotificationItem {
   read_at: string | null;
 }
 
-export function APPanelNav() {
+export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean } = {}) {
   const pathname = usePathname();
   const supabase = createClient();
   const reduceMotion = useReducedMotion();
@@ -250,35 +236,17 @@ export function APPanelNav() {
             </span>
           </div>
 
-          {/* CENTER: Desktop primary navigation */}
-          <nav aria-label="Digi Partner primary" className="hidden flex-1 items-center justify-center gap-1 md:flex">
-            {[
-              { href: "/ap/dashboard", label: "Dashboard" },
-              { href: "/ap/applications", label: "Applications" },
-              { href: "/ap/customers", label: "Customers" },
-              { href: "/ap/print", label: "Print Station" },
-              { href: "/ap/wallet", label: "Wallet" },
-              { href: "/ap/commissions", label: "Commissions" },
-              { href: "/ap/payouts", label: "Payouts" },
-            ].map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "rounded-xl px-3 py-1.5 text-xs font-semibold tracking-wide transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                    active
-                      ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/10"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {/*
+            No centre nav here any more.
+
+            Seven links sat in the middle of this bar while twenty-three other
+            screens lived behind a menu — which is exactly how a partner ended
+            up unable to find the print counter or the invoice book. The whole
+            map is now in the sidebar on a computer and behind "Sab kuch" on a
+            phone, so repeating a slice of it here would only be a fourth place
+            to keep in sync.
+          */}
+          <div className="flex-1" aria-hidden />
 
           {/* RIGHT: Actions (Search, Notification, Settings Menu) */}
           <div className="flex items-center gap-1.5 md:gap-2">
@@ -370,7 +338,7 @@ export function APPanelNav() {
       </header>
 
       {/* MOBILE BOTTOM NAVIGATION DOCK */}
-      <ApMobileBottomNav />
+      <ApMobileBottomNav canManageTeam={canManageTeam} />
 
       {/* SLIDE-OUT DRAWER MENU (RIGHT SIDE, Liquid Glass Theme) */}
       <AnimatePresence>
@@ -419,266 +387,55 @@ export function APPanelNav() {
                 </button>
               </div>
 
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
-                {/* 1. Account Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Account Profile</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
-                    <Link
-                      href="/ap/profile"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <UserCog className="h-4.5 w-4.5 text-blue-500" />
-                      <span>My Profile</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/settings"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Settings className="h-4.5 w-4.5 text-slate-500" />
-                      <span>Settings</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/documents"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <ClipboardList className="h-4.5 w-4.5 text-slate-500" />
-                      <span>Documents</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                  </div>
-                </div>
+              {/*
+                The drawer, from the map.
 
-                {/* 2. Operations Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Workflow Tracker</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5 text-xs font-bold">
-                    <Link
-                      href="/ap/dashboard"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <LayoutDashboard className="h-4 w-4 text-blue-500" />
-                      <span>Dashboard</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications/new"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <Home className="h-4 w-4 text-emerald-500" />
-                      <span>New Application</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications?status=draft"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <FileText className="h-4 w-4 text-slate-450" />
-                      <span>Drafts (Step 2)</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications?status=documents_pending"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <FileText className="h-4 w-4 text-amber-500" />
-                      <span>Pending Documents (Step 3)</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications?status=payment_pending"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <FileText className="h-4 w-4 text-rose-500" />
-                      <span>Pending Payment (Step 5)</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications?status=submitted"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <FileText className="h-4 w-4 text-blue-500" />
-                      <span>Submitted</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications?status=processing"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <FileText className="h-4 w-4 text-purple-500" />
-                      <span>Processing</span>
-                    </Link>
-                    <Link
-                      href="/ap/applications?status=completed"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-white rounded-xl transition-all text-slate-750"
-                    >
-                      <FileText className="h-4 w-4 text-emerald-500" />
-                      <span>Completed</span>
-                    </Link>
+                This was two hundred and sixty lines of hand-written links —
+                six sections, thirty destinations, each with its own colour and
+                its own idea of what to call the screen. It drifted from the
+                pages it linked to, and half the panel never appeared in it at
+                all. It now renders src/lib/ap/nav.ts, which is the same list
+                the sidebar, the phone's sheet and /ap/all read, so the four
+                can never disagree again.
+              */}
+              <div className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
+                {apNavGroups({ canManageTeam }).map((group) => (
+                  <div key={group.id} className="space-y-2">
+                    <h4 className="px-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      {group.label}
+                    </h4>
+                    <div className="space-y-1 rounded-2xl border border-slate-100 bg-slate-50/50 p-1.5">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const active = isApNavItemActive(pathname, item);
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setDrawerOpen(false)}
+                            aria-current={active ? "page" : undefined}
+                            className={cn(
+                              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold transition-all",
+                              active ? "bg-white text-blue-700 shadow-sm" : "text-slate-700 hover:bg-white",
+                            )}
+                          >
+                            <Icon className={cn("h-4.5 w-4.5", active ? "text-blue-600" : "text-slate-400")} />
+                            <span className="min-w-0 truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ))}
 
-                {/* 2.5. Catalog & CRM Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Services & Filings</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
-                    <Link
-                      href="/ap/services"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Layers className="h-4.5 w-4.5 text-emerald-500" />
-                      <span>Services Catalog</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/customers"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Users className="h-4.5 w-4.5 text-sky-500" />
-                      <span>Customers & CRM</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/referrals"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Share2 className="h-4.5 w-4.5 text-indigo-500" />
-                      <span>Referrals & Links</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/assigned-work"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <ClipboardList className="h-4.5 w-4.5 text-rose-500" />
-                      <span>Assigned Work</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/team"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <UsersRound className="h-4.5 w-4.5 text-cyan-500" />
-                      <span>Team Members</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/leads"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Target className="h-4.5 w-4.5 text-pink-500" />
-                      <span>Leads Pipeline</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/payment-links"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <LinkIcon className="h-4.5 w-4.5 text-purple-500" />
-                      <span>Payment Links</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Growth: Marketing, Training, Support */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Growth</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
-                    <Link
-                      href="/ap/marketing"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Megaphone className="h-4.5 w-4.5 text-pink-500" />
-                      <span>Marketing</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/training"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <BookOpen className="h-4.5 w-4.5 text-lime-500" />
-                      <span>Training</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/support"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-750 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Headphones className="h-4.5 w-4.5 text-indigo-650" />
-                      <span>Support</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                  </div>
-                </div>
-
-                {/* 3. Financials Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Wallet & earnings</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
-                    <Link
-                      href="/ap/wallet"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <WalletCards className="h-4.5 w-4.5 text-teal-500" />
-                      <span>Wallet Ledger</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/commissions"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <HandCoins className="h-4.5 w-4.5 text-amber-500" />
-                      <span>Commissions</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                    <Link
-                      href="/ap/payouts"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Landmark className="h-4.5 w-4.5 text-indigo-500" />
-                      <span>Payouts</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                  </div>
-                </div>
-
-                {/* 4. Support & Notices Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">Information Desk</h4>
-                  <div className="space-y-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-1.5">
-                    <Link
-                      href="/ap/notifications"
-                      onClick={() => setDrawerOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-white rounded-xl transition-all"
-                    >
-                      <Bell className="h-4.5 w-4.5 text-rose-500" />
-                      <span>Updates & Bulletins</span>
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-350" />
-                    </Link>
-                  </div>
-                </div>
+                <Link
+                  href="/ap/all"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex items-center gap-3 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-xs font-bold text-slate-500 transition hover:text-slate-800"
+                >
+                  <LayoutGrid className="h-4.5 w-4.5 text-slate-400" />
+                  Sab kuch ek jagah
+                </Link>
               </div>
 
               {/* Drawer Footer with Apple settings layout Logout */}
