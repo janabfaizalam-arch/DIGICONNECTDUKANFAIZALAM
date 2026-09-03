@@ -1,22 +1,52 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { CheckCircle2, Copy, LoaderCircle, Search } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  Copy,
+  Footprints,
+  MapPin,
+  MessageCircle,
+  Search,
+  Store,
+  UserRound,
+} from "lucide-react";
 
+import { AuthButton, TextField } from "@/components/auth/ui";
 import { useToast } from "@/components/providers/toast-provider";
-import { DIGI_PARTNER_TYPES, DIGI_PARTNER_TYPE_VALUES } from "@/lib/ap/partner-type";
+import {
+  DIGI_PARTNER_TYPES,
+  PUBLIC_APPLICATION_PARTNER_TYPES,
+  type PublicApplicationPartnerType,
+} from "@/lib/ap/partner-type";
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 
-const FIELD =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:shadow-[0_0_0_4px_rgba(15,93,184,0.08)]";
-const LABEL = "text-xs font-bold uppercase tracking-[0.1em] text-slate-500";
-const ERROR_FIELD = "border-rose-300 focus:border-rose-400";
+/**
+ * Applying to become a Digi Partner.
+ *
+ * This form used to ask for sixteen things — PAN, Aadhaar, GSTIN, how you
+ * heard about us, anything else we should know — from a shop owner who had
+ * not yet been told whether we wanted them. It asked for an email and said
+ * that email would be their login, which was never true. And it offered four
+ * ways to partner, two of which are internal arrangements a stranger cannot
+ * choose for themselves.
+ *
+ * What is left is the shortest thing an admin can act on: who you are, how to
+ * reach you, and where you are. Documents belong to KYC, which happens after
+ * approval and before money moves.
+ */
+
+const TYPE_ICONS: Record<PublicApplicationPartnerType, typeof Store> = {
+  business_partner: Store,
+  field_executive: Footprints,
+};
 
 type Form = {
   fullName: string;
   businessName: string;
-  partnerType: string;
+  partnerType: PublicApplicationPartnerType;
   mobile: string;
   whatsapp: string;
   email: string;
@@ -24,11 +54,6 @@ type Form = {
   district: string;
   state: string;
   pin: string;
-  panNumber: string;
-  aadhaarNumber: string;
-  gstin: string;
-  referralSource: string;
-  about: string;
 };
 
 const EMPTY: Form = {
@@ -42,12 +67,9 @@ const EMPTY: Form = {
   district: "",
   state: "",
   pin: "",
-  panNumber: "",
-  aadhaarNumber: "",
-  gstin: "",
-  referralSource: "",
-  about: "",
 };
+
+const digits = (value: string, max: number) => value.replace(/\D/g, "").slice(0, max);
 
 export function PartnerApplicationForm() {
   const { success, error: toastError } = useToast();
@@ -55,11 +77,63 @@ export function PartnerApplicationForm() {
   const [form, setForm] = useState<Form>(EMPTY);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
+  const [pinState, setPinState] = useState<"idle" | "looking" | "found" | "unknown">("idle");
 
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((current) => ({ ...current, [key]: value }));
     if (fieldError?.field === key) setFieldError(null);
   }
+
+  /*
+    Six digits, and the rest of the address fills itself.
+
+    Nobody standing in a shop wants to type "Jalaun" and "Uttar Pradesh" into
+    a phone, and half of them will spell the district differently from the way
+    the admin searches for it later. /api/pincode already existed and nothing
+    was using it.
+  */
+  const pin = form.pin;
+  const lastLooked = useRef<string>("");
+  useEffect(() => {
+    if (pin.length !== 6) {
+      if (pin.length < 6) setPinState("idle");
+      return;
+    }
+    if (lastLooked.current === pin) return;
+    lastLooked.current = pin;
+
+    let cancelled = false;
+    setPinState("looking");
+
+    void (async () => {
+      try {
+        const response = await fetch(`/api/pincode?pincode=${pin}`, { cache: "force-cache" });
+        const json = (await response.json()) as {
+          ok?: boolean;
+          district?: string;
+          state?: string;
+          city?: string;
+        };
+        if (cancelled) return;
+        if (!response.ok || !json.ok || !json.state) {
+          setPinState("unknown");
+          return;
+        }
+        setPinState("found");
+        setForm((current) => ({
+          ...current,
+          district: json.district || json.city || current.district,
+          state: json.state || current.state,
+        }));
+      } catch {
+        if (!cancelled) setPinState("unknown");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pin]);
 
   function submit() {
     setFieldError(null);
@@ -92,17 +166,17 @@ export function PartnerApplicationForm() {
 
   if (submitted) {
     return (
-      <div className="space-y-5 rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 text-center sm:p-8">
+      <div className="flex flex-col gap-5 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" aria-hidden="true" />
-        <div className="space-y-2">
-          <h2 className="text-xl font-black text-slate-900">Application received</h2>
-          <p className="mx-auto max-w-md text-sm font-medium text-slate-600">
-            Our team reviews applications and gets in touch on the mobile number you gave us. Keep
-            this tracking code — it is how you check progress.
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-[22px] font-bold tracking-tight text-slate-900">Application received</h2>
+          <p className="mx-auto max-w-sm text-sm font-medium leading-relaxed text-slate-500">
+            We review every application and call you on the number you gave us. Keep this code — it is
+            how you check progress.
           </p>
         </div>
 
-        <div className="mx-auto flex max-w-xs items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-3">
+        <div className="mx-auto flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
           <span className="font-mono text-lg font-black tracking-wider text-slate-900">{submitted}</span>
           <button
             type="button"
@@ -110,7 +184,7 @@ export function PartnerApplicationForm() {
               void navigator.clipboard?.writeText(submitted);
               success("Tracking code copied.");
             }}
-            className="rounded-full p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-full p-1.5 text-slate-500 transition hover:bg-white hover:text-slate-900"
             aria-label="Copy tracking code"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
@@ -137,15 +211,24 @@ export function PartnerApplicationForm() {
   }
 
   const errorFor = (field: keyof Form) => (fieldError?.field === field ? fieldError.message : null);
-  const cls = (field: keyof Form) => `${FIELD} ${errorFor(field) ? ERROR_FIELD : ""}`;
+  const isShop = form.partnerType === "business_partner";
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-[0.12em] text-slate-900">How you want to partner</h2>
+    <form
+      className="flex flex-col gap-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <section className="flex flex-col gap-3">
+        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+          How you want to partner
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          {DIGI_PARTNER_TYPE_VALUES.map((value) => {
+          {PUBLIC_APPLICATION_PARTNER_TYPES.map((value) => {
             const meta = DIGI_PARTNER_TYPES[value];
+            const Icon = TYPE_ICONS[value];
             const active = form.partnerType === value;
             return (
               <button
@@ -153,129 +236,168 @@ export function PartnerApplicationForm() {
                 type="button"
                 onClick={() => set("partnerType", value)}
                 aria-pressed={active}
-                className={`rounded-2xl border p-4 text-left transition ${
+                className={`flex flex-col gap-2 rounded-2xl border p-4 text-left transition ${
                   active
-                    ? "border-[var(--primary)] bg-blue-50/60 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-slate-300"
+                    ? "border-blue-500 bg-blue-50/70 shadow-[0_0_0_4px_rgba(37,99,235,0.10)]"
+                    : "border-slate-200/90 bg-white/85 hover:border-slate-300"
                 }`}
               >
-                <p className="text-sm font-black text-slate-900">
-                  <span aria-hidden="true">{meta.icon}</span> {meta.label}
-                </p>
-                <p className="mt-1 text-xs font-medium text-slate-600">{meta.description}</p>
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                    active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  <Icon className="h-4.5 w-4.5" aria-hidden="true" />
+                </span>
+                <span className="text-sm font-bold text-slate-900">{meta.label}</span>
+                <span className="text-xs font-medium leading-snug text-slate-500">
+                  {meta.description}
+                </span>
               </button>
             );
           })}
         </div>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-[0.12em] text-slate-900">About you</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="fullName">Full name *</label>
-            <input id="fullName" className={cls("fullName")} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="As per your PAN" />
-            {errorFor("fullName") ? <p className="text-xs font-semibold text-rose-600">{errorFor("fullName")}</p> : null}
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="businessName">Shop / business name</label>
-            <input id="businessName" className={cls("businessName")} value={form.businessName} onChange={(e) => set("businessName", e.target.value)} placeholder="Optional" />
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="mobile">Mobile *</label>
-            <input id="mobile" inputMode="numeric" className={cls("mobile")} value={form.mobile} onChange={(e) => set("mobile", e.target.value)} placeholder="10-digit number" />
-            {errorFor("mobile") ? <p className="text-xs font-semibold text-rose-600">{errorFor("mobile")}</p> : null}
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="whatsapp">WhatsApp</label>
-            <input id="whatsapp" inputMode="numeric" className={cls("whatsapp")} value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="If different from mobile" />
-            {errorFor("whatsapp") ? <p className="text-xs font-semibold text-rose-600">{errorFor("whatsapp")}</p> : null}
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className={LABEL} htmlFor="email">Email *</label>
-            <input id="email" type="email" className={cls("email")} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="you@example.com" />
-            {errorFor("email") ? <p className="text-xs font-semibold text-rose-600">{errorFor("email")}</p> : null}
-            <p className="text-[11px] font-medium text-slate-500">This becomes your partner login once approved.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-[0.12em] text-slate-900">Where you operate</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className={LABEL} htmlFor="address">Address</label>
-            <input id="address" className={cls("address")} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Shop or home address" />
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="district">District / city</label>
-            <input id="district" className={cls("district")} value={form.district} onChange={(e) => set("district", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="state">State</label>
-            <input id="state" className={cls("state")} value={form.state} onChange={(e) => set("state", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="pin">PIN code</label>
-            <input id="pin" inputMode="numeric" className={cls("pin")} value={form.pin} onChange={(e) => set("pin", e.target.value)} placeholder="6 digits" />
-            {errorFor("pin") ? <p className="text-xs font-semibold text-rose-600">{errorFor("pin")}</p> : null}
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="referralSource">How did you hear about us?</label>
-            <input id="referralSource" className={cls("referralSource")} value={form.referralSource} onChange={(e) => set("referralSource", e.target.value)} placeholder="Friend, WhatsApp, YouTube…" />
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-[0.12em] text-slate-900">
-          Documents <span className="font-bold normal-case tracking-normal text-slate-500">— optional now, needed before payouts</span>
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="panNumber">PAN</label>
-            <input id="panNumber" className={cls("panNumber")} value={form.panNumber} onChange={(e) => set("panNumber", e.target.value.toUpperCase())} placeholder="ABCDE1234F" />
-            {errorFor("panNumber") ? <p className="text-xs font-semibold text-rose-600">{errorFor("panNumber")}</p> : null}
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="aadhaarNumber">Aadhaar</label>
-            <input id="aadhaarNumber" inputMode="numeric" className={cls("aadhaarNumber")} value={form.aadhaarNumber} onChange={(e) => set("aadhaarNumber", e.target.value)} placeholder="12 digits" />
-            {errorFor("aadhaarNumber") ? <p className="text-xs font-semibold text-rose-600">{errorFor("aadhaarNumber")}</p> : null}
-          </div>
-          <div className="space-y-1.5">
-            <label className={LABEL} htmlFor="gstin">GSTIN</label>
-            <input id="gstin" className={cls("gstin")} value={form.gstin} onChange={(e) => set("gstin", e.target.value.toUpperCase())} placeholder="If registered" />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className={LABEL} htmlFor="about">Anything else we should know?</label>
-          <textarea id="about" rows={3} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:shadow-[0_0_0_4px_rgba(15,93,184,0.08)]" value={form.about} onChange={(e) => set("about", e.target.value)} placeholder="Your experience, services you already offer…" />
-          {errorFor("about") ? <p className="text-xs font-semibold text-rose-600">{errorFor("about")}</p> : null}
-        </div>
-      </section>
-
-      <div className="space-y-3 border-t border-slate-100 pt-5">
-        <button
-          type="button"
-          onClick={submit}
+      <section className="flex flex-col gap-4">
+        <TextField
+          label="Full name"
+          icon={<UserRound className="h-4 w-4" />}
+          value={form.fullName}
+          onChange={(e) => set("fullName", e.target.value)}
+          error={errorFor("fullName")}
+          autoComplete="name"
           disabled={isPending}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+        />
+
+        {/*
+          A shop has a name; a person walking the field does not. Asking a
+          Field Executive for one only invites an invented answer.
+        */}
+        {isShop ? (
+          <TextField
+            label="Shop / business name"
+            icon={<Building2 className="h-4 w-4" />}
+            value={form.businessName}
+            onChange={(e) => set("businessName", e.target.value)}
+            error={errorFor("businessName")}
+            autoComplete="organization"
+            disabled={isPending}
+          />
+        ) : null}
+
+        <TextField
+          label="Mobile number"
+          prefix="+91"
+          inputMode="numeric"
+          value={form.mobile}
+          onChange={(e) => set("mobile", digits(e.target.value, 10))}
+          error={errorFor("mobile")}
+          hint="We call and WhatsApp you on this. It also becomes your login username."
+          autoComplete="tel-national"
+          disabled={isPending}
+        />
+
+        <TextField
+          label="WhatsApp (optional)"
+          icon={<MessageCircle className="h-4 w-4" />}
+          inputMode="numeric"
+          value={form.whatsapp}
+          onChange={(e) => set("whatsapp", digits(e.target.value, 10))}
+          error={errorFor("whatsapp")}
+          hint="Only if it is different from the number above."
+          disabled={isPending}
+        />
+
+        <TextField
+          label="Email (optional)"
+          type="email"
+          value={form.email}
+          onChange={(e) => set("email", e.target.value)}
+          error={errorFor("email")}
+          autoComplete="email"
+          disabled={isPending}
+        />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+          Where you work
+        </p>
+
+        <TextField
+          label="PIN code"
+          icon={<MapPin className="h-4 w-4" />}
+          inputMode="numeric"
+          value={form.pin}
+          onChange={(e) => set("pin", digits(e.target.value, 6))}
+          error={errorFor("pin")}
+          success={pinState === "found"}
+          hint={
+            pinState === "looking"
+              ? "Looking up your area…"
+              : pinState === "found"
+                ? `${form.district}, ${form.state}`
+                : pinState === "unknown"
+                  ? "We could not find that PIN. Type your district and state below."
+                  : "Six digits — district and state fill themselves."
+          }
+          disabled={isPending}
+        />
+
+        {/*
+          Shown only when the PIN could not answer for itself. A pair of empty
+          boxes that the next field is about to fill is just two more things to
+          read on a phone.
+        */}
+        {pinState === "unknown" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              label="District / city"
+              value={form.district}
+              onChange={(e) => set("district", e.target.value)}
+              disabled={isPending}
+            />
+            <TextField
+              label="State"
+              value={form.state}
+              onChange={(e) => set("state", e.target.value)}
+              disabled={isPending}
+            />
+          </div>
+        ) : null}
+
+        <TextField
+          label={isShop ? "Shop address (optional)" : "Address (optional)"}
+          value={form.address}
+          onChange={(e) => set("address", e.target.value)}
+          disabled={isPending}
+        />
+      </section>
+
+      <div className="flex flex-col gap-3">
+        <AuthButton type="submit" loading={isPending} loadingText="Sending…">
           Submit application
-        </button>
-        <p className="text-center text-xs font-medium text-slate-500">
-          Already applied?{" "}
-          <Link href="/digi-partner/apply/status" className="font-bold text-[var(--primary)] hover:underline">
-            Track your application
-          </Link>
-          {" · "}
-          Already a partner?{" "}
-          <Link href={DIGI_PARTNER_LOGIN_ROUTE} className="font-bold text-[var(--primary)] hover:underline">
-            Sign in
-          </Link>
+        </AuthButton>
+        <p className="text-center text-[11.5px] font-medium leading-relaxed text-slate-500">
+          No documents needed now. PAN and Aadhaar come later, before your first payout.
         </p>
       </div>
-    </div>
+
+      <div className="flex flex-col items-center gap-2 border-t border-slate-100 pt-4 text-center text-sm font-semibold text-slate-500">
+        <span>
+          Already applied?{" "}
+          <Link href="/digi-partner/apply/status" className="text-slate-900 hover:underline">
+            Track your application
+          </Link>
+        </span>
+        <span>
+          Already a partner?{" "}
+          <Link href={DIGI_PARTNER_LOGIN_ROUTE} className="text-slate-900 hover:underline">
+            Sign in
+          </Link>
+        </span>
+      </div>
+    </form>
   );
 }

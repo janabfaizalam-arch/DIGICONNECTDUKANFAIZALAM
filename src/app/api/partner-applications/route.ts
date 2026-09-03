@@ -41,11 +41,22 @@ export async function POST(request: Request) {
 
   const input = validated.value;
 
-  // Someone who already partners with us should sign in, not re-apply.
+  /*
+    Someone who already partners with us should sign in, not re-apply.
+
+    Matched on mobile first, and on email only when one was given. The old
+    filter interpolated the email straight into the `or` string; now that
+    email is optional that would have become `email.eq.` and matched
+    everything or nothing depending on how PostgREST felt about it.
+  */
+  const identityFilter = input.email
+    ? `mobile.eq.${input.mobile},email.eq.${input.email}`
+    : `mobile.eq.${input.mobile}`;
+
   const { data: existingPartner } = await supabase
     .from("agency_partners")
     .select("id")
-    .or(`mobile.eq.${input.mobile},email.eq.${input.email}`)
+    .or(identityFilter)
     .maybeSingle();
 
   if (existingPartner) {

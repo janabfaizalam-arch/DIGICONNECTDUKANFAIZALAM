@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 
-import { MarketingFooter } from "@/components/marketing-footer";
+import { AuthScene, GlassCard } from "@/components/auth/ui";
 import { PartnerApplicationStatusLookup } from "@/components/partner/partner-application-status";
 
 export const dynamic = "force-dynamic";
@@ -17,39 +17,48 @@ type PageProps = {
   searchParams?: Promise<{ code?: string }>;
 };
 
+/**
+ * Where somebody who already applied comes back to.
+ *
+ * Kept on the same scene as the application itself: a person who applied
+ * yesterday and returns today should recognise the screen, not wonder whether
+ * they are on the right site.
+ */
 export default async function PartnerApplicationStatusPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
   return (
-    <>
-      <main className="min-h-screen bg-[#F8FAFC] px-4 py-8 md:px-8 md:py-12">
-        <div className="mx-auto max-w-2xl space-y-6">
-          <Link
-            href="/digi-partner/apply"
-            className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)] hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to application
-          </Link>
+    <AuthScene
+      eyebrow="Digi Partner Network"
+      kicker="Already applied"
+      headline={
+        <>
+          We are reading
+          <br />
+          your application
+        </>
+      }
+    >
+      <GlassCard>
+        <Link
+          href="/digi-partner/apply"
+          className="inline-flex w-fit items-center gap-1.5 text-[13px] font-bold text-slate-500 transition hover:text-slate-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to application
+        </Link>
 
-          <header className="space-y-2">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-600">
-              Digi Partner Network
-            </p>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">
-              Track your application
-            </h1>
-            <p className="text-base font-medium text-slate-600">
-              Enter the tracking code you received when you applied.
-            </p>
-          </header>
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-            <PartnerApplicationStatusLookup initialCode={params?.code} />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-[26px] font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-[28px]">
+            Track your application
+          </h1>
+          <p className="text-sm font-medium leading-relaxed text-slate-500">
+            Enter the tracking code you got when you applied.
+          </p>
         </div>
-      </main>
-      <MarketingFooter />
-    </>
+
+        <PartnerApplicationStatusLookup initialCode={params?.code} />
+      </GlassCard>
+    </AuthScene>
   );
 }

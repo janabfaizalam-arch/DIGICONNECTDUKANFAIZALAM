@@ -79,6 +79,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   let temporaryPassword: string | null = null;
   let partnerCode: string | null = null;
+  let username: string | null = null;
 
   if (nextStatus === "approved") {
     temporaryPassword = generateTemporaryPassword();
@@ -88,7 +89,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     // behind it.
     const provisioned = await provisionPartnerAccount({
       fullName: String(application.full_name),
-      email: String(application.email),
+      email: (application.email as string | null) ?? null,
       password: temporaryPassword,
       mobile: String(application.mobile),
       partnerType: String(application.partner_type),
@@ -112,6 +113,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     partnerCode = provisioned.partnerCode;
+    username = provisioned.username;
     updates.created_partner_id = provisioned.partnerId;
     updates.partner_code = provisioned.partnerCode;
   }
@@ -135,6 +137,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     ok: true,
     status: nextStatus,
     partnerCode,
+    // What the partner actually types at /ap/login. The screen used to hand
+    // out a partner code and a password, and a partner code is not a login.
+    username,
     // Shown once, then gone — the admin passes it to the partner.
     temporaryPassword,
     message:

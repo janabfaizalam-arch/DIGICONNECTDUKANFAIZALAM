@@ -45,7 +45,9 @@ export function PartnerApplicationActions({
   const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<{ code: string; password: string } | null>(null);
+  const [credentials, setCredentials] = useState<
+    { code: string; username: string; password: string } | null
+  >(null);
 
   const actions = allowedApplicationTransitions(status);
 
@@ -79,6 +81,7 @@ export function PartnerApplicationActions({
           ok?: boolean;
           message?: string;
           partnerCode?: string | null;
+          username?: string | null;
           temporaryPassword?: string | null;
         };
 
@@ -86,7 +89,11 @@ export function PartnerApplicationActions({
 
         if (result.temporaryPassword && result.partnerCode) {
           // Shown once — it is never stored, so it cannot be looked up later.
-          setCredentials({ code: result.partnerCode, password: result.temporaryPassword });
+          setCredentials({
+            code: result.partnerCode,
+            username: result.username ?? "",
+            password: result.temporaryPassword,
+          });
         }
 
         success(result.message ?? "Application updated.");
@@ -105,18 +112,35 @@ export function PartnerApplicationActions({
         <p className="text-xs font-black uppercase tracking-[0.1em] text-emerald-800">
           Share these once
         </p>
+        {/*
+          Username first, because it is the half that was missing.
+
+          This box used to read "Partner code" and "Password". A partner code
+          is not a login — /ap/login asks for a username — so an approved
+          partner was given two things, neither of which let them in.
+        */}
         <p className="text-xs font-semibold text-emerald-900">
-          Partner code: <span className="font-mono font-black">{credentials.code}</span>
+          Username: <span className="font-mono font-black">{credentials.username || "—"}</span>
         </p>
         <p className="text-xs font-semibold text-emerald-900">
           Password: <span className="font-mono font-black">{credentials.password}</span>
+        </p>
+        <p className="text-xs font-semibold text-emerald-900">
+          Partner code: <span className="font-mono font-black">{credentials.code}</span>
+        </p>
+        <p className="text-[11px] font-medium text-emerald-800">
+          They sign in at /ap/login and are asked to change the password straight away.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
             onClick={() => {
               void navigator.clipboard?.writeText(
-                `Partner code: ${credentials.code}\nPassword: ${credentials.password}`,
+                `DigiConnect Digi Partner login\n` +
+                  `Username: ${credentials.username}\n` +
+                  `Password: ${credentials.password}\n` +
+                  `Partner code: ${credentials.code}\n` +
+                  `Sign in: /ap/login`,
               );
               success("Credentials copied.");
             }}
