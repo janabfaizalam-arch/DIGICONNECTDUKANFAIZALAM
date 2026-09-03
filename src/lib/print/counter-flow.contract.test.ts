@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { readCode } from "@/lib/testing/source";
 
-const flow = readCode("src/components/print/station-print-flow.tsx");
+/*
+  The counter page is Smart Print now.
+
+  Every assertion below was written after a real incident at a shop — a Pay
+  button with no handler, a price a browser could edit, a WebP that printed
+  nothing, a screen that said "Printing now" forever. Replacing the component
+  the page renders does not retire any of them, so they follow it here rather
+  than being deleted with the file they were written against.
+*/
+const flow = readCode("src/components/print/smart-print-flow.tsx");
+const printable = readCode("src/lib/print/printable-image.ts");
 const create = readCode("src/app/api/print/jobs/create/route.ts");
 const upload = readCode("src/app/api/print/jobs/upload/route.ts");
 
@@ -17,8 +27,10 @@ const upload = readCode("src/app/api/print/jobs/upload/route.ts");
 
 describe("the pay button", () => {
   it("actually does something when tapped", () => {
-    // The regression this exists for: a styled button with no onClick.
-    expect(flow).toContain("onClick={() => void payAndPrint()}");
+    // The regression this exists for: a styled button with no onClick. The
+    // pay control is its own component now, so the wiring is a prop.
+    expect(flow).toContain("onPay={() => void payAndPrint()}");
+    expect(flow).toContain("onClick={onPay}");
   });
 
   it("runs the three server calls the job needs, in order", () => {
@@ -38,14 +50,16 @@ describe("the pay button", () => {
   });
 
   it("cannot be tapped before there is something to print and someone to call", () => {
+    // Closed counter, unreachable printer, no file, no number, and no
+    // checkout script yet — each one of these has been a real incident.
     expect(flow).toContain(
-      "disabled={closed || offline || !uploaded || uploading || paying || mobile.length < 10}",
+      "disabled={!enough || closed || offline || mobile.length < 10 || !payReady}",
     );
   });
 
   it("loads the payment script the page depends on", () => {
     expect(flow).toContain("checkout.razorpay.com/v1/checkout.js");
-    expect(flow).toContain("setRazorpayReady(true)");
+    expect(flow).toContain("setPayReady(true)");
   });
 
   it("tells the customer their money is safe when confirmation fails after paying", () => {
@@ -98,7 +112,7 @@ describe("what a phone is allowed to send", () => {
     // what WhatsApp and Android screenshots hand over.
     expect(upload).toContain('"webp"');
     expect(upload).toContain('"image/webp"');
-    expect(flow).toContain(".webp");
+    expect(printable).toContain(".webp");
   });
 
   it("says what can be printed instead of only what cannot", () => {
@@ -168,29 +182,29 @@ describe("a photo the printer can actually read", () => {
       photo can decode it — that is how it is on screen — so it converts
       before the file is ever sent.
     */
-    expect(flow).toContain("async function toPrintableImage");
-    expect(flow).toContain("createImageBitmap(file)");
-    expect(flow).toContain('canvas.toBlob(resolve, type, quality)');
+    expect(printable).toContain("export async function toPrintableImage");
+    expect(printable).toContain("createImageBitmap(file)");
+    expect(printable).toContain('canvas.toBlob(resolve, type, quality)');
   });
 
   it("converts before uploading, not after", () => {
-    expect(flow).toContain("const sending = await toPrintableImage(picked)");
+    expect(flow).toContain("sending = await toPrintableImage(original)");
     expect(flow).toContain('form.append("file", sending)');
   });
 
   it("leaves every other format exactly as the customer chose it", () => {
-    expect(flow).toContain("if (!isWebp) return file");
+    expect(printable).toContain("if (!isWebp) return file");
   });
 
   it("uploads the original rather than nothing if converting fails", () => {
     // A job that fails at the printer can be reprinted. A customer who
     // cannot upload at all just leaves.
-    expect(flow).toMatch(/catch \{\s*return file;\s*\}/);
+    expect(printable).toMatch(/catch \{\s*return file;\s*\}/);
   });
 
   it("caps the long edge so a lossless copy stays uploadable", () => {
-    expect(flow).toContain("longest > 3000");
-    expect(flow).toContain("15 * 1024 * 1024");
+    expect(printable).toContain("longest > 3000");
+    expect(printable).toContain("15 * 1024 * 1024");
   });
 });
 

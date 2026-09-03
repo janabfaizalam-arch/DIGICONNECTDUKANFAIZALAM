@@ -34,6 +34,10 @@ export type PrintStation = {
   agent_connected: boolean;
   agent_last_seen_at: string | null;
   has_agent_token: boolean;
+  /** This shop's own Smart Print defaults, keyed by service id. */
+  smart_print_defaults: Record<string, Record<string, unknown>>;
+  /** When true, a paid job waits for the partner before it prints. */
+  require_approval: boolean;
 };
 
 /**
@@ -127,11 +131,23 @@ function toStation(row: StationRow): PrintStation {
     // would tell a partner their printer is fine while it sits unplugged.
     agent_connected: Boolean(lastSeen && Date.now() - new Date(lastSeen).getTime() < 2 * 60 * 1000),
     has_agent_token: Boolean(row.agent_token_hash),
+    /*
+      The shop's own Smart Print defaults.
+
+      Read defensively: the column arrives with the migration, and a station
+      row read before it is applied would otherwise crash the counter page
+      rather than simply using the platform presets.
+    */
+    smart_print_defaults:
+      row.smart_print_defaults && typeof row.smart_print_defaults === "object"
+        ? (row.smart_print_defaults as Record<string, Record<string, unknown>>)
+        : {},
+    require_approval: row.require_approval === true,
   };
 }
 
 const COLUMNS =
-  "id, partner_id, code, display_name, address, rate_a4_mono, rate_a4_color, rate_a3_mono, rate_a3_color, accepting_orders, is_active, auto_delete_minutes, printer_name, agent_last_seen_at, agent_token_hash";
+  "id, partner_id, code, display_name, address, rate_a4_mono, rate_a4_color, rate_a3_mono, rate_a3_color, accepting_orders, is_active, auto_delete_minutes, printer_name, agent_last_seen_at, agent_token_hash, smart_print_defaults, require_approval";
 
 /** The station behind a QR code. Case-insensitive: a code may be typed by hand. */
 export async function getStationByCode(code: string): Promise<PrintStation | null> {
@@ -273,6 +289,9 @@ export async function updateStation(
     accepting_orders?: boolean;
     auto_delete_minutes?: number;
     printer_name?: string | null;
+    /** Per-service Smart Print defaults, merged over what the shop already had. */
+    smart_print_defaults?: Record<string, Record<string, unknown>>;
+    require_approval?: boolean;
   },
 ): Promise<PrintStation | null> {
   const supabase = getSupabaseAdmin();
@@ -294,6 +313,19 @@ export async function updateStation(
     // The schema's check would reject an out-of-range value with a database
     // error; clamping turns a mistyped 500 into the longest we allow.
     update.auto_delete_minutes = Math.min(120, Math.max(5, Math.round(Number(patch.auto_delete_minutes) || 15)));
+  }
+
+  if (patch.require_approval !== undefined) update.require_approval = Boolean(patch.require_approval);
+
+  /*
+    Merged, not replaced.
+
+    A shop changing its passport-photo count should not lose the Aadhaar
+    default it set last month — and the screen only ever sends the service it
+    is editing.
+  */
+  if (patch.smart_print_defaults) {
+    update.smart_print_defaults = { ...current.smart_print_defaults, ...patch.smart_print_defaults };
   }
 
   if (patch.rates) {

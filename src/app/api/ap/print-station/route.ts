@@ -98,6 +98,11 @@ export async function PATCH(request: Request) {
     accepting_orders: body.acceptingOrders === undefined ? undefined : Boolean(body.acceptingOrders),
     auto_delete_minutes:
       body.autoDeleteMinutes === undefined ? undefined : Number(body.autoDeleteMinutes),
+    smart_print_defaults:
+      body.smartPrintDefaults === undefined
+        ? undefined
+        : (body.smartPrintDefaults as Record<string, Record<string, unknown>>),
+    require_approval: body.requireApproval === undefined ? undefined : Boolean(body.requireApproval),
     rates: {
       a4_mono: rates.a4_mono === undefined ? undefined : Number(rates.a4_mono),
       a4_color: rates.a4_color === undefined ? undefined : Number(rates.a4_color),
