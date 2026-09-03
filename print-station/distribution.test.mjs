@@ -3,7 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { SHIPPED_FILES } from "../scripts/build-print-station.mjs";
+import { BUNDLED_FILES, SHIPPED_FILES } from "../scripts/build-print-station.mjs";
+import { PRINT_STATION_FILES } from "../src/lib/print/bundle-files.generated.ts";
 
 /**
  * The download must be the program.
@@ -147,5 +148,107 @@ describe("the launcher, when it is on its own", () => {
 
   it("guards the mac and linux launcher the same way", () => {
     expect(sh).toContain("! -f ./station.mjs");
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Printing without a window
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * "Terminal wali window kaat di jaye to bhi print nikle, aisa nahi ho sakta
+ * kya?" It can, and it should have from the start: a console window that must
+ * stay open all day is one accidental X away from a customer paying for pages
+ * that never come out, and the shop only finds out when they complain.
+ */
+describe("the background mode", () => {
+  const install = readFileSync(join(source, "Background me chalaiye.bat"), "utf8");
+  const remove = readFileSync(join(source, "Background band kijiye.bat"), "utf8");
+  const script = readFileSync(join(source, "lib", "background.ps1"), "utf8");
+  const vbs = readFileSync(join(source, "lib", "run-hidden.vbs"), "utf8");
+  const installer = readFileSync(join(source, "install.ps1"), "utf8");
+
+  it("ships every piece, or a double-click does nothing", () => {
+    for (const file of [
+      "Background me chalaiye.bat",
+      "Background band kijiye.bat",
+      "lib/background.ps1",
+      "lib/run-hidden.vbs",
+      "lib/run-hidden.ps1",
+    ]) {
+      expect(SHIPPED_FILES, `${file} is not shipped`).toContain(file);
+      expect(installer, `${file} is missing from the one-line installer`).toContain(file);
+    }
+  });
+
+  it("can be undone", () => {
+    expect(remove).toContain("-Remove");
+    expect(script).toContain("param([switch]$Remove)");
+    expect(script).toContain("Remove-Item $link -Force");
+  });
+
+  it("asks for no administrator rights", () => {
+    // A shop PC's owner often is not an admin. The user's own Startup folder
+    // needs nothing; a scheduled task or a service would need elevation and
+    // would stop half the installs before they began.
+    expect(script).toContain('[Environment]::GetFolderPath("Startup")');
+    expect(script).not.toMatch(/RunAs|schtasks|New-Service|Register-ScheduledTask/);
+  });
+
+  it("starts with no window rather than a minimised one", () => {
+    // WScript.Shell.Run's third argument: 0 is hidden. A minimised console
+    // still sits in the taskbar waiting to be closed by mistake.
+    expect(vbs).toContain('shell.Run "node """ & folder & "\\station.mjs""", 0, False');
+    expect(script).toContain("-WindowStyle Hidden");
+  });
+
+  it("only ever stops its own program", () => {
+    // Matching on node.exe alone would kill whatever else the shop runs.
+    expect(script).toContain("Name = 'node.exe'");
+    expect(script).toContain('$_.CommandLine -like "*station.mjs*"');
+  });
+
+  it("says out loud whether it actually came up", () => {
+    // The window is gone, so "it worked" cannot be left to the shop to infer.
+    expect(script).toContain("/api/state");
+    expect(script).toMatch(/localhost:\$port/);
+  });
+
+  it("guards both launchers against being run on their own", () => {
+    for (const [name, text] of [["install", install], ["remove", remove]]) {
+      expect(text, `${name} has no folder guard`).toContain('if not exist "%~dp0station.mjs" goto :nofolder');
+    }
+  });
+
+  it("keeps every launcher plain ASCII", () => {
+    for (const [name, text] of [["install", install], ["remove", remove], ["background.ps1", script], ["run-hidden.vbs", vbs]]) {
+      const strange = [...text].filter((character) => character.charCodeAt(0) > 126);
+      expect(strange, `non-ASCII in ${name}: ${strange.join("")}`).toEqual([]);
+    }
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The partner download is the same program
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * public/print-station/ is checked above, but that is not what a partner
+ * downloads. The zip is built inside a serverless function, which cannot read
+ * public/ off the disk, so its contents are compiled into
+ * bundle-files.generated.ts. Nothing was checking that copy — a fix to the
+ * program with the build script left unrun would have shipped a stale zip to
+ * every shop while the tests stayed green.
+ */
+describe("the zip the dashboard hands out", () => {
+  it.each(BUNDLED_FILES)("carries %s byte-for-byte", (file) => {
+    expect(
+      PRINT_STATION_FILES[file],
+      `${file} is missing from bundle-files.generated.ts — run node scripts/build-print-station.mjs`,
+    ).toBe(readFileSync(join(source, file), "utf8"));
+  });
+
+  it("carries nothing the program does not need", () => {
+    expect(Object.keys(PRINT_STATION_FILES).sort()).toEqual([...BUNDLED_FILES].sort());
   });
 });

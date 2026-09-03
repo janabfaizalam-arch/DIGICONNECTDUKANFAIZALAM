@@ -18,13 +18,18 @@ $Target  = Join-Path $env:LOCALAPPDATA "DigiConnectPrintStation\app"
 $Files   = @(
   "station.mjs",
   "Start Print Station.bat",
+  "Background me chalaiye.bat",
+  "Background band kijiye.bat",
   "lib/config.mjs",
   "lib/api.mjs",
   "lib/worker.mjs",
   "lib/printer.mjs",
   "lib/page.mjs",
   "lib/log.mjs",
-  "lib/version.mjs"
+  "lib/version.mjs",
+  "lib/background.ps1",
+  "lib/run-hidden.vbs",
+  "lib/run-hidden.ps1"
 )
 
 Write-Host ""

@@ -70,8 +70,32 @@ The program opens a page on your own computer at **http://localhost:7171**.
 
 If you used the download, steps 1 and 2 are already done for you.
 
-Then leave it running. The window can be minimised, but closing it stops
-printing.
+---
+
+## Run it without the black window
+
+The console window is not the program's home, only its front door. Nobody at a
+counter should have to guard it, and one accidental X at closing time means the
+next customer pays for pages that never come out.
+
+Double-click **Background me chalaiye** once. From then on:
+
+- The program runs with no window at all.
+- It starts by itself every time the computer is switched on.
+- Its state is at **http://localhost:7171**, same as before.
+
+To go back to the old way, double-click **Background band kijiye** — that stops
+the hidden copy and removes it from Windows startup.
+
+It needs no administrator rights: it writes one shortcut into your own Startup
+folder (`shell:startup`), which is why it works on a shop machine whose owner
+is not an admin. The hidden start uses `wscript`; on a Windows with VBScript
+removed it falls back to PowerShell.
+
+One thing it does not do: restart itself if the program crashes. It comes back
+on the next reboot. If you see printing stop with the computer still on, open
+http://localhost:7171 — if that page does not load, run **Background me
+chalaiye** again.
 
 ---
 
