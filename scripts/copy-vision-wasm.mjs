@@ -14,7 +14,7 @@
  * the same place as the page.
  */
 
-import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,10 +22,26 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const from = join(root, "node_modules", "@mediapipe", "tasks-vision", "wasm");
 const to = join(root, "public", "mediapipe");
 
+/**
+ * Only what the browser will actually ask for.
+ *
+ * The package ships three builds. FilesetResolver.forVisionTasks(path) picks
+ * its filename as `vision_wasm${module ? "_module" : ""}${simd ? "" : "_nosimd"}_internal`,
+ * and the `_module` variant is reachable only by passing a second argument we
+ * never pass — so copying it added 12 MB to every deployment that no browser
+ * could ever fetch. The other two are both real: modern phones take the SIMD
+ * build, older ones fall back to nosimd.
+ */
+const NEEDED = [
+  "vision_wasm_internal.js",
+  "vision_wasm_internal.wasm",
+  "vision_wasm_nosimd_internal.js",
+  "vision_wasm_nosimd_internal.wasm",
+];
+
 async function main() {
-  let files;
   try {
-    files = await readdir(from);
+    await stat(from);
   } catch {
     // A checkout without node_modules, or an install that skipped the
     // package. The feature degrades to "background removal unavailable"
@@ -35,14 +51,15 @@ async function main() {
   }
 
   await mkdir(to, { recursive: true });
-  let copied = 0;
-  for (const name of files) {
+  let bytes = 0;
+  for (const name of NEEDED) {
     const source = join(from, name);
-    if (!(await stat(source)).isFile()) continue;
+    bytes += (await stat(source)).size;
     await copyFile(source, join(to, name));
-    copied += 1;
   }
-  console.log(`[vision-wasm] copied ${copied} files to public/mediapipe`);
+  console.log(
+    `[vision-wasm] copied ${NEEDED.length} files (${Math.round(bytes / 1e6)} MB) to public/mediapipe`,
+  );
 }
 
 await main();
