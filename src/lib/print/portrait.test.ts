@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { readCode } from "@/lib/testing/source";
 import { BACKDROPS, backdropColour, featherMask, parseColour, personMaskIndex } from "@/lib/print/portrait";
+
+const portrait = readCode("src/lib/print/portrait.ts");
 
 /* ─────────────────────────────────────────────────────────────────────────
    Which mask is the person
@@ -108,5 +111,41 @@ describe("backdrop colours", () => {
   it("offers the two backgrounds Indian offices actually ask for", () => {
     expect(backdropColour("white")).toBe("#ffffff");
     expect(backdropColour("blue")).not.toBeNull();
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   What gets shipped to run it
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Every byte in public/ is on every deployment, so a file no browser can ask
+ * for is pure cost. The package ships three runtime builds and the loader
+ * composes its filename as
+ *   vision_wasm${module ? "_module" : ""}${simd ? "" : "_nosimd"}_internal
+ * — the `_module` pair is reachable only through a second argument to
+ * forVisionTasks that this code never passes, and copying it added 12 MB to
+ * every deploy that nothing could ever fetch.
+ */
+describe("the runtime that gets deployed", () => {
+  const script = readCode("scripts/copy-vision-wasm.mjs");
+
+  it("ships the SIMD build and the fallback, and nothing else", () => {
+    expect(script).toContain('"vision_wasm_internal.wasm"');
+    expect(script).toContain('"vision_wasm_nosimd_internal.wasm"');
+    expect(script).not.toContain("vision_wasm_module_internal");
+  });
+
+  it("asks the loader for the plain build, matching what it copies", () => {
+    // forVisionTasks(path) with no second argument. Passing `true` here would
+    // request the _module files that are deliberately not deployed.
+    expect(portrait).toContain("forVisionTasks(WASM_PATH)");
+  });
+
+  it("keeps the runtime out of git and off the first page load", () => {
+    // 23 MB has no business in a repository, and no business downloading for
+    // somebody printing an Aadhaar copy.
+    expect(readCode(".gitignore")).toContain("/public/mediapipe/");
+    expect(portrait).toContain('await import("@mediapipe/tasks-vision")');
   });
 });
