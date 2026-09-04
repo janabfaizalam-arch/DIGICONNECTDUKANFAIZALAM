@@ -9,7 +9,6 @@ import {
   idCardPlan,
   mmToPx,
   sheetPixels,
-  singlePlan,
 } from "@/lib/print/sheet-layout";
 
 const A4 = PAPER_SIZES.A4;
@@ -43,14 +42,6 @@ describe("a photo comes out the size it was ordered", () => {
     expect(crop.sy).toBe(0);
     // Centre crop: what is taken off the left equals what is taken off the right.
     expect(crop.sx * 2 + crop.sWidth).toBeCloseTo(4000, 6);
-  });
-
-  it("keeps the aspect ratio when fitting a photo to a sheet", () => {
-    const plan = singlePlan(PAPER_SIZES["4x6"], { width: 3000, height: 2000 }, "fit");
-    const slot = plan.slots[0];
-    expect(slot.width / slot.height).toBeCloseTo(3 / 2, 6);
-    expect(slot.width).toBeLessThanOrEqual(PAPER_SIZES["4x6"].width);
-    expect(slot.height).toBeLessThanOrEqual(PAPER_SIZES["4x6"].height);
   });
 });
 
@@ -194,5 +185,84 @@ describe("turning millimetres into a canvas", () => {
     // 210 × 297 mm at 300 DPI is 2480 × 3508 — the number every print shop
     // knows. If this changes, something is wrong with the conversion.
     expect(sheetPixels(A4)).toEqual({ width: 2480, height: 3508 });
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   One side is one card
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A customer photographs the front of their Aadhaar, taps nothing else, and
+ * pays. The sheet used to lay out two slots regardless, and a sheet with more
+ * slots than pictures repeats from the start — so they were handed a page with
+ * the same side printed twice. Right for twelve passport photos, wrong here.
+ */
+describe("an ID card sheet with only one side uploaded", () => {
+  const a4 = PAPER_SIZES.A4;
+
+  it("puts one card on the page, not the front twice", () => {
+    expect(idCardPlan(a4, "stacked", 1, 1).slots).toHaveLength(1);
+    expect(idCardPlan(a4, "side-by-side", 1, 1).slots).toHaveLength(1);
+    expect(idCardPlan(a4, "actual-size", 1, 1).slots).toHaveLength(1);
+  });
+
+  it("still lays out both when both arrive", () => {
+    expect(idCardPlan(a4, "stacked", 1, 2).slots).toHaveLength(2);
+    expect(idCardPlan(a4, "side-by-side", 1, 2).slots).toHaveLength(2);
+  });
+
+  it("centres the single card rather than leaving it high on the page", () => {
+    const [only] = idCardPlan(a4, "stacked", 1, 1).slots;
+    expect(only.y + only.height / 2).toBeCloseTo(a4.height / 2, 6);
+    expect(only.x + only.width / 2).toBeCloseTo(a4.width / 2, 6);
+  });
+
+  it("keeps the card at its true proportions either way", () => {
+    for (const sides of [1, 2] as const) {
+      for (const arrangement of ["stacked", "side-by-side", "actual-size"] as const) {
+        for (const slot of idCardPlan(a4, arrangement, 1, sides).slots) {
+          expect(
+            slot.width / slot.height,
+            `${arrangement} with ${sides} side(s) distorted the card`,
+          ).toBeCloseTo(ID_CARD.width / ID_CARD.height, 6);
+        }
+      }
+    }
+  });
+
+  it("keeps two sides side by side when that is what was asked", () => {
+    const [first, second] = idCardPlan(a4, "side-by-side", 1, 2).slots;
+    expect(second.x).toBeGreaterThan(first.x);
+    expect(second.y).toBeCloseTo(first.y, 6);
+  });
+});
+
+/**
+ * The turn that fits one more card is not worth making.
+ *
+ * gridPlan turns an item 90° when more of it fits that way, which is right for
+ * photographs and wrong here: nine Aadhaar cards lying sideways on an A4 is a
+ * page an office hands back, and the ninth card is worth nothing to somebody
+ * printing one copy of their own ID.
+ */
+describe("an ID card is never printed sideways", () => {
+  it("keeps every arrangement upright", () => {
+    for (const sides of [1, 2] as const) {
+      for (const arrangement of ["stacked", "side-by-side", "actual-size"] as const) {
+        const plan = idCardPlan(PAPER_SIZES.A4, arrangement, 1, sides);
+        expect(plan.rotated, `${arrangement} with ${sides} side(s) turned the card`).toBe(false);
+        for (const slot of plan.slots) {
+          expect(slot.width).toBeGreaterThan(slot.height);
+        }
+      }
+    }
+  });
+
+  it("still turns a photograph when that fits more of them", () => {
+    // The behaviour being switched off above must stay on where it earns its
+    // keep: this is what makes thirty 35 × 45s fit an A4 instead of twenty-eight.
+    const plan = gridPlan(PAPER_SIZES.A4, { width: 45, height: 35 }, 30);
+    expect(plan.rotated).toBe(true);
   });
 });

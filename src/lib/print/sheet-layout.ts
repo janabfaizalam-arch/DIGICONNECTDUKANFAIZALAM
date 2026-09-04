@@ -81,6 +81,16 @@ export type GridOptions = {
    * little paper.
    */
   columns?: number;
+  /**
+   * Whether the item may be turned 90° to fit more on the sheet.
+   *
+   * True is right for photographs — twenty-eight versus thirty is real money
+   * to a shop buying paper, and nobody minds which way up a passport photo was
+   * laid out before it was cut. It is wrong for an ID card copy: an Aadhaar
+   * printed sideways on an A4 is a page an office hands back, and saving one
+   * card per sheet is worth nothing to a customer printing one.
+   */
+  rotate?: boolean;
 };
 
 const DEFAULTS = { margin: 5, gutter: 2 } satisfies Pick<GridOptions, "margin" | "gutter">;
@@ -103,7 +113,7 @@ export function gridPlan(
 
   const upright = capacity(paper, item, margin, gutter);
   const turned = capacity(paper, { width: item.height, height: item.width }, margin, gutter);
-  const rotated = turned.total > upright.total;
+  const rotated = options.rotate !== false && turned.total > upright.total;
   const cap = rotated ? turned : upright;
   const size = rotated ? { width: item.height, height: item.width } : item;
 
@@ -196,16 +206,27 @@ export function idCardPlan(
   paper: PaperSize,
   arrangement: "stacked" | "side-by-side" | "actual-size",
   copies = 1,
+  /**
+   * How many sides the customer actually gave us.
+   *
+   * Two slots were laid out unconditionally, and a customer who photographed
+   * only the front got that front printed twice — because a sheet with more
+   * slots than pictures repeats from the start, which is right for twelve
+   * passport photos and wrong for an ID. One side means one card.
+   */
+  sides: 1 | 2 = 2,
   card: { width: Mm; height: Mm } = ID_CARD,
 ): SheetPlan {
+  const count = sides * Math.max(1, copies);
+
   if (arrangement === "side-by-side") {
     // One row, always: the arrangement is the request. A column of two wastes
     // exactly as little paper, which is how this quietly came out stacked.
-    return gridPlan(paper, card, 2 * copies, { margin: 10, gutter: 6, columns: 2 });
+    return gridPlan(paper, card, count, { margin: 10, gutter: 6, columns: sides, rotate: false });
   }
   if (arrangement === "actual-size") {
     // Both sides at true card size, packed as tightly as the sheet allows.
-    return gridPlan(paper, card, 2 * copies, { margin: 8, gutter: 4 });
+    return gridPlan(paper, card, count, { margin: 8, gutter: 4, rotate: false });
   }
 
   // Stacked: one column, so front sits directly above back.
@@ -214,50 +235,23 @@ export function idCardPlan(
   const scale = Math.min(1, (paper.width - margin * 2) / card.width);
   const width = card.width * scale;
   const height = card.height * scale;
-  const blockHeight = height * 2 + gutter;
+  const blockHeight = height * sides + gutter * (sides - 1);
+  const top = (paper.height - blockHeight) / 2;
 
   return {
     paper,
-    slots: [
-      { x: (paper.width - width) / 2, y: (paper.height - blockHeight) / 2, width, height },
-      { x: (paper.width - width) / 2, y: (paper.height - blockHeight) / 2 + height + gutter, width, height },
-    ],
-    perSheet: 2,
+    slots: Array.from({ length: sides }, (_, index) => ({
+      x: (paper.width - width) / 2,
+      y: top + index * (height + gutter),
+      width,
+      height,
+    })),
+    perSheet: sides,
     sheets: Math.max(1, copies),
     rotated: false,
   };
 }
 
-/**
- * One image on one sheet, with or without a white border.
- *
- * Fit keeps the whole picture and leaves white where the shapes disagree;
- * fill crops to the edges. Both keep the aspect ratio — a face stretched to
- * fill 4 × 6 is the single most obvious way to look like an amateur.
- */
-export function singlePlan(
-  paper: PaperSize,
-  image: { width: number; height: number },
-  mode: "fit" | "fill",
-  border: Mm = 0,
-): SheetPlan {
-  const boxWidth = paper.width - border * 2;
-  const boxHeight = paper.height - border * 2;
-  const imageRatio = image.width / image.height;
-  const boxRatio = boxWidth / boxHeight;
-
-  const useWidth = mode === "fit" ? imageRatio > boxRatio : imageRatio < boxRatio;
-  const width = useWidth ? boxWidth : boxHeight * imageRatio;
-  const height = useWidth ? boxWidth / imageRatio : boxHeight;
-
-  return {
-    paper,
-    slots: [{ x: (paper.width - width) / 2, y: (paper.height - height) / 2, width, height }],
-    perSheet: 1,
-    sheets: 1,
-    rotated: false,
-  };
-}
 
 /** Millimetres to pixels at a print resolution. 300 DPI is the shop standard. */
 export function mmToPx(mm: Mm, dpi = 300): number {

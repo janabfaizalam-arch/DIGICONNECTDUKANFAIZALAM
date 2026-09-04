@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { SmartPrintFlow } from "@/components/print/smart-print-flow";
-import type { SmartStationView } from "@/components/print/smart-print-flow";
 import { getStationByCode } from "@/lib/print/stations";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +56,7 @@ export default async function StationPrintPage({ params }: PageProps) {
           twelve-photo default the moment the service is chosen and still let
           the customer change it.
         */
-        defaults: station.smart_print_defaults as SmartStationView["defaults"],
+        defaults: station.smart_print_defaults,
       }}
     />
   );

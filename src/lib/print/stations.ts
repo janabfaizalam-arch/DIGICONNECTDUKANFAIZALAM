@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes, randomInt } from "crypto";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import type { PartnerDefaults } from "@/lib/print/smart-print";
 
 /**
  * A shop's print counter.
@@ -34,8 +35,8 @@ export type PrintStation = {
   agent_connected: boolean;
   agent_last_seen_at: string | null;
   has_agent_token: boolean;
-  /** This shop's own Smart Print defaults, keyed by service id. */
-  smart_print_defaults: Record<string, Record<string, unknown>>;
+  /** This shop's own Smart Print defaults and permissions, keyed by service id. */
+  smart_print_defaults: PartnerDefaults;
   /** When true, a paid job waits for the partner before it prints. */
   require_approval: boolean;
 };
@@ -140,7 +141,7 @@ function toStation(row: StationRow): PrintStation {
     */
     smart_print_defaults:
       row.smart_print_defaults && typeof row.smart_print_defaults === "object"
-        ? (row.smart_print_defaults as Record<string, Record<string, unknown>>)
+        ? (row.smart_print_defaults as PartnerDefaults)
         : {},
     require_approval: row.require_approval === true,
   };
@@ -290,7 +291,7 @@ export async function updateStation(
     auto_delete_minutes?: number;
     printer_name?: string | null;
     /** Per-service Smart Print defaults, merged over what the shop already had. */
-    smart_print_defaults?: Record<string, Record<string, unknown>>;
+    smart_print_defaults?: PartnerDefaults;
     require_approval?: boolean;
   },
 ): Promise<PrintStation | null> {

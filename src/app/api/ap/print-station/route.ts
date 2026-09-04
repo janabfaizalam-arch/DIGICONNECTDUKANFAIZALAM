@@ -8,6 +8,7 @@ import {
   rotateAgentToken,
   updateStation,
 } from "@/lib/print/stations";
+import type { PartnerDefaults } from "@/lib/print/smart-print";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function PATCH(request: Request) {
     smart_print_defaults:
       body.smartPrintDefaults === undefined
         ? undefined
-        : (body.smartPrintDefaults as Record<string, Record<string, unknown>>),
+        : (body.smartPrintDefaults as PartnerDefaults),
     require_approval: body.requireApproval === undefined ? undefined : Boolean(body.requireApproval),
     rates: {
       a4_mono: rates.a4_mono === undefined ? undefined : Number(rates.a4_mono),
