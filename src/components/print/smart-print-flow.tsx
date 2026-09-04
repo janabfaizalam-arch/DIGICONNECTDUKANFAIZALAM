@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
+  RotateCcw,
   Trash2,
   UserSquare,
   Wand2,
@@ -29,6 +30,7 @@ import {
   type ImageAdjustments,
   type LoadedImage,
 } from "@/lib/print/compose-sheet";
+import { PHOTO_EDITS, photoEdit, type PhotoEditId } from "@/lib/ai/photo-edits";
 import { scanCard } from "@/lib/print/card-scan";
 import { BACKDROPS, backdropColour, canChangeBackground, replaceBackground } from "@/lib/print/portrait";
 import { PAPER_SIZES, PHOTO_SIZES, gridPlan, idCardPlan, type SheetPlan } from "@/lib/print/sheet-layout";
@@ -109,6 +111,18 @@ type Slot = {
   editedFor: string | null;
   useEdited: boolean;
   note: string | null;
+  /**
+   * What Gemini sent back, and whether the customer accepted it.
+   *
+   * A separate field rather than reusing `edited`: the on-device backdrop
+   * rebuilds `edited` whenever the colour changes, and an AI result dropped
+   * into the same slot would be wiped by the next redraw. Keeping them apart
+   * also keeps the promise this whole screen rests on — the customer's own
+   * photograph is never replaced, only set beside something else.
+   */
+  ai: LoadedImage | null;
+  aiEdit: PhotoEditId | null;
+  useAi: boolean;
 };
 
 /*
@@ -156,7 +170,11 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
   /** The picture that would actually be printed for each slot. */
   const images = useMemo(
     () =>
-      slots.map((slot) => (slot ? (slot.useEdited && slot.edited ? slot.edited : slot.original) : null)),
+      slots.map((slot) => {
+        if (!slot) return null;
+        if (slot.useAi && slot.ai) return slot.ai;
+        return slot.useEdited && slot.edited ? slot.edited : slot.original;
+      }),
     [slots],
   );
 
@@ -248,7 +266,12 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
       return;
     }
 
-    const index = slots.findIndex((slot) => slot && slot.editedFor !== wanted);
+    /*
+      An accepted AI photo already has its background replaced. Segmenting it
+      again would be two engines fighting over the same picture, and the loser
+      would be whichever finished last.
+    */
+    const index = slots.findIndex((slot) => slot && !slot.useAi && slot.editedFor !== wanted);
     if (index < 0) return;
 
     const slot = slots[index]!;
@@ -342,6 +365,9 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
           editedFor: null,
           useEdited: false,
           note: null,
+          ai: null,
+          aiEdit: null,
+          useAi: false,
         };
         return next;
       });
@@ -367,6 +393,61 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
     setSlots((current) =>
       current.map((slot, at) => (at === index && slot ? { ...slot, useEdited: !slot.useEdited } : slot)),
     );
+  };
+
+  /* ── AI Auto Fix ──────────────────────────────────────────────────── */
+
+  const [aiBusy, setAiBusy] = useState<PhotoEditId | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  /**
+   * Send the customer's photograph to our own server, which asks Gemini.
+   *
+   * The key is never here: this posts to `/api/ai/process-photo`, that route
+   * reads the key, and the browser only ever sees a picture come back. The
+   * result is held beside the original — accepting it is a separate tap, and
+   * "Original wapas" undoes it at any point before payment.
+   */
+  const runAiFix = async (edit: PhotoEditId) => {
+    const index = slots.findIndex(Boolean);
+    const slot = index < 0 ? null : slots[index];
+    if (!slot) {
+      setAiError("Pehle apni photo lagaiye.");
+      return;
+    }
+
+    setAiError(null);
+    setAiBusy(edit);
+    try {
+      const form = new FormData();
+      // Always the customer's own picture, never a previous AI result: editing
+      // an edit compounds whatever the model got wrong the first time.
+      form.append("file", slot.file);
+      form.append("edit", edit);
+
+      const response = await fetch("/api/ai/process-photo", { method: "POST", body: form });
+      const json = (await response.json()) as { image?: string; error?: string };
+      if (!response.ok || !json.image) throw new Error(json.error || "AI edit nahi ho saka.");
+
+      const ai = await loadImage(json.image);
+      setSlots((current) =>
+        current.map((item, at) => (at === index && item ? { ...item, ai, aiEdit: edit, useAi: true } : item)),
+      );
+    } catch (caught) {
+      setAiError(caught instanceof Error ? caught.message : "AI edit nahi ho saka.");
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const restoreOriginal = () => {
+    setAiError(null);
+    setSlots((current) => current.map((slot) => (slot ? { ...slot, useAi: false } : slot)));
+  };
+
+  const useAiPhoto = () => {
+    setAiError(null);
+    setSlots((current) => current.map((slot) => (slot ? { ...slot, useAi: true } : slot)));
   };
 
   const filled = rawFiles.filter(Boolean).length;
@@ -611,6 +692,17 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
                 pushed up is a document an office can refuse. Photographs get the
                 tools; documents get left alone.
               */}
+              {service.id === "passport_photo" && slots.some(Boolean) ? (
+                <AiFixCard
+                  slot={slots.find(Boolean) ?? null}
+                  busy={aiBusy}
+                  error={aiError}
+                  onRun={(edit) => void runAiFix(edit)}
+                  onUse={useAiPhoto}
+                  onRestore={restoreOriginal}
+                />
+              ) : null}
+
               {service.retouch && slots.some(Boolean) ? (
                 <PhotoTools adjustments={adjustments} onChange={setAdjustments} />
               ) : null}
@@ -847,8 +939,9 @@ function ServicePicker({
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#0f5db8]" aria-hidden />
         <span>
           Nobody here opens your file. It goes straight to the printer and deletes itself in{" "}
-          {station.autoDeleteMinutes} minutes — whether the print worked or not. Background aapke apne
-          phone me hi hatta hai.
+          {station.autoDeleteMinutes} minutes — whether the print worked or not. Card ka background
+          aapke apne phone me hi hatta hai. Sirf tab jab aap khud &ldquo;AI Auto Fix&rdquo; dabayein, photo
+          Google ke AI ko jati hai — aur wo aapko pehle batayenge.
         </span>
       </p>
     </div>
@@ -1000,6 +1093,192 @@ function Sheet({ preview, caption }: { preview: string; caption: string | null }
 }
 
 /**
+ * AI Auto Fix, and the one honest sentence that has to go with it.
+ *
+ * Everything else on this screen happens on the customer's own phone — the
+ * card cutout, the backdrop, the sheet itself. This does not: the photograph
+ * is sent to our server and on to Google to be edited. Somebody handing over a
+ * picture of their own face is owed that in plain words before they tap, not
+ * in a policy page, so it sits above the button rather than below it.
+ *
+ * The result never replaces anything. It is shown beside the original, the
+ * customer chooses, and "Original wapas" is available until they pay.
+ */
+function AiFixCard({
+  slot,
+  busy,
+  error,
+  onRun,
+  onUse,
+  onRestore,
+}: {
+  slot: Slot | null;
+  busy: PhotoEditId | null;
+  error: string | null;
+  onRun: (edit: PhotoEditId) => void;
+  onUse: () => void;
+  onRestore: () => void;
+}) {
+  const still = useReducedMotion();
+  if (!slot) return null;
+
+  const done = Boolean(slot.ai);
+  const chosen = slot.aiEdit ? photoEdit(slot.aiEdit) : null;
+
+  return (
+    <Card>
+      <div className="flex items-start gap-2.5">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white"
+          style={{ background: "linear-gradient(150deg,#ff8a3d,#f25a00)" }}
+        >
+          <Sparkles className="h-4.5 w-4.5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[13px] font-black text-[var(--dc-ink,#0f2049)]">AI Auto Fix</p>
+          <p className="mt-0.5 text-[11px] font-semibold leading-snug text-slate-500">
+            Ye photo Google ke AI ko bheji jayegi. Baaki sab kuch aapke phone me hi hota hai.
+            Chehra waisa hi rakhne ko kaha jata hai — natija aap khud dekh kar chunte hain.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {PHOTO_EDITS.map((edit) => {
+          const running = busy === edit.id;
+          const active = slot.useAi && slot.aiEdit === edit.id;
+          return (
+            <motion.button
+              key={edit.id}
+              type="button"
+              whileTap={busy ? undefined : { scale: 0.95 }}
+              disabled={Boolean(busy)}
+              onClick={() => onRun(edit.id)}
+              aria-pressed={active}
+              title={edit.blurb}
+              className={cn(
+                "inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl border px-3.5 text-[12.5px] font-black transition disabled:opacity-50",
+                active
+                  ? "border-transparent text-white shadow-[0_6px_16px_-8px_rgba(242,90,0,.9)]"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+              )}
+              style={active ? { background: "linear-gradient(140deg,#ff8a3d,#f25a00)" } : undefined}
+            >
+              {running ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {edit.label}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {busy ? (
+        <p className="mt-2.5 flex items-center gap-2 text-[12px] font-bold text-[#f25a00]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          AI aapki photo theek kar raha hai… thoda rukiye.
+        </p>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="mt-2.5 rounded-xl bg-orange-50 px-3 py-2 text-[11.5px] font-bold leading-snug text-[#c9430a]">
+          {error}
+        </p>
+      ) : null}
+
+      {/*
+        Before and after, side by side and the same size.
+
+        A single "after" is a claim. Two pictures the customer can look between
+        is the only way they can judge whether the face still looks like them,
+        which is the thing this feature is most likely to get wrong.
+      */}
+      {done ? (
+        <motion.div
+          initial={still ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 320, damping: 28 }}
+          className="mt-3"
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <Compare label="Original" src={slot.thumb} dim={slot.useAi} />
+            <Compare
+              label={chosen ? chosen.label : "AI"}
+              src={slot.ai!.element.src}
+              dim={!slot.useAi}
+              accent
+            />
+          </div>
+
+          <p className="mt-2 text-center text-[11px] font-bold text-slate-500">
+            {slot.useAi ? "AI wali photo print hogi" : "Aapki original photo print hogi"}
+          </p>
+
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onUse}
+              disabled={slot.useAi}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl px-3 text-[12.5px] font-black text-white transition disabled:opacity-40"
+              style={{ background: "linear-gradient(140deg,#2f80ed,#0f5db8)" }}
+            >
+              <Check className="h-4 w-4" aria-hidden />
+              Yehi photo lijiye
+            </button>
+            <button
+              type="button"
+              onClick={() => slot.aiEdit && onRun(slot.aiEdit)}
+              disabled={Boolean(busy) || !slot.aiEdit}
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 text-[12.5px] font-black text-slate-700 transition disabled:opacity-40"
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden />
+              Dobara
+            </button>
+            <button
+              type="button"
+              onClick={onRestore}
+              disabled={!slot.useAi}
+              className="inline-flex h-11 items-center justify-center rounded-2xl px-3 text-[12.5px] font-black text-slate-500 transition disabled:opacity-40"
+            >
+              Original wapas
+            </button>
+          </div>
+        </motion.div>
+      ) : null}
+    </Card>
+  );
+}
+
+function Compare({
+  label,
+  src,
+  dim,
+  accent,
+}: {
+  label: string;
+  src: string;
+  dim: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <figure className="min-w-0">
+      <div
+        className={cn(
+          "overflow-hidden rounded-2xl border bg-white transition",
+          dim ? "border-slate-200 opacity-55" : accent ? "border-[#f25a00]" : "border-[#0f5db8]",
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={label} className="h-36 w-full bg-white object-contain" />
+      </div>
+      <figcaption className="mt-1 text-center text-[11px] font-black text-slate-600">{label}</figcaption>
+    </figure>
+  );
+}
+
+/**
  * The adjustments a phone photo actually needs.
  *
  * Brightness, contrast and a quarter turn cover the real complaints at a
@@ -1115,7 +1394,7 @@ function Settings({
       {shown.has("backdrop") && canCut ? (
         <Choice
           label={ASK_LABELS.backdrop}
-          hint="Aapke phone me hi badalta hai — photo kahin nahi jati."
+          hint="Ye aapke phone me hi badalta hai — photo kahin nahi jati. AI Auto Fix alag hai."
           value={settings.backdrop ?? "original"}
           options={BACKDROPS.map((backdrop) => ({
             value: backdrop.id,

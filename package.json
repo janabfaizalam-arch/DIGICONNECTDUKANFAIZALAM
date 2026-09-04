@@ -25,6 +25,7 @@
     "verify:final-docs-access": "node --env-file=.env.local scripts/verify-final-document-access.mjs"
   },
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "@hookform/resolvers": "^5.4.0",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@radix-ui/react-select": "^2.2.5",
