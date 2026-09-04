@@ -535,14 +535,22 @@ export async function getAdminDashboardPayload(range: AdminDateRange): Promise<A
   let applicationsTrend: { label: string; applications: number }[] = [];
   let revenueTrend: { label: string; revenue: number }[] = [];
 
-  const { data: appSeries, error: appSeriesError } = await supabase.rpc("admin_dashboard_application_series", {
-    p_from: range.fromIso,
-    p_to: range.toIso,
-  });
-  const { data: revSeries, error: revSeriesError } = await supabase.rpc("admin_dashboard_revenue_series", {
-    p_from: range.fromIso,
-    p_to: range.toIso,
-  });
+  /*
+    Both series at once.
+
+    These were two `await`s one after the other, sitting after a Promise.all
+    that already batches thirty other reads — so every dashboard load paid for
+    two full round trips to the database in series, for two queries that have
+    nothing to say to each other. On a connection from a shop counter that is
+    the difference between the page arriving and the page being waited for.
+  */
+  const [
+    { data: appSeries, error: appSeriesError },
+    { data: revSeries, error: revSeriesError },
+  ] = await Promise.all([
+    supabase.rpc("admin_dashboard_application_series", { p_from: range.fromIso, p_to: range.toIso }),
+    supabase.rpc("admin_dashboard_revenue_series", { p_from: range.fromIso, p_to: range.toIso }),
+  ]);
 
   if (!appSeriesError && Array.isArray(appSeries)) {
     applicationsTrend = appSeries.map((row: { day: string; applications: number }) => ({
