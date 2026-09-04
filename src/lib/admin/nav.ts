@@ -62,6 +62,7 @@ import {
   UsersRound,
   WalletCards,
   Workflow,
+  HardHat,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -291,6 +292,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "FAQ & Testimonials",
         description: "Homepage questions and the reviews shown under them",
         icon: MessageSquare,
+      },
+      {
+        href: "/admin/labour-schemes",
+        label: "Labour Card Schemes",
+        description: "Scheme amounts, conditions and when each was last verified",
+        icon: HardHat,
       },
       {
         href: "/admin/gallery",
