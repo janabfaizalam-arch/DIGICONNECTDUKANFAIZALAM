@@ -131,8 +131,26 @@ describe("checking the client's figure", () => {
    ───────────────────────────────────────────────────────────────────────── */
 
 describe("the services a counter offers", () => {
-  it("offers the ten from the brief", () => {
-    expect(SMART_PRINT_SERVICES).toHaveLength(10);
+  it("offers three, because a counter sells three things", () => {
+    /*
+      It offered ten for a while — "form", "certificate", "photo print",
+      "photos to PDF" — and every one of those was a document or a photograph
+      wearing a different hat. Ten cards on a phone is not ten times the
+      choice; it is a customer reading labels to work out which of four
+      identical doors to go through.
+    */
+    expect(SMART_PRINT_SERVICES.map((service) => service.id)).toEqual([
+      "id_copy",
+      "passport_photo",
+      "document",
+    ]);
+  });
+
+  it("keeps no second door to the same room", () => {
+    // Two services that upload one file and print it as it is are one service.
+    const passthrough = SMART_PRINT_SERVICES.filter((service) => !service.composes);
+    expect(passthrough).toHaveLength(1);
+    expect(passthrough[0].id).toBe("document");
   });
 
   it("gives every service a preset that prices without any customer input", () => {
@@ -143,13 +161,14 @@ describe("the services a counter offers", () => {
     }
   });
 
-  it("asks a form nothing it does not need", () => {
-    // A form is A4, black and white, one side. Every extra question is a
-    // chance to get it wrong.
-    const form = smartPrintService("form");
-    expect(form?.asks).toEqual(["copies", "color"]);
-    expect(form?.preset.paper).toBe("A4");
-    expect(form?.preset.color).toBe("mono");
+  it("asks a document nothing it does not need", () => {
+    // A4, black and white, one side. Every extra question is a chance to get
+    // it wrong, so the rest waits for the shop to ask for it.
+    const document = smartPrintService("document");
+    expect(document?.always).toEqual(["copies", "color"]);
+    expect(document?.preset.paper).toBe("A4");
+    expect(document?.preset.color).toBe("mono");
+    expect(document?.preset.quality).toBe("standard");
   });
 
   it("lets a shop override only what it cares about", () => {
@@ -201,11 +220,11 @@ describe("what may be retouched", () => {
 
   it("offers the tools on photographs only", () => {
     const retouchable = SMART_PRINT_SERVICES.filter((service) => service.retouch).map((s) => s.id);
-    expect(retouchable.sort()).toEqual(["multi_photo", "passport_photo", "photo_print"]);
+    expect(retouchable).toEqual(["passport_photo"]);
   });
 
   it("offers them on no document service", () => {
-    for (const id of ["id_copy", "id_card_sheet", "document", "form", "certificate", "image_to_pdf", "other"]) {
+    for (const id of ["id_copy", "document"]) {
       const service = smartPrintService(id);
       expect(service?.retouch, `${id} may be retouched`).toBeFalsy();
     }
@@ -213,7 +232,34 @@ describe("what may be retouched", () => {
 
   it("gates the editor on that flag rather than on whether a sheet is composed", () => {
     // It used to be `service.composes`, which is true for the Aadhaar copy.
-    expect(flow).toContain("service.retouch && images.some(Boolean)");
-    expect(flow).not.toContain("service.composes && images.some(Boolean)");
+    expect(flow).toContain("service.retouch && slots.some(Boolean)");
+    expect(flow).not.toContain("service.composes && slots.some(Boolean)");
+  });
+
+  it("changes only what is behind a face, never the face", () => {
+    /*
+      The backdrop is offered on the passport photo, and a filter with it. What
+      is deliberately not offered anywhere is anything that reshapes a person:
+      a passport photograph that no longer matches the person holding it is a
+      rejected application, and that cost lands on the customer.
+    */
+    const passport = smartPrintService("passport_photo")!;
+    expect(passport.asks).toContain("backdrop");
+    expect(passport.always).toContain("backdrop");
+
+    const portrait = readCode("src/lib/print/portrait.ts");
+    expect(portrait).toContain("export async function replaceBackground");
+    for (const forbidden of ["reshape", "faceSlim", "beautify", "smoothSkin", "clothing"]) {
+      expect(portrait, `portrait.ts exports ${forbidden}`).not.toContain(`export function ${forbidden}`);
+    }
+  });
+
+  it("never sends the photograph anywhere to be looked at", () => {
+    // The whole reason for shipping an 11 MB runtime rather than calling an
+    // API: somebody's face is not ours to upload to a third party.
+    const portrait = readCode("src/lib/print/portrait.ts");
+    expect(portrait).toContain('const WASM_PATH = "/mediapipe"');
+    expect(portrait).toContain('const MODEL_PATH = "/models/selfie_segmenter.tflite"');
+    expect(portrait).not.toMatch(/fetch\(\s*["'`]https?:/);
   });
 });

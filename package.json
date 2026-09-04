@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "predev": "node scripts/copy-vision-wasm.mjs",
+    "prebuild": "node scripts/copy-vision-wasm.mjs",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "npx vitest run",
@@ -24,6 +26,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@radix-ui/react-select": "^2.2.5",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",

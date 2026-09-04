@@ -18,7 +18,6 @@ import {
 import { useToast } from "@/components/providers/toast-provider";
 import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
 import { SmartPrintSettingsCard } from "@/components/ap/smart-print-settings";
-import type { SmartPrintSettings } from "@/lib/print/smart-print";
 import type { PrintStation } from "@/lib/print/stations";
 import { cn } from "@/lib/utils";
 
@@ -186,7 +185,7 @@ export function PrintStationSetup({
             a daily decision, where the printer's key is a one-off.
           */}
           <SmartPrintSettingsCard
-            initialDefaults={station.smart_print_defaults as Record<string, Partial<SmartPrintSettings>>}
+            initialDefaults={station.smart_print_defaults}
             initialRequireApproval={station.require_approval}
           />
           <AgentBox
