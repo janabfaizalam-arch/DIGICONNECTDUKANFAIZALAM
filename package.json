@@ -22,7 +22,8 @@
     "migrate:final-docs:dry-run": "node --experimental-strip-types --env-file=.env.local scripts/migrate-legacy-final-documents.ts --dry-run",
     "migrate:final-docs:inventory": "node --experimental-strip-types --env-file=.env.local scripts/migrate-legacy-final-documents.ts --dry-run --inventory-only --allow-linked-read",
     "snapshot:final-docs": "node --env-file=.env.local scripts/pre-migration-final-docs-snapshot.mjs",
-    "verify:final-docs-access": "node --env-file=.env.local scripts/verify-final-document-access.mjs"
+    "verify:final-docs-access": "node --env-file=.env.local scripts/verify-final-document-access.mjs",
+    "seed:labour-schemes": "node --experimental-strip-types --env-file=.env.local scripts/seed-labour-schemes.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.21.0",
