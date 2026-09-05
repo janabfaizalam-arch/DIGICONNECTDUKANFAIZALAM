@@ -33,38 +33,38 @@ type Field =
   | { key: keyof CheckerAnswers; kind: "number"; label: string; hint?: string; max?: number };
 
 const FIELDS: Field[] = [
-  { key: "hasCard", kind: "yesno", label: "Labour Card hai?" },
-  { key: "cardActive", kind: "yesno", label: "Card active / renewed hai?" },
-  { key: "membershipYears", kind: "number", label: "Registration ko kitne saal hue?", max: 60 },
+  { key: "hasCard", kind: "yesno", label: "लेबर कार्ड है?" },
+  { key: "cardActive", kind: "yesno", label: "कार्ड सक्रिय / नवीनीकृत है?" },
+  { key: "membershipYears", kind: "number", label: "पंजीकरण को कितने साल हुए?", max: 60 },
   {
     key: "workedDaysLast12Months",
     kind: "number",
-    label: "Pichhle 12 mahine mein kitne din nirman kaam kiya?",
-    hint: "Kai yojanaon mein 90 din zaroori hai",
+    label: "पिछले 12 महीनों में कितने दिन निर्माण कार्य किया?",
+    hint: "कई योजनाओं में 90 दिन ज़रूरी है",
     max: 365,
   },
-  { key: "age", kind: "number", label: "Aapki umar?", max: 100 },
-  { key: "childCount", kind: "number", label: "Kitne bachche hain?", max: 12 },
-  { key: "childAge", kind: "number", label: "Jis bachche ke liye poochh rahe hain, uski umar?", max: 30 },
+  { key: "age", kind: "number", label: "आपकी उम्र?", max: 100 },
+  { key: "childCount", kind: "number", label: "कितने बच्चे हैं?", max: 12 },
+  { key: "childAge", kind: "number", label: "जिस बच्चे के लिए पूछ रहे हैं, उसकी उम्र?", max: 30 },
   {
     key: "disabilityPercent",
     kind: "number",
-    label: "Divyangta kitne percent hai? (agar lagu ho)",
+    label: "दिव्यांगता कितने प्रतिशत है? (अगर लागू हो)",
     max: 100,
   },
   {
     key: "daysSinceEvent",
     kind: "number",
-    label: "Shaadi / janm / durghatna ko kitne din hue?",
-    hint: "Kai yojanaon mein 1 saal ke andar apply karna hota hai",
+    label: "शादी / जन्म / दुर्घटना को कितने दिन हुए?",
+    hint: "कई योजनाओं में 1 साल के अंदर आवेदन करना होता है",
     max: 4000,
   },
 ];
 
 const VERDICT_TONE: Record<Verdict, { chip: string; icon: typeof CheckCircle2 }> = {
-  likely: { chip: "bg-[#0f9d58]/12 text-[#0b7742]", icon: CheckCircle2 },
-  needs_info: { chip: "bg-[#0f5db8]/12 text-[#0f5db8]", icon: HelpCircle },
-  condition_missing: { chip: "bg-[#f25a00]/12 text-[#c9430a]", icon: AlertTriangle },
+  likely: { chip: "bg-[#ecfdf5] text-[#047857]", icon: CheckCircle2 },
+  needs_info: { chip: "bg-[#eef4fb] text-[#134074]", icon: HelpCircle },
+  condition_missing: { chip: "bg-[#fff7ed] text-[#c2410c]", icon: AlertTriangle },
   not_applicable: { chip: "bg-slate-500/12 text-slate-600", icon: Info },
 };
 
@@ -84,12 +84,15 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
 
   return (
     <section id="eligibility" className="scroll-mt-24">
-      <div className="lg-card p-4 sm:p-6">
-        <h2 className="text-[1.35rem] font-extrabold tracking-tight text-[var(--dc-ink)] sm:text-[1.6rem]">
-          Kya main eligible hoon?
+      <div className="lc-card p-5 sm:p-7">
+        <p className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: "var(--lc-saffron-deep)" }}>
+          पात्रता जांच
+        </p>
+        <h2 className="mt-2 text-[1.35rem] font-extrabold sm:text-[1.75rem]" style={{ color: "var(--lc-navy)" }}>
+          अपनी पात्रता तुरंत चेक करें
         </h2>
-        <p className="mt-1 text-[13px] font-medium leading-snug text-[var(--dc-body)]">
-          Jitna aapko pata ho utna bhariye — jo chhod denge, uske baare mein hum kuch maan kar nahi chalenge.
+        <p className="mt-1.5 text-[13.5px] font-medium" style={{ color: "var(--lc-muted)" }}>
+          जितना आपको पता हो उतना भरिए — जो छोड़ देंगे, उसके बारे में हम कुछ मान कर नहीं चलेंगे।
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -99,8 +102,8 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
               {field.kind === "yesno" ? (
                 <div className="mt-2 flex gap-1.5">
                   {[
-                    { label: "Haan", value: true },
-                    { label: "Nahi", value: false },
+                    { label: "हाँ", value: true },
+                    { label: "नहीं", value: false },
                   ].map((option) => {
                     const on = answers[field.key] === option.value;
                     return (
@@ -110,7 +113,7 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
                         aria-pressed={on}
                         onClick={() => set(field.key, on ? undefined : option.value)}
                         className={cn(
-                          "h-10 flex-1 rounded-lg text-[13px] font-bold transition",
+                          "h-11 flex-1 rounded-lg text-[13.5px] font-bold transition",
                           on
                             ? "text-white"
                             : "border border-[var(--dc-ink)]/12 bg-white text-[var(--dc-body)]",
@@ -150,9 +153,9 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
             type="button"
             onClick={() => setSubmitted(true)}
             className="inline-flex h-12 flex-1 items-center justify-center rounded-xl px-5 text-[14px] font-extrabold text-white shadow-[0_12px_26px_-14px_rgba(0,29,95,0.9)] transition hover:-translate-y-px sm:flex-none"
-            style={{ background: "var(--dc-grad-blue)" }}
+            style={{ background: "linear-gradient(135deg, var(--lc-saffron), var(--lc-saffron-deep))" }}
           >
-            Result dekhein
+            परिणाम देखें
           </button>
           <button
             type="button"
@@ -163,7 +166,7 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
             className="inline-flex h-12 items-center gap-1.5 rounded-xl border border-[var(--dc-ink)]/12 bg-white px-4 text-[13.5px] font-bold text-[var(--dc-body)]"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            Reset
+            दोबारा भरें
           </button>
         </div>
 
@@ -182,19 +185,19 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
               */}
               {answers.hasCard === false ? (
                 <p className="rounded-xl border-l-4 border-l-[var(--dc-flame)] bg-orange-50 px-4 py-3 text-[13.5px] font-bold text-[#c9430a]">
-                  Labour Card ke bina in yojanaon ka labh nahi milta. Pehle registration karwaiye — hum ismein
-                  assistance de sakte hain.
+                  लेबर कार्ड के बिना इन योजनाओं का लाभ नहीं मिलता। पहले पंजीकरण करवाइए — हम इसमें सहायता
+                  दे सकते हैं।
                 </p>
               ) : !cardOk && answers.cardActive === false ? (
                 <p className="rounded-xl border-l-4 border-l-[var(--dc-flame)] bg-orange-50 px-4 py-3 text-[13.5px] font-bold text-[#c9430a]">
-                  Card active nahi hai. Renewal ke baad hi zyadatar yojanayein lagu hoti hain.
+                  कार्ड सक्रिय नहीं है। नवीनीकरण के बाद ही ज़्यादातर योजनाएं लागू होती हैं।
                 </p>
               ) : null}
 
               <div className="mt-3 grid grid-cols-3 gap-2">
-                <Tally label="Sambhavit patra" value={likely.length} tone="good" />
-                <Tally label="Jankari chahiye" value={maybe.length} tone="info" />
-                <Tally label="Shart puri nahi" value={missing.length} tone="warn" />
+                <Tally label="संभवतः पात्र" value={likely.length} tone="good" />
+                <Tally label="जानकारी चाहिए" value={maybe.length} tone="info" />
+                <Tally label="शर्त पूरी नहीं" value={missing.length} tone="warn" />
               </div>
 
               <ul className="mt-3 space-y-2">
@@ -229,16 +232,16 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
                         </div>
 
                         {result.missing.length ? (
-                          <Reasons title="Ye shart puri nahi lag rahi" items={result.missing} tone="warn" />
+                          <Reasons title="ये शर्त पूरी नहीं लग रही" items={result.missing} tone="warn" />
                         ) : null}
                         {result.untested.length ? (
-                          <Reasons title="Ye humne poocha hi nahi" items={result.untested} tone="info" />
+                          <Reasons title="ये हमने पूछा ही नहीं" items={result.untested} tone="info" />
                         ) : null}
                         <a
                           href={`#scheme-${result.scheme.slug}`}
                           className="mt-2 inline-block text-[12px] font-bold text-[var(--dc-blue-mid)] hover:underline"
                         >
-                          Poori jankari dekhein →
+                          पूरी जानकारी देखें →
                         </a>
                       </li>
                     );

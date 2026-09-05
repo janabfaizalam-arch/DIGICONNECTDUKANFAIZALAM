@@ -42,11 +42,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "मातृत्व, शिशु एवं बालिका मदद योजना",
     category: "child_maternity",
     summary:
-      "Bachche ke janm par madad — ladka aur ladki ke liye alag, aur beti ke liye ek alag fixed deposit. Cash aur FD do alag cheezen hain.",
+      "बच्चे के जन्म पर मदद — बेटे और बेटी के लिए अलग, और बेटी के लिए एक अलग सावधि जमा (FD)। नकद और FD दो अलग चीज़ें हैं।",
     beneficiaries: ["Registered worker", "Worker's wife", "Newborn child"],
     benefits: [
       {
         label: "Registered male worker — maternity benefit",
+        labelHi: "पंजीकृत पुरुष श्रमिक — मातृत्व हितलाभ",
         kind: "cash",
         amount: 6000,
         frequency: "one_time",
@@ -54,6 +55,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Female worker — maternity benefit",
+        labelHi: "महिला श्रमिक — मातृत्व हितलाभ",
         kind: "cash",
         amount: null,
         amountNote: "3 mahine ki minimum wage + ₹1,000 medical bonus",
@@ -62,6 +64,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Miscarriage",
+        labelHi: "गर्भपात की स्थिति में",
         kind: "cash",
         amount: null,
         amountNote: "6 hafte ki minimum wage ke barabar",
@@ -69,6 +72,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Sterilization (nasbandi)",
+        labelHi: "नसबंदी की स्थिति में",
         kind: "cash",
         amount: null,
         amountNote: "2 hafte ki minimum wage ke barabar",
@@ -76,6 +80,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Ladka paida hone par",
+        labelHi: "पुत्र के जन्म पर",
         kind: "cash",
         amount: 20000,
         frequency: "one_time",
@@ -83,6 +88,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Ladki paida hone par",
+        labelHi: "पुत्री के जन्म पर",
         kind: "cash",
         amount: 25000,
         frequency: "one_time",
@@ -90,6 +96,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Beti ke naam Fixed Deposit",
+        labelHi: "बेटी के नाम सावधि जमा (FD)",
         kind: "fd",
         amount: 25000,
         frequency: "one_time",
@@ -101,6 +108,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Janm se divyang beti ke naam Fixed Deposit",
+        labelHi: "जन्म से दिव्यांग बेटी के नाम सावधि जमा (FD)",
         kind: "fd",
         amount: 50000,
         frequency: "one_time",
@@ -132,8 +140,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     ],
     paymentMethod: "Cash seedha bank account mein. FD beti ke naam alag instrument.",
     warnings: [
-      "₹25,000 cash aur ₹25,000 FD do alag cheezen hain — inhe jodkar ₹50,000 cash nahi samjhein.",
-      "FD ka paisa turant nahi milta. Beti ke 18 saal tak ashadi rehne ki shart hai.",
+      "₹25,000 नकद और ₹25,000 FD दो अलग चीज़ें हैं — इन्हें जोड़कर ₹50,000 नकद न समझें।",
+      "FD का पैसा तुरंत नहीं मिलता। बेटी के 18 साल तक अविवाहित रहने की शर्त है।",
     ],
     verification: owner(),
     sortOrder: 10,
@@ -148,17 +156,18 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "संत रविदास शिक्षा प्रोत्साहन योजना",
     category: "education",
     summary:
-      "Bachchon ki padhai ke liye madad — class ke hisaab se. Official page ke mutabik ye ONE-TIME hai, har saal nahi.",
+      "बच्चों की पढ़ाई के लिए मदद — कक्षा के हिसाब से। आधिकारिक पृष्ठ के मुताबिक़ यह एकमुश्त (ONE-TIME) है, हर साल नहीं।",
     beneficiaries: ["Registered worker ke bachche (adhiktam 2)"],
     benefits: [
-      { label: "Class 1–5", kind: "cash", amount: 2000, frequency: "one_time" },
-      { label: "Class 6–10", kind: "cash", amount: 2500, frequency: "one_time" },
-      { label: "Class 11–12", kind: "cash", amount: 3000, frequency: "one_time" },
-      { label: "Graduation / samkaksh", kind: "cash", amount: 12000, frequency: "one_time" },
-      { label: "ITI / Polytechnic / Vocational", kind: "cash", amount: 12000, frequency: "one_time" },
-      { label: "Post-Graduation", kind: "cash", amount: 24000, frequency: "one_time" },
+      { label: "Class 1–5", labelHi: "कक्षा 1–5", kind: "cash", amount: 2000, frequency: "one_time" },
+      { label: "Class 6–10", labelHi: "कक्षा 6–10", kind: "cash", amount: 2500, frequency: "one_time" },
+      { label: "Class 11–12", labelHi: "कक्षा 11–12", kind: "cash", amount: 3000, frequency: "one_time" },
+      { label: "Graduation / samkaksh", labelHi: "स्नातक / समकक्ष", kind: "cash", amount: 12000, frequency: "one_time" },
+      { label: "ITI / Polytechnic / Vocational", labelHi: "ITI / पॉलिटेक्निक / व्यावसायिक", kind: "cash", amount: 12000, frequency: "one_time" },
+      { label: "Post-Graduation", labelHi: "परास्नातक", kind: "cash", amount: 24000, frequency: "one_time" },
       {
         label: "Professional degree courses",
+        labelHi: "प्रोफ़ेशनल डिग्री कोर्स",
         kind: "reimbursement",
         amount: null,
         amountNote: "Jo fees di gayi ho ya ₹60,000 — dono mein se jo kam ho",
@@ -167,14 +176,16 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Sarkari sansthan MBBS / PG",
+        labelHi: "सरकारी संस्थान में MBBS / PG",
         kind: "reimbursement",
         amount: null,
         amountNote: "100% fee reimbursement (niyamon ke antargat)",
         frequency: "one_time",
       },
-      { label: "Research", kind: "cash", amount: 100000, frequency: "one_time" },
+      { label: "Research", labelHi: "शोध (रिसर्च)", kind: "cash", amount: 100000, frequency: "one_time" },
       {
         label: "IIM / IIT / NIT / NIFT / NLU",
+        labelHi: "IIM / IIT / NIT / NIFT / NLU",
         kind: "reimbursement",
         amount: null,
         amountNote: "100% fee reimbursement (niyamon ke antargat)",
@@ -182,6 +193,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Merit protsahan — High School / Intermediate",
+        labelHi: "मेरिट प्रोत्साहन — हाई स्कूल / इंटरमीडिएट",
         kind: "cash",
         amount: null,
         amountNote: "Ladka ₹5,000 · Ladki ₹8,000 (extra)",
@@ -190,6 +202,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Merit protsahan — Graduation / Post-Graduation",
+        labelHi: "मेरिट प्रोत्साहन — स्नातक / परास्नातक",
         kind: "cash",
         amount: null,
         amountNote: "Ladka ₹10,000 · Ladki ₹12,000 (extra)",
@@ -215,7 +228,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
     ],
     paymentMethod: "Bank account mein (DBT). Professional courses mein reimbursement.",
     warnings: [
-      "₹2,000 / ₹2,500 / ₹3,000 ko saalana (annual) na samjhein — official page inhe ONE-TIME batata hai.",
+      "₹2,000 / ₹2,500 / ₹3,000 को सालाना (annual) न समझें — आधिकारिक पृष्ठ इन्हें एकमुश्त (ONE-TIME) बताता है।",
     ],
     verification: owner(),
     sortOrder: 20,
@@ -230,11 +243,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "छात्र साइकिल सहायता",
     category: "cycle",
     summary:
-      "Class 9, 10, 11 ya 12 paas karke agli class mein padhai jaari rakhne wale bachchon ko cycle kharidne ke liye madad. Sirf ek baar.",
+      "कक्षा 9, 10, 11 या 12 पास करके अगली कक्षा में पढ़ाई जारी रखने वाले बच्चों को साइकिल ख़रीदने के लिए मदद। सिर्फ़ एक बार।",
     beneficiaries: ["Registered worker ke padhne wale bachche"],
     benefits: [
       {
         label: "Cycle kharidne ke liye subsidy",
+        labelHi: "साइकिल ख़रीदने के लिए अनुदान",
         kind: "cash",
         amount: null,
         amountNote: "Amount abhi verify nahi hui — official notification dekhein",
@@ -252,8 +266,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     process: ["Marksheet aur admission proof ke saath application", "Verification", "Payment"],
     paymentMethod: "Bank account mein",
     warnings: [
-      "Ye chhatra (student) cycle sahayata hai. Worker ki apni cycle wali koi alag scheme ho to wo isse alag hai — dono ko mila kar na dekhein.",
-      "Iska amount abhi swatantra roop se verify nahi hua. Latest official notification dekh kar hi bharosa karein.",
+      "यह छात्र (student) साइकिल सहायता है। श्रमिक की अपनी साइकिल वाली कोई अलग योजना हो तो वह इससे अलग है — दोनों को मिलाकर न देखें।",
+      "इसकी रकम अभी स्वतंत्र रूप से सत्यापित नहीं हुई। नवीनतम आधिकारिक अधिसूचना देखकर ही भरोसा करें।",
     ],
     verification: owner({
       status: "needs_review",
@@ -270,13 +284,14 @@ export const SEED_SCHEMES: LabourScheme[] = [
     name: "Kanya Vivah Sahayata Yojana",
     nameHi: "कन्या विवाह सहायता योजना",
     category: "marriage",
-    summary: "Beti ki shaadi par madad. Samuhik vivah mein rakam zyada hai, par usme alag shartein hain.",
+    summary: "बेटी की शादी पर मदद। सामूहिक विवाह में रकम ज़्यादा है, पर उसमें अलग शर्तें हैं।",
     beneficiaries: ["Registered worker ki beti (adhiktam 2)", "Registered mahila worker ki apni shaadi"],
     benefits: [
-      { label: "Samanya vivah", kind: "cash", amount: 65000, frequency: "per_event" },
-      { label: "Antarjatiya (inter-caste) vivah", kind: "cash", amount: 75000, frequency: "per_event" },
+      { label: "Samanya vivah", labelHi: "सामान्य विवाह", kind: "cash", amount: 65000, frequency: "per_event" },
+      { label: "Antarjatiya (inter-caste) vivah", labelHi: "अंतर्जातीय विवाह", kind: "cash", amount: 75000, frequency: "per_event" },
       {
         label: "Samuhik vivah — prati beti/jodi",
+        labelHi: "सामूहिक विवाह — प्रति बेटी / जोड़ा",
         kind: "cash",
         amount: 85000,
         frequency: "per_event",
@@ -284,6 +299,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Samuhik vivah aayojak ko",
+        labelHi: "सामूहिक विवाह के आयोजक को",
         kind: "cash",
         amount: 15000,
         frequency: "per_event",
@@ -325,8 +341,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     ],
     paymentMethod: "Bank account mein",
     warnings: [
-      "Ye Mukhyamantri Samuhik Vivah Yojana se alag scheme hai — dono ko ek na samjhein.",
-      "Shaadi ke 1 saal baad application generally nahi liya jata. Deadline sabse badi wajah hai rejection ki.",
+      "यह मुख्यमंत्री सामूहिक विवाह योजना से अलग योजना है — दोनों को एक न समझें।",
+      "शादी के 1 साल बाद आवेदन आम तौर पर नहीं लिया जाता। समय सीमा रिजेक्शन की सबसे बड़ी वजह है।",
     ],
     verification: owner(),
     sortOrder: 40,
@@ -341,11 +357,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "गंभीर बीमारी सहायता योजना",
     category: "medical",
     summary:
-      "Gambhir bimari ke ilaj ka kharch. Official page ke mutabik iski koi adhiktam seema tay nahi hai — par shartein hain.",
+      "गंभीर बीमारी के इलाज का ख़र्च। आधिकारिक पृष्ठ के मुताबिक़ इसकी कोई अधिकतम सीमा तय नहीं है — पर शर्तें हैं।",
     beneficiaries: ["Worker", "Pati/patni", "Ashadi betiyan", "21 saal se kam ke bete"],
     benefits: [
       {
         label: "Sarkari / SACHIS-empanelled aspatal mein ilaj",
+        labelHi: "सरकारी / SACHIS-सूचीबद्ध अस्पताल में इलाज",
         kind: "reimbursement",
         amount: null,
         amountNote: "Ayushman Bharat ke niyamon ke barabar poora reimbursement — koi adhiktam rakam tay nahi",
@@ -357,6 +374,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Aspatal ko advance",
+        labelHi: "अस्पताल को अग्रिम भुगतान",
         kind: "reimbursement",
         amount: null,
         amountNote: "Ilaj ke estimate par advance sambhav ho sakta hai",
@@ -379,8 +397,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     process: ["Doctor certificate nirdharit format mein", "Original bill sambhal kar rakhein", "Application", "Verification", "Reimbursement"],
     paymentMethod: "Reimbursement — bank account mein, ya aspatal ko advance",
     warnings: [
-      "Ye 'saara medical kharch hamesha free' nahi hai. Aspatal aur bimari ki shartein hain.",
-      "Original bill ke bina claim nahi hota.",
+      "यह 'सारा चिकित्सा ख़र्च हमेशा नि:शुल्क' नहीं है। अस्पताल और बीमारी की शर्तें हैं।",
+      "मूल बिल के बिना क्लेम नहीं होता।",
     ],
     verification: owner(),
     sortOrder: 50,
@@ -395,29 +413,32 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "निर्माण कामगार मृत्यु एवं दिव्यांगता सहायता",
     category: "death",
     summary:
-      "Mrityu aur divyangta par sahayata. BAHUT ZAROORI: ye ek saath nakad nahi milti — mool dhan + byaj, mahine ki kisht mein.",
+      "मृत्यु और दिव्यांगता पर सहायता। बहुत ज़रूरी: यह एक साथ नकद नहीं मिलती — मूल धन + ब्याज, महीने की किस्त में।",
     beneficiaries: ["Nominee / kanooni waris", "Divyang worker khud"],
     benefits: [
       {
         label: "Durghatna mein mrityu",
+        labelHi: "दुर्घटना में मृत्यु",
         kind: "installment",
         amount: 500000,
         amountNote: "₹5,00,000 mool dhan + lagu byaj — udaharan ke taur par lagbhag ₹9,395/mahina × 60 mahine",
         frequency: "monthly",
         conditions: ["Kisht byaj dar ke hisaab se badal sakti hai"],
       },
-      { label: "Durghatna mrityu — antim sanskar", kind: "cash", amount: 25000, frequency: "one_time" },
+      { label: "Durghatna mrityu — antim sanskar", labelHi: "दुर्घटना में मृत्यु — अंत्येष्टि सहायता", kind: "cash", amount: 25000, frequency: "one_time" },
       {
         label: "Samanya mrityu",
+        labelHi: "सामान्य मृत्यु",
         kind: "installment",
         amount: 200000,
         amountNote: "₹2,00,000 mool dhan + lagu byaj — lagbhag ₹8,736/mahina × 24 mahine",
         frequency: "monthly",
         conditions: ["Kisht byaj dar ke hisaab se badal sakti hai"],
       },
-      { label: "Samanya mrityu — antim sanskar", kind: "cash", amount: 25000, frequency: "one_time" },
+      { label: "Samanya mrityu — antim sanskar", labelHi: "सामान्य मृत्यु — अंत्येष्टि सहायता", kind: "cash", amount: 25000, frequency: "one_time" },
       {
         label: "Apanjikrit worker ki kaam par durghatna mrityu",
+        labelHi: "अपंजीकृत श्रमिक की कार्य के दौरान दुर्घटना में मृत्यु",
         kind: "cash",
         amount: 100000,
         frequency: "one_time",
@@ -425,6 +446,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Sthayi divyangta — 100%",
+        labelHi: "स्थायी दिव्यांगता — 100%",
         kind: "installment",
         amount: 400000,
         amountNote: "₹4,00,000 + byaj — lagbhag ₹9,172/mahina × 48 mahine",
@@ -432,6 +454,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Sthayi divyangta — 50% se zyada, 100% se kam",
+        labelHi: "स्थायी दिव्यांगता — 50% से अधिक, 100% से कम",
         kind: "installment",
         amount: 300000,
         amountNote: "₹3,00,000 + byaj — lagbhag ₹8,953/mahina × 36 mahine",
@@ -439,6 +462,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
       },
       {
         label: "Sthayi divyangta — 25% se zyada, 50% se kam",
+        labelHi: "स्थायी दिव्यांगता — 25% से अधिक, 50% से कम",
         kind: "installment",
         amount: 200000,
         amountNote: "₹2,00,000 + byaj — lagbhag ₹8,736/mahina × 24 mahine",
@@ -468,10 +492,10 @@ export const SEED_SCHEMES: LabourScheme[] = [
     ],
     paymentMethod: "Mahine ki kisht (mool dhan + byaj). Antim sanskar sahayata alag, ek baar mein.",
     warnings: [
-      "Ye ek saath nakad (lump sum) nahi milta — mool dhan aur byaj mahine ki kisht mein aata hai.",
-      "Diye gaye monthly figures udaharan hain. Byaj dar badalne par kisht badal jati hai.",
-      "Aatmahatya (suicide) par ye labh maujuda shart ke mutabik nahi milta.",
-      "'Antim Sanskar Sahayata' aur 'Mrityu Sahayata' alag-alag cheezen hain.",
+      "यह एक साथ नकद (lump sum) नहीं मिलता — मूल धन और ब्याज महीने की किस्त में आता है।",
+      "दिए गए मासिक आँकड़े उदाहरण हैं। ब्याज दर बदलने पर किस्त बदल जाती है।",
+      "आत्महत्या (suicide) पर यह लाभ मौजूदा शर्त के मुताबिक़ नहीं मिलता।",
+      "'अंत्येष्टि सहायता' और 'मृत्यु सहायता' अलग-अलग चीज़ें हैं।",
     ],
     verification: owner(),
     sortOrder: 60,
@@ -485,11 +509,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     name: "Mahatma Gandhi Pension Sahayata Yojana",
     nameHi: "महात्मा गांधी पेंशन सहायता योजना",
     category: "pension",
-    summary: "60 saal ke baad har mahine pension — par 10 saal ka registration zaroori hai.",
+    summary: "60 साल के बाद हर महीने पेंशन — पर 10 साल का पंजीकरण ज़रूरी है।",
     beneficiaries: ["60+ registered worker", "Mrityu ke baad pati/patni (niyamon ke adheen)"],
     benefits: [
       {
         label: "Masik pension",
+        labelHi: "मासिक पेंशन",
         kind: "pension",
         amount: 1000,
         frequency: "monthly",
@@ -507,7 +532,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
     documents: ["Labour Card", "Aadhaar", "Umar ka proof", "Bank passbook", "Niwas praman"],
     process: ["Patrata check karein", "Application", "Board approval", "Har April mein jeevan praman patra"],
     paymentMethod: "Board seedha bank account mein bhejta hai",
-    warnings: ["Har saal April mein jeevan praman patra dena hota hai, warna pension ruk sakti hai."],
+    warnings: ["हर साल अप्रैल में जीवन प्रमाण पत्र देना होता है, वरना पेंशन रुक सकती है।"],
     verification: owner(),
     sortOrder: 70,
     published: true,
@@ -520,11 +545,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     name: "Shauchalay Sahayata Yojana",
     nameHi: "शौचालय सहायता योजना",
     category: "toilet",
-    summary: "Ghar mein shauchalay banane ke liye ₹12,000 — do kishton mein.",
+    summary: "घर में शौचालय बनाने के लिए ₹12,000 — दो किस्तों में।",
     beneficiaries: ["Updated registered worker (parivar ek ikai)"],
     benefits: [
       {
         label: "Shauchalay nirman sahayata",
+        labelHi: "शौचालय निर्माण सहायता",
         kind: "installment",
         amount: 12000,
         amountNote: "₹6,000 pehli kisht + ₹6,000 doosri kisht",
@@ -562,12 +588,13 @@ export const SEED_SCHEMES: LabourScheme[] = [
     name: "Kaushal Vikas, Takniki Unnayan evam Pramanan Yojana",
     nameHi: "कौशल विकास तकनीकी, उन्नयन एवं प्रमाणन योजना",
     category: "skill",
-    summary: "Muft training UP Skill Development Mission ke through. Worker khud training le to wage ka reimbursement bhi.",
+    summary: "नि:शुल्क प्रशिक्षण UP Skill Development Mission के माध्यम से। श्रमिक स्वयं प्रशिक्षण ले तो मज़दूरी की प्रतिपूर्ति भी।",
     beneficiaries: ["Worker", "Patni (koi adhiktam umar nahi)", "Ashadi beti (koi adhiktam umar nahi)", "Aashrit beta (adhiktam 21 saal)"],
     benefits: [
-      { label: "Muft training", kind: "service", amount: null, amountNote: "UP Skill Development Mission ke through", frequency: "per_event" },
+      { label: "Muft training", labelHi: "नि:शुल्क प्रशिक्षण", kind: "service", amount: null, amountNote: "UP Skill Development Mission ke through", frequency: "per_event" },
       {
         label: "Worker khud training le to",
+        labelHi: "श्रमिक स्वयं प्रशिक्षण ले तो",
         kind: "reimbursement",
         amount: null,
         amountNote: "Akushal (unskilled) worker ki minimum wage ke barabar reimbursement",
@@ -583,7 +610,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
     documents: ["Labour Card", "Aadhaar", "Shiksha ka proof", "Bank passbook"],
     process: ["Training centre chunein", "Registration", "Training", "Assessment exam", "Certificate"],
     paymentMethod: "Training muft. Worker ke liye wage reimbursement bank account mein.",
-    warnings: ["Training ke baad assessment exam dena zaroori hai."],
+    warnings: ["प्रशिक्षण के बाद मूल्यांकन परीक्षा देना ज़रूरी है।"],
     verification: owner(),
     sortOrder: 90,
     published: true,
@@ -596,11 +623,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     name: "Aawasiya Vidyalaya Yojana",
     nameHi: "आवासीय विद्यालय योजना",
     category: "residential_education",
-    summary: "6–14 saal ke bachchon ke liye muft aawasiya shiksha. Atal Awasiya Vidyalaya shuru hone par isme milaya jana hai.",
+    summary: "6–14 साल के बच्चों के लिए नि:शुल्क आवासीय शिक्षा। अटल आवासीय विद्यालय शुरू होने पर इसमें मिलाया जाना है।",
     beneficiaries: ["Registered worker ke 6–14 saal ke bachche"],
     benefits: [
       {
         label: "Muft aawasiya shiksha",
+        labelHi: "नि:शुल्क आवासीय शिक्षा",
         kind: "service",
         amount: null,
         amountNote: "Rehna, kapde, khana aur anya suvidhayein",
@@ -613,8 +641,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     process: ["Official notification dekhein", "Application", "Chayan"],
     paymentMethod: "Seva (service) — nakad nahi",
     warnings: [
-      "Official page ke mutabik ye filhal 12 zilon mein chal rahi hai aur Atal Awasiya Vidyalaya shuru hone ke baad usme milayi jayegi.",
-      "Zilon ki current list ke liye official notification hi dekhein.",
+      "आधिकारिक पृष्ठ के मुताबिक़ यह फ़िलहाल 12 ज़िलों में चल रही है और अटल आवासीय विद्यालय शुरू होने के बाद उसमें मिलाई जाएगी।",
+      "ज़िलों की वर्तमान सूची के लिए आधिकारिक अधिसूचना ही देखें।",
     ],
     verification: owner({
       caveat: "12 zilon ki current list humne nahi banayi. Admin panel se official list bharein.",
@@ -630,11 +658,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     name: "Atal Awasiya Vidyalaya Yojana",
     nameHi: "अटल आवासीय विद्यालय योजना",
     category: "residential_education",
-    summary: "CBSE, English medium, Navodaya jaisa aawasiya school. Entrance exam se merit par chayan.",
+    summary: "CBSE, अंग्रेज़ी माध्यम, नवोदय जैसा आवासीय विद्यालय। प्रवेश परीक्षा से मेरिट पर चयन।",
     beneficiaries: ["Anath bachche", "Registered worker ke bachche (adhiktam 2)"],
     benefits: [
       {
         label: "Muft aawasiya shiksha",
+        labelHi: "नि:शुल्क आवासीय शिक्षा",
         kind: "service",
         amount: null,
         amountNote: "Hostel, khana, khel, medical, suraksha aur gunvatta wali shiksha",
@@ -652,8 +681,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     process: ["Admission notification ka intezar karein", "Entrance exam", "Merit list", "Admission"],
     paymentMethod: "Seva (service) — nakad nahi",
     warnings: [
-      "Ek school mein 1,000 seat — 500 ladke, 500 ladkiyan.",
-      "Admission ki umar, class aur tareekhein humne yahan nahi likhi hain. Current admission notification hi dekhein.",
+      "एक विद्यालय में 1,000 सीटें — 500 लड़के, 500 लड़कियाँ।",
+      "प्रवेश की उम्र, कक्षा और तारीख़ें हमने यहाँ नहीं लिखी हैं। वर्तमान प्रवेश अधिसूचना ही देखें।",
     ],
     verification: owner({
       caveat: "Admission age/class/dates official notification aane par admin panel se bharein.",
@@ -670,11 +699,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "आपदा राहत सहायता योजना",
     category: "disaster",
     summary:
-      "Official district page isko COVID-19 ke sandarbh mein banayi gayi scheme batata hai. Iska aaj lagu hona sarkar/Board ke nirdesh par nirbhar hai.",
+      "आधिकारिक ज़िला पृष्ठ इसे COVID-19 के संदर्भ में बनाई गई योजना बताता है। इसका आज लागू होना सरकार/बोर्ड के निर्देश पर निर्भर है।",
     beneficiaries: ["Database mein darj registered worker"],
     benefits: [
       {
         label: "Ek baar ki sahayata",
+        labelHi: "एक बार की सहायता",
         kind: "cash",
         amount: 1000,
         frequency: "as_notified",
@@ -687,8 +717,8 @@ export const SEED_SCHEMES: LabourScheme[] = [
     process: ["Official description ke mutabik koi application zaroori nahi (paperless)"],
     paymentMethod: "Seedha bank account mein",
     warnings: [
-      "Ye 'baadh/aag/prakritik aapda par ₹1,000 guaranteed' NAHI hai.",
-      "Official page isko filhal COVID-19 ke sandarbh mein batata hai. Lagu hona aur bhugtan maujuda sarkari/Board nirdeshon ke adheen hai.",
+      "यह 'बाढ़/आग/प्राकृतिक आपदा पर ₹1,000 पक्का' नहीं है।",
+      "आधिकारिक पृष्ठ इसे फ़िलहाल COVID-19 के संदर्भ में बताता है। लागू होना और भुगतान मौजूदा सरकारी/बोर्ड निर्देशों के अधीन है।",
     ],
     verification: owner({
       status: "needs_review",
@@ -706,11 +736,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "पं. दीनदयाल उपाध्याय चेतना योजना",
     category: "awareness",
     summary:
-      "Ye jagrukta (awareness) ka programme hai — registration, renewal aur yojanaon ki jankari failane ke liye. Isme kisi worker ko seedha paisa nahi milta.",
+      "यह जागरूकता का कार्यक्रम है — पंजीकरण, नवीनीकरण और योजनाओं की जानकारी फैलाने के लिए। इसमें किसी श्रमिक को सीधा पैसा नहीं मिलता।",
     beneficiaries: ["Sabhi nirman shramik (jankari ke roop mein)"],
     benefits: [
       {
         label: "Jagrukta programme",
+        labelHi: "जागरूकता कार्यक्रम",
         kind: "awareness",
         amount: null,
         amountNote: "SMS, video clip, deewar lekhan, hoarding, pamphlet, camp, nukkad natak waghera",
@@ -722,7 +753,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
     documents: [],
     process: ["Jagrukta camp aur prachar ke through"],
     paymentMethod: "Koi nakad bhugtan nahi — ye seva/prachar hai",
-    warnings: ["Isme 'worker ko ₹X milenge' jaisa koi cash benefit nahi hai."],
+    warnings: ["इसमें 'श्रमिक को ₹X मिलेंगे' जैसा कोई नकद लाभ नहीं है।"],
     verification: owner(),
     sortOrder: 130,
     published: true,
@@ -736,11 +767,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "प्रधानमंत्री श्रम योगी मान-धन पेंशन योजना",
     category: "linked",
     summary:
-      "Labour Department ke page par listed, par ye UPBOCW ki apni cash scheme nahi hai — iski patrata us programme ke apne niyamon se tay hoti hai.",
+      "श्रम विभाग के पृष्ठ पर सूचीबद्ध, पर यह UPBOCW की अपनी नकद योजना नहीं है — इसकी पात्रता उस कार्यक्रम के अपने नियमों से तय होती है।",
     beneficiaries: ["Asangathit kshetra ke shramik (us programme ke niyamon ke adheen)"],
     benefits: [
       {
         label: "Pension (us programme ke niyamon ke adheen)",
+        labelHi: "पेंशन (उस कार्यक्रम के नियमों के अधीन)",
         kind: "pension",
         amount: null,
         amountNote: "Patrata aur rakam us yojana ke apne niyamon se tay hoti hai",
@@ -752,7 +784,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
     documents: [],
     process: ["Us yojana ke official portal par"],
     paymentMethod: "Us yojana ke niyamon ke anusar",
-    warnings: ["Ye UPBOCW Labour Card ka seedha cash benefit nahi hai."],
+    warnings: ["यह UPBOCW लेबर कार्ड का सीधा नकद लाभ नहीं है।"],
     verification: owner({ status: "needs_review", caveat: "Linked programme — iske niyam UPBOCW se alag hain." }),
     sortOrder: 140,
     published: true,
@@ -764,11 +796,12 @@ export const SEED_SCHEMES: LabourScheme[] = [
     nameHi: "राष्ट्रीय पेंशन योजना ट्रेडर्स",
     category: "linked",
     summary:
-      "Labour Department ke page par listed. Ye bhi UPBOCW ki apni cash scheme nahi hai.",
+      "श्रम विभाग के पृष्ठ पर सूचीबद्ध। यह भी UPBOCW की अपनी नकद योजना नहीं है।",
     beneficiaries: ["Vyapari / traders (us programme ke niyamon ke adheen)"],
     benefits: [
       {
         label: "Pension (us programme ke niyamon ke adheen)",
+        labelHi: "पेंशन (उस कार्यक्रम के नियमों के अधीन)",
         kind: "pension",
         amount: null,
         amountNote: "Patrata aur rakam us yojana ke apne niyamon se tay hoti hai",
@@ -780,7 +813,7 @@ export const SEED_SCHEMES: LabourScheme[] = [
     documents: [],
     process: ["Us yojana ke official portal par"],
     paymentMethod: "Us yojana ke niyamon ke anusar",
-    warnings: ["Ye UPBOCW Labour Card ka seedha cash benefit nahi hai."],
+    warnings: ["यह UPBOCW लेबर कार्ड का सीधा नकद लाभ नहीं है।"],
     verification: owner({ status: "needs_review", caveat: "Linked programme — iske niyam UPBOCW se alag hain." }),
     sortOrder: 150,
     published: true,

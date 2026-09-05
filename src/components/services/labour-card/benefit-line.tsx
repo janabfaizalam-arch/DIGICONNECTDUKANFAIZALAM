@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 
 import {
-  BENEFIT_KIND_LABEL,
-  FREQUENCY_LABEL,
+  BENEFIT_KIND_LABEL_HI,
+  FREQUENCY_LABEL_HI,
   type BenefitKind,
   type BenefitLine,
 } from "@/lib/labour/types";
@@ -37,15 +37,22 @@ const ICONS: Record<BenefitKind, typeof Banknote> = {
   awareness: Megaphone,
 };
 
-/** Deliberately distinct hues: this is the page's most important distinction. */
+/**
+ * One colour per instrument, from the portal's design system.
+ *
+ * The deposit moved from blue to purple deliberately. Blue was the page's
+ * structural colour, which made a fixed deposit read as ordinary — and the one
+ * mistake this page exists to prevent is a reader seeing ₹25,000 locked for
+ * eighteen years and understanding money in hand.
+ */
 const TONE: Record<BenefitKind, { chip: string; text: string }> = {
-  cash: { chip: "bg-[#0f9d58]/12 text-[#0b7742]", text: "text-[#0b7742]" },
-  fd: { chip: "bg-[#0f5db8]/12 text-[#0f5db8]", text: "text-[#0f5db8]" },
-  reimbursement: { chip: "bg-[#7c3aed]/12 text-[#6d28d9]", text: "text-[#6d28d9]" },
-  installment: { chip: "bg-[#f25a00]/12 text-[#c9430a]", text: "text-[#c9430a]" },
-  pension: { chip: "bg-[#0891b2]/12 text-[#0e7490]", text: "text-[#0e7490]" },
-  service: { chip: "bg-slate-500/12 text-slate-700", text: "text-slate-700" },
-  awareness: { chip: "bg-amber-500/14 text-amber-700", text: "text-amber-700" },
+  cash: { chip: "bg-[#ecfdf5] text-[#047857]", text: "text-[#047857]" },
+  fd: { chip: "bg-[#f5f3ff] text-[#6d28d9]", text: "text-[#6d28d9]" },
+  reimbursement: { chip: "bg-[#f0f9ff] text-[#0369a1]", text: "text-[#0369a1]" },
+  installment: { chip: "bg-[#fff7ed] text-[#c2410c]", text: "text-[#c2410c]" },
+  pension: { chip: "bg-[#fffbeb] text-[#b45309]", text: "text-[#b45309]" },
+  service: { chip: "bg-slate-100 text-slate-700", text: "text-slate-700" },
+  awareness: { chip: "bg-[#eef2ff] text-[#4338ca]", text: "text-[#4338ca]" },
 };
 
 export function formatInr(value: number): string {
@@ -57,30 +64,30 @@ export function BenefitRow({ benefit }: { benefit: BenefitLine }) {
   const tone = TONE[benefit.kind];
 
   return (
-    <li className="rounded-xl border border-[var(--dc-ink)]/8 bg-white p-3">
+    <li className="rounded-xl border bg-white p-3.5" style={{ borderColor: "var(--lc-border)" }}>
       <div className="flex items-start gap-2.5">
         <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", tone.chip)}>
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold leading-snug text-[var(--dc-ink)]">{benefit.label}</p>
+          <p className="text-[13.5px] font-bold leading-snug text-[var(--lc-navy)]">{benefit.labelHi || benefit.label}</p>
 
-          <p className={cn("mt-0.5 text-[15px] font-extrabold tabular-nums", tone.text)}>
+          <p className={cn("lc-figure mt-1 text-[17px] font-extrabold", tone.text)}>
             {benefit.amount !== null ? formatInr(benefit.amount) : benefit.amountNote}
           </p>
           {benefit.amount !== null && benefit.amountNote ? (
-            <p className="mt-0.5 text-[11.5px] font-semibold leading-snug text-[var(--dc-body)]">
+            <p className="mt-0.5 text-[11.5px] font-semibold leading-snug text-[var(--lc-muted)]">
               {benefit.amountNote}
             </p>
           ) : null}
 
           <p className="mt-1 flex flex-wrap items-center gap-1.5">
             <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-black uppercase tracking-wide", tone.chip)}>
-              {BENEFIT_KIND_LABEL[benefit.kind]}
+              {BENEFIT_KIND_LABEL_HI[benefit.kind]}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10.5px] font-bold text-slate-600">
-              {FREQUENCY_LABEL[benefit.frequency]}
+              {FREQUENCY_LABEL_HI[benefit.frequency]}
             </span>
           </p>
 
@@ -95,9 +102,9 @@ export function BenefitRow({ benefit }: { benefit: BenefitLine }) {
               {benefit.conditions.map((condition) => (
                 <li
                   key={condition}
-                  className="flex gap-1.5 text-[11.5px] font-semibold leading-snug text-[var(--dc-body)]"
+                  className="flex gap-1.5 text-[11.5px] font-semibold leading-snug text-[var(--lc-muted)]"
                 >
-                  <span aria-hidden="true" className="text-[var(--dc-flame)]">•</span>
+                  <span aria-hidden="true" className="text-[var(--lc-saffron-deep)]">•</span>
                   {condition}
                 </li>
               ))}
@@ -125,7 +132,7 @@ export function BenefitLegend() {
             )}
           >
             <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {BENEFIT_KIND_LABEL[kind]}
+            {BENEFIT_KIND_LABEL_HI[kind]}
           </li>
         );
       })}

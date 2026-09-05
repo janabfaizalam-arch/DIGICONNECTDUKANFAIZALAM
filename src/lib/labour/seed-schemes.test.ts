@@ -39,7 +39,7 @@ describe("cash and a fixed deposit are never the same money", () => {
 
   it("says out loud that they must not be added", () => {
     const scheme = SEED_SCHEMES.find((s) => s.id === "matritva-shishu-balika")!;
-    expect(scheme.warnings?.join(" ")).toMatch(/₹50,000 cash nahi/);
+    expect(scheme.warnings?.join(" ")).toMatch(/₹50,000 नकद न समझें/);
   });
 
   it("never leaves a benefit without a kind", () => {
@@ -91,7 +91,7 @@ describe("death and disability are installments, not a lump sum", () => {
 
   it("says the monthly figures are examples that move with the interest rate", () => {
     expect(scheme.warnings?.join(" ")).toMatch(/lump sum/i);
-    expect(scheme.warnings?.join(" ")).toMatch(/byaj dar badalne par/i);
+    expect(scheme.warnings?.join(" ")).toMatch(/ब्याज दर बदलने पर/);
   });
 
   it("keeps funeral assistance separate from death assistance", () => {
@@ -102,7 +102,7 @@ describe("death and disability are installments, not a lump sum", () => {
       expect(line.kind).toBe("cash");
       expect(line.amount).toBe(25000);
     }
-    expect(scheme.warnings?.join(" ")).toMatch(/alag-alag cheezen/);
+    expect(scheme.warnings?.join(" ")).toMatch(/अलग-अलग चीज़ें/);
   });
 });
 
@@ -112,7 +112,7 @@ describe("the awareness programme is not a cash scheme", () => {
     const scheme = SEED_SCHEMES.find((s) => s.id === "deendayal-chetna")!;
     expect(scheme.benefits.every((b) => b.kind === "awareness")).toBe(true);
     expect(scheme.benefits.every((b) => b.amount === null)).toBe(true);
-    expect(scheme.warnings?.join(" ")).toMatch(/cash benefit nahi/);
+    expect(scheme.warnings?.join(" ")).toMatch(/नकद लाभ नहीं/);
   });
 });
 
@@ -121,7 +121,7 @@ describe("linked programmes are not UPBOCW benefits", () => {
     const linked = SEED_SCHEMES.filter((s) => s.category === "linked");
     expect(linked.length).toBeGreaterThanOrEqual(2);
     for (const scheme of linked) {
-      expect(scheme.warnings?.join(" "), scheme.id).toMatch(/seedha cash benefit nahi/);
+      expect(scheme.warnings?.join(" "), scheme.id).toMatch(/सीधा नकद लाभ नहीं/);
     }
   });
 });
@@ -130,7 +130,7 @@ describe("the disaster scheme is not sold as a guarantee", () => {
   it("keeps the COVID-19 context and flags itself for review", () => {
     const scheme = SEED_SCHEMES.find((s) => s.id === "aapda-rahat")!;
     expect(scheme.warnings?.join(" ")).toMatch(/COVID-19/);
-    expect(scheme.warnings?.join(" ")).toMatch(/NAHI hai/);
+    expect(scheme.warnings?.join(" ")).toMatch(/पक्का' नहीं है/);
     expect(scheme.verification.status).toBe("needs_review");
   });
 });
@@ -147,7 +147,7 @@ describe("an unverified number is never printed as a figure", () => {
 
   it("keeps the student cycle apart from any worker cycle scheme", () => {
     const scheme = SEED_SCHEMES.find((s) => s.id === "student-cycle")!;
-    expect(scheme.warnings?.join(" ")).toMatch(/alag/);
+    expect(scheme.warnings?.join(" ")).toMatch(/अलग/);
   });
 
   it("invents no admission dates for Atal Awasiya Vidyalaya", () => {

@@ -6,7 +6,7 @@ import { AlertTriangle, ChevronDown, ExternalLink, Search, ShieldCheck } from "l
 
 import { CATEGORY_ART, CategoryBadge } from "@/components/services/labour-card/art";
 import { BenefitLegend, BenefitRow } from "@/components/services/labour-card/benefit-line";
-import { CATEGORY_LABEL, type LabourScheme, type SchemeCategory } from "@/lib/labour/types";
+import { CATEGORY_LABEL_HI, type LabourScheme, type SchemeCategory } from "@/lib/labour/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,7 +30,7 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
   /** Only categories that actually have a scheme — no empty filter buttons. */
   const categories = useMemo(() => {
     const present = new Set(schemes.map((scheme) => scheme.category));
-    return (Object.keys(CATEGORY_LABEL) as SchemeCategory[]).filter((key) => present.has(key));
+    return (Object.keys(CATEGORY_LABEL_HI) as SchemeCategory[]).filter((key) => present.has(key));
   }, [schemes]);
 
   const visible = useMemo(() => {
@@ -58,18 +58,18 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
   return (
     <section id="schemes" className="scroll-mt-24">
       <div className="mb-3">
-        <h2 className="text-[1.35rem] font-extrabold tracking-tight text-[var(--dc-ink)] sm:text-[1.75rem]">
-          {benefitCount}+ Labour Card benefits aur welfare provisions
+        <h2 className="text-[1.35rem] font-extrabold text-[var(--lc-navy)] sm:text-[1.75rem]">
+          {benefitCount}+ लेबर कार्ड लाभ व कल्याणकारी प्रावधान
         </h2>
         <p className="mt-1 text-[13px] font-medium leading-snug text-[var(--dc-body)] sm:text-[14px]">
-          {schemes.length} scheme/programme, inke andar {benefitCount} alag-alag benefit. Har ek ke saath
-          shartein aur documents diye hain.
+          {schemes.length} योजना/कार्यक्रम, इनके अंदर {benefitCount} अलग-अलग लाभ। हर एक के साथ शर्तें और
+          दस्तावेज़ दिए हैं।
         </p>
       </div>
 
       <div className="mb-3 rounded-2xl bg-[var(--dc-sky-soft)] p-3">
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-[var(--dc-body)]">
-          Paisa kis tarah milta hai
+          पैसा किस तरह मिलता है
         </p>
         <BenefitLegend />
       </div>
@@ -83,7 +83,7 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
       */}
       <div className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 -mx-1 mb-3 rounded-2xl border border-[var(--dc-ink)]/8 bg-white px-2 py-2 shadow-[0_10px_30px_-16px_rgba(15,32,73,0.45)]">
         <label className="relative block">
-          <span className="sr-only">Scheme ka naam search karein</span>
+          <span className="sr-only">योजना का नाम खोजें</span>
           <Search
             className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
             aria-hidden="true"
@@ -91,14 +91,14 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Scheme ka naam search karein…"
+            placeholder="योजना का नाम खोजें…"
             className="h-12 w-full rounded-xl border border-[var(--dc-ink)]/10 bg-white pl-10 pr-3 text-[15px] font-semibold text-[var(--dc-ink)] outline-none transition focus:border-[var(--dc-blue-deep)] focus:ring-4 focus:ring-[var(--dc-blue-deep)]/10"
           />
         </label>
 
         <div
           role="tablist"
-          aria-label="Scheme category"
+          aria-label="योजना की श्रेणी"
           className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {[ALL, ...categories].map((key) => {
@@ -131,7 +131,7 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
                     style={on ? undefined : { color: art?.from }}
                   />
                 ) : null}
-                {key === ALL ? "Sabhi" : CATEGORY_LABEL[key as SchemeCategory]}
+                {key === ALL ? "सभी" : CATEGORY_LABEL_HI[key as SchemeCategory]}
               </button>
             );
           })}
@@ -154,7 +154,7 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
         </ul>
       ) : (
         <p className="rounded-2xl border border-dashed border-[var(--dc-ink)]/15 px-4 py-10 text-center text-[13px] font-semibold text-[var(--dc-body)]">
-          &ldquo;{query}&rdquo; se koi scheme nahi mili. Doosra shabd try kijiye.
+          &ldquo;{query}&rdquo; से कोई योजना नहीं मिली। दूसरा शब्द आज़माइए।
         </p>
       )}
     </section>
@@ -196,7 +196,7 @@ function SchemeCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ delay: still ? 0 : Math.min(index, 6) * 0.03 }}
-      className="lg-card lg-raise relative scroll-mt-28 overflow-hidden"
+      className="lc-card lc-lift relative scroll-mt-28 overflow-hidden"
     >
       <span
         aria-hidden="true"
@@ -217,13 +217,16 @@ function SchemeCard({
                   background: `${CATEGORY_ART[scheme.category].from}1a`,
                 }}
               >
-                {CATEGORY_LABEL[scheme.category]}
+                {CATEGORY_LABEL_HI[scheme.category]}
               </span>
-              <h3 className="mt-1.5 text-[15.5px] font-extrabold leading-tight text-[var(--dc-ink)] sm:text-[17px]">
-                {scheme.name}
+              {/* Hindi leads on a Hindi page. The Latin name stays underneath
+                  because that is what is printed on the department's own forms
+                  and what somebody searching for it will have typed. */}
+              <h3 className="mt-1.5 text-[16px] font-bold leading-snug text-[var(--lc-navy)] sm:text-[17.5px]">
+                {scheme.nameHi || scheme.name}
               </h3>
               {scheme.nameHi ? (
-                <p className="text-[12.5px] font-bold text-[var(--dc-body)]">{scheme.nameHi}</p>
+                <p className="mt-0.5 text-[12px] font-semibold text-[var(--lc-muted)]">{scheme.name}</p>
               ) : null}
             </div>
           </div>
@@ -269,7 +272,7 @@ function SchemeCard({
 
         {!expanded && scheme.benefits.length > 3 ? (
           <p className="mt-1.5 text-[11.5px] font-bold text-[var(--dc-body)]">
-            +{scheme.benefits.length - 3} aur benefit
+            +{scheme.benefits.length - 3} और लाभ
           </p>
         ) : null}
 
@@ -280,7 +283,7 @@ function SchemeCard({
           aria-controls={`detail-${scheme.slug}`}
           className="mt-3 inline-flex h-11 items-center gap-1.5 rounded-xl border border-[var(--dc-ink)]/12 bg-white px-4 text-[13px] font-bold text-[var(--dc-ink)] transition hover:border-[var(--dc-blue-deep)]/40"
         >
-          {expanded ? "Kam dikhaiye" : "Poori jankari"}
+          {expanded ? "कम दिखाएं" : "पूरी जानकारी"}
           <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} aria-hidden="true" />
         </button>
       </div>
@@ -296,13 +299,13 @@ function SchemeCard({
             className="overflow-hidden border-t border-[var(--dc-ink)]/8 bg-[var(--dc-sky-soft)]/50"
           >
             <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-              <DetailList title="Kisko milega" items={scheme.beneficiaries} />
-              <DetailList title="Patrata (eligibility)" items={scheme.eligibility} />
-              <DetailList title="Documents" items={scheme.documents} />
-              <DetailList title="Process" items={scheme.process} ordered />
+              <DetailList title="किसको मिलेगा" items={scheme.beneficiaries} />
+              <DetailList title="पात्रता" items={scheme.eligibility} />
+              <DetailList title="दस्तावेज़" items={scheme.documents} />
+              <DetailList title="प्रक्रिया" items={scheme.process} ordered />
               {scheme.paymentMethod ? (
                 <div className="sm:col-span-2">
-                  <Heading>Paisa kaise milega</Heading>
+                  <Heading>पैसा कैसे मिलेगा</Heading>
                   <p className="mt-1 text-[12.5px] font-semibold leading-relaxed text-[var(--dc-body)]">
                     {scheme.paymentMethod}
                   </p>
@@ -368,7 +371,7 @@ function VerificationBadge({ scheme }: { scheme: LabourScheme }) {
       ) : (
         <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
       )}
-      {verified ? "Verified" : "Needs review"}
+      {verified ? "सत्यापित" : "जाँच बाक़ी"}
     </span>
   );
 }
@@ -377,11 +380,11 @@ function SourceNote({ scheme }: { scheme: LabourScheme }) {
   const { providedBy, verifiedOn, sourceUrl, sourceTitle, caveat } = scheme.verification;
   return (
     <div className="sm:col-span-2 rounded-xl border border-[var(--dc-ink)]/10 bg-white p-3">
-      <Heading>Jankari ka source</Heading>
+      <Heading>जानकारी का स्रोत</Heading>
       <p className="mt-1 text-[12px] font-semibold leading-snug text-[var(--dc-body)]">
         {sourceTitle}
-        {providedBy ? ` · ${providedBy} dwara di gayi` : ""}
-        {verifiedOn ? ` · last verified ${verifiedOn}` : ""}
+        {providedBy ? ` · ${providedBy} द्वारा दी गई` : ""}
+        {verifiedOn ? ` · अंतिम जाँच ${verifiedOn}` : ""}
       </p>
       {caveat ? (
         <p className="mt-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11.5px] font-bold leading-snug text-amber-800">
@@ -389,8 +392,8 @@ function SourceNote({ scheme }: { scheme: LabourScheme }) {
         </p>
       ) : null}
       <p className="mt-1.5 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
-        Sarkari yojanaon ke niyam aur rakam samay-samay par badal sakti hain. Aakhri faisla vibhag ka hota hai —
-        latest official notification zaroor dekh lijiye.
+        सरकारी योजनाओं के नियम और रकम समय-समय पर बदल सकती हैं। आख़िरी फ़ैसला विभाग का होता है — नवीनतम
+        आधिकारिक अधिसूचना ज़रूर देख लीजिए।
       </p>
       <a
         href={sourceUrl ?? "https://upbocw.in/"}
@@ -398,7 +401,7 @@ function SourceNote({ scheme }: { scheme: LabourScheme }) {
         rel="noopener noreferrer"
         className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-xl bg-white px-3 text-[12.5px] font-bold text-[var(--dc-blue-deep)] ring-1 ring-[var(--dc-blue-deep)]/20 transition hover:ring-[var(--dc-blue-deep)]/50"
       >
-        {sourceUrl ? "Official source" : "UPBOCW official portal"}
+        {sourceUrl ? "आधिकारिक स्रोत" : "UPBOCW आधिकारिक पोर्टल"}
         <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
       </a>
     </div>

@@ -38,6 +38,15 @@ export type BenefitFrequency = "one_time" | "monthly" | "annual" | "per_event" |
  */
 export type BenefitLine = {
   label: string;
+  /**
+   * The same line in Hindi, for the public page.
+   *
+   * Optional and additive: it lives inside the existing `benefits` JSON, so
+   * no column and no migration. A record without it still renders — the Latin
+   * label is the fallback — which matters because an administrator adding a
+   * scheme in the panel should not be blocked on translating it.
+   */
+  labelHi?: string;
   kind: BenefitKind;
   amount: number | null;
   /** Used when there is no single rupee figure, or the figure needs a caveat. */
@@ -137,6 +146,25 @@ export const FREQUENCY_LABEL: Record<BenefitFrequency, string> = {
   as_notified: "Jaisa notify ho",
 };
 
+/** The public page is written in Hindi; the admin panel stays in English. */
+export const FREQUENCY_LABEL_HI: Record<BenefitFrequency, string> = {
+  one_time: "एकमुश्त",
+  monthly: "हर महीने",
+  annual: "हर साल",
+  per_event: "हर बार (घटना पर)",
+  as_notified: "जैसा अधिसूचित हो",
+};
+
+export const BENEFIT_KIND_LABEL_HI: Record<BenefitKind, string> = {
+  cash: "नकद (DBT)",
+  fd: "सावधि जमा (FD)",
+  reimbursement: "प्रतिपूर्ति",
+  installment: "मासिक किस्त",
+  pension: "मासिक पेंशन",
+  service: "नि:शुल्क सेवा",
+  awareness: "जागरूकता",
+};
+
 export const CATEGORY_LABEL: Record<SchemeCategory, string> = {
   child_maternity: "Child & Maternity",
   marriage: "Marriage",
@@ -153,6 +181,31 @@ export const CATEGORY_LABEL: Record<SchemeCategory, string> = {
   awareness: "Awareness",
   disaster: "Disaster Relief",
   linked: "Other Linked Schemes",
+};
+
+/**
+ * Category names in Hindi, for the public page.
+ *
+ * A separate map rather than a translation of the one above: the admin panel
+ * and the seed data are keyed and read in English, and renaming those in place
+ * would change what an administrator sees while editing a record.
+ */
+export const CATEGORY_LABEL_HI: Record<SchemeCategory, string> = {
+  child_maternity: "शिशु व मातृत्व",
+  marriage: "विवाह",
+  education: "शिक्षा",
+  cycle: "साइकिल",
+  residential_education: "आवासीय शिक्षा",
+  medical: "चिकित्सा",
+  disability: "दिव्यांगता",
+  death: "मृत्यु",
+  funeral: "अंत्येष्टि",
+  pension: "पेंशन",
+  toilet: "शौचालय",
+  skill: "कौशल विकास",
+  awareness: "जागरूकता",
+  disaster: "आपदा राहत",
+  linked: "अन्य संबद्ध योजनाएं",
 };
 
 /**

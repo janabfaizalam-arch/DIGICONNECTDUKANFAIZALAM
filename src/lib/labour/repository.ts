@@ -70,6 +70,7 @@ function benefitList(value: unknown): BenefitLine[] {
     const item = raw as Record<string, unknown>;
     const label = typeof item.label === "string" ? item.label : "";
     if (!label) return [];
+    const labelHi = typeof item.labelHi === "string" && item.labelHi ? item.labelHi : undefined;
 
     const kind = typeof item.kind === "string" && kinds.has(item.kind) ? item.kind : "service";
     const amount = typeof item.amount === "number" && Number.isFinite(item.amount) ? item.amount : null;
@@ -77,6 +78,7 @@ function benefitList(value: unknown): BenefitLine[] {
     return [
       {
         label,
+        labelHi,
         kind,
         amount: kind === "service" && typeof item.kind !== "string" ? null : amount,
         amountNote: typeof item.amountNote === "string" ? item.amountNote : undefined,

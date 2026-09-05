@@ -13,21 +13,21 @@ import { LabourCardPage } from "@/components/services/labour-card/labour-card-pa
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "UP Labour Card (UPBOCW) — Registration, Renewal aur Sarkari Yojanayein | DigiConnect Dukan",
+  title: "UP लेबर कार्ड (UPBOCW) — पंजीकरण, नवीनीकरण और सरकारी योजनाएं | DigiConnect Dukan",
   description:
-    "UP Labour Card / UPBOCW ki poori guide — education, shaadi, bachche, medical, divyangta, mrityu aur pension benefits, unki shartein, documents aur apply karne ka tareeka. Eligibility checker ke saath.",
+    "UP लेबर कार्ड / UPBOCW की पूरी गाइड — शिक्षा, विवाह, मातृत्व, चिकित्सा, दिव्यांगता, मृत्यु और पेंशन लाभ, उनकी शर्तें, दस्तावेज़ और आवेदन का तरीक़ा। पात्रता जांच के साथ।",
   alternates: { canonical: "/services/labour-card" },
   openGraph: {
-    title: "UP Labour Card (UPBOCW) — Complete Guide",
+    title: "UP लेबर कार्ड (UPBOCW) — पूरी गाइड",
     description:
-      "Labour Card ke benefits, eligibility, documents aur application process — saaf-saaf, shartein ke saath.",
+      "लेबर कार्ड के लाभ, पात्रता, दस्तावेज़ और आवेदन प्रक्रिया — साफ़-साफ़, शर्तों के साथ।",
     url: "/services/labour-card",
     type: "article",
   },
   twitter: {
     card: "summary_large_image",
-    title: "UP Labour Card (UPBOCW) — Complete Guide",
-    description: "Benefits, eligibility, documents aur apply karne ka tareeka.",
+    title: "UP लेबर कार्ड (UPBOCW) — पूरी गाइड",
+    description: "लाभ, पात्रता, दस्तावेज़ और आवेदन का तरीक़ा।",
   },
 };
 

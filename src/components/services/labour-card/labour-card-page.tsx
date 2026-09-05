@@ -5,6 +5,14 @@ import {
   ArrowRight,
   BadgeCheck,
   Building2,
+  Droplets,
+  Grid3x3,
+  Hammer,
+  Paintbrush,
+  Ruler,
+  Shovel,
+  Wrench,
+  Zap,
   CheckCircle2,
   FileText,
   HardHat,
@@ -26,7 +34,9 @@ import {
   ShopArt,
   TradesArt,
 } from "@/components/services/labour-card/art";
+import { CashVsFd } from "@/components/services/labour-card/cash-vs-fd";
 import { CountUp } from "@/components/services/labour-card/count-up";
+import { LabourArticles } from "@/components/services/labour-card/labour-articles";
 import { EligibilityChecker } from "@/components/services/labour-card/eligibility-checker";
 import { SchemeDirectory } from "@/components/services/labour-card/scheme-directory";
 import { LabourStickyBar } from "@/components/services/labour-card/sticky-bar";
@@ -72,7 +82,11 @@ export async function LabourCardPage() {
         underneath it at every width. `dc-bottom-nav-clearance` does the same
         job at the other end, for the tab bar and the WhatsApp button.
       */}
+      {/* `lang` on the page rather than the document: the site is English/
+          Hinglish elsewhere, and a screen reader needs to switch voice for
+          this one. */}
       <main
+        lang="hi"
         className="lc-hi homepage-mobile-shell home-option3 dc-bottom-nav-clearance relative overflow-x-clip pb-16"
         style={{ background: "var(--lc-page)" }}
       >
@@ -91,10 +105,12 @@ export async function LabourCardPage() {
           <Reveal>
             <EligibilityChecker schemes={schemes} />
           </Reveal>
+          <CashVsFd schemes={schemes} />
           <Documents />
           <HowItWorks />
           <RejectionReasons />
-          <WhyUs />
+          <SelfVsAssisted />
+          <LabourArticles />
           <Faqs />
           <FinalCta />
           <Disclaimer source={source} />
@@ -512,34 +528,38 @@ function Overview() {
       <Reveal>
         <SectionHead
           icon={BadgeCheck}
-          eyebrow="Shuruaat"
-          title="Labour Card kya hai?"
-          from="#0f5db8"
-          to="#2f80ed"
+          eyebrow="शुरुआत"
+          title="लेबर कार्ड क्या है?"
+          from="var(--lc-navy)"
+          to="var(--lc-navy-light)"
         />
       </Reveal>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
-        <Stagger className="grid gap-3 sm:grid-cols-2">
-          <StaggerItem className="lg-card lg-raise p-4 sm:p-5">
-            <h3 className="text-[14px] font-extrabold text-[var(--dc-ink)]">UPBOCW aur Labour Card</h3>
-            <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-[var(--dc-body)]">
-              Uttar Pradesh Building and Other Construction Workers Welfare Board (UPBOCW) nirman kaam karne
-              wale shramikon ka registration karta hai. Registration ke baad jo card milta hai use aam bhasha
-              mein Labour Card ya Shram Card kehte hain. Isi registration ke aadhar par Board ki alag-alag
-              welfare yojanaon mein aavedan kiya jata hai.
+      <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+        <Stagger className="grid gap-4 sm:grid-cols-2">
+          <StaggerItem className="lc-card lc-lift p-5">
+            <h3 className="text-[15px] font-bold" style={{ color: "var(--lc-navy)" }}>
+              UPBOCW और लेबर कार्ड
+            </h3>
+            <p className="mt-2 text-[13.5px] font-medium" style={{ color: "var(--lc-muted)" }}>
+              उत्तर प्रदेश भवन एवं अन्य सन्निर्माण कर्मकार कल्याण बोर्ड (UPBOCW) निर्माण कार्य करने वाले
+              श्रमिकों का पंजीकरण करता है। पंजीकरण के बाद जो कार्ड मिलता है उसे आम भाषा में लेबर कार्ड या
+              श्रम कार्ड कहते हैं। इसी पंजीकरण के आधार पर बोर्ड की अलग-अलग कल्याणकारी योजनाओं में आवेदन
+              किया जाता है।
             </p>
           </StaggerItem>
-          <StaggerItem className="lg-card lg-raise p-4 sm:p-5">
-            <h3 className="text-[14px] font-extrabold text-[var(--dc-ink)]">Registration aur Renewal</h3>
-            <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-[var(--dc-body)]">
-              Registration ek baar hota hai, par card ko active rakhna zaroori hai. Bahut si yojanayein
-              &ldquo;updated registration&rdquo; maangti hain — matlab card lapse na ho. Kai yojanaon mein
-              registration ke baad ek nishchit samay ki membership bhi chahiye hoti hai.
+          <StaggerItem className="lc-card lc-lift p-5">
+            <h3 className="text-[15px] font-bold" style={{ color: "var(--lc-navy)" }}>
+              पंजीकरण और नवीनीकरण
+            </h3>
+            <p className="mt-2 text-[13.5px] font-medium" style={{ color: "var(--lc-muted)" }}>
+              पंजीकरण एक बार होता है, पर कार्ड को सक्रिय रखना ज़रूरी है। बहुत सी योजनाएं
+              &ldquo;अपडेटेड पंजीकरण&rdquo; माँगती हैं — मतलब कार्ड लैप्स न हो। कई योजनाओं में पंजीकरण के
+              बाद एक निश्चित समय की सदस्यता भी चाहिए होती है।
             </p>
           </StaggerItem>
         </Stagger>
-        <OverviewArt className="hidden h-auto w-[240px] lg:block" />
+        <OverviewArt className="hidden h-auto w-[250px] lg:block" />
       </div>
 
       {/*
@@ -547,14 +567,24 @@ function Overview() {
         least likely to have been told.
       */}
       <Reveal>
-        <div className="mt-3 overflow-hidden rounded-2xl border-l-4 border-l-[var(--dc-flame)] bg-gradient-to-br from-white to-[#fff6ef] p-4 shadow-sm sm:p-5">
-          <p className="flex items-start gap-2.5 text-[14px] font-extrabold leading-snug text-[var(--dc-ink)] sm:text-[15.5px]">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dc-flame)]" aria-hidden="true" />
-            Labour Card hone ka matlab ye nahi ki har scheme ka benefit apne aap mil jayega.
+        <div
+          className="mt-4 overflow-hidden rounded-2xl border-l-4 bg-gradient-to-br from-white to-[#fff7ed] p-5"
+          style={{ borderLeftColor: "var(--lc-saffron)", boxShadow: "var(--lc-shadow-1)" }}
+        >
+          <p
+            className="flex items-start gap-3 text-[15px] font-bold sm:text-[16.5px]"
+            style={{ color: "var(--lc-navy)" }}
+          >
+            <AlertTriangle
+              className="mt-0.5 h-5 w-5 shrink-0"
+              style={{ color: "var(--lc-saffron-deep)" }}
+              aria-hidden="true"
+            />
+            लेबर कार्ड होने का मतलब यह नहीं कि हर योजना का लाभ अपने आप मिल जाएगा।
           </p>
-          <p className="mt-1.5 pl-7 text-[12.5px] font-medium leading-relaxed text-[var(--dc-body)]">
-            Har yojana ki apni shartein hain — membership ki avadhi, 90 din kaam, bachchon ki sankhya, umar,
-            aur apply karne ki samay seema. Card sirf darwaza kholta hai; andar har kamre ki apni chaabi hai.
+          <p className="mt-2 pl-8 text-[13px] font-medium" style={{ color: "var(--lc-muted)" }}>
+            हर योजना की अपनी शर्तें हैं — सदस्यता की अवधि, 90 दिन काम, बच्चों की संख्या, उम्र, और आवेदन
+            करने की समय सीमा। कार्ड सिर्फ़ दरवाज़ा खोलता है; अंदर हर कमरे की अपनी चाबी है।
           </p>
         </div>
       </Reveal>
@@ -562,42 +592,68 @@ function Overview() {
   );
 }
 
+/**
+ * The trades the board covers.
+ *
+ * Eight cards rather than a row of word-chips: a reader looking for their own
+ * work wants to recognise it, and "बढ़ई" with "लकड़ी व शटरिंग काम" under it is
+ * recognisable in a way that a bare label is not. The list is not the board's
+ * full definition and says so.
+ */
 function WhoIsItFor() {
-  const jobs = [
-    "Raj Mistri", "Mason", "Helper", "Carpenter", "Plumber", "Electrician",
-    "Painter", "Welder", "Road worker", "Tile worker", "Nirman shramik",
+  const trades = [
+    { name: "राजमिस्त्री", detail: "दीवार, चिनाई व प्लास्टर", icon: Hammer },
+    { name: "बढ़ई (Carpenter)", detail: "लकड़ी व शटरिंग काम", icon: Ruler },
+    { name: "इलेक्ट्रीशियन", detail: "घरेलू वायरिंग व फिटिंग", icon: Zap },
+    { name: "प्लंबर व पाइप फिटर", detail: "पानी व सीवरेज कारीगर", icon: Droplets },
+    { name: "पेंटर व पुट्टी", detail: "रंग-रोगन व पीओपी", icon: Paintbrush },
+    { name: "हेल्पर व बेलदार", detail: "सीमेंट व मसाला मज़दूर", icon: Shovel },
+    { name: "वेल्डर व लोहारी", detail: "ग्रिल, गेट व सरिया बाँधना", icon: Wrench },
+    { name: "टाइल व मार्बल", detail: "पत्थर व फ़र्श कारीगर", icon: Grid3x3 },
   ];
   return (
     <section id="who" className="scroll-mt-24">
       <Reveal>
-        <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#fff3e8] via-white to-[#eef5ff] p-4 shadow-sm ring-1 ring-[var(--dc-ink)]/5 sm:p-6">
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-            <div>
-              <SectionHead
-                icon={HardHat}
-                eyebrow="Patrata"
-                title="Kiske liye hai?"
-                blurb="Nirman kaam se juda kaam karne wale shramik. Poori aur adhikarik list ke liye UPBOCW ki paribhasha dekhein."
-                from="#c2410c"
-                to="#fb923c"
-              />
-            </div>
+        <div
+          className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#fff7ed] via-white to-[#eef4fb] p-5 sm:p-7"
+          style={{ boxShadow: "var(--lc-shadow-1)" }}
+        >
+          <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <SectionHead
+              icon={HardHat}
+              eyebrow="पात्रता"
+              title="श्रम कार्ड किन कामगारों के लिए मान्य है?"
+              blurb="भवन निर्माण व असंगठित निर्माण क्षेत्र के कई प्रकार के कामगार इस बोर्ड के अंतर्गत आते हैं। नीचे कुछ प्रमुख काम दिए हैं — पूरी और अधिकारिक सूची के लिए UPBOCW की परिभाषा देखें।"
+              from="var(--lc-saffron-deep)"
+              to="var(--lc-saffron)"
+            />
             <SectionArt
               slot="trades"
-              className="hidden h-auto w-[240px] rounded-2xl object-cover shadow-md sm:block"
-              fallback={<TradesArt className="hidden h-auto w-[220px] sm:block" />}
+              className="hidden h-auto w-[250px] rounded-2xl object-cover sm:block"
+              fallback={<TradesArt className="hidden h-auto w-[230px] sm:block" />}
             />
           </div>
 
-          <Stagger as="ul" className="mt-4 flex flex-wrap gap-2">
-            {jobs.map((job) => (
-              <StaggerItem
-                as="li"
-                key={job}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--dc-flame)]/20 bg-white px-3 py-2 text-[12.5px] font-bold text-[var(--dc-ink)] shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--dc-flame)]/45"
-              >
-                <HardHat className="h-3.5 w-3.5 text-[var(--dc-flame)]" aria-hidden="true" />
-                {job}
+          <Stagger as="ul" className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {trades.map((trade) => (
+              <StaggerItem as="li" key={trade.name} className="lc-card lc-lift p-4">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ background: "var(--lc-saffron-soft)" }}
+                >
+                  <trade.icon
+                    className="h-5 w-5"
+                    style={{ color: "var(--lc-saffron-deep)" }}
+                    strokeWidth={2.1}
+                  />
+                </span>
+                <p className="mt-2.5 text-[13.5px] font-bold" style={{ color: "var(--lc-navy)" }}>
+                  {trade.name}
+                </p>
+                <p className="mt-0.5 text-[11.5px] font-semibold" style={{ color: "var(--lc-muted)" }}>
+                  {trade.detail}
+                </p>
               </StaggerItem>
             ))}
           </Stagger>
@@ -613,48 +669,56 @@ function WhoIsItFor() {
 
 function Documents() {
   const sets = [
-    { title: "Registration", tint: "#0f5db8", items: ["Aadhaar", "Mobile number", "Bank passbook", "Photo", "Kaam ka proof (90 din)", "Pata ka proof"] },
-    { title: "Shaadi", tint: "#be123c", items: ["Labour Card", "Aadhaar (worker, beti, ladka)", "Shaadi ka proof", "Beti ki umar ka document", "Bank passbook"] },
-    { title: "Padhai", tint: "#5b21b6", items: ["Marksheet", "Admission proof", "Fee receipt", "Student Aadhaar", "Bank passbook"] },
-    { title: "Mrityu", tint: "#475569", items: ["Online death certificate", "Nominee / waris ka proof", "Bank passbook", "FIR / postmortem (jahan lagu ho)"] },
-    { title: "Divyangta", tint: "#0e7490", items: ["CMO ka divyangta certificate", "Medical documents", "FIR (jahan lagu ho)"] },
-    { title: "Bachcha / Beti", tint: "#be185d", items: ["Online birth certificate", "Institutional delivery proof", "Family register", "Aadhaar", "Bank passbook"] },
+    { title: "पंजीकरण", tint: "var(--lc-navy-light)", items: ["आधार कार्ड", "मोबाइल नंबर", "बैंक पासबुक", "फ़ोटो", "काम का प्रमाण (90 दिन)", "पते का प्रमाण"] },
+    { title: "विवाह", tint: "#be123c", items: ["लेबर कार्ड", "आधार (श्रमिक, बेटी, लड़का)", "शादी का प्रमाण", "बेटी की उम्र का दस्तावेज़", "बैंक पासबुक"] },
+    { title: "पढ़ाई", tint: "var(--lc-fd)", items: ["अंकतालिका (मार्कशीट)", "प्रवेश का प्रमाण", "फ़ीस रसीद", "छात्र का आधार", "बैंक पासबुक"] },
+    { title: "मृत्यु", tint: "#475569", items: ["ऑनलाइन मृत्यु प्रमाण पत्र", "नॉमिनी / वारिस का प्रमाण", "बैंक पासबुक", "FIR / पोस्टमॉर्टम (जहाँ लागू हो)"] },
+    { title: "दिव्यांगता", tint: "var(--lc-reimburse)", items: ["CMO का दिव्यांगता प्रमाण पत्र", "मेडिकल दस्तावेज़", "FIR (जहाँ लागू हो)"] },
+    { title: "बच्चा / बेटी", tint: "#be185d", items: ["ऑनलाइन जन्म प्रमाण पत्र", "संस्थागत प्रसव का प्रमाण", "परिवार रजिस्टर", "आधार", "बैंक पासबुक"] },
   ];
   return (
     <section id="documents" className="scroll-mt-24">
-      <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+      <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
         <Reveal>
           <SectionHead
             icon={FileText}
-            eyebrow="Taiyari"
-            title="Kaunse documents lagenge?"
-            blurb="Har category ke liye alag set. Jo hai wahi laiye — kami hum bata denge."
-            from="#0f5db8"
-            to="#2f80ed"
+            eyebrow="तैयारी"
+            title="आवेदन के लिए आवश्यक दस्तावेज़"
+            blurb="हर श्रेणी के लिए अलग सेट। जो है वही लाइए — कमी हम बता देंगे।"
+            from="var(--lc-navy)"
+            to="var(--lc-navy-light)"
           />
         </Reveal>
         <SectionArt
           slot="documents"
-          className="hidden h-auto w-[240px] rounded-2xl object-cover shadow-md sm:block"
+          className="hidden h-auto w-[240px] rounded-2xl object-cover sm:block"
           fallback={<DocumentsArt className="hidden h-auto w-[220px] sm:block" />}
         />
       </div>
 
-      <Stagger className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <Stagger className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {sets.map((set) => (
-          <StaggerItem key={set.title} className="lg-card lg-raise relative overflow-hidden p-4">
+          <StaggerItem key={set.title} className="lc-card lc-lift relative overflow-hidden p-4.5">
             <span
               aria-hidden="true"
               className="absolute inset-y-0 left-0 w-1"
               style={{ background: set.tint }}
             />
-            <h3 className="text-[13.5px] font-extrabold" style={{ color: set.tint }}>
+            <h3 className="pl-2 text-[14px] font-bold" style={{ color: set.tint }}>
               {set.title}
             </h3>
-            <ul className="mt-2 space-y-1">
+            <ul className="mt-2.5 space-y-1.5 pl-2">
               {set.items.map((item) => (
-                <li key={item} className="flex gap-1.5 text-[12.5px] font-semibold leading-snug text-[var(--dc-body)]">
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#0f9d58]" aria-hidden="true" />
+                <li
+                  key={item}
+                  className="flex gap-2 text-[12.5px] font-semibold leading-snug"
+                  style={{ color: "var(--lc-muted)" }}
+                >
+                  <CheckCircle2
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                    style={{ color: "var(--lc-emerald)" }}
+                    aria-hidden="true"
+                  />
                   {item}
                 </li>
               ))}
@@ -668,40 +732,44 @@ function Documents() {
 
 function HowItWorks() {
   const steps = [
-    { title: "Documents dikhaiye", detail: "Jo hai wahi laiye — kami hai to hum bata denge.", tint: "#0f5db8" },
-    { title: "Eligibility dekhi jayegi", detail: "Kaunsi yojana aap par lagu hoti hai, shartein ke saath.", tint: "#0f766e" },
-    { title: "Application taiyar", detail: "Form bharna, scan karna, upload karna.", tint: "#5b21b6" },
-    { title: "Online submission", detail: "Portal par jama.", tint: "#0e7490" },
-    { title: "Vibhag ka verification", detail: "Ye vibhag karta hai — samay unka hota hai.", tint: "#c2410c" },
-    { title: "Status", detail: "Hum status dekhne aur correction mein madad karte hain.", tint: "#047857" },
+    { title: "पात्रता जांच", detail: "कौन सी योजना आप पर लागू होती है, शर्तों के साथ।", tint: "var(--lc-navy-light)" },
+    { title: "दस्तावेज़ तैयारी", detail: "जो है वही लाइए — कमी है तो हम बता देंगे।", tint: "#0f766e" },
+    { title: "फ़ॉर्म व ऑनलाइन आवेदन", detail: "फ़ॉर्म भरना, स्कैन करना, अपलोड करना।", tint: "var(--lc-fd)" },
+    { title: "ऑनलाइन जमा", detail: "पोर्टल पर आवेदन जमा।", tint: "var(--lc-reimburse)" },
+    { title: "विभागीय सत्यापन", detail: "यह विभाग करता है — समय उनका होता है।", tint: "var(--lc-saffron-deep)" },
+    { title: "खाते में लाभ", detail: "नियमानुसार। हम स्टेटस देखने और सुधार में मदद करते हैं।", tint: "var(--lc-emerald)" },
   ];
   return (
     <section id="process" className="scroll-mt-24">
       <Reveal>
         <SectionHead
           icon={ArrowRight}
-          eyebrow="Prakriya"
-          title="Kaise hota hai?"
-          blurb="Chhah kadam. Paanchvan kadam vibhag ka hai — uska samay hamare haath mein nahi."
+          eyebrow="प्रक्रिया"
+          title="आवेदन से लेकर खाते में लाभ आने तक"
+          blurb="छह कदम। पाँचवाँ कदम विभाग का है — उसका समय हमारे हाथ में नहीं।"
           from="#0f766e"
           to="#2dd4bf"
         />
       </Reveal>
       <Reveal>
-        <ProcessArt className="mx-auto mt-4 h-auto w-full max-w-[620px]" />
+        <ProcessArt className="mx-auto mt-5 h-auto w-full max-w-[620px]" />
       </Reveal>
 
-      <Stagger as="ol" className="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <Stagger as="ol" className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {steps.map((step, index) => (
-          <StaggerItem as="li" key={step.title} className="lg-card lg-raise p-4">
+          <StaggerItem as="li" key={step.title} className="lc-card lc-lift p-4.5">
             <span
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-[14px] font-extrabold text-white shadow-[0_8px_18px_-10px_rgba(16,33,61,0.7)]"
-              style={{ background: `linear-gradient(145deg, ${step.tint}, ${step.tint}cc)` }}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-[15px] font-extrabold text-white"
+              style={{ background: step.tint, boxShadow: "var(--lc-shadow-1)" }}
             >
               {index + 1}
             </span>
-            <h3 className="mt-2 text-[13.5px] font-extrabold text-[var(--dc-ink)]">{step.title}</h3>
-            <p className="mt-0.5 text-[12.5px] font-medium leading-snug text-[var(--dc-body)]">{step.detail}</p>
+            <h3 className="mt-2.5 text-[14px] font-bold" style={{ color: "var(--lc-navy)" }}>
+              {step.title}
+            </h3>
+            <p className="mt-1 text-[12.5px] font-medium leading-snug" style={{ color: "var(--lc-muted)" }}>
+              {step.detail}
+            </p>
           </StaggerItem>
         ))}
       </Stagger>
@@ -709,49 +777,97 @@ function HowItWorks() {
   );
 }
 
+/**
+ * Why applications fail.
+ *
+ * The design reference pulled four reasons out into a warning band and left
+ * the rest. Both are kept: the four that account for most refusals get the
+ * band, and the full list stays underneath, because a reader whose problem is
+ * the twelfth one is exactly the reader this section is for.
+ */
 function RejectionReasons() {
-  const reasons = [
-    "Card expire ya inactive",
-    "Membership ki avadhi puri nahi",
-    "90 din kaam ki shart puri nahi",
-    "Bank detail galat ya Aadhaar se link nahi",
-    "Aadhaar ke naam mein mismatch",
-    "Ek hi labh dobara maanga gaya",
-    "Documents adhoore",
-    "Galat category mein aavedan",
-    "Samay seema ke baad aavedan",
-    "Bachche ki detail galat",
-    "Shaadi ka proof adhoora",
-    "Medical bill original nahi",
+  const top = [
+    {
+      title: "आधार और बैंक पासबुक में नाम अलग",
+      detail: "स्पेलिंग का छोटा-सा फ़र्क़ भी DBT रोक देता है। दोनों जगह नाम बिलकुल एक जैसा होना चाहिए।",
+    },
+    {
+      title: "कार्ड एक्सपायर या निष्क्रिय",
+      detail: "वार्षिक नवीनीकरण शुल्क न भरने पर कार्ड लैप्स हो जाता है, और पोर्टल फ़ॉर्म ही स्वीकार नहीं करता।",
+    },
+    {
+      title: "90 दिन कार्य का प्रमाण नहीं",
+      detail: "पिछले 12 महीनों में 90 दिन निर्माण कार्य का नियोजक या ग्राम प्रधान का प्रमाण पत्र ज़रूरी है।",
+    },
+    {
+      title: "समय सीमा के बाद आवेदन",
+      detail: "कई योजनाओं में घटना (विवाह, जन्म, मृत्यु) के एक वर्ष के भीतर आवेदन करना होता है।",
+    },
+  ];
+  const rest = [
+    "सदस्यता की अवधि पूरी नहीं",
+    "बैंक खाता आधार से लिंक नहीं",
+    "एक ही लाभ दोबारा माँगा गया",
+    "दस्तावेज़ अधूरे",
+    "ग़लत श्रेणी में आवेदन",
+    "बच्चे की जानकारी ग़लत",
+    "शादी का प्रमाण अधूरा",
+    "मेडिकल बिल मूल (original) नहीं",
   ];
   return (
     <section id="rejections" className="scroll-mt-24">
       <Reveal>
-        <div className="overflow-hidden rounded-3xl border-l-4 border-l-[var(--dc-flame)] bg-gradient-to-br from-[#fff5f0] via-white to-white p-4 shadow-sm sm:p-6">
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div
+          className="overflow-hidden rounded-3xl border-l-4 bg-gradient-to-br from-[#fff5f0] via-white to-white p-5 sm:p-7"
+          style={{ borderLeftColor: "var(--lc-saffron)", boxShadow: "var(--lc-shadow-1)" }}
+        >
+          <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
             <SectionHead
               icon={AlertTriangle}
-              eyebrow="Savdhani"
-              title="Application kyun reject hoti hai"
-              blurb="Zyadatar rejection inhi wajahon se hoti hai. Apply karne se pehle ek baar mila lijiye."
+              eyebrow="सावधानी"
+              title="आवेदन रिजेक्ट क्यों होते हैं"
+              blurb="ज़्यादातर रिजेक्शन इन्हीं वजहों से होते हैं। आवेदन करने से पहले एक बार मिला लीजिए।"
               from="#b91c1c"
               to="#f87171"
             />
-            <RejectionArt className="hidden h-auto w-[180px] sm:block" />
+            <RejectionArt className="hidden h-auto w-[190px] sm:block" />
           </div>
 
-          <Stagger as="ul" className="mt-4 grid gap-1.5 sm:grid-cols-2">
-            {reasons.map((reason) => (
-              <StaggerItem
-                as="li"
-                key={reason}
-                className="flex gap-2 rounded-lg bg-white/70 px-2.5 py-1.5 text-[12.5px] font-semibold leading-snug text-[var(--dc-body)]"
-              >
-                <span aria-hidden="true" className="font-black text-[#dc2626]">✕</span>
-                {reason}
+          <Stagger className="mt-5 grid gap-3 sm:grid-cols-2">
+            {top.map((reason, index) => (
+              <StaggerItem key={reason.title} className="rounded-2xl border border-[#fecaca] bg-white p-4">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-extrabold text-white"
+                  style={{ background: "#dc2626" }}
+                >
+                  {index + 1}
+                </span>
+                <h3 className="mt-2.5 text-[13.5px] font-bold" style={{ color: "var(--lc-navy)" }}>
+                  {reason.title}
+                </h3>
+                <p className="mt-1 text-[12.5px] font-medium leading-snug" style={{ color: "var(--lc-muted)" }}>
+                  {reason.detail}
+                </p>
               </StaggerItem>
             ))}
           </Stagger>
+
+          <p className="mt-5 text-[12px] font-black uppercase tracking-[0.14em]" style={{ color: "var(--lc-muted)" }}>
+            बाक़ी सामान्य कारण
+          </p>
+          <ul className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+            {rest.map((reason) => (
+              <li
+                key={reason}
+                className="flex gap-2 rounded-lg bg-white/70 px-3 py-2 text-[12.5px] font-semibold leading-snug"
+                style={{ color: "var(--lc-muted)" }}
+              >
+                <span aria-hidden="true" className="font-black text-[#dc2626]">✕</span>
+                {reason}
+              </li>
+            ))}
+          </ul>
         </div>
       </Reveal>
     </section>
@@ -762,48 +878,103 @@ function RejectionReasons() {
    Us, honestly
    ───────────────────────────────────────────────────────────────────────── */
 
-function WhyUs() {
-  const items = [
-    "Form bharna aur document scan karna",
-    "Upload aur online submission",
-    "Eligibility samajhne mein madad",
-    "Status dekhna aur correction guidance",
-    "Print, PVC card aur photo services",
+/**
+ * Self-apply against assisted, with nothing invented in our column.
+ *
+ * Every row is something this shop actually does. There is no row claiming a
+ * faster departmental decision, a higher approval rate or any influence over
+ * the outcome, because none of that is true — the department decides, on its
+ * own timetable, either way.
+ */
+function SelfVsAssisted() {
+  const rows = [
+    { task: "पात्रता समझना", self: "ख़ुद पढ़कर तय करना होता है", us: "शर्तें मिलाकर बताते हैं" },
+    { task: "दस्तावेज़ जाँच", self: "कमी आवेदन के बाद पता चलती है", us: "जमा करने से पहले जाँच लेते हैं" },
+    { task: "स्कैन व अपलोड", self: "फ़ाइल साइज़ व फ़ॉर्मेट की दिक़्क़त", us: "काउंटर पर स्कैन व कंप्रेस" },
+    { task: "फ़ॉर्म भरना", self: "पोर्टल हिंदी-अंग्रेज़ी मिला-जुला", us: "साथ बैठकर भरते हैं" },
+    { task: "स्टेटस देखना", self: "बार-बार ख़ुद लॉगिन करना", us: "देखकर बता देते हैं" },
+    { task: "आपत्ति (objection) पर सुधार", self: "क्या ठीक करना है, समझना पड़ता है", us: "सुधार में मदद" },
+    { task: "PVC कार्ड व फ़ोटो", self: "अलग दुकान ढूँढनी पड़ती है", us: "यहीं हो जाता है" },
   ];
   return (
-    <section id="why-us" className="scroll-mt-24">
+    <section id="services" className="scroll-mt-24">
       <Reveal>
-        <div className="lg-card overflow-hidden p-4 sm:p-6">
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="lc-card overflow-hidden p-5 sm:p-7">
+          <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
             <SectionHead
               icon={Building2}
-              eyebrow="Hum"
-              title="DigiConnect Dukan kya karta hai"
-              blurb="Hum ek private digital service centre hain. Hum application process mein assistance dete hain — approval nahi dete, aur na hi kisi sarkari vibhag ke agent hain."
-              from="#0b3f80"
-              to="#2f80ed"
+              eyebrow="हम"
+              title="ख़ुद आवेदन करना बनाम DigiConnect Dukan सहायता"
+              blurb="हम एक निजी डिजिटल सेवा केंद्र हैं। हम आवेदन प्रक्रिया में सहायता देते हैं — मंज़ूरी नहीं दिलाते, और न ही किसी सरकारी विभाग के एजेंट हैं।"
+              from="var(--lc-navy)"
+              to="var(--lc-navy-light)"
             />
             <SectionArt
               slot="counter"
-              className="hidden h-auto w-[240px] rounded-2xl object-cover shadow-md sm:block"
-              fallback={<ShopArt className="hidden h-auto w-[200px] sm:block" />}
+              className="hidden h-auto w-[240px] rounded-2xl object-cover sm:block"
+              fallback={<ShopArt className="hidden h-auto w-[210px] sm:block" />}
             />
           </div>
 
-          <Stagger as="ul" className="mt-4 grid gap-1.5 sm:grid-cols-2">
-            {items.map((item) => (
-              <StaggerItem
-                as="li"
-                key={item}
-                className="flex gap-2 rounded-lg bg-[var(--dc-sky-soft)] px-2.5 py-2 text-[12.5px] font-semibold leading-snug text-[var(--dc-body)]"
-              >
-                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--dc-blue-mid)]" aria-hidden="true" />
-                {item}
-              </StaggerItem>
-            ))}
-          </Stagger>
-          <p className="mt-3 rounded-xl bg-[#fff1e6] px-3.5 py-2.5 text-[12px] font-bold text-[#9a3412]">
-            Sarkari fees aur hamara service charge alag-alag hote hain. Charge pehle bata diya jata hai.
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left">
+              <caption className="sr-only">ख़ुद आवेदन करने और सहायता लेने की तुलना</caption>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    className="rounded-tl-xl px-4 py-3 text-[12px] font-black uppercase tracking-wide"
+                    style={{ background: "#f1f5f9", color: "var(--lc-muted)" }}
+                  >
+                    काम
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-[12px] font-black uppercase tracking-wide"
+                    style={{ background: "#f1f5f9", color: "var(--lc-muted)" }}
+                  >
+                    ख़ुद करने पर
+                  </th>
+                  <th
+                    scope="col"
+                    className="rounded-tr-xl px-4 py-3 text-[12px] font-black uppercase tracking-wide text-white"
+                    style={{ background: "var(--lc-navy)" }}
+                  >
+                    हमारे साथ
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={row.task} style={{ background: index % 2 ? "#f8fafc" : "#ffffff" }}>
+                    <th
+                      scope="row"
+                      className="px-4 py-3 text-[13px] font-bold"
+                      style={{ color: "var(--lc-navy)" }}
+                    >
+                      {row.task}
+                    </th>
+                    <td className="px-4 py-3 text-[12.5px] font-medium" style={{ color: "var(--lc-muted)" }}>
+                      {row.self}
+                    </td>
+                    <td className="px-4 py-3 text-[12.5px] font-semibold" style={{ color: "var(--lc-emerald)" }}>
+                      <span className="flex gap-1.5">
+                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                        {row.us}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p
+            className="mt-4 rounded-xl px-4 py-3 text-[12.5px] font-bold"
+            style={{ background: "var(--lc-saffron-soft)", color: "#9a3412" }}
+          >
+            सरकारी फ़ीस और हमारा सेवा शुल्क अलग-अलग होते हैं। शुल्क पहले बता दिया जाता है। किसी भी योजना
+            में मंज़ूरी की गारंटी नहीं — मंज़ूरी विभाग के नियमों और सत्यापन के अधीन है।
           </p>
         </div>
       </Reveal>
@@ -814,33 +985,37 @@ function WhyUs() {
 function Faqs() {
   return (
     <section id="faq" className="scroll-mt-24">
-      <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+      <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
         <Reveal>
           <SectionHead
             icon={MessageCircle}
-            eyebrow="Sawal-jawab"
-            title="Aksar poochhe jane wale sawal"
-            from="#5b21b6"
+            eyebrow="सवाल-जवाब"
+            title="अक्सर पूछे जाने वाले सवाल"
+            from="var(--lc-fd)"
             to="#a78bfa"
           />
         </Reveal>
-        <FaqArt className="hidden h-auto w-[200px] sm:block" />
+        <FaqArt className="hidden h-auto w-[210px] sm:block" />
       </div>
 
-      <Stagger className="mt-3 space-y-2">
+      <Stagger className="mt-4 space-y-2.5">
         {LABOUR_FAQS.map((faq) => (
           <StaggerItem key={faq.question}>
-            <details className="lg-card group p-4 transition hover:border-[var(--dc-blue-mid)]/30">
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-3 text-[13.5px] font-extrabold text-[var(--dc-ink)]">
+            <details className="lc-card group p-4.5">
+              <summary
+                className="flex min-h-11 cursor-pointer list-none items-start justify-between gap-3 text-[14px] font-bold"
+                style={{ color: "var(--lc-navy)" }}
+              >
                 {faq.question}
                 <span
                   aria-hidden="true"
-                  className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--dc-sky-soft)] text-[15px] leading-none text-[var(--dc-blue-mid)] transition group-open:rotate-45"
+                  className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[16px] leading-none transition group-open:rotate-45"
+                  style={{ background: "#eef4fb", color: "var(--lc-navy-light)" }}
                 >
                   +
                 </span>
               </summary>
-              <p className="mt-2 text-[12.5px] font-medium leading-relaxed text-[var(--dc-body)]">
+              <p className="mt-2.5 text-[13px] font-medium" style={{ color: "var(--lc-muted)" }}>
                 {faq.answer}
               </p>
             </details>
@@ -855,13 +1030,15 @@ function FinalCta() {
   return (
     <Reveal>
       <section
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8"
-        style={{ background: "var(--dc-grad-blue)" }}
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-9"
+        style={{
+          background: "linear-gradient(135deg, var(--lc-navy) 0%, var(--lc-navy-light) 100%)",
+        }}
       >
         <div
           aria-hidden="true"
-          className="lc-drift absolute -right-12 -top-12 h-56 w-56 rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(242,90,0,.45) 0%, rgba(242,90,0,0) 70%)" }}
+          className="lc-drift absolute -right-16 -top-16 h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(249,115,22,.42) 0%, rgba(249,115,22,0) 70%)" }}
         />
         <div
           aria-hidden="true"
@@ -869,28 +1046,29 @@ function FinalCta() {
           style={{ backgroundImage: "repeating-linear-gradient(135deg, #fff 0 12px, transparent 12px 24px)" }}
         />
         <div className="relative">
-          <h2 className="text-[1.4rem] font-extrabold leading-tight text-white sm:text-[1.8rem]">
-            Apni eligibility check karwaiye
+          <h2 className="text-[1.5rem] font-extrabold text-white sm:text-[2rem]">
+            अपने लेबर कार्ड के फ़ायदे जानें और आज ही सहायता पाएं
           </h2>
-          <p className="mt-1.5 max-w-xl text-[13.5px] font-medium leading-relaxed text-white/85">
-            Documents dikhaiye, hum bata denge kaunsi yojana aap par lagu ho sakti hai aur kya kami hai.
+          <p className="mt-2.5 max-w-xl text-[14px] font-medium text-white/85">
+            दस्तावेज़ दिखाइए, हम बता देंगे कौन सी योजना आप पर लागू हो सकती है और क्या कमी है।
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
+          <div className="mt-5 flex flex-wrap gap-3">
             <a
               href={WHATSAPP}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 text-[14px] font-extrabold text-[var(--dc-blue-deep)] shadow-lg transition hover:-translate-y-px"
+              className="inline-flex h-[52px] items-center gap-2 rounded-xl px-6 text-[15px] font-bold text-white transition hover:-translate-y-px"
+              style={{ background: "var(--lc-emerald)" }}
             >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              WhatsApp
+              <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />
+              व्हाट्सएप पर सहायता पाएं
             </a>
             <a
               href={PHONE}
-              className="inline-flex h-12 items-center gap-2 rounded-xl bg-white/12 px-5 text-[14px] font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20"
+              className="inline-flex h-[52px] items-center gap-2 rounded-xl bg-white/12 px-6 text-[15px] font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20"
             >
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              Call
+              <Phone className="h-4.5 w-4.5" aria-hidden="true" />
+              फ़ोन पर बात करें
             </a>
           </div>
         </div>
@@ -901,28 +1079,34 @@ function FinalCta() {
 
 function Disclaimer({ source }: { source: "database" | "seed" }) {
   return (
-    <section className="rounded-2xl border border-dashed border-[var(--dc-ink)]/20 bg-white/50 p-4 sm:p-5">
-      <h2 className="text-[13px] font-extrabold uppercase tracking-wide text-[var(--dc-body)]">Zaroori suchna</h2>
-      <ul className="mt-2 space-y-1.5 text-[12px] font-medium leading-relaxed text-[var(--dc-body)]">
+    <section
+      className="rounded-2xl border border-dashed p-5"
+      style={{ borderColor: "#cbd5e1", background: "rgba(255,255,255,0.55)" }}
+    >
+      <h2 className="text-[12.5px] font-black uppercase tracking-wide" style={{ color: "var(--lc-muted)" }}>
+        ज़रूरी सूचना
+      </h2>
+      <ul className="mt-2.5 space-y-2 text-[12.5px] font-medium" style={{ color: "var(--lc-muted)" }}>
         <li>
-          DigiConnect Dukan ek private digital service assistance provider hai. Hum Labour Card registration,
-          renewal, document preparation aur online application mein assistance dete hain.
+          DigiConnect Dukan एक निजी डिजिटल सेवा (private digital service) सहायता प्रदाता है। हम लेबर कार्ड पंजीकरण,
+          नवीनीकरण, दस्तावेज़ तैयारी और ऑनलाइन आवेदन में सहायता देते हैं — हम मंज़ूरी नहीं दिलाते और
+          न ही किसी सरकारी विभाग के एजेंट हैं।
         </li>
         <li>
-          Scheme ki patrata, manzoori, rakam aur bhugtan — sab sambandhit sarkari vibhag/Board ke niyam aur
-          verification ke adheen hai.
+          योजना की पात्रता, मंज़ूरी, रकम और भुगतान — सब संबंधित सरकारी विभाग/बोर्ड के नियमों और
+          सत्यापन के अधीन है।
         </li>
-        <li>Sarkari yojanaon ke niyam aur rakam samay-samay par badal sakti hain.</li>
-        <li>Application jama hone ka matlab approval ki guarantee nahi hai.</li>
-        <li>Galat document dene par aavedan nirast ho sakta hai aur karyavahi bhi ho sakti hai.</li>
+        <li>सरकारी योजनाओं के नियम और रकम समय-समय पर बदल सकती हैं।</li>
+        <li>आवेदन जमा होने का मतलब मंज़ूरी की गारंटी नहीं है।</li>
+        <li>ग़लत दस्तावेज़ देने पर आवेदन निरस्त हो सकता है और कार्यवाही भी हो सकती है।</li>
         <li>
-          Is page par di gayi jankari margdarshan ke liye hai. Aakhri sach hamesha latest official
-          notification hi hai.
+          इस पृष्ठ पर दी गई जानकारी मार्गदर्शन के लिए है। आख़िरी सच हमेशा नवीनतम आधिकारिक अधिसूचना
+          ही है।
         </li>
         {source === "seed" ? (
-          <li className="font-bold text-[#c9430a]">
-            Abhi ye jankari site ke initial dataset se dikh rahi hai. Admin panel se schemes publish hone par
-            wahi dikhengi.
+          <li className="font-bold" style={{ color: "#c2410c" }}>
+            अभी यह जानकारी साइट के प्रारंभिक डेटासेट से दिख रही है। एडमिन पैनल से योजनाएं प्रकाशित
+            होने पर वही दिखेंगी।
           </li>
         ) : null}
       </ul>
@@ -948,9 +1132,9 @@ function Schema({ schemes }: { schemes: Awaited<ReturnType<typeof getLabourSchem
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: "https://rnos.in/" },
-          { "@type": "ListItem", position: 2, name: "Services", item: "https://rnos.in/services" },
-          { "@type": "ListItem", position: 3, name: "Labour Card", item: "https://rnos.in/services/labour-card" },
+          { "@type": "ListItem", position: 1, name: "होम", item: "https://rnos.in/" },
+          { "@type": "ListItem", position: 2, name: "सेवाएं", item: "https://rnos.in/services" },
+          { "@type": "ListItem", position: 3, name: "लेबर कार्ड", item: "https://rnos.in/services/labour-card" },
         ],
       },
       {
@@ -963,12 +1147,12 @@ function Schema({ schemes }: { schemes: Awaited<ReturnType<typeof getLabourSchem
       },
       {
         "@type": "ItemList",
-        name: "UP Labour Card benefits aur welfare provisions",
+        name: "UP लेबर कार्ड लाभ व कल्याणकारी प्रावधान",
         numberOfItems: schemes.length,
         itemListElement: schemes.map((scheme, index) => ({
           "@type": "ListItem",
           position: index + 1,
-          name: scheme.name,
+          name: scheme.nameHi || scheme.name,
           description: scheme.summary,
         })),
       },
