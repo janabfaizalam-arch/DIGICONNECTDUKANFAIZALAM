@@ -1,5 +1,5 @@
 /**
- * The questions a customer actually asks at the counter.
+ * The questions a customer actually asks at the counter, in Hindi.
  *
  * Every answer is drawn from the scheme dataset the site owner supplied — no
  * figure appears here that is not also on a scheme record, and where the owner
@@ -9,181 +9,185 @@
  * The awkward answers are here on purpose. "Does a Labour Card guarantee every
  * benefit?" and "Is the FD cash?" are the two misunderstandings that send
  * people home disappointed, so they are answered plainly rather than softened.
+ *
+ * Written in Devanagari because the page is, and because a worker reading a
+ * refusal ("नहीं, यह पैसा अभी हाथ में नहीं आता") has to understand it the
+ * first time.
  */
 
 export type LabourFaq = { question: string; answer: string };
 
 export const LABOUR_FAQS: LabourFaq[] = [
   {
-    question: "Labour Card kya hai?",
+    question: "लेबर कार्ड क्या है?",
     answer:
-      "Uttar Pradesh Building and Other Construction Workers Welfare Board (UPBOCW) nirman shramikon ka registration karta hai. Us registration ka card hi aam bhasha mein Labour Card ya Shram Card hai. Isi ke aadhar par Board ki welfare yojanaon mein aavedan hota hai.",
+      "उत्तर प्रदेश भवन एवं अन्य सन्निर्माण कर्मकार कल्याण बोर्ड (UPBOCW) निर्माण श्रमिकों का पंजीकरण करता है। उसी पंजीकरण का कार्ड आम भाषा में लेबर कार्ड या श्रम कार्ड है। इसी के आधार पर बोर्ड की कल्याणकारी योजनाओं में आवेदन होता है।",
   },
   {
-    question: "Kya Labour Card hone se har scheme ka paisa apne aap mil jata hai?",
+    question: "क्या लेबर कार्ड होने से हर योजना का पैसा अपने आप मिल जाता है?",
     answer:
-      "Nahi. Ye sabse badi galatfehmi hai. Card sirf registration ka proof hai. Har yojana ki apni shartein hain — membership kitne saal purani hai, pichhle 12 mahine mein 90 din kaam kiya ya nahi, kitne bachche hain, umar kya hai, aur apply karne ki samay seema. Har yojana ke liye alag aavedan karna hota hai.",
+      "नहीं। यह सबसे बड़ी ग़लतफ़हमी है। कार्ड सिर्फ़ पंजीकरण का प्रमाण है। हर योजना की अपनी शर्तें हैं — सदस्यता कितने साल पुरानी है, पिछले 12 महीनों में 90 दिन काम किया या नहीं, कितने बच्चे हैं, उम्र क्या है, और आवेदन करने की समय सीमा। हर योजना के लिए अलग आवेदन करना होता है।",
   },
   {
-    question: "Beti paida hone par kitna milta hai?",
+    question: "बेटी पैदा होने पर कितना मिलता है?",
     answer:
-      "Dataset ke mutabik ladki paida hone par ₹25,000 nakad, aur alag se ₹25,000 ki fixed deposit (FD) — jab pehla bachcha beti ho ya doosra bachcha bhi beti ho. Janm se divyang beti ke liye FD ₹50,000 hai. Ye dono alag cheezen hain.",
+      "डेटासेट के मुताबिक़ बेटी के जन्म पर ₹25,000 नकद, और अलग से ₹25,000 की सावधि जमा (FD) — जब पहला बच्चा बेटी हो या दूसरा बच्चा भी बेटी हो। जन्म से दिव्यांग बेटी के लिए FD ₹50,000 है। ये दोनों अलग चीज़ें हैं।",
   },
   {
-    question: "Kya ₹25,000 cash aur ₹25,000 FD milakar ₹50,000 cash ho jata hai?",
+    question: "क्या ₹25,000 नकद और ₹25,000 FD मिलाकर ₹50,000 नकद हो जाता है?",
     answer:
-      "Nahi. Cash bank account mein aata hai. FD beti ke naam ka alag instrument hai jo turant nahi milta — shart ye hai ki beti 18 saal tak ashadi rahe. Inhe jodkar ₹50,000 nakad samajhna sabse aam galti hai.",
+      "नहीं। नकद बैंक खाते में आता है। FD बेटी के नाम का अलग साधन है जो तुरंत नहीं मिलता — शर्त यह है कि बेटी 18 साल तक अविवाहित रहे। इन्हें जोड़कर ₹50,000 नकद समझना सबसे आम ग़लती है।",
   },
   {
-    question: "Ladka paida hone par kitna milta hai?",
-    answer: "Dataset ke mutabik ₹20,000 ek baar, pehle do bachchon tak.",
+    question: "बेटा पैदा होने पर कितना मिलता है?",
+    answer: "डेटासेट के मुताबिक़ ₹20,000 एक बार, पहले दो बच्चों तक।",
   },
   {
-    question: "Maternity benefit kitna hai?",
+    question: "मातृत्व हितलाभ कितना है?",
     answer:
-      "Registered purush worker ko ₹6,000 ek baar. Registered mahila worker ko 3 mahine ki minimum wage ke barabar + ₹1,000 medical bonus — iske liye sarkari sansthan mein delivery (institutional delivery) zaroori hai.",
+      "पंजीकृत पुरुष श्रमिक को ₹6,000 एक बार। पंजीकृत महिला श्रमिक को 3 महीने की न्यूनतम मज़दूरी के बराबर + ₹1,000 चिकित्सा बोनस — इसके लिए सरकारी संस्थान में प्रसव (संस्थागत प्रसव) ज़रूरी है।",
   },
   {
-    question: "Education ka ₹2,000 har saal milta hai kya?",
+    question: "शिक्षा का ₹2,000 हर साल मिलता है क्या?",
     answer:
-      "Nahi. Jis official jankari par ye page bana hai, usme ye ONE-TIME batayi gayi hai — har saal nahi. Bahut si websites ise annual likh deti hain. Class 1–5 ₹2,000, class 6–10 ₹2,500, class 11–12 ₹3,000 — sab ek baar.",
+      "नहीं। जिस आधिकारिक जानकारी पर यह पृष्ठ बना है, उसमें यह एकमुश्त (one-time) बताई गई है — हर साल नहीं। बहुत सी वेबसाइटें इसे वार्षिक लिख देती हैं। कक्षा 1–5 ₹2,000, कक्षा 6–10 ₹2,500, कक्षा 11–12 ₹3,000 — सब एक बार।",
   },
   {
-    question: "Graduation aur PG par kitna milta hai?",
+    question: "स्नातक और परास्नातक पर कितना मिलता है?",
     answer:
-      "Graduation ya samkaksh par ₹12,000, ITI/Polytechnic/Vocational par bhi ₹12,000, aur Post-Graduation par ₹24,000 — ek baar. Professional degree courses mein di gayi fees ya ₹60,000, jo kam ho, wo reimbursement ke roop mein.",
+      "स्नातक या समकक्ष पर ₹12,000, ITI/पॉलिटेक्निक/व्यावसायिक पर भी ₹12,000, और परास्नातक पर ₹24,000 — एक बार। प्रोफ़ेशनल डिग्री कोर्स में दी गई फ़ीस या ₹60,000, जो कम हो, वह प्रतिपूर्ति के रूप में।",
   },
   {
-    question: "Merit par extra paisa milta hai?",
+    question: "मेरिट पर अतिरिक्त पैसा मिलता है?",
     answer:
-      "Haan. High School/Intermediate mein 70% marks aur agli class mein admission par ladke ko ₹5,000 aur ladki ko ₹8,000 extra. Graduation/PG mein 60% par ladke ko ₹10,000 aur ladki ko ₹12,000 extra — PG exam ke liye agli class admission wali shart lagu nahi.",
+      "हाँ। हाई स्कूल/इंटरमीडिएट में 70% अंक और अगली कक्षा में प्रवेश पर लड़के को ₹5,000 और लड़की को ₹8,000 अतिरिक्त। स्नातक/परास्नातक में 60% पर लड़के को ₹10,000 और लड़की को ₹12,000 अतिरिक्त — परास्नातक परीक्षा के लिए अगली कक्षा में प्रवेश वाली शर्त लागू नहीं।",
   },
   {
-    question: "Cycle kitne ki milti hai?",
+    question: "साइकिल कितने की मिलती है?",
     answer:
-      "Class 9, 10, 11 ya 12 paas karke agli class mein padhai jaari rakhne wale bachche ko cycle kharidne ki madad milti hai, aur sirf ek baar. Iski exact rakam humne verify nahi ki hai — isliye is page par koi number nahi likha gaya. Latest official notification dekhiye.",
+      "कक्षा 9, 10, 11 या 12 पास करके अगली कक्षा में पढ़ाई जारी रखने वाले बच्चे को साइकिल ख़रीदने की मदद मिलती है, और सिर्फ़ एक बार। इसकी सटीक रकम हमने सत्यापित नहीं की है — इसलिए इस पृष्ठ पर कोई संख्या नहीं लिखी गई। नवीनतम आधिकारिक अधिसूचना देखिए।",
   },
   {
-    question: "Beti ki shaadi par kitna paisa milta hai?",
+    question: "बेटी की शादी पर कितना पैसा मिलता है?",
     answer:
-      "Samanya vivah par ₹65,000, antarjatiya vivah par ₹75,000, aur samuhik vivah mein prati beti ₹85,000. Samuhik vivah ke liye ek jagah kam se kam 11 jode zaroori hain.",
+      "सामान्य विवाह पर ₹65,000, अंतर्जातीय विवाह पर ₹75,000, और सामूहिक विवाह में प्रति बेटी ₹85,000। सामूहिक विवाह के लिए एक जगह कम से कम 11 जोड़े ज़रूरी हैं।",
   },
   {
-    question: "Shaadi ke kitne din baad tak apply kar sakte hain?",
+    question: "शादी के कितने दिन बाद तक आवेदन कर सकते हैं?",
     answer:
-      "Shaadi ke 1 saal ke andar. Samuhik vivah ke liye 15 din pehle aavedan karna hota hai. Samay seema nikal jana rejection ki sabse aam wajah hai.",
+      "शादी के 1 साल के अंदर। सामूहिक विवाह के लिए 15 दिन पहले आवेदन करना होता है। समय सीमा निकल जाना रिजेक्शन की सबसे आम वजह है।",
   },
   {
-    question: "Shaadi ki sahayata ke liye beti aur ladke ki umar kya honi chahiye?",
-    answer: "Beti ki umar kam se kam 18 saal aur ladke ki kam se kam 21 saal.",
+    question: "शादी की सहायता के लिए बेटी और लड़के की उम्र क्या होनी चाहिए?",
+    answer: "बेटी की उम्र कम से कम 18 साल और लड़के की कम से कम 21 साल।",
   },
   {
-    question: "90 din kaam ki shart kya hai?",
+    question: "90 दिन काम की शर्त क्या है?",
     answer:
-      "Kai yojanaon mein — jaise kanya vivah sahayata — pichhle 12 mahine mein kam se kam 90 din nirman kaam kiya hona zaroori hai. Ye shart adhoori rehne par aavedan nirast ho jata hai.",
+      "कई योजनाओं में — जैसे कन्या विवाह सहायता — पिछले 12 महीनों में कम से कम 90 दिन निर्माण कार्य किया होना ज़रूरी है। यह शर्त अधूरी रहने पर आवेदन निरस्त हो जाता है।",
   },
   {
-    question: "365 din membership ka matlab kya hai?",
+    question: "365 दिन सदस्यता का मतलब क्या है?",
     answer:
-      "Registration ho jane ke baad Board ki membership kam se kam 365 din purani honi chahiye. Naye registration par turant har yojana lagu nahi hoti.",
+      "पंजीकरण हो जाने के बाद बोर्ड की सदस्यता कम से कम 365 दिन पुरानी होनी चाहिए। नए पंजीकरण पर तुरंत हर योजना लागू नहीं होती।",
   },
   {
-    question: "Divyangta par kitna milta hai, aur kya wo ek saath milta hai?",
+    question: "दिव्यांगता पर कितना मिलता है, और क्या वह एक साथ मिलता है?",
     answer:
-      "Ek saath nahi. 100% sthayi divyangta par ₹4,00,000, 50% se zyada par ₹3,00,000, aur 25% se zyada par ₹2,00,000 — par ye mool dhan hai jispar byaj lagta hai aur bhugtan mahine ki kisht mein hota hai. Page par diye gaye monthly figures udaharan hain; byaj dar badalne par kisht badal jati hai.",
+      "एक साथ नहीं। 100% स्थायी दिव्यांगता पर ₹4,00,000, 50% से अधिक पर ₹3,00,000, और 25% से अधिक पर ₹2,00,000 — पर यह मूल धन है जिस पर ब्याज लगता है और भुगतान महीने की किस्त में होता है। पृष्ठ पर दिए गए मासिक आँकड़े उदाहरण हैं; ब्याज दर बदलने पर किस्त बदल जाती है।",
   },
   {
-    question: "Mrityu par kitni sahayata milti hai?",
+    question: "मृत्यु पर कितनी सहायता मिलती है?",
     answer:
-      "Durghatna mein mrityu par ₹5,00,000 mool dhan + byaj, aur samanya mrityu par ₹2,00,000 mool dhan + byaj — dono mahine ki kisht mein. Dono ke saath ₹25,000 antim sanskar sahayata alag se hai. Apanjikrit worker ki kaam par durghatna mrityu par ₹1,00,000 ek baar, nirdharit shart ke antargat.",
+      "दुर्घटना में मृत्यु पर ₹5,00,000 मूल धन + ब्याज, और सामान्य मृत्यु पर ₹2,00,000 मूल धन + ब्याज — दोनों महीने की किस्त में। दोनों के साथ ₹25,000 अंत्येष्टि सहायता अलग से है। अपंजीकृत श्रमिक की कार्य के दौरान दुर्घटना में मृत्यु पर ₹1,00,000 एक बार, निर्धारित शर्त के अंतर्गत।",
   },
   {
-    question: "Antim Sanskar Sahayata aur Mrityu Sahayata mein kya farak hai?",
+    question: "अंत्येष्टि सहायता और मृत्यु सहायता में क्या फ़र्क़ है?",
     answer:
-      "Antim sanskar sahayata ₹25,000 hai, turant kharch ke liye, ek baar mein. Mrityu sahayata bahut badi rakam hai par wo mool dhan + byaj ke roop mein mahine ki kisht mein aati hai. Ye do alag bhugtan hain.",
+      "अंत्येष्टि सहायता ₹25,000 है, तुरंत ख़र्च के लिए, एक बार में। मृत्यु सहायता बहुत बड़ी रकम है पर वह मूल धन + ब्याज के रूप में महीने की किस्त में आती है। ये दो अलग भुगतान हैं।",
   },
   {
-    question: "Aatmahatya ke case mein mrityu sahayata milti hai?",
-    answer: "Maujuda shart ke mutabik nahi milti.",
+    question: "आत्महत्या के मामले में मृत्यु सहायता मिलती है?",
+    answer: "मौजूदा शर्त के मुताबिक़ नहीं मिलती।",
   },
   {
-    question: "Medical mein kitna reimbursement milta hai?",
+    question: "चिकित्सा में कितनी प्रतिपूर्ति मिलती है?",
     answer:
-      "Gambhir bimari sahayata mein official jankari ke mutabik koi adhiktam rakam tay nahi hai — sarkari, swayatt ya SACHIS-empanelled aspatal mein Ayushman Bharat ke niyamon ke barabar reimbursement. Par shartein hain: worker PMJAY/CMJAY ka patra na ho, aur original bill zaroori hain.",
+      "गंभीर बीमारी सहायता में आधिकारिक जानकारी के मुताबिक़ कोई अधिकतम रकम तय नहीं है — सरकारी, स्वायत्त या SACHIS-सूचीबद्ध अस्पताल में आयुष्मान भारत के नियमों के बराबर प्रतिपूर्ति। पर शर्तें हैं: श्रमिक PMJAY/CMJAY का पात्र न हो, और मूल बिल ज़रूरी हैं।",
   },
   {
-    question: "Kya saara medical kharch hamesha free hai?",
+    question: "क्या सारा चिकित्सा ख़र्च हमेशा नि:शुल्क है?",
     answer:
-      "Nahi. Aspatal ki shart hai, bimari ki shart hai, doctor certificate nirdharit format mein chahiye aur original bill lagte hain.",
+      "नहीं। अस्पताल की शर्त है, बीमारी की शर्त है, डॉक्टर का प्रमाण पत्र निर्धारित प्रारूप में चाहिए और मूल बिल लगते हैं।",
   },
   {
-    question: "Pension kab se aur kitni milti hai?",
+    question: "पेंशन कब से और कितनी मिलती है?",
     answer:
-      "60 saal ki umar ke baad ₹1,000 prati mah, har 2 saal mein ₹50 ki badhotri ke saath, adhiktam ₹1,250. Iske liye kam se kam 10 saal ka registration zaroori hai aur har April mein jeevan praman patra dena hota hai.",
+      "60 साल की उम्र के बाद ₹1,000 प्रति माह, हर 2 साल में ₹50 की बढ़ोतरी के साथ, अधिकतम ₹1,250। इसके लिए कम से कम 10 साल का पंजीकरण ज़रूरी है और हर अप्रैल में जीवन प्रमाण पत्र देना होता है।",
   },
   {
-    question: "Shauchalay ke liye kitna milta hai?",
+    question: "शौचालय के लिए कितना मिलता है?",
     answer:
-      "₹12,000, do kishton mein — ₹6,000 pehle aur ₹6,000 nirman poora hone aur shauchalay ka istemal shuru hone ke baad. Chayan Zila Panchayati Raj Adhikari ke through baseline survey se hota hai.",
+      "₹12,000, दो किस्तों में — ₹6,000 पहले और ₹6,000 निर्माण पूरा होने और शौचालय का इस्तेमाल शुरू होने के बाद। चयन ज़िला पंचायती राज अधिकारी के माध्यम से बेसलाइन सर्वे से होता है।",
   },
   {
-    question: "Skill training ke liye kya lagta hai?",
+    question: "कौशल प्रशिक्षण के लिए क्या लगता है?",
     answer:
-      "UP Skill Development Mission ke through muft training. Worker khud training le to umar 18–35 saal, aur usse akushal worker ki minimum wage ke barabar reimbursement bhi milta hai. Training ke baad assessment exam dena zaroori hai.",
+      "UP Skill Development Mission के माध्यम से नि:शुल्क प्रशिक्षण। श्रमिक स्वयं प्रशिक्षण ले तो उम्र 18–35 साल, और उसे अकुशल श्रमिक की न्यूनतम मज़दूरी के बराबर प्रतिपूर्ति भी मिलती है। प्रशिक्षण के बाद मूल्यांकन परीक्षा देना ज़रूरी है।",
   },
   {
-    question: "Atal Awasiya Vidyalaya mein kaun apply kar sakta hai?",
+    question: "अटल आवासीय विद्यालय में कौन आवेदन कर सकता है?",
     answer:
-      "Anath bachche, aur aise registered worker ke bachche jinki registration ke baad kam se kam 5 saal Board membership ho — adhiktam 2 bachche. Chayan entrance exam aur merit se hota hai. Ek school mein 1,000 seat hoti hain (500 ladke, 500 ladkiyan). Admission ki umar, class aur tareekhein humne yahan nahi likhi — current official notification dekhiye.",
+      "अनाथ बच्चे, और ऐसे पंजीकृत श्रमिक के बच्चे जिनकी पंजीकरण के बाद कम से कम 5 साल बोर्ड सदस्यता हो — अधिकतम 2 बच्चे। चयन प्रवेश परीक्षा और मेरिट से होता है। एक विद्यालय में 1,000 सीटें होती हैं (500 लड़के, 500 लड़कियाँ)। प्रवेश की उम्र, कक्षा और तारीख़ें हमने यहाँ नहीं लिखीं — वर्तमान आधिकारिक अधिसूचना देखिए।",
   },
   {
-    question: "Aawasiya Vidyalaya Yojana Atal Awasiya se alag hai?",
+    question: "आवासीय विद्यालय योजना अटल आवासीय से अलग है?",
     answer:
-      "Haan. Aawasiya Vidyalaya Yojana 6–14 saal ke bachchon ke liye hai aur official jankari ke mutabik filhal 12 zilon mein chal rahi hai, jise Atal Awasiya Vidyalaya shuru hone ke baad usme milaya jana hai.",
+      "हाँ। आवासीय विद्यालय योजना 6–14 साल के बच्चों के लिए है और आधिकारिक जानकारी के मुताबिक़ फ़िलहाल 12 ज़िलों में चल रही है, जिसे अटल आवासीय विद्यालय शुरू होने के बाद उसमें मिलाया जाना है।",
   },
   {
-    question: "Aapda rahat mein ₹1,000 guaranteed milta hai?",
+    question: "आपदा राहत में ₹1,000 गारंटी से मिलता है?",
     answer:
-      "Nahi. Official district page isko COVID-19 ke sandarbh mein banayi gayi scheme batata hai. Iska aaj lagu hona aur bhugtan sarkar/Board ke maujuda nirdeshon par nirbhar hai. Ise 'baadh ya aag par ₹1,000 pakka' samajhna galat hai.",
+      "नहीं। आधिकारिक ज़िला पृष्ठ इसे COVID-19 के संदर्भ में बनाई गई योजना बताता है। इसका आज लागू होना और भुगतान सरकार/बोर्ड के मौजूदा निर्देशों पर निर्भर है। इसे 'बाढ़ या आग पर ₹1,000 पक्का' समझना ग़लत है।",
   },
   {
-    question: "Chetna Yojana mein kitna paisa milta hai?",
+    question: "चेतना योजना में कितना पैसा मिलता है?",
     answer:
-      "Isme kisi worker ko seedha paisa nahi milta. Ye jagrukta ka programme hai — SMS, camp, pamphlet, nukkad natak waghera ke through yojanaon ki jankari failane ke liye.",
+      "इसमें किसी श्रमिक को सीधा पैसा नहीं मिलता। यह जागरूकता का कार्यक्रम है — SMS, कैंप, पम्फलेट, नुक्कड़ नाटक वग़ैरह के माध्यम से योजनाओं की जानकारी फैलाने के लिए।",
   },
   {
-    question: "PM Shram Yogi Maan-dhan bhi Labour Card se milta hai?",
+    question: "PM श्रम योगी मान-धन भी लेबर कार्ड से मिलता है?",
     answer:
-      "Wo Labour Department ke page par listed hai par UPBOCW ki apni cash scheme nahi hai. Uski patrata aur rakam us programme ke apne niyamon se tay hoti hai.",
+      "वह श्रम विभाग के पृष्ठ पर सूचीबद्ध है पर UPBOCW की अपनी नकद योजना नहीं है। उसकी पात्रता और रकम उस कार्यक्रम के अपने नियमों से तय होती है।",
   },
   {
-    question: "Kitne bachchon tak benefit milta hai?",
+    question: "कितने बच्चों तक लाभ मिलता है?",
     answer:
-      "Zyadatar yojanaon mein adhiktam 2 bachche — jaise shiksha, kanya vivah aur bachche/maternity se judi sahayata. Teesre bachche ke liye aavedan aam taur par nirast ho jata hai.",
+      "ज़्यादातर योजनाओं में अधिकतम 2 बच्चे — जैसे शिक्षा, कन्या विवाह और बच्चे/मातृत्व से जुड़ी सहायता। तीसरे बच्चे के लिए आवेदन आम तौर पर निरस्त हो जाता है।",
   },
   {
-    question: "Card renew karana zaroori hai?",
+    question: "कार्ड नवीनीकरण कराना ज़रूरी है?",
     answer:
-      "Haan. Bahut si yojanayein 'updated registration' maangti hain. Card lapse hone par aavedan nirast ho sakta hai, isliye renewal samay par karwa lena chahiye.",
+      "हाँ। बहुत सी योजनाएं 'अपडेटेड पंजीकरण' माँगती हैं। कार्ड लैप्स होने पर आवेदन निरस्त हो सकता है, इसलिए नवीनीकरण समय पर करवा लेना चाहिए।",
   },
   {
-    question: "Application reject kyun hoti hai?",
+    question: "आवेदन रिजेक्ट क्यों होता है?",
     answer:
-      "Sabse aam wajahein: card inactive, membership ki avadhi puri na hona, 90 din kaam ki shart adhoori, bank detail ya Aadhaar ka mismatch, adhoore documents, samay seema ke baad aavedan, aur bachche ya shaadi ki galat detail.",
+      "सबसे आम वजहें: कार्ड निष्क्रिय, सदस्यता की अवधि पूरी न होना, 90 दिन काम की शर्त अधूरी, बैंक विवरण या आधार का मिसमैच, अधूरे दस्तावेज़, समय सीमा के बाद आवेदन, और बच्चे या शादी की ग़लत जानकारी।",
   },
   {
-    question: "Kya DigiConnect Dukan approval dila sakta hai?",
+    question: "क्या DigiConnect Dukan मंज़ूरी दिला सकता है?",
     answer:
-      "Nahi. Hum ek private digital service centre hain. Hum documents check karne, form bharne, upload karne, status dekhne aur correction mein assistance dete hain. Manzoori ka faisla sirf sambandhit vibhag karta hai.",
+      "नहीं। हम एक निजी डिजिटल सेवा केंद्र (private digital service centre) हैं। हम दस्तावेज़ जाँचने, फ़ॉर्म भरने, अपलोड करने, स्टेटस देखने और सुधार में सहायता देते हैं — हम मंज़ूरी नहीं दिलाते। मंज़ूरी का फ़ैसला सिर्फ़ संबंधित विभाग करता है।",
   },
   {
-    question: "Kya DigiConnect Dukan sarkari agent hai?",
+    question: "क्या DigiConnect Dukan सरकारी एजेंट है?",
     answer:
-      "Nahi. Hum kisi sarkari vibhag ke authorised ya official agent nahi hain. Hum ek private assistance provider hain.",
+      "नहीं। हम किसी सरकारी विभाग के अधिकृत या आधिकारिक एजेंट नहीं हैं। हम एक निजी सहायता प्रदाता हैं।",
   },
   {
-    question: "Is page par diye gaye amount pakke hain?",
+    question: "इस पृष्ठ पर दिए गए अमाउंट पक्के हैं?",
     answer:
-      "Ye jankari site owner dwara di gayi hai aur har scheme par uski verification date likhi hai. Sarkari niyam aur rakam samay-samay par badalte hain — isliye aavedan se pehle latest official notification zaroor dekh lijiye. Jahan hum verify nahi kar paye, wahan humne saaf likh diya hai.",
+      "यह जानकारी साइट मालिक द्वारा दी गई है और हर योजना पर उसकी सत्यापन तिथि लिखी है। सरकारी नियम और रकम समय-समय पर बदलते हैं — इसलिए आवेदन से पहले नवीनतम आधिकारिक अधिसूचना ज़रूर देख लीजिए। जहाँ हम सत्यापित नहीं कर पाए, वहाँ हमने साफ़ लिख दिया है।",
   },
 ];

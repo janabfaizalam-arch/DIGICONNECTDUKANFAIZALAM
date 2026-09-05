@@ -171,10 +171,16 @@ export function runChecker(schemes: LabourScheme[], answers: CheckerAnswers): Sc
 }
 
 export const VERDICT_LABEL: Record<Verdict, string> = {
-  likely: "Sambhavit patra",
-  needs_info: "Aur jankari chahiye",
-  condition_missing: "Shart puri nahi",
-  not_applicable: "Cash benefit nahi",
+  /*
+    "संभवतः पात्र", never "पात्र". The checker compares the answers it was
+    given against the conditions on record; the department reads documents and
+    decides. A wording that promises the second from the first is the single
+    most damaging thing this page could do.
+  */
+  likely: "संभवतः पात्र",
+  needs_info: "और जानकारी चाहिए",
+  condition_missing: "शर्त पूरी नहीं",
+  not_applicable: "नकद लाभ नहीं",
 };
 
 /**
@@ -184,4 +190,4 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
  * and decides. Those are not the same thing and the page must not blur them.
  */
 export const CHECKER_DISCLAIMER =
-  "Ye sirf ek margdarshan hai, sarkari manzoori nahi. Final eligibility UPBOCW ke niyam aur vibhag ke verification par nirbhar hai.";
+  "यह सिर्फ़ एक मार्गदर्शन है, सरकारी मंज़ूरी नहीं। अंतिम पात्रता UPBOCW के नियमों और विभाग के सत्यापन पर निर्भर है।";

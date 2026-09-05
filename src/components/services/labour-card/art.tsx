@@ -111,25 +111,25 @@ export function HeroScene({ className }: { className?: string }) {
       <defs>
         <linearGradient id="lc-card" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#dceaff" />
+          <stop offset="100%" stopColor="#dbe7fa" />
         </linearGradient>
         <linearGradient id="lc-strip" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#f25a00" />
-          <stop offset="100%" stopColor="#ff9a4d" />
+          <stop offset="0%" stopColor="#ea580c" />
+          <stop offset="100%" stopColor="#f97316" />
         </linearGradient>
         <linearGradient id="lc-tower" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0.30" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0.07" />
         </linearGradient>
         <radialGradient id="lc-sun" cx="50%" cy="50%">
-          <stop offset="0%" stopColor="#ffb066" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="#ffb066" stopOpacity="0" />
+          <stop offset="0%" stopColor="#fdba74" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#fdba74" stopOpacity="0" />
         </radialGradient>
       </defs>
 
       {/* Sun glow behind everything. */}
       <circle cx="330" cy="70" r="78" fill="url(#lc-sun)" className="lc-pulse" />
-      <circle cx="330" cy="70" r="24" fill="#ffcf99" opacity="0.9" />
+      <circle cx="330" cy="70" r="24" fill="#ffd7a8" opacity="0.9" />
 
       {/* Skyline. */}
       <rect x="24" y="150" width="62" height="150" rx="6" fill="url(#lc-tower)" />
@@ -164,12 +164,12 @@ export function HeroScene({ className }: { className?: string }) {
       <rect x="150" y="70" width="18" height="16" rx="3" fill="#ffffff" fillOpacity="0.5" />
       <g className="lc-sway" style={{ transformOrigin: "266px 78px" }}>
         <path d="M266 80v44" stroke="#ffffff" strokeOpacity="0.5" strokeWidth="2.4" strokeLinecap="round" />
-        <rect x="256" y="124" width="20" height="14" rx="3" fill="#f25a00" fillOpacity="0.85" />
+        <rect x="256" y="124" width="20" height="14" rx="3" fill="#f97316" fillOpacity="0.9" />
       </g>
 
       {/* The Labour Card, tilted forward. */}
       <g transform="translate(76 176) rotate(-7)">
-        <rect x="6" y="10" width="238" height="146" rx="18" fill="#0a2f60" opacity="0.35" />
+        <rect x="6" y="10" width="238" height="146" rx="18" fill="#071a31" opacity="0.4" />
         <rect width="238" height="146" rx="18" fill="url(#lc-card)" />
         <rect y="0" width="238" height="30" rx="18" fill="url(#lc-strip)" />
         <rect y="18" width="238" height="12" fill="url(#lc-strip)" />
@@ -179,18 +179,18 @@ export function HeroScene({ className }: { className?: string }) {
 
         {/* Photograph panel with a helmeted head. */}
         <rect x="16" y="44" width="60" height="72" rx="10" fill="#e2edfb" />
-        <circle cx="46" cy="76" r="15" fill="#0f5db8" opacity="0.28" />
-        <path d="M29 74a17 17 0 0 1 34 0z" fill="#f25a00" />
-        <rect x="27" y="73" width="38" height="5" rx="2.5" fill="#d94b00" />
-        <path d="M28 116c2-14 8-22 18-22s16 8 18 22z" fill="#0f5db8" opacity="0.42" />
+        <circle cx="46" cy="76" r="15" fill="#134074" opacity="0.28" />
+        <path d="M29 74a17 17 0 0 1 34 0z" fill="#f97316" />
+        <rect x="27" y="73" width="38" height="5" rx="2.5" fill="#ea580c" />
+        <path d="M28 116c2-14 8-22 18-22s16 8 18 22z" fill="#134074" opacity="0.45" />
 
-        <rect x="88" y="48" width="118" height="9" rx="4.5" fill="#0f5db8" opacity="0.75" />
+        <rect x="88" y="48" width="118" height="9" rx="4.5" fill="#134074" opacity="0.8" />
         <rect x="88" y="66" width="88" height="8" rx="4" fill="#10213d" opacity="0.22" />
         <rect x="88" y="82" width="104" height="8" rx="4" fill="#10213d" opacity="0.22" />
         <rect x="88" y="98" width="70" height="8" rx="4" fill="#10213d" opacity="0.22" />
 
         {/* Verification tick — the card is a registration, and that is the point. */}
-        <circle cx="206" cy="118" r="17" fill="#0f9d58" />
+        <circle cx="206" cy="118" r="17" fill="#059669" />
         <path
           d="M198 118l6 6 12-13"
           stroke="#ffffff"
@@ -203,7 +203,7 @@ export function HeroScene({ className }: { className?: string }) {
 
       {/* Hazard rhythm along the base. */}
       <rect x="0" y="300" width="420" height="12" fill="#ffffff" fillOpacity="0.14" />
-      <g fill="#f25a00" fillOpacity="0.5">
+      <g fill="#f97316" fillOpacity="0.55">
         {/* Parallelograms, not skewed rects: a skew transform moves the whole
             row sideways by tan(angle) x height, which slid the stripes clean
             off one end of the band. */}

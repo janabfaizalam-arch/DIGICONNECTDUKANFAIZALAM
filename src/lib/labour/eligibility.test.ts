@@ -180,7 +180,7 @@ describe("the result list", () => {
   });
 
   it("carries a disclaimer that does not claim to be an approval", () => {
-    expect(CHECKER_DISCLAIMER).toMatch(/sarkari manzoori nahi/);
-    expect(CHECKER_DISCLAIMER).toMatch(/vibhag ke verification/);
+    expect(CHECKER_DISCLAIMER).toMatch(/सरकारी मंज़ूरी नहीं/);
+    expect(CHECKER_DISCLAIMER).toMatch(/विभाग के सत्यापन/);
   });
 });

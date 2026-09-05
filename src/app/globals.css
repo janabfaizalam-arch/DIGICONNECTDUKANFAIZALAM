@@ -2396,3 +2396,113 @@ input[id*="email"],
     display: none;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Labour Card portal — visual system
+
+   From the Stitch design system for the UPBOCW portal: deep navy for
+   structure, saffron for the one action we want taken, and a distinct colour
+   per financial instrument so cash, a fixed deposit, a pension and a
+   reimbursement can never be mistaken for one another.
+
+   Everything here is namespaced `--lc-`. The site's own `--dc-` palette is
+   untouched, so this changes the Labour Card page and nothing else — the
+   homepage, the portal and the panel keep the colours they have.
+   ═════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Structure */
+  --lc-navy: #0b2545;
+  --lc-navy-light: #134074;
+  --lc-navy-ink: #0f172a;
+
+  /* Action */
+  --lc-saffron: #f97316;
+  --lc-saffron-deep: #ea580c;
+  --lc-saffron-soft: #fff7ed;
+
+  /* Affirmation — verification, WhatsApp, approved tallies. Never decoration. */
+  --lc-emerald: #059669;
+  --lc-emerald-soft: #ecfdf5;
+
+  /*
+    One colour per instrument. The rule this encodes is the page's whole
+    reason for existing: ₹25,000 paid into a bank account and ₹25,000 locked
+    in an eighteen-year deposit are not the same money, and they must not
+    look the same.
+  */
+  --lc-cash: #059669;
+  --lc-cash-soft: #ecfdf5;
+  --lc-fd: #7c3aed;
+  --lc-fd-soft: #f5f3ff;
+  --lc-pension: #d97706;
+  --lc-pension-soft: #fffbeb;
+  --lc-reimburse: #0284c7;
+  --lc-reimburse-soft: #f0f9ff;
+
+  /* Surfaces */
+  --lc-page: #f8fafc;
+  --lc-card: #ffffff;
+  --lc-border: #e2e8f0;
+  --lc-muted: #64748b;
+
+  /* Elevation — layered, not muddy. */
+  --lc-shadow-1: 0 1px 3px rgba(11, 37, 69, 0.05), 0 1px 2px rgba(11, 37, 69, 0.03);
+  --lc-shadow-2: 0 10px 25px -5px rgba(11, 37, 69, 0.08), 0 8px 10px -6px rgba(11, 37, 69, 0.04);
+  --lc-shadow-3: 0 20px 30px -10px rgba(11, 37, 69, 0.15);
+
+  /* Shape */
+  --lc-radius-card: 1rem;
+  --lc-radius-control: 0.75rem;
+  --lc-radius-panel: 1.75rem;
+}
+
+/*
+  Devanagari needs room.
+
+  Matras sit above and below the line, and at the 1.1–1.25 line-height the
+  Latin type on this site uses they collide with the row above. The design
+  system asks for 1.45–1.6; this sets the floor for the Hindi page and its
+  headings, which are the tightest-set text on it.
+*/
+.lc-hi {
+  font-family: var(--font-devanagari), var(--font-body), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+.lc-hi h1,
+.lc-hi h2,
+.lc-hi h3,
+.lc-hi h4 {
+  font-family: var(--font-heading), var(--font-devanagari), system-ui, sans-serif;
+  line-height: 1.35;
+}
+
+/* Rupee figures line up in a column when they are tabular. */
+.lc-figure {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Level 1 and level 2 from the elevation scale, as one class. */
+.lc-card {
+  background: var(--lc-card);
+  border: 1px solid var(--lc-border);
+  border-radius: var(--lc-radius-card);
+  box-shadow: var(--lc-shadow-1);
+  transition:
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lc-lift:hover,
+.lc-lift:focus-visible {
+  box-shadow: var(--lc-shadow-2);
+  transform: translate3d(0, -3px, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-lift:hover,
+  .lc-lift:focus-visible {
+    transform: none;
+  }
+}

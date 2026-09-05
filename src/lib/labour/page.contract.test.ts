@@ -28,6 +28,12 @@ describe("no false authority", () => {
       "Official Government Agent",
       "sarkari agent",
       "authorised agent",
+      // The page is written in Hindi now; the claim has to be refused in the
+      // language it would actually be made in.
+      "सरकार द्वारा अधिकृत",
+      "सरकारी एजेंट है",
+      "अधिकृत एजेंट",
+      "आधिकारिक एजेंट है",
     ];
     for (const claim of forbidden) {
       expect(page.toLowerCase(), `the page claims "${claim}"`).not.toContain(claim.toLowerCase());
@@ -35,20 +41,27 @@ describe("no false authority", () => {
   });
 
   it("never guarantees an approval", () => {
-    for (const promise of ["guaranteed approval", "100% approval", "approval guarantee"]) {
-      expect(page.toLowerCase()).not.toContain(promise);
+    for (const promise of [
+      "guaranteed approval",
+      "100% approval",
+      "approval guarantee",
+      "मंज़ूरी पक्की",
+      "100% मंज़ूरी",
+      "गारंटी से मिलेगा",
+    ]) {
+      expect(page.toLowerCase()).not.toContain(promise.toLowerCase());
     }
-    expect(page).toMatch(/approval ki guarantee nahi/i);
+    expect(page).toMatch(/मंज़ूरी की गारंटी नहीं/);
   });
 
   it("says in the page what the business actually is", () => {
-    expect(page).toMatch(/private digital service/i);
-    expect(page).toMatch(/approval nahi dete/i);
+    expect(page).toMatch(/निजी डिजिटल सेवा/);
+    expect(page).toMatch(/मंज़ूरी नहीं दिलाते/);
   });
 
   it("answers the two awkward questions in the FAQ rather than avoiding them", () => {
-    expect(faqs).toMatch(/Kya DigiConnect Dukan sarkari agent hai\?/);
-    expect(faqs).toMatch(/Kya DigiConnect Dukan approval dila sakta hai\?/);
+    expect(faqs).toMatch(/क्या DigiConnect Dukan सरकारी एजेंट है\?/);
+    expect(faqs).toMatch(/क्या DigiConnect Dukan मंज़ूरी दिला सकता है\?/);
   });
 });
 
@@ -97,7 +110,7 @@ describe("cash, deposit and reimbursement look different on screen", () => {
 
   it("prints the kind as a word beside the money, not only as a colour", () => {
     // Colour alone fails for a colour-blind reader and in print.
-    expect(benefitLine).toContain("BENEFIT_KIND_LABEL[benefit.kind]");
+    expect(benefitLine).toContain("BENEFIT_KIND_LABEL_HI[benefit.kind]");
   });
 
   it("shows the legend once so the icons mean something", () => {
@@ -127,11 +140,11 @@ describe("the conditions that sink applications are prominent", () => {
   });
 
   it("says the card alone guarantees nothing, in the page body", () => {
-    expect(page).toMatch(/har scheme ka benefit apne aap mil jayega/i);
+    expect(page).toMatch(/हर योजना का लाभ अपने आप मिल जाएगा/);
   });
 
   it("keeps a rejection-reasons section", () => {
-    expect(page).toContain("Application kyun reject hoti hai");
+    expect(page).toContain("आवेदन रिजेक्ट क्यों होते हैं");
   });
 });
 
@@ -146,8 +159,8 @@ describe("where a figure came from is visible", () => {
   });
 
   it("shows the source, who supplied it and when it was checked", () => {
-    expect(directory).toContain("Jankari ka source");
-    expect(directory).toContain("last verified");
+    expect(directory).toContain("जानकारी का स्रोत");
+    expect(directory).toContain("अंतिम जाँच");
   });
 
   it("links to the official portal when no exact notification is recorded", () => {
@@ -169,7 +182,7 @@ describe("the eligibility checker does not pretend to decide", () => {
   });
 
   it("shows what it did not ask about, beside what it checked", () => {
-    expect(checker).toContain("Ye humne poocha hi nahi");
+    expect(checker).toContain("ये हमने पूछा ही नहीं");
     expect(checker).toContain("result.untested");
   });
 
