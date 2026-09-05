@@ -26,32 +26,40 @@ export function LabourStickyBar({ whatsapp, phone }: { whatsapp: string; phone: 
   return (
     <div
       role="region"
-      aria-label="Labour Card eligibility"
+      aria-label="लेबर कार्ड पात्रता"
       data-hidden={hidden ? "true" : undefined}
       className="dc-chrome-slide-down fixed inset-x-0 bottom-0 z-[49] px-3 print:hidden lg:hidden"
       style={{ paddingBottom: "calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 0.5rem)" }}
     >
-      <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-[var(--dc-ink)]/8 bg-white/95 p-2 shadow-[0_10px_36px_-14px_rgba(15,32,73,0.5)] backdrop-blur-xl">
+      <div
+        className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border bg-white/95 p-2 backdrop-blur-xl"
+        style={{ borderColor: "var(--lc-border)", boxShadow: "var(--lc-shadow-3)" }}
+      >
         <a
           href="#eligibility"
-          className="inline-flex h-11 flex-1 items-center justify-center rounded-xl text-[13.5px] font-extrabold text-white shadow-[0_10px_24px_-12px_rgba(15,93,184,0.9)]"
-          style={{ background: "var(--dc-grad-blue)" }}
+          className="inline-flex h-12 flex-1 items-center justify-center rounded-xl text-[14px] font-bold text-white"
+          style={{
+            background: "linear-gradient(135deg, var(--lc-saffron), var(--lc-saffron-deep))",
+            boxShadow: "0 10px 24px -12px rgba(234,88,12,0.95)",
+          }}
         >
-          Eligibility check
+          पात्रता चेक करें
         </a>
         <a
           href={whatsapp}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="WhatsApp"
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25d366] text-white"
+          aria-label="व्हाट्सएप पर सहायता"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white"
+          style={{ background: "var(--lc-emerald)" }}
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
         </a>
         <a
           href={phone}
-          aria-label="Call"
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--dc-ink)]/12 bg-white text-[var(--dc-ink)]"
+          aria-label="फ़ोन पर बात करें"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-white"
+          style={{ borderColor: "var(--lc-border)", color: "var(--lc-navy)" }}
         >
           <Phone className="h-5 w-5" aria-hidden="true" />
         </a>

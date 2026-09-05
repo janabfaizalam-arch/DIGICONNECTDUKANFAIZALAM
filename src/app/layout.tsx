@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Inter, Playfair_Display, Poppins } from "next/font/google";
+import { Inter, Noto_Sans_Devanagari, Playfair_Display, Poppins } from "next/font/google";
 import Script from "next/script";
 
 import { GoogleAnalytics } from "@/components/google-analytics";
@@ -38,6 +38,24 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-body",
+});
+
+/**
+ * Devanagari, for the pages written in Hindi.
+ *
+ * Inter and Poppins carry no Devanagari glyphs at all — Hindi set in them
+ * falls through to whatever the device happens to have, which on a budget
+ * Android is usually a cramped face whose matras clip. The UP Labour Card
+ * page is read in Hindi by people on exactly those phones, so the script it
+ * is written in gets a font that was drawn for it.
+ *
+ * Loaded as a variable font with `display: swap`, and only used by elements
+ * that opt in through `.lc-hi` — the Latin pages never request it.
+ */
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari", "latin"],
+  display: "swap",
+  variable: "--font-devanagari",
 });
 
 /**
@@ -129,7 +147,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} ${inter.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={`${poppins.variable} ${inter.variable} ${playfair.variable} ${notoDevanagari.variable} font-sans antialiased`}>
         {process.env.NODE_ENV === "production" && gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
         {metaPixelId ? (
           <>

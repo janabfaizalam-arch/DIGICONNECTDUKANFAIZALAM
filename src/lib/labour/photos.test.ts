@@ -17,10 +17,18 @@ describe("photo slots", () => {
     }
   });
 
-  it("gives every slot alt text", () => {
+  it("gives every slot alt text and a caption", () => {
     for (const slot of PHOTO_SLOTS) {
-      expect(slot.alt.trim().length).toBeGreaterThan(12);
+      expect(slot.alt.trim().length, `${slot.file} has no usable alt text`).toBeGreaterThan(12);
+      expect(slot.caption.trim().length, `${slot.file} has no caption`).toBeGreaterThan(3);
+      expect(slot.category.trim().length, `${slot.file} has no category`).toBeGreaterThan(2);
     }
+  });
+
+  it("covers every section that asked for a photograph", () => {
+    // Thirteen slots were specified; a slot silently dropped is a section
+    // that quietly goes back to having no photograph available to it.
+    expect(PHOTO_SLOTS).toHaveLength(13);
   });
 
   it("asks for WebP at a sane size", () => {

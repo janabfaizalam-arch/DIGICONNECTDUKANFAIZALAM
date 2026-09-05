@@ -72,11 +72,15 @@ export async function LabourCardPage() {
         underneath it at every width. `dc-bottom-nav-clearance` does the same
         job at the other end, for the tab bar and the WhatsApp button.
       */}
-      <main className="homepage-mobile-shell home-option3 dc-bottom-nav-clearance relative overflow-x-clip bg-[#f4f7fb] pb-16">
+      <main
+        className="lc-hi homepage-mobile-shell home-option3 dc-bottom-nav-clearance relative overflow-x-clip pb-16"
+        style={{ background: "var(--lc-page)" }}
+      >
         <PageBackdrop />
         <Hero benefitCount={benefitCount} schemeCount={schemes.length} />
+        <SectionNav />
 
-        <div className="relative mx-auto max-w-5xl space-y-10 px-4 py-8 sm:px-6 sm:space-y-12">
+        <div className="relative mx-auto max-w-6xl space-y-12 px-4 py-8 sm:px-6 sm:space-y-16">
           <TrustBar />
           <QuickFacts benefitCount={benefitCount} schemeCount={schemes.length} categories={categories.size} />
           <Overview />
@@ -224,6 +228,23 @@ function SectionArt({
    Hero
    ───────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The hero, in Hindi.
+ *
+ * Three things it deliberately does not say, all of which the design
+ * reference put here:
+ *
+ *   * No star rating and no "50,000+ families helped". This business has no
+ *     evidence for either, and a number invented to look trustworthy is the
+ *     fastest way to stop being trustworthy.
+ *   * No "100% accurate". Four of the fifteen scheme records are marked as
+ *     needing another look, and the page says so per card. A blanket claim
+ *     here would contradict its own directory.
+ *   * No rupee figures. Every amount on this page comes from the scheme
+ *     records so that correcting one is an admin task; a headline figure
+ *     typed into this file is a figure that rots. The counts below are
+ *     computed from the data that is actually published.
+ */
 function Hero({ benefitCount, schemeCount }: { benefitCount: number; schemeCount: number }) {
   return (
     <header className="lc-sheen relative overflow-hidden">
@@ -232,69 +253,91 @@ function Hero({ benefitCount, schemeCount }: { benefitCount: number; schemeCount
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(130% 100% at 8% -20%, #2f80ed 0%, #0f5db8 42%, #0b3f80 74%, #0a3168 100%)",
+            "radial-gradient(125% 110% at 6% -25%, #134074 0%, #0b2545 46%, #08203c 76%, #071a31 100%)",
         }}
       />
       <div
         aria-hidden="true"
-        className="lc-drift absolute -right-16 -top-10 h-64 w-64 rounded-full opacity-70"
-        style={{ background: "radial-gradient(circle, rgba(242,90,0,.5) 0%, rgba(242,90,0,0) 70%)" }}
+        className="lc-drift absolute -right-20 -top-16 h-72 w-72 rounded-full opacity-70"
+        style={{ background: "radial-gradient(circle, rgba(249,115,22,.45) 0%, rgba(249,115,22,0) 70%)" }}
       />
       {/* A construction rhythm, drawn rather than downloaded — no image weight. */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 h-16 opacity-[0.13]"
+        className="absolute inset-x-0 bottom-0 h-16 opacity-[0.12]"
         style={{
           backgroundImage: "repeating-linear-gradient(135deg, #fff 0 14px, transparent 14px 28px)",
         }}
       />
 
-      <div className="relative mx-auto grid max-w-5xl items-center gap-6 px-4 pb-10 pt-10 sm:px-6 sm:pb-14 sm:pt-14 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-4 pb-12 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:grid-cols-[1.1fr_0.9fr]">
         <div>
-          <nav aria-label="Breadcrumb" className="mb-3">
-            <ol className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-bold text-white/70">
-              <li><Link href="/" className="hover:text-white">Home</Link></li>
+          <nav aria-label="Breadcrumb" className="mb-4">
+            <ol className="-my-2 flex flex-wrap items-center gap-1.5 text-[12px] font-bold text-white/65">
+              <li>
+                <Link href="/" className="inline-flex min-h-11 items-center py-2 transition hover:text-white">
+                  होम
+                </Link>
+              </li>
               <li aria-hidden="true">/</li>
-              <li><Link href="/services" className="hover:text-white">Services</Link></li>
+              <li>
+                <Link href="/services" className="inline-flex min-h-11 items-center py-2 transition hover:text-white">
+                  सेवाएं
+                </Link>
+              </li>
               <li aria-hidden="true">/</li>
-              <li className="text-white">Labour Card</li>
+              <li className="text-white">लेबर कार्ड</li>
             </ol>
           </nav>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-white ring-1 ring-white/20">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3.5 py-1.5 text-[11.5px] font-bold tracking-wide text-white ring-1 ring-white/20">
             <HardHat className="h-3.5 w-3.5" aria-hidden="true" />
-            UPBOCW · Uttar Pradesh
+            UPBOCW · उत्तर प्रदेश
           </span>
 
-          <h1 className="mt-3 max-w-3xl text-[1.9rem] font-extrabold leading-[1.08] tracking-[-0.025em] text-white sm:text-[2.9rem]">
-            UP Labour Card / UPBOCW — Registration, Renewal aur Sarkari Yojanaon ki Complete Guide
+          {/* No negative tracking: it pulls Devanagari matras into the
+              consonant beside them. Latin can take it, this script cannot. */}
+          <h1 className="mt-4 max-w-3xl text-[2rem] font-extrabold text-white sm:text-[2.9rem] lg:text-[3.2rem]">
+            UP Labour Card से मिलने वाले सरकारी लाभ,{" "}
+            <span className="text-[#ffb066]">अब आसानी से समझें</span>
           </h1>
-          <p className="mt-3 max-w-2xl text-[14px] font-medium leading-relaxed text-white/85 sm:text-[16px]">
-            Labour Card se milne wale education, shaadi, bachche, medical, divyangta, mrityu aur pension jaise
-            benefits — eligibility, documents aur shartein ke saath, saaf-saaf.
+          <p className="mt-4 max-w-2xl text-[15px] font-medium text-white/85 sm:text-[17px]">
+            शिक्षा, कन्या विवाह, मातृत्व, चिकित्सा, दिव्यांगता, मृत्यु और पेंशन — हर योजना की पात्रता,
+            ज़रूरी दस्तावेज़ और शर्तें, साफ़-साफ़। हर रकम के साथ यह भी लिखा है कि वह किस रूप में मिलती है।
           </p>
 
-          <p className="mt-4 flex flex-wrap gap-2">
-            <Stat value={`${benefitCount}+`} label="benefits" />
-            <Stat value={String(schemeCount)} label="scheme / programme" />
-            <Stat value="Cash · FD · Reimbursement" label="alag-alag tarah" />
-          </p>
+          <ul className="mt-5 flex flex-wrap gap-2">
+            <Stat value={`${benefitCount}+`} label="लाभ व प्रावधान" />
+            <Stat value={String(schemeCount)} label="योजना / कार्यक्रम" />
+            <Stat value="नकद · FD · प्रतिपूर्ति" label="अलग-अलग तरह" />
+          </ul>
 
-          <div className="mt-5 flex flex-wrap gap-2.5">
+          <div className="mt-6 flex flex-wrap gap-3">
             <a
               href="#eligibility"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-[14px] font-extrabold text-[var(--dc-blue-deep)] shadow-lg transition hover:-translate-y-px hover:shadow-xl active:translate-y-0"
+              className="inline-flex h-[52px] items-center justify-center gap-2 rounded-xl px-6 text-[15px] font-bold text-white shadow-[0_14px_30px_-12px_rgba(249,115,22,0.9)] transition hover:-translate-y-px active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg, var(--lc-saffron), var(--lc-saffron-deep))" }}
             >
-              Apni eligibility check karein
+              पात्रता चेक करें
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
             <a
               href="#schemes"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-white/12 px-5 text-[14px] font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20"
+              className="inline-flex h-[52px] items-center justify-center rounded-xl bg-white/10 px-6 text-[15px] font-bold text-white ring-1 ring-white/25 transition hover:bg-white/18"
             >
-              Saari yojanayein dekhein
+              सभी योजनाएं देखें
             </a>
           </div>
+
+          {/*
+            The one trust line this business can actually stand behind: not how
+            many people it has helped, but where its numbers come from.
+          */}
+          <p className="mt-5 flex items-start gap-2 text-[12.5px] font-semibold text-white/70">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#4ade80]" aria-hidden="true" />
+            हर योजना के साथ उसका स्रोत और आख़िरी बार जाँचने की तारीख़ दी गई है — जो अभी सत्यापित नहीं है,
+            उस पर भी साफ़ लिखा है।
+          </p>
         </div>
 
         {/* The illustration. Hidden below `sm` — on a 360px phone it would push
@@ -303,9 +346,9 @@ function Hero({ benefitCount, schemeCount }: { benefitCount: number; schemeCount
         <SectionArt
           slot="hero"
           priority
-          className="hidden h-auto w-full max-w-[440px] justify-self-center rounded-3xl object-cover shadow-2xl ring-1 ring-white/20 sm:block"
+          className="hidden h-auto w-full max-w-[460px] justify-self-center rounded-3xl object-cover shadow-2xl ring-1 ring-white/20 sm:block"
           fallback={
-            <HeroScene className="hidden h-auto w-full max-w-[440px] justify-self-center drop-shadow-2xl sm:block" />
+            <HeroScene className="hidden h-auto w-full max-w-[460px] justify-self-center drop-shadow-2xl sm:block" />
           }
         />
       </div>
@@ -315,10 +358,55 @@ function Hero({ benefitCount, schemeCount }: { benefitCount: number; schemeCount
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 ring-1 ring-white/15 backdrop-blur-sm">
-      <span className="text-[15px] font-extrabold text-white">{value}</span>
-      <span className="text-[11.5px] font-bold text-white/75">{label}</span>
-    </span>
+    <li className="inline-flex items-baseline gap-1.5 rounded-xl bg-white/10 px-3.5 py-2 ring-1 ring-white/15 backdrop-blur-sm">
+      <span className="lc-figure text-[15.5px] font-extrabold text-white">{value}</span>
+      <span className="text-[12px] font-semibold text-white/75">{label}</span>
+    </li>
+  );
+}
+
+/**
+ * Jump links to the parts of a very long page.
+ *
+ * Deliberately not sticky. The scheme directory already pins its own search
+ * and filter row directly under the site header; a second sticky strip would
+ * either fight it for the same band or stack into a third of the screen on a
+ * phone. This sits once, under the hero, where somebody deciding what to read
+ * will look.
+ */
+function SectionNav() {
+  const links = [
+    { href: "#schemes", label: "योजनाएं" },
+    { href: "#eligibility", label: "पात्रता जांच" },
+    { href: "#documents", label: "आवश्यक दस्तावेज़" },
+    { href: "#process", label: "प्रक्रिया" },
+    { href: "#rejections", label: "रिजेक्शन के कारण" },
+    { href: "#faq", label: "सवाल-जवाब" },
+  ];
+  return (
+    <nav
+      aria-label="इस पृष्ठ के भाग"
+      className="relative border-b bg-white/92 backdrop-blur-xl"
+      style={{ borderColor: "var(--lc-border)" }}
+    >
+      <ul className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-3 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {links.map((link) => (
+          <li key={link.href}>
+            <a
+              href={link.href}
+              className="inline-flex h-11 shrink-0 items-center rounded-full border px-4 text-[13px] font-bold transition hover:-translate-y-px"
+              style={{
+                borderColor: "var(--lc-border)",
+                color: "var(--lc-navy)",
+                background: "var(--lc-card)",
+              }}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -328,35 +416,44 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 /**
  * Every line here describes what this shop does, not an authority it holds.
- * "Government authorised" and "official agent" are absent on purpose: they
+ * "सरकार द्वारा अधिकृत" and "official agent" are absent on purpose: they
  * would be false, and a worker who believes them will expect an approval this
  * business cannot give.
  */
 function TrustBar() {
   const items = [
-    { icon: FileText, label: "Document guidance", from: "#0f5db8", to: "#2f80ed" },
-    { icon: Users, label: "Application assistance", from: "#0f766e", to: "#2dd4bf" },
-    { icon: ShieldCheck, label: "Transparent process", from: "#047857", to: "#34d399" },
-    { icon: Building2, label: "Experienced digital service centre", from: "#c2410c", to: "#fb923c" },
+    { icon: FileText, label: "दस्तावेज़ मार्गदर्शन", tint: "var(--lc-navy-light)" },
+    { icon: Users, label: "आवेदन में सहायता", tint: "var(--lc-saffron-deep)" },
+    { icon: ShieldCheck, label: "पारदर्शी प्रक्रिया", tint: "var(--lc-emerald)" },
+    { icon: Building2, label: "अनुभवी डिजिटल सेवा केंद्र", tint: "var(--lc-navy)" },
   ];
   return (
-    <Stagger as="ul" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+    <Stagger as="ul" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {items.map((item) => (
-        <StaggerItem as="li" key={item.label} className="lg-card lg-raise flex items-center gap-2.5 p-3">
+        <StaggerItem as="li" key={item.label} className="lc-card lc-lift flex items-center gap-3 p-3.5">
           <span
             aria-hidden="true"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: `linear-gradient(145deg, ${item.from}, ${item.to})` }}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: item.tint }}
           >
-            <item.icon className="h-4 w-4 text-white" strokeWidth={2.3} />
+            <item.icon className="h-4.5 w-4.5 text-white" strokeWidth={2.2} />
           </span>
-          <span className="text-[12px] font-bold leading-snug text-[var(--dc-ink)]">{item.label}</span>
+          <span className="text-[12.5px] font-bold leading-snug" style={{ color: "var(--lc-navy)" }}>
+            {item.label}
+          </span>
         </StaggerItem>
       ))}
     </Stagger>
   );
 }
 
+/**
+ * Four counts, each one computed from the schemes that are actually published.
+ *
+ * The fourth is the ninety-day work condition, which is not a count of
+ * anything on this page — it is the single rule that decides most
+ * applications, and putting it beside the totals is the point.
+ */
 function QuickFacts({
   benefitCount,
   schemeCount,
@@ -367,37 +464,39 @@ function QuickFacts({
   categories: number;
 }) {
   const facts = [
-    { value: benefitCount, suffix: "+", label: "Benefits aur provisions", from: "#0f5db8", to: "#2f80ed" },
-    { value: schemeCount, suffix: "", label: "Scheme / programme", from: "#c2410c", to: "#fb923c" },
-    { value: categories, suffix: "", label: "Category", from: "#5b21b6", to: "#a78bfa" },
-    { value: 90, suffix: " din", label: "Kaam ki shart (kai yojanaon mein)", from: "#0f766e", to: "#2dd4bf" },
+    { value: benefitCount, suffix: "+", label: "लाभ व कल्याणकारी प्रावधान", tint: "var(--lc-navy-light)" },
+    { value: schemeCount, suffix: "", label: "योजना / कार्यक्रम", tint: "var(--lc-saffron-deep)" },
+    { value: categories, suffix: "", label: "श्रेणियाँ", tint: "var(--lc-fd)" },
+    { value: 90, suffix: " दिन", label: "कार्य प्रमाण की शर्त (कई योजनाओं में)", tint: "var(--lc-emerald)" },
   ];
   return (
     <section>
-      <Stagger as="ul" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <Stagger as="ul" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {facts.map((fact) => (
           <StaggerItem
             as="li"
             key={fact.label}
-            className="lg-card lg-raise relative overflow-hidden p-3.5 text-center sm:p-4"
+            className="lc-card lc-lift relative overflow-hidden p-4 text-center"
           >
             <span
               aria-hidden="true"
               className="absolute inset-x-0 top-0 h-1"
-              style={{ background: `linear-gradient(90deg, ${fact.from}, ${fact.to})` }}
+              style={{ background: fact.tint }}
             />
             <p
-              className="text-[1.5rem] font-extrabold leading-none tracking-tight sm:text-[1.9rem]"
-              style={{ color: fact.from }}
+              className="lc-figure text-[1.7rem] font-extrabold leading-none sm:text-[2.1rem]"
+              style={{ color: fact.tint }}
             >
               <CountUp value={fact.value} suffix={fact.suffix} />
             </p>
-            <p className="mt-1.5 text-[11.5px] font-bold leading-snug text-[var(--dc-body)]">{fact.label}</p>
+            <p className="mt-2 text-[12px] font-semibold leading-snug" style={{ color: "var(--lc-muted)" }}>
+              {fact.label}
+            </p>
           </StaggerItem>
         ))}
       </Stagger>
-      <p className="mt-2 text-center text-[11px] font-semibold text-[var(--dc-body)]">
-        Ye ginti is page par publish ki gayi schemes se hai — sarkari kul ginti ka dawa nahi.
+      <p className="mt-3 text-center text-[11.5px] font-semibold" style={{ color: "var(--lc-muted)" }}>
+        यह गिनती इस पृष्ठ पर प्रकाशित योजनाओं से है — सरकारी कुल गिनती का दावा नहीं।
       </p>
     </section>
   );

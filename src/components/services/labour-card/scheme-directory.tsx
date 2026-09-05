@@ -113,7 +113,7 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
                 aria-selected={on}
                 onClick={() => setCategory(key as SchemeCategory | typeof ALL)}
                 className={cn(
-                  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-bold transition",
+                  "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-bold transition",
                   on
                     ? "text-white shadow-[0_8px_18px_-10px_rgba(16,33,61,0.8)]"
                     : "border border-[var(--dc-ink)]/10 bg-white text-[var(--dc-body)] hover:-translate-y-px hover:text-[var(--dc-ink)]",
