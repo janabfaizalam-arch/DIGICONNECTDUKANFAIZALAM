@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { AlertTriangle, ChevronDown, ExternalLink, Search, ShieldCheck } from "lucide-react";
 
+import { CATEGORY_ART, CategoryBadge } from "@/components/services/labour-card/art";
 import { BenefitLegend, BenefitRow } from "@/components/services/labour-card/benefit-line";
 import { CATEGORY_LABEL, type LabourScheme, type SchemeCategory } from "@/lib/labour/types";
 import { cn } from "@/lib/utils";
@@ -74,7 +75,13 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
       </div>
 
       {/* ── Search and filter ─────────────────────────────────────────── */}
-      <div className="sticky top-[64px] z-20 -mx-1 mb-3 rounded-2xl bg-white/85 px-1 py-2 backdrop-blur-xl">
+      {/*
+        Opaque, not translucent. At 85% the scheme card scrolling underneath
+        showed straight through the search field and the filter row, and the
+        toolbar read as a smear rather than as a control. The offset clears
+        the fixed site header by its own token.
+      */}
+      <div className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 -mx-1 mb-3 rounded-2xl border border-[var(--dc-ink)]/8 bg-white px-2 py-2 shadow-[0_10px_30px_-16px_rgba(15,32,73,0.45)]">
         <label className="relative block">
           <span className="sr-only">Scheme ka naam search karein</span>
           <Search
@@ -96,6 +103,8 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
         >
           {[ALL, ...categories].map((key) => {
             const on = category === key;
+            const art = key === ALL ? null : CATEGORY_ART[key as SchemeCategory];
+            const Icon = art?.icon;
             return (
               <button
                 key={key}
@@ -104,13 +113,24 @@ export function SchemeDirectory({ schemes }: { schemes: LabourScheme[] }) {
                 aria-selected={on}
                 onClick={() => setCategory(key as SchemeCategory | typeof ALL)}
                 className={cn(
-                  "h-9 shrink-0 rounded-full px-3.5 text-[12.5px] font-bold transition",
+                  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-bold transition",
                   on
-                    ? "text-white"
-                    : "border border-[var(--dc-ink)]/10 bg-white text-[var(--dc-body)] hover:text-[var(--dc-ink)]",
+                    ? "text-white shadow-[0_8px_18px_-10px_rgba(16,33,61,0.8)]"
+                    : "border border-[var(--dc-ink)]/10 bg-white text-[var(--dc-body)] hover:-translate-y-px hover:text-[var(--dc-ink)]",
                 )}
-                style={on ? { background: "var(--dc-grad-blue)" } : undefined}
+                style={
+                  on
+                    ? { background: art ? `linear-gradient(135deg, ${art.from}, ${art.to})` : "var(--dc-grad-blue)" }
+                    : undefined
+                }
               >
+                {Icon ? (
+                  <Icon
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                    style={on ? undefined : { color: art?.from }}
+                  />
+                ) : null}
                 {key === ALL ? "Sabhi" : CATEGORY_LABEL[key as SchemeCategory]}
               </button>
             );
@@ -170,26 +190,42 @@ function SchemeCard({
   ].filter(Boolean) as string[];
 
   return (
-    <motion.li
+    <m.li
       id={`scheme-${scheme.slug}`}
       initial={still ? false : { opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ delay: still ? 0 : Math.min(index, 6) * 0.03 }}
-      className="lg-card scroll-mt-28 overflow-hidden"
+      className="lg-card lg-raise relative scroll-mt-28 overflow-hidden"
     >
-      <div className="p-4 sm:p-5">
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 w-1.5"
+        style={{
+          background: `linear-gradient(180deg, ${CATEGORY_ART[scheme.category].from}, ${CATEGORY_ART[scheme.category].to})`,
+        }}
+      />
+      <div className="p-4 pl-5 sm:p-5 sm:pl-6">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0">
-            <span className="inline-flex rounded-full bg-[var(--dc-sky-soft)] px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-wide text-[var(--dc-blue-deep)]">
-              {CATEGORY_LABEL[scheme.category]}
-            </span>
-            <h3 className="mt-1.5 text-[15.5px] font-extrabold leading-tight text-[var(--dc-ink)] sm:text-[17px]">
-              {scheme.name}
-            </h3>
-            {scheme.nameHi ? (
-              <p className="text-[12.5px] font-bold text-[var(--dc-body)]">{scheme.nameHi}</p>
-            ) : null}
+          <div className="flex min-w-0 gap-3">
+            <CategoryBadge category={scheme.category} />
+            <div className="min-w-0">
+              <span
+                className="inline-flex rounded-full px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-wide"
+                style={{
+                  color: CATEGORY_ART[scheme.category].from,
+                  background: `${CATEGORY_ART[scheme.category].from}1a`,
+                }}
+              >
+                {CATEGORY_LABEL[scheme.category]}
+              </span>
+              <h3 className="mt-1.5 text-[15.5px] font-extrabold leading-tight text-[var(--dc-ink)] sm:text-[17px]">
+                {scheme.name}
+              </h3>
+              {scheme.nameHi ? (
+                <p className="text-[12.5px] font-bold text-[var(--dc-body)]">{scheme.nameHi}</p>
+              ) : null}
+            </div>
           </div>
           <VerificationBadge scheme={scheme} />
         </div>
@@ -251,7 +287,7 @@ function SchemeCard({
 
       <AnimatePresence initial={false}>
         {expanded ? (
-          <motion.div
+          <m.div
             id={`detail-${scheme.slug}`}
             initial={still ? false : { height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -274,10 +310,10 @@ function SchemeCard({
               ) : null}
               <SourceNote scheme={scheme} />
             </div>
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
-    </motion.li>
+    </m.li>
   );
 }
 

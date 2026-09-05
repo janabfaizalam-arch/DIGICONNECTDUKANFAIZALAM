@@ -11,6 +11,10 @@
  * Safe to re-run: rows are upserted by id. It will not overwrite a row an
  * administrator has already edited unless --force is passed, because the
  * whole point of the CMS is that the database outranks this file.
+ *
+ * The admin panel does the same import from a button, which is where most
+ * people will do it. This script stays for --force and for a machine with no
+ * browser session.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -32,33 +36,11 @@ const { SEED_SCHEMES } = await import("../src/lib/labour/seed-schemes.ts").catch
   process.exit(1);
 });
 
+const { schemeToRow } = await import("../src/lib/labour/rows.ts");
+
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-const rows = SEED_SCHEMES.map((scheme) => ({
-  id: scheme.id,
-  slug: scheme.slug,
-  name: scheme.name,
-  name_hi: scheme.nameHi ?? "",
-  category: scheme.category,
-  summary: scheme.summary,
-  beneficiaries: scheme.beneficiaries,
-  benefits: scheme.benefits,
-  eligibility: scheme.eligibility,
-  key_conditions: scheme.keyConditions,
-  documents: scheme.documents,
-  process: scheme.process,
-  payment_method: scheme.paymentMethod,
-  warnings: scheme.warnings ?? [],
-  verification_status: scheme.verification.status,
-  provided_by: scheme.verification.providedBy,
-  verified_on: scheme.verification.verifiedOn || null,
-  source_url: scheme.verification.sourceUrl,
-  source_title: scheme.verification.sourceTitle,
-  source_date: scheme.verification.sourceDate,
-  caveat: scheme.verification.caveat ?? "",
-  sort_order: scheme.sortOrder,
-  published: scheme.published,
-}));
+const rows = SEED_SCHEMES.map(schemeToRow);
 
 const { data: existing } = await supabase.from("labour_schemes").select("id");
 const known = new Set((existing ?? []).map((row) => row.id));

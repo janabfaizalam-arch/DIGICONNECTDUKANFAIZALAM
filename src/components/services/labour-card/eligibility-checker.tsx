@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, HelpCircle, Info, RotateCcw } from "lucide-react";
 
 import {
@@ -169,7 +169,7 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
 
         <AnimatePresence initial={false}>
           {submitted ? (
-            <motion.div
+            <m.div
               initial={still ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="mt-5"
@@ -248,7 +248,7 @@ export function EligibilityChecker({ schemes }: { schemes: LabourScheme[] }) {
               <p className="mt-3 rounded-xl bg-[var(--dc-sky-soft)] px-3.5 py-3 text-[12px] font-bold leading-snug text-[var(--dc-ink)]">
                 {CHECKER_DISCLAIMER}
               </p>
-            </motion.div>
+            </m.div>
           ) : null}
         </AnimatePresence>
       </div>

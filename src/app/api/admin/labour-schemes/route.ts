@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { isMissingTable, schemeToRow } from "@/lib/labour/rows";
+import { SEED_SCHEMES } from "@/lib/labour/seed-schemes";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -67,6 +69,57 @@ function safeUrl(value: unknown): string | null {
   }
 }
 
+/**
+ * Fill an empty table from the file the page falls back to.
+ *
+ * Until this runs, `labour_schemes` is empty, the page reads the seed file,
+ * and every edit in the admin panel has nothing to write to — which is how a
+ * screen full of buttons came to do nothing at all. Rather than telling an
+ * administrator to open a terminal and run a script, the panel does it.
+ *
+ * Existing rows are left alone. The database is supposed to outrank the file:
+ * an amount somebody corrected here must not be overwritten by an import.
+ */
+export async function POST() {
+  const user = await getCurrentUser();
+  const role = await getCurrentUserRole(user);
+  if (!user || !isAdminRole(role)) return bad("Not allowed.", 403);
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return bad("Database is not configured.", 503);
+
+  const { data: existing, error: readError } = await supabase.from("labour_schemes").select("id");
+  if (readError) {
+    return isMissingTable(readError)
+      ? bad(
+          "labour_schemes table abhi bani nahi hai. Pehle Supabase SQL editor mein migration " +
+            "20260904140000_labour_schemes.sql chalaiye, phir ye button dobara dabaiye.",
+          409,
+        )
+      : bad("Could not read the schemes table.", 500);
+  }
+
+  const known = new Set((existing ?? []).map((row) => (row as { id: string }).id));
+  const toWrite = SEED_SCHEMES.filter((scheme) => !known.has(scheme.id)).map(schemeToRow);
+
+  if (!toWrite.length) {
+    return NextResponse.json({ ok: true, imported: 0, existing: known.size });
+  }
+
+  const { error: writeError } = await supabase.from("labour_schemes").upsert(toWrite, { onConflict: "id" });
+  if (writeError) {
+    return isMissingTable(writeError)
+      ? bad(
+          "labour_schemes table abhi bani nahi hai. Pehle migration 20260904140000_labour_schemes.sql chalaiye.",
+          409,
+        )
+      : bad("Could not write the schemes.", 500);
+  }
+
+  revalidatePath("/services/labour-card");
+  return NextResponse.json({ ok: true, imported: toWrite.length, existing: known.size });
+}
+
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
@@ -106,7 +159,11 @@ export async function PATCH(request: Request) {
     .eq("id", id)
     .maybeSingle();
 
-  if (readError) return bad("Could not read that scheme.", 500);
+  if (readError) {
+    return isMissingTable(readError)
+      ? bad("labour_schemes table abhi bani nahi hai — pehle migration chalaiye.", 409)
+      : bad("Could not read that scheme.", 500);
+  }
   if (!before) return bad("That scheme does not exist.", 404);
 
   update.updated_at = new Date().toISOString();
