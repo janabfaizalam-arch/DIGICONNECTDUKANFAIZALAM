@@ -2312,3 +2312,87 @@ input[id*="email"],
     box-shadow: inset 0 0 0 3px var(--dc-flame);
   }
 }
+
+/*
+  Labour Card artwork.
+
+  Two ambient loops in the hero illustration — the sun's glow and the crane's
+  hook — and a slow drift on the section backdrops. All of it is decorative,
+  none of it moves anything a reader is trying to read, and all of it stops
+  outright under prefers-reduced-motion.
+*/
+.lc-pulse {
+  animation: lc-pulse 6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes lc-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.07);
+  }
+}
+
+.lc-sway {
+  animation: lc-sway 5.5s ease-in-out infinite;
+}
+
+@keyframes lc-sway {
+  0%,
+  100% {
+    transform: rotate(-3.5deg);
+  }
+  50% {
+    transform: rotate(3.5deg);
+  }
+}
+
+/* A soft light that crosses the hero once, on arrival. */
+.lc-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 38%, rgba(255, 255, 255, 0.16) 50%, transparent 62%);
+  transform: translate3d(-60%, 0, 0);
+  animation: lc-sheen 2.6s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 forwards;
+}
+
+@keyframes lc-sheen {
+  to {
+    transform: translate3d(60%, 0, 0);
+  }
+}
+
+/* Section backdrop blobs. */
+.lc-drift {
+  animation: lc-drift 14s ease-in-out infinite;
+}
+
+@keyframes lc-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6px, -10px, 0) scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-pulse,
+  .lc-sway,
+  .lc-drift,
+  .lc-sheen::after {
+    animation: none;
+  }
+  .lc-sheen::after {
+    display: none;
+  }
+}
