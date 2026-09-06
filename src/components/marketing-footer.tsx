@@ -227,7 +227,7 @@ export function MarketingFooter({
               { label: "Privacy Policy", href: "/privacy-policy" },
               { label: "Terms & Conditions", href: "/terms-and-conditions" },
             ]).map((link) => (
-              <Link key={link.label} href={link.href} className="transition hover:text-[var(--dc-blue-700)]">
+              <Link key={link.label} href={link.href} className="inline-flex min-h-11 items-center py-2 transition hover:text-[var(--dc-blue-700)]">
                 {link.label}
               </Link>
             ))}
@@ -396,7 +396,7 @@ export function MarketingFooter({
                 href="https://www.rnos.in"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-600 hover:text-slate-800 transition"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
               >
                 <Globe className="h-3.5 w-3.5 text-blue-500" />
                 rnos.in
@@ -411,12 +411,12 @@ export function MarketingFooter({
           {/* Quick Services column */}
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-4">Core Services</p>
-            <nav className="grid gap-2.5">
+            <nav className="-my-2 grid gap-0.5">
               {servicesLinks.map((link) => (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-900 transition"
+                  className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
                 >
                   {link.label}
                 </Link>
@@ -427,7 +427,7 @@ export function MarketingFooter({
           {/* Company links column */}
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-4">Company</p>
-            <nav className="grid gap-2.5">
+            <nav className="-my-2 grid gap-0.5">
               {companyLinks.map((link) => (
                 link.external ? (
                   <a
@@ -435,7 +435,7 @@ export function MarketingFooter({
                     href={link.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs font-bold text-slate-500 hover:text-slate-900 transition"
+                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
                   >
                     {link.label}
                   </a>
@@ -443,7 +443,7 @@ export function MarketingFooter({
                   <Link
                     key={link.label}
                     href={link.href}
-                    className="text-xs font-bold text-slate-500 hover:text-slate-900 transition"
+                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
                   >
                     {link.label}
                   </Link>
@@ -456,12 +456,12 @@ export function MarketingFooter({
           <div className="space-y-6">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">Legal desk</p>
-              <nav className="grid gap-2">
+              <nav className="-my-2 grid">
                 {legalLinks.map((link) => (
                   <Link
                     key={link.label}
                     href={link.href}
-                    className="text-xs font-bold text-slate-500 hover:text-slate-900 transition"
+                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
                   >
                     {link.label}
                   </Link>
@@ -471,12 +471,12 @@ export function MarketingFooter({
             
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">Helpline</p>
-              <div className="space-y-2 text-xs font-bold text-slate-500">
-                <a href={`tel:+91${contactDetails.primaryPhone}`} className="flex items-center gap-1.5 hover:text-slate-900 transition">
+              <div className="-my-1.5 text-xs font-bold text-slate-500">
+                <a href={`tel:+91${contactDetails.primaryPhone}`} className="flex min-h-11 items-center gap-1.5 transition hover:text-slate-900">
                   <Phone className="h-3.5 w-3.5 text-blue-500" />
                   +91 {contactDetails.primaryPhone}
                 </a>
-                <a href={`mailto:${contactDetails.email}`} className="flex items-center gap-1.5 hover:text-slate-900 transition truncate">
+                <a href={`mailto:${contactDetails.email}`} className="flex min-h-11 items-center gap-1.5 truncate transition hover:text-slate-900">
                   <Mail className="h-3.5 w-3.5 text-slate-400" />
                   {contactDetails.email}
                 </a>
@@ -485,7 +485,7 @@ export function MarketingFooter({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 text-[10px] font-bold text-emerald-700 transition"
+                  className="mt-2 inline-flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 text-[10px] font-bold text-emerald-700 transition"
                 >
                   <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
                   WhatsApp Desk
@@ -499,7 +499,7 @@ export function MarketingFooter({
         {/* Bottom Bar: License and Copyright */}
         <div className="mt-12 pt-6 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-bold text-slate-400">
           <div className="flex flex-wrap justify-center sm:justify-start gap-x-4 gap-y-1">
-            <p>&copy; 2026 DigiConnect Dukan. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} DigiConnect Dukan. All rights reserved.</p>
             <p className="hidden sm:inline">|</p>
             <p>Certified ISO 9001:2015 Compliant Entity</p>
           </div>

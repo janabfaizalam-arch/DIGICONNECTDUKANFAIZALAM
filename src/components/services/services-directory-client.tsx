@@ -531,7 +531,7 @@ export function ServicesDirectoryClient({ initialServices, initialQuery }: Props
                     type="button"
                     onClick={() => setSelected(service)}
                     aria-label={`Quick view: ${service.title}`}
-                    className="lg-pill lg-raise absolute right-2.5 top-2.5 z-10 inline-flex h-9 min-w-9 items-center justify-center gap-1.5 px-2 text-[11.5px] font-extrabold text-[var(--dc-blue-mid)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)] sm:px-3"
+                    className="lg-pill lg-raise absolute right-2 top-2 z-10 inline-flex h-11 min-w-11 items-center justify-center gap-1.5 px-2.5 text-[11.5px] font-extrabold text-[var(--dc-blue-mid)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dc-blue-bright)] sm:px-3"
                   >
                     <Eye className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden sm:inline">Quick view</span>

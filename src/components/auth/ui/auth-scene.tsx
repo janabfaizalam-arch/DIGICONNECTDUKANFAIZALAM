@@ -71,7 +71,7 @@ export function AuthScene({ children, eyebrow, headline, kicker, className }: Au
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="relative z-10"
         >
-          <Link href="/" className="group inline-flex items-center" aria-label="DigiConnect Dukan home">
+          <Link href="/" className="group -my-2 inline-flex min-h-11 items-center py-2" aria-label="DigiConnect Dukan home">
             <Image
               src="/logo-navbar.png"
               alt=""

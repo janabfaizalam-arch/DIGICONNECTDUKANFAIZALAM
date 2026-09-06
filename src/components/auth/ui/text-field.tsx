@@ -105,8 +105,8 @@ export const TextField = forwardRef<HTMLInputElement, BaseProps>(function TextFi
           <button
             type="button"
             onClick={() => setRevealed((v) => !v)}
-            aria-label={revealed ? "Hide" : "Show"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 outline-none transition hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label={revealed ? "Password chhupaiye" : "Password dikhaiye"}
+            className="absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 outline-none transition hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>

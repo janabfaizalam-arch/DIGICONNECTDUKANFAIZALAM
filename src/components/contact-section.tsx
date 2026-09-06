@@ -49,9 +49,16 @@ export function ContactSection() {
             <div className="liquid-card rounded-[1.3rem] p-5">
               <Mail className="h-5 w-5 text-[var(--primary)]" />
               <p className="mt-4 text-sm font-medium text-slate-500">Online</p>
-              <Link href={`mailto:${contactDetails.email}`} className="mt-1 block text-lg font-bold text-slate-950">
+              {/* `<a>`, not `<Link>`: next/link is a client-side router for in-app
+                  routes, and handing it a `mailto:` makes it prefetch and
+                  intercept a URL the browser should hand straight to the mail
+                  app. */}
+              <a
+                href={`mailto:${contactDetails.email}`}
+                className="mt-1 inline-flex min-h-11 items-center text-lg font-bold text-slate-950"
+              >
                 {contactDetails.email}
-              </Link>
+              </a>
               <Link
                 href={contactDetails.website}
                 target="_blank"
