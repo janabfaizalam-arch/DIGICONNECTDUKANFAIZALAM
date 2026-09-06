@@ -127,7 +127,9 @@ export default function CustomerV2Dashboard() {
       <motion.div variants={itemVariants} className="bg-white/5 border border-white/10 rounded-[2rem] backdrop-blur-xl overflow-hidden">
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-white">Recent Applications</h3>
-          <Link href="/customer-v2/applications" className="text-sm font-medium text-[#00bfa5] hover:text-white transition-colors">View All</Link>
+          {/* /customer-v2/applications was never built — this pointed at a 404.
+              The customer portal's Applications section is the real list. */}
+          <Link href="/dashboard" className="text-sm font-medium text-[#00bfa5] transition-colors hover:text-white">View All</Link>
         </div>
         <div className="p-0">
           {(!data?.recentApplications || data.recentApplications.length === 0) ? (

@@ -36,11 +36,31 @@ export function LeadForm() {
     formData.set("service", form.service);
     formData.set("message", form.message);
 
+    /*
+      The element is captured before the await. React nulls `currentTarget` as
+      soon as the handler returns, so reading it after the fetch threw a
+      TypeError — which happened on the success path, after the state reset and
+      *before* the success toast, so a submission that worked looked to the
+      customer like nothing happened.
+    */
+    const formElement = event.currentTarget;
+
     startTransition(async () => {
-      const response = await fetch("/api/lead", {
-        method: "POST",
-        body: formData,
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/lead", { method: "POST", body: formData });
+      } catch {
+        /*
+          A dropped connection used to reject silently: no message, no toast,
+          the form still full. On a phone on shop wifi this is the most likely
+          failure of all, so it gets the clearest answer.
+        */
+        const offline = "Network nahi mila. Ek baar phir try kijiye, ya WhatsApp par bhej dijiye.";
+        setFeedback(offline);
+        toastError(offline);
+        return;
+      }
+
       const text = await response.text();
       let result: { message?: string; error?: string };
 
@@ -57,7 +77,7 @@ export function LeadForm() {
         trackLead();
         trackLeadSubmit();
         setForm(initialState);
-        event.currentTarget.reset();
+        formElement.reset();
         success(message);
       } else {
         toastError(message);

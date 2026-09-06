@@ -99,7 +99,7 @@ export function CustomerEmailLoginFlow({ initialError }: { initialError?: string
         <div className="flex justify-end">
           <Link
             href="/customer/forgot-password"
-            className="text-sm font-semibold text-blue-600 hover:underline"
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-blue-600 hover:underline"
           >
             Forgot password?
           </Link>
@@ -114,7 +114,7 @@ export function CustomerEmailLoginFlow({ initialError }: { initialError?: string
 
       <p className="text-center text-sm text-slate-500">
         New here?{" "}
-        <Link href="/customer/signup" className="font-semibold text-blue-600 hover:underline">
+        <Link href="/customer/signup" className="inline-flex min-h-11 items-center font-semibold text-blue-600 hover:underline">
           Create an account
         </Link>
       </p>

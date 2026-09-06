@@ -169,7 +169,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
 
       <div className="flex flex-col items-center gap-3 border-t border-slate-100 pt-4 text-center">
         <div className="flex items-center gap-4 text-sm font-semibold text-slate-500">
-          <Link href="/ap/forgot-password" className="hover:text-slate-900 hover:underline">
+          <Link href="/ap/forgot-password" className="inline-flex min-h-11 items-center hover:text-slate-900 hover:underline">
             Forgot password?
           </Link>
           <span className="text-slate-200">|</span>

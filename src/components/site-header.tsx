@@ -557,7 +557,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
           {/* LEFT — Logo */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 transition-opacity duration-200 hover:opacity-80"
+            className="-my-2 flex min-h-11 shrink-0 items-center gap-2 py-2 transition-opacity duration-200 hover:opacity-80"
             aria-label="DigiConnect Dukan home"
           >
             <span className="flex h-7 w-[7rem] items-center md:h-9 md:w-[9rem]">
@@ -892,7 +892,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                 href={DIGI_PARTNER_LOGIN_ROUTE}
                 aria-label={DIGI_PARTNER_CTA_LABEL}
                 title={DIGI_PARTNER_CTA_LABEL}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-200/70 bg-white/60 text-indigo-700 transition hover:bg-indigo-50/70 active:scale-95 md:hidden"
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-indigo-200/70 bg-white/60 text-indigo-700 transition hover:bg-indigo-50/70 active:scale-95 md:hidden"
               >
                 <BadgeCheck className="h-[18px] w-[18px]" />
               </Link>
@@ -901,7 +901,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
             {/* Mobile Login/Dashboard */}
             <Link
               href={isLoggedIn ? accountHref : "/customer/login"}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] active:scale-95 md:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--dc-blue-700)] text-white transition hover:bg-[var(--dc-blue-600)] active:scale-95 md:hidden"
               aria-label={isLoggedIn ? "My account" : "Customer Login"}
             >
               {isLoggedIn ? (

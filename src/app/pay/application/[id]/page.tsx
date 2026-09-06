@@ -207,7 +207,7 @@ export default async function CustomerPayApplicationPage({ params }: { params: P
       </div>
 
       <div className="text-center mt-12 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-        © 2026 DigiConnect Dukan · Powered by Advanced Agentic Operations
+        © {new Date().getFullYear()} DigiConnect Dukan · Powered by Advanced Agentic Operations
       </div>
     </main>
   );

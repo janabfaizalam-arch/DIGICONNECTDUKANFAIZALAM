@@ -1,7 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Home, LayoutGrid, LogIn, ShieldCheck, UserRound } from "lucide-react";
 
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
+
+/**
+ * Its own title, and kept out of the index.
+ *
+ * Without this the 404 inherited the site's homepage title and description, so
+ * every mistyped URL a crawler followed looked — to the crawler and in a
+ * browser tab — like the front page. `noindex` is the part that matters:
+ * indexed 404s dilute the pages that are meant to rank.
+ */
+export const metadata: Metadata = {
+  title: "Page Not Found (404) | DigiConnect Dukan",
+  description:
+    "The page you are looking for does not exist or has moved. Browse services, track an application, or sign in to your DigiConnect Dukan account.",
+  robots: { index: false, follow: true },
+};
 
 const recoveryActions = [
   { href: "/", label: "Go Home", icon: Home },

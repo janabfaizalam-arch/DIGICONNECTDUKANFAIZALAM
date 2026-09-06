@@ -266,7 +266,7 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
       
       {/* Footer */}
       <div className="text-center mt-8">
-        <p className="text-xs text-slate-400">© 2026 DigiConnect Dukan. All payments are securely routed and invoiced. Partners are registered with RNoS India Pvt Ltd.</p>
+        <p className="text-xs text-slate-400">© {new Date().getFullYear()} DigiConnect Dukan. All payments are securely routed and invoiced. Partners are registered with RNoS India Pvt Ltd.</p>
       </div>
     </div>
   );
