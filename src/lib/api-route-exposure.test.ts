@@ -31,9 +31,16 @@ const routeFiles = listRouteFiles(apiRoot);
  * station token or the platform's environment key, and the three agent routes
  * call it instead of comparing the secret inline. Without it named here, a
  * refactor that moved auth into a helper would read as auth being deleted.
+ *
+ * `authorizeCron` is the content engine's, and is the same shape: it rate
+ * limits, refuses a secret passed in the query string, and compares the
+ * Authorization header against the same shared secret every other cron here
+ * uses. Its five jobs call it on their first line, one of which can publish
+ * to a public account — so the helper is named rather than the check being
+ * copied five times and drifting in one of them.
  */
 const GUARD_PATTERNS =
-  /getCurrentUser|isAdminRole|isActiveAgent|currentUserHasCapability|requireAdmin|verifyAdminAccessToken|verifyAccessToken|getSession\(|CRON_SECRET|WEBHOOK_SECRET|SECRET_KEY|resolveCommsCronSecret|secretsEqual|x-razorpay-signature|verifyWebhookSignature|timingSafeEqual|authenticateAgent/;
+  /getCurrentUser|isAdminRole|isActiveAgent|currentUserHasCapability|requireAdmin|verifyAdminAccessToken|verifyAccessToken|getSession\(|CRON_SECRET|WEBHOOK_SECRET|SECRET_KEY|resolveCommsCronSecret|secretsEqual|x-razorpay-signature|verifyWebhookSignature|timingSafeEqual|authenticateAgent|authorizeCron/;
 
 /**
  * Routes that hold the service-role client and write without establishing a
