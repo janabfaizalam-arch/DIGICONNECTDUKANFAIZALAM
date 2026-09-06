@@ -32,16 +32,19 @@ import {
   BanknoteArrowUp,
   BarChart3,
   Bell,
+  CalendarClock,
   Building2,
   ClipboardList,
   Contact,
   FileSpreadsheet,
   FileText,
+  FolderCheck,
   Gauge,
   Globe,
   IdCard,
   Image,
   LayoutDashboard,
+  Lightbulb,
   LifeBuoy,
   ListChecks,
   MessageSquare,
@@ -329,6 +332,46 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         description: "Settings for the Olympiad landing page",
         icon: ScrollText,
         hidden: "The Olympiad page is not a service this shop runs.",
+      },
+    ],
+  },
+  {
+    id: "content-engine",
+    label: "AI Content Engine",
+    blurb: "Idea se publish tak ka pura content loop, ek jagah.",
+    icon: Sparkles,
+    defaultCollapsed: true,
+    items: [
+      {
+        href: "/admin/content-engine",
+        label: "Content Engine",
+        description: "Pipeline, is hafte ke numbers, aur jo aapki approval ka intezaar kar raha hai",
+        icon: Sparkles,
+        emphasis: true,
+      },
+      {
+        href: "/admin/content-engine/ideas",
+        label: "Ideas",
+        description: "Ranked idea bank — agla post kahan se aayega",
+        icon: Lightbulb,
+      },
+      {
+        href: "/admin/content-engine/approval",
+        label: "Approvals",
+        description: "Content, claims aur design ek saath, publish se pehle",
+        icon: FolderCheck,
+      },
+      {
+        href: "/admin/content-engine/calendar",
+        label: "Content Calendar",
+        description: "Kya kab kis platform par jaayega",
+        icon: CalendarClock,
+      },
+      {
+        href: "/admin/content-engine/analytics",
+        label: "Content Analytics",
+        description: "Har post ne kya kiya, aur uska agle hafte par asar",
+        icon: BarChart3,
       },
     ],
   },
@@ -638,6 +681,26 @@ export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
   { href: "/admin/cashback", reachedFrom: "redirect → /admin/wallet" },
   { href: "/admin/rewards", reachedFrom: "redirect → /admin/wallet" },
   { href: "/admin/rewards-referrals", reachedFrom: "redirect → /admin/wallet" },
+
+  /*
+    The Content Engine's working screens.
+
+    Five of its twelve are in the sidebar above — the overview, the idea bank,
+    approvals, the calendar and analytics — because those are the ones somebody
+    opens on purpose. The seven below are stages you arrive at from the tab bar
+    inside the engine, or from a button on the screen before them: nobody
+    navigates to "angles" from a cold start, they get there having just picked
+    an idea. They are named here so that being absent from the sidebar stays a
+    decision somebody wrote down rather than the accident that once left
+    twenty-five admin screens with no door at all.
+  */
+  { href: "/admin/content-engine/angles", reachedFrom: "/admin/content-engine/ideas — after picking an idea" },
+  { href: "/admin/content-engine/drafts", reachedFrom: "/admin/content-engine/angles — after picking a hook" },
+  { href: "/admin/content-engine/fact-check", reachedFrom: "/admin/content-engine — the Content Engine tab bar" },
+  { href: "/admin/content-engine/designs", reachedFrom: "/admin/content-engine — the Content Engine tab bar" },
+  { href: "/admin/content-engine/repurpose", reachedFrom: "/admin/content-engine — the Content Engine tab bar" },
+  { href: "/admin/content-engine/brand", reachedFrom: "/admin/content-engine — the Content Engine tab bar" },
+  { href: "/admin/content-engine/settings", reachedFrom: "/admin/content-engine — the Content Engine tab bar" },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
