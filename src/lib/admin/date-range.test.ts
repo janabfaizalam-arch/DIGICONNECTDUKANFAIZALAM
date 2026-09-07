@@ -72,6 +72,9 @@ describe("admin nav IA", () => {
       "work",
       "catalogue",
       "website",
+      // Content marketing sits with the website rather than with the money:
+      // both groups are about what the shop puts in front of the public.
+      "content-engine",
       "money",
       "messages",
       "insight",
