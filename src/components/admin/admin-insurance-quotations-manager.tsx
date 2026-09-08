@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, FilePenLine, LoaderCircle, MessageCircle, Plus, ShieldCheck, Trash2, X } from "lucide-react";
+import { Copy, ExternalLink, FilePenLine, LoaderCircle, MessageCircle, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  computeGst,
+  computeTotal,
   createInsuranceQuotationWhatsappText,
+  defaultValidTill,
+  effectiveStatus,
   formatInsuranceCurrency,
   formatInsuranceDate,
   fuelTypes,
@@ -98,6 +102,99 @@ function StatusBadge({ status }: { status: InsuranceQuotationStatus }) {
   );
 }
 
+
+/**
+ * Premium in, GST and total out.
+ *
+ * These were three independent hand-typed numbers and nothing checked that
+ * they added up — a slipped digit in the total is a figure the shop then has
+ * to honour or retract in front of the customer. Type the premium and the
+ * other two follow at eighteen per cent; either can still be overridden for a
+ * quote that genuinely differs, and the server refuses the save if the three
+ * end up disagreeing by more than a rupee.
+ */
+function PremiumFields({
+  quotation,
+  disabled,
+}: {
+  quotation?: InsuranceQuotation | null;
+  disabled?: boolean;
+}) {
+  const [premium, setPremium] = useState(String(quotation?.premium_amount ?? ""));
+  const [gst, setGst] = useState(String(quotation?.gst_amount ?? ""));
+  const [total, setTotal] = useState(String(quotation?.total_amount ?? ""));
+  const [touched, setTouched] = useState({ gst: Boolean(quotation), total: Boolean(quotation) });
+
+  function onPremium(value: string) {
+    setPremium(value);
+    const base = Number(value);
+    if (!Number.isFinite(base)) return;
+    const nextGst = touched.gst ? Number(gst) : computeGst(base);
+    if (!touched.gst) setGst(nextGst ? String(nextGst) : "");
+    if (!touched.total) setTotal(String(computeTotal(base, nextGst)));
+  }
+
+  function onGst(value: string) {
+    setGst(value);
+    setTouched((t) => ({ ...t, gst: true }));
+    if (!touched.total) setTotal(String(computeTotal(Number(premium), Number(value))));
+  }
+
+  const expected = computeTotal(Number(premium), Number(gst));
+  const mismatch =
+    premium !== "" && total !== "" && Math.abs(expected - Number(total)) > 1;
+
+  return (
+    <>
+      <Field label="Premium Amount" required>
+        <Input
+          name="premium_amount"
+          type="number"
+          step="0.01"
+          min="0"
+          value={premium}
+          onChange={(event) => onPremium(event.target.value)}
+          required
+          disabled={disabled}
+        />
+      </Field>
+      <Field label="GST Amount (18% auto)">
+        <Input
+          name="gst_amount"
+          type="number"
+          step="0.01"
+          min="0"
+          value={gst}
+          onChange={(event) => onGst(event.target.value)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field label="Total Payable Amount" required>
+        <Input
+          name="total_amount"
+          type="number"
+          step="0.01"
+          min="0"
+          value={total}
+          onChange={(event) => {
+            setTotal(event.target.value);
+            setTouched((t) => ({ ...t, total: true }));
+          }}
+          required
+          disabled={disabled}
+          aria-invalid={mismatch || undefined}
+        />
+        {mismatch ? (
+          <span className="text-xs font-bold text-red-600" role="alert">
+            {formatInsuranceCurrency(Number(premium))} + {formatInsuranceCurrency(Number(gst))} ={" "}
+            {formatInsuranceCurrency(expected)} — total abhi {formatInsuranceCurrency(Number(total))} hai.
+          </span>
+        ) : null}
+      </Field>
+    </>
+  );
+}
+
 function QuotationForm({
   quotation,
   disabled,
@@ -172,17 +269,15 @@ function QuotationForm({
           <Field label="Insurer Company">
             <Input name="insurer_company" defaultValue={quotation?.insurer_company ?? ""} disabled={disabled} />
           </Field>
-          <Field label="Premium Amount" required>
-            <Input name="premium_amount" type="number" step="0.01" defaultValue={quotation?.premium_amount ?? ""} required disabled={disabled} />
-          </Field>
-          <Field label="GST Amount">
-            <Input name="gst_amount" type="number" step="0.01" defaultValue={quotation?.gst_amount ?? 0} disabled={disabled} />
-          </Field>
-          <Field label="Total Payable Amount" required>
-            <Input name="total_amount" type="number" step="0.01" defaultValue={quotation?.total_amount ?? ""} required disabled={disabled} />
-          </Field>
+          <PremiumFields quotation={quotation} disabled={disabled} />
           <Field label="Valid Till Date" required>
-            <Input name="valid_till" type="date" defaultValue={quotation?.valid_till ?? ""} required disabled={disabled} />
+            <Input
+              name="valid_till"
+              type="date"
+              defaultValue={quotation?.valid_till ?? defaultValidTill()}
+              required
+              disabled={disabled}
+            />
           </Field>
           <Field label="Status">
             <Select name="status" defaultValue={quotation?.status ?? "draft"}>
@@ -228,18 +323,47 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
   const [isCreating, setIsCreating] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | InsuranceQuotationStatus>("all");
   const formRef = useRef<HTMLDivElement>(null);
 
+  /*
+    Counted by the status a customer would actually see. Nothing ever moved a
+    quotation to "expired", so the old tallies reported lapsed quotes as
+    live — the "Sent" number was the one figure on this screen a shop would
+    act on, and it was wrong.
+  */
   const totals = useMemo(() => {
     return quotations.reduce(
       (current, quote) => {
         current.total += Number(quote.total_amount ?? 0);
-        current[quote.status] += 1;
+        current[effectiveStatus(quote)] += 1;
         return current;
       },
       { total: 0, draft: 0, sent: 0, accepted: 0, rejected: 0, expired: 0 },
     );
   }, [quotations]);
+
+  /** Search across the things somebody at the counter actually remembers. */
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return quotations.filter((quote) => {
+      if (statusFilter !== "all" && effectiveStatus(quote) !== statusFilter) return false;
+      if (!needle) return true;
+      return [
+        quote.quote_number,
+        quote.customer_name,
+        quote.mobile,
+        quote.vehicle_number,
+        quote.make ?? "",
+        quote.model ?? "",
+        quote.insurer_company ?? "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle);
+    });
+  }, [quotations, query, statusFilter]);
 
   function openCreate() {
     setEditingQuote(null);
@@ -352,8 +476,11 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
           <p className="mt-2 text-2xl font-bold text-emerald-700">{totals.accepted}</p>
         </Card>
         <Card className="border-blue-100 p-4">
-          <p className="text-sm font-semibold text-slate-500">Sent / Draft</p>
+          <p className="text-sm font-semibold text-slate-500">Active / Draft</p>
           <p className="mt-2 text-2xl font-bold text-blue-700">{totals.sent} / {totals.draft}</p>
+          {totals.expired ? (
+            <p className="mt-1 text-xs font-bold text-orange-700">{totals.expired} expired</p>
+          ) : null}
         </Card>
         <Card className="border-blue-100 p-4">
           <p className="text-sm font-semibold text-slate-500">Quoted Value</p>
@@ -396,8 +523,44 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
         </div>
       ) : null}
 
+      {quotations.length ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-blue-100 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+          <label className="relative flex-1">
+            <span className="sr-only">Search quotations</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Quote number, customer, mobile, vehicle number…"
+              className="h-11 pl-9"
+            />
+          </label>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            {(["all", ...insuranceQuotationStatuses] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatusFilter(value)}
+                aria-pressed={statusFilter === value}
+                className={cn(
+                  "h-11 shrink-0 rounded-full px-3.5 text-xs font-bold transition",
+                  statusFilter === value
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-200 bg-white text-slate-600 hover:text-slate-900",
+                )}
+              >
+                {value === "all" ? "All" : statusLabels[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <Card className="overflow-hidden border-blue-100 shadow-sm">
-        {quotations.length ? (
+        {visible.length ? (
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
@@ -411,7 +574,7 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
               </TableRow>
             </TableHeader>
             <TableBody>
-              {quotations.map((quotation) => {
+              {visible.map((quotation) => {
                 const link = getInsuranceQuotationPublicUrl(quotation.public_token);
                 const whatsappUrl = buildWhatsAppUrl(createInsuranceQuotationWhatsappText(quotation));
 
@@ -434,7 +597,7 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
                       <p className="text-xs text-slate-500">Valid till {formatInsuranceDate(quotation.valid_till)}</p>
                     </TableCell>
                     <TableCell className="font-bold text-slate-950">{formatInsuranceCurrency(quotation.total_amount)}</TableCell>
-                    <TableCell><StatusBadge status={quotation.status} /></TableCell>
+                    <TableCell><StatusBadge status={effectiveStatus(quotation)} /></TableCell>
                     <TableCell>
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button type="button" variant="outline" size="icon" title="Edit" onClick={() => openEdit(quotation)} disabled={busyId === quotation.id}>
@@ -461,7 +624,17 @@ export function AdminInsuranceQuotationsManager({ initialQuotations }: { initial
           </Table>
         ) : (
           <div className="p-6">
-            <AdminEmptyState title="No insurance quotations yet" description="Create the first vehicle insurance quotation and share the public customer link." />
+            {quotations.length ? (
+              <AdminEmptyState
+                title="No quotation matches this search"
+                description="Try a different quote number, customer name, mobile or vehicle number — or clear the status filter."
+              />
+            ) : (
+              <AdminEmptyState
+                title="No insurance quotations yet"
+                description="Create the first vehicle insurance quotation and share the public customer link."
+              />
+            )}
           </div>
         )}
       </Card>
