@@ -25,6 +25,7 @@ type CreateOrderBody = {
   walletUseAmount?: number;
   couponCode?: string;
   applicationId?: string;
+  applicationIds?: string[];
   variantSlug?: string;
   packageSlug?: string;
   applicationDraft?: {
@@ -793,7 +794,7 @@ export async function POST(request: Request) {
 
         applicationIds = applications.map((application) => application.id);
       }
-    } else if (body?.applicationId) {
+    } else if (body?.applicationId || body?.applicationIds?.length) {
       const user = await getCurrentUser();
 
       if (!user) {
@@ -806,37 +807,65 @@ export async function POST(request: Request) {
         return jsonError("Database connection failed.", 500);
       }
 
-      const { data: application, error: appError } = await supabase
+      /*
+        One order can settle several applications, because one payment link
+        covers a whole cart. Paying for the cart's first application alone is
+        how a customer came to be charged for one service out of two.
+
+        `applicationId` remains the single-application form.
+      */
+      const requestedIds = [
+        ...new Set(
+          (body.applicationIds?.length ? body.applicationIds : [body.applicationId])
+            .filter((id): id is string => typeof id === "string" && Boolean(id)),
+        ),
+      ];
+
+      const { data: applicationRows, error: appError } = await supabase
         .from("applications")
         .select("*")
-        .eq("id", body.applicationId)
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .in("id", requestedIds)
+        .eq("user_id", user.id);
 
-      if (appError || !application) {
+      // Every application must be the caller's own: a partial match means one
+      // belongs to someone else, which is a 404, not a smaller order.
+      if (appError || !applicationRows || applicationRows.length !== requestedIds.length) {
         return jsonError("Application not found.", 404);
       }
 
-      if (application.payment_status === "verified" || application.payment_status === "paid") {
+      const byId = new Map(applicationRows.map((row) => [row.id, row]));
+      const applications = requestedIds.map((id) => byId.get(id)!);
+
+      if (applications.some((a) => a.payment_status === "verified" || a.payment_status === "paid")) {
         return jsonError("Payment already completed.", 400, "already_paid");
       }
 
-      const freshPayableAmount = Number(application.fresh_payable_amount ?? application.real_payment_amount ?? application.amount ?? 0);
+      const primary = applications[0];
+      const freshPayableAmount = applications.reduce(
+        (sum, a) => sum + Number(a.fresh_payable_amount ?? a.real_payment_amount ?? a.amount ?? 0),
+        0,
+      );
       const expectedAmount = rupeesToPaise(freshPayableAmount);
 
       if (body?.amount && Math.round(body.amount) !== expectedAmount) {
         return jsonError(`Razorpay amount does not match the server-side payable amount. Client: ${body.amount}, Expected: ${expectedAmount}`, 400);
       }
 
+      const applicationIdList = applications.map((a) => a.id);
+      const totalServicePrice = applications.reduce(
+        (sum, a) => sum + Number(a.total_amount ?? a.amount ?? 0),
+        0,
+      );
+
       if (expectedAmount === 0) {
         return NextResponse.json({
           order_id: null,
           amount: 0,
           currency,
-          application_id: application.id,
-          application_ids: [application.id],
+          application_id: primary.id,
+          application_ids: applicationIdList,
           message: "No payment is required for this application.",
-          servicePrice: Number(application.total_amount ?? application.amount ?? 0),
+          servicePrice: totalServicePrice,
           walletUsed: walletRedeemAmount,
           rewardUsed: walletRedeemAmount,
           finalPayable: 0,
@@ -844,10 +873,13 @@ export async function POST(request: Request) {
       }
 
       amount = expectedAmount;
-      applicationIds = [application.id];
+      applicationIds = applicationIdList;
       orderUserId = user.id;
-      walletRedeemAmount = Number(application.wallet_redeemed_amount ?? application.wallet_used_amount ?? 0);
-      servicePrice = Number(application.total_amount ?? application.amount ?? 0);
+      walletRedeemAmount = applications.reduce(
+        (sum, a) => sum + Number(a.wallet_redeemed_amount ?? a.wallet_used_amount ?? 0),
+        0,
+      );
+      servicePrice = totalServicePrice;
       walletUsed = walletRedeemAmount;
       rewardUsed = walletRedeemAmount;
       finalPayable = freshPayableAmount;

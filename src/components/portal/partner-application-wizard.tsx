@@ -892,12 +892,14 @@ export function PartnerApplicationWizard({
         throw new Error(orderData.error ?? orderData.message ?? `Order creation failed (HTTP ${orderRes.status})`);
       }
 
-      // Generate payment link
+      // Generate one payment link for the whole cart. Sending only the first
+      // application is how the customer came to be charged for one service
+      // while the partner was shown the cart total.
       const linkRes = await fetch("/api/payment-links/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          applicationId: orderData.application_ids[0],
+          applicationIds: orderData.application_ids,
         }),
       });
       const linkData = await linkRes.json();
@@ -913,7 +915,8 @@ export function PartnerApplicationWizard({
         applicationIds: orderData.application_ids,
         customerName:   customer.name,
         serviceTitle:   cartItems.map(i => `${i.service.title} ×${i.quantity}`).join(", "),
-        amountPaid:     cartTotal,
+        // The server is the authority on what the link actually charges.
+        amountPaid:     Number(linkData.amount ?? cartTotal),
       });
       setCurrentStep(6);
       toastSuccess?.("Payment link generated!");
