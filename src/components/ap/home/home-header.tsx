@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Wallet2 } from "lucide-react";
+import { Plus, Wallet2 } from "lucide-react";
 
 import type { PartnerHomeIdentity } from "@/lib/ap/home-types";
 import { speakINR } from "@/lib/ap/a11y";
@@ -85,11 +85,11 @@ export function HomeHeader({ identity }: HomeHeaderProps) {
           <p className="mt-1.5 text-[11.5px] font-medium text-white/70">{identity.heroCaption}</p>
 
           <Link
-            href="/ap/payments/collect"
+            href="/ap/applications/new"
             className="dcp-btn mt-3 bg-white text-[var(--dcp-brand-deep)] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.6)] hover:bg-white/90"
           >
-            Collect a payment
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            <Plus className="h-4 w-4" aria-hidden />
+            New application
           </Link>
         </div>
       </div>

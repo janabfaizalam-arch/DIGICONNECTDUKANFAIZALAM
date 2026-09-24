@@ -56,7 +56,12 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
         />
         {overlay}
       </div>
-      <div className="relative hidden aspect-[21/9] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
+      {/*
+        The ratio sets the height until the panel gets wide, then a cap takes
+        over: at 1700px a 21:9 banner is 730px tall and owns the whole first
+        screen. object-cover crops rather than squashes past the cap.
+      */}
+      <div className="relative hidden aspect-[21/9] max-h-[340px] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
         <Image
           src={banner.image_url}
           alt={alt}
