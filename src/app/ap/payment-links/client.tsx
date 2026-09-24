@@ -1,7 +1,9 @@
 "use client";
 
-import { Link2, Clock, CheckCircle2, Copy, XCircle } from "lucide-react";
+import { useState } from "react";
+import { Link2, Clock, CheckCircle2, Copy, QrCode, XCircle } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
+import { PaymentLinkQr } from "@/components/ap/payment-link-qr";
 import { Card } from "@/components/ui/card";
 
 export interface PaymentLink {
@@ -24,6 +26,11 @@ export interface PaymentLink {
 
 export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
   const { success: toastSuccess } = useToast();
+
+  // One QR open at a time: a wall of codes is unreadable, and only the link
+  // the customer is standing in front of matters.
+  const [openQrCode, setOpenQrCode] = useState<string | null>(null);
+
   
   const copyLink = (code: string) => {
     const url = `${window.location.origin}/pay/${code}`;
@@ -52,7 +59,8 @@ export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
           <div className="space-y-4">
             {links.length > 0 ? (
               links.map((link) => (
-                <div key={link.id} className="group relative flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/50 p-5 transition-all duration-200 hover:border-blue-500/20 hover:bg-slate-50 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div key={link.id} className="group relative rounded-2xl border border-slate-200 bg-white/50 p-5 transition-all duration-200 hover:border-blue-500/20 hover:bg-slate-50 shadow-sm">
+                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="font-extrabold text-slate-900 text-base">
@@ -102,14 +110,36 @@ export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
                     )}
                     
                     {link.status === "pending" && (
-                      <button 
-                        onClick={() => copyLink(link.code)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors"
-                      >
-                        <Copy className="h-3.5 w-3.5" /> Copy Link
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setOpenQrCode(openQrCode === link.code ? null : link.code)}
+                          aria-expanded={openQrCode === link.code}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors"
+                        >
+                          <QrCode className="h-3.5 w-3.5" /> {openQrCode === link.code ? "Hide QR" : "Show QR"}
+                        </button>
+                        <button
+                          onClick={() => copyLink(link.code)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors"
+                        >
+                          <Copy className="h-3.5 w-3.5" /> Copy Link
+                        </button>
+                      </>
                     )}
                   </div>
+                 </div>
+
+                 {/* Opened under its own row, so it is unambiguous which link
+                     the customer is about to scan. */}
+                 {openQrCode === link.code && link.status === "pending" && (
+                   <div className="mt-4 border-t border-slate-200 pt-4">
+                     <PaymentLinkQr
+                       url={`${typeof window === "undefined" ? "" : window.location.origin}/pay/${link.code}`}
+                       code={link.code}
+                       amount={link.amount}
+                     />
+                   </div>
+                 )}
                 </div>
               ))
             ) : (

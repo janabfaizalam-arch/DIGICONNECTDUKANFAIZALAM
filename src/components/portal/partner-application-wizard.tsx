@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
+import { PaymentLinkQr } from "@/components/ap/payment-link-qr";
 import { cn } from "@/lib/utils";
 import { servicesData } from "@/lib/services-data";
 import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
@@ -385,6 +386,7 @@ export function PartnerApplicationWizard({
   const [paymentError,  setPaymentError]  = useState<string | null>(null);
   const [paymentMethodType, setPaymentMethodType] = useState<"immediate" | "link">("immediate");
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+  const [paymentLinkCode, setPaymentLinkCode] = useState<string | null>(null);
   const [paymentLinkMessage, setPaymentLinkMessage] = useState<string | null>(null);
 
   // Camera extras
@@ -909,6 +911,7 @@ export function PartnerApplicationWizard({
       }
 
       setPaymentLinkUrl(linkData.url);
+      setPaymentLinkCode(linkData.code ?? null);
       setPaymentLinkMessage(linkData.whatsAppMessage);
 
       setSuccessDetails({
@@ -1902,7 +1905,17 @@ export function PartnerApplicationWizard({
                 {paymentMethodType === "link" && paymentLinkUrl && (
                   <div className="w-full space-y-3 pt-3 border-t border-[var(--dcp-line)]">
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center">
-                      <p className="text-xs font-bold text-blue-800 mb-2">Payment Link Generated</p>
+                      <p className="text-xs font-bold text-blue-800 mb-3">Payment Link Generated</p>
+
+                      {/* The customer is standing right here: let them scan
+                          rather than wait for a message to arrive. */}
+                      <PaymentLinkQr
+                        url={paymentLinkUrl}
+                        code={paymentLinkCode ?? undefined}
+                        amount={successDetails.amountPaid}
+                        className="mb-3"
+                      />
+
                       <input 
                         type="text" 
                         readOnly 
