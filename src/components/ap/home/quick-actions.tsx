@@ -50,6 +50,7 @@ function ActionCard({ action, lead }: { action: PartnerQuickAction; lead: boolea
   return (
     <Link
       href={action.href}
+      prefetch
       className={cn(
         "group relative w-[132px] shrink-0 snap-start overflow-hidden rounded-[14px] p-2.5 transition-all duration-200",
         "active:scale-[0.97] md:w-auto",
