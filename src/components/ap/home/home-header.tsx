@@ -65,12 +65,12 @@ export function HomeHeader({ identity, className }: HomeHeaderProps) {
             ) : null}
           </div>
 
-          <h1 className="mt-2 text-[17px] font-bold leading-tight tracking-tight sm:text-[20px]">
+          <h1 className="mt-2 text-[22px] font-bold leading-[1.1] tracking-[-0.015em] sm:text-[28px] lg:text-[32px]">
             {identity.name}
           </h1>
 
           {identity.partnerCode ? (
-            <p className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide text-white/75">
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-white/12 px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-white/80 ring-1 ring-inset ring-white/15">
               {identity.partnerCode}
             </p>
           ) : null}

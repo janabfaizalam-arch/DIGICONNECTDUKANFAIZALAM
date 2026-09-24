@@ -21,7 +21,7 @@ export default async function APLayout({ children }: { children: React.ReactNode
     // data-dcp scopes the panel's design system (see globals.css). Everything
     // inside gets the tinted surface ladder, IBM Plex Sans and the focus ring;
     // nothing outside the panel is touched.
-    <div data-dcp>
+    <div data-dcp data-dcp-page className="min-h-screen">
       <APPanelNav canManageTeam={canManageTeam} />
       {/*
         One nav, not two. The panel used to carry a permanently open sidebar on
