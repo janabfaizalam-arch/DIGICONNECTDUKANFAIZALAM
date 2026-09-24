@@ -33,7 +33,7 @@ export default async function APPaymentLinksPage() {
   // attachPaymentLinkRelations for why.
   const { data: links, error } = await supabase
     .from("payment_links")
-    .select("id, code, amount, status, created_at, expires_at, paid_at, application_id, customer_id, partner_id")
+    .select("id, code, amount, status, created_at, expires_at, paid_at, application_id, customer_id, partner_id, razorpay_qr_image_url")
     .eq("partner_id", ap.id)
     .order("created_at", { ascending: false });
 

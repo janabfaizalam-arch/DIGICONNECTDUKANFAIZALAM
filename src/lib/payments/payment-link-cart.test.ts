@@ -65,15 +65,21 @@ describe("order creation", () => {
 
 describe("settlement", () => {
   it("finds links through the cart table, in both payment paths", () => {
+    // verify-payment settles inline; the webhook now delegates to the shared
+    // settlement, which is also what the UPI QR path uses. Either way the
+    // call has to be reachable.
+    expect(read("src/app/api/verify-payment/route.ts")).toContain("markPaymentLinksPaid");
+    expect(read("src/app/api/razorpay/webhook/route.ts")).toContain("settleApplicationPayment");
+    expect(read("src/lib/payments/settle-application-payment.ts")).toContain("markPaymentLinksPaid");
+
     for (const path of [
       "src/app/api/verify-payment/route.ts",
       "src/app/api/razorpay/webhook/route.ts",
+      "src/lib/payments/settle-application-payment.ts",
     ]) {
-      const source = read(path);
-      expect(source).toContain("markPaymentLinksPaid");
       // The old per-application lookup could not see a link whose primary
       // application was a different one in the same cart.
-      expect(source).not.toMatch(/from\("payment_links"\)[\s\S]{0,120}\.eq\("application_id"/);
+      expect(read(path)).not.toMatch(/from\("payment_links"\)[\s\S]{0,120}\.eq\("application_id"/);
     }
   });
 

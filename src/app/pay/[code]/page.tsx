@@ -17,6 +17,7 @@ type PaymentLinkDetails = {
   partnerName: string;
   serviceName: string;
   services?: { applicationId: string; name: string; slug: string | null; amount: number }[];
+  upiQrImageUrl?: string | null;
   applicationId: string;
   applicationIds?: string[];
   expiresAt: string;
@@ -254,6 +255,33 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
               <span className="text-2xl font-black text-slate-900">₹{details?.amount.toLocaleString("en-IN")}</span>
             </div>
           </div>
+
+          {/* A UPI QR beats the checkout for anyone reading this on a second
+              screen: scan, pay, done. Checkout stays right below it for cards,
+              netbanking, and for anyone already on their phone. */}
+          {details?.upiQrImageUrl ? (
+            <div className="mb-8 flex flex-col items-center rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Scan with any UPI app
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={details.upiQrImageUrl}
+                alt="Scan with any UPI app to pay"
+                width={200}
+                height={200}
+                className="mt-3 h-[200px] w-[200px]"
+              />
+              <p className="mt-3 text-[11px] font-medium text-slate-400">
+                GPay · PhonePe · Paytm · any UPI app
+              </p>
+              <div className="mt-5 flex w-full items-center gap-3">
+                <span className="h-px flex-1 bg-slate-200" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">or</span>
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+            </div>
+          ) : null}
 
           {/* Secure Payment Badge */}
           <div className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50/50 rounded-2xl border border-blue-100/50 mb-8 text-blue-700">

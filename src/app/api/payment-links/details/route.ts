@@ -165,6 +165,10 @@ export async function GET(request: Request) {
       customerName,
       serviceName,
       services,
+      // A UPI QR the customer can pay from directly. Absent when the link was
+      // made before QR minting, or when minting failed -- the page falls back
+      // to Razorpay Checkout, which is always available.
+      upiQrImageUrl: link.razorpay_qr_image_url ?? null,
       partnerName,
       applicationId: link.application_id,
       applicationIds,
