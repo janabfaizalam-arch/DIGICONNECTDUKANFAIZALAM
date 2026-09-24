@@ -315,7 +315,21 @@ export function PartnerApplicationWizard({
   // Dynamic layout heights measurement using ResizeObserver
   useWizardLayoutMetrics([currentStep]);
 
-  // Visual viewport height adjusting bottom actions for soft keyboard on mobile devices
+  /*
+    Keep the action bar on the visual viewport's bottom edge while the soft
+    keyboard is open.
+
+    The previous version offset it by `window.innerHeight - vv.height`, which
+    is wrong on iOS twice over: innerHeight does not shrink when the keyboard
+    appears, and the visual viewport also scrolls, so the number was arbitrary
+    and the bar ended up floating in the middle of the form. The gap between
+    the layout viewport's bottom and the visual viewport's bottom is
+    `innerHeight - (vv.height + vv.offsetTop)` — that is the keyboard, and
+    nothing else.
+
+    It moves by transform rather than `bottom` so the browser composites it
+    instead of reflowing the page on every keystroke.
+  */
   useEffect(() => {
     if (!window.visualViewport) return;
 
@@ -324,12 +338,8 @@ export function PartnerApplicationWizard({
       if (!vv) return;
       const stickyActions = document.querySelector(".wizard-sticky-actions") as HTMLElement;
       if (stickyActions) {
-        const keyboardHeight = window.innerHeight - vv.height;
-        if (keyboardHeight > 60) {
-          stickyActions.style.bottom = `${keyboardHeight}px`;
-        } else {
-          stickyActions.style.bottom = "0px";
-        }
+        const offset = Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
+        stickyActions.style.transform = offset > 0 ? `translate3d(0, -${offset}px, 0)` : "";
       }
     };
 
@@ -1244,10 +1254,9 @@ export function PartnerApplicationWizard({
       {/* ── MAIN LAYOUT ──────────────────────────────────────────────────── */}
       <div
         className="transition-all duration-300"
-        style={{
-          paddingTop: "calc(var(--site-header-height, 0px) + 16px + env(safe-area-inset-top))",
-          paddingBottom: "calc(var(--wizard-bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
-        }}
+        // No bottom padding here: the page already reserves the action bar's
+        // height, and adding it twice is the empty screenful under every step.
+        style={{ paddingTop: "0px" }}
       >
         <div className="mx-auto w-full max-w-4xl space-y-2.5 py-1">
 
@@ -1387,7 +1396,7 @@ export function PartnerApplicationWizard({
                   ) : filteredServices.length === 0 ? (
                     <div className="py-12 text-center text-[var(--dcp-ink-4)] text-sm">No services match your search.</div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {filteredServices.map(srv => {
                         const Icon   = getCategoryIcon(srv.category);
                         const entry  = cart.find(e => e.slug === srv.slug);
@@ -1401,15 +1410,15 @@ export function PartnerApplicationWizard({
                           <div
                             key={srv.slug}
                             className={cn(
-                              "border rounded-xl p-3.5 flex items-start gap-3 transition-all",
+                              "flex items-start gap-2.5 rounded-[14px] border p-2.5 transition-all duration-200",
                               qty > 0
-                                ? "bg-blue-50/50 border-blue-300"
-                                : "bg-white border-[var(--dcp-line)] hover:border-[var(--dcp-line-2)]"
+                                ? "border-[var(--dcp-brand)]/40 bg-[var(--dcp-brand-soft)] shadow-[inset_0_0_0_1px_rgba(18,104,232,0.14)]"
+                                : "border-[var(--dcp-line)] bg-white hover:border-[var(--dcp-line-2)] hover:shadow-[var(--dcp-e1)]"
                             )}
                           >
                             <div className={cn(
-                              "p-2.5 rounded-xl shrink-0 mt-0.5",
-                              qty > 0 ? "bg-blue-600 text-white" : "bg-[var(--dcp-surface-3)] text-[var(--dcp-ink-3)]"
+                              "dcp-chip h-8 w-8 shrink-0",
+                              qty > 0 ? "dcp-chip-filled" : "bg-[var(--dcp-surface-2)] text-[var(--dcp-ink-3)]"
                             )}>
                               <Icon className="h-4 w-4" />
                             </div>
@@ -1421,7 +1430,7 @@ export function PartnerApplicationWizard({
                                   onClick={e => { e.stopPropagation(); toggleFavourite(srv.slug); }}
                                   className="shrink-0 hover:scale-110 transition-transform"
                                 >
-                                  <Star className={cn("h-3.5 w-3.5", isFav ? "fill-amber-400 text-amber-400" : "text-slate-300")} />
+                                  <Star className={cn("h-3.5 w-3.5", isFav ? "fill-amber-400 text-amber-400" : "text-[var(--dcp-line-2)]")} />
                                 </button>
                               </div>
                               <div className="flex items-center gap-2">
@@ -1435,7 +1444,7 @@ export function PartnerApplicationWizard({
                               {qty === 0 ? (
                                 <button
                                   onClick={() => addToCart(srv.slug)}
-                                  className="mt-2 text-[10px] font-bold [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white px-3 py-1 rounded-lg transition-colors active:scale-95"
+                                  className="dcp-btn dcp-btn-brand mt-1.5 h-7 px-2.5 text-[10.5px]"
                                 >
                                   + Add to Cart
                                 </button>
@@ -1482,7 +1491,7 @@ export function PartnerApplicationWizard({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {[
                     { key: "name",      label: "Full Name *",         type: "text",  span: 2, placeholder: "e.g. Rahul Kumar" },
                     { key: "mobile",    label: "Mobile *",            type: "tel",   span: 1, placeholder: "10-digit mobile",   maxLen: 10, numeric: true },
@@ -1786,7 +1795,7 @@ export function PartnerApplicationWizard({
                           <div key={slot.id} className="flex items-center gap-2 text-xs">
                             {file
                               ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                              : <X     className="h-3.5 w-3.5 text-slate-300" />}
+                              : <X     className="h-3.5 w-3.5 text-[var(--dcp-line-2)]" />}
                             <span className={file ? "font-semibold text-[var(--dcp-ink-2)]" : "text-[var(--dcp-ink-4)]"}>
                               {slot.label}{file && ` — ${file.name}`}
                             </span>
@@ -1970,7 +1979,7 @@ export function PartnerApplicationWizard({
       {/* ── STICKY BOTTOM ACTION BAR ────────────────────────────────────────── */}
       {currentStep < 6 && (
         <div 
-          className="wizard-sticky-actions fixed inset-x-0 bottom-0 z-[70] flex items-center gap-2.5 border-t border-[var(--dcp-line)] bg-[var(--dcp-surface)] px-3 py-2.5 transition-all duration-300 sm:px-4"
+          className="wizard-sticky-actions fixed inset-x-0 bottom-0 z-[70] flex items-center gap-2.5 border-t border-[var(--dcp-line)] bg-[var(--dcp-surface)] px-3 py-2.5 sm:px-4"
           style={{
             boxShadow: "0 -10px 34px -12px rgba(10, 24, 52, 0.22)",
             paddingBottom: "calc(10px + env(safe-area-inset-bottom))",

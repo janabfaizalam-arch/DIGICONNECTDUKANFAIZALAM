@@ -96,7 +96,9 @@ export async function GET() {
     // 5. Fetch Payment Links
     const { data: paymentLinks } = await supabase
       .from("payment_links")
-      .select("*, applications(service_name, status), profiles(full_name)")
+      // payment_links has no FK to public.profiles (its customer_id points at
+      // auth.users), so embedding profiles here fails the whole query.
+      .select("*, applications(service_name, status)")
       .eq("partner_id", ap.id)
       .order("created_at", { ascending: false });
 
