@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
+import { markPaymentLinksPaid } from "@/lib/payments/mark-payment-links-paid";
 
 type RazorpayWebhookPayload = {
   event?: string;
@@ -157,34 +158,13 @@ export async function POST(request: Request) {
     await Promise.all([applicationStatusUpdate, invoicesUpdate]);
 
     if (status === "verified") {
-      // 1. Process payment links status if any matching links exist
-      try {
-        await Promise.all(
-          applicationIds.map(async (appId) => {
-            const { data: link } = await supabase
-              .from("payment_links")
-              .select("id, status")
-              .eq("application_id", appId)
-              .eq("status", "pending")
-              .maybeSingle();
-
-            if (link) {
-              await supabase
-                .from("payment_links")
-                .update({
-                  status: "paid",
-                  paid_at: paidAt,
-                  razorpay_order_id: payment.order_id ?? null,
-                  razorpay_payment_id: payment.id,
-                  updated_at: paidAt,
-                })
-                .eq("id", link.id);
-            }
-          })
-        );
-      } catch (err) {
-        console.error("[razorpay/webhook] Failed to update payment link status:", err);
-      }
+      // 1. Settle any payment links covering these applications
+      await markPaymentLinksPaid(
+        supabase,
+        applicationIds,
+        { paidAt, razorpayOrderId: payment.order_id ?? null, razorpayPaymentId: payment.id },
+        "[razorpay/webhook]",
+      );
 
       // 2. Reserve partner commissions for referred/partner applications
       try {

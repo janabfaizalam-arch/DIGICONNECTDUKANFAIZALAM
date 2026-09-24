@@ -58,10 +58,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Payment link not found." }, { status: 404 });
     }
 
+    // A link covers a whole cart, so the services come from its cart table.
+    // payment_links.application_id is only the first of them, and reading it
+    // alone is what let a two-service link present itself as one service.
+    const { data: cartRows } = await supabase
+      .from("payment_link_applications")
+      .select("application_id")
+      .eq("payment_link_id", link.id);
+
+    const applicationIds = (cartRows ?? []).map((row) => row.application_id);
+    if (!applicationIds.length && link.application_id) {
+      // A link written before the cart table existed.
+      applicationIds.push(link.application_id);
+    }
+
     // Names are decoration on this page: the amount, the code and the expiry
     // are what the customer pays against. A lookup that fails falls back to a
     // generic label rather than taking a working link down with it.
-    const [customerResult, partnerResult, applicationResult] = await Promise.all([
+    const [customerResult, partnerResult, applicationsResult] = await Promise.all([
       link.customer_id
         ? supabase.from("profiles").select("full_name").eq("id", link.customer_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -72,18 +86,36 @@ export async function GET(request: Request) {
             .eq("id", link.partner_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
-      link.application_id
+      applicationIds.length
         ? supabase
             .from("applications")
-            .select("service_name, status, service_slug")
-            .eq("id", link.application_id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
+            .select("id, service_name, status, service_slug, amount")
+            .in("id", applicationIds)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const customerName = customerResult.data?.full_name || "Customer";
     const partnerName = partnerResult.data?.full_name || "DigiConnect";
-    const serviceName = applicationResult.data?.service_name || "Service";
+
+    // Ordered as the cart was, so the page reads the way the partner built it.
+    const applicationRows = applicationsResult.data ?? [];
+    const applicationById = new Map(applicationRows.map((row) => [row.id, row]));
+    const services = applicationIds
+      .map((id) => applicationById.get(id))
+      .filter(Boolean)
+      .map((row) => ({
+        applicationId: row!.id,
+        name: row!.service_name || "Service",
+        slug: row!.service_slug ?? null,
+        amount: Number(row!.amount ?? 0),
+      }));
+
+    // One service keeps its own name; a cart says how many, because a single
+    // name would misrepresent what is being paid for.
+    const serviceName =
+      services.length > 1
+        ? `${services[0].name} + ${services.length - 1} more`
+        : services[0]?.name || "Service";
 
     const now = new Date();
     const expiresAt = new Date(link.expires_at);
@@ -110,6 +142,7 @@ export async function GET(request: Request) {
         paidAt: link.paid_at,
         customerName,
         serviceName,
+        services,
         partnerName,
         amount: link.amount,
       });
@@ -131,8 +164,10 @@ export async function GET(request: Request) {
       gstAmount,
       customerName,
       serviceName,
+      services,
       partnerName,
       applicationId: link.application_id,
+      applicationIds,
       expiresAt: link.expires_at,
       remainingSeconds,
     });

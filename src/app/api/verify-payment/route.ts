@@ -12,6 +12,7 @@ import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 import { createInvoiceForApplication } from "@/lib/crm";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
+import { markPaymentLinksPaid } from "@/lib/payments/mark-payment-links-paid";
 
 type ApplicationRow = {
   id: string;
@@ -237,34 +238,13 @@ export async function POST(request: Request) {
         return jsonError("Payment verified, but application update failed. Please contact support.", 500);
       }
 
-    // 1. Process payment links status if any matching links exist
-    try {
-      await Promise.all(
-        applications.map(async (app) => {
-          const { data: link } = await supabase
-            .from("payment_links")
-            .select("id, status")
-            .eq("application_id", app.id)
-            .eq("status", "pending")
-            .maybeSingle();
-
-          if (link) {
-            await supabase
-              .from("payment_links")
-              .update({
-                status: "paid",
-                paid_at: paidAt,
-                razorpay_order_id: orderId,
-                razorpay_payment_id: paymentId,
-                updated_at: paidAt,
-              })
-              .eq("id", link.id);
-          }
-        })
-      );
-    } catch (err) {
-      console.error("[razorpay/verify-payment] Failed to update payment link status:", err);
-    }
+    // 1. Settle any payment links covering these applications
+    await markPaymentLinksPaid(
+      supabase,
+      applications.map((app) => app.id),
+      { paidAt, razorpayOrderId: orderId, razorpayPaymentId: paymentId },
+      "[razorpay/verify-payment]",
+    );
 
     // 2. Reserve partner commissions for referred/partner applications
     try {

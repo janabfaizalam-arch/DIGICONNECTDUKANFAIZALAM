@@ -16,7 +16,9 @@ type PaymentLinkDetails = {
   customerName: string;
   partnerName: string;
   serviceName: string;
+  services?: { applicationId: string; name: string; slug: string | null; amount: number }[];
   applicationId: string;
+  applicationIds?: string[];
   expiresAt: string;
   remainingSeconds?: number;
   paidAt?: string;
@@ -225,6 +227,20 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
               <span className="text-sm text-slate-500">Service Partner</span>
               <span className="text-sm font-semibold text-slate-900 text-blue-600">{details?.partnerName}</span>
             </div>
+            {/* A link can cover several services; listing them is the only way
+                the customer can see what the total is made of. */}
+            {details?.services && details.services.length > 1 ? (
+              <div className="space-y-2 border-b border-slate-200/60 pb-4">
+                {details.services.map((service) => (
+                  <div key={service.applicationId} className="flex justify-between items-center">
+                    <span className="text-sm text-slate-500">{service.name}</span>
+                    <span className="text-sm font-medium text-slate-700">
+                      ₹{service.amount.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="flex justify-between items-center">
               <span className="text-sm text-slate-500">Base Service Fee</span>
               <span className="text-sm font-medium text-slate-700">₹{details?.baseAmount.toLocaleString("en-IN")}</span>
@@ -252,6 +268,7 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
                 amountPaise={details.amount * 100}
                 receipt={details.code}
                 applicationId={details.applicationId}
+                applicationIds={details.applicationIds}
                 customer={{
                   name: details.customerName,
                   email: currentUser?.email || "",
