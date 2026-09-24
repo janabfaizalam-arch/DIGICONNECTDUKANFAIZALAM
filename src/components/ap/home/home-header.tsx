@@ -2,10 +2,12 @@ import Link from "next/link";
 import { Plus, Wallet2 } from "lucide-react";
 
 import type { PartnerHomeIdentity } from "@/lib/ap/home-types";
+import { cn } from "@/lib/utils";
 import { speakINR } from "@/lib/ap/a11y";
 
 type HomeHeaderProps = {
   identity: PartnerHomeIdentity;
+  className?: string;
 };
 
 /**
@@ -21,11 +23,14 @@ type HomeHeaderProps = {
  * The figure uses proportional numerals, not tabular: at 48px `tabular-nums`
  * pads every digit to the width of a zero and the number reads loose.
  */
-export function HomeHeader({ identity }: HomeHeaderProps) {
+export function HomeHeader({ identity, className }: HomeHeaderProps) {
   return (
     <section
       aria-label="Partner summary"
-      className="relative isolate overflow-hidden rounded-[20px] text-white shadow-[0_18px_44px_-24px_rgba(6,26,66,0.75)]"
+      className={cn(
+        "relative isolate overflow-hidden rounded-[16px] text-white shadow-[0_14px_36px_-22px_rgba(6,26,66,0.8)]",
+        className,
+      )}
       style={{ backgroundImage: "var(--dcp-g-navy)" }}
     >
       {/* Decoration. aria-hidden: it carries no information. */}
@@ -44,7 +49,7 @@ export function HomeHeader({ identity }: HomeHeaderProps) {
         />
       </div>
 
-      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-5">
+      <div className="flex flex-col gap-3.5 p-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded-full bg-white/12 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.14em] text-white/90 ring-1 ring-inset ring-white/20">
@@ -60,7 +65,7 @@ export function HomeHeader({ identity }: HomeHeaderProps) {
             ) : null}
           </div>
 
-          <h1 className="mt-2.5 text-[19px] font-bold leading-tight tracking-tight sm:text-[23px]">
+          <h1 className="mt-2 text-[17px] font-bold leading-tight tracking-tight sm:text-[20px]">
             {identity.name}
           </h1>
 
@@ -77,7 +82,7 @@ export function HomeHeader({ identity }: HomeHeaderProps) {
             {identity.heroLabel}
           </p>
 
-          <p className="mt-1 text-[42px] font-bold leading-none tracking-[-0.02em] sm:text-[48px]">
+          <p className="mt-1 text-[34px] font-bold leading-none tracking-[-0.02em] sm:text-[38px]">
             <span aria-hidden>{identity.heroValue}</span>
             <span className="sr-only">{speakINR(identity.heroValue.replace(/[^0-9.-]/g, ""))}</span>
           </p>

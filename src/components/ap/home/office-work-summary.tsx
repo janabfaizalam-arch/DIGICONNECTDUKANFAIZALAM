@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { formatCount } from "@/lib/ap/format";
+import { cn } from "@/lib/utils";
 import type { PartnerOfficeWorkSummary } from "@/lib/ap/home-types";
 
 type OfficeWorkSummaryProps = {
   summary: PartnerOfficeWorkSummary;
+  className?: string;
 };
 
 /**
@@ -13,7 +15,7 @@ type OfficeWorkSummaryProps = {
  * Recent customers used to hang off the bottom of this block as well as off
  * the operations footer; they now live once, in the customers panel.
  */
-export function OfficeWorkSummary({ summary }: OfficeWorkSummaryProps) {
+export function OfficeWorkSummary({ summary, className }: OfficeWorkSummaryProps) {
   const tiles = [
     { label: "To process", value: formatCount(summary.applicationsToProcess), href: "/ap/assigned-work" },
     { label: "Assigned to me", value: formatCount(summary.assignedWorkCount), href: "/ap/assigned-work" },
@@ -22,10 +24,10 @@ export function OfficeWorkSummary({ summary }: OfficeWorkSummaryProps) {
   ];
 
   return (
-    <section aria-label="Office work" className="space-y-2.5">
+    <section aria-label="Office work" className={cn("space-y-2", className)}>
       <h2 className="dcp-h2">Office work</h2>
 
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Link
             key={tile.label}

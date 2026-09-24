@@ -2,10 +2,12 @@ import Link from "next/link";
 import { UserPlus2 } from "lucide-react";
 
 import { formatCount, formatINR } from "@/lib/ap/format";
+import { cn } from "@/lib/utils";
 import type { PartnerTeamSummary } from "@/lib/ap/home-types";
 
 type TeamPanelProps = {
   summary: PartnerTeamSummary;
+  className?: string;
 };
 
 /**
@@ -15,7 +17,7 @@ type TeamPanelProps = {
  * earnings panel above already shows them behind its Mine/Team toggle, so this
  * panel sticks to headcount and volume.
  */
-export function TeamPanel({ summary }: TeamPanelProps) {
+export function TeamPanel({ summary, className }: TeamPanelProps) {
   const tiles = [
     { label: "Members", value: formatCount(summary.totalMembers) },
     { label: "Active", value: formatCount(summary.activeMembers) },
@@ -30,7 +32,7 @@ export function TeamPanel({ summary }: TeamPanelProps) {
   ];
 
   return (
-    <section aria-label="Team" className="space-y-2.5">
+    <section aria-label="Team" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Team</h2>
         <Link href="/ap/team" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">

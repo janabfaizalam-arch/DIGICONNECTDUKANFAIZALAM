@@ -41,6 +41,7 @@ const LEAD_ACTIONS = new Set(["new-customer", "apply-service", "collect-payment"
 
 type QuickActionsProps = {
   partnerType: DigiPartnerType;
+  className?: string;
 };
 
 function ActionCard({ action, lead }: { action: PartnerQuickAction; lead: boolean }) {
@@ -108,11 +109,11 @@ function ActionCard({ action, lead }: { action: PartnerQuickAction; lead: boolea
  * keeps the whole set reachable with a thumb while the page below stays
  * visible. From `md` up there is room for the grid, so it becomes one.
  */
-export function QuickActions({ partnerType }: QuickActionsProps) {
+export function QuickActions({ partnerType, className }: QuickActionsProps) {
   const actions = getPartnerHomeActions(partnerType);
 
   return (
-    <section aria-label="Quick actions" className="space-y-2">
+    <section aria-label="Quick actions" className={cn("space-y-2", className)}>
       <h2 className="dcp-h2">Quick actions</h2>
 
       <div

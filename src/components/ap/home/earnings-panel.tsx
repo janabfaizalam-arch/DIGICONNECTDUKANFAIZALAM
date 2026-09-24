@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 type EarningsPanelProps = {
   data: PartnerCollectionCommission;
   showTeamToggle?: boolean;
+  className?: string;
 };
 
 /**
@@ -20,7 +21,7 @@ type EarningsPanelProps = {
  * and what is still to be paid out. A Company Partner can switch the same four
  * figures to their team's.
  */
-export function EarningsPanel({ data, showTeamToggle = false }: EarningsPanelProps) {
+export function EarningsPanel({ data, showTeamToggle = false, className }: EarningsPanelProps) {
   const [scope, setScope] = useState<"mine" | "team">("mine");
   const isTeam = showTeamToggle && scope === "team";
 
@@ -39,7 +40,7 @@ export function EarningsPanel({ data, showTeamToggle = false }: EarningsPanelPro
       ];
 
   return (
-    <section aria-label="Earnings" className="space-y-2.5">
+    <section aria-label="Earnings" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Earnings</h2>
 

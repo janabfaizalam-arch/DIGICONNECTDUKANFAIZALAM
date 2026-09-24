@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 type RecentApplicationsProps = {
   items: PartnerRecentApplicationItem[];
+  className?: string;
 };
 
 function formatDate(value: string) {
@@ -38,9 +39,9 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-export function RecentApplications({ items }: RecentApplicationsProps) {
+export function RecentApplications({ items, className }: RecentApplicationsProps) {
   return (
-    <section aria-label="Recent applications" className="space-y-2.5">
+    <section aria-label="Recent applications" className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="dcp-h2">Recent applications</h2>
         <Link href="/ap/applications" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
