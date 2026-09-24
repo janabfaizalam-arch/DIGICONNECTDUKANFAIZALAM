@@ -1,61 +1,42 @@
 import Link from "next/link";
-import { Briefcase } from "lucide-react";
 
-import type { PartnerHomeRecentCustomer, PartnerOfficeWorkSummary } from "@/lib/ap/home-types";
-import { DashboardEmptyState } from "@/components/ap/home/dashboard-empty-state";
+import { formatCount } from "@/lib/ap/format";
+import type { PartnerOfficeWorkSummary } from "@/lib/ap/home-types";
 
 type OfficeWorkSummaryProps = {
   summary: PartnerOfficeWorkSummary;
-  recentCustomers?: PartnerHomeRecentCustomer[];
 };
 
-export function OfficeWorkSummary({ summary, recentCustomers = [] }: OfficeWorkSummaryProps) {
+/**
+ * The processing desk's own counters.
+ *
+ * Recent customers used to hang off the bottom of this block as well as off
+ * the operations footer; they now live once, in the customers panel.
+ */
+export function OfficeWorkSummary({ summary }: OfficeWorkSummaryProps) {
   const tiles = [
-    { label: "Applications to Process", value: String(summary.applicationsToProcess), href: "/ap/assigned-work" },
-    { label: "Support Queue", value: String(summary.supportQueueCount), href: "/ap/support" },
-    { label: "Recent Offline Invoices", value: String(summary.recentOfflineInvoices), href: "/ap/invoices/offline" },
-    { label: "Assigned Work", value: String(summary.assignedWorkCount), href: "/ap/assigned-work" },
+    { label: "To process", value: formatCount(summary.applicationsToProcess), href: "/ap/assigned-work" },
+    { label: "Assigned to me", value: formatCount(summary.assignedWorkCount), href: "/ap/assigned-work" },
+    { label: "Support queue", value: formatCount(summary.supportQueueCount), href: "/ap/support" },
+    { label: "Offline invoices", value: formatCount(summary.recentOfflineInvoices), href: "/ap/invoices/offline" },
   ];
 
   return (
-    <section aria-label="Office work" className="space-y-3 px-4 md:px-6">
-      <div className="flex items-center gap-2">
-        <Briefcase className="h-4 w-4 text-blue-700" aria-hidden />
-        <h2 className="text-sm font-extrabold text-slate-900">Office Work</h2>
-      </div>
+    <section aria-label="Office work" className="space-y-2.5">
+      <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Office work</h2>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-3">
-          {tiles.map((tile) => (
-            <Link
-              key={tile.label}
-              href={tile.href}
-              className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 transition hover:border-blue-300"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tile.label}</p>
-              <p className="mt-1 text-base font-extrabold tabular-nums text-slate-950">{tile.value}</p>
-            </Link>
-          ))}
-        </div>
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        {tiles.map((tile) => (
+          <Link
+            key={tile.label}
+            href={tile.href}
+            className="rounded-[18px] border border-slate-200/70 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 hover:border-slate-300 hover:shadow-[0_10px_26px_-16px_rgba(15,23,42,0.3)] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tile.label}</p>
+            <p className="mt-1.5 text-[22px] font-bold leading-none tracking-tight text-slate-950">{tile.value}</p>
+          </Link>
+        ))}
       </div>
-
-      {recentCustomers.length ? (
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent customers</p>
-          <ul className="mt-3 divide-y divide-slate-100">
-            {recentCustomers.map((customer) => (
-              <li key={customer.id}>
-                <Link href={customer.href} className="flex items-center justify-between gap-3 py-2.5">
-                  <span className="truncate text-sm font-semibold text-slate-900">{customer.name}</span>
-                  <span className="font-mono text-[11px] text-slate-400">{customer.mobile}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <DashboardEmptyState title="No assigned customers" description="Assigned work will appear here." />
-      )}
     </section>
   );
 }

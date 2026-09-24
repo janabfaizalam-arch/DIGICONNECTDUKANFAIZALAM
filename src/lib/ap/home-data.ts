@@ -1,42 +1,53 @@
 // ============================================================================
 // DC Partner home — server data loader
+//
+// Fetches, then hands everything to the pure builders in home-analytics.ts.
+// The arithmetic lives there so it can be tested; this file is plumbing.
 // ============================================================================
 
 import { getAgentAssignedApplications } from "@/lib/agent-data";
 import { getAPApplications, getAPDashboardStats, getAgencyPartnerByUserId } from "@/lib/ap-data";
-import { canManagePartnerTeam, normalizePartnerType, type DigiPartnerType } from "@/lib/ap/partner-type";
+import {
+  buildAnalytics,
+  buildAttention,
+  buildKpis,
+  isPaid,
+  isUnpaid,
+  safeAmount,
+  statusBucket,
+  TREND_RANGE_DAYS,
+  type AnalyticsApplication,
+} from "@/lib/ap/home-analytics";
+import {
+  AP_PARTNER_TYPE_LABELS,
+  canManagePartnerTeam,
+  normalizePartnerType,
+  type DigiPartnerType,
+} from "@/lib/ap/partner-type";
 import { getActivePartnerDashboardBanners } from "@/lib/ap/partner-banners";
 import { formatINR } from "@/lib/ap/format";
 import type {
   PartnerCollectionCommission,
+  PartnerHomeIdentity,
   PartnerHomePayload,
   PartnerOfficeWorkSummary,
-  PartnerOverviewCard,
   PartnerPendingWorkItem,
   PartnerRecentApplicationItem,
   PartnerTeamSummary,
+  PartnerWorkQueueGroup,
 } from "@/lib/ap/home-types";
 import { getCustomerMobile, getCustomerName } from "@/lib/crm";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-function safeNumber(value: unknown, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function isPendingAppStatus(status: string) {
-  return !["completed", "rejected", "cancelled"].includes(status);
-}
-
-function isUnpaid(paymentStatus: string | null | undefined) {
-  const s = String(paymentStatus ?? "pending").toLowerCase();
-  return s === "pending" || s === "unpaid" || s === "failed" || s === "";
-}
-
-function isPaid(paymentStatus: string | null | undefined) {
-  const s = String(paymentStatus ?? "").toLowerCase();
-  return s === "paid" || s === "success" || s === "completed" || s === "captured";
-}
+/**
+ * How many applications the analytics read.
+ *
+ * The trend only needs a fortnight, but the status split and the service
+ * ranking describe the whole book of work, so this is wider than the 50 the
+ * old dashboard pulled. Capped so a partner with thousands of rows still gets
+ * a single bounded query.
+ */
+const ANALYTICS_APPLICATION_LIMIT = 400;
 
 function startOfDayIso(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
@@ -46,9 +57,34 @@ function startOfMonthIso(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
 }
 
+function isOpenStatus(status: string) {
+  const bucket = statusBucket(status);
+  return bucket !== "completed" && bucket !== "closed";
+}
+
 function needsDocuments(status: string) {
-  const s = status.toLowerCase();
-  return s.includes("document") || s === "pending" || s === "submitted" || s === "under_review" || s === "resubmit_required";
+  return statusBucket(status) === "action_needed";
+}
+
+/** Narrows an application row to just what the analytics need. */
+function toAnalyticsApp(app: {
+  id: string;
+  amount: number;
+  status: string;
+  payment_status?: string | null;
+  service_name?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}): AnalyticsApplication {
+  return {
+    id: app.id,
+    amount: app.amount,
+    status: app.status,
+    payment_status: app.payment_status ?? null,
+    service_name: app.service_name ?? null,
+    created_at: app.created_at,
+    updated_at: app.updated_at ?? null,
+  };
 }
 
 async function loadTeamPartnerIds(managerUserId: string): Promise<string[]> {
@@ -101,14 +137,19 @@ async function loadTeamSummary(managerUserId: string): Promise<PartnerTeamSummar
     totalMembers: team.length,
     activeMembers: team.filter((m) => m.status === "active").length,
     teamApplications: apps.length,
-    teamCollection: apps.filter((a) => isPaid(a.payment_status)).reduce((sum, a) => sum + safeNumber(a.amount), 0),
-    teamCommission: commissions.reduce((sum, c) => sum + safeNumber(c.calculated_amount), 0),
+    teamCollection: apps.filter((a) => isPaid(a.payment_status)).reduce((sum, a) => sum + safeAmount(a.amount), 0),
+    teamCommission: commissions.reduce((sum, c) => sum + safeAmount(c.calculated_amount), 0),
   };
 }
 
 async function loadTeamFinance(
   managerUserId: string,
-): Promise<Pick<PartnerCollectionCommission, "teamCollectedToday" | "teamMonthCollection" | "teamCommissionEarned" | "teamCommissionPending">> {
+): Promise<
+  Pick<
+    PartnerCollectionCommission,
+    "teamCollectedToday" | "teamMonthCollection" | "teamCommissionEarned" | "teamCommissionPending"
+  >
+> {
   const supabase = getSupabaseAdmin();
   const empty = {
     teamCollectedToday: 0,
@@ -150,118 +191,86 @@ async function loadTeamFinance(
   return {
     teamCollectedToday: paidApps
       .filter((a) => paidAt(a) >= today)
-      .reduce((sum, a) => sum + safeNumber(a.amount), 0),
+      .reduce((sum, a) => sum + safeAmount(a.amount), 0),
     teamMonthCollection: paidApps
       .filter((a) => paidAt(a) >= month)
-      .reduce((sum, a) => sum + safeNumber(a.amount), 0),
-    teamCommissionEarned: commissions.reduce((sum, c) => sum + safeNumber(c.calculated_amount), 0),
+      .reduce((sum, a) => sum + safeAmount(a.amount), 0),
+    teamCommissionEarned: commissions.reduce((sum, c) => sum + safeAmount(c.calculated_amount), 0),
     teamCommissionPending: commissions
       .filter((c) => ["pending", "earned"].includes(c.status))
-      .reduce((sum, c) => sum + safeNumber(c.calculated_amount), 0),
+      .reduce((sum, c) => sum + safeAmount(c.calculated_amount), 0),
   };
 }
 
-function buildStandardOverview(stats: Awaited<ReturnType<typeof getAPDashboardStats>>, apps: Awaited<ReturnType<typeof getAPApplications>>): PartnerOverviewCard[] {
-  const pendingPayments = apps.filter((a) => isUnpaid(a.payment_status)).length;
-  const today = startOfDayIso();
-  const todayCollection = apps
-    .filter((a) => isPaid(a.payment_status) && (a.updated_at || a.created_at) >= today)
-    .reduce((sum, a) => sum + safeNumber(a.amount), 0);
-
-  return [
-    { key: "today-apps", label: "Today Applications", value: String(stats.todayApplications), href: "/ap/applications" },
-    { key: "pending-apps", label: "Pending Applications", value: String(stats.pendingApplications), href: "/ap/applications", tone: "pending" },
-    { key: "completed-apps", label: "Completed Applications", value: String(stats.completedApplications), href: "/ap/applications", tone: "success" },
-    { key: "pending-payments", label: "Pending Payments", value: String(pendingPayments), href: "/ap/payments/collect", tone: "pending" },
-    { key: "today-collection", label: "Today Collection", value: formatINR(todayCollection), href: "/ap/payments/collect", tone: "success" },
-    { key: "total-commission", label: "Total Commission", value: formatINR(stats.commissionEarned), href: "/ap/commissions" },
-  ];
-}
-
-function buildCompanyOverview(
-  stats: Awaited<ReturnType<typeof getAPDashboardStats>>,
-  team: PartnerTeamSummary,
-): PartnerOverviewCard[] {
-  return [
-    { key: "own-apps", label: "Own Applications", value: String(stats.totalApplications), href: "/ap/applications" },
-    { key: "team-apps", label: "Team Applications", value: String(team.teamApplications), href: "/ap/team" },
-    { key: "pending-apps", label: "Pending Applications", value: String(stats.pendingApplications), href: "/ap/applications", tone: "pending" },
-    { key: "team-collection", label: "Team Collection", value: formatINR(team.teamCollection), href: "/ap/payments/collect", tone: "success" },
-    { key: "own-commission", label: "Own Commission", value: formatINR(stats.commissionEarned), href: "/ap/commissions" },
-    { key: "team-commission", label: "Team Commission", value: formatINR(team.teamCommission), href: "/ap/commissions" },
-  ];
-}
-
-function buildOfficeOverview(
-  assignedCount: number,
-  docsPending: number,
-  supportCount: number,
-  offlineInvoiceCount: number,
-  todayCollection: number,
-  commissionLabel: string,
-): PartnerOverviewCard[] {
-  return [
-    { key: "process", label: "Applications to Process", value: String(assignedCount), href: "/ap/assigned-work", tone: "pending" },
-    { key: "docs", label: "Documents Pending", value: String(docsPending), href: "/ap/applications", tone: "pending" },
-    { key: "support", label: "Support Requests", value: String(supportCount), href: "/ap/support" },
-    { key: "offline", label: "Offline Invoices", value: String(offlineInvoiceCount), href: "/ap/invoices/offline" },
-    { key: "today-collection", label: "Today Collection", value: formatINR(todayCollection), href: "/ap/payments/collect", tone: "success" },
-    { key: "commission", label: "Commission or Bonus", value: commissionLabel, href: "/ap/commissions" },
-  ];
-}
-
-function buildPendingWork(
+/**
+ * Pending work, split into the three tabs the queue renders.
+ *
+ * An application lands in exactly one tab — documents first, then payment,
+ * then processing — so the same row is never counted twice across the tabs.
+ */
+function buildWorkQueue(
   partnerType: DigiPartnerType,
   apps: Awaited<ReturnType<typeof getAPApplications>>,
   assignedIds: Set<string>,
-): PartnerPendingWorkItem[] {
-  const items: PartnerPendingWorkItem[] = [];
+): PartnerWorkQueueGroup[] {
+  const documents: PartnerPendingWorkItem[] = [];
+  const payments: PartnerPendingWorkItem[] = [];
+  const processing: PartnerPendingWorkItem[] = [];
 
   for (const app of apps) {
-    if (items.length >= 6) break;
-    const customer = getCustomerName(app) || "Customer";
-    const paymentStatus = app.payment_status ?? null;
+    if (!isOpenStatus(app.status)) continue;
 
-    if (partnerType === "office_staff") {
-      if (!assignedIds.has(app.id) && !isPendingAppStatus(app.status)) continue;
-      if (assignedIds.has(app.id) || needsDocuments(app.status)) {
-        items.push({
-          id: `process-${app.id}`,
+    const customer = getCustomerName(app) || "Customer";
+    const service = app.service_name || "Service";
+
+    if (needsDocuments(app.status)) {
+      if (documents.length < 8) {
+        documents.push({
+          id: `docs-${app.id}`,
           title: customer,
-          subtitle: app.service_name || "Application",
+          subtitle: `${service} · documents needed`,
           statusLabel: app.status,
-          ctaLabel: "Process Now",
+          ctaLabel: "Upload documents",
           href: `/ap/applications/${app.id}`,
         });
       }
       continue;
     }
 
-    if (needsDocuments(app.status) && isPendingAppStatus(app.status)) {
-      items.push({
-        id: `docs-${app.id}`,
-        title: customer,
-        subtitle: `${app.service_name || "Service"} · documents needed`,
-        statusLabel: app.status,
-        ctaLabel: "Upload Documents",
-        href: `/ap/applications/${app.id}`,
-      });
+    if (isUnpaid(app.payment_status)) {
+      if (payments.length < 8) {
+        payments.push({
+          id: `pay-${app.id}`,
+          title: customer,
+          subtitle: `${service} · ${formatINR(app.amount)} pending`,
+          statusLabel: app.payment_status || "pending",
+          ctaLabel: "Collect payment",
+          href: "/ap/payments/collect",
+        });
+      }
       continue;
     }
 
-    if (isUnpaid(paymentStatus) && isPendingAppStatus(app.status)) {
-      items.push({
-        id: `pay-${app.id}`,
+    // Office staff only queue what is actually theirs to work.
+    if (partnerType === "office_staff" && !assignedIds.has(app.id)) continue;
+
+    if (processing.length < 8) {
+      processing.push({
+        id: `work-${app.id}`,
         title: customer,
-        subtitle: `${app.service_name || "Service"} · payment pending`,
-        statusLabel: paymentStatus || "pending",
-        ctaLabel: "Collect Payment",
-        href: `/ap/payments/collect`,
+        subtitle: service,
+        statusLabel: app.status,
+        ctaLabel: partnerType === "office_staff" ? "Process now" : "Open",
+        href: `/ap/applications/${app.id}`,
       });
     }
   }
 
-  return items;
+  return [
+    { key: "documents", label: "Documents", items: documents },
+    { key: "payments", label: "Payments", items: payments },
+    { key: "processing", label: "In progress", items: processing },
+  ];
 }
 
 function buildRecentApplications(
@@ -274,13 +283,13 @@ function buildRecentApplications(
     ];
 
     if (partnerType !== "office_staff") {
-      if (isPendingAppStatus(app.status)) {
-        actions.push({ label: "Upload Document", href: `/ap/applications/${app.id}` });
+      if (isOpenStatus(app.status)) {
+        actions.push({ label: "Upload document", href: `/ap/applications/${app.id}` });
       }
       if (isUnpaid(app.payment_status)) {
-        actions.push({ label: "Collect Payment", href: "/ap/payments/collect" });
+        actions.push({ label: "Collect payment", href: "/ap/payments/collect" });
       }
-    } else if (isPendingAppStatus(app.status)) {
+    } else if (isOpenStatus(app.status)) {
       actions.push({ label: "Process", href: `/ap/applications/${app.id}` });
     }
 
@@ -305,25 +314,41 @@ export async function getPartnerHomePayload(userId: string): Promise<PartnerHome
 
   const [stats, apps, banners, assigned] = await Promise.all([
     getAPDashboardStats(ap.id),
-    getAPApplications(ap.id, 50),
+    getAPApplications(ap.id, ANALYTICS_APPLICATION_LIMIT),
     getActivePartnerDashboardBanners(partnerType),
     partnerType === "office_staff" ? getAgentAssignedApplications(userId) : Promise.resolve([]),
   ]);
 
-  const today = startOfDayIso();
-  const month = startOfMonthIso();
-  const paidApps = apps.filter((a) => isPaid(a.payment_status));
-  const collectedToday = paidApps
-    .filter((a) => (a.updated_at || a.created_at) >= today)
-    .reduce((sum, a) => sum + safeNumber(a.amount), 0);
-  const monthCollection = paidApps
-    .filter((a) => (a.updated_at || a.created_at) >= month)
-    .reduce((sum, a) => sum + safeNumber(a.amount), 0);
-  const pendingCollection = apps
-    .filter((a) => isUnpaid(a.payment_status))
-    .reduce((sum, a) => sum + safeNumber(a.amount), 0);
+  const now = new Date();
+  const today = startOfDayIso(now);
+  const month = startOfMonthIso(now);
 
-  const hasCommissionScheme = safeNumber(ap.commission_value) > 0 || safeNumber(ap.commission_rate) > 0 || stats.commissionEarned > 0 || stats.commissionPending > 0;
+  const analyticsApps = apps.map(toAnalyticsApp);
+  const analytics = buildAnalytics(analyticsApps, { days: TREND_RANGE_DAYS, now });
+  const attention = buildAttention(analyticsApps, { now });
+
+  const paidApps = apps.filter((a) => isPaid(a.payment_status));
+  const settledAt = (a: (typeof apps)[number]) => a.updated_at || a.created_at;
+
+  const collectedToday = paidApps
+    .filter((a) => settledAt(a) >= today)
+    .reduce((sum, a) => sum + safeAmount(a.amount), 0);
+  const monthCollection = paidApps
+    .filter((a) => settledAt(a) >= month)
+    .reduce((sum, a) => sum + safeAmount(a.amount), 0);
+  const pendingCollection = apps
+    .filter((a) => isUnpaid(a.payment_status) && isOpenStatus(a.status))
+    .reduce((sum, a) => sum + safeAmount(a.amount), 0);
+  const pendingPayments = apps.filter((a) => isUnpaid(a.payment_status) && isOpenStatus(a.status)).length;
+
+  // Yesterday, for the KPI comparison — the trend already holds the day's total.
+  const yesterdayCollection = analytics.trend.at(-2)?.collection ?? 0;
+
+  const hasCommissionScheme =
+    safeAmount(ap.commission_value) > 0 ||
+    safeAmount(ap.commission_rate) > 0 ||
+    stats.commissionEarned > 0 ||
+    stats.commissionPending > 0;
 
   let teamSummary: PartnerTeamSummary | null = null;
   let teamFinance: Awaited<ReturnType<typeof loadTeamFinance>> | null = null;
@@ -341,39 +366,48 @@ export async function getPartnerHomePayload(userId: string): Promise<PartnerHome
     ...(teamFinance ?? {}),
   };
 
-  let overview: PartnerOverviewCard[];
-  let officeWork: PartnerOfficeWorkSummary | null = null;
+  const kpis = buildKpis({
+    trend: analytics.trend,
+    todayApplications: stats.todayApplications,
+    yesterdayApplications: stats.yesterdayApplications,
+    todayCollection: collectedToday,
+    yesterdayCollection,
+    pendingApplications: stats.pendingApplications,
+    pendingPayments,
+    pendingCollection,
+    commissionEarned: stats.commissionEarned,
+    commissionPending: stats.commissionPending,
+  });
 
-  if (partnerType === "company_partner" && teamSummary) {
-    overview = buildCompanyOverview(stats, teamSummary);
-  } else if (partnerType === "office_staff") {
-    const docsPending = apps.filter((a) => needsDocuments(a.status) && isPendingAppStatus(a.status)).length;
+  const identity: PartnerHomeIdentity = {
+    name: ap.business_name?.trim() || ap.full_name?.trim() || "DC Partner",
+    partnerCode: ap.partner_code ?? null,
+    partnerTypeLabel: AP_PARTNER_TYPE_LABELS[partnerType],
+    tierName: ap.tier?.name ?? null,
+    heroLabel: "Collected today",
+    heroValue: formatINR(collectedToday),
+    heroCaption: `${formatINR(monthCollection)} this month`,
+  };
+
+  let officeWork: PartnerOfficeWorkSummary | null = null;
+  if (partnerType === "office_staff") {
     officeWork = {
       applicationsToProcess: assigned.length,
-      supportQueueCount: 0, // support is contact desk; no partner ticket table in AP scope
+      // Support is a contact desk, not a ticket table — there is nothing to count yet.
+      supportQueueCount: 0,
       recentOfflineInvoices: 0,
       assignedWorkCount: assigned.length,
     };
-    overview = buildOfficeOverview(
-      assigned.length,
-      docsPending,
-      officeWork.supportQueueCount,
-      officeWork.recentOfflineInvoices,
-      collectedToday,
-      hasCommissionScheme ? formatINR(stats.commissionEarned) : "No commission assigned",
-    );
-  } else {
-    overview = buildStandardOverview(stats, apps);
   }
 
   const assignedIds = new Set(assigned.map((a) => a.id));
-  const pendingWork = buildPendingWork(partnerType, apps, assignedIds);
+  const workQueue = buildWorkQueue(partnerType, apps, assignedIds);
   const recentApplications = buildRecentApplications(
     partnerType === "office_staff" && assigned.length ? assigned.slice(0, 8) : apps,
     partnerType,
   );
 
-  const recentCustomers = apps.slice(0, 5).map((app) => ({
+  const recentCustomers = apps.slice(0, 6).map((app) => ({
     id: app.id,
     name: getCustomerName(app) || "Customer",
     mobile: getCustomerMobile(app) || "—",
@@ -383,9 +417,12 @@ export async function getPartnerHomePayload(userId: string): Promise<PartnerHome
   return {
     partnerType,
     canManageTeam: manageTeam,
+    identity,
     banners,
-    overview,
-    pendingWork,
+    attention,
+    kpis,
+    analytics,
+    workQueue,
     recentApplications,
     collection,
     teamSummary,

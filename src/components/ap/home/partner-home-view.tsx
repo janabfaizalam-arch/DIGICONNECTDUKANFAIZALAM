@@ -1,39 +1,70 @@
+import { AnalyticsPanel } from "@/components/ap/home/analytics-panel";
 import { AnnouncementSlider } from "@/components/ap/home/announcement-slider";
-import { CollectionCommission } from "@/components/ap/home/collection-commission";
-import { CompanyTeamSummary } from "@/components/ap/home/company-team-summary";
+import { AttentionStrip } from "@/components/ap/home/attention-strip";
+import { CustomersPanel } from "@/components/ap/home/customers-panel";
+import { EarningsPanel } from "@/components/ap/home/earnings-panel";
+import { HomeHeader } from "@/components/ap/home/home-header";
+import { KpiRow } from "@/components/ap/home/kpi-row";
 import { OfficeWorkSummary } from "@/components/ap/home/office-work-summary";
-import { OverviewCards } from "@/components/ap/home/overview-cards";
-import { PendingWork } from "@/components/ap/home/pending-work";
 import { QuickActions } from "@/components/ap/home/quick-actions";
 import { RecentApplications } from "@/components/ap/home/recent-applications";
-import { StandardOpsFooter } from "@/components/ap/home/standard-ops-footer";
+import { TeamPanel } from "@/components/ap/home/team-panel";
+import { WorkQueue } from "@/components/ap/home/work-queue";
 import type { PartnerHomePayload } from "@/lib/ap/home-types";
 
 type PartnerHomeViewProps = {
   data: PartnerHomePayload;
 };
 
+/**
+ * The DC Partner home page.
+ *
+ * One order for every partner type, with only the role-specific block swapping
+ * in near the end. Each fact appears in exactly one section:
+ *
+ *   identity & today's money  → header (the page's single hero figure)
+ *   what is on fire           → attention strip (hidden when nothing is)
+ *   offers                    → announcements
+ *   what you came to do       → quick actions
+ *   the four headline numbers → KPI row
+ *   how the business moves    → analytics charts
+ *   the rest of the money     → earnings panel
+ *   what is waiting on you    → work queue (one tabbed list, not three)
+ *   the latest work           → recent applications
+ *   who you serve             → customers panel
+ *
+ * The previous version repeated today's collection, commission and the pending
+ * lists across four separate blocks; anything a section above already states is
+ * not restated below.
+ */
 export function PartnerHomeView({ data }: PartnerHomeViewProps) {
   const isOffice = data.partnerType === "office_staff";
   const isCompany = data.partnerType === "company_partner" && data.canManageTeam;
-  const isStandard =
-    data.partnerType === "business_partner" || data.partnerType === "field_executive";
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 pb-4 md:space-y-6 md:pb-8">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 pb-6 pt-4 md:space-y-6 md:px-6 md:pb-10">
+      <HomeHeader identity={data.identity} />
+
+      <AttentionStrip items={data.attention} />
+
       <AnnouncementSlider banners={data.banners} />
+
       <QuickActions partnerType={data.partnerType} />
-      <OverviewCards cards={data.overview} />
-      <PendingWork items={data.pendingWork} />
+
+      <KpiRow kpis={data.kpis} />
+
+      <AnalyticsPanel analytics={data.analytics} />
+
+      <EarningsPanel data={data.collection} showTeamToggle={isCompany} />
+
+      <WorkQueue groups={data.workQueue} />
+
+      {isCompany && data.teamSummary ? <TeamPanel summary={data.teamSummary} /> : null}
+      {isOffice && data.officeWork ? <OfficeWorkSummary summary={data.officeWork} /> : null}
+
       <RecentApplications items={data.recentApplications} />
-      <CollectionCommission data={data.collection} showTeamToggle={Boolean(isCompany)} />
-      {isCompany && data.teamSummary ? <CompanyTeamSummary summary={data.teamSummary} /> : null}
-      {isOffice && data.officeWork ? (
-        <OfficeWorkSummary summary={data.officeWork} recentCustomers={data.recentCustomers} />
-      ) : null}
-      {isStandard ? (
-        <StandardOpsFooter recentCustomers={data.recentCustomers} pendingWork={data.pendingWork} />
-      ) : null}
+
+      <CustomersPanel customers={data.recentCustomers} variant={isOffice ? "assigned" : "own"} />
     </div>
   );
 }
