@@ -51,6 +51,13 @@ export type ApNavItem = {
   icon: LucideIcon;
   /** Shown in the bottom dock on a phone. At most five may set this. */
   dock?: boolean;
+  /**
+   * What the dock calls it, when the full label will not fit.
+   *
+   * A five-tab dock gives each label about 64px; "Applications" truncates to
+   * "Applicati…", which is worse than a shorter word that is simply true.
+   */
+  dockLabel?: string;
   /** Only for partner types that can manage a team. */
   teamOnly?: boolean;
   /**
@@ -80,6 +87,7 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
       {
         href: "/ap/dashboard",
         label: "Dashboard",
+        dockLabel: "Home",
         description: "Today's work, earnings and what needs you first",
         icon: LayoutGrid,
         dock: true,
@@ -87,6 +95,7 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
       {
         href: "/ap/applications",
         label: "Applications",
+        dockLabel: "Apps",
         description: "Every application you have filed, and its stage",
         icon: FileText,
         dock: true,
@@ -100,6 +109,7 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
       {
         href: "/ap/customers",
         label: "Customers",
+        dockLabel: "People",
         description: "The people you serve, and everything filed for them",
         icon: UsersRound,
         dock: true,
