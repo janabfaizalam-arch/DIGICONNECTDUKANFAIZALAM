@@ -210,7 +210,7 @@ export function WorkflowStepper({
               </div>
 
               {errorMessage && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-655 text-xs font-bold rounded-xl flex items-center gap-2">
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {errorMessage}
                 </div>
@@ -282,7 +282,7 @@ export function WorkflowStepper({
       {/* Activity Timeline */}
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-[20px] p-5 md:p-6 backdrop-blur-xl space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <Clock className="h-4 w-4 text-slate-450" />
+          <Clock className="h-4 w-4 text-slate-500" />
           Activity Log & Timeline
         </h3>
 
@@ -305,12 +305,12 @@ export function WorkflowStepper({
                     </span>
                   </div>
                   {log.event_description && (
-                    <p className="text-xs text-slate-655 font-medium">
+                    <p className="text-xs text-slate-700 font-medium">
                       {log.event_description}
                     </p>
                   )}
                   {log.metadata?.actor_name && (
-                    <span className="text-[10px] font-bold text-slate-450 flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
                       <User className="h-3 w-3" /> By {log.metadata.actor_name}
                       {log.metadata.actor_role && ` (${log.metadata.actor_role})`}
                     </span>

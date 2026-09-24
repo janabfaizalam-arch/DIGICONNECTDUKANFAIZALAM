@@ -67,7 +67,7 @@ export function CibilFinanceCenter() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">CIBIL & Finance Expert</h3>
-                  <p className="text-xs font-bold text-slate-450 uppercase mt-0.5">Certified Credit Analyst</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase mt-0.5">Certified Credit Analyst</p>
                   <p className="mt-2 text-xs font-bold text-slate-500 leading-normal">
                     Helped 5,000+ businesses secure capital and improve bureau standings.
                   </p>

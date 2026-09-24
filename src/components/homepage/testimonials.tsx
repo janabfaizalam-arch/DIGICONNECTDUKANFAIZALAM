@@ -76,7 +76,7 @@ export function Testimonials() {
             Google Reviews
           </h2>
           {isConfigured && (
-            <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-650">
+            <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700">
               <span className="flex items-center gap-0.5 text-amber-500">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star 
@@ -99,7 +99,7 @@ export function Testimonials() {
           {googleLoading ? (
             /* Loading State */
             <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-8 text-center flex flex-col justify-center items-center min-h-[180px] shadow-sm animate-pulse">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-450 mb-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-3">
                 <MessageSquare className="h-5 w-5" />
               </div>
               <h4 className="text-xs font-black text-slate-800">Google Business Reviews</h4>
@@ -148,7 +148,7 @@ export function Testimonials() {
                         </div>
                         <Quote className="h-4.5 w-4.5 text-slate-100" />
                       </div>
-                      <p className="text-xs font-semibold text-slate-650 leading-relaxed italic line-clamp-3">
+                      <p className="text-xs font-semibold text-slate-700 leading-relaxed italic line-clamp-3">
                         &ldquo;{test.text}&rdquo;
                       </p>
                     </div>

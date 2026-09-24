@@ -246,7 +246,7 @@ export default function ResetPasswordPage() {
 
           {isSessionPending ? (
             <div className="mt-4 flex items-center justify-center gap-2 rounded-[20px] bg-white/40 px-4 py-4 text-xs font-bold text-slate-600 border border-slate-200/50">
-              <ButtonSpinner className="text-blue-750" />
+              <ButtonSpinner className="text-blue-800" />
               Verifying reset link...
             </div>
           ) : (

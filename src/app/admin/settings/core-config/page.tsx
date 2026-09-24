@@ -121,7 +121,7 @@ export default function AdminCoreConfigurationPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-750 disabled:bg-indigo-300 shadow-md shadow-indigo-900/10 hover:shadow-lg transition-all"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700 disabled:bg-indigo-300 shadow-md shadow-indigo-900/10 hover:shadow-lg transition-all"
         >
           <Save className="h-4 w-4" />
           {saving ? "Saving Changes..." : "Save Engine Variables"}
@@ -280,7 +280,7 @@ export default function AdminCoreConfigurationPage() {
                       <span className="text-[9px] font-semibold text-slate-400 block">From: support@digiconnect.in</span>
                       <span className="text-[10px] font-black text-slate-900 block">Subject: {templates[activeTemplateIdx].name} Confirmation</span>
                     </div>
-                    <div className="text-[10px] text-slate-650 leading-relaxed font-semibold flex-1 whitespace-pre-line py-2">
+                    <div className="text-[10px] text-slate-700 leading-relaxed font-semibold flex-1 whitespace-pre-line py-2">
                       {getSimulatedPreview(templates[activeTemplateIdx].body)}
                     </div>
                     <div className="border-t border-slate-100 pt-2 flex justify-between items-center">

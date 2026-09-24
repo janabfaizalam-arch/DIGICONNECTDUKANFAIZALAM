@@ -312,7 +312,7 @@ export default function PartnerReferralAnalyticsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     <th className="py-3 px-6">Link Details</th>
                     <th className="py-3 px-6">Customer</th>
                     <th className="py-3 px-6">Amount</th>
@@ -342,10 +342,10 @@ export default function PartnerReferralAnalyticsPage() {
                           </td>
                           <td className="py-4 px-6 text-center">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              displayStatus === "paid" ? "bg-green-50 text-green-700 border-green-150" :
-                              displayStatus === "cancelled" ? "bg-slate-50 text-slate-500 border-slate-150" :
-                              displayStatus === "expired" ? "bg-amber-50 text-amber-600 border-amber-150" :
-                              "bg-blue-50 text-blue-700 border-blue-150"
+                              displayStatus === "paid" ? "bg-green-50 text-green-700 border-green-200" :
+                              displayStatus === "cancelled" ? "bg-slate-50 text-slate-500 border-slate-200" :
+                              displayStatus === "expired" ? "bg-amber-50 text-amber-600 border-amber-200" :
+                              "bg-blue-50 text-blue-700 border-blue-200"
                             }`}>
                               {displayStatus.toUpperCase()}
                             </span>
@@ -563,7 +563,7 @@ export default function PartnerReferralAnalyticsPage() {
 
             {/* Template Preview and Edit Textarea */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-450 uppercase tracking-wide">Edit Custom Message</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Edit Custom Message</label>
               <textarea
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}

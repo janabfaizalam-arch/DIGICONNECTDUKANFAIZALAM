@@ -172,10 +172,10 @@ export default function ItrCalculatorsPage() {
           </Link>
           <div>
             <h1 className="text-sm font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wider">
-              <Calculator className="h-4 w-4 text-orange-655" />
+              <Calculator className="h-4 w-4 text-orange-700" />
               Tax Calculators Hub
             </h1>
-            <p className="text-[10px] text-slate-450 font-bold mt-0.5">Assisted computations AY 2026-27</p>
+            <p className="text-[10px] text-slate-500 font-bold mt-0.5">Assisted computations AY 2026-27</p>
           </div>
         </div>
 
@@ -192,7 +192,7 @@ export default function ItrCalculatorsPage() {
         
         {/* Page Titles */}
         <div className="text-center space-y-2">
-          <span className="inline-flex rounded-full bg-orange-50 px-3 py-0.5 text-[10px] font-black text-orange-755 border border-orange-100 uppercase tracking-widest">
+          <span className="inline-flex rounded-full bg-orange-50 px-3 py-0.5 text-[10px] font-black text-orange-800 border border-orange-100 uppercase tracking-widest">
             Compute Slabs
           </span>
           <h2 className="text-2xl md:text-3.5xl font-black text-[#071326] tracking-tight">
@@ -303,7 +303,7 @@ export default function ItrCalculatorsPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-orange-50/20 border border-orange-100/50 flex gap-3 text-xs text-slate-550 leading-relaxed font-semibold">
+                <div className="p-4 rounded-2xl bg-orange-50/20 border border-orange-100/50 flex gap-3 text-xs text-slate-600 leading-relaxed font-semibold">
                   <Info className="h-4.5 w-4.5 text-orange-600 shrink-0 mt-0.5" />
                   <p>
                     <strong>FY 2025-26 slabs:</strong> New Regime standard deduction is ₹75,000, while Old Regime standard deduction is ₹50,000. Under Old Regime, you can apply standard 80C and Section 24b deductions.
@@ -338,7 +338,7 @@ export default function ItrCalculatorsPage() {
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-2 font-black text-slate-900 text-xs">
                     <span>Total Tax Savings</span>
-                    <span className="text-emerald-650">{formatCurrency(regimeResults.difference)}</span>
+                    <span className="text-emerald-700">{formatCurrency(regimeResults.difference)}</span>
                   </div>
                 </div>
 
@@ -400,7 +400,7 @@ export default function ItrCalculatorsPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-orange-50/20 border border-orange-100/50 flex gap-3 text-xs text-slate-550 leading-relaxed font-semibold">
+                <div className="p-4 rounded-2xl bg-orange-50/20 border border-orange-100/50 flex gap-3 text-xs text-slate-600 leading-relaxed font-semibold">
                   <Info className="h-4.5 w-4.5 text-orange-600 shrink-0 mt-0.5" />
                   <p>
                     HRA exemptions under Sec 10(13A) is computed based on minimum of: Actual HRA received, Rent Paid minus 10% of Basic, or 50% basic (metro) / 40% (non-metro).
@@ -534,11 +534,11 @@ export default function ItrCalculatorsPage() {
                     Tax Savings Advisor
                   </span>
                   <h3 className="text-base font-black text-[#071326] mt-2">Estimated Tax Saved:</h3>
-                  <p className="text-xl font-black text-emerald-650 mt-0.5">{formatCurrency(deductionsResults.savings)}</p>
+                  <p className="text-xl font-black text-emerald-700 mt-0.5">{formatCurrency(deductionsResults.savings)}</p>
                   <p className="text-[10px] text-slate-400 mt-1 font-bold">Total deductions applied: {formatCurrency(deductionsResults.total)}</p>
                 </div>
 
-                <div className="p-4 bg-white border border-slate-150/40 rounded-2xl text-[10px] text-slate-550 leading-relaxed font-semibold">
+                <div className="p-4 bg-white border border-slate-200/40 rounded-2xl text-[10px] text-slate-600 leading-relaxed font-semibold">
                   This estimates savings assuming you fall in the 20% slab under the Old Regime. Actual savings may vary according to taxable brackets.
                 </div>
 
@@ -587,7 +587,7 @@ export default function ItrCalculatorsPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-orange-50/20 border border-orange-100/50 flex gap-3 text-xs text-slate-550 leading-relaxed font-semibold">
+                <div className="p-4 rounded-2xl bg-orange-50/20 border border-orange-100/50 flex gap-3 text-xs text-slate-600 leading-relaxed font-semibold">
                   <Info className="h-4.5 w-4.5 text-orange-600 shrink-0 mt-0.5" />
                   <p>
                     Verify matching TDS records in Form 26AS. If TDS exceeds your computed tax liability, you are entitled to claim a full refund of the difference when filing your ITR.
@@ -604,7 +604,7 @@ export default function ItrCalculatorsPage() {
                   <h3 className="text-base font-black text-[#071326] mt-2">
                     {totalTds >= estimatedTax ? "Eligible Tax Refund:" : "Outstanding Tax Due:"}
                   </h3>
-                  <p className={`text-xl font-black mt-0.5 ${totalTds >= estimatedTax ? "text-emerald-600" : "text-orange-655"}`}>
+                  <p className={`text-xl font-black mt-0.5 ${totalTds >= estimatedTax ? "text-emerald-600" : "text-orange-700"}`}>
                     {formatCurrency(Math.abs(totalTds - estimatedTax))}
                   </p>
                 </div>

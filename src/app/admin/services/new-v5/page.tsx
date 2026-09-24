@@ -445,7 +445,7 @@ export default function AdminNewServiceV5() {
                   }}
                   className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-center"
                 />
-                <button onClick={() => handleRemoveCompRow(idx)} className="text-slate-450 hover:text-red-500">
+                <button onClick={() => handleRemoveCompRow(idx)} className="text-slate-500 hover:text-red-500">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -568,7 +568,7 @@ export default function AdminNewServiceV5() {
                   className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold"
                 />
                 {documents.length > 1 && (
-                  <button onClick={() => handleRemoveDocument(idx)} className="text-slate-450 hover:text-red-500">
+                  <button onClick={() => handleRemoveDocument(idx)} className="text-slate-500 hover:text-red-500">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}

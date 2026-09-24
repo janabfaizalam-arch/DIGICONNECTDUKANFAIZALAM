@@ -212,7 +212,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 <span>Taxes / Charges</span>
                 <span>Included</span>
               </div>
-              <div className="flex justify-between border-t border-slate-150 pt-2 text-lg font-serif font-black text-slate-900">
+              <div className="flex justify-between border-t border-slate-200 pt-2 text-lg font-serif font-black text-slate-900">
                 <span>Grand Total</span>
                 <span>{formatCurrency(invoice.amount)}</span>
               </div>

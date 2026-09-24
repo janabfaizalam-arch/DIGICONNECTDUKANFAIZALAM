@@ -280,7 +280,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
     }
 
     return (
-      <div className="text-center p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-450">
+      <div className="text-center p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-500">
         This block uses global service settings. No special custom contents needed.
       </div>
     );
@@ -313,7 +313,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
         ) : sections.length === 0 ? (
           <div className="p-8 text-center space-y-3">
             <AlertCircle className="h-8 w-8 text-slate-400 mx-auto" />
-            <p className="text-xs font-extrabold text-slate-650">No custom landing sections published yet.</p>
+            <p className="text-xs font-extrabold text-slate-700">No custom landing sections published yet.</p>
             <button
               onClick={() => {
                 addNewSection("overview");
@@ -336,7 +336,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
                 className={`flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer ${
                   selectedIdx === idx
                     ? "bg-indigo-50/50 border-indigo-500/30"
-                    : "bg-slate-55/40 border-slate-100/60 hover:bg-slate-50"
+                    : "bg-slate-50/40 border-slate-100/60 hover:bg-slate-50"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -363,7 +363,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
                     {sec.is_active ? (
                       <ToggleRight className="h-5 w-5 text-indigo-600" />
                     ) : (
-                      <ToggleLeft className="h-5 w-5 text-slate-350" />
+                      <ToggleLeft className="h-5 w-5 text-slate-400" />
                     )}
                   </button>
                   {/* Reordering buttons */}
@@ -402,7 +402,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
               <button
                 key={t.value}
                 onClick={() => addNewSection(t.value)}
-                className="flex items-center gap-1 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl text-[10px] font-black text-slate-750 transition"
+                className="flex items-center gap-1 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl text-[10px] font-black text-slate-800 transition"
               >
                 <Plus className="h-3 w-3" />
                 {t.label}
@@ -416,7 +416,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
         {selectedIdx === null || !sections[selectedIdx] ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <Edit3 className="h-8 w-8 text-slate-350 mb-2 animate-pulse" />
+            <Edit3 className="h-8 w-8 text-slate-400 mb-2 animate-pulse" />
             <p className="text-xs font-extrabold text-slate-400">Select a section block on the left to configure it.</p>
           </div>
         ) : (

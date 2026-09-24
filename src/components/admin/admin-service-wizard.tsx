@@ -179,7 +179,7 @@ export function AdminServiceWizard({ categories, service = null, onComplete }: A
               className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ${
                 step >= s.step
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/15"
-                  : "bg-slate-100 text-slate-450 border border-slate-200"
+                  : "bg-slate-100 text-slate-500 border border-slate-200"
               }`}
             >
               {step > s.step ? <Check className="h-4 w-4" /> : s.step}
@@ -359,7 +359,7 @@ export function AdminServiceWizard({ categories, service = null, onComplete }: A
                     {documents.map((doc, idx) => (
                       <span
                         key={idx}
-                        className="flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-650"
+                        className="flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700"
                       >
                         {doc}
                         <button
@@ -471,41 +471,41 @@ export function AdminServiceWizard({ categories, service = null, onComplete }: A
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-2 border-b border-slate-200/60 pb-3">
                 <div>
-                  <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px]">Name</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Name</span>
                   <span className="font-extrabold text-slate-800 text-sm mt-0.5 block">{title}</span>
                 </div>
                 <div>
-                  <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px]">Slug</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Slug</span>
                   <span className="font-mono text-slate-700 mt-0.5 block">{slug}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 border-b border-slate-200/60 pb-3">
                 <div>
-                  <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px]">Customer Fee</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Customer Fee</span>
                   <span className="font-extrabold text-slate-800 mt-0.5 block">₹{customerFee}</span>
                 </div>
                 <div>
-                  <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px]">Partner payout</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Partner payout</span>
                   <span className="font-extrabold text-slate-800 mt-0.5 block">₹{agentPayout}</span>
                 </div>
                 <div>
-                  <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px]">SLA Duration</span>
-                  <span className="font-extrabold text-slate-850 mt-0.5 block">{tatHours} Hours</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">SLA Duration</span>
+                  <span className="font-extrabold text-slate-900 mt-0.5 block">{tatHours} Hours</span>
                 </div>
               </div>
 
               <div>
-                <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px]">Required Documents Checklist</span>
-                <p className="font-bold text-slate-750 mt-1">
+                <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Required Documents Checklist</span>
+                <p className="font-bold text-slate-800 mt-1">
                   {documents.length > 0 ? documents.join(", ") : "No documents requested."}
                 </p>
               </div>
 
               <div className="border-t border-slate-200/60 pt-3">
-                <span className="text-slate-450 font-bold block uppercase tracking-wider text-[9px] mb-2">Publishing Status</span>
+                <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px] mb-2">Publishing Status</span>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-750">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
                     <input
                       type="radio"
                       name="status"
@@ -515,7 +515,7 @@ export function AdminServiceWizard({ categories, service = null, onComplete }: A
                     />
                     Keep as Draft
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-750">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
                     <input
                       type="radio"
                       name="status"
@@ -533,7 +533,7 @@ export function AdminServiceWizard({ categories, service = null, onComplete }: A
       </div>
 
       {/* Navigation Buttons */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-150 pt-4">
+      <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-4">
         <Button
           type="button"
           variant="outline"

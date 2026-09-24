@@ -45,7 +45,7 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Back Button */}
-      <Link href="/ap/services" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-650 hover:text-slate-900 transition-colors">
+      <Link href="/ap/services" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
         <ArrowLeft className="h-4 w-4" />
         Back to Catalog
       </Link>
@@ -77,13 +77,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase text-indigo-650">Processing Time</p>
+              <p className="text-[10px] font-bold uppercase text-indigo-700">Processing Time</p>
               <p className="mt-1 text-lg font-extrabold text-indigo-600 truncate">
                 {service.processing_time || "48 Hours"}
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase text-orange-605">Featured</p>
+              <p className="text-[10px] font-bold uppercase text-orange-600">Featured</p>
               <p className="mt-1 text-lg font-extrabold text-orange-600">
                 {service.is_featured ? "Yes" : "No"}
               </p>
@@ -110,12 +110,12 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
                       <p className="font-black text-slate-800 text-[13px]">{formatCurrency(v.price)}</p>
                     </div>
                     <div>
-                      <p className="font-bold text-emerald-650 text-[9px] uppercase">Score</p>
-                      <p className="font-black text-emerald-650 text-[13px]">{showScore ? v.score : "••••"}</p>
+                      <p className="font-bold text-emerald-700 text-[9px] uppercase">Score</p>
+                      <p className="font-black text-emerald-700 text-[13px]">{showScore ? v.score : "••••"}</p>
                     </div>
                     <div>
-                      <p className="font-bold text-indigo-605 text-[9px] uppercase">TAT</p>
-                      <p className="font-extrabold text-indigo-650 text-[13px] truncate">{v.processing_time}</p>
+                      <p className="font-bold text-indigo-600 text-[9px] uppercase">TAT</p>
+                      <p className="font-extrabold text-indigo-700 text-[13px] truncate">{v.processing_time}</p>
                     </div>
                   </div>
                   {v.restrictions && v.restrictions.type !== "india" && (
@@ -139,13 +139,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           <button
             onClick={() => toggleSection("documents")}
-            className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-905 hover:bg-slate-50 transition-colors"
+            className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-900 hover:bg-slate-50 transition-colors"
           >
             <span className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-slate-450" />
+              <FileText className="h-5 w-5 text-slate-500" />
               Required Documents
             </span>
-            {openSections.documents ? <ChevronUp className="h-5 w-5 text-slate-450" /> : <ChevronDown className="h-5 w-5 text-slate-450" />}
+            {openSections.documents ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
           </button>
           {openSections.documents && (
             <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
@@ -169,7 +169,7 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
               ) : service.required_documents ? (
                 <p className="text-xs font-semibold leading-relaxed text-slate-700 whitespace-pre-line pt-2">{service.required_documents}</p>
               ) : (
-                <p className="text-xs font-semibold text-slate-450 italic pt-2">No document requirements loaded for this service.</p>
+                <p className="text-xs font-semibold text-slate-500 italic pt-2">No document requirements loaded for this service.</p>
               )}
             </div>
           )}
@@ -179,13 +179,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           <button
             onClick={() => toggleSection("processing")}
-            className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-905 hover:bg-slate-50 transition-colors"
+            className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-900 hover:bg-slate-50 transition-colors"
           >
             <span className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-slate-450" />
+              <Clock className="h-5 w-5 text-slate-500" />
               Processing Time
             </span>
-            {openSections.processing ? <ChevronUp className="h-5 w-5 text-slate-450" /> : <ChevronDown className="h-5 w-5 text-slate-450" />}
+            {openSections.processing ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
           </button>
           {openSections.processing && (
             <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
@@ -206,13 +206,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           <button
             onClick={() => toggleSection("fees")}
-            className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-905 hover:bg-slate-50 transition-colors"
+            className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-900 hover:bg-slate-50 transition-colors"
           >
             <span className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-slate-450" />
+              <Info className="h-5 w-5 text-slate-500" />
               Government Fee
             </span>
-            {openSections.fees ? <ChevronUp className="h-5 w-5 text-slate-450" /> : <ChevronDown className="h-5 w-5 text-slate-450" />}
+            {openSections.fees ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
           </button>
           {openSections.fees && (
             <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
@@ -247,13 +247,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
             <button
               onClick={() => toggleSection("eligibility")}
-              className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-905 hover:bg-slate-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-900 hover:bg-slate-50 transition-colors"
             >
               <span className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-slate-450" />
+                <CheckCircle className="h-5 w-5 text-slate-500" />
                 Eligibility
               </span>
-              {openSections.eligibility ? <ChevronUp className="h-5 w-5 text-slate-450" /> : <ChevronDown className="h-5 w-5 text-slate-450" />}
+              {openSections.eligibility ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
             </button>
             {openSections.eligibility && (
               <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
@@ -268,13 +268,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
             <button
               onClick={() => toggleSection("notes")}
-              className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-905 hover:bg-slate-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-900 hover:bg-slate-50 transition-colors"
             >
               <span className="flex items-center gap-2">
-                <ShieldAlert className="h-5 w-5 text-slate-450" />
+                <ShieldAlert className="h-5 w-5 text-slate-500" />
                 Important Notes
               </span>
-              {openSections.notes ? <ChevronUp className="h-5 w-5 text-slate-450" /> : <ChevronDown className="h-5 w-5 text-slate-450" />}
+              {openSections.notes ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
             </button>
             {openSections.notes && (
               <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50 space-y-4 text-xs font-semibold leading-relaxed text-slate-700 pt-2">
@@ -302,13 +302,13 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
             <button
               onClick={() => toggleSection("faq")}
-              className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-905 hover:bg-slate-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center justify-between font-bold text-slate-900 hover:bg-slate-50 transition-colors"
             >
               <span className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-slate-450" />
+                <HelpCircle className="h-5 w-5 text-slate-500" />
                 Frequently Asked Questions (FAQs)
               </span>
-              {openSections.faq ? <ChevronUp className="h-5 w-5 text-slate-450" /> : <ChevronDown className="h-5 w-5 text-slate-450" />}
+              {openSections.faq ? <ChevronUp className="h-5 w-5 text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-500" />}
             </button>
             {openSections.faq && (
               <div className="px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50 space-y-3 pt-2">
@@ -318,7 +318,7 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
                       <BadgeHelp className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
                       <span>{f.question}</span>
                     </p>
-                    <p className="font-semibold text-slate-550 pl-5 leading-normal">{f.answer}</p>
+                    <p className="font-semibold text-slate-600 pl-5 leading-normal">{f.answer}</p>
                   </div>
                 ))}
               </div>

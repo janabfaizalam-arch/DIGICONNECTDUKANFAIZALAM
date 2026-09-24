@@ -156,7 +156,7 @@ export function ReferEarn() {
     <section id="refer-earn" className="bg-white py-12 px-3">
       {styleTag}
       <div className="container-shell">
-        <div className="glass-panel overflow-hidden rounded-[2.25rem] border border-blue-150 bg-gradient-to-br from-white/80 via-blue-50/20 to-slate-50 p-5 shadow-soft md:p-10 relative">
+        <div className="glass-panel overflow-hidden rounded-[2.25rem] border border-blue-200 bg-gradient-to-br from-white/80 via-blue-50/20 to-slate-50 p-5 shadow-soft md:p-10 relative">
           
           {/* Subtle backgrounds */}
           <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 rounded-full bg-blue-500/5 blur-[80px] pointer-events-none" />
@@ -190,14 +190,14 @@ export function ReferEarn() {
                     { label: "Pending Reward", val: `₹${stats.pendingRewards}`, theme: "text-orange-500" },
                     { label: "Conversion", val: `${stats.conversionRate}%` },
                   ].map((s, idx) => (
-                    <div key={idx} className="rounded-xl border border-slate-150 bg-white/70 p-3 shadow-[0_2px_8px_rgba(15,23,42,0.01)] backdrop-blur-md">
+                    <div key={idx} className="rounded-xl border border-slate-200 bg-white/70 p-3 shadow-[0_2px_8px_rgba(15,23,42,0.01)] backdrop-blur-md">
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">{s.label}</p>
                       <p className={`text-base font-black mt-2 leading-none ${s.theme || "text-slate-800"}`}>{s.val}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-150/80 bg-slate-50/50 p-5 text-center shadow-xs">
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 text-center shadow-xs">
                   <p className="text-xs font-semibold text-slate-500">
                     Register ya login karke real-time statistics aur details track karein.
                   </p>
@@ -206,13 +206,13 @@ export function ReferEarn() {
 
               {/* Progress Milestones display */}
               {isLoggedIn && (
-                <div className="relative pt-2 bg-slate-50/50 border border-slate-150/40 p-4 rounded-2xl">
+                <div className="relative pt-2 bg-slate-50/50 border border-slate-200/40 p-4 rounded-2xl">
                   <div className="flex justify-between items-center text-xs font-black text-slate-800">
                     <span className="flex items-center gap-1.5">
                       <TrendingUp className="h-4 w-4 text-orange-500" />
                       {levelName}
                     </span>
-                    <span className="text-[10px] text-slate-455">Next: {nextLevelName}</span>
+                    <span className="text-[10px] text-slate-500">Next: {nextLevelName}</span>
                   </div>
                   
                   {/* Progress bar */}
@@ -223,7 +223,7 @@ export function ReferEarn() {
                     />
                   </div>
 
-                  <div className="flex justify-between text-[8.5px] font-black text-slate-450 uppercase tracking-wider mt-2.5">
+                  <div className="flex justify-between text-[8.5px] font-black text-slate-500 uppercase tracking-wider mt-2.5">
                     <span>Lvl 1 (10)</span>
                     <span>Lvl 2 (25)</span>
                     <span>Lvl 3 (50)</span>
@@ -265,20 +265,20 @@ export function ReferEarn() {
                     </div>
 
                     <div className="pt-2">
-                      <span className="text-[10px] font-black text-slate-450 uppercase tracking-wider">Referral Code</span>
-                      <div className="flex items-center gap-2 mt-1.5 bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-sm font-black text-slate-800 tracking-[0.2em] uppercase shadow-inner">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Referral Code</span>
+                      <div className="flex items-center gap-2 mt-1.5 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm font-black text-slate-800 tracking-[0.2em] uppercase shadow-inner">
                         {refCode || "DIGI777"}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-black text-slate-450 uppercase tracking-wider">Sharing Link</span>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Sharing Link</span>
                       <div className="flex items-center gap-2 mt-1.5">
                         <input
                           type="text"
                           readOnly
                           value={linkToShare}
-                          className="flex-1 text-xs bg-slate-50 border border-slate-150 p-2.5 rounded-xl outline-none font-semibold text-slate-500 truncate shadow-inner"
+                          className="flex-1 text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-500 truncate shadow-inner"
                         />
                         <button
                           onClick={handleCopy}
@@ -292,7 +292,7 @@ export function ReferEarn() {
 
                     {/* Active Share Action Grid (No placeholders) */}
                     <div className="pt-2">
-                      <span className="text-[10px] font-black text-slate-450 uppercase tracking-wider">Quick Share Actions</span>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Quick Share Actions</span>
                       <div className="grid grid-cols-4 gap-2 mt-2">
                         <button
                           onClick={shareWhatsApp}
@@ -333,7 +333,7 @@ export function ReferEarn() {
                 ) : (
                   /* Unauthenticated Mock State */
                   <div className="mt-6 space-y-4">
-                    <div className="bg-slate-50/70 border border-slate-150 p-6 rounded-2xl text-center space-y-4 shadow-inner">
+                    <div className="bg-slate-50/70 border border-slate-200 p-6 rounded-2xl text-center space-y-4 shadow-inner">
                       <p className="text-xs font-semibold text-slate-500 leading-relaxed">
                         Referral links generate karne, stats track karne aur cash claim karne ke liye user account login karein.
                       </p>
@@ -350,7 +350,7 @@ export function ReferEarn() {
               </div>
 
               {/* Secure tag */}
-              <div className="mt-6 flex items-center gap-1.5 justify-center text-[10px] font-bold text-slate-450 border-t border-slate-100/50 pt-3">
+              <div className="mt-6 flex items-center gap-1.5 justify-center text-[10px] font-bold text-slate-500 border-t border-slate-100/50 pt-3">
                 <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
                 Verified & Handled by RNOS Rewards Engine
               </div>

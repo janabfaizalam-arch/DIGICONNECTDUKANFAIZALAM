@@ -89,7 +89,7 @@ export function FormBuilder({
         return (
           <div key={field.field_key} className="space-y-1.5">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-350 flex items-center gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 {field.label}
                 {field.validation_chains.some((r) => r.rule === "required") && (
                   <span className="text-red-500 font-bold">*</span>
@@ -173,7 +173,7 @@ export function FormBuilder({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FileText className="h-5 w-5 text-indigo-400 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-350 truncate">
+                        <p className="text-xs font-bold text-slate-400 truncate">
                           {getFileMetadata(val)?.name || "Uploaded Document"}
                         </p>
                         <span className="text-[9px] font-mono text-slate-500 flex items-center gap-1">

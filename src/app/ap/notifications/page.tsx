@@ -243,8 +243,8 @@ export default function NotificationsPage() {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                   selectedCategory === cat
-                    ? "bg-indigo-50 border-indigo-200 text-indigo-750 font-bold"
-                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-850 shadow-sm"
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-800 font-bold"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 shadow-sm"
                 }`}
               >
                 {cat}
@@ -268,10 +268,10 @@ export default function NotificationsPage() {
         {/* Notifications list workspace */}
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <Card className="border border-dashed border-slate-250 bg-white/50 p-12 text-center rounded-3xl">
+            <Card className="border border-dashed border-slate-300 bg-white/50 p-12 text-center rounded-3xl">
               <Inbox className="mx-auto h-10 w-10 text-slate-400 animate-pulse" />
-              <p className="mt-3 text-base font-bold text-slate-850">All clear!</p>
-              <p className="text-xs text-slate-450 mt-1.5 font-semibold">No notifications match your current filter settings.</p>
+              <p className="mt-3 text-base font-bold text-slate-900">All clear!</p>
+              <p className="text-xs text-slate-500 mt-1.5 font-semibold">No notifications match your current filter settings.</p>
             </Card>
           ) : (
             filtered.map((item) => (
@@ -311,7 +311,7 @@ export default function NotificationsPage() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-655 font-medium leading-relaxed">
+                  <p className="text-xs text-slate-700 font-medium leading-relaxed">
                     {item.description}
                   </p>
 
@@ -338,7 +338,7 @@ export default function NotificationsPage() {
 
                     <button
                       onClick={() => handleDeleteNotification(item.id)}
-                      className="text-slate-405 hover:text-red-600 transition-colors"
+                      className="text-slate-400 hover:text-red-600 transition-colors"
                       title="Delete notification log record"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -352,7 +352,7 @@ export default function NotificationsPage() {
 
         {/* Dynamic Tip Banner */}
         <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-2xl flex gap-3 items-center shadow-sm">
-          <TrendingUp className="h-5 w-5 text-indigo-650 shrink-0" />
+          <TrendingUp className="h-5 w-5 text-indigo-700 shrink-0" />
           <p className="text-xs text-slate-500 leading-relaxed font-medium">
             <span className="text-slate-900 font-extrabold">Partner Tip:</span> Keep your notification settings toggled for immediate WhatsApp alerts under Profile Settings. Never miss payout clearances or document corrections.
           </p>

@@ -154,7 +154,7 @@ export function AdminCommandPalette({
           <input
             ref={inputRef}
             type="text"
-            className="ml-3 w-full bg-transparent text-sm font-medium text-slate-800 placeholder-slate-450 outline-none"
+            className="ml-3 w-full bg-transparent text-sm font-medium text-slate-800 placeholder-slate-500 outline-none"
             placeholder="Type a command or search services..."
             value={query}
             onChange={(e) => {
@@ -164,7 +164,7 @@ export function AdminCommandPalette({
           />
           <button
             onClick={onClose}
-            className="ml-2 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-650 transition-colors"
+            className="ml-2 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -187,12 +187,12 @@ export function AdminCommandPalette({
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-bold transition-all duration-150 ${
                       isSelected
                         ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/10"
-                        : "text-slate-650 hover:bg-slate-50"
+                        : "text-slate-700 hover:bg-slate-50"
                     }`}
                     onClick={() => executeItem(globalIndex)}
                   >
                     <div className="flex items-center gap-2.5">
-                      <item.icon className={`h-4 w-4 ${isSelected ? "text-white" : "text-slate-450"}`} />
+                      <item.icon className={`h-4 w-4 ${isSelected ? "text-white" : "text-slate-500"}`} />
                       <span>{item.label}</span>
                     </div>
                     {isSelected && <ChevronRight className="h-3.5 w-3.5 text-white/85" />}
@@ -217,12 +217,12 @@ export function AdminCommandPalette({
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-bold transition-all duration-150 ${
                       isSelected
                         ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/10"
-                        : "text-slate-650 hover:bg-slate-50"
+                        : "text-slate-700 hover:bg-slate-50"
                     }`}
                     onClick={() => executeItem(globalIndex)}
                   >
                     <div className="flex items-center gap-2.5">
-                      <item.icon className={`h-4 w-4 ${isSelected ? "text-white" : "text-slate-450"}`} />
+                      <item.icon className={`h-4 w-4 ${isSelected ? "text-white" : "text-slate-500"}`} />
                       <span>{item.label}</span>
                     </div>
                     {isSelected && <ChevronRight className="h-3.5 w-3.5 text-white/85" />}
@@ -246,7 +246,7 @@ export function AdminCommandPalette({
             </div>
 
             {filteredServices.length === 0 ? (
-              <div className="py-6 text-center text-xs font-semibold text-slate-450">
+              <div className="py-6 text-center text-xs font-semibold text-slate-500">
                 No matching services found.
               </div>
             ) : (
@@ -259,7 +259,7 @@ export function AdminCommandPalette({
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-bold transition-all duration-150 ${
                       isSelected
                         ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/10"
-                        : "text-slate-650 hover:bg-slate-50"
+                        : "text-slate-700 hover:bg-slate-50"
                     }`}
                     onClick={() => executeItem(globalIndex)}
                   >
@@ -295,7 +295,7 @@ export function AdminCommandPalette({
         </div>
 
         {/* Footer shortcuts */}
-        <div className="flex items-center justify-between border-t border-slate-200/60 bg-slate-50/50 px-4 py-3 text-[10px] font-bold text-slate-450">
+        <div className="flex items-center justify-between border-t border-slate-200/60 bg-slate-50/50 px-4 py-3 text-[10px] font-bold text-slate-500">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="rounded border bg-white px-1.5 py-0.5 font-mono shadow-sm">↑↓</kbd>

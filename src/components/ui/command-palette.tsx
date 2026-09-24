@@ -226,7 +226,7 @@ export function CommandPalette() {
                         </div>
 
                         {idx === selectedIndex && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-450 bg-slate-950/20 px-2 py-1 rounded-lg">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-950/20 px-2 py-1 rounded-lg">
                             <span>Select</span>
                             <CornerDownLeft className="h-3 w-3" />
                           </div>
@@ -252,7 +252,7 @@ export function CommandPalette() {
                             <span className="text-[9px] font-black text-indigo-400 uppercase">{item.category}</span>
                             <h4 className="text-xs font-extrabold text-white mt-1">{item.title}</h4>
                           </div>
-                          <p className="text-[10px] text-slate-450 mt-1 leading-snug">{item.description}</p>
+                          <p className="text-[10px] text-slate-500 mt-1 leading-snug">{item.description}</p>
                         </div>
                       ))}
                     </div>

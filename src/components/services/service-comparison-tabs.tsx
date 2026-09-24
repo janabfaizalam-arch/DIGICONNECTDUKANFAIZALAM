@@ -37,7 +37,7 @@ export function ServiceComparisonTabs({ comparisons }: ServiceComparisonTabsProp
                 className={`rounded-xl px-3 py-1.5 text-xs font-extrabold transition-all ${
                   idx === activeTab
                     ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-550 hover:text-slate-800"
+                    : "text-slate-600 hover:text-slate-800"
                 }`}
               >
                 {c.title}
@@ -48,16 +48,16 @@ export function ServiceComparisonTabs({ comparisons }: ServiceComparisonTabsProp
       </div>
 
       {/* Comparison Grid */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-150 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-slate-50/75 border-b border-slate-150">
+              <tr className="bg-slate-50/75 border-b border-slate-200">
                 {((currentComp.headers as string[]) || []).map((header, index) => (
                   <th
                     key={index}
                     className={`px-5 py-4 text-xs font-black tracking-wider uppercase text-slate-800 ${
-                      index > 0 ? "text-center border-l border-slate-150" : ""
+                      index > 0 ? "text-center border-l border-slate-200" : ""
                     }`}
                   >
                     {header}
@@ -76,14 +76,14 @@ export function ServiceComparisonTabs({ comparisons }: ServiceComparisonTabsProp
                   <td className="px-5 py-4 text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     {row.feature}
                   </td>
-                  <td className="px-5 py-4 text-xs font-semibold text-slate-600 text-center border-l border-slate-150 leading-relaxed">
+                  <td className="px-5 py-4 text-xs font-semibold text-slate-600 text-center border-l border-slate-200 leading-relaxed">
                     {row.v1}
                   </td>
-                  <td className="px-5 py-4 text-xs font-semibold text-slate-600 text-center border-l border-slate-150 leading-relaxed">
+                  <td className="px-5 py-4 text-xs font-semibold text-slate-600 text-center border-l border-slate-200 leading-relaxed">
                     {row.v2}
                   </td>
                   {row.v3 && (
-                    <td className="px-5 py-4 text-xs font-semibold text-slate-600 text-center border-l border-slate-150 leading-relaxed">
+                    <td className="px-5 py-4 text-xs font-semibold text-slate-600 text-center border-l border-slate-200 leading-relaxed">
                       {row.v3}
                     </td>
                   )}

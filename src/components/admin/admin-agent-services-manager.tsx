@@ -584,7 +584,7 @@ export function AdminAgentServicesManager({
                             updatedFaq[index].question = e.target.value;
                             setDraft({ ...draft, faq: updatedFaq });
                           }}
-                          className="w-full text-xs font-semibold bg-transparent border-b border-slate-250 focus:outline-none mb-1 pr-6"
+                          className="w-full text-xs font-semibold bg-transparent border-b border-slate-300 focus:outline-none mb-1 pr-6"
                           placeholder="Question"
                         />
                         <textarea
@@ -758,7 +758,7 @@ export function AdminAgentServicesManager({
                             list[index].name = e.target.value;
                             setDraft({ ...draft, variants: list });
                           }}
-                          className="w-full text-xs font-bold bg-transparent border-b border-slate-305 focus:outline-none py-0.5"
+                          className="w-full text-xs font-bold bg-transparent border-b border-slate-300 focus:outline-none py-0.5"
                           placeholder="Variant Name"
                         />
                       </div>

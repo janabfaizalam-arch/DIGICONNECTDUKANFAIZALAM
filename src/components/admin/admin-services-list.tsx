@@ -323,7 +323,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
             <Layers className="h-5 w-5 text-indigo-500" />
           </div>
           <p className="mt-2 text-2xl font-extrabold text-slate-900">{metrics.total}</p>
-          <span className="text-[10px] text-slate-450 font-semibold block mt-1">Catalog setup count</span>
+          <span className="text-[10px] text-slate-500 font-semibold block mt-1">Catalog setup count</span>
         </div>
 
         <div className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
@@ -343,7 +343,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
             <FileText className="h-5 w-5 text-slate-400" />
           </div>
           <p className="mt-2 text-2xl font-extrabold text-slate-900">{metrics.draft}</p>
-          <span className="text-[10px] text-slate-450 font-semibold block mt-1">Pending publication</span>
+          <span className="text-[10px] text-slate-500 font-semibold block mt-1">Pending publication</span>
         </div>
 
         <div className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
@@ -420,7 +420,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
       </div>
 
       {/* 3. Services Listing (Premium Stripe style list) */}
-      <div className="overflow-hidden rounded-2xl border border-slate-150 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-100">
@@ -446,7 +446,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
               {visibleServices.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center">
-                    <FileText className="h-10 w-10 mx-auto text-slate-350 mb-3" />
+                    <FileText className="h-10 w-10 mx-auto text-slate-400 mb-3" />
                     <p className="text-sm font-bold text-slate-800">No services match the filter query.</p>
                     <p className="text-xs text-slate-500 font-semibold mt-1">Try updating search queries or dropdown selections.</p>
                   </td>
@@ -492,7 +492,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                             svc.status === "published"
                               ? "bg-green-50 text-green-700 border border-green-200"
                               : svc.status === "draft"
-                              ? "bg-slate-100 text-slate-650"
+                              ? "bg-slate-100 text-slate-700"
                               : "bg-red-50 text-red-600 border border-red-100"
                           )}
                         >
@@ -501,14 +501,14 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex flex-col">
-                          <span className="font-extrabold text-slate-850 text-xs">₹{customerFeeVal}</span>
+                          <span className="font-extrabold text-slate-900 text-xs">₹{customerFeeVal}</span>
                           <span className="text-[10px] text-emerald-600 font-bold mt-0.5">Payout: ₹{agentPayoutVal}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-center">
                         <div className="flex flex-col items-center">
                           <span className="font-extrabold text-slate-700 text-xs">-- Apps</span>
-                          <span className="text-[10px] text-slate-450 font-semibold mt-0.5">-- Rev</span>
+                          <span className="text-[10px] text-slate-500 font-semibold mt-0.5">-- Rev</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-slate-500 text-xs font-bold">
@@ -530,7 +530,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                             }}
                             title="View details"
                           >
-                            <Eye className="h-4 w-4 text-slate-650" />
+                            <Eye className="h-4 w-4 text-slate-700" />
                           </Button>
                           <Link
                             href={`/admin/services/${svc.id}/edit`}
@@ -540,7 +540,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                             )}
                             title="Configure service settings"
                           >
-                            <SlidersHorizontal className="h-4 w-4 text-slate-650" />
+                            <SlidersHorizontal className="h-4 w-4 text-slate-700" />
                           </Link>
                           <Button
                             variant="ghost"
@@ -597,7 +597,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="ghost"
-                className="text-slate-350 hover:text-white text-xs font-bold"
+                className="text-slate-400 hover:text-white text-xs font-bold"
                 onClick={() => setSelectedIds([])}
               >
                 Clear
@@ -605,7 +605,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
               <Button
                 variant="outline"
-                className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-200"
+                className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
                 onClick={() => executeBulkAction("enable")}
               >
                 Publish Live
@@ -613,7 +613,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
               <Button
                 variant="outline"
-                className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-200"
+                className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
                 onClick={() => executeBulkAction("disable")}
               >
                 Set Draft
@@ -621,7 +621,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
               <Button
                 variant="outline"
-                className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-200"
+                className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
                 onClick={() => executeBulkAction("duplicate")}
               >
                 Duplicate
@@ -636,7 +636,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                       placeholder="Price (₹)"
                       value={bulkPriceValue}
                       onChange={(e) => setBulkPriceValue(e.target.value)}
-                      className="h-8 w-24 text-xs bg-slate-900 border-slate-750 text-white placeholder-slate-500"
+                      className="h-8 w-24 text-xs bg-slate-900 border-slate-800 text-white placeholder-slate-500"
                     />
                     <Button
                       className="h-8 text-xs px-2.5 font-bold"
@@ -651,7 +651,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                 ) : null}
                 <Button
                   variant="outline"
-                  className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-200"
+                  className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
                   onClick={() => {
                     setShowBulkPriceInput(!showBulkPriceInput);
                     setShowBulkCommissionInput(false);
@@ -670,7 +670,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                       placeholder="Payout (₹)"
                       value={bulkCommissionValue}
                       onChange={(e) => setBulkCommissionValue(e.target.value)}
-                      className="h-8 w-24 text-xs bg-slate-900 border-slate-750 text-white placeholder-slate-500"
+                      className="h-8 w-24 text-xs bg-slate-900 border-slate-800 text-white placeholder-slate-500"
                     />
                     <Button
                       className="h-8 text-xs px-2.5 font-bold"
@@ -685,7 +685,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                 ) : null}
                 <Button
                   variant="outline"
-                  className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-200"
+                  className="h-9 px-3.5 text-xs font-extrabold border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200"
                   onClick={() => {
                     setShowBulkCommissionInput(!showBulkCommissionInput);
                     setShowBulkPriceInput(false);
@@ -705,7 +705,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
               <Button
                 variant="ghost"
-                className="h-9 w-9 text-slate-400 hover:text-red-400 hover:bg-slate-850"
+                className="h-9 w-9 text-slate-400 hover:text-red-400 hover:bg-slate-800"
                 onClick={() => executeBulkAction("delete")}
               >
                 <Trash2 className="h-4.5 w-4.5" />
@@ -732,7 +732,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                   {activeService.category?.name || "Services CMS"}
                 </span>
                 <h2 className="mt-1 text-base font-extrabold text-slate-900">{activeService.title}</h2>
-                <span className="font-mono text-[10px] text-slate-450 block mt-0.5">{activeService.slug}</span>
+                <span className="font-mono text-[10px] text-slate-500 block mt-0.5">{activeService.slug}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Link
@@ -743,7 +743,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                 </Link>
                 <button
                   onClick={() => setActiveService(null)}
-                  className="rounded-lg p-1.5 text-slate-450 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                 >
                   <X className="h-4.5 w-4.5" />
                 </button>
@@ -783,14 +783,14 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
               {activeTab === "overview" && (
                 <div className="space-y-5 animate-in fade-in-50 duration-150">
                   <div>
-                    <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450">Short Description</h4>
-                    <p className="mt-1.5 text-xs font-semibold text-slate-750 leading-relaxed">
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Short Description</h4>
+                    <p className="mt-1.5 text-xs font-semibold text-slate-800 leading-relaxed">
                       {activeService.short_description || "No short description provided."}
                     </p>
                   </div>
 
                   <div>
-                    <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450">Detailed Overview</h4>
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Detailed Overview</h4>
                     <p className="mt-1.5 text-xs font-semibold text-slate-700 leading-relaxed whitespace-pre-line">
                       {activeService.full_description || activeService.overview || "No detailed overview provided."}
                     </p>
@@ -798,13 +798,13 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
                   <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450 block">Status</span>
-                      <span className="mt-1.5 inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-slate-650">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 block">Status</span>
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-slate-700">
                         {activeService.status}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450 block">CTA Button Link</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 block">CTA Button Link</span>
                       <span className="mt-1.5 text-xs font-bold text-slate-700">
                         {activeService.cta_type === "apply" ? "Standard Application" : "Enquiry Form"}
                       </span>
@@ -812,8 +812,8 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                   </div>
 
                   <div className="border-t border-slate-100 pt-4 space-y-3">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450 block">SLA & System Configuration</span>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-750">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 block">SLA & System Configuration</span>
+                    <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-800">
                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
                         <span className="text-[9px] font-extrabold text-slate-400 block uppercase">Auto Assign</span>
                         <span className="mt-1 block">
@@ -831,12 +831,12 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
                   {activeService.created_by_profile && (
                     <div className="border-t border-slate-100 pt-4 flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-650">
-                        <User className="h-4.5 w-4.5 text-slate-450" />
+                      <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700">
+                        <User className="h-4.5 w-4.5 text-slate-500" />
                       </div>
                       <div>
                         <span className="text-[9px] font-extrabold text-slate-400 block uppercase">Created By</span>
-                        <span className="text-xs font-bold text-slate-750 block mt-0.5">
+                        <span className="text-xs font-bold text-slate-800 block mt-0.5">
                           {activeService.created_by_profile.full_name} ({activeService.created_by_profile.role})
                         </span>
                       </div>
@@ -848,13 +848,13 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
               {/* Tab 2: Documents */}
               {activeTab === "documents" && (
                 <div className="space-y-4 animate-in fade-in-50 duration-150">
-                  <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450">Required Submission Checklist</h4>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Required Submission Checklist</h4>
                   {activeService.documents && activeService.documents.length > 0 ? (
                     <ul className="grid gap-2">
                       {activeService.documents.map((doc, idx) => (
                         <li
                           key={idx}
-                          className="flex items-center gap-2.5 rounded-xl border border-slate-200/60 bg-slate-50/50 px-3.5 py-3 text-xs font-bold text-slate-750"
+                          className="flex items-center gap-2.5 rounded-xl border border-slate-200/60 bg-slate-50/50 px-3.5 py-3 text-xs font-bold text-slate-800"
                         >
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 text-[10px] font-extrabold text-indigo-700">
                             {idx + 1}
@@ -872,18 +872,18 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
               {/* Tab 3: Commission */}
               {activeTab === "commission" && (
                 <div className="space-y-5 animate-in fade-in-50 duration-150">
-                  <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450">Pricing & Partner Revenue splits</h4>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Pricing & Partner Revenue splits</h4>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-xl border border-slate-200/80 p-4">
-                      <span className="text-[9px] font-extrabold text-slate-450 uppercase block">Customer Price</span>
+                      <span className="text-[9px] font-extrabold text-slate-500 uppercase block">Customer Price</span>
                       <p className="mt-1 text-xl font-extrabold text-slate-900">
                         ₹{(activeService.metadata as ServiceMetadata | null | undefined)?.customer_fee || activeService.sale_price || 0}
                       </p>
                     </div>
 
                     <div className="rounded-xl border border-slate-200/80 p-4">
-                      <span className="text-[9px] font-extrabold text-slate-450 uppercase block">Partner Payout</span>
+                      <span className="text-[9px] font-extrabold text-slate-500 uppercase block">Partner Payout</span>
                       <p className="mt-1 text-xl font-extrabold text-emerald-600">
                         ₹{(activeService.metadata as ServiceMetadata | null | undefined)?.agent_payout || 0}
                       </p>
@@ -913,9 +913,9 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
               {activeTab === "applications" && (
                 <div className="space-y-4 animate-in fade-in-50 duration-150">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450">Recent Applications</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Recent Applications</span>
                     {analyticsData?.summary && (
-                      <span className="text-[9px] font-bold text-slate-400 bg-slate-150 px-2 py-0.5 rounded">
+                      <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
                         Total {analyticsData.summary.totalApplications}
                       </span>
                     )}
@@ -934,7 +934,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                       {analyticsData.latestApplications.map((app) => (
                         <div
                           key={app.id}
-                          className="flex items-center justify-between border border-slate-200/80 rounded-xl p-3.5 text-xs font-bold text-slate-750 bg-white hover:border-slate-350 transition-colors"
+                          className="flex items-center justify-between border border-slate-200/80 rounded-xl p-3.5 text-xs font-bold text-slate-800 bg-white hover:border-slate-400 transition-colors"
                         >
                           <div className="flex flex-col">
                             <span>{app.customerName}</span>
@@ -983,7 +983,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
                   {/* Revenue Growth Trend Chart */}
                   <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
-                    <span className="text-[10px] font-extrabold text-slate-450 uppercase block mb-3">Revenue growth trends</span>
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase block mb-3">Revenue growth trends</span>
                     {isAnalyticsLoading ? (
                       <div className="flex items-center justify-center h-48">
                         <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
@@ -1009,7 +1009,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
               {/* Tab 6: Activity Logs */}
               {activeTab === "activity" && (
                 <div className="space-y-4 animate-in fade-in-50 duration-150">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-450">Activity Timeline Logs</span>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Activity Timeline Logs</span>
 
                   {isTimelineLoading ? (
                     <div className="flex items-center justify-center py-10">
@@ -1020,7 +1020,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                       No logged operations found for this service.
                     </p>
                   ) : (
-                    <div className="relative border-l border-slate-250/80 ml-2.5 pl-6 space-y-5">
+                    <div className="relative border-l border-slate-300/80 ml-2.5 pl-6 space-y-5">
                       {timelineLogs.map((log) => {
                         const dateStr = new Date(log.created_at).toLocaleDateString("en-IN", {
                           day: "numeric",
@@ -1037,14 +1037,14 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                             
                             <div className="font-bold text-slate-800">
                               <span className="text-indigo-600 font-extrabold capitalize">{log.action}</span>
-                              <span className="text-slate-450 font-semibold"> by {actorName}</span>
+                              <span className="text-slate-500 font-semibold"> by {actorName}</span>
                             </div>
                             <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">{dateStr}</span>
 
                             {log.changes && Object.keys(log.changes).length > 0 && (
                               <div className="mt-2 rounded-lg bg-slate-50 border border-slate-100 p-2 text-[10px] font-mono space-y-1">
                                 {Object.entries(log.changes || {}).map(([field, delta]) => (
-                                  <div key={field} className="text-slate-650 flex flex-wrap gap-1">
+                                  <div key={field} className="text-slate-700 flex flex-wrap gap-1">
                                     <span className="font-bold text-slate-700">{field}:</span>
                                     <span className="text-red-600 line-through">
                                       {JSON.stringify(delta.old)}

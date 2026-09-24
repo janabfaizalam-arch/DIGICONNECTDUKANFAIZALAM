@@ -443,7 +443,7 @@ export function AdminEngineConfigTabs({
                 <FileText className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-xs font-extrabold text-slate-850">Legacy Layout CMS Editor</h4>
+                <h4 className="text-xs font-extrabold text-slate-900">Legacy Layout CMS Editor</h4>
                 <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
                   Update public landing page blocks, FAQs, visual banners, and SEO tags.
                 </p>
@@ -460,7 +460,7 @@ export function AdminEngineConfigTabs({
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-xs font-extrabold text-slate-850">Enterprise CMS: Visual Page Builder</h4>
+                <h4 className="text-xs font-extrabold text-slate-900">Enterprise CMS: Visual Page Builder</h4>
                 <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
                   Configure, drag-and-drop, and reorder sections (Overview, FAQ, reviews, stats) for the dynamic V5 citizen marketplace.
                 </p>
@@ -550,8 +550,8 @@ export function AdminEngineConfigTabs({
 
             <div className="grid gap-4">
               {fields.length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl text-slate-450">
-                  <Settings2 className="h-8 w-8 mx-auto mb-2 text-slate-350" />
+                <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl text-slate-500">
+                  <Settings2 className="h-8 w-8 mx-auto mb-2 text-slate-400" />
                   <p className="text-xs font-extrabold">No dynamic fields registered.</p>
                   <p className="text-[11px] text-slate-500 mt-0.5">Click Add Field Registry to configure one.</p>
                 </div>
@@ -721,7 +721,7 @@ export function AdminEngineConfigTabs({
                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all duration-150 flex items-center gap-1 ${
                                   isAdded
                                     ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm"
-                                    : "bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100"
+                                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                                 }`}
                               >
                                 {isAdded && <Check className="h-3 w-3" />}
@@ -736,7 +736,7 @@ export function AdminEngineConfigTabs({
                     {/* Active validation rules configuration */}
                     {field.validation_chains.length > 0 && (
                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 space-y-3">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-450 block">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
                           Validation Rules Details
                         </span>
                         <div className="grid gap-3">
@@ -747,7 +747,7 @@ export function AdminEngineConfigTabs({
                                 key={ruleObj.rule}
                                 className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-white border border-slate-200/50 p-2.5 rounded-lg text-xs"
                               >
-                                <span className="font-extrabold text-slate-750 shrink-0 uppercase tracking-wide text-[10px] bg-slate-100 px-2 py-0.5 rounded">
+                                <span className="font-extrabold text-slate-800 shrink-0 uppercase tracking-wide text-[10px] bg-slate-100 px-2 py-0.5 rounded">
                                   {ruleDef?.label || ruleObj.rule}
                                 </span>
 
@@ -816,8 +816,8 @@ export function AdminEngineConfigTabs({
 
             <div className="grid gap-4">
               {workflows.length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl text-slate-450">
-                  <GitFork className="h-8 w-8 mx-auto mb-2 text-slate-350" />
+                <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl text-slate-500">
+                  <GitFork className="h-8 w-8 mx-auto mb-2 text-slate-400" />
                   <p className="text-xs font-extrabold">No workflow stages configured.</p>
                   <p className="text-[11px] text-slate-500 mt-0.5">Click Add Workflow Stage to configure steps.</p>
                 </div>
@@ -901,7 +901,7 @@ export function AdminEngineConfigTabs({
                                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-150 ${
                                   isAllowed
                                     ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm"
-                                    : "bg-white border-slate-200 text-slate-650 hover:bg-slate-100"
+                                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                                 }`}
                               >
                                 {target.label} ({target.step_key})

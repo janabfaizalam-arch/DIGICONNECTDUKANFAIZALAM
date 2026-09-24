@@ -79,7 +79,7 @@ export function CreditCardOffers() {
           {cards.map((card, idx) => (
             <div
               key={idx}
-              className="group flex flex-col justify-between rounded-3xl border border-slate-150 bg-slate-50/30 p-5 shadow-sm hover:shadow-md transition hover:-translate-y-0.5 duration-300 relative overflow-hidden"
+              className="group flex flex-col justify-between rounded-3xl border border-slate-200 bg-slate-50/30 p-5 shadow-sm hover:shadow-md transition hover:-translate-y-0.5 duration-300 relative overflow-hidden"
             >
               {/* Top Bank logo block */}
               <div>
@@ -95,10 +95,10 @@ export function CreditCardOffers() {
                 <h3 className="mt-4 text-base font-extrabold text-slate-950 leading-tight">
                   {card.cardName}
                 </h3>
-                <p className="text-[11px] font-bold text-slate-450 mt-1">{card.bankName}</p>
+                <p className="text-[11px] font-bold text-slate-500 mt-1">{card.bankName}</p>
 
                 {/* Benefits / Offers list */}
-                <div className="mt-4 space-y-2 border-t border-slate-150/50 pt-3">
+                <div className="mt-4 space-y-2 border-t border-slate-200/50 pt-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
                     <Check className="h-3.5 w-3.5 shrink-0" />
                     <span>{card.benefit}</span>

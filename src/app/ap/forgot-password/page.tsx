@@ -79,7 +79,7 @@ export default function APForgotPasswordPage() {
         >
           {submitted ? (
             <div className="text-center space-y-4 py-4">
-              <p className="text-sm leading-relaxed text-slate-350">
+              <p className="text-sm leading-relaxed text-slate-400">
                 A password reset instructions link was dispatched to <strong className="text-white font-extrabold">{email}</strong>.
               </p>
               <p className="text-xs text-slate-500">
@@ -87,7 +87,7 @@ export default function APForgotPasswordPage() {
               </p>
               <Link
                 href="/ap/login"
-                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-blue-450 hover:underline"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-blue-500 hover:underline"
               >
                 Return to Login
                 <ArrowRight className="h-3 w-3" />
