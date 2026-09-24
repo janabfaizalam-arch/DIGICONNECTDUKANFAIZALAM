@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 type PaymentLinkQrProps = {
   /** The link the customer opens — the QR carries this and nothing else. */
   url: string;
+  /** Razorpay's UPI QR, when the link has one. Paid from inside a UPI app. */
+  upiQrImageUrl?: string | null;
   /** Shown under the QR so a partner reading it aloud has something short. */
   code?: string;
   amount?: number;
@@ -30,8 +32,26 @@ type PaymentLinkQrProps = {
  * desk. A tinted or undersized QR looks better in a screenshot and fails in
  * the shop.
  */
-export function PaymentLinkQr({ url, code, amount, collapsible = false, className }: PaymentLinkQrProps) {
+export function PaymentLinkQr({
+  url,
+  upiQrImageUrl,
+  code,
+  amount,
+  collapsible = false,
+  className,
+}: PaymentLinkQrProps) {
   const [open, setOpen] = useState(!collapsible);
+  /*
+    Two QRs, and the difference matters at the counter.
+
+    UPI pays in one step but only a UPI app can read it -- a plain camera sees
+    nothing useful. The link QR opens the payment page, which any camera can
+    do and which also accepts cards and netbanking. So UPI leads when it
+    exists, and the link is always one tap away behind it.
+  */
+  const [showUpi, setShowUpi] = useState(true);
+  const upiAvailable = Boolean(upiQrImageUrl);
+  const showingUpi = upiAvailable && showUpi;
   const containerRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -118,7 +138,21 @@ export function PaymentLinkQr({ url, code, amount, collapsible = false, classNam
 
   return (
     <div className={cn("flex flex-col items-center", className)}>
-      <div ref={containerRef} className="rounded-2xl border border-[var(--dcp-line)] bg-white p-3 shadow-sm">
+      <div
+        ref={containerRef}
+        className="rounded-2xl border border-[var(--dcp-line)] bg-white p-3 shadow-sm"
+      >
+        {showingUpi ? (
+          // Razorpay renders and hosts this one, so it is shown as-is.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={upiQrImageUrl as string}
+            alt="Scan with any UPI app to pay"
+            width={200}
+            height={200}
+            className="h-[200px] w-[200px]"
+          />
+        ) : (
         <QRCodeSVG
           value={url}
           size={200}
@@ -130,28 +164,52 @@ export function PaymentLinkQr({ url, code, amount, collapsible = false, classNam
           fgColor="#000000"
           title="Scan to pay"
         />
+        )}
       </div>
 
       <p className="mt-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--dcp-ink-3)]">
-        Scan to pay
+        {showingUpi ? "Scan in any UPI app" : "Scan to pay"}
         {typeof amount === "number" ? (
           <span className="ml-1 text-[var(--dcp-ink)]">₹{amount.toLocaleString("en-IN")}</span>
         ) : null}
       </p>
 
+      {upiAvailable ? (
+        <button
+          type="button"
+          onClick={() => setShowUpi((v) => !v)}
+          className="mt-1 text-[11px] font-bold text-[var(--dcp-brand)] underline-offset-2 hover:underline"
+        >
+          {showingUpi ? "Card or netbanking instead" : "Pay by UPI instead"}
+        </button>
+      ) : null}
+
       {code ? (
         <p className="mt-0.5 font-mono text-[11px] font-semibold text-[var(--dcp-ink-4)]">{code}</p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={download}
-        disabled={downloading}
-        className="dcp-btn dcp-btn-quiet mt-3 flex items-center gap-1.5 text-xs disabled:opacity-60"
-      >
-        <Download className="h-3.5 w-3.5" aria-hidden />
-        {downloading ? "Saving…" : "Save QR"}
-      </button>
+      {showingUpi ? (
+        // Razorpay's image is already a file; saving it is the browser's job.
+        <a
+          href={upiQrImageUrl as string}
+          target="_blank"
+          rel="noreferrer"
+          className="dcp-btn dcp-btn-quiet mt-3 flex items-center gap-1.5 text-xs"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          Open QR image
+        </a>
+      ) : (
+        <button
+          type="button"
+          onClick={download}
+          disabled={downloading}
+          className="dcp-btn dcp-btn-quiet mt-3 flex items-center gap-1.5 text-xs disabled:opacity-60"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {downloading ? "Saving…" : "Save QR"}
+        </button>
+      )}
     </div>
   );
 }

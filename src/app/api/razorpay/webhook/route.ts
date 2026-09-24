@@ -2,24 +2,32 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
-import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
-import { createCommissionForApplication } from "@/lib/ap-commission-engine";
-import { markPaymentLinksPaid } from "@/lib/payments/mark-payment-links-paid";
+import {
+  settleApplicationPayment,
+  type PaymentStatus,
+} from "@/lib/payments/settle-application-payment";
+
+type RazorpayPaymentEntity = {
+  id?: string;
+  order_id?: string;
+  amount?: number;
+  status?: string;
+  method?: string;
+  created_at?: number;
+};
+
+type RazorpayQrCodeEntity = {
+  id?: string;
+  status?: string;
+  close_reason?: string | null;
+  notes?: Record<string, string | number> | null;
+};
 
 type RazorpayWebhookPayload = {
   event?: string;
   payload?: {
-    payment?: {
-      entity?: {
-        id?: string;
-        order_id?: string;
-        amount?: number;
-        status?: string;
-        method?: string;
-        created_at?: number;
-      };
-    };
+    payment?: { entity?: RazorpayPaymentEntity };
+    qr_code?: { entity?: RazorpayQrCodeEntity };
   };
 };
 
@@ -35,7 +43,7 @@ function verifyWebhookSignature(body: string, signature: string, secret: string)
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
-function mapPaymentStatus(event: string | undefined, razorpayStatus: string | undefined) {
+function mapPaymentStatus(event: string | undefined, razorpayStatus: string | undefined): PaymentStatus {
   if (event === "payment.failed" || razorpayStatus === "failed") {
     return "failed";
   }
@@ -68,6 +76,7 @@ export async function POST(request: Request) {
   } catch {
     return jsonError("Invalid Razorpay webhook payload.", 400);
   }
+
   const payment = payload.payload?.payment?.entity;
 
   if (!payment?.id) {
@@ -80,8 +89,100 @@ export async function POST(request: Request) {
     return jsonError("Supabase service role key is missing.", 500);
   }
 
+  const paidAt = payment.created_at
+    ? new Date(payment.created_at * 1000).toISOString()
+    : new Date().toISOString();
+
+  /*
+    A UPI QR payment reaches us only here, and it arrives carrying nothing we
+    normally match on.
+
+    A checkout payment belongs to an order, which already wrote a `payments`
+    row naming its application -- that row is how the branch below finds what
+    to settle. Money paid into a QR has no order and no checkout, so there is
+    no such row: the QR's own id is the only thread back to the applications,
+    which is why the link stores it.
+
+    Razorpay sends `qr_code.credited` with both entities, so the payment is
+    recorded against the link's applications first and then settled by exactly
+    the same path as any other payment.
+  */
+  if (payload.event === "qr_code.credited") {
+    const qrCode = payload.payload?.qr_code?.entity;
+
+    if (!qrCode?.id) {
+      return NextResponse.json({ received: true });
+    }
+
+    const { data: link } = await supabase
+      .from("payment_links")
+      .select("id, customer_id, application_id, status")
+      .eq("razorpay_qr_id", qrCode.id)
+      .maybeSingle();
+
+    if (!link) {
+      console.error("[razorpay/webhook] qr_code.credited for an unknown QR:", qrCode.id);
+      return NextResponse.json({ received: true });
+    }
+
+    const { data: cartRows } = await supabase
+      .from("payment_link_applications")
+      .select("application_id")
+      .eq("payment_link_id", link.id);
+
+    const applicationIds = (cartRows ?? []).map((row) => row.application_id as string);
+    if (!applicationIds.length && link.application_id) {
+      applicationIds.push(link.application_id as string);
+    }
+
+    if (!applicationIds.length) {
+      console.error("[razorpay/webhook] QR link has no applications:", link.id);
+      return NextResponse.json({ received: true });
+    }
+
+    /*
+      Record the payment before settling, so a QR payment leaves the same
+      trail as a checkout one -- and so a re-delivered webhook does not write
+      a second row. Razorpay retries, and `qr_code.credited` carries no order
+      to deduplicate against, so the payment id is the key.
+    */
+    const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("razorpay_payment_id", payment.id)
+      .maybeSingle();
+
+    if (!existingPayment) {
+      const { error: insertError } = await supabase.from("payments").insert({
+        application_id: applicationIds[0],
+        user_id: link.customer_id,
+        amount: (payment.amount ?? 0) / 100,
+        real_payment_amount: (payment.amount ?? 0) / 100,
+        status: "verified",
+        razorpay_payment_id: payment.id,
+        razorpay_status: payment.status ?? null,
+        payment_method: payment.method ?? "upi",
+        paid_at: paidAt,
+      });
+
+      if (insertError) {
+        console.error("[razorpay/webhook] Could not record the QR payment:", insertError);
+      }
+    }
+
+    await settleApplicationPayment(
+      supabase,
+      applicationIds,
+      "verified",
+      { id: payment.id, orderId: null, method: payment.method ?? "upi" },
+      paidAt,
+      "[razorpay/webhook]",
+    );
+
+    return NextResponse.json({ received: true });
+  }
+
   const status = mapPaymentStatus(payload.event, payment.status);
-  const paidAt = payment.created_at ? new Date(payment.created_at * 1000).toISOString() : new Date().toISOString();
   const paymentMatchFilter = payment.order_id
     ? `razorpay_payment_id.eq.${payment.id},razorpay_order_id.eq.${payment.order_id}`
     : `razorpay_payment_id.eq.${payment.id}`;
@@ -108,124 +209,18 @@ export async function POST(request: Request) {
 
   const { data: updatedPayments } = await paymentsUpdate.select("application_id");
 
-  const applicationIds = Array.from(new Set((updatedPayments ?? []).map((row) => row.application_id).filter(Boolean)));
+  const applicationIds = Array.from(
+    new Set((updatedPayments ?? []).map((row) => row.application_id).filter(Boolean)),
+  );
 
-  if (applicationIds.length) {
-    // Payment facts (payment_status, razorpay ids, paid_at) always apply, whatever
-    // stage the application has reached — only the downgrade of a verified payment
-    // is blocked.
-    let applicationPaymentUpdate = supabase
-      .from("applications")
-      .update({
-        payment_status: status,
-        razorpay_order_id: payment.order_id ?? null,
-        razorpay_payment_id: payment.id,
-        ...(status === "verified" ? { paid_at: paidAt, submitted_at: paidAt } : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .in("id", applicationIds);
-
-    if (status !== "verified") {
-      applicationPaymentUpdate = applicationPaymentUpdate.neq("payment_status", "verified");
-    }
-
-    // The workflow status is a separate concern: rewrite it only while the
-    // application is still in a payment stage. Once it has moved into processing or
-    // completion, a late/replayed payment event must not drag it back to
-    // "submitted" — or to "payment_failed" after it was already paid.
-    const PAYMENT_STAGE_STATUSES = ["draft", "new", "payment_pending", "payment_failed", "payment_success", "submitted"];
-
-    let applicationStatusUpdate = supabase
-      .from("applications")
-      .update({
-        status: status === "verified" ? "submitted" : status === "failed" ? "payment_failed" : "payment_pending",
-        updated_at: new Date().toISOString(),
-      })
-      .in("id", applicationIds)
-      .in("status", PAYMENT_STAGE_STATUSES);
-
-    if (status !== "verified") {
-      applicationStatusUpdate = applicationStatusUpdate.neq("payment_status", "verified");
-    }
-
-    let invoicesUpdate = supabase.from("invoices").update({ payment_status: status }).in("application_id", applicationIds);
-
-    if (status !== "verified") {
-      invoicesUpdate = invoicesUpdate.neq("payment_status", "verified");
-    }
-
-    await applicationPaymentUpdate;
-    await Promise.all([applicationStatusUpdate, invoicesUpdate]);
-
-    if (status === "verified") {
-      // 1. Settle any payment links covering these applications
-      await markPaymentLinksPaid(
-        supabase,
-        applicationIds,
-        { paidAt, razorpayOrderId: payment.order_id ?? null, razorpayPaymentId: payment.id },
-        "[razorpay/webhook]",
-      );
-
-      // 2. Reserve partner commissions for referred/partner applications
-      try {
-        await Promise.all(
-          applicationIds.map(async (appId) => {
-            const { data: fullApp } = await supabase
-              .from("applications")
-              .select("id, agency_partner_id, service_slug, service_name, amount")
-              .eq("id", appId)
-              .single();
-
-            if (fullApp?.agency_partner_id) {
-              const [partnerRes, serviceRes] = await Promise.all([
-                supabase
-                  .from("agency_partners")
-                  .select("id, tier_id")
-                  .eq("id", fullApp.agency_partner_id)
-                  .maybeSingle(),
-                supabase
-                  .from("services")
-                  .select("id")
-                  .eq("slug", fullApp.service_slug)
-                  .maybeSingle()
-              ]);
-
-              const partner = partnerRes.data;
-              const service = serviceRes.data;
-
-              if (partner) {
-                const commissionRes = await createCommissionForApplication({
-                  agencyPartnerId: partner.id,
-                  applicationId: fullApp.id,
-                  serviceSlug: fullApp.service_slug,
-                  serviceName: fullApp.service_name,
-                  saleAmount: Number(fullApp.amount),
-                  tierId: partner.tier_id,
-                  serviceId: service?.id || null,
-                });
-                console.info("[razorpay/webhook] Commission reserved:", commissionRes);
-              }
-            }
-          })
-        );
-      } catch (err) {
-        console.error("[razorpay/webhook] Failed to calculate/reserve partner commission:", err);
-      }
-
-      await scheduleCrmSyncMany(applicationIds, "payment_updated");
-
-      try {
-        for (const appId of applicationIds) {
-          await triggerWhatsAppNotification("payment_success", appId, {
-            paymentId: payment.id
-          });
-          await scheduleCrmSync(appId, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
-        }
-      } catch (waError) {
-        console.error("WhatsApp trigger error in Razorpay webhook:", waError);
-      }
-    }
-  }
+  await settleApplicationPayment(
+    supabase,
+    applicationIds,
+    status,
+    { id: payment.id, orderId: payment.order_id ?? null, method: payment.method ?? null },
+    paidAt,
+    "[razorpay/webhook]",
+  );
 
   return NextResponse.json({ received: true });
 }

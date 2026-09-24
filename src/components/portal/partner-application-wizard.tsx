@@ -387,6 +387,7 @@ export function PartnerApplicationWizard({
   const [paymentMethodType, setPaymentMethodType] = useState<"immediate" | "link">("immediate");
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
   const [paymentLinkCode, setPaymentLinkCode] = useState<string | null>(null);
+  const [paymentLinkUpiQr, setPaymentLinkUpiQr] = useState<string | null>(null);
   const [paymentLinkMessage, setPaymentLinkMessage] = useState<string | null>(null);
 
   // Camera extras
@@ -912,6 +913,7 @@ export function PartnerApplicationWizard({
 
       setPaymentLinkUrl(linkData.url);
       setPaymentLinkCode(linkData.code ?? null);
+      setPaymentLinkUpiQr(linkData.upiQrImageUrl ?? null);
       setPaymentLinkMessage(linkData.whatsAppMessage);
 
       setSuccessDetails({
@@ -1912,6 +1914,7 @@ export function PartnerApplicationWizard({
                       <PaymentLinkQr
                         url={paymentLinkUrl}
                         code={paymentLinkCode ?? undefined}
+                        upiQrImageUrl={paymentLinkUpiQr}
                         amount={successDetails.amountPaid}
                         className="mb-3"
                       />

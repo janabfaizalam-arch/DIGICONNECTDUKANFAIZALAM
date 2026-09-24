@@ -14,6 +14,7 @@ export interface PaymentLink {
   created_at: string;
   expires_at: string;
   paid_at: string | null;
+  razorpay_qr_image_url?: string | null;
   applications?: {
     service_name: string;
     customer_details: Record<string, unknown>;
@@ -137,6 +138,7 @@ export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
                        url={`${typeof window === "undefined" ? "" : window.location.origin}/pay/${link.code}`}
                        code={link.code}
                        amount={link.amount}
+                       upiQrImageUrl={link.razorpay_qr_image_url ?? null}
                      />
                    </div>
                  )}

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { getPartnerMembership } from "@/lib/auth/memberships";
 import { getAgencyPartnerById, getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { closeUpiQr, createUpiQrForPaymentLink } from "@/lib/payments/upi-qr";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 function generatePaymentCode(): string {
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
     const { data: existingLinks } = existingLinkIds.length
       ? await supabase
           .from("payment_links")
-          .select("id, code, status, expires_at")
+          .select("id, code, status, expires_at, razorpay_qr_id, razorpay_qr_image_url")
           .in("id", existingLinkIds)
           .order("created_at", { ascending: false })
       : { data: [] };
@@ -202,10 +203,14 @@ export async function POST(request: Request) {
     const customerName = customer?.full_name || "Customer";
 
     let code: string;
+    let upiQrImageUrl: string | null = null;
 
     if (liveLink) {
       code = liveLink.code;
       expiresAt.setTime(new Date(liveLink.expires_at).getTime());
+      // The customer may already be holding this QR; minting a second one for
+      // the same link would leave two live QRs for one payment.
+      upiQrImageUrl = liveLink.razorpay_qr_image_url ?? null;
     } else {
       code = generatePaymentCode();
       let isUnique = false;
@@ -242,9 +247,34 @@ export async function POST(request: Request) {
       };
 
       const reusable = links[0];
+
+      /*
+        Mint the UPI QR before the row is written, so the link is never
+        recorded pointing at a QR that does not exist. A failure here returns
+        null and the link goes out with its page-based QR alone.
+      */
+      const upiQr = await createUpiQrForPaymentLink({
+        code,
+        amount: totalAmount,
+        expiresAt,
+        description: applications.map((a) => a.service_name || "Service").join(", "),
+        customerName,
+      });
+
+      upiQrImageUrl = upiQr?.imageUrl ?? null;
+
       const { data: written, error: writeError } = reusable
-        ? await supabase.from("payment_links").update(row).eq("id", reusable.id).select("id").maybeSingle()
-        : await supabase.from("payment_links").insert(row).select("id").maybeSingle();
+        ? await supabase
+            .from("payment_links")
+            .update({ ...row, razorpay_qr_id: upiQr?.id ?? null, razorpay_qr_image_url: upiQrImageUrl })
+            .eq("id", reusable.id)
+            .select("id")
+            .maybeSingle()
+        : await supabase
+            .from("payment_links")
+            .insert({ ...row, razorpay_qr_id: upiQr?.id ?? null, razorpay_qr_image_url: upiQrImageUrl })
+            .select("id")
+            .maybeSingle();
 
       if (writeError || !written) {
         console.error("[payment-links/generate] Write error:", writeError);
@@ -255,6 +285,12 @@ export async function POST(request: Request) {
       // carries an application the partner has since dropped.
       if (reusable) {
         await supabase.from("payment_link_applications").delete().eq("payment_link_id", written.id);
+
+        // The replaced link's QR must stop being payable, or a customer
+        // holding the old one could pay against a cart that no longer exists.
+        if (reusable.razorpay_qr_id && reusable.razorpay_qr_id !== upiQr?.id) {
+          await closeUpiQr(reusable.razorpay_qr_id);
+        }
       }
 
       const { error: cartError } = await supabase.from("payment_link_applications").insert(
@@ -283,6 +319,7 @@ export async function POST(request: Request) {
       code,
       url: paymentLinkUrl,
       amount: totalAmount,
+      upiQrImageUrl,
       applicationIds: applications.map((application) => application.id),
       expiresAt: expiresAt.toISOString(),
       whatsAppMessage: message,
