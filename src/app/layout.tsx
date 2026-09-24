@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Inter, Noto_Sans_Devanagari, Playfair_Display, Poppins } from "next/font/google";
+import { IBM_Plex_Sans, Inter, Noto_Sans_Devanagari, Playfair_Display, Poppins } from "next/font/google";
 import Script from "next/script";
 
 import { GoogleAnalytics } from "@/components/google-analytics";
@@ -38,6 +38,21 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-body",
+});
+
+/**
+ * The DC Partners panel's face.
+ *
+ * IBM Plex Sans, because the panel is where a partner reads money: it carries
+ * proper tabular figures and a plainer, more accountable tone than Inter,
+ * which is the right register for balances, ledgers and commission. Scoped to
+ * the panel through --font-dcp, so the marketing site keeps Inter.
+ */
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dcp",
 });
 
 /**
@@ -147,7 +162,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} ${inter.variable} ${playfair.variable} ${notoDevanagari.variable} font-sans antialiased`}>
+      <body className={`${poppins.variable} ${inter.variable} ${ibmPlexSans.variable} ${playfair.variable} ${notoDevanagari.variable} font-sans antialiased`}>
         {process.env.NODE_ENV === "production" && gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
         {metaPixelId ? (
           <>

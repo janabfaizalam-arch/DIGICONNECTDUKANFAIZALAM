@@ -42,7 +42,7 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
   const isCompany = data.partnerType === "company_partner" && data.canManageTeam;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 pb-6 pt-4 md:space-y-6 md:px-6 md:pb-10">
+    <div className="mx-auto w-full max-w-6xl space-y-4 px-4 pb-6 pt-3.5 md:space-y-[18px] md:px-6 md:pb-10">
       <HomeHeader identity={data.identity} />
 
       <AttentionStrip items={data.attention} />

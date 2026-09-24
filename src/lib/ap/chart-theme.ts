@@ -20,7 +20,7 @@ export const CHART_APPLICATIONS = "#f25a00"; // brand orange
 /** The one hue the ranked service bars wear. */
 export const CHART_RANKED_BAR = "#1268e8";
 /** The folded tail. Deliberately achromatic so it reads as "not a category". */
-export const CHART_OTHER = "#94a3b8";
+export const CHART_OTHER = "#9fb0cc";
 
 /**
  * Reserved state colours — never reused as a data series.
@@ -41,8 +41,8 @@ export const CHART_STATUS = {
 
 /** Chart surface and ink. Marks carry hue; text never does. */
 export const CHART_SURFACE = "#ffffff";
-export const CHART_GRID = "#e8edf5";
-export const CHART_AXIS_TEXT = "#64748b";
+export const CHART_GRID = "#e4ebf7";
+export const CHART_AXIS_TEXT = "#64769a";
 
 /** Mark specs the whole dashboard holds to. */
 export const CHART_MARK = {

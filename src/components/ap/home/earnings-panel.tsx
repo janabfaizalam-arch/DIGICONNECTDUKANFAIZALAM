@@ -26,25 +26,25 @@ export function EarningsPanel({ data, showTeamToggle = false }: EarningsPanelPro
 
   const figures = isTeam
     ? [
-        { label: "Team collected today", value: formatINR(data.teamCollectedToday ?? 0) },
-        { label: "Team this month", value: formatINR(data.teamMonthCollection ?? 0) },
-        { label: "Team commission earned", value: formatINR(data.teamCommissionEarned ?? 0) },
-        { label: "Team commission pending", value: formatINR(data.teamCommissionPending ?? 0) },
+        { label: "Team today", value: formatINR(data.teamCollectedToday ?? 0), rail: "var(--dcp-good)" },
+        { label: "Team this month", value: formatINR(data.teamMonthCollection ?? 0), rail: "var(--dcp-brand)" },
+        { label: "Team commission", value: formatINR(data.teamCommissionEarned ?? 0), rail: "var(--dcp-accent)" },
+        { label: "Team pending", value: formatINR(data.teamCommissionPending ?? 0), rail: "var(--dcp-warn)" },
       ]
     : [
-        { label: "This month", value: formatINR(data.monthCollection) },
-        { label: "Still to collect", value: formatINR(data.pendingCollection) },
-        { label: "Commission pending", value: formatINR(data.commissionPending) },
-        { label: "Commission earned", value: formatINR(data.commissionEarned) },
+        { label: "This month", value: formatINR(data.monthCollection), rail: "var(--dcp-brand)" },
+        { label: "Still to collect", value: formatINR(data.pendingCollection), rail: "var(--dcp-warn)" },
+        { label: "Commission pending", value: formatINR(data.commissionPending), rail: "var(--dcp-accent)" },
+        { label: "Commission earned", value: formatINR(data.commissionEarned), rail: "var(--dcp-good)" },
       ];
 
   return (
     <section aria-label="Earnings" className="space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Earnings</h2>
+        <h2 className="dcp-h2">Earnings</h2>
 
         {showTeamToggle ? (
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5" role="group" aria-label="Earnings scope">
+          <div className="inline-flex rounded-[11px] border border-[var(--dcp-line)] bg-[var(--dcp-surface)] p-0.5 shadow-[var(--dcp-e1)]" role="group" aria-label="Earnings scope">
             {(
               [
                 { key: "mine", label: "Mine" },
@@ -58,7 +58,9 @@ export function EarningsPanel({ data, showTeamToggle = false }: EarningsPanelPro
                 onClick={() => setScope(option.key)}
                 className={cn(
                   "rounded-[10px] px-3 py-1.5 text-[11px] font-bold transition duration-150",
-                  scope === option.key ? "bg-[#1268e8] text-white" : "text-slate-600 hover:bg-slate-50",
+                  scope === option.key
+                    ? "text-white shadow-[0_5px_14px_-7px_rgba(18,104,232,0.85)] [background-image:var(--dcp-g-brand)]"
+                    : "text-[var(--dcp-ink-2)] hover:bg-[var(--dcp-surface-2)]",
                 )}
               >
                 {option.label}
@@ -68,18 +70,27 @@ export function EarningsPanel({ data, showTeamToggle = false }: EarningsPanelPro
         ) : null}
       </div>
 
-      <div className="rounded-[18px] border border-slate-200/70 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="dcp-card p-3.5">
         {!data.hasCommissionScheme && !isTeam ? (
           <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">
             No commission plan is set on your account yet, so commission figures stay at zero.
           </p>
         ) : null}
 
-        <dl className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {figures.map((figure) => (
-            <div key={figure.label} className="rounded-2xl bg-slate-50 p-3">
-              <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{figure.label}</dt>
-              <dd className="mt-1 truncate text-base font-bold tabular-nums tracking-tight text-slate-950">
+            <div key={figure.label} className="dcp-inset relative overflow-hidden py-2 pl-3 pr-2.5">
+              {/* A short rail in the figure's own hue: it anchors the number to
+                  the left edge instead of leaving it adrift in a wide tile. */}
+              <span
+                aria-hidden
+                className="absolute inset-y-2 left-0 w-[3px] rounded-r-full"
+                style={{ background: figure.rail }}
+              />
+              <dt className="text-[9.5px] font-bold uppercase leading-tight tracking-[0.1em] text-[var(--dcp-ink-4)]">
+                {figure.label}
+              </dt>
+              <dd className="mt-0.5 truncate text-[17px] font-bold tabular-nums leading-none tracking-tight text-[var(--dcp-ink)]">
                 {figure.value}
               </dd>
             </div>
@@ -89,19 +100,19 @@ export function EarningsPanel({ data, showTeamToggle = false }: EarningsPanelPro
         <div className="mt-3.5 flex flex-wrap gap-2">
           <Link
             href="/ap/payments/collect"
-            className="inline-flex h-10 items-center rounded-xl bg-[#1268e8] px-4 text-xs font-bold text-white transition duration-150 hover:bg-[#0d55c0] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+            className="dcp-btn dcp-btn-brand"
           >
             Collect payment
           </Link>
           <Link
             href="/ap/payouts"
-            className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition duration-150 hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+            className="dcp-btn dcp-btn-quiet"
           >
             Request payout
           </Link>
           <Link
             href="/ap/commissions"
-            className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition duration-150 hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+            className="dcp-btn dcp-btn-quiet"
           >
             Commission ledger
           </Link>

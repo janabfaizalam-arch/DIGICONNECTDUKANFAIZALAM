@@ -30,8 +30,8 @@ const SEVERITY = {
     word: "Stalled",
     Icon: Clock,
     card: "border-[#1268e8]/20 bg-[#eff6ff]",
-    chip: "bg-[#1268e8] text-white",
-    cta: "bg-[#1268e8] text-white hover:bg-[#0d55c0]",
+    chip: "bg-[var(--dcp-brand)] text-white",
+    cta: "bg-[var(--dcp-brand)] text-white hover:bg-[#0d55c0]",
   },
 } satisfies Record<
   PartnerAttentionSeverity,
@@ -51,7 +51,7 @@ export function AttentionStrip({ items }: AttentionStripProps) {
 
   return (
     <section aria-label="Needs your attention" className="space-y-2.5">
-      <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Needs your attention</h2>
+      <h2 className="dcp-h2">Needs your attention</h2>
 
       <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => {
@@ -70,13 +70,13 @@ export function AttentionStrip({ items }: AttentionStripProps) {
                   <Icon className="h-3 w-3" aria-hidden />
                   {severity.word}
                 </span>
-                <p className="mt-2 text-sm font-bold leading-snug text-slate-900">{item.title}</p>
-                <p className="mt-1 text-xs font-medium leading-snug text-slate-600">{item.detail}</p>
+                <p className="mt-2 text-sm font-bold leading-snug text-[var(--dcp-ink)]">{item.title}</p>
+                <p className="mt-1 text-xs font-medium leading-snug text-[var(--dcp-ink-2)]">{item.detail}</p>
               </div>
 
               <Link
                 href={item.href}
-                className={`inline-flex h-9 w-fit items-center gap-1.5 rounded-xl px-3.5 text-xs font-bold transition duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 ${severity.cta}`}
+                className={`inline-flex h-9 w-fit items-center gap-1.5 rounded-xl px-3.5 text-xs font-bold transition duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-ink)] focus-visible:ring-offset-2 ${severity.cta}`}
               >
                 {item.ctaLabel}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />

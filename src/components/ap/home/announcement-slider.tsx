@@ -35,7 +35,7 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
         </p>
       ) : null}
       {banner.button_text && href ? (
-        <span className="mt-3 inline-flex rounded-xl bg-[#ff6800] px-3.5 py-2 text-xs font-bold text-white">
+        <span className="mt-3 inline-flex rounded-xl px-3.5 py-2 text-xs font-bold text-[#0a1834] [background-image:var(--dcp-g-accent)]">
           {banner.button_text}
         </span>
       ) : null}
@@ -45,7 +45,7 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
   const media = (
     <>
       {/* Phone gets the portrait-friendly crop; desktop gets the wide hero. */}
-      <div className="relative aspect-[7/3] w-full overflow-hidden bg-slate-100 md:hidden">
+      <div className="relative aspect-[7/3] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:hidden">
         <Image
           src={banner.mobile_image_url || banner.image_url}
           alt={alt}
@@ -56,7 +56,7 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
         />
         {overlay}
       </div>
-      <div className="relative hidden aspect-[21/9] w-full overflow-hidden bg-slate-100 md:block">
+      <div className="relative hidden aspect-[21/9] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
         <Image
           src={banner.image_url}
           alt={alt}
@@ -127,7 +127,7 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
     <section
       aria-roledescription="carousel"
       aria-label="Offers and announcements"
-      className="relative overflow-hidden rounded-[18px] border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="relative overflow-hidden dcp-card"
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
       onFocusCapture={() => setHeld(true)}
@@ -171,7 +171,7 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
             type="button"
             aria-label="Previous announcement"
             onClick={() => goTo(index - 1)}
-            className="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow-sm backdrop-blur transition duration-150 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] md:flex"
+            className="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[var(--dcp-ink)] shadow-sm backdrop-blur transition duration-150 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] md:flex"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
@@ -179,7 +179,7 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
             type="button"
             aria-label="Next announcement"
             onClick={() => goTo(index + 1)}
-            className="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow-sm backdrop-blur transition duration-150 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] md:flex"
+            className="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[var(--dcp-ink)] shadow-sm backdrop-blur transition duration-150 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] md:flex"
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
