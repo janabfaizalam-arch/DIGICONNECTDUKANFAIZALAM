@@ -213,8 +213,8 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
   return (
     <>
       {/* Sleek, responsive white glassmorphism header row */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-100/70 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-4 md:h-14 md:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 w-full border-b border-[var(--dcp-line)] bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-12 max-w-[1800px] items-center justify-between px-3 sm:px-4 md:h-[52px] md:px-5 xl:px-6">
           
           {/* LEFT: Logo + Workspace Badge */}
           <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
@@ -327,7 +327,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] px-2 text-[var(--dcp-ink-2)] shadow-[var(--dcp-e1)] transition hover:border-[var(--dcp-line-2)] hover:bg-[var(--dcp-surface-3)] hover:text-[var(--dcp-ink)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] md:h-11 md:px-2.5"
+              className="flex h-9 items-center justify-center gap-2 rounded-xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] px-2 text-[var(--dcp-ink-2)] shadow-[var(--dcp-e1)] transition hover:border-[var(--dcp-line-2)] hover:bg-[var(--dcp-surface-3)] hover:text-[var(--dcp-ink)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] md:h-10 md:px-2.5"
               aria-label="Open panel menu"
               aria-expanded={drawerOpen}
               aria-haspopup="dialog"

@@ -50,6 +50,10 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
 
   return (
     <div className="w-full px-3 pb-6 pt-3 sm:px-4 md:px-5 md:pb-10 xl:px-6">
+      {/* Offers lead the page: it is the one place the company talks to every
+          partner at once, and a rail at the bottom is where it went unread. */}
+      <AnnouncementSlider banners={data.banners} className="mb-3" />
+
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
         {/* Main column — the work. */}
         <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -77,8 +81,6 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
           <WorkQueue groups={data.workQueue} />
 
           <CustomersPanel customers={data.recentCustomers} variant={isOffice ? "assigned" : "own"} />
-
-          <AnnouncementSlider banners={data.banners} />
         </div>
       </div>
     </div>
