@@ -2,6 +2,7 @@ import Link from "next/link";
 import { UserPlus } from "lucide-react";
 
 import { partnerInitials } from "@/lib/ap/format";
+import { cn } from "@/lib/utils";
 import type { PartnerHomeRecentCustomer } from "@/lib/ap/home-types";
 import { DashboardEmptyState } from "@/components/ap/home/dashboard-empty-state";
 
@@ -9,6 +10,7 @@ type CustomersPanelProps = {
   customers: PartnerHomeRecentCustomer[];
   /** Office staff see assigned customers; everyone else sees their own. */
   variant?: "own" | "assigned";
+  className?: string;
 };
 
 /**
@@ -17,11 +19,11 @@ type CustomersPanelProps = {
  * The old page showed this list twice, once in the operations footer and again
  * in the office-work block, with different headings over the same rows.
  */
-export function CustomersPanel({ customers, variant = "own" }: CustomersPanelProps) {
+export function CustomersPanel({ customers, variant = "own", className }: CustomersPanelProps) {
   const heading = variant === "assigned" ? "Assigned customers" : "Recent customers";
 
   return (
-    <section aria-label={heading} className="space-y-2.5">
+    <section aria-label={heading} className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">{heading}</h2>
         <Link href="/ap/customers" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
@@ -40,7 +42,7 @@ export function CustomersPanel({ customers, variant = "own" }: CustomersPanelPro
         />
       ) : (
         <ul className="divide-y divide-[var(--dcp-line)] overflow-hidden dcp-card">
-          {customers.map((customer) => (
+          {customers.slice(0, 5).map((customer) => (
             <li key={customer.id}>
               <Link
                 href={customer.href}

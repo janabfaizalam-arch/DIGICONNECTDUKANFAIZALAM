@@ -59,7 +59,7 @@ function ChartTooltip({ title, rows }: { title: string; rows: TooltipRow[] }) {
  */
 export function CollectionTrend({ points }: { points: PartnerTrendPoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height={170}>
+    <ResponsiveContainer width="100%" height={190}>
       <AreaChart data={points} margin={{ top: 6, right: 10, bottom: 0, left: 0 }}>
         <CartesianGrid stroke={CHART_GRID} strokeWidth={1} vertical={false} />
         <XAxis
@@ -74,7 +74,7 @@ export function CollectionTrend({ points }: { points: PartnerTrendPoint[] }) {
           tick={{ fill: CHART_AXIS_TEXT, fontSize: 10, fontWeight: 600 }}
           tickLine={false}
           axisLine={false}
-          width={58}
+          width={50}
           tickFormatter={(value: number) => formatINR(value, { compact: true })}
         />
         <Tooltip
@@ -111,7 +111,7 @@ export function CollectionTrend({ points }: { points: PartnerTrendPoint[] }) {
 /** Applications per day — a count, so columns from a zero baseline. */
 export function ApplicationsTrend({ points }: { points: PartnerTrendPoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height={170}>
+    <ResponsiveContainer width="100%" height={190}>
       <BarChart data={points} margin={{ top: 6, right: 10, bottom: 0, left: 0 }}>
         <CartesianGrid stroke={CHART_GRID} strokeWidth={1} vertical={false} />
         <XAxis
@@ -160,12 +160,12 @@ export function ApplicationsTrend({ points }: { points: PartnerTrendPoint[] }) {
  * not a category.
  */
 export function ServiceMix({ items }: { items: PartnerServiceMixItem[] }) {
-  const height = Math.max(120, items.length * 34 + 16);
+  const height = Math.max(150, items.length * 30 + 14);
 
   return (
     <>
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={items} layout="vertical" margin={{ top: 0, right: 44, bottom: 0, left: 0 }}>
+        <BarChart data={items} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 0 }}>
           {/* No gridlines: the value axis is hidden and every bar is directly
               labelled, so a grid would be ink that carries nothing. */}
           <XAxis type="number" hide allowDecimals={false} />
@@ -175,9 +175,9 @@ export function ServiceMix({ items }: { items: PartnerServiceMixItem[] }) {
             tick={{ fill: CHART_AXIS_TEXT, fontSize: 11, fontWeight: 600 }}
             tickLine={false}
             axisLine={false}
-            width={118}
+            width={86}
             interval={0}
-            tickFormatter={(name: string) => (name.length > 18 ? `${name.slice(0, 17)}…` : name)}
+            tickFormatter={(name: string) => (name.length > 13 ? `${name.slice(0, 12)}…` : name)}
           />
           <Tooltip
             cursor={{ fill: "rgba(15,23,42,0.04)" }}

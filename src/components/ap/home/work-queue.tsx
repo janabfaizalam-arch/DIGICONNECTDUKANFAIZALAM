@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 type WorkQueueProps = {
   groups: PartnerWorkQueueGroup[];
+  className?: string;
 };
 
 function QueueRow({ item }: { item: PartnerPendingWorkItem }) {
@@ -48,13 +49,13 @@ function QueueRow({ item }: { item: PartnerPendingWorkItem }) {
  * different headings. Tabs carry their own counts so switching is a decision,
  * not a guess, and an empty tab is still selectable — a zero is information.
  */
-export function WorkQueue({ groups }: WorkQueueProps) {
+export function WorkQueue({ groups, className }: WorkQueueProps) {
   const populated = useMemo(() => groups.filter((group) => group.items.length > 0), [groups]);
   const [active, setActive] = useState(0);
 
   if (!populated.length) {
     return (
-      <section aria-label="Work queue" className="space-y-2.5">
+      <section aria-label="Work queue" className={cn("space-y-2", className)}>
         <h2 className="dcp-h2">Work queue</h2>
         <div className="flex items-center gap-3 rounded-[18px] border border-[#0f9268]/20 bg-[#ecfdf5] p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-[#0f9268]" aria-hidden />
@@ -72,7 +73,7 @@ export function WorkQueue({ groups }: WorkQueueProps) {
   const current = populated[Math.min(active, populated.length - 1)];
 
   return (
-    <section aria-label="Work queue" className="space-y-2.5">
+    <section aria-label="Work queue" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Work queue</h2>
         <Link href="/ap/applications" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">

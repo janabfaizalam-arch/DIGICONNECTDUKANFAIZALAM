@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Clock, IndianRupee } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import type { PartnerAttentionItem, PartnerAttentionSeverity } from "@/lib/ap/home-types";
 
 type AttentionStripProps = {
   items: PartnerAttentionItem[];
+  className?: string;
 };
 
 /**
@@ -46,14 +48,14 @@ const SEVERITY = {
  * whole strip disappears rather than rendering a cheerful empty state, so its
  * presence alone means "something needs you".
  */
-export function AttentionStrip({ items }: AttentionStripProps) {
+export function AttentionStrip({ items, className }: AttentionStripProps) {
   if (!items.length) return null;
 
   return (
-    <section aria-label="Needs your attention" className="space-y-2.5">
+    <section aria-label="Needs your attention" className={cn("space-y-2", className)}>
       <h2 className="dcp-h2">Needs your attention</h2>
 
-      <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
         {items.map((item) => {
           const severity = SEVERITY[item.severity];
           const { Icon } = severity;

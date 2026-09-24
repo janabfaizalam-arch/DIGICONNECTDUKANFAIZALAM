@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 type KpiRowProps = {
   kpis: PartnerKpi[];
+  className?: string;
 };
 
 /** Each KPI's own hue, so the four tiles read as four things, not one grid. */
@@ -45,14 +46,14 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
   if (values.length < 2) return null;
 
   const width = 100;
-  const height = 30;
+  const height = 26;
   const max = Math.max(...values);
   const min = Math.min(...values);
   const flat = max === min;
 
   if (flat) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-[30px] w-full" aria-hidden focusable="false">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-[26px] w-full" aria-hidden focusable="false">
         <line
           x1="0"
           y1={height - 6}
@@ -84,7 +85,7 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
   const gradientId = `spark-${color.replace(/[^a-z0-9]/gi, "")}`;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-[30px] w-full" aria-hidden focusable="false">
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-[26px] w-full" aria-hidden focusable="false">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.26} />
@@ -114,14 +115,14 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
  * panels below were already showing, so the page said the same thing three
  * times. Anything stated here is not restated further down.
  */
-export function KpiRow({ kpis }: KpiRowProps) {
+export function KpiRow({ kpis, className }: KpiRowProps) {
   if (!kpis.length) return null;
 
   return (
-    <section aria-label="Key numbers" className="space-y-2">
+    <section aria-label="Key numbers" className={cn("space-y-2", className)}>
       <h2 className="dcp-h2">Key numbers</h2>
 
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         {kpis.map((kpi) => {
           const tone = TONE[kpi.tone];
           const delta = kpi.delta ? DELTA[kpi.delta.tone] : null;
@@ -153,7 +154,7 @@ export function KpiRow({ kpis }: KpiRowProps) {
                 </span>
               </div>
 
-              <p className="relative mt-1.5 truncate text-[23px] font-bold leading-none tracking-[-0.02em] text-[var(--dcp-ink)]">
+              <p className="relative mt-1.5 truncate text-[21px] font-bold leading-none tracking-[-0.02em] text-[var(--dcp-ink)]">
                 {kpi.value}
               </p>
 

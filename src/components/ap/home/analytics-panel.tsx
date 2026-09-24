@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  * paint and become clickable first; the placeholders hold the charts' exact
  * final height meanwhile, so nothing shifts when it lands.
  */
-const chartLoading = () => <div className="h-[170px] animate-pulse rounded-xl bg-[var(--dcp-surface-3)]" aria-hidden />;
+const chartLoading = () => <div className="h-[190px] animate-pulse rounded-xl bg-[var(--dcp-surface-3)]" aria-hidden />;
 
 const CollectionTrend = dynamic(
   () => import("@/components/ap/home/analytics-charts").then((m) => m.CollectionTrend),
@@ -31,11 +31,12 @@ const ApplicationsTrend = dynamic(
 );
 const ServiceMix = dynamic(
   () => import("@/components/ap/home/analytics-charts").then((m) => m.ServiceMix),
-  { loading: () => <div className="h-[136px] animate-pulse rounded-xl bg-[var(--dcp-surface-3)]" aria-hidden /> },
+  { loading: () => <div className="h-[150px] animate-pulse rounded-xl bg-[var(--dcp-surface-3)]" aria-hidden /> },
 );
 
 type AnalyticsPanelProps = {
   analytics: PartnerAnalytics;
+  className?: string;
 };
 
 const RANGES = [
@@ -53,7 +54,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="dcp-card p-3.5">
+    <div className="dcp-card dcp-solid p-3">
       <p className="dcp-h2">{title}</p>
       <p className="mt-0.5 text-[11px] font-medium text-[var(--dcp-ink-3)]">{subtitle}</p>
       <div className="mt-3">{children}</div>
@@ -106,7 +107,7 @@ function StatusMix({ analytics }: { analytics: PartnerAnalytics }) {
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: STATUS_BUCKET_COLOR[item.key] }}
               />
-              <span className="w-28 shrink-0 truncate text-[11px] font-semibold text-[var(--dcp-ink-2)] sm:w-32">
+              <span className="w-24 shrink-0 truncate text-[11px] font-semibold text-[var(--dcp-ink-2)]">
                 {item.label}
               </span>
               <span aria-hidden className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--dcp-surface-3)]">
@@ -136,7 +137,7 @@ function StatusMix({ analytics }: { analytics: PartnerAnalytics }) {
  * already on the client, so switching 14 days to 7 is instant and costs no
  * request.
  */
-export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
+export function AnalyticsPanel({ analytics, className }: AnalyticsPanelProps) {
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>(14);
 
   const points = useMemo(() => analytics.trend.slice(-range), [analytics.trend, range]);
@@ -151,7 +152,7 @@ export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
 
   if (analytics.isEmpty) {
     return (
-      <section aria-label="Business analytics" className="space-y-2.5">
+      <section aria-label="Business analytics" className={cn("space-y-2", className)}>
         <h2 className="dcp-h2">Business analytics</h2>
         <DashboardEmptyState
           title="Charts appear after your first application"
@@ -162,7 +163,7 @@ export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
   }
 
   return (
-    <section aria-label="Business analytics" className="space-y-2.5">
+    <section aria-label="Business analytics" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Business analytics</h2>
 
@@ -186,7 +187,7 @@ export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
         </div>
       </div>
 
-      <div className="grid gap-2.5 lg:grid-cols-2 lg:gap-3">
+      <div className="grid gap-2.5 md:grid-cols-2">
         <Panel title="Collection" subtitle={`${formatINR(totals.collection)} over the last ${range} days`}>
           <CollectionTrend points={points} />
         </Panel>

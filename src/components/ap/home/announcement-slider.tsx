@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 type AnnouncementSliderProps = {
   banners: PartnerAnnouncementBanner[];
+  className?: string;
 };
 
 const ROTATE_MS = 6000;
@@ -61,7 +62,7 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
         over: at 1700px a 21:9 banner is 730px tall and owns the whole first
         screen. object-cover crops rather than squashes past the cap.
       */}
-      <div className="relative hidden aspect-[21/9] max-h-[340px] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
+      <div className="relative hidden aspect-[16/9] max-h-[240px] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
         <Image
           src={banner.image_url}
           alt={alt}
@@ -100,7 +101,7 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
  * Auto-rotation stops while the pointer is over it, while focus is inside it,
  * and entirely when the reader asks for reduced motion.
  */
-export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
+export function AnnouncementSlider({ banners, className }: AnnouncementSliderProps) {
   const [index, setIndex] = useState(0);
   const [held, setHeld] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -132,7 +133,7 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
     <section
       aria-roledescription="carousel"
       aria-label="Offers and announcements"
-      className="relative overflow-hidden dcp-card"
+      className={cn("dcp-card dcp-solid relative overflow-hidden", className)}
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
       onFocusCapture={() => setHeld(true)}

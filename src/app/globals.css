@@ -2575,8 +2575,8 @@ input[id*="email"],
 
   /* ── Density 8/10 — a dashboard, not a marketing page. ────────────────── */
   --dcp-gap: 10px;
-  --dcp-section: 18px;
-  --dcp-pad: 14px;
+  --dcp-section: 14px;
+  --dcp-pad: 13px;
 
   color: var(--dcp-ink);
 }
@@ -2595,11 +2595,37 @@ input[id*="email"],
   /* ── Card ───────────────────────────────────────────────────────────────
      A hairline plus a soft shadow. The hairline alone reads as a wireframe;
      the shadow alone smudges against the tint. */
+  /* Frosted, not flat. The canvas carries two faint brand washes, so a
+     translucent card picks them up and the stack reads as layers of glass
+     rather than paper cut-outs. The solid fallback matters: without
+     backdrop-filter the rgba would let the wash show straight through and
+     wash the text out. */
   .dcp-card {
     background: var(--dcp-surface);
     border: 1px solid var(--dcp-line);
     border-radius: var(--dcp-r-card);
     box-shadow: var(--dcp-e1);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .dcp-card {
+      background: rgba(255, 255, 255, 0.74);
+      border-color: rgba(255, 255, 255, 0.68);
+      -webkit-backdrop-filter: blur(18px) saturate(1.5);
+      backdrop-filter: blur(18px) saturate(1.5);
+      box-shadow:
+        var(--dcp-e1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  /* Opt out where a card sits on white already, or holds a chart whose own
+     surface must stay opaque. */
+  .dcp-solid {
+    background: var(--dcp-surface) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border-color: var(--dcp-line) !important;
   }
 
   .dcp-card-raised {
