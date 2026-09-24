@@ -127,7 +127,7 @@ export default async function APProfilePage() {
 
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                 {section.fields.map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border border-slate-200/50 bg-white/50 p-4 hover:bg-white hover:border-slate-350 transition-all duration-150">
+                  <div key={label} className="rounded-2xl border border-slate-200/50 bg-white/50 p-4 hover:bg-white hover:border-slate-400 transition-all duration-150">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       {label}
                     </p>

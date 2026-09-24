@@ -161,7 +161,7 @@ function DocumentUploadSlot({
           ? "bg-red-50/20 border-red-300 shadow-xs"
           : isUploading
           ? "bg-blue-50/10 border-blue-300"
-          : "bg-white border-dashed border-[var(--dcp-line)] hover:border-slate-350 hover:bg-[var(--dcp-surface-2)]/30"
+          : "bg-white border-dashed border-[var(--dcp-line)] hover:border-slate-400 hover:bg-[var(--dcp-surface-2)]/30"
       )}
     >
       <input
@@ -208,7 +208,7 @@ function DocumentUploadSlot({
                 <Image src={previewUrl} alt="Preview" className="w-full h-full object-cover" width={40} height={40} unoptimized />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-slate-150 flex items-center justify-center shrink-0 border border-[var(--dcp-line)]">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-[var(--dcp-line)]">
                 <FileText className="h-5 w-5 text-[var(--dcp-ink-4)]" />
               </div>
             )}
@@ -235,7 +235,7 @@ function DocumentUploadSlot({
         {file ? (
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-white hover:bg-[var(--dcp-surface-2)] text-slate-750 text-[10px] font-bold py-2 border border-[var(--dcp-line)] rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-xs"
+            className="w-full bg-white hover:bg-[var(--dcp-surface-2)] text-slate-800 text-[10px] font-bold py-2 border border-[var(--dcp-line)] rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-xs"
           >
             <RefreshCw className="h-3 w-3" /> Replace File
           </button>
@@ -1270,7 +1270,7 @@ export function PartnerApplicationWizard({
                     currentStep === step.id
                       ? "bg-blue-600 text-white shadow-xs"
                       : currentStep > step.id
-                        ? "text-emerald-605"
+                        ? "text-emerald-600"
                         : "text-[var(--dcp-ink-4)]"
                   )}>
                     {currentStep > step.id
@@ -1287,7 +1287,7 @@ export function PartnerApplicationWizard({
                   {i < 4 && (
                     <div className={cn(
                       "flex-1 h-0.5 min-w-[6px] rounded-full transition-all duration-300",
-                      currentStep > step.id ? "bg-emerald-350" : "bg-slate-200"
+                      currentStep > step.id ? "bg-emerald-300" : "bg-slate-200"
                     )} />
                   )}
                 </React.Fragment>
@@ -1729,7 +1729,7 @@ export function PartnerApplicationWizard({
                   ))}
                 </div>
 
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-750 font-semibold flex items-center gap-2">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-blue-500" />
                   Documents are optional for initial submission.
                 </div>

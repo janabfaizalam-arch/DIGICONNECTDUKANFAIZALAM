@@ -286,30 +286,30 @@ export function PartnerLeadsClient({ initialLeads, services }: PartnerLeadsClien
                       </span>
                     </div>
 
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${stageColors[uiStage] || "bg-slate-500/10 border-slate-550/20 text-slate-400"}`}>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${stageColors[uiStage] || "bg-slate-500/10 border-slate-600/20 text-slate-400"}`}>
                       {uiStage}
                     </span>
                   </div>
 
                   <div className="space-y-1.5 font-mono text-xs text-slate-400">
                     <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-slate-650" />
+                      <Phone className="h-3.5 w-3.5 text-slate-700" />
                       <span>{lead.mobile}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Layers className="h-3.5 w-3.5 text-slate-650" />
+                      <Layers className="h-3.5 w-3.5 text-slate-700" />
                       <span className="text-slate-300 font-semibold">{lead.service}</span>
                     </div>
                     {lead.city && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-slate-650" />
+                        <MapPin className="h-3.5 w-3.5 text-slate-700" />
                         <span>{lead.city}</span>
                       </div>
                     )}
                   </div>
 
                   {lead.notes && (
-                    <div className="rounded-xl bg-slate-950/70 p-3 border border-white/5 text-xs text-slate-450 leading-relaxed italic">
+                    <div className="rounded-xl bg-slate-950/70 p-3 border border-white/5 text-xs text-slate-500 leading-relaxed italic">
                       <p className="font-bold text-slate-400 font-sans not-italic text-[10px] uppercase mb-0.5">Latest Update Notes</p>
                       {lead.notes}
                     </div>
@@ -319,7 +319,7 @@ export function PartnerLeadsClient({ initialLeads, services }: PartnerLeadsClien
                 <div className="mt-5 pt-3.5 border-t border-white/5 flex items-center justify-between">
                   <button
                     onClick={() => openEditModal(lead)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-slate-850 hover:bg-slate-800 px-3 text-xs font-bold text-slate-300 border border-white/5 transition"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-800 px-3 text-xs font-bold text-slate-300 border border-white/5 transition"
                   >
                     <Edit className="h-3.5 w-3.5" />
                     Update

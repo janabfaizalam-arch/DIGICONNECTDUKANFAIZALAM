@@ -1398,14 +1398,14 @@ export function APApplicationForm({
                             ? "bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed"
                             : isVarSelected
                             ? "bg-indigo-50 border-indigo-500 shadow-sm"
-                            : "bg-white border-slate-100 hover:border-slate-250"
+                            : "bg-white border-slate-100 hover:border-slate-300"
                         )}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className={cn("text-sm font-semibold", isVarSelected ? "text-indigo-850" : "text-slate-800")}>
+                          <p className={cn("text-sm font-semibold", isVarSelected ? "text-indigo-900" : "text-slate-800")}>
                             {v.name}
                           </p>
-                          <div className="flex gap-3 text-xs mt-1 text-slate-550 font-medium">
+                          <div className="flex gap-3 text-xs mt-1 text-slate-600 font-medium">
                             <span>Price: {formatCurrency(v.price)}</span>
                             <span className="text-emerald-600 font-semibold">Score: {v.score}</span>
                             <span>TAT: {v.processing_time}</span>
@@ -1648,7 +1648,7 @@ export function APApplicationForm({
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="bg-emerald-50 rounded-xl p-3 text-center">
                   <p className="text-xs text-emerald-600 font-medium">Your Score</p>
-                  <p className="text-base font-extrabold text-emerald-705 mt-0.5">{finalScore}</p>
+                  <p className="text-base font-extrabold text-emerald-700 mt-0.5">{finalScore}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 text-center">
                   <p className="text-xs text-slate-500 font-medium">Expected Delivery</p>

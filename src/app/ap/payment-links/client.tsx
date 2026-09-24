@@ -55,7 +55,7 @@ export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
                 <div key={link.id} className="group relative flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/50 p-5 transition-all duration-200 hover:border-blue-500/20 hover:bg-slate-50 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-850 text-base">
+                      <span className="font-extrabold text-slate-900 text-base">
                         {link.profiles?.full_name || "Customer"}
                       </span>
                       <span className="h-1.5 w-1.5 rounded-full bg-slate-200" />
@@ -64,7 +64,7 @@ export function APPaymentLinksClient({ links }: { links: PaymentLink[] }) {
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-slate-450 font-semibold">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-slate-500 font-semibold">
                       <span className="inline-flex items-center gap-1">
                         ₹{link.amount}
                       </span>

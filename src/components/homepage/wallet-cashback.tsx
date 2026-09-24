@@ -79,7 +79,7 @@ export function WalletCashback() {
                   </span>
                   <div>
                     <h4 className="font-extrabold text-slate-900 leading-tight">20% Cashback Rewards</h4>
-                    <p className="text-xs font-bold text-slate-450 mt-0.5">Every paid service automatically adds 20% points back into your wallet.</p>
+                    <p className="text-xs font-bold text-slate-500 mt-0.5">Every paid service automatically adds 20% points back into your wallet.</p>
                   </div>
                 </div>
 
@@ -89,7 +89,7 @@ export function WalletCashback() {
                   </span>
                   <div>
                     <h4 className="font-extrabold text-slate-900 leading-tight">100% First Service Cashback</h4>
-                    <p className="text-xs font-bold text-slate-450 mt-0.5">Naye users ke liye first service support charge 100% wallet reward me refund.</p>
+                    <p className="text-xs font-bold text-slate-500 mt-0.5">Naye users ke liye first service support charge 100% wallet reward me refund.</p>
                   </div>
                 </div>
               </div>

@@ -389,7 +389,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
                 key={srv.id}
                 href={`/ap/applications/new?serviceId=${srv.id}`}
                 onClick={() => trackRecentUse(srv.slug)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200/60 bg-white/70 text-xs text-slate-600 hover:border-blue-550 hover:text-blue-600 hover:bg-white transition-all font-semibold shadow-sm"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200/60 bg-white/70 text-xs text-slate-600 hover:border-blue-600 hover:text-blue-600 hover:bg-white transition-all font-semibold shadow-sm"
               >
                 <span>{srv.title}</span>
                 <ArrowRight className="h-3 w-3 text-slate-400" />
@@ -426,7 +426,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
             className={`h-9 px-4 shrink-0 rounded-xl text-xs font-bold transition-all duration-200 border ${
               selectedCategory === cat
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-md shadow-blue-500/15"
-                : "bg-white/70 text-slate-500 border-slate-200/60 hover:text-slate-800 hover:bg-white hover:border-slate-350 shadow-sm"
+                : "bg-white/70 text-slate-500 border-slate-200/60 hover:text-slate-800 hover:bg-white hover:border-slate-400 shadow-sm"
             }`}
           >
             {cat === "Favorites" ? (
@@ -510,7 +510,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
                       <p className="font-bold text-slate-700 flex items-center gap-1">
                         <FileText className="h-3.5 w-3.5 text-slate-400" /> Required Docs:
                       </p>
-                      <p className="text-[10px] text-slate-550 leading-normal font-semibold line-clamp-2">
+                      <p className="text-[10px] text-slate-600 leading-normal font-semibold line-clamp-2">
                         {srv.required_documents}
                       </p>
                     </div>
@@ -640,7 +640,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
                       className={`h-9 rounded-xl text-xs font-bold border transition ${
                         posterSize === "a4"
                           ? "bg-blue-50 border-blue-500 text-blue-600 shadow-sm"
-                          : "bg-white border-slate-250 text-slate-600 hover:bg-slate-50"
+                          : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       A4 Flyer
@@ -650,7 +650,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
                       className={`h-9 rounded-xl text-xs font-bold border transition ${
                         posterSize === "square"
                           ? "bg-blue-50 border-blue-500 text-blue-600 shadow-sm"
-                          : "bg-white border-slate-250 text-slate-600 hover:bg-slate-50"
+                          : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       Square Social

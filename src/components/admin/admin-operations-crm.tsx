@@ -517,7 +517,7 @@ export function AdminOperationsCRM({
                     key={task.id}
                     className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                       task.completed
-                        ? "bg-slate-50/50 border-slate-150 text-slate-400"
+                        ? "bg-slate-50/50 border-slate-200 text-slate-400"
                         : "bg-white border-slate-200 text-slate-800 hover:border-slate-300"
                     }`}
                   >
@@ -599,7 +599,7 @@ export function AdminOperationsCRM({
               {/* Approval logs display */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {approvals.map((app) => (
-                  <div key={app.level} className="bg-slate-50/50 border border-slate-150 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div key={app.level} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                       <span className="font-extrabold text-xs text-slate-800">{app.level} Review</span>
                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
@@ -673,8 +673,8 @@ export function AdminOperationsCRM({
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr] gap-6">
                 
                 {/* CRM Profiles details */}
-                <div className="bg-slate-50/50 border border-slate-150 rounded-2xl p-5 space-y-4">
-                  <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-250 pb-2">
+                <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-300 pb-2">
                     CRM Profile
                   </h4>
                   <div className="space-y-2.5 text-xs font-semibold text-slate-700">
@@ -700,8 +700,8 @@ export function AdminOperationsCRM({
                 </div>
 
                 {/* Support tickets related */}
-                <div className="bg-slate-50/50 border border-slate-150 rounded-2xl p-5 space-y-4">
-                  <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-250 pb-2">
+                <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-300 pb-2">
                     Linked Support Tickets
                   </h4>
                   <div className="space-y-3">
@@ -777,7 +777,7 @@ export function AdminOperationsCRM({
               <div className="overflow-x-auto no-scrollbar border border-slate-100 rounded-2xl">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-150">
+                    <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                       <th className="p-3.5">Action Event</th>
                       <th className="p-3.5">Operator</th>
                       <th className="p-3.5">Timestamp</th>

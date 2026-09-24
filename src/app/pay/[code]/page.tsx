@@ -223,7 +223,7 @@ export default function CustomerPaymentPage({ params }: { params: Promise<{ code
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-slate-500">Service Partner</span>
-              <span className="text-sm font-semibold text-slate-850 text-blue-600">{details?.partnerName}</span>
+              <span className="text-sm font-semibold text-slate-900 text-blue-600">{details?.partnerName}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-slate-500">Base Service Fee</span>

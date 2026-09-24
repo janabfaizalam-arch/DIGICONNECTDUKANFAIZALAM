@@ -104,8 +104,8 @@ export function ServiceVariantSelector({
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {((selectedVariant.required_documents as Array<{ id?: string; name: string; required?: boolean }>) || []).map((doc, idx) => (
                   <div key={doc.id || idx} className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-slate-450 shrink-0" />
-                    <span className="text-xs text-slate-650 font-semibold">{doc.name}</span>
+                    <FileText className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span className="text-xs text-slate-700 font-semibold">{doc.name}</span>
                     {doc.required && (
                       <span className="text-[8px] font-black text-red-500 uppercase tracking-wider">Required</span>
                     )}

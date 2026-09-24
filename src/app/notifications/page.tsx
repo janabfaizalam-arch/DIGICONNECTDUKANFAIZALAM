@@ -235,7 +235,7 @@ export default function NotificationsPage() {
             </div>
             <div className="space-y-2 max-w-sm mx-auto">
               <h3 className="text-base font-black text-slate-800">Track your application alerts</h3>
-              <p className="text-xs font-semibold text-slate-450 leading-relaxed">
+              <p className="text-xs font-semibold text-slate-500 leading-relaxed">
                 Log in to view secure updates for your GST submissions, document verifications, refer & earn points, and wallet balances.
               </p>
             </div>
@@ -256,7 +256,7 @@ export default function NotificationsPage() {
             </div>
             <div className="space-y-1 max-w-sm mx-auto">
               <h3 className="text-base font-black text-slate-800">You&apos;re all caught up!</h3>
-              <p className="text-xs font-semibold text-slate-450 leading-relaxed">
+              <p className="text-xs font-semibold text-slate-500 leading-relaxed">
                 No active notifications or alerts at this moment. We will notify you here as your applications progress.
               </p>
             </div>

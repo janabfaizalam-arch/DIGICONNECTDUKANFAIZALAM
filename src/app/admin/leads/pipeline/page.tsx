@@ -274,7 +274,7 @@ export default function AdminCRMPipeline() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex h-9 items-center justify-center gap-1.5 bg-blue-600 text-white hover:bg-blue-750 disabled:bg-blue-300 text-xs font-black px-4 py-2 rounded-xl transition"
+              className="inline-flex h-9 items-center justify-center gap-1.5 bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 text-xs font-black px-4 py-2 rounded-xl transition"
             >
               <Save className="h-4 w-4" />
               {saving ? "Creating..." : "Save Lead"}
@@ -311,14 +311,14 @@ export default function AdminCRMPipeline() {
 
                 <div className="space-y-3.5">
                   {stageLeads.length === 0 ? (
-                    <div className="text-center p-6 border border-dashed border-slate-200 rounded-2xl text-[10px] text-slate-450 font-bold">
+                    <div className="text-center p-6 border border-dashed border-slate-200 rounded-2xl text-[10px] text-slate-500 font-bold">
                       No profiles in this stage
                     </div>
                   ) : (
                     stageLeads.map((lead) => (
                       <div
                         key={lead.id}
-                        className="bg-white border border-slate-200/70 p-4 rounded-2xl shadow-xs space-y-2 relative group hover:border-slate-350 transition-all duration-200"
+                        className="bg-white border border-slate-200/70 p-4 rounded-2xl shadow-xs space-y-2 relative group hover:border-slate-400 transition-all duration-200"
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -347,7 +347,7 @@ export default function AdminCRMPipeline() {
                           </p>
                         )}
 
-                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-450 mt-1 border-t border-slate-50 pt-2">
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-500 mt-1 border-t border-slate-50 pt-2">
                           <Phone className="h-3 w-3" /> {lead.customer_mobile}
                         </div>
 
@@ -360,7 +360,7 @@ export default function AdminCRMPipeline() {
                                 const prevStage = STAGES[stagesIndex - 1].id;
                                 moveStage(lead.id, prevStage);
                               }}
-                              className="text-[9px] font-black text-slate-450 hover:text-slate-900 px-1 border border-slate-100 rounded-md hover:bg-slate-50"
+                              className="text-[9px] font-black text-slate-500 hover:text-slate-900 px-1 border border-slate-100 rounded-md hover:bg-slate-50"
                             >
                               ← Back
                             </button>
@@ -372,7 +372,7 @@ export default function AdminCRMPipeline() {
                                 const nextStage = STAGES[stagesIndex + 1].id;
                                 moveStage(lead.id, nextStage);
                               }}
-                              className="text-[9px] font-black text-indigo-650 hover:text-indigo-800 px-1 border border-slate-100 rounded-md hover:bg-slate-50 flex items-center gap-0.5"
+                              className="text-[9px] font-black text-indigo-700 hover:text-indigo-800 px-1 border border-slate-100 rounded-md hover:bg-slate-50 flex items-center gap-0.5"
                             >
                               Next <ArrowRight className="h-2 w-2" />
                             </button>

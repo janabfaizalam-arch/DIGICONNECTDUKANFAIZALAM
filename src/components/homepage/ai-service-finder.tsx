@@ -260,7 +260,7 @@ export function AiServiceFinder() {
                     className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
                       isListening 
                         ? "bg-red-500 text-white animate-pulse" 
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-650"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
                     }`}
                     title="Voice Search"
                   >
@@ -298,7 +298,7 @@ export function AiServiceFinder() {
 
             {/* Instant Suggestions Panel */}
             {searchResults.length > 0 && (
-              <div className="mt-5 rounded-2xl border border-slate-150/40 bg-white p-4 shadow-lg text-left max-h-80 overflow-y-auto">
+              <div className="mt-5 rounded-2xl border border-slate-200/40 bg-white p-4 shadow-lg text-left max-h-80 overflow-y-auto">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 pb-2 border-b border-slate-100">
                   AI Matching Services ({searchResults.length})
                 </p>
@@ -314,7 +314,7 @@ export function AiServiceFinder() {
                         <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-blue-700 leading-tight">
                           {service.title}
                         </h4>
-                        <p className="text-xs text-slate-450 mt-1 line-clamp-1 leading-none">{service.shortDescription}</p>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-1 leading-none">{service.shortDescription}</p>
                       </div>
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 group-hover:bg-blue-600 group-hover:text-white text-slate-600 transition">
                         <CornerDownRight className="h-4 w-4" />
@@ -336,7 +336,7 @@ export function AiServiceFinder() {
                     <Link
                       key={service.slug}
                       href={`/services/${service.slug}`}
-                      className="flex flex-col justify-between p-3 rounded-xl border border-slate-150 bg-white shadow-sm hover:border-blue-300 transition"
+                      className="flex flex-col justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:border-blue-300 transition"
                     >
                       <span className="text-[10px] font-black text-slate-900 line-clamp-1">{service.title}</span>
                       <span className="mt-2.5 inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 uppercase tracking-wider">
@@ -358,7 +358,7 @@ export function AiServiceFinder() {
                     {recentSearches.length > 0 && (
                       <button
                         onClick={handleClearAllRecents}
-                        className="text-[10px] font-bold text-slate-450 hover:text-red-500 flex items-center gap-1"
+                        className="text-[10px] font-bold text-slate-500 hover:text-red-500 flex items-center gap-1"
                       >
                         <Trash2 className="h-3 w-3" /> Clear
                       </button>
@@ -374,13 +374,13 @@ export function AiServiceFinder() {
                             setSearchQuery(term);
                             saveSearch(term);
                           }}
-                          className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-650 hover:border-slate-350"
+                          className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-400"
                         >
                           <Clock className="h-3 w-3 text-slate-400" />
                           {term}
                           <span 
                             onClick={(e) => handleRecentDelete(term, e)}
-                            className="text-slate-350 hover:text-slate-600 font-extrabold text-[10px] pl-1"
+                            className="text-slate-400 hover:text-slate-600 font-extrabold text-[10px] pl-1"
                           >
                             ×
                           </span>
@@ -388,7 +388,7 @@ export function AiServiceFinder() {
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs font-semibold text-slate-450 italic">No recent searches</p>
+                    <p className="mt-3 text-xs font-semibold text-slate-500 italic">No recent searches</p>
                   )}
                 </div>
 

@@ -981,7 +981,7 @@ export function CscOlympiadInteractive({
                       <td className="p-4 text-blue-600 font-bold">{item.phase1}</td>
                       <td className="p-4 text-emerald-600 font-bold">{item.phase2}</td>
                       <td className="p-4">{item.timeWindow}</td>
-                      <td className="p-4 text-[10px] text-slate-450 leading-normal">{item.notes}</td>
+                      <td className="p-4 text-[10px] text-slate-500 leading-normal">{item.notes}</td>
                     </tr>
                   ))}
                 </tbody>

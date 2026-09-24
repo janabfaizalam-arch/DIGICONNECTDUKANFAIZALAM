@@ -528,7 +528,7 @@ export function CscOlympiadCmsForm({
             </div>
             <div className="grid gap-4">
               {examCalendar.map((cal, index) => (
-                <div key={index} className="p-4 rounded-lg bg-slate-50 border border-slate-150 grid gap-3">
+                <div key={index} className="p-4 rounded-lg bg-slate-50 border border-slate-200 grid gap-3">
                   <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                     <div className="space-y-1 sm:col-span-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Subjects Group *</label>
@@ -573,7 +573,7 @@ export function CscOlympiadCmsForm({
             </div>
             <div className="grid gap-4">
               {subjects.map((sub, index) => (
-                <div key={index} className="p-4 rounded-lg bg-slate-50 border border-slate-150 grid gap-3">
+                <div key={index} className="p-4 rounded-lg bg-slate-50 border border-slate-200 grid gap-3">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Subject Slug / ID *</label>
@@ -708,7 +708,7 @@ export function CscOlympiadCmsForm({
             </div>
             <div className="grid gap-4">
               {winners.map((win, index) => (
-                <div key={win.id} className="p-4 rounded-lg bg-slate-50 border border-slate-150 grid gap-3">
+                <div key={win.id} className="p-4 rounded-lg bg-slate-50 border border-slate-200 grid gap-3">
                   <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Winner Full Name *</label>
@@ -756,7 +756,7 @@ export function CscOlympiadCmsForm({
             </div>
             <div className="grid gap-4">
               {gallery.map((item, index) => (
-                <div key={index} className="p-4 rounded-lg bg-slate-50 border border-slate-150 grid gap-3">
+                <div key={index} className="p-4 rounded-lg bg-slate-50 border border-slate-200 grid gap-3">
                   <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                     <div className="space-y-1 sm:col-span-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Image URL *</label>

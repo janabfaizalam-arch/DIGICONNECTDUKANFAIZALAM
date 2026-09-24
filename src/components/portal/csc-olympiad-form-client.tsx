@@ -505,7 +505,7 @@ export function CscOlympiadFormClient({
   return (
     <Card className="rounded-3xl p-5 md:p-8 bg-white/80 border border-slate-200/60 backdrop-blur-md shadow-xl overflow-hidden relative text-left">
       {isSubmitting && (
-        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4 text-center text-slate-850">
+        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4 text-center text-slate-900">
           <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
           <p className="text-sm font-bold text-slate-700">{progressText}</p>
         </div>
@@ -665,7 +665,7 @@ export function CscOlympiadFormClient({
             >
               <div className="border-b border-slate-100 pb-2 mb-4">
                 <h3 className="text-sm font-black text-slate-900">Parent / Communication Details</h3>
-                <p className="text-slate-505 mt-0.5">Enter contact coordinates to receive proctor keys and dates notifications.</p>
+                <p className="text-slate-500 mt-0.5">Enter contact coordinates to receive proctor keys and dates notifications.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -736,7 +736,7 @@ export function CscOlympiadFormClient({
             >
               <div className="border-b border-slate-100 pb-2 mb-4">
                 <h3 className="text-sm font-black text-slate-900">School Profile</h3>
-                <p className="text-slate-505 mt-0.5">Input details of the school where student is currently studying.</p>
+                <p className="text-slate-500 mt-0.5">Input details of the school where student is currently studying.</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -824,7 +824,7 @@ export function CscOlympiadFormClient({
               <div className="border-b border-slate-100 pb-2 mb-4 flex justify-between items-end">
                 <div>
                   <h3 className="text-sm font-black text-slate-900">Subject & Language Choice</h3>
-                  <p className="text-slate-505 mt-0.5">Register subjects available for Class {formValues.studentClass}.</p>
+                  <p className="text-slate-500 mt-0.5">Register subjects available for Class {formValues.studentClass}.</p>
                 </div>
                 <span className="text-xs font-black bg-cyan-50 border border-cyan-200 text-cyan-700 px-3 py-1 rounded-full shrink-0">
                   ₹{pricePerSubject}/Subject
@@ -889,14 +889,14 @@ export function CscOlympiadFormClient({
               </div>
 
               {totalSubjectsCount > 0 && (
-                <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-150 text-xs font-bold text-slate-605 flex flex-col gap-2 shadow-sm">
+                <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 flex flex-col gap-2 shadow-sm">
                   <div className="flex justify-between">
                     <span>Subjects Selected ({totalSubjectsCount}):</span>
                     <span className="text-slate-800">{formValues.selectedSubjects.map(id => subjectsList.find(s => s.id === id)?.name).join(", ")}</span>
                   </div>
-                  <div className="flex justify-between border-t border-slate-150 pt-2 mt-1">
+                  <div className="flex justify-between border-t border-slate-200 pt-2 mt-1">
                     <span>Total Facilitation Fee:</span>
-                    <span className="text-slate-955">₹{subtotalBeforeDiscounts}</span>
+                    <span className="text-slate-950">₹{subtotalBeforeDiscounts}</span>
                   </div>
                 </div>
               )}
@@ -919,7 +919,7 @@ export function CscOlympiadFormClient({
             >
               <div className="border-b border-slate-100 pb-2 mb-4">
                 <h3 className="text-sm font-black text-slate-900">Documents Upload verification</h3>
-                <p className="text-slate-505 mt-0.5">Attach validation files. Size limit: 5MB per file. Formats: PDF, JPG, PNG.</p>
+                <p className="text-slate-500 mt-0.5">Attach validation files. Size limit: 5MB per file. Formats: PDF, JPG, PNG.</p>
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
@@ -949,22 +949,22 @@ export function CscOlympiadFormClient({
                             e.stopPropagation();
                             handleFileChange("photo", null);
                           }}
-                          className="mt-3 text-red-650 hover:text-red-700 cursor-pointer h-7 hover:bg-red-50"
+                          className="mt-3 text-red-700 hover:text-red-700 cursor-pointer h-7 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <UploadCloud className="h-8 w-8 text-slate-450 mb-3 animate-pulse" />
+                        <UploadCloud className="h-8 w-8 text-slate-500 mb-3 animate-pulse" />
                         <span className="text-xs font-extrabold text-blue-600 block">Choose Passport Photo</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">JPG or PNG format</span>
                       </>
                     )}
 
                     {uploadProgress.photo !== undefined && uploadProgress.photo < 100 && (
-                      <div className="absolute bottom-0 left-0 w-full bg-slate-205 h-1">
-                        <div className="bg-blue-650 h-1 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
+                      <div className="absolute bottom-0 left-0 w-full bg-slate-200 h-1">
+                        <div className="bg-blue-600 h-1 transition-all duration-100" style={{ width: `${uploadProgress.photo}%` }} />
                       </div>
                     )}
                   </div>
@@ -985,7 +985,7 @@ export function CscOlympiadFormClient({
                     {studyProof ? (
                       <div className="w-full flex flex-col items-center">
                         <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                        <span className="text-xs font-bold text-slate-805 block truncate max-w-full px-4">{studyProof.name}</span>
+                        <span className="text-xs font-bold text-slate-800 block truncate max-w-full px-4">{studyProof.name}</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">{(studyProof.size / 1024 / 1024).toFixed(2)} MB</span>
                         
                         <Button 
@@ -995,22 +995,22 @@ export function CscOlympiadFormClient({
                             e.stopPropagation();
                             handleFileChange("proof", null);
                           }}
-                          className="mt-3 text-red-655 hover:text-red-700 cursor-pointer h-7 hover:bg-red-50"
+                          className="mt-3 text-red-700 hover:text-red-700 cursor-pointer h-7 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <UploadCloud className="h-8 w-8 text-slate-455 mb-3 animate-pulse" />
+                        <UploadCloud className="h-8 w-8 text-slate-500 mb-3 animate-pulse" />
                         <span className="text-xs font-extrabold text-blue-600 block">Choose School ID / Proof</span>
                         <span className="text-[10px] text-slate-500 font-semibold mt-1">PDF, JPG or PNG format</span>
                       </>
                     )}
 
                     {uploadProgress.proof !== undefined && uploadProgress.proof < 100 && (
-                      <div className="absolute bottom-0 left-0 w-full bg-slate-205 h-1">
-                        <div className="bg-blue-650 h-1 transition-all duration-100" style={{ width: `${uploadProgress.proof}%` }} />
+                      <div className="absolute bottom-0 left-0 w-full bg-slate-200 h-1">
+                        <div className="bg-blue-600 h-1 transition-all duration-100" style={{ width: `${uploadProgress.proof}%` }} />
                       </div>
                     )}
                   </div>
@@ -1031,12 +1031,12 @@ export function CscOlympiadFormClient({
             >
               <div className="border-b border-slate-100 pb-2 mb-4">
                 <h3 className="text-sm font-black text-slate-900">Application Review summary</h3>
-                <p className="text-slate-505 mt-0.5">Please check all parameters carefully before making checkout payment.</p>
+                <p className="text-slate-500 mt-0.5">Please check all parameters carefully before making checkout payment.</p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 text-xs font-bold text-slate-600 bg-slate-50 p-5 rounded-2xl border border-slate-200">
                 <div className="space-y-2">
-                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5 text-blue-600" /> Student info
                   </h4>
                   <p><span className="text-slate-500 font-semibold">Name:</span> {formValues.studentName}</p>
@@ -1047,7 +1047,7 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                     <Building className="h-3.5 w-3.5 text-blue-600" /> School details
                   </h4>
                   <p><span className="text-slate-500 font-semibold">School Name:</span> {formValues.schoolName}</p>
@@ -1058,7 +1058,7 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                     <BookOpen className="h-3.5 w-3.5 text-blue-600" /> Subjects & Language Choice
                   </h4>
                   <p className="text-slate-800 text-xs font-black">
@@ -1068,7 +1068,7 @@ export function CscOlympiadFormClient({
                 </div>
 
                 <div className="md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-slate-900 border-b border-slate-150 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-slate-900 border-b border-slate-200 pb-1.5 font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                     <FileText className="h-3.5 w-3.5 text-blue-600" /> Uploaded documents
                   </h4>
                   <div className="flex flex-wrap gap-4 text-[10px]">
@@ -1091,36 +1091,36 @@ export function CscOlympiadFormClient({
             >
               <div className="border-b border-slate-100 pb-2 mb-4">
                 <h3 className="text-sm font-black text-slate-900">Registration Checkout</h3>
-                <p className="text-slate-505 mt-0.5">Apply coupon codes and redeem wallet cashback to complete payment verification.</p>
+                <p className="text-slate-500 mt-0.5">Apply coupon codes and redeem wallet cashback to complete payment verification.</p>
               </div>
 
               {/* Price Breakdown */}
-              <div className="rounded-2xl border border-slate-205 bg-slate-50 p-5 space-y-3.5 text-xs font-bold text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3.5 text-xs font-bold text-slate-600">
                 <div className="flex justify-between">
                   <span>Standard Registration Fee ({totalSubjectsCount} subject{totalSubjectsCount > 1 ? "s" : ""}):</span>
                   <span className="line-through text-slate-400">₹{basePrice}</span>
                 </div>
                 
-                <div className="flex justify-between text-blue-700 bg-blue-50/50 p-2 rounded-xl border border-blue-150">
+                <div className="flex justify-between text-blue-700 bg-blue-50/50 p-2 rounded-xl border border-blue-200">
                   <span>Facilitator Offer Discount:</span>
                   <span>-₹{basePrice - subtotalBeforeDiscounts}</span>
                 </div>
 
                 {appliedCouponDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-700 bg-emerald-50/50 p-2 rounded-xl border border-emerald-150">
+                  <div className="flex justify-between text-emerald-700 bg-emerald-50/50 p-2 rounded-xl border border-emerald-200">
                     <span>Coupon Discount Applied ({appliedCouponCode}):</span>
                     <span>-₹{appliedCouponDiscount}</span>
                   </div>
                 )}
 
                 {walletUseAmount > 0 && (
-                  <div className="flex justify-between text-cyan-700 bg-cyan-50/50 p-2 rounded-xl border border-cyan-150">
+                  <div className="flex justify-between text-cyan-700 bg-cyan-50/50 p-2 rounded-xl border border-cyan-200">
                     <span>Wallet Cashback Redeemed (50% cap):</span>
                     <span>-₹{walletUseAmount}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between border-t border-slate-150 pt-3 text-sm font-black text-slate-900">
+                <div className="flex justify-between border-t border-slate-200 pt-3 text-sm font-black text-slate-900">
                   <span>Net Payable Amount:</span>
                   <span className="text-blue-600">₹{realPayableAmount}</span>
                 </div>
@@ -1128,9 +1128,9 @@ export function CscOlympiadFormClient({
 
               {/* Coupon code inputs */}
               {appliedCouponCode ? (
-                <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-250 bg-emerald-50 text-xs font-extrabold text-emerald-750">
+                <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-300 bg-emerald-50 text-xs font-extrabold text-emerald-800">
                   <span>Coupon {appliedCouponCode} applied! Saved ₹{appliedCouponDiscount}</span>
-                  <button type="button" onClick={removeCoupon} className="text-red-650 hover:text-red-700 cursor-pointer">
+                  <button type="button" onClick={removeCoupon} className="text-red-700 hover:text-red-700 cursor-pointer">
                     Remove
                   </button>
                 </div>
@@ -1142,7 +1142,7 @@ export function CscOlympiadFormClient({
                       value={couponCode} 
                       onChange={e => setCouponCode(e.target.value.trim().toUpperCase())} 
                       placeholder="ENTER COUPON CODE" 
-                      className="uppercase bg-white border-slate-200 text-slate-805 rounded-lg text-xs"
+                      className="uppercase bg-white border-slate-200 text-slate-800 rounded-lg text-xs"
                       disabled={couponApplying}
                     />
                     <Button 
@@ -1150,20 +1150,20 @@ export function CscOlympiadFormClient({
                       variant="outline" 
                       onClick={applyCoupon} 
                       disabled={couponApplying || !couponCode.trim()}
-                      className="cursor-pointer border-slate-250 hover:bg-slate-50 text-slate-700 text-xs bg-white"
+                      className="cursor-pointer border-slate-300 hover:bg-slate-50 text-slate-700 text-xs bg-white"
                     >
                       Apply
                     </Button>
                   </div>
                   {couponError && (
-                    <span className="text-[10px] font-bold text-red-650">{couponError}</span>
+                    <span className="text-[10px] font-bold text-red-700">{couponError}</span>
                   )}
                 </div>
               )}
 
               {/* Wallet adjustment */}
               {wallet.balance > 0 && (
-                <div className="p-4 rounded-xl border border-slate-150 bg-slate-50 flex items-center justify-between text-xs">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
                   <div>
                     <span className="font-extrabold text-slate-800 block">Redeem DigiWallet Balance</span>
                     <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">
@@ -1180,7 +1180,7 @@ export function CscOlympiadFormClient({
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-400 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
               )}
@@ -1191,7 +1191,7 @@ export function CscOlympiadFormClient({
                   <Button
                     type="button"
                     onClick={handleZeroPaymentCheckout}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-650 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
+                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
                   >
                     Complete Wallet Checkout
                   </Button>
@@ -1199,7 +1199,7 @@ export function CscOlympiadFormClient({
                   <Button
                     type="button"
                     onClick={() => handleSubmitApplication(razorpayPayment)}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-655 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
+                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-extrabold text-white shadow-lg shadow-blue-500/15 cursor-pointer"
                   >
                     Submit CSC Olympiad Application
                   </Button>
@@ -1269,7 +1269,7 @@ export function CscOlympiadFormClient({
       </div>
 
       {/* Safety Notice */}
-      <div className="mt-6 rounded-2xl border border-slate-150 bg-slate-50 p-4 text-[10px] leading-relaxed text-slate-550 flex items-start gap-3">
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[10px] leading-relaxed text-slate-600 flex items-start gap-3">
         <Lock className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
         <span>
           Payment checkouts are secure by Razorpay with 256-bit encryption. All uploads are locked inside secure Supabase buckets. DigiConnect Dukan coordinators audit applications to prevent incorrect school board codes or duplicate entry rejections.

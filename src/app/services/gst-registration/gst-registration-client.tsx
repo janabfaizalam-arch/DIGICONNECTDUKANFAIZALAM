@@ -495,7 +495,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
             </div>
 
             {/* Package 3 - Premium Launch Kit */}
-            <div className="bg-gradient-to-b from-slate-900 to-slate-950 text-white rounded-[24px] border border-slate-850 p-8 shadow-sm flex flex-col justify-between">
+            <div className="bg-gradient-to-b from-slate-900 to-slate-950 text-white rounded-[24px] border border-slate-900 p-8 shadow-sm flex flex-col justify-between">
               <div className="space-y-6">
                 <div className="flex justify-between items-start">
                   <div>
@@ -868,7 +868,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                       key={idx}
                       onClick={() => setCurrentTestimonial(idx)}
                       className={`h-2 rounded-full transition-all duration-300 ${
-                        idx === currentTestimonial ? "w-6 bg-blue-600" : "w-2 bg-slate-200 hover:bg-slate-350"
+                        idx === currentTestimonial ? "w-6 bg-blue-600" : "w-2 bg-slate-200 hover:bg-slate-300"
                       }`}
                       aria-label={`Go to slide ${idx + 1}`}
                     />

@@ -382,10 +382,10 @@ export function AdminReferralManager({
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            displayStatus === "paid" ? "bg-green-50 text-green-700 border-green-150" :
-                            displayStatus === "cancelled" ? "bg-slate-50 text-slate-500 border-slate-150" :
-                            displayStatus === "expired" ? "bg-amber-50 text-amber-600 border-amber-150" :
-                            "bg-blue-50 text-blue-700 border-blue-150"
+                            displayStatus === "paid" ? "bg-green-50 text-green-700 border-green-200" :
+                            displayStatus === "cancelled" ? "bg-slate-50 text-slate-500 border-slate-200" :
+                            displayStatus === "expired" ? "bg-amber-50 text-amber-600 border-amber-200" :
+                            "bg-blue-50 text-blue-700 border-blue-200"
                           }`}>
                             {displayStatus.toUpperCase()}
                           </span>
@@ -447,9 +447,9 @@ export function AdminReferralManager({
                       </td>
                       <td className="py-4 px-6 text-center">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                          ["earned", "approved", "paid"].includes(comm.status) ? "bg-green-50 text-green-700 border-green-150" :
-                          ["pending", "reserved"].includes(comm.status) ? "bg-blue-50 text-blue-700 border-blue-150" :
-                          "bg-slate-50 text-slate-500 border-slate-150"
+                          ["earned", "approved", "paid"].includes(comm.status) ? "bg-green-50 text-green-700 border-green-200" :
+                          ["pending", "reserved"].includes(comm.status) ? "bg-blue-50 text-blue-700 border-blue-200" :
+                          "bg-slate-50 text-slate-500 border-slate-200"
                         }`}>
                           {comm.status.toUpperCase()}
                         </span>
@@ -479,7 +479,7 @@ export function AdminReferralManager({
               auditLogs.map((log) => (
                 <div key={log.id} className="relative">
                   <span className="absolute -left-9 top-1.5 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center">
-                    <ClipboardCheck className="h-3 w-3 text-slate-450" />
+                    <ClipboardCheck className="h-3 w-3 text-slate-500" />
                   </span>
                   
                   <div className="space-y-1">
@@ -489,7 +489,7 @@ export function AdminReferralManager({
                         {log.old_status?.toUpperCase() || "NULL"}
                       </span>
                       <span className="text-[10px] text-slate-400">➔</span>
-                      <span className="text-[10px] bg-blue-50 border border-blue-150 px-2 py-0.5 rounded text-blue-600 font-bold">
+                      <span className="text-[10px] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-blue-600 font-bold">
                         {log.new_status.toUpperCase()}
                       </span>
                       
@@ -561,7 +561,7 @@ export function AdminReferralManager({
             <AlertCircle className="h-5 w-5 shrink-0" />
             <div>
               <p className="font-bold">CAUTION: Permanent Data Modification</p>
-              <p className="mt-1 text-red-650 font-medium">This operation is irreversible. Ensure you have validated both profiles before initiating account merging.</p>
+              <p className="mt-1 text-red-700 font-medium">This operation is irreversible. Ensure you have validated both profiles before initiating account merging.</p>
             </div>
           </div>
 

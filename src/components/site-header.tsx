@@ -704,7 +704,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                             )}
                             <button
                               onClick={handleClearAll}
-                              className="text-[10px] font-black text-slate-400 hover:text-slate-650 hover:underline"
+                              className="text-[10px] font-black text-slate-400 hover:text-slate-700 hover:underline"
                             >
                               Clear All
                             </button>
@@ -918,11 +918,11 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
       {searchOpen && (
         <div className={cn(
           "fixed inset-0 z-[60] flex flex-col backdrop-blur-xl",
-          pathname.startsWith("/ap") ? "bg-slate-950/98 text-slate-100" : "bg-white/95 text-slate-850"
+          pathname.startsWith("/ap") ? "bg-slate-950/98 text-slate-100" : "bg-white/95 text-slate-900"
         )}>
           <div className={cn(
             "flex items-center gap-3 border-b px-4 py-3",
-            pathname.startsWith("/ap") ? "border-white/10 bg-slate-900" : "border-slate-150 bg-slate-50"
+            pathname.startsWith("/ap") ? "border-white/10 bg-slate-900" : "border-slate-200 bg-slate-50"
           )}>
             <Search className="h-5 w-5 shrink-0 text-slate-400" />
             <input
@@ -1036,7 +1036,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                           >
                             <div>
                               <p className="font-extrabold text-white text-sm group-hover:text-emerald-400 transition-colors">{item.customer_name}</p>
-                              <p className="text-xs text-slate-450">{item.service_name}</p>
+                              <p className="text-xs text-slate-500">{item.service_name}</p>
                             </div>
                             <span className="text-[10px] font-bold capitalize text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
                               {item.status.replace(/_/g, " ")}

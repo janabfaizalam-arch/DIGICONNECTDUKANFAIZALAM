@@ -139,7 +139,7 @@ export default function AdminSaaSBrandingPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white hover:bg-blue-750 disabled:bg-blue-300 shadow-md shadow-blue-900/10 hover:shadow-lg transition-all"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white hover:bg-blue-700 disabled:bg-blue-300 shadow-md shadow-blue-900/10 hover:shadow-lg transition-all"
         >
           <Save className="h-4 w-4" />
           {saving ? "Saving Changes..." : "Save Branding"}
@@ -282,7 +282,7 @@ export default function AdminSaaSBrandingPage() {
                   {domains.map((dom, idx) => (
                     <div
                       key={dom}
-                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-250/30 rounded-xl"
+                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-300/30 rounded-xl"
                     >
                       <div className="flex items-center gap-2">
                         <Globe className="h-4 w-4 text-slate-500" />

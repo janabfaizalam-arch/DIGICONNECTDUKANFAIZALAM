@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { attachPaymentLinkRelations } from "@/lib/payments/payment-link-relations";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET() {
@@ -60,9 +61,14 @@ export async function GET() {
     let conversionsList = [];
 
     if (referralIds.length) {
+      // partner_conversion_logs.customer_id points at auth.users, not
+      // public.profiles, so a profiles embed here has no relationship to walk
+      // and PostgREST fails the whole query — which is why this counted zero
+      // conversions no matter how many there were. The customer's name is
+      // read separately below.
       const { data: conversions } = await supabase
         .from("partner_conversion_logs")
-        .select("*, applications(service_name, amount, status), profiles(full_name)")
+        .select("*, applications(service_name, amount, status)")
         .in("referral_id", referralIds)
         .order("created_at", { ascending: false });
 
@@ -70,6 +76,27 @@ export async function GET() {
         totalConversions = conversions.length;
         paidConversions = conversions.filter(c => ["earned", "approved", "paid"].includes(c.commission_status)).length;
         conversionsList = conversions.slice(0, 10);
+
+        const customerIds = [
+          ...new Set(
+            conversionsList
+              .map((c) => c.customer_id)
+              .filter((id): id is string => typeof id === "string" && Boolean(id)),
+          ),
+        ];
+
+        if (customerIds.length) {
+          const { data: customerProfiles } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .in("id", customerIds);
+
+          const byId = new Map((customerProfiles ?? []).map((row) => [row.id, row]));
+          conversionsList = conversionsList.map((c) => ({
+            ...c,
+            profiles: byId.get(c.customer_id) ?? null,
+          }));
+        }
       }
     }
 
@@ -94,13 +121,16 @@ export async function GET() {
     }
 
     // 5. Fetch Payment Links
-    const { data: paymentLinks } = await supabase
+    // Plain columns, then the names by id. Neither applications nor profiles
+    // can be embedded on payment_links in this schema — see
+    // attachPaymentLinkRelations — and a failed embed returns no links at all.
+    const { data: paymentLinkRows } = await supabase
       .from("payment_links")
-      // payment_links has no FK to public.profiles (its customer_id points at
-      // auth.users), so embedding profiles here fails the whole query.
-      .select("*, applications(service_name, status)")
+      .select("*")
       .eq("partner_id", ap.id)
       .order("created_at", { ascending: false });
+
+    const paymentLinks = await attachPaymentLinkRelations(supabase, paymentLinkRows);
 
     // 6. Map Top Services
     const serviceCounts: Record<string, { count: number; name: string }> = {};
@@ -147,7 +177,7 @@ export async function GET() {
       },
       topServices,
       trafficSources,
-      paymentLinks: paymentLinks || [],
+      paymentLinks,
       recentActivity: {
         clicks: clicksList,
         conversions: conversionsList,

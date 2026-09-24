@@ -201,13 +201,13 @@ export function AIServiceHelper({ service }: AIServiceHelperProps) {
                           <h5 className="text-[10px] font-black text-indigo-400 uppercase">Aadhaar / PAN Validator</h5>
                           {!ocrState.fileUploaded ? (
                             <div className="border border-dashed border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition" onClick={handleOcrMock}>
-                              <FileSearch className="h-6 w-6 text-slate-450 mb-1.5" />
+                              <FileSearch className="h-6 w-6 text-slate-500 mb-1.5" />
                               <span className="text-[10px] text-slate-400 font-bold">Click to Upload Document</span>
                             </div>
                           ) : ocrState.analyzing ? (
                             <div className="flex items-center justify-center gap-2 p-2">
                               <div className="h-3 w-3 border-2 border-white border-t-transparent animate-spin rounded-full" />
-                              <span className="text-[10px] text-slate-350">Extracting details via OCR...</span>
+                              <span className="text-[10px] text-slate-400">Extracting details via OCR...</span>
                             </div>
                           ) : (
                             <div className="text-left bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl text-[10px] leading-snug font-bold border border-emerald-500/25">
@@ -246,7 +246,7 @@ export function AIServiceHelper({ service }: AIServiceHelperProps) {
               />
               <button
                 onClick={handleSend}
-                className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center hover:bg-blue-750 text-white transition active:scale-95"
+                className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center hover:bg-blue-700 text-white transition active:scale-95"
               >
                 <Send className="h-3.5 w-3.5" />
               </button>

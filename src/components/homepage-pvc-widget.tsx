@@ -101,7 +101,7 @@ export function HomepagePvcWidget() {
 
           {/* Action Header Buttons */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-100/40">
-            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-orange-650 shadow-sm border border-orange-100/40">
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-orange-700 shadow-sm border border-orange-100/40">
               <Sparkles className="h-2 w-2 text-orange-500 animate-pulse" />
               PVC Smart Card
             </span>
@@ -203,7 +203,7 @@ export function HomepagePvcWidget() {
             </div>
 
             <div className="mt-3 flex flex-col items-center border-t border-slate-100/50 pt-2.5 text-center">
-              <span className="text-[7.5px] font-bold tracking-wide text-slate-450 uppercase leading-normal">
+              <span className="text-[7.5px] font-bold tracking-wide text-slate-500 uppercase leading-normal">
                 DigiConnect Dukan • Powered By RNoS India
               </span>
             </div>
