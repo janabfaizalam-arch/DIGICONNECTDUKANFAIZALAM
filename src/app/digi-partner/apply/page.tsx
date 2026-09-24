@@ -7,9 +7,9 @@ import { PartnerApplicationForm } from "@/components/partner/partner-application
 import { DIGI_PARTNER_LANDING_ROUTE } from "@/lib/auth/partner-access";
 
 export const metadata: Metadata = {
-  title: "Become a Digi Partner | DigiConnect Dukan",
+  title: "Become a DC Partner | DigiConnect Dukan",
   description:
-    "Apply to become a DigiConnect Digi Partner. Serve customers, earn commission on every completed service, and manage everything from your partner panel.",
+    "Apply to become a DigiConnect DC Partner. Serve customers, earn commission on every completed service, and manage everything from your partner panel.",
   alternates: { canonical: "/digi-partner/apply" },
 };
 
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 export default function PartnerApplyPage() {
   return (
     <AuthScene
-      eyebrow="Digi Partner Network"
+      eyebrow="DC Partner Network"
       kicker="Join the network"
       headline={
         <>
@@ -48,7 +48,7 @@ export default function PartnerApplyPage() {
 
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[26px] font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-[28px]">
-            Become a Digi Partner
+            Become a DC Partner
           </h1>
           <p className="text-sm font-medium leading-relaxed text-slate-500">
             Six things and you are done. We read every application and call you on WhatsApp. Once

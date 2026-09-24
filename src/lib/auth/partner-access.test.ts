@@ -16,7 +16,7 @@ describe("canonical routes", () => {
     expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/ap/login");
     expect(DIGI_PARTNER_DASHBOARD_ROUTE).toBe("/ap/dashboard");
     expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/digi-partner");
-    expect(DIGI_PARTNER_BECOME_CTA_LABEL).toBe("Become a Digi Partner");
+    expect(DIGI_PARTNER_BECOME_CTA_LABEL).toBe("Become a DC Partner");
   });
 
   it("never lists the canonical route as an alias (prevents redirect loops)", () => {
@@ -88,14 +88,14 @@ describe("resolvePartnerCtaDestination", () => {
     });
   });
 
-  it("sends admins without partner membership to Digi Partner login (explicit switch)", () => {
+  it("sends admins without partner membership to DC Partner login (explicit switch)", () => {
     expect(resolvePartnerCtaDestination("admin")).toEqual({
       href: "/ap/login",
       showCustomerNotice: false,
     });
   });
 
-  it("sends admins with partner membership to the Digi Partner dashboard", () => {
+  it("sends admins with partner membership to the DC Partner dashboard", () => {
     expect(resolvePartnerCtaDestination("admin", { hasPartnerMembership: true })).toEqual({
       href: "/ap/dashboard",
       showCustomerNotice: false,

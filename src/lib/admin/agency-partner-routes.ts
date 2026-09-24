@@ -1,5 +1,5 @@
 /**
- * Canonical Admin → Agency Partner routes.
+ * Canonical Admin → DC Partner routes.
  * Detail pages always use agency_partners.id (UUID), never user_id or partner_code.
  */
 

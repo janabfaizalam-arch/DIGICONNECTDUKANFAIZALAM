@@ -145,10 +145,10 @@ export async function GET(request: Request) {
   if (partners.data?.length) {
     groups.push({
       type: "partners",
-      label: "Digi Partners",
+      label: "DC Partners",
       results: partners.data.map((row) => ({
         id: row.id,
-        title: row.full_name || "Digi Partner",
+        title: row.full_name || "DC Partner",
         subtitle: `${row.partner_code || ""} · ${row.status || ""}`,
         href: `/admin/agency-partners/${row.id}`,
       })),

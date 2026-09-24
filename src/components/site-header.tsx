@@ -839,7 +839,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
               </Link>
             )}
 
-            {/* Digi Partner Login — secondary CTA (guests only, desktop) */}
+            {/* DC Partner Login — secondary CTA (guests only, desktop) */}
             {!isLoggedIn && (
               <Link
                 href={DIGI_PARTNER_LOGIN_ROUTE}
@@ -848,7 +848,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                 className="hidden h-9 items-center gap-1.5 rounded-xl border border-indigo-200/70 bg-white/60 px-3 text-xs font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-800 active:scale-[0.98] lg:inline-flex"
               >
                 <BadgeCheck className="h-3.5 w-3.5" />
-                Digi Partner
+                DC Partner
               </Link>
             )}
 
@@ -864,10 +864,10 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
             ) : (
               /*
                 One button, one destination. This used to be a three-item
-                dropdown — Customer, Digi Partner, Admin — which asked a
+                dropdown — Customer, DC Partner, Admin — which asked a
                 first-time visitor to classify themselves before they could
                 sign in, and advertised the admin login on the public
-                homepage. Digi Partner already has its own button beside this
+                homepage. DC Partner already has its own button beside this
                 one, and administrators can reach /admin/login directly.
               */
               <Link
@@ -886,7 +886,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
               </div>
             )}
 
-            {/* Digi Partner Login — compact icon (guests only, mobile) */}
+            {/* DC Partner Login — compact icon (guests only, mobile) */}
             {!isLoggedIn && (
               <Link
                 href={DIGI_PARTNER_LOGIN_ROUTE}
@@ -1086,7 +1086,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                   <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 mx-auto border border-white/10">
                     <Search className="h-6 w-6" />
                   </div>
-                  <h3 className="font-bold text-white text-base">DigiPartner Unified Search</h3>
+                  <h3 className="font-bold text-white text-base">DC Partners Unified Search</h3>
                   <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
                     Type a name, mobile number, or service title to search across customers, active services, leads, and applications.
                   </p>

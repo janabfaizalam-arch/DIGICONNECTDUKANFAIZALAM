@@ -204,7 +204,7 @@ export default function NotificationsPage() {
               <Bell className="h-3.5 w-3.5" /> Notification Center
             </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
-              DigiPartner Alerts & Updates
+              DC Partners Alerts & Updates
             </h1>
             <p className="text-slate-500 text-sm mt-1 font-medium">
               Stay updated with payouts, customer applications processing, security validations and compliance deadlines.

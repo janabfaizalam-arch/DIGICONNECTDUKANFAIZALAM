@@ -19,7 +19,7 @@ const bodySchema = z.object({
 });
 
 /**
- * Admin Digi Partner password reset.
+ * Admin DC Partner password reset.
  * Uses Supabase Auth Admin updateUserById(auth.users.id) with the service role.
  */
 export async function POST(request: Request) {
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
   const userId = parsed.data.userId;
 
-  // Confirm the Auth UUID is linked to an agency partner row
+  // Confirm the Auth UUID is linked to a DC Partner row
   const { data: partner, error: partnerError } = await supabase
     .from("agency_partners")
     .select("id, user_id, partner_code")

@@ -1,5 +1,5 @@
 // ============================================================================
-// Agency Partner Wallet Operations
+// DC Partner Wallet Operations
 // DigiConnect Dukan — AP Ecosystem
 // Append-only ledger — never mutate old financial records.
 // ============================================================================

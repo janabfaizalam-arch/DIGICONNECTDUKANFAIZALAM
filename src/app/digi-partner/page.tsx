@@ -23,7 +23,7 @@ import {
 } from "@/lib/auth/partner-access";
 
 export const metadata: Metadata = {
-  title: "Digi Partner | DigiConnect Dukan",
+  title: "DC Partner | DigiConnect Dukan",
   description:
     "Grow your digital business with DigiConnect Dukan. Serve customers, earn commissions, manage applications and grow your service center.",
   alternates: { canonical: DIGI_PARTNER_LANDING_ROUTE },
@@ -82,7 +82,7 @@ export default function DigiPartnerLandingPage() {
 
           <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-indigo-200/70 bg-white/70 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-700 shadow-sm backdrop-blur-md">
             <BadgeCheck className="h-3.5 w-3.5" />
-            Digi Partner
+            DC Partner
           </p>
 
           <h1 className="max-w-3xl text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl md:text-[3.25rem] md:leading-[1.08]">

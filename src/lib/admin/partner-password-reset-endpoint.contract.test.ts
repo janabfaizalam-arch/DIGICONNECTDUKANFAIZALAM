@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 /**
  * Documents the production bug:
  * Partner Settings used AgentPasswordResetForm → PATCH /api/admin/agents/:id
- * which requires profiles.role === "agent". Digi Partners are agency_partner.
+ * which requires profiles.role === "agent". DC Partners are agency_partner.
  */
-describe("Digi Partner password reset endpoint contract", () => {
+describe("DC Partner password reset endpoint contract", () => {
   it("must call agency-partners reset-password with auth user UUID, not agents API", () => {
     const correct = "/api/admin/agency-partners/reset-password";
     const legacyBroken = "/api/admin/agents/";

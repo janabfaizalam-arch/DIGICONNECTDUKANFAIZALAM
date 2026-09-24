@@ -8,7 +8,7 @@ function jsonError(message: string, status: number) {
 }
 
 /**
- * Legacy Digi Partner leads API — aligned with canonical ownership
+ * Legacy DC Partner leads API — aligned with canonical ownership
  * (agent_id OR assigned_to OR partner_id), same as listCanonicalLeads.
  */
 export async function GET(request: Request) {

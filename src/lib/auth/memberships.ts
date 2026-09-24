@@ -2,11 +2,11 @@
  * Portal membership resolution (OPTION 2 — multi-role identity with portal context).
  *
  * Policy:
- * - One Auth user may hold admin membership AND Digi Partner membership.
+ * - One Auth user may hold admin membership AND DC Partner membership.
  * - Admin membership never grants /ap access by itself.
- * - Digi Partner access requires agency_partners.user_id match + active + KYC approved.
+ * - DC Partner access requires agency_partners.user_id match + active + KYC approved.
  * - Login portal / dcd_portal cookie selects the active context for redirects.
- * - profiles.role is a hint, not the sole gate for Digi Partner access.
+ * - profiles.role is a hint, not the sole gate for DC Partner access.
  */
 
 import type { User } from "@supabase/supabase-js";
@@ -53,11 +53,11 @@ export function normalizePortalContext(value: unknown): PortalContext | null {
 export function partnerAccessPublicMessage(reason: PartnerMembershipResult["reason"] | "wrong_role" | "admin_portal_only" | "inactive_profile" | "missing_profile"): string {
   switch (reason) {
     case "ap_not_active":
-      return "Your Digi Partner account is inactive.";
+      return "Your DC Partner account is inactive.";
     case "kyc_not_approved":
       return "Your KYC approval is pending.";
     case "not_linked":
-      return "Your login identity is not linked to this Digi Partner account.";
+      return "Your login identity is not linked to this DC Partner account.";
     case "admin_portal_only":
     case "wrong_role":
       return "This account is currently configured for the Admin portal.";
@@ -66,9 +66,9 @@ export function partnerAccessPublicMessage(reason: PartnerMembershipResult["reas
     case "missing_server_config":
       return "Login is not available right now.";
     case "inactive_profile":
-      return "Your Digi Partner account is inactive.";
+      return "Your DC Partner account is inactive.";
     case "missing_profile":
-      return "Your login identity is not linked to this Digi Partner account.";
+      return "Your login identity is not linked to this DC Partner account.";
     default:
       return "Contact support to repair the account linkage.";
   }

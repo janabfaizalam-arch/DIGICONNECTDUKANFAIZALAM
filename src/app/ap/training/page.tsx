@@ -69,7 +69,7 @@ export default async function APTrainingPage() {
         <PageHeader
           eyebrow="Growth"
           title="Training"
-          description="Onboarding checklist based on your live Digi Partner account, plus practical workflow guides."
+          description="Onboarding checklist based on your live DC Partner account, plus practical workflow guides."
         />
 
         <GlassPanel padding="md" className="space-y-4">

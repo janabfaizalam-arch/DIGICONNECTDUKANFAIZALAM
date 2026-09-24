@@ -19,7 +19,7 @@ type Props = {
 };
 
 /**
- * Admin Digi Partner password reset.
+ * Admin DC Partner password reset.
  * Calls /api/admin/agency-partners/reset-password with the Auth user UUID.
  */
 export function PartnerPasswordResetForm({ userId, partnerCode }: Props) {
@@ -98,7 +98,7 @@ export function PartnerPasswordResetForm({ userId, partnerCode }: Props) {
   return (
     <form onSubmit={onSubmit} className="mt-5 grid gap-3" aria-busy={isPending}>
       <p className="text-[11px] font-medium text-slate-500">
-        Resets the Digi Partner login password via Supabase Auth Admin for user{" "}
+        Resets the DC Partner login password via Supabase Auth Admin for user{" "}
         <span className="font-mono text-slate-700">{userId.slice(0, 8)}…</span>
         {partnerCode ? (
           <>

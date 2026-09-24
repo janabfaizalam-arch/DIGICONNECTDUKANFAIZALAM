@@ -328,7 +328,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
               aria-haspopup="dialog"
             >
               <div className="h-6 w-6 rounded-full bg-blue-100 border border-blue-200/50 flex items-center justify-center text-blue-700 text-xs font-bold font-mono">
-                {partnerCode ? partnerCode.slice(-2) : "AP"}
+                {partnerCode ? partnerCode.slice(-2) : "DC"}
               </div>
               <span className="hidden text-xs font-bold text-slate-600 md:inline-block">Menu</span>
             </button>
@@ -369,7 +369,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
               <div className="flex h-16 items-center justify-between px-5 border-b border-slate-100 bg-slate-50/50">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 text-xs font-mono font-bold">
-                    {partnerCode ? partnerCode.slice(-2) : "AP"}
+                    {partnerCode ? partnerCode.slice(-2) : "DC"}
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-xs font-black text-slate-800 leading-none">{partnerName || "Partner"}</p>
@@ -578,7 +578,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
                 <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto border border-slate-100">
                   <Search className="h-5 w-5" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-sm">DigiPartner Unified Search</h3>
+                <h3 className="font-bold text-slate-800 text-sm">DC Partners Unified Search</h3>
                 <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto font-medium">
                   Type a customer name, mobile number, service name, or application details to query active partner datasets.
                 </p>

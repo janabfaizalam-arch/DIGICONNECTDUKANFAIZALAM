@@ -1,5 +1,5 @@
 /**
- * Digi Partner currency and number formatting.
+ * DC Partner currency and number formatting.
  * Always prefers ₹ (never "Rs") in partner-facing UI.
  */
 

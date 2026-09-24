@@ -310,7 +310,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       );
     }
 
-    // Pay the agency partner the same way the AP panel does. Completing from
+    // Pay the DC Partner the same way the DC Partners panel does. Completing from
     // here used to skip commissions entirely — only the AP's own transition
     // route paid out — so a partner's sale closed by an admin earned them
     // nothing. Settlement is idempotent, so the two paths cannot double-pay if

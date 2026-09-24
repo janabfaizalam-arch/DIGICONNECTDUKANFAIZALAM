@@ -1,5 +1,5 @@
 // ============================================================================
-// Agency Partner Audit Logging
+// DC Partner Audit Logging
 // DigiConnect Dukan — AP Ecosystem
 // Immutable append-only audit trail.
 // ============================================================================

@@ -23,7 +23,7 @@ const recoveryActions = [
   { href: "/", label: "Go Home", icon: Home },
   { href: "/services", label: "Browse Services", icon: LayoutGrid },
   { href: "/customer/login", label: "Customer Login", icon: UserRound },
-  { href: DIGI_PARTNER_LOGIN_ROUTE, label: "Digi Partner Login", icon: BadgeCheck },
+  { href: DIGI_PARTNER_LOGIN_ROUTE, label: "DC Partner Login", icon: BadgeCheck },
   { href: "/admin/login", label: "Admin Login", icon: ShieldCheck },
 ];
 
@@ -66,11 +66,11 @@ export default function GlobalNotFound() {
           ))}
         </div>
 
-        {/* Digi Partner recovery card */}
+        {/* DC Partner recovery card */}
         <div className="mx-auto mt-8 max-w-sm rounded-3xl border border-indigo-100/80 bg-white/70 p-5 text-left shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <div className="flex items-center gap-2 text-indigo-700">
             <BadgeCheck className="h-4 w-4" />
-            <p className="text-sm font-extrabold">Looking for the Digi Partner portal?</p>
+            <p className="text-sm font-extrabold">Looking for the DC Partner portal?</p>
           </div>
           <p className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500">
             Access applications, commissions, wallet and support in one place.
@@ -80,7 +80,7 @@ export default function GlobalNotFound() {
             className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-700 to-indigo-600 px-5 text-sm font-extrabold text-white shadow-md shadow-indigo-700/15 transition hover:scale-[1.01] active:scale-[0.98]"
           >
             <LogIn className="h-4 w-4" />
-            Open Digi Partner Login
+            Open DC Partner Login
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

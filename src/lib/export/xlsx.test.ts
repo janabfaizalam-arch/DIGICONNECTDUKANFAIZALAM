@@ -73,7 +73,7 @@ describe("xlsx helpers", () => {
   });
 
   it("keeps sheet names inside Excel's naming rules", () => {
-    expect(sanitizeSheetName("Digi Partners")).toBe("Digi Partners");
+    expect(sanitizeSheetName("DC Partners")).toBe("DC Partners");
     expect(sanitizeSheetName("Q1/Q2 [2026]")).toBe("Q1 Q2  2026");
     expect(sanitizeSheetName("   ")).toBe("Sheet1");
     expect(sanitizeSheetName("x".repeat(40)).length).toBe(31);
@@ -83,7 +83,7 @@ describe("xlsx helpers", () => {
 describe("buildXlsx", () => {
   const workbook = buildXlsx([
     {
-      name: "Digi Partners",
+      name: "DC Partners",
       columns: [{ header: "Name", width: 24 }, { header: "Earned" }, { header: "Active" }],
       rows: [
         ["Kumar & Sons <Ltd>", 1250.5, true],
@@ -108,7 +108,7 @@ describe("buildXlsx", () => {
       "xl/workbook.xml",
       "xl/worksheets/sheet1.xml",
     ]);
-    expect(files["xl/workbook.xml"]).toContain('name="Digi Partners"');
+    expect(files["xl/workbook.xml"]).toContain('name="DC Partners"');
     expect(files["xl/_rels/workbook.xml.rels"]).toContain("worksheets/sheet1.xml");
     expect(files["xl/_rels/workbook.xml.rels"]).toContain("styles.xml");
   });
@@ -134,7 +134,7 @@ describe("buildXlsx", () => {
   it("is deterministic for identical input", () => {
     const again = buildXlsx([
       {
-        name: "Digi Partners",
+        name: "DC Partners",
         columns: [{ header: "Name", width: 24 }, { header: "Earned" }, { header: "Active" }],
         rows: [
           ["Kumar & Sons <Ltd>", 1250.5, true],

@@ -66,7 +66,7 @@ export function VerifiedBadge({ className }: { className?: string }) {
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-      Verified Digi Partner
+      Verified DC Partner
     </span>
   );
 }

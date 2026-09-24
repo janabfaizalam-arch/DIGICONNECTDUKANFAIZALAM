@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     }
 
     if (partner.status !== "active" && partner.status !== "approved") {
-      return NextResponse.json({ error: "Agency Partner account active/approved nahi hai." }, { status: 403 });
+      return NextResponse.json({ error: "DC Partner account active/approved nahi hai." }, { status: 403 });
     }
 
     const { data: profile } = await supabase

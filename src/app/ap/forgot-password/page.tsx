@@ -65,7 +65,7 @@ export default function APForgotPasswordPage() {
             Recovery Password
           </h1>
           <p className="text-xs text-slate-400 font-semibold leading-relaxed max-w-[300px] mx-auto">
-            Enter your DigiPartner registered email to request a reset link.
+            Enter your DC Partners registered email to request a reset link.
           </p>
         </div>
 

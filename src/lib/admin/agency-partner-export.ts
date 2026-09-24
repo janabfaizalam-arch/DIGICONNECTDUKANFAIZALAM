@@ -1,5 +1,5 @@
 /**
- * Digi Partner (Agency Partner) Excel export.
+ * DC Partner (DC Partner) Excel export.
  *
  * Turns the admin console's partner list into a full-detail .xlsx: identity,
  * contact, address, KYC identifiers, banking, tier & commission config,
@@ -19,7 +19,7 @@ import {
 } from "@/lib/ap-types";
 import { partnerTypeDisplayLabel } from "@/lib/ap/partner-type";
 
-export const AGENCY_PARTNER_EXPORT_SHEET_NAME = "Digi Partners";
+export const AGENCY_PARTNER_EXPORT_SHEET_NAME = "DC Partners";
 
 type ExportColumn = XlsxColumn & {
   value: (ap: APListItem) => XlsxCell;

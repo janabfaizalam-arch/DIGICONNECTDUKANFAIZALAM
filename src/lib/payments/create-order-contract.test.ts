@@ -9,7 +9,7 @@ import {
   rupeesToPaise,
 } from "./application-source";
 
-describe("Digi Partner payment preparation contract", () => {
+describe("DC Partner payment preparation contract", () => {
   it("maps ITR Original ₹999 to 99900 paise server-side", () => {
     expect(rupeesToPaise(999)).toBe(99900);
   });

@@ -192,10 +192,10 @@ export async function POST(request: Request) {
         });
         return jsonError(
           partnerMembership && "reason" in partnerMembership && partnerMembership.reason === "ap_not_active"
-            ? "Your Digi Partner account is inactive."
+            ? "Your DC Partner account is inactive."
             : partnerMembership && "reason" in partnerMembership && partnerMembership.reason === "kyc_not_approved"
               ? "Your KYC approval is pending."
-              : "Digi Partner membership is required to prepare this payment.",
+              : "DC Partner membership is required to prepare this payment.",
           403,
           partnerMembership && "reason" in partnerMembership ? String(partnerMembership.reason) : "partner_required",
         );

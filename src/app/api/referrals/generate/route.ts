@@ -13,11 +13,11 @@ export async function POST(request: Request) {
 
     const ap = await getAgencyPartnerByUserId(user.id);
     if (!ap) {
-      return NextResponse.json({ error: "Agency Partner profile not found." }, { status: 403 });
+      return NextResponse.json({ error: "DC Partner profile not found." }, { status: 403 });
     }
 
     if (ap.status !== "active") {
-      return NextResponse.json({ error: "Agency Partner profile is not active." }, { status: 403 });
+      return NextResponse.json({ error: "DC Partner profile is not active." }, { status: 403 });
     }
 
     const { serviceSlug } = await request.json();

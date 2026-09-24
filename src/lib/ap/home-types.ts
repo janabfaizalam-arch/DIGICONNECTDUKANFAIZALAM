@@ -1,5 +1,5 @@
 // ============================================================================
-// Digi Partner home — types
+// DC Partner home — types
 // ============================================================================
 
 import type { DigiPartnerType } from "@/lib/ap/partner-type";

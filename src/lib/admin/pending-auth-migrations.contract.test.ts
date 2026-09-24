@@ -30,7 +30,7 @@ describe("pending auth migrations — production safety contracts", () => {
     expect(primaryAdmin).not.toMatch(/placeholder/i);
   });
 
-  it("primary-admin migration excludes Digi Partner memberships from promotion", () => {
+  it("primary-admin migration excludes DC Partner memberships from promotion", () => {
     expect(primaryAdmin).toMatch(/not exists\s*\([\s\S]*agency_partners/i);
     expect(primaryAdmin).toMatch(/is distinct from 'agency_partner'/i);
   });

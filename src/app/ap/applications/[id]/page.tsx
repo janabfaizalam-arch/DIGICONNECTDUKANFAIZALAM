@@ -404,9 +404,9 @@ export default async function APApplicationDetailPage({
             {mobile ? (
               <div className="grid gap-2">
                 {[
-                  ["Application Support", "AP support for this customer application"],
-                  ["Documents Support", "AP needs help with pending customer documents"],
-                  ["Completion Support", "AP needs help with completed application handover"],
+                  ["Application Support", "DC Partner support for this customer application"],
+                  ["Documents Support", "DC Partner needs help with pending customer documents"],
+                  ["Completion Support", "DC Partner needs help with completed application handover"],
                 ].map(([label, topic]) => (
                   <a
                     key={label}

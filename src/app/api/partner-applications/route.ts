@@ -11,7 +11,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 /**
- * Public "Become a Digi Partner" submission.
+ * Public "Become a DC Partner" submission.
  *
  * Writes an application, not a partner: nothing here creates an auth user or an
  * `agency_partners` row, so a submission grants no access until an admin
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         field: "mobile",
-        error: "You are already a Digi Partner. Please sign in instead.",
+        error: "You are already a DC Partner. Please sign in instead.",
       },
       { status: 409 },
     );

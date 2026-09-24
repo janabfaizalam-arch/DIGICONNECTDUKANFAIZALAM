@@ -136,7 +136,7 @@ export function PartnerApplicationActions({
             type="button"
             onClick={() => {
               void navigator.clipboard?.writeText(
-                `DigiConnect Digi Partner login\n` +
+                `DigiConnect DC Partner login\n` +
                   `Username: ${credentials.username}\n` +
                   `Password: ${credentials.password}\n` +
                   `Partner code: ${credentials.code}\n` +

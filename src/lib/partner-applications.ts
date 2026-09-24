@@ -1,5 +1,5 @@
 /**
- * Digi Partner signup application — shape, validation and lifecycle, with no
+ * DC Partner signup application — shape, validation and lifecycle, with no
  * I/O so it can be tested directly.
  *
  * An application is not a partner. Nothing here grants access: approving a row

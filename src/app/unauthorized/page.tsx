@@ -70,7 +70,7 @@ export default async function UnauthorizedPage({ searchParams }: PageProps) {
         <h1 className="mt-5 text-3xl font-bold text-slate-950">Unauthorized Access</h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">{detail}</p>
         <p className="mt-2 text-xs text-slate-500">
-          If this Digi Partner account needs repair, contact support. Do not use Admin login to open the partner portal.
+          If this DC Partner account needs repair, contact support. Do not use Admin login to open the partner portal.
         </p>
 
         <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:justify-center">

@@ -46,7 +46,7 @@ export default async function AdminReferralsPage() {
     .select("*, profiles(full_name)")
     .order("changed_at", { ascending: false });
 
-  // Load active agency partners list (for transfer lookup)
+  // Load active DC Partners list (for transfer lookup)
   const { data: partners } = await supabase
     .from("agency_partners")
     .select("id, full_name, business_name")

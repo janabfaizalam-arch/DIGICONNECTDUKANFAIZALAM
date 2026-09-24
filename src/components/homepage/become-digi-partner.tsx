@@ -7,7 +7,7 @@ import { PartnerIllustration } from "@/components/homepage/brand-illustration";
 
 const BENEFITS = [
   "Offer DigiConnect assistance services from your shop or desk",
-  "Track partner applications in the Digi Partner portal",
+  "Track partner applications in the DC Partner portal",
   "Transparent commercial terms shared during onboarding",
 ] as const;
 
@@ -27,7 +27,7 @@ const CAPABILITIES = [
 ] as const;
 
 /**
- * Become a Digi Partner.
+ * Become a DC Partner.
  *
  * This is the page's second conversion, and it was reading as an afterthought:
  * one flat panel, a bullet list, two buttons and a floating picture. The
@@ -68,7 +68,7 @@ export function BecomeDigiPartner() {
             </h2>
 
             <p className="mt-4 max-w-xl text-[15px] font-medium leading-relaxed text-white/78 sm:text-base">
-              Aap already customers ko documents mein help karte hain. Digi Partner banne par wahi kaam DigiConnect
+              Aap already customers ko documents mein help karte hain. DC Partner banne par wahi kaam DigiConnect
               ke catalogue, portal aur support team ke saath chalta hai.
             </p>
 
@@ -105,7 +105,7 @@ export function BecomeDigiPartner() {
             </ul>
 
             {/* The row is sized to the longer label rather than split evenly: at
-                max-w-md the primary button wrapped "Become a Digi Partner" onto
+                max-w-md the primary button wrapped "Become a DC Partner" onto
                 two lines and spilled out of its own rounded corners. */}
             <div className="mt-8 flex w-full flex-col gap-3 sm:max-w-[34rem] sm:flex-row">
               <Link

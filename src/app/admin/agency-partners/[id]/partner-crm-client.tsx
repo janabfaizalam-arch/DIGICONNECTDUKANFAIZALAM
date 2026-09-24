@@ -583,8 +583,8 @@ export function PartnerCrmClient({
                   <p>Profile role: {identityLinkage.profileRole || "—"}</p>
                   <p>Auth email: {identityLinkage.authEmail || "—"}</p>
                   <p>Profile email: {identityLinkage.profileEmail || "—"}</p>
-                  <p>AP status / KYC: {identityLinkage.partnerStatus} / {identityLinkage.partnerKycStatus}</p>
-                  <p>Last AP login: {identityLinkage.lastApLogin ? new Date(identityLinkage.lastApLogin).toLocaleString("en-IN") : "—"}</p>
+                  <p>DC Partner status / KYC: {identityLinkage.partnerStatus} / {identityLinkage.partnerKycStatus}</p>
+                  <p>Last DC Partner login: {identityLinkage.lastApLogin ? new Date(identityLinkage.lastApLogin).toLocaleString("en-IN") : "—"}</p>
                   <p>Linkage health: {identityLinkage.healthy ? "Healthy" : "Needs review"}</p>
                   {identityLinkage.warnings.length > 0 ? (
                     <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] font-medium text-amber-800">
@@ -669,7 +669,7 @@ export function PartnerCrmClient({
           {/* Health indicator dial */}
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">AP Health Score</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">DC Partner Health Score</p>
               <p className="text-2xl font-bold text-slate-900 mt-1 font-heading">{healthScore}%</p>
             </div>
             <div className="h-10 w-10 flex items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-blue-600 font-bold text-xs font-mono">

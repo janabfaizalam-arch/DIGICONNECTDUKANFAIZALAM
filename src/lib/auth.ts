@@ -231,7 +231,7 @@ async function readOptionalProfileBoolean(
 }
 
 /**
- * Digi Partner access: agency_partners membership is canonical.
+ * DC Partner access: agency_partners membership is canonical.
  * An admin profiles.role must NOT block a valid active+approved partner row.
  */
 export async function getAgentAccessStatus(user: User | null): Promise<AgentAccessResult> {
@@ -285,7 +285,7 @@ export async function getAgentAccessStatus(user: User | null): Promise<AgentAcce
   const profileRole = String(profile.role ?? "").toLowerCase();
 
   if (profileRole === "admin" || isAdminRole(role)) {
-    console.warn("[agent-auth] Admin identity has no Digi Partner membership.", { userId: user.id });
+    console.warn("[agent-auth] Admin identity has no DC Partner membership.", { userId: user.id });
     return { ok: false, reason: "admin_portal_only", role: profileRole || role };
   }
 

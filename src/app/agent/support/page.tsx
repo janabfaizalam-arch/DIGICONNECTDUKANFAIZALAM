@@ -14,7 +14,7 @@ export default async function AgentSupportPage() {
   const whatsappUrl = buildWhatsAppUrl(
     buildAgentWhatsAppMessage({
       agentName: user.user_metadata.full_name ?? user.user_metadata.name ?? user.email,
-      topic: "Agent support for customer, document, payment, or commission help",
+      topic: "DC Partner support for customer, document, payment, or commission help",
     }),
   );
 
@@ -23,7 +23,7 @@ export default async function AgentSupportPage() {
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-600">Support</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">Agent Support</h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">DC Partner Support</h1>
         </div>
         <Card className="rounded-2xl p-5">
           <p className="text-sm leading-6 text-slate-600">Contact DigiConnect Dukan admin support for customer, document, payment, or commission help.</p>

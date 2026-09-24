@@ -1,5 +1,5 @@
 /**
- * Turn an approved signup into a working Digi Partner account.
+ * Turn an approved signup into a working DC Partner account.
  *
  * Provisioning touches four places that must agree — the Supabase auth user,
  * `agency_partners`, `profiles` and `users` — and a partner whose rows disagree

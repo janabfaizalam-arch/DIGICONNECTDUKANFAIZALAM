@@ -58,7 +58,7 @@ function makePartner(overrides: Partial<APListItem> = {}): APListItem {
     suspended_at: null,
     blacklisted_at: null,
     created_by_user_id: null,
-    tier: { name: "AP Starter" } as APListItem["tier"],
+    tier: { name: "DC Starter" } as APListItem["tier"],
     totalApplications: 4,
     pendingApplications: 1,
     completedApplications: 3,
@@ -96,7 +96,7 @@ describe("buildAgencyPartnerExportRow", () => {
     expect(cellFor(row, "Bank Account Number")).toBe("50100123456789");
     expect(cellFor(row, "Bank IFSC")).toBe("HDFC0001234");
     expect(cellFor(row, "UPI ID")).toBe("ayaz@upi");
-    expect(cellFor(row, "Tier")).toBe("AP Starter");
+    expect(cellFor(row, "Tier")).toBe("DC Starter");
   });
 
   it("writes human labels for status and partner type, without the UI emoji", () => {
@@ -164,7 +164,7 @@ describe("agencyPartnerExportFileName", () => {
   });
 });
 
-describe("agency partner filters", () => {
+describe("DC Partner filters", () => {
   const partners = [
     makePartner({ full_name: "Ayaz Khan", partner_type: "field_executive" }),
     makePartner({

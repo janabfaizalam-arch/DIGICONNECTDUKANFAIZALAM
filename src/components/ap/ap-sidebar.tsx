@@ -27,7 +27,7 @@ export function ApSidebar({ canManageTeam = false }: { canManageTeam?: boolean }
 
   return (
     <aside
-      aria-label="Digi Partner sections"
+      aria-label="DC Partner sections"
       className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-[248px] shrink-0 overflow-y-auto border-r border-slate-200/70 bg-white/60 px-3 py-4 lg:block"
     >
       <nav className="flex flex-col gap-5">

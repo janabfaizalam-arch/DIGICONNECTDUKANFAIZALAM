@@ -935,7 +935,7 @@ export function PartnerApplicationWizard({
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
       payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile, stage: "START" });
 
-      // No client amount — server computes authoritative total. Mark Digi Partner portal for membership checks.
+      // No client amount — server computes authoritative total. Mark DC Partner portal for membership checks.
       payLog("ORDER_CREATE", { stage: "SEND_REQUEST" });
       const orderRes = await fetch("/api/create-order", {
         method:  "POST",

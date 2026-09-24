@@ -18,9 +18,9 @@ export default async function AdminPartnerBannersPage() {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        eyebrow="Digi Partners"
+        eyebrow="DC Partners"
         title="Partner Home Banners"
-        description="Edge-to-edge announcement slider banners for the Digi Partner home page. Audience is locked to partner_dashboard."
+        description="Edge-to-edge announcement slider banners for the DC Partner home page. Audience is locked to partner_dashboard."
       />
       <AdminPartnerBannersManager initialBanners={banners} />
     </div>

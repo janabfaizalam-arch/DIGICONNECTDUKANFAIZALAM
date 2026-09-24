@@ -1,5 +1,5 @@
 /**
- * Safe Digi Partner marketing captions.
+ * Safe DC Partner marketing captions.
  * Never invent prices, discounts, cashback or government claims.
  */
 
@@ -9,11 +9,11 @@ export function buildPartnerWhatsAppCaption(input: {
   partnerCode: string;
 }): string {
   const title = input.serviceTitle.trim() || "DigiConnect Dukan services";
-  const name = input.partnerName.trim() || "Digi Partner";
+  const name = input.partnerName.trim() || "DC Partner";
   const code = input.partnerCode.trim() || "—";
 
   return [
-    `Namaste! I am ${name} (Digi Partner ${code}) with DigiConnect Dukan.`,
+    `Namaste! I am ${name} (DC Partner ${code}) with DigiConnect Dukan.`,
     `I can help you with ${title} — document guidance, application support and status updates.`,
     `DigiConnect Dukan — Connecting People. Empowering Digital India.`,
     `Powered by RNoS India Pvt. Ltd.`,

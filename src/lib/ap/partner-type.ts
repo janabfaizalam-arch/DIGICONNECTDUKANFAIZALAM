@@ -1,5 +1,5 @@
 // ============================================================================
-// Digi Partner type — single source of truth
+// DC Partner type — single source of truth
 // DigiConnect Dukan — Partner Type Redesign
 // ============================================================================
 
@@ -71,7 +71,7 @@ export const LEGACY_PARTNER_TYPE_MAP = {
   ceo: "company_partner",
   shop_owner: "business_partner",
   field_executive: "field_executive",
-  // Common historical / UI aliases → canonical Digi Partner types
+  // Common historical / UI aliases → canonical DC Partner types
   agent: "field_executive",
   sub_agent: "field_executive",
   field_staff: "field_executive",

@@ -6,7 +6,7 @@ import { canManagePartnerTeam } from "@/lib/ap/partner-type";
 import { getCurrentUser } from "@/lib/auth";
 
 /**
- * The Digi Partner shell.
+ * The DC Partner shell.
  *
  * A top bar for identity and search, a sidebar on a computer for the whole
  * map, and a dock plus a "Sab kuch" sheet on a phone. The partner's type is

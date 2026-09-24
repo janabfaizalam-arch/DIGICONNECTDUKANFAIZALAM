@@ -18,7 +18,7 @@ function jsonError(message: string, status: number) {
 }
 
 /**
- * Review a Digi Partner signup.
+ * Review a DC Partner signup.
  *
  * Approving is the step that actually creates the partner: the auth user,
  * `agency_partners`, `profiles` and `users` rows are provisioned here, and the

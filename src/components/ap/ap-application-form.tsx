@@ -1674,7 +1674,7 @@ export function APApplicationForm({
                     email: customerEmail || undefined,
                     mobile: customerMobile,
                   }}
-                  description={selectedService?.title ?? "Agency Partner POS application"}
+                  description={selectedService?.title ?? "DC Partner POS application"}
                   disabled={isPending || !selectedService || Boolean(isPmVishwakarma && !isPmVishwakarmaComplete(pmVishwakarmaValues))}
                   onVerified={(payment) =>
                     setRazorpayPayment({
@@ -1935,7 +1935,7 @@ export function APApplicationForm({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-400 uppercase">Payment</p>
-                  <p className="font-semibold text-slate-800 mt-1">Agency Partner POS</p>
+                  <p className="font-semibold text-slate-800 mt-1">DC Partner POS</p>
                   <p className="text-slate-500">Gateway: Razorpay</p>
                 </div>
               </div>

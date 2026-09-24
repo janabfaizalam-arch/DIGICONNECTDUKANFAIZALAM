@@ -88,7 +88,7 @@ export default async function APProfilePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between relative">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 border border-blue-500/20 text-xs font-bold text-blue-600">
-              DigiPartner Profile
+              DC Partners Profile
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
               Partner Settings

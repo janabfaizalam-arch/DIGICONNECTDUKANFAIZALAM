@@ -33,8 +33,8 @@ const servicesLinks = [
 
 const companyLinks = [
   { label: "About RNOS", href: "https://www.rnos.in", external: true },
-  { label: "Become a Digi Partner", href: "/digi-partner" },
-  { label: "Digi Partner Login", href: "/ap/login" },
+  { label: "Become a DC Partner", href: "/digi-partner" },
+  { label: "DC Partner Login", href: "/ap/login" },
   { label: "Contact Us", href: "/#support" },
   { label: "Support Desk", href: "/#support" },
   { label: "FAQ Center", href: "/#faq" },
@@ -220,7 +220,7 @@ export function MarketingFooter({
               { label: "All services", href: "/services" },
               { label: "Government schemes", href: "/#schemes" },
               { label: "Knowledge Center", href: "/#blog" },
-              { label: "Become a Digi Partner", href: "/digi-partner" },
+              { label: "Become a DC Partner", href: "/digi-partner" },
               { label: "Partner login", href: "/ap/login" },
               { label: "FAQ", href: "/#faq" },
               { label: "Support", href: "/#support" },

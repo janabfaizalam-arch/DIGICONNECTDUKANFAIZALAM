@@ -8,7 +8,7 @@ import {
   parseAgencyPartnerIdParam,
 } from "./agency-partner-routes";
 
-describe("admin agency partner routes", () => {
+describe("admin DC Partner routes", () => {
   const partnerId = "a1b2c3d4-e5f6-4789-a012-3456789abcde";
 
   it("builds the canonical View/Verify detail URL from agency_partners.id", () => {

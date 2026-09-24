@@ -28,14 +28,14 @@ export default async function APLoginPage({ searchParams }: PageProps) {
     }
 
     return (
-      <AuthScene eyebrow="Digi Partner Network">
+      <AuthScene eyebrow="DC Partner Network">
         <ApLoginForm customerSignedIn={role === "customer"} />
       </AuthScene>
     );
   }
 
   return (
-    <AuthScene eyebrow="Digi Partner Network">
+    <AuthScene eyebrow="DC Partner Network">
       <ApLoginForm customerSignedIn={false} />
     </AuthScene>
   );

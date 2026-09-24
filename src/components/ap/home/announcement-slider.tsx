@@ -46,7 +46,7 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
   const href = current.button_url?.trim() || null;
   const mobileSrc = mobileBannerSrc(current);
   const desktopSrc = current.image_url;
-  const alt = current.title || "Digi Partner announcement";
+  const alt = current.title || "DC Partner announcement";
 
   const overlay =
     current.title || current.description || current.button_text ? (

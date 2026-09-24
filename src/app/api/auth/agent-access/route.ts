@@ -22,6 +22,6 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     reason: access.reason,
-    message: "Digi Partner access verified.",
+    message: "DC Partner access verified.",
   });
 }

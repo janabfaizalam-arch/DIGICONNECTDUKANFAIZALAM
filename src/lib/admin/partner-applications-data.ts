@@ -48,7 +48,7 @@ function locationOf(row: Record<string, unknown>): string | null {
 }
 
 /**
- * Digi Partner signup applications for the admin review queue.
+ * DC Partner signup applications for the admin review queue.
  *
  * Newest first within the whole list; the screen's default filter is the
  * open ones, because an application nobody looks at is a person who applied

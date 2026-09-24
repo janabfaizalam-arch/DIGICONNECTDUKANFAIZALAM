@@ -14,12 +14,12 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user || !(await isActiveAgent(user))) {
-      return jsonError("AP access required.", 403);
+      return jsonError("DC Partner access required.", 403);
     }
 
     const ap = await getAgencyPartnerByUserId(user.id);
     if (!ap) {
-      return jsonError("AP record not found.", 404);
+      return jsonError("DC Partner record not found.", 404);
     }
 
     const balance = await getAPWalletBalance(ap.id);
@@ -38,12 +38,12 @@ export async function POST(request: Request) {
 
     const user = await getCurrentUser();
     if (!user || !(await isActiveAgent(user))) {
-      return jsonError("AP access required.", 403);
+      return jsonError("DC Partner access required.", 403);
     }
 
     const ap = await getAgencyPartnerByUserId(user.id);
     if (!ap) {
-      return jsonError("AP record not found.", 404);
+      return jsonError("DC Partner record not found.", 404);
     }
 
     if (ap.status !== "active" || ap.kyc_status !== "approved") {
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     const debitResult = await debitPayout({
       agencyPartnerId: ap.id,
       amount,
-      description: `AP Requested payout to bank`,
+      description: `DC Partner requested payout to bank`,
       createdBy: user.id,
     });
 

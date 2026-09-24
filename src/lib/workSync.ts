@@ -245,7 +245,7 @@ export async function syncApplicationToSheets(
     "";
 
   const teamType = application.agency_partner_id
-    ? "Agency Partner"
+    ? "DC Partner"
     : application.agent_id
       ? "Employee"
       : appliedByType.toLowerCase().includes("admin")

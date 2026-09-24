@@ -11,18 +11,18 @@ import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 export const dynamic = "force-dynamic";
 
 const CATEGORIES = [
-  { id: "login", label: "Login and Account", topic: "Digi Partner login or account access issue" },
-  { id: "kyc", label: "KYC", topic: "Digi Partner KYC verification help" },
-  { id: "application", label: "Application", topic: "Digi Partner application status or filing help" },
-  { id: "payment", label: "Payment", topic: "Digi Partner customer payment issue" },
-  { id: "wallet", label: "Wallet", topic: "Digi Partner wallet balance or ledger question" },
-  { id: "commission", label: "Commission", topic: "Digi Partner commission or settlement question" },
-  { id: "technical", label: "Technical Issue", topic: "Digi Partner technical issue on the portal" },
+  { id: "login", label: "Login and Account", topic: "DC Partner login or account access issue" },
+  { id: "kyc", label: "KYC", topic: "DC Partner KYC verification help" },
+  { id: "application", label: "Application", topic: "DC Partner application status or filing help" },
+  { id: "payment", label: "Payment", topic: "DC Partner customer payment issue" },
+  { id: "wallet", label: "Wallet", topic: "DC Partner wallet balance or ledger question" },
+  { id: "commission", label: "Commission", topic: "DC Partner commission or settlement question" },
+  { id: "technical", label: "Technical Issue", topic: "DC Partner technical issue on the portal" },
 ] as const;
 
 const FAQS = [
   {
-    q: "Why can’t I open the Digi Partner dashboard?",
+    q: "Why can’t I open the DC Partner dashboard?",
     a: "Your account must be active with approved KYC. Contact support with your partner code if you see Unauthorized.",
   },
   {
@@ -53,7 +53,7 @@ export default async function APSupportPage() {
         <PageHeader
           eyebrow="Growth"
           title="Support"
-          description="WhatsApp is the current Digi Partner support channel. Share your partner code for faster help."
+          description="WhatsApp is the current DC Partner support channel. Share your partner code for faster help."
         />
 
         <GlassPanel padding="md" className="space-y-3">

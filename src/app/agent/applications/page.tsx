@@ -32,7 +32,7 @@ export default async function AgentApplicationsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Agent Applications</p>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">DC Partner Applications</p>
             <h1 className="mt-2 text-3xl font-bold text-slate-950 md:text-5xl">My Applications</h1>
             <p className="mt-3 max-w-2xl text-slate-600">View applications submitted or referred by your agent account.</p>
           </div>

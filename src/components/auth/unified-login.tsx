@@ -541,7 +541,7 @@ export function UnifiedLoginExperience({
       }
     }
 
-    // Fall back to Agency Partner login (Supabase authentication)
+    // Fall back to DC Partner login (Supabase authentication)
     startAPTransition(async () => {
       try {
         const supabase = createClient();
@@ -693,7 +693,7 @@ export function UnifiedLoginExperience({
           <div className="flex items-center h-[38px] rounded-full bg-slate-200/40 p-0.5 relative z-0 shrink-0 border border-slate-100" role="tablist">
             {[
               { id: "user", labelMobile: "Customer", labelDesktop: "Customer" },
-              { id: "partner", labelMobile: "Digi Partner", labelDesktop: "Digi Partner" },
+              { id: "partner", labelMobile: "DC Partner", labelDesktop: "DC Partner" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -1122,7 +1122,7 @@ export function UnifiedLoginExperience({
                     RNOS Partner Network
                   </p>
                   <h2 className="text-3xl sm:text-[32px] font-extrabold tracking-tight text-[#0F172A] leading-[1.1] max-w-none mx-auto whitespace-nowrap">
-                    Digi Partner Login
+                    DC Partner Login
                   </h2>
                   <p className="text-xs text-[#64748B] font-semibold leading-relaxed max-w-[300px] mx-auto">
                     Access applications, commissions, wallet and support.

@@ -74,7 +74,7 @@ describe("Ingestion idempotency keys", () => {
     ).toBe("whatsapp:ext:wa-msg-1");
   });
 
-  it("scopes agency partner keys per partner so one partner cannot block another", () => {
+  it("scopes DC Partner keys per partner so one partner cannot block another", () => {
     const a = buildLeadIngestionKey({
       source: "agency_partner",
       mobile: "9876543210",
