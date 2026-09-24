@@ -15,16 +15,43 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Database configuration error." }, { status: 500 });
     }
 
-    // Lookup payment link
+    /*
+      Lookup payment link.
+
+      `profiles(full_name)` used to be embedded here and it could never work:
+      payment_links.customer_id references auth.users(id), not public.profiles,
+      so PostgREST has no relationship to follow and fails the whole query. The
+      branch below then reported that failure as "Payment link not found", so
+      every customer who opened a perfectly valid link was told it did not
+      exist. The customer's name is read separately, by id — profiles.id is the
+      auth user id in this schema, so one direct lookup answers it.
+    */
     const { data: link, error: linkError } = await supabase
       .from("payment_links")
-      .select("*, applications(service_name, status, service_slug), profiles(full_name), agency_partners(full_name)")
+      .select("*, applications(service_name, status, service_slug), agency_partners(full_name)")
       .eq("code", code)
       .maybeSingle();
 
-    if (linkError || !link) {
+    if (linkError) {
+      // A failed query is not a missing link. Say so, and leave a trail.
+      console.error("[payment-links/details] Lookup failed:", linkError);
+      return NextResponse.json(
+        { error: "Could not load this payment link. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    if (!link) {
       return NextResponse.json({ error: "Payment link not found." }, { status: 404 });
     }
+
+    const { data: customerProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", link.customer_id)
+      .maybeSingle();
+
+    const customerName = customerProfile?.full_name || "Customer";
 
     const now = new Date();
     const expiresAt = new Date(link.expires_at);
@@ -51,7 +78,7 @@ export async function GET(request: Request) {
         success: true, 
         status: "paid", 
         paidAt: link.paid_at,
-        customerName: link.profiles?.full_name || "Customer",
+        customerName,
         serviceName: link.applications?.service_name || "Service",
         partnerName,
         amount: link.amount 
@@ -72,7 +99,7 @@ export async function GET(request: Request) {
       amount: link.amount,
       baseAmount,
       gstAmount,
-      customerName: link.profiles?.full_name || "Customer",
+      customerName,
       serviceName: link.applications?.service_name || "Service",
       partnerName,
       applicationId: link.application_id,
