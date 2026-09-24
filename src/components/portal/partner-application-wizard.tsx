@@ -161,7 +161,7 @@ function DocumentUploadSlot({
           ? "bg-red-50/20 border-red-300 shadow-xs"
           : isUploading
           ? "bg-blue-50/10 border-blue-300"
-          : "bg-white border-dashed border-slate-200 hover:border-slate-350 hover:bg-slate-50/30"
+          : "bg-white border-dashed border-[var(--dcp-line)] hover:border-slate-350 hover:bg-[var(--dcp-surface-2)]/30"
       )}
     >
       <input
@@ -179,20 +179,20 @@ function DocumentUploadSlot({
         <div className="flex-1 min-w-0">
           <div className={cn(
             "inline-flex p-2 rounded-xl mb-1.5 transition-colors",
-            file ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
+            file ? "bg-emerald-100 text-emerald-600" : "bg-[var(--dcp-surface-3)] text-[var(--dcp-ink-4)]"
           )}>
             <slot.icon className="h-4 w-4" />
           </div>
-          <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+          <h3 className="text-xs font-extrabold text-[var(--dcp-ink)] flex items-center gap-1.5">
             {slot.label}
           </h3>
-          <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{slot.hint}</p>
+          <p className="text-[10px] text-[var(--dcp-ink-4)] mt-0.5 leading-snug">{slot.hint}</p>
         </div>
 
         {file && (
           <button
             onClick={onRemove}
-            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors shrink-0"
+            className="text-[var(--dcp-ink-4)] hover:text-red-500 p-1.5 rounded-lg hover:bg-[var(--dcp-surface-3)]/80 transition-colors shrink-0"
             title="Remove File"
           >
             <Trash2 className="h-4 w-4" />
@@ -202,27 +202,27 @@ function DocumentUploadSlot({
 
       <div className="my-3 flex-1 flex flex-col justify-center text-left">
         {file ? (
-          <div className="flex items-center gap-2 bg-white/80 border border-slate-100 rounded-xl p-2 backdrop-blur-xs">
+          <div className="flex items-center gap-2 bg-white/80 border border-[var(--dcp-line)] rounded-xl p-2 backdrop-blur-xs">
             {previewUrl ? (
-              <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-100">
+              <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-[var(--dcp-line)]">
                 <Image src={previewUrl} alt="Preview" className="w-full h-full object-cover" width={40} height={40} unoptimized />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-slate-150 flex items-center justify-center shrink-0 border border-slate-100">
-                <FileText className="h-5 w-5 text-slate-400" />
+              <div className="w-10 h-10 rounded-lg bg-slate-150 flex items-center justify-center shrink-0 border border-[var(--dcp-line)]">
+                <FileText className="h-5 w-5 text-[var(--dcp-ink-4)]" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-slate-700 truncate leading-snug">{file.name}</p>
-              <p className="text-[9px] text-slate-400 mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+              <p className="text-[10px] font-bold text-[var(--dcp-ink-2)] truncate leading-snug">{file.name}</p>
+              <p className="text-[9px] text-[var(--dcp-ink-4)] mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           </div>
         ) : isUploading ? (
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[9px] font-bold text-blue-600">
+            <div className="flex justify-between text-[9px] font-bold text-[var(--dcp-brand)]">
               <span>Uploading...</span><span>{progress}%</span>
             </div>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[var(--dcp-surface-3)] h-1.5 rounded-full overflow-hidden">
               <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
             </div>
           </div>
@@ -235,7 +235,7 @@ function DocumentUploadSlot({
         {file ? (
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-white hover:bg-slate-50 text-slate-750 text-[10px] font-bold py-2 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-xs"
+            className="w-full bg-white hover:bg-[var(--dcp-surface-2)] text-slate-750 text-[10px] font-bold py-2 border border-[var(--dcp-line)] rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-xs"
           >
             <RefreshCw className="h-3 w-3" /> Replace File
           </button>
@@ -243,13 +243,13 @@ function DocumentUploadSlot({
           <div className="flex gap-2">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+              className="flex-1 [background-image:var(--dcp-g-navy)] hover:brightness-[1.08] text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
             >
               <Upload className="h-3.5 w-3.5" /> Upload File
             </button>
             <button
               onClick={onCameraClick}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-md shadow-blue-500/10"
+              className="flex-1 [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-md shadow-blue-500/10"
             >
               <Camera className="h-3.5 w-3.5" /> Use Camera
             </button>
@@ -1161,7 +1161,7 @@ export function PartnerApplicationWizard({
                 </button>
                 <button
                   onClick={saveFrame}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-blue-900/40"
+                  className="flex-1 flex items-center justify-center gap-2 [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] active:bg-blue-800 text-white px-5 py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-blue-900/40"
                 >
                   <Check className="h-4 w-4" /> Use Photo
                 </button>
@@ -1242,18 +1242,18 @@ export function PartnerApplicationWizard({
       </div>
 
       {/* ── MAIN LAYOUT ──────────────────────────────────────────────────── */}
-      <div 
-        className="min-h-screen bg-slate-50/40 transition-all duration-300"
+      <div
+        className="transition-all duration-300"
         style={{
           paddingTop: "calc(var(--site-header-height, 0px) + 16px + env(safe-area-inset-top))",
           paddingBottom: "calc(var(--wizard-bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + 32px + env(safe-area-inset-bottom))"
         }}
       >
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-3">
+        <div className="mx-auto w-full max-w-4xl space-y-2.5 py-1">
 
           {/* Step progress bar */}
           {currentStep < 6 && (
-            <div className="wizard-stepper bg-white border border-slate-200 rounded-2xl px-4 py-2.5 flex items-center justify-between w-full gap-1 sm:gap-2">
+            <div className="wizard-stepper dcp-card flex w-full items-center justify-between gap-1 px-3 py-2 sm:gap-2">
               {STEPS.filter(s => s.id < 6).map((step, i) => (
                 <React.Fragment key={step.id}>
                   <div className={cn(
@@ -1262,7 +1262,7 @@ export function PartnerApplicationWizard({
                       ? "bg-blue-600 text-white shadow-xs"
                       : currentStep > step.id
                         ? "text-emerald-605"
-                        : "text-slate-400"
+                        : "text-[var(--dcp-ink-4)]"
                   )}>
                     {currentStep > step.id
                       ? <Check className="h-3.5 w-3.5 stroke-[2.5]" />
@@ -1287,25 +1287,25 @@ export function PartnerApplicationWizard({
           )}
 
           {/* Content card */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <div className="dcp-card dcp-solid overflow-hidden">
 
             {/* ══ STEP 1: SERVICE SELECTION ════════════════════════════════ */}
             {currentStep === 1 && (
               <div>
                 {/* Sticky header */}
                 <div 
-                  className="sticky bg-white z-10 border-b border-slate-100 p-4 space-y-3 transition-all duration-305"
+                  className="sticky z-10 space-y-2.5 border-b border-[var(--dcp-line)] bg-[var(--dcp-surface)] p-3 transition-all duration-300"
                   style={{ top: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top))" }}
                 >
                   {/* Search */}
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--dcp-ink-4)] pointer-events-none" />
                     <input
                       type="search"
                       placeholder="Search services..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
+                      className="w-full rounded-xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] py-2.5 pl-9 pr-4 text-[13px] font-medium transition-all placeholder:text-[var(--dcp-ink-4)] focus:border-[var(--dcp-brand)] focus:bg-white focus:outline-none"
                     />
                   </div>
                   {/* Category chips */}
@@ -1318,7 +1318,7 @@ export function PartnerApplicationWizard({
                           "px-3 py-1.5 rounded-lg border text-xs font-bold whitespace-nowrap transition-all shrink-0",
                           selectedCategory === cat.id
                             ? "bg-slate-900 border-slate-900 text-white"
-                            : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                            : "bg-white border-[var(--dcp-line)] text-[var(--dcp-ink-3)] hover:border-[var(--dcp-line-2)]"
                         )}
                       >
                         {cat.name}
@@ -1331,7 +1331,7 @@ export function PartnerApplicationWizard({
                   {/* Favourites row */}
                   {favouriteServices.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">⭐ Favourites</p>
+                      <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] mb-2 tracking-wider">⭐ Favourites</p>
                       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         {dbServices
                           .filter(s => favouriteServices.includes(s.slug))
@@ -1341,8 +1341,8 @@ export function PartnerApplicationWizard({
                               onClick={() => addToCart(srv.slug)}
                               className="flex-shrink-0 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-left hover:bg-amber-100 transition-colors"
                             >
-                              <p className="text-xs font-bold text-slate-900 whitespace-nowrap">{srv.title}</p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">₹{srv.customer_fee}</p>
+                              <p className="text-xs font-bold text-[var(--dcp-ink)] whitespace-nowrap">{srv.title}</p>
+                              <p className="text-[10px] text-[var(--dcp-ink-3)] mt-0.5">₹{srv.customer_fee}</p>
                             </button>
                           ))}
                       </div>
@@ -1352,7 +1352,7 @@ export function PartnerApplicationWizard({
                   {/* Recents row */}
                   {recentServices.length > 0 && !searchQuery.trim() && (
                     <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">🕐 Recent</p>
+                      <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] mb-2 tracking-wider">🕐 Recent</p>
                       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         {dbServices
                           .filter(s => recentServices.includes(s.slug))
@@ -1366,11 +1366,11 @@ export function PartnerApplicationWizard({
                                   "flex-shrink-0 border rounded-xl px-3 py-2 text-left transition-colors",
                                   inCart
                                     ? "bg-blue-50 border-blue-300"
-                                    : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                                    : "bg-[var(--dcp-surface-2)] border-[var(--dcp-line)] hover:bg-[var(--dcp-surface-3)]"
                                 )}
                               >
-                                <p className="text-xs font-bold text-slate-900 whitespace-nowrap">{srv.title}</p>
-                                <p className="text-[10px] text-slate-500 mt-0.5">₹{srv.customer_fee}</p>
+                                <p className="text-xs font-bold text-[var(--dcp-ink)] whitespace-nowrap">{srv.title}</p>
+                                <p className="text-[10px] text-[var(--dcp-ink-3)] mt-0.5">₹{srv.customer_fee}</p>
                               </button>
                             );
                           })}
@@ -1380,12 +1380,12 @@ export function PartnerApplicationWizard({
 
                   {/* Services grid */}
                   {loadingServices ? (
-                    <div className="py-16 flex flex-col items-center gap-2 text-slate-400">
+                    <div className="py-16 flex flex-col items-center gap-2 text-[var(--dcp-ink-4)]">
                       <RefreshCw className="h-5 w-5 animate-spin" />
                       <p className="text-xs font-semibold">Loading services...</p>
                     </div>
                   ) : filteredServices.length === 0 ? (
-                    <div className="py-12 text-center text-slate-400 text-sm">No services match your search.</div>
+                    <div className="py-12 text-center text-[var(--dcp-ink-4)] text-sm">No services match your search.</div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {filteredServices.map(srv => {
@@ -1404,19 +1404,19 @@ export function PartnerApplicationWizard({
                               "border rounded-xl p-3.5 flex items-start gap-3 transition-all",
                               qty > 0
                                 ? "bg-blue-50/50 border-blue-300"
-                                : "bg-white border-slate-200 hover:border-slate-300"
+                                : "bg-white border-[var(--dcp-line)] hover:border-[var(--dcp-line-2)]"
                             )}
                           >
                             <div className={cn(
                               "p-2.5 rounded-xl shrink-0 mt-0.5",
-                              qty > 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                              qty > 0 ? "bg-blue-600 text-white" : "bg-[var(--dcp-surface-3)] text-[var(--dcp-ink-3)]"
                             )}>
                               <Icon className="h-4 w-4" />
                             </div>
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-1 mb-1">
-                                <p className="text-xs font-bold text-slate-900 leading-tight">{srv.title}</p>
+                                <p className="text-xs font-bold text-[var(--dcp-ink)] leading-tight">{srv.title}</p>
                                 <button
                                   onClick={e => { e.stopPropagation(); toggleFavourite(srv.slug); }}
                                   className="shrink-0 hover:scale-110 transition-transform"
@@ -1425,17 +1425,17 @@ export function PartnerApplicationWizard({
                                 </button>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-900">₹{srv.customer_fee}</span>
+                                <span className="text-xs font-bold text-[var(--dcp-ink)]">₹{srv.customer_fee}</span>
                                 <span className="text-[10px] text-emerald-600 font-bold">+₹{payout} earn</span>
                                 {srv.processing_time && (
-                                  <span className="text-[10px] text-slate-400">{srv.processing_time}</span>
+                                  <span className="text-[10px] text-[var(--dcp-ink-4)]">{srv.processing_time}</span>
                                 )}
                               </div>
 
                               {qty === 0 ? (
                                 <button
                                   onClick={() => addToCart(srv.slug)}
-                                  className="mt-2 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-colors active:scale-95"
+                                  className="mt-2 text-[10px] font-bold [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white px-3 py-1 rounded-lg transition-colors active:scale-95"
                                 >
                                   + Add to Cart
                                 </button>
@@ -1447,10 +1447,10 @@ export function PartnerApplicationWizard({
                                   >
                                     <Minus className="h-3 w-3" />
                                   </button>
-                                  <span className="text-xs font-black text-blue-700 w-5 text-center">{qty}</span>
+                                  <span className="text-xs font-black text-[var(--dcp-brand-deep)] w-5 text-center">{qty}</span>
                                   <button
                                     onClick={() => updateQty(srv.slug, 1)}
-                                    className="w-6 h-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-colors"
+                                    className="w-6 h-6 rounded-lg [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white flex items-center justify-center transition-colors"
                                   >
                                     <Plus className="h-3 w-3" />
                                   </button>
@@ -1476,8 +1476,8 @@ export function PartnerApplicationWizard({
             {currentStep === 2 && (
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">Customer Details</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <h2 className="text-lg font-black text-[var(--dcp-ink)]">Customer Details</h2>
+                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">
                     One form — shared across all {totalItemCount} selected service{totalItemCount > 1 ? "s" : ""}.
                   </p>
                 </div>
@@ -1489,7 +1489,7 @@ export function PartnerApplicationWizard({
                     { key: "altMobile", label: "Alternate Mobile",    type: "tel",   span: 1, placeholder: "Optional",         maxLen: 10, numeric: true },
                   ].map(({ key, label, type, span, placeholder, maxLen, numeric }) => (
                     <div key={key} className={span === 2 ? "sm:col-span-2" : ""}>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">{label}</label>
+                      <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">{label}</label>
                       <input
                         type={type}
                         inputMode={numeric ? "numeric" : undefined}
@@ -1501,8 +1501,8 @@ export function PartnerApplicationWizard({
                           [key]: numeric ? e.target.value.replace(/\D/g, "") : e.target.value
                         }))}
                         className={cn(
-                          "w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:bg-white transition-all",
-                          validationErrors[key] ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                          "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all",
+                          validationErrors[key] ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
                         )}
                       />
                       {validationErrors[key] && (
@@ -1516,14 +1516,14 @@ export function PartnerApplicationWizard({
                   {lookupStatus === "searching" && (
                     <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
                       <RefreshCw className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0" />
-                      <span className="text-xs font-semibold text-blue-600">Looking up customer...</span>
+                      <span className="text-xs font-semibold text-[var(--dcp-brand)]">Looking up customer...</span>
                     </div>
                   )}
 
                   {lookupStatus === "not_found" && (
-                    <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
-                      <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span className="text-xs font-medium text-slate-500">New customer — no existing profile found.</span>
+                    <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2.5 bg-[var(--dcp-surface-2)] border border-dashed border-[var(--dcp-line-2)] rounded-xl">
+                      <User className="h-3.5 w-3.5 text-[var(--dcp-ink-4)] shrink-0" />
+                      <span className="text-xs font-medium text-[var(--dcp-ink-3)]">New customer — no existing profile found.</span>
                     </div>
                   )}
 
@@ -1536,7 +1536,7 @@ export function PartnerApplicationWizard({
                             {customer360.profile.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-sm font-black text-slate-900 leading-tight">{customer360.profile.name}</p>
+                            <p className="text-sm font-black text-[var(--dcp-ink)] leading-tight">{customer360.profile.name}</p>
                             <div className="flex items-center gap-1 mt-0.5">
                               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                               <span className="text-[10px] font-bold text-emerald-600">Existing Customer Found</span>
@@ -1544,7 +1544,7 @@ export function PartnerApplicationWizard({
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Wallet</p>
+                          <p className="text-[10px] font-bold text-[var(--dcp-ink-3)] uppercase tracking-wide">Wallet</p>
                           <p className="text-base font-black text-emerald-700">₹{customer360.stats.walletBalance.toLocaleString("en-IN")}</p>
                         </div>
                       </div>
@@ -1557,9 +1557,9 @@ export function PartnerApplicationWizard({
                           { label: "Done",     value: customer360.stats.completedApplications, icon: Award },
                         ].map(({ label, value, icon: Icon }) => (
                           <div key={label} className="flex flex-col items-center py-3">
-                            <Icon className="h-3.5 w-3.5 text-slate-400 mb-1" />
-                            <p className="text-base font-black text-slate-900">{value}</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{label}</p>
+                            <Icon className="h-3.5 w-3.5 text-[var(--dcp-ink-4)] mb-1" />
+                            <p className="text-base font-black text-[var(--dcp-ink)]">{value}</p>
+                            <p className="text-[9px] font-bold text-[var(--dcp-ink-3)] uppercase tracking-wide">{label}</p>
                           </div>
                         ))}
                       </div>
@@ -1567,7 +1567,7 @@ export function PartnerApplicationWizard({
                       {/* Recent services */}
                       {customer360.stats.recentServices.length > 0 && (
                         <div className="px-4 py-3 border-b border-emerald-100">
-                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Recent Services</p>
+                          <p className="text-[9px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wider mb-1.5">Recent Services</p>
                           <div className="flex flex-wrap gap-1.5">
                             {customer360.stats.recentServices.slice(0, 4).map(s => (
                               <span key={s} className="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{s}</span>
@@ -1578,11 +1578,11 @@ export function PartnerApplicationWizard({
 
                       {/* Member since / last visit */}
                       <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-100 text-[10px]">
-                        <div className="flex items-center gap-1 text-slate-500">
+                        <div className="flex items-center gap-1 text-[var(--dcp-ink-3)]">
                           <Clock className="h-3 w-3" />
                           <span>Member since {customer360.stats.customerSince}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-slate-500">
+                        <div className="flex items-center gap-1 text-[var(--dcp-ink-3)]">
                           <MapPin className="h-3 w-3" />
                           <span>Last visit {customer360.stats.lastVisit}</span>
                         </div>
@@ -1609,7 +1609,7 @@ export function PartnerApplicationWizard({
                   {/* Pincode with auto-fill */}
                   {/* ↓↓ original pincode block continues ↓↓ */}
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">PIN Code *</label>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">PIN Code *</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -1619,8 +1619,8 @@ export function PartnerApplicationWizard({
                         maxLength={6}
                         onChange={e => handlePincodeChange(e.target.value.replace(/\D/g, ""))}
                         className={cn(
-                          "w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:bg-white transition-all",
-                          validationErrors.pincode ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                          "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all",
+                          validationErrors.pincode ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
                         )}
                       />
                       {pincodeLoading && (
@@ -1632,15 +1632,15 @@ export function PartnerApplicationWizard({
 
                   {/* State */}
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">State *</label>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">State *</label>
                     <input
                       type="text"
                       placeholder="Auto-filled from pincode"
                       value={customer.state}
                       onChange={e => setCustomer(p => ({ ...p, state: e.target.value }))}
                       className={cn(
-                        "w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:bg-white transition-all",
-                        validationErrors.state ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all",
+                        validationErrors.state ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
                       )}
                     />
                     {validationErrors.state && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.state}</p>}
@@ -1648,15 +1648,15 @@ export function PartnerApplicationWizard({
 
                   {/* District */}
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">District / City *</label>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">District / City *</label>
                     <input
                       type="text"
                       placeholder="Auto-filled from pincode"
                       value={customer.district}
                       onChange={e => setCustomer(p => ({ ...p, district: e.target.value }))}
                       className={cn(
-                        "w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:bg-white transition-all",
-                        validationErrors.district ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all",
+                        validationErrors.district ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
                       )}
                     />
                     {validationErrors.district && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.district}</p>}
@@ -1664,15 +1664,15 @@ export function PartnerApplicationWizard({
 
                   {/* Address */}
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">Address *</label>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">Address *</label>
                     <textarea
                       rows={2}
                       placeholder="House / flat no., street, area..."
                       value={customer.address}
                       onChange={e => setCustomer(p => ({ ...p, address: e.target.value }))}
                       className={cn(
-                        "w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:bg-white transition-all resize-none",
-                        validationErrors.address ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all resize-none",
+                        validationErrors.address ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
                       )}
                     />
                     {validationErrors.address && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.address}</p>}
@@ -1680,13 +1680,13 @@ export function PartnerApplicationWizard({
 
                   {/* Note */}
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block mb-1">Note (Optional)</label>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">Note (Optional)</label>
                     <input
                       type="text"
                       placeholder="Any additional info..."
                       value={customer.note}
                       onChange={e => setCustomer(p => ({ ...p, note: e.target.value }))}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
+                      className="w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border border-[var(--dcp-line)] rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all"
                     />
                   </div>
                 </div>
@@ -1697,8 +1697,8 @@ export function PartnerApplicationWizard({
             {currentStep === 3 && (
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">Upload Documents</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">All slots are optional. Upload whatever is available.</p>
+                  <h2 className="text-lg font-black text-[var(--dcp-ink)]">Upload Documents</h2>
+                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">All slots are optional. Upload whatever is available.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1731,44 +1731,44 @@ export function PartnerApplicationWizard({
             {currentStep === 4 && (
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">Review</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Confirm everything before payment.</p>
+                  <h2 className="text-lg font-black text-[var(--dcp-ink)]">Review</h2>
+                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">Confirm everything before payment.</p>
                 </div>
 
                 <div className="space-y-3">
                   {/* Customer */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Customer</p>
+                  <div className="bg-[var(--dcp-surface-2)] border border-[var(--dcp-line)] rounded-xl p-3.5">
+                    <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] tracking-wider mb-2">Customer</p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                      <div><span className="text-slate-400">Name: </span><span className="font-bold">{customer.name}</span></div>
-                      <div><span className="text-slate-400">Mobile: </span><span className="font-bold">{customer.mobile}</span></div>
-                      {customer.altMobile && <div><span className="text-slate-400">Alt: </span><span className="font-bold">{customer.altMobile}</span></div>}
+                      <div><span className="text-[var(--dcp-ink-4)]">Name: </span><span className="font-bold">{customer.name}</span></div>
+                      <div><span className="text-[var(--dcp-ink-4)]">Mobile: </span><span className="font-bold">{customer.mobile}</span></div>
+                      {customer.altMobile && <div><span className="text-[var(--dcp-ink-4)]">Alt: </span><span className="font-bold">{customer.altMobile}</span></div>}
                       <div className="col-span-2">
-                        <span className="text-slate-400">Address: </span>
+                        <span className="text-[var(--dcp-ink-4)]">Address: </span>
                         <span className="font-bold">{customer.address}, {customer.district}, {customer.state} — {customer.pincode}</span>
                       </div>
                       {customer.note && (
-                        <div className="col-span-2"><span className="text-slate-400">Note: </span><span className="font-bold">{customer.note}</span></div>
+                        <div className="col-span-2"><span className="text-[var(--dcp-ink-4)]">Note: </span><span className="font-bold">{customer.note}</span></div>
                       )}
                     </div>
                   </div>
 
                   {/* Services */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Services</p>
+                  <div className="bg-[var(--dcp-surface-2)] border border-[var(--dcp-line)] rounded-xl p-3.5">
+                    <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] tracking-wider mb-2">Services</p>
                     <div className="space-y-1.5">
                       {cartItems.map(item => (
                         <div key={item.service.slug} className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-700">
+                          <span className="font-semibold text-[var(--dcp-ink-2)]">
                             {item.service.title}
-                            {item.quantity > 1 && <span className="text-slate-400 ml-1">×{item.quantity}</span>}
+                            {item.quantity > 1 && <span className="text-[var(--dcp-ink-4)] ml-1">×{item.quantity}</span>}
                           </span>
-                          <span className="font-black text-slate-900">₹{item.service.customer_fee * item.quantity}</span>
+                          <span className="font-black text-[var(--dcp-ink)]">₹{item.service.customer_fee * item.quantity}</span>
                         </div>
                       ))}
-                      <div className="border-t border-slate-200 pt-2 flex justify-between text-sm font-black">
+                      <div className="border-t border-[var(--dcp-line)] pt-2 flex justify-between text-sm font-black">
                         <span>Total</span>
-                        <span className="text-blue-700">₹{cartTotal}</span>
+                        <span className="text-[var(--dcp-brand-deep)]">₹{cartTotal}</span>
                       </div>
                       <div className="flex justify-between text-xs text-emerald-600 font-bold">
                         <span>Your earnings</span><span>+₹{cartEarnings}</span>
@@ -1777,8 +1777,8 @@ export function PartnerApplicationWizard({
                   </div>
 
                   {/* Documents */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Documents</p>
+                  <div className="bg-[var(--dcp-surface-2)] border border-[var(--dcp-line)] rounded-xl p-3.5">
+                    <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] tracking-wider mb-2">Documents</p>
                     <div className="space-y-1">
                       {DOC_SLOTS.map(slot => {
                         const file = docFiles[slot.id];
@@ -1787,7 +1787,7 @@ export function PartnerApplicationWizard({
                             {file
                               ? <Check className="h-3.5 w-3.5 text-emerald-500" />
                               : <X     className="h-3.5 w-3.5 text-slate-300" />}
-                            <span className={file ? "font-semibold text-slate-700" : "text-slate-400"}>
+                            <span className={file ? "font-semibold text-[var(--dcp-ink-2)]" : "text-[var(--dcp-ink-4)]"}>
                               {slot.label}{file && ` — ${file.name}`}
                             </span>
                           </div>
@@ -1803,21 +1803,21 @@ export function PartnerApplicationWizard({
             {currentStep === 5 && (
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">Payment</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Secure online payment via Razorpay gateway.</p>
+                  <h2 className="text-lg font-black text-[var(--dcp-ink)]">Payment</h2>
+                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">Secure online payment via Razorpay gateway.</p>
                 </div>
 
                 {/* Amount summary */}
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-2">
                   {cartItems.map(item => (
-                    <div key={item.service.slug} className="flex justify-between text-xs text-slate-600">
+                    <div key={item.service.slug} className="flex justify-between text-xs text-[var(--dcp-ink-2)]">
                       <span>{item.service.title}{item.quantity > 1 && ` ×${item.quantity}`}</span>
                       <span className="font-bold">₹{item.service.customer_fee * item.quantity}</span>
                     </div>
                   ))}
                   <div className="border-t border-blue-200 pt-2 flex justify-between items-center">
-                    <span className="text-sm font-black text-slate-900">Estimated Total</span>
-                    <span className="text-xl font-black text-blue-700">₹{cartTotal}</span>
+                    <span className="text-sm font-black text-[var(--dcp-ink)]">Estimated Total</span>
+                    <span className="text-xl font-black text-[var(--dcp-brand-deep)]">₹{cartTotal}</span>
                   </div>
                   <p className="text-[10px] text-blue-500 font-semibold">
                     ✓ Exact payable amount confirmed by server at payment time.
@@ -1827,37 +1827,37 @@ export function PartnerApplicationWizard({
                 {/* Razorpay method card */}
                 <div 
                   onClick={() => setPaymentMethodType("immediate")}
-                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "immediate" ? "border-blue-500 shadow-sm" : "border-slate-200 opacity-70 hover:opacity-100")}>
+                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "immediate" ? "border-blue-500 shadow-sm" : "border-[var(--dcp-line)] opacity-70 hover:opacity-100")}>
                   <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "immediate" ? "bg-blue-600" : "bg-slate-200")}>
-                    <CreditCard className={cn("h-5 w-5", paymentMethodType === "immediate" ? "text-white" : "text-slate-500")} />
+                    <CreditCard className={cn("h-5 w-5", paymentMethodType === "immediate" ? "text-white" : "text-[var(--dcp-ink-3)]")} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-extrabold text-slate-900">Razorpay Secure Checkout</p>
-                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                    <p className="text-sm font-extrabold text-[var(--dcp-ink)]">Razorpay Secure Checkout</p>
+                    <p className="text-[10px] text-[var(--dcp-ink-4)] font-semibold mt-0.5">
                       Cards • UPI • NetBanking • Wallets
                     </p>
                   </div>
-                  {paymentMethodType === "immediate" && <Check className="h-5 w-5 text-blue-600" />}
+                  {paymentMethodType === "immediate" && <Check className="h-5 w-5 text-[var(--dcp-brand)]" />}
                 </div>
                 
                 {/* Payment Link method card */}
                 <div 
                   onClick={() => setPaymentMethodType("link")}
-                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "link" ? "border-blue-500 shadow-sm" : "border-slate-200 opacity-70 hover:opacity-100")}>
+                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "link" ? "border-blue-500 shadow-sm" : "border-[var(--dcp-line)] opacity-70 hover:opacity-100")}>
                   <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "link" ? "bg-blue-600" : "bg-slate-200")}>
-                    <Link2 className={cn("h-5 w-5", paymentMethodType === "link" ? "text-white" : "text-slate-500")} />
+                    <Link2 className={cn("h-5 w-5", paymentMethodType === "link" ? "text-white" : "text-[var(--dcp-ink-3)]")} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-extrabold text-slate-900">Generate Payment Link</p>
-                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                    <p className="text-sm font-extrabold text-[var(--dcp-ink)]">Generate Payment Link</p>
+                    <p className="text-[10px] text-[var(--dcp-ink-4)] font-semibold mt-0.5">
                       Send a secure link to the customer
                     </p>
                   </div>
-                  {paymentMethodType === "link" && <Check className="h-5 w-5 text-blue-600" />}
+                  {paymentMethodType === "link" && <Check className="h-5 w-5 text-[var(--dcp-brand)]" />}
                 </div>
 
                 {!isScriptReady && (
-                  <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
+                  <div className="flex items-center gap-2 text-xs text-[var(--dcp-ink-4)] font-semibold">
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                     Loading payment gateway...
                   </div>
@@ -1872,15 +1872,15 @@ export function PartnerApplicationWizard({
                   <Check className="h-8 w-8 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Submitted Successfully!</h2>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <h2 className="text-xl font-black text-[var(--dcp-ink)]">Submitted Successfully!</h2>
+                  <p className="text-sm text-[var(--dcp-ink-3)] mt-1">
                     {successDetails.applicationIds.length} application{successDetails.applicationIds.length > 1 ? "s" : ""} created for {successDetails.customerName}.
                   </p>
                 </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 w-full text-left space-y-1.5">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wide">Application IDs</p>
+                <div className="bg-[var(--dcp-surface-2)] border border-[var(--dcp-line)] rounded-xl p-4 w-full text-left space-y-1.5">
+                  <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] tracking-wide">Application IDs</p>
                   {successDetails.applicationIds.map(id => (
-                    <p key={id} className="text-xs font-mono font-bold text-slate-700">{id}</p>
+                    <p key={id} className="text-xs font-mono font-bold text-[var(--dcp-ink-2)]">{id}</p>
                   ))}
                 </div>
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 w-full text-sm">
@@ -1888,7 +1888,7 @@ export function PartnerApplicationWizard({
                   <span className="text-emerald-600">{successDetails.serviceTitle}</span>
                 </div>
                 {paymentMethodType === "link" && paymentLinkUrl && (
-                  <div className="w-full space-y-3 pt-3 border-t border-slate-100">
+                  <div className="w-full space-y-3 pt-3 border-t border-[var(--dcp-line)]">
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center">
                       <p className="text-xs font-bold text-blue-800 mb-2">Payment Link Generated</p>
                       <input 
@@ -1903,7 +1903,7 @@ export function PartnerApplicationWizard({
                             navigator.clipboard.writeText(paymentLinkUrl);
                             toastSuccess?.("Link copied!");
                           }}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-blue-200 text-blue-700 font-bold py-2 rounded-lg text-xs hover:bg-blue-50"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-blue-200 text-[var(--dcp-brand-deep)] font-bold py-2 rounded-lg text-xs hover:bg-blue-50"
                         >
                           <Copy className="h-3.5 w-3.5" /> Copy
                         </button>
@@ -1922,7 +1922,7 @@ export function PartnerApplicationWizard({
                 )}
                 <button
                   onClick={() => window.location.reload()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors active:scale-95"
+                  className="[background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors active:scale-95"
                 >
                   + New Application
                 </button>
@@ -1932,29 +1932,29 @@ export function PartnerApplicationWizard({
 
           {/* ── Cart summary bar (visible in step 1 when cart has items) ── */}
           {currentStep === 1 && cart.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2">
+            <div className="bg-white border border-[var(--dcp-line)] rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ShoppingCart className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-black text-slate-900">
+                  <ShoppingCart className="h-4 w-4 text-[var(--dcp-brand)]" />
+                  <span className="text-sm font-black text-[var(--dcp-ink)]">
                     Cart — {totalItemCount} item{totalItemCount > 1 ? "s" : ""}
                   </span>
                 </div>
-                <span className="text-sm font-black text-blue-700">₹{cartTotal}</span>
+                <span className="text-sm font-black text-[var(--dcp-brand-deep)]">₹{cartTotal}</span>
               </div>
               <div className="space-y-1.5">
                 {cartItems.map(item => (
                   <div key={item.service.slug} className="flex items-center gap-2">
-                    <span className="flex-1 text-xs text-slate-600 font-semibold truncate">{item.service.title}</span>
+                    <span className="flex-1 text-xs text-[var(--dcp-ink-2)] font-semibold truncate">{item.service.title}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => updateQty(item.service.slug, -1)} className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
+                      <button onClick={() => updateQty(item.service.slug, -1)} className="w-5 h-5 rounded bg-[var(--dcp-surface-3)] hover:bg-slate-200 flex items-center justify-center">
                         <Minus className="h-2.5 w-2.5" />
                       </button>
-                      <span className="text-xs font-black text-blue-700 w-4 text-center">{item.quantity}</span>
-                      <button onClick={() => updateQty(item.service.slug, 1)} className="w-5 h-5 rounded bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center">
+                      <span className="text-xs font-black text-[var(--dcp-brand-deep)] w-4 text-center">{item.quantity}</span>
+                      <button onClick={() => updateQty(item.service.slug, 1)} className="w-5 h-5 rounded [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white flex items-center justify-center">
                         <Plus className="h-2.5 w-2.5" />
                       </button>
-                      <span className="text-xs font-bold text-slate-900 w-14 text-right">₹{item.service.customer_fee * item.quantity}</span>
+                      <span className="text-xs font-bold text-[var(--dcp-ink)] w-14 text-right">₹{item.service.customer_fee * item.quantity}</span>
                     </div>
                   </div>
                 ))}
@@ -1970,17 +1970,18 @@ export function PartnerApplicationWizard({
       {/* ── STICKY BOTTOM ACTION BAR ────────────────────────────────────────── */}
       {currentStep < 6 && (
         <div 
-          className="wizard-sticky-actions fixed bottom-0 left-0 right-0 z-40 bg-white/70 backdrop-blur-xl border-t border-slate-200/50 px-4 py-3 flex items-center gap-3 transition-all duration-300"
+          className="wizard-sticky-actions fixed inset-x-0 bottom-0 z-[70] flex items-center gap-2.5 border-t border-[var(--dcp-line)] bg-[var(--dcp-surface)] px-3 py-2.5 transition-all duration-300 sm:px-4"
           style={{
-            boxShadow: "0 -8px 30px rgba(15, 23, 42, 0.05)",
-            paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+            boxShadow: "0 -10px 34px -12px rgba(10, 24, 52, 0.22)",
+            paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
           }}
         >
+          <div className="mx-auto flex w-full max-w-4xl items-center gap-2.5">
           {currentStep > 1 && (
             <button
               onClick={handlePrev}
               disabled={isSubmitting}
-              className="flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-slate-900 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-40 shrink-0"
+              className="dcp-btn dcp-btn-quiet h-11 shrink-0 px-3.5 disabled:opacity-40"
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </button>
@@ -1990,10 +1991,8 @@ export function PartnerApplicationWizard({
             onClick={handleNext}
             disabled={isSubmitting || (currentStep === 5 && paymentMethodType === "immediate" && !isScriptReady)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 text-sm font-black text-white py-3.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60",
-              currentStep === 5
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-slate-900 hover:bg-slate-800"
+              "dcp-btn h-11 flex-1 text-[13px] disabled:opacity-60",
+              currentStep === 5 ? "dcp-btn-good" : "dcp-btn-brand",
             )}
           >
             {isSubmitting ? (
@@ -2018,6 +2017,7 @@ export function PartnerApplicationWizard({
               <>Continue <ArrowRight className="h-4 w-4" /></>
             )}
           </button>
+          </div>
         </div>
       )}
       {/* ── HISTORY DRAWER ─────────────────────────────────────────────────── */}
@@ -2032,22 +2032,22 @@ export function PartnerApplicationWizard({
               <div className="w-10 h-1 bg-slate-200 rounded-full" />
             </div>
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--dcp-line)] shrink-0">
               <div>
-                <p className="text-sm font-black text-slate-900">Application History</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{customer360.profile.name} · {customer360.stats.totalApplications} total</p>
+                <p className="text-sm font-black text-[var(--dcp-ink)]">Application History</p>
+                <p className="text-[10px] text-[var(--dcp-ink-3)] mt-0.5">{customer360.profile.name} · {customer360.stats.totalApplications} total</p>
               </div>
-              <button onClick={() => setShowHistoryDrawer(false)} className="p-2 rounded-xl hover:bg-slate-100 transition">
-                <X className="h-4 w-4 text-slate-500" />
+              <button onClick={() => setShowHistoryDrawer(false)} className="p-2 rounded-xl hover:bg-[var(--dcp-surface-3)] transition">
+                <X className="h-4 w-4 text-[var(--dcp-ink-3)]" />
               </button>
             </div>
             {/* List */}
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
               {customer360.stats.recentApplications.length === 0 ? (
-                <p className="text-center text-slate-400 text-sm py-8">No applications yet.</p>
+                <p className="text-center text-[var(--dcp-ink-4)] text-sm py-8">No applications yet.</p>
               ) : (
                 customer360.stats.recentApplications.map(app => (
-                  <div key={app.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div key={app.id} className="flex items-center gap-3 p-3 bg-[var(--dcp-surface-2)] rounded-xl border border-[var(--dcp-line)]">
                     <div className={cn(
                       "w-2 h-2 rounded-full shrink-0",
                       app.status === "completed" ? "bg-emerald-500" :
@@ -2055,8 +2055,8 @@ export function PartnerApplicationWizard({
                       "bg-amber-400"
                     )} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">{app.serviceName}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
+                      <p className="text-xs font-bold text-[var(--dcp-ink)] truncate">{app.serviceName}</p>
+                      <p className="text-[10px] text-[var(--dcp-ink-3)] mt-0.5">
                         {new Date(app.createdAt).toLocaleDateString("en-IN")} · ₹{app.amount}
                       </p>
                     </div>
