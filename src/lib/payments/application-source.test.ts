@@ -104,7 +104,7 @@ describe("applications.source enum contract", () => {
     expect(contents).toContain("rupeesToPaise");
   });
 
-  it("maps Digi Partner prepare flow to agent_pos + agency_partner channel", () => {
+  it("maps DC Partner prepare flow to agent_pos + agency_partner channel", () => {
     expect(resolveApplicationSourceEnum(true)).toBe("agent_pos");
     expect(resolveSourceChannel({ isPartnerFlow: true })).toBe("agency_partner");
   });

@@ -12,7 +12,7 @@ export async function GET() {
 
     const ap = await getAgencyPartnerByUserId(user.id);
     if (!ap) {
-      return NextResponse.json({ error: "Agency Partner profile not found." }, { status: 403 });
+      return NextResponse.json({ error: "DC Partner profile not found." }, { status: 403 });
     }
 
     const supabase = getSupabaseAdmin();

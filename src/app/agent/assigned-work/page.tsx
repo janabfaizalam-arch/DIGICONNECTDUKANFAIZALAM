@@ -25,7 +25,7 @@ export default async function AgentAssignedWorkPage() {
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Agent Work</p>
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">DC Partner Work</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-950 md:text-5xl">Assigned Work</h1>
           <p className="mt-3 max-w-2xl text-slate-600">Applications assigned to you by admin for processing.</p>
         </div>

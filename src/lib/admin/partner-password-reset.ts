@@ -1,5 +1,5 @@
 /**
- * Shared validation for admin Digi Partner password resets.
+ * Shared validation for admin DC Partner password resets.
  * Runs before any Supabase Admin Auth call.
  */
 

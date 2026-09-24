@@ -9,7 +9,7 @@ import { apDockItems, apNavGroups, isApNavItemActive } from "@/lib/ap/nav";
 import { cn } from "@/lib/utils";
 
 /**
- * The Digi Partner dock, and the sheet that holds everything else.
+ * The DC Partner dock, and the sheet that holds everything else.
  *
  * Four destinations sit in the dock and the fifth button opens the whole
  * panel. That is the fix for "kuchh dikh hi nahin rahe" on a phone: the dock
@@ -201,7 +201,7 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
       >
         <nav
-          aria-label="Digi Partner primary"
+          aria-label="DC Partner primary"
           className={cn(
             "pointer-events-auto mx-auto flex h-[70px] items-stretch justify-between gap-0.5 px-1.5 py-1.5",
             "rounded-[22px] border border-white/70 bg-white/92 backdrop-blur-xl",

@@ -14,7 +14,7 @@ export const AUTH_ROUTES = [
   "/customer/reset-password",
   "/customer/forgot-pin",
   /*
-    Applying to become a Digi Partner, and tracking that application.
+    Applying to become a DC Partner, and tracking that application.
 
     Both own the full viewport now — same split-screen scene as the partner
     login — so the site header would sit on top of the brand panel and clip

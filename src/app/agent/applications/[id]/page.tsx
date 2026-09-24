@@ -80,7 +80,7 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
       <div className="mx-auto max-w-5xl space-y-5">
         <Link href="/ap/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
-          Back to agent panel
+          Back to DC Partners
         </Link>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -147,9 +147,9 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
             {mobile ? (
               <div className="grid gap-2">
                 {[
-                  ["Application support", "Agent support for this customer application"],
-                  ["Documents support", "Agent needs help with pending customer documents"],
-                  ["Completion support", "Agent needs help with completed application handover"],
+                  ["Application support", "DC Partner support for this customer application"],
+                  ["Documents support", "DC Partner needs help with pending customer documents"],
+                  ["Completion support", "DC Partner needs help with completed application handover"],
                 ].map(([label, topic]) => (
                   <a key={label} href={buildWhatsAppUrl(buildAgentWhatsAppMessage({ agentName: user.user_metadata.full_name ?? user.user_metadata.name ?? user.email, applicationId: application.id, serviceName: application.service_name, customerName: getCustomerName(application), topic }))} target="_blank" rel="noopener noreferrer" title={topic} className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white">
                     <MessageCircle className="h-4 w-4" />

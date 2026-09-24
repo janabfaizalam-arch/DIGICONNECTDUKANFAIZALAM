@@ -1,4 +1,4 @@
-/** Digi Partner mobile banner target ratio: 1400×600 = 7:3 */
+/** DC Partner mobile banner target ratio: 1400×600 = 7:3 */
 export const PARTNER_MOBILE_BANNER_RATIO = 7 / 3;
 export const PARTNER_MOBILE_BANNER_SIZE_HINT = "1400 × 600 px (7:3)";
 

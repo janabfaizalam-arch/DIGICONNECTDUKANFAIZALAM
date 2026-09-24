@@ -55,7 +55,7 @@ export default async function PartnerLeadsPage({
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-8">
       <div className="mx-auto max-w-7xl space-y-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[var(--primary)]">Digi Partner</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--primary)]">DC Partner</p>
           <h1 className="text-2xl font-bold">Your leads</h1>
           <p className="text-sm text-slate-600">Scoped to your ownership only. No cross-partner data.</p>
         </div>

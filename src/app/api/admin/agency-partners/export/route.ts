@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/admin/agency-partners/export?q=&type=
  *
- * Streams the Digi Partner directory as a full-detail Excel workbook, scoped to
+ * Streams the DC Partner directory as a full-detail Excel workbook, scoped to
  * the same search and partner-type filters the admin console is showing.
  *
  * The sheet carries KYC identifiers and bank details, so it is admin-only and
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[admin-ap-export] Failed to build workbook", error);
     return NextResponse.json(
-      { message: "Could not generate the Digi Partner Excel file." },
+      { message: "Could not generate the DC Partner Excel file." },
       { status: 500 },
     );
   }

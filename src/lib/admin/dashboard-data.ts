@@ -632,8 +632,8 @@ export async function getAdminDashboardPayload(range: AdminDateRange): Promise<A
   const metrics: DashboardMetric[] = [
     metric("total_customers", "Total Customers", totalCustomers, totalCustomers, "/admin/customers", "customers"),
     metric("new_customers", "New Customers", newCustomers, prevCustomers, "/admin/customers", "customers"),
-    metric("total_partners", "Total Digi Partners", totalPartners, totalPartners, "/admin/agency-partners", "partners"),
-    metric("active_partners", "Active Digi Partners", activePartners, activePartners, "/admin/agency-partners", "partners"),
+    metric("total_partners", "Total DC Partners", totalPartners, totalPartners, "/admin/agency-partners", "partners"),
+    metric("active_partners", "Active DC Partners", activePartners, activePartners, "/admin/agency-partners", "partners"),
     metric("total_applications", "Total Applications", totalApplications, totalApplications, "/admin/applications", "applications"),
     metric("period_applications", "Applications (period)", periodApplications, prevPeriodApplications, "/admin/applications", "applications"),
     metric("pending_applications", "Pending Applications", pendingApplications, pendingApplications, "/admin/applications", "pending", {
@@ -701,7 +701,7 @@ export async function getAdminDashboardPayload(range: AdminDateRange): Promise<A
 
   const pendingPartnerApprovals: DashboardWidgetItem[] = ((pendingPartnersResult.data ?? []) as Array<Record<string, unknown>>).map((p) => ({
     id: String(p.id),
-    title: String(p.partner_code ?? "Digi Partner"),
+    title: String(p.partner_code ?? "DC Partner"),
     subtitle: `${String(p.status ?? "")} · KYC ${String(p.kyc_status ?? "")}`,
     meta: "Approval queue",
     href: `/admin/agency-partners/${p.id}`,

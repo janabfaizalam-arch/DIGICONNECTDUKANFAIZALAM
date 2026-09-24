@@ -32,7 +32,7 @@ export const CUSTOMER_APPLICATION_SELECT = [
   "application_code",
 ].join(", ");
 
-/** Safe for Digi Partner / agent UIs. */
+/** Safe for DC Partner / agent UIs. */
 export const PARTNER_APPLICATION_SELECT = [
   "id",
   "user_id",

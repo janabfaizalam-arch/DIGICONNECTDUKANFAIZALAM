@@ -45,7 +45,7 @@ export default async function NewAgentApplicationPage({
       <div className="mx-auto max-w-7xl space-y-5">
         <Link href="/ap/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
-          Back to agent panel
+          Back to DC Partners
         </Link>
         <AgentApplicationForm customers={customers} services={services} defaultCustomerId={params.customerId} />
       </div>

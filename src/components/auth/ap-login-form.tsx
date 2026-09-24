@@ -11,9 +11,9 @@ import { trackLogin } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
 
 /**
- * Agency Partner / Agent login. Preserves the existing two-stage backend flow:
+ * DC Partner / Agent login. Preserves the existing two-stage backend flow:
  *   1) POST /api/auth/agent-login  (agent credentials)
- *   2) fallback to Supabase password auth for agency partners
+ *   2) fallback to Supabase password auth for DC Partners
  * Only the presentation is redesigned; the API contract is unchanged.
  */
 export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: boolean }) {
@@ -103,7 +103,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
 
   return (
     <GlassCard>
-      <AuthHeading title="Digi Partner Login" subtitle="Access applications, commissions, wallet and support." />
+      <AuthHeading title="DC Partner Login" subtitle="Access applications, commissions, wallet and support." />
 
       {customerSignedIn && !noticeDismissed && (
         <div
@@ -128,7 +128,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
                   onClick={() => setNoticeDismissed(true)}
                   className="inline-flex h-8 items-center rounded-lg border border-indigo-200 bg-white px-3 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
                 >
-                  Switch to Digi Partner Login
+                  Switch to DC Partner Login
                 </button>
               </div>
             </div>

@@ -233,7 +233,7 @@ export function RewardsIllustration({ tone = "onDark", className }: { tone?: Ton
   );
 }
 
-/** Digi Partner — a counter with the DigiConnect mark above it. */
+/** DC Partner — a counter with the DigiConnect mark above it. */
 export function PartnerIllustration({ tone = "onDark", className }: { tone?: Tone; className?: string }) {
   const c = palette(tone);
   return (

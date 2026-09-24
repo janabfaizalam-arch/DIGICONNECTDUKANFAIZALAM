@@ -506,7 +506,7 @@ textarea {
 /*
   A sheet rising from the bottom of a phone.
 
-  Used by the Digi Partner "Sab kuch" sheet. Kept in one place rather than
+  Used by the DC Partner "Sab kuch" sheet. Kept in one place rather than
   inline so `prefers-reduced-motion` below can switch it off with everything
   else.
 */

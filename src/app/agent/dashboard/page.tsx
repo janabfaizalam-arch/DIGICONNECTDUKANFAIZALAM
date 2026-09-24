@@ -65,9 +65,9 @@ export default async function AgentDashboardPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-600">Agent Panel</p>
-              <h1 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">{profile?.full_name || user.email || "Agent"}</h1>
-              <p className="mt-1 font-mono text-sm font-semibold text-slate-500">{profile?.agent_code || "Agent"}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-600">DC Partners</p>
+              <h1 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">{profile?.full_name || user.email || "DC Partner"}</h1>
+              <p className="mt-1 font-mono text-sm font-semibold text-slate-500">{profile?.agent_code || "DC Partner"}</p>
             </div>
             <Link href="/ap/applications/new" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white">
               <PlusCircle className="h-4 w-4" />

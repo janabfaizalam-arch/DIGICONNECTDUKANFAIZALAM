@@ -95,7 +95,7 @@ function isAllowedForPath(
   }
 
   if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
-    // Digi Partner access is membership-based, not profiles.role alone.
+    // DC Partner access is membership-based, not profiles.role alone.
     if (options?.partnerActive) return true;
     return role === "agency_partner";
   }
@@ -227,7 +227,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  // Canonical Digi Partner login — permanently redirect every legacy/alternate
+  // Canonical DC Partner login — permanently redirect every legacy/alternate
   // partner login URL to /ap/login so no partner CTA can ever hit a 404.
   const partnerLoginAlias = resolvePartnerLoginAlias(pathname);
   if (partnerLoginAlias) {
@@ -544,7 +544,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Digi Partner login route — portal-aware (membership over single profiles.role):
+  // DC Partner login route — portal-aware (membership over single profiles.role):
   //   - active partner membership -> /ap/dashboard
   //   - linked but inactive/unapproved -> /unauthorized?reason=
   //   - admin-only (no partner membership) -> /admin

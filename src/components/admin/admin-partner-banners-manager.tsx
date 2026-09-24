@@ -104,7 +104,7 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
       <Card className="p-5">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-slate-900">
           <ImagePlus className="h-4 w-4 text-blue-700" />
-          Create Digi Partner banner
+          Create DC Partner banner
         </h2>
         <form key={createFormKey} onSubmit={onCreate} className="grid gap-4">
           <BannerFields disabled={busy} />
@@ -116,7 +116,7 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
       </Card>
 
       {!banners.length ? (
-        <AdminEmptyState title="No partner banners yet" description="Create an announcement banner for the Digi Partner home slider." />
+        <AdminEmptyState title="No partner banners yet" description="Create an announcement banner for the DC Partner home slider." />
       ) : (
         <div className="space-y-4">
           {banners.map((banner) => (
@@ -258,7 +258,7 @@ function BannerFields({
 
       <fieldset className="grid gap-2">
         <legend className="text-sm font-bold text-slate-700">Visible partner types</legend>
-        <p className="text-xs text-slate-500">Leave all unchecked to show for every Digi Partner type.</p>
+        <p className="text-xs text-slate-500">Leave all unchecked to show for every DC Partner type.</p>
         <div className="flex flex-wrap gap-3">
           {DIGI_PARTNER_TYPE_VALUES.map((type) => (
             <label key={type} className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">

@@ -52,7 +52,7 @@ export default async function AgentCommissionsPage() {
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">Agent Commissions</p>
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--secondary)]">DC Partner Commissions</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-950 md:text-5xl">My Commission</h1>
         </div>
 

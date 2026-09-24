@@ -45,7 +45,7 @@ describe("buildIdentityLinkageHealth", () => {
     expect(health.warnings).toContain("auth_email_and_profile_email_mismatch");
   });
 
-  it("is healthy when auth and profile agree for an agency partner", () => {
+  it("is healthy when auth and profile agree for a DC Partner", () => {
     const health = buildIdentityLinkageHealth({
       partnerId: "p1",
       authUserId: "u1",
@@ -74,7 +74,7 @@ describe("portal CTA dual membership", () => {
     expect(resolvePartnerCtaDestination("admin", { hasPartnerMembership: true }).href).toBe("/ap/dashboard");
   });
 
-  it("sends admin-only users to Digi Partner login for an explicit switch", () => {
+  it("sends admin-only users to DC Partner login for an explicit switch", () => {
     expect(resolvePartnerCtaDestination("admin").href).toBe("/ap/login");
   });
 });

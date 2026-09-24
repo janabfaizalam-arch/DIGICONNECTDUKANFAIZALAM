@@ -50,8 +50,8 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        eyebrow="Agency Partners"
-        title="AP Ecosystem Console"
+        eyebrow="DC Partners"
+        title="DC Partners Console"
         description="Verify KYC uploads, configure partner tiers, manage hierarchical commissions, and audit financial wallets."
         action={
           <div className="flex flex-wrap items-center gap-2">
@@ -59,7 +59,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
               href={DIGI_PARTNER_LOGIN_ROUTE}
               target="_blank"
               rel="noopener noreferrer"
-              title="Open the Digi Partner sign-in portal in a new tab"
+              title="Open the DC Partner sign-in portal in a new tab"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               <ExternalLink className="h-4 w-4 text-indigo-500" />
@@ -67,7 +67,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
             </a>
             <a
               href={exportHref}
-              title={`Download full details for ${visiblePartners.length} Digi Partner${visiblePartners.length === 1 ? "" : "s"} as an Excel workbook`}
+              title={`Download full details for ${visiblePartners.length} DC Partner${visiblePartners.length === 1 ? "" : "s"} as an Excel workbook`}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
             >
               <FileSpreadsheet className="h-4 w-4" />
@@ -75,7 +75,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
             </a>
             <Link href={ADMIN_AGENCY_PARTNERS_NEW_ROUTE} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white">
               <UserPlus className="h-4 w-4" />
-              Onboard AP
+              Onboard DC Partner
             </Link>
           </div>
         }
@@ -114,7 +114,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
 
         {!visiblePartners.length ? (
           <AdminEmptyState
-            title={partners.length ? "No matching Agency Partners" : "No Agency Partners registered yet"}
+            title={partners.length ? "No matching DC Partners" : "No DC Partners registered yet"}
             description={partners.length ? "Try another name, mobile, email, shop name, or partner code." : "Click onboard to register your first partner shop or referral executive."}
           />
         ) : null}
@@ -148,7 +148,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                       <TableCell className="text-xs">{ap.email}</TableCell>
                       <TableCell className="font-mono text-xs font-semibold text-indigo-600">{ap.partner_code}</TableCell>
                       <TableCell className="text-xs font-semibold capitalize">
-                        <span className="text-amber-600">{ap.tier?.name || "AP Starter"}</span>
+                        <span className="text-amber-600">{ap.tier?.name || "DC Starter"}</span>
                         <div className="text-[10px] text-slate-400 font-normal">{partnerTypeDisplayLabel(ap.partner_type)}</div>
                       </TableCell>
                       <TableCell className="text-xs">
@@ -227,7 +227,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
                 <div className="pt-2 border-t flex justify-end">
                   <Link href={adminAgencyPartnerDetailPath(ap.id)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border bg-white px-4 text-xs font-bold text-slate-900 shadow-sm">
                     <Eye className="h-3.5 w-3.5 text-blue-500" />
-                    Manage AP
+                    Manage DC Partner
                   </Link>
                 </div>
               </div>

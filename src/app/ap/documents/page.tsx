@@ -33,7 +33,7 @@ export default async function APDocumentsPage() {
         <PageHeader
           eyebrow="Account"
           title="Documents"
-          description="Your Digi Partner KYC documents only. Customer application files stay inside each application — never shared across partners."
+          description="Your DC Partner KYC documents only. Customer application files stay inside each application — never shared across partners."
           actions={
             <Link href="/ap/profile" className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700">
               View profile

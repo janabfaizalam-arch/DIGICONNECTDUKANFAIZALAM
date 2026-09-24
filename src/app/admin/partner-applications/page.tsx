@@ -58,7 +58,7 @@ export default async function AdminPartnerApplicationsPage({
       <AdminPageHeader
         eyebrow="Team & Partners"
         title="Partner Applications"
-        description="People who applied through “Become a Digi Partner”. Approving one creates their login and partner account immediately — the temporary password is shown once, so pass it on before closing the row."
+        description="People who applied through “Become a DC Partner”. Approving one creates their login and partner account immediately — the temporary password is shown once, so pass it on before closing the row."
       />
 
       <div className="grid gap-4 sm:grid-cols-4">

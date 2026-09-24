@@ -24,7 +24,7 @@ import {
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 
 /**
- * Applying to become a Digi Partner.
+ * Applying to become a DC Partner.
  *
  * This form used to ask for sixteen things — PAN, Aadhaar, GSTIN, how you
  * heard about us, anything else we should know — from a shop owner who had

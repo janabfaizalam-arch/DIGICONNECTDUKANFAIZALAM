@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       (await getAgencyPartnerByUserId(user.id));
 
     if (!ap) {
-      return NextResponse.json({ error: "Agency Partner profile not found." }, { status: 403 });
+      return NextResponse.json({ error: "DC Partner profile not found." }, { status: 403 });
     }
 
     if (!membership.ok || ap.status !== "active") {
@@ -37,8 +37,8 @@ export async function POST(request: Request) {
             membership.reason === "kyc_not_approved"
               ? "Your KYC approval is pending."
               : membership.reason === "ap_not_active"
-                ? "Your Digi Partner account is inactive."
-                : "Agency Partner profile is not active.",
+                ? "Your DC Partner account is inactive."
+                : "DC Partner profile is not active.",
         },
         { status: 403 },
       );

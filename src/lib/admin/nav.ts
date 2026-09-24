@@ -20,7 +20,7 @@
  * one list, so running the customer business meant reading past partner
  * payouts and commission rules to find the applications queue. There are two
  * workspaces now with a toggle between them: `customer`, which is the whole
- * customer-facing business, and `partner`, which is the Digi Partner and staff
+ * customer-facing business, and `partner`, which is the DC Partner and staff
  * side. The partner workspace is a move, not a build — the same screens as
  * before, gathered where they belong.
  */
@@ -509,13 +509,13 @@ const PARTNER_GROUPS: AdminNavGroup[] = [
   },
   {
     id: "partners",
-    label: "Digi Partners",
+    label: "DC Partners",
     blurb: "The people selling on your behalf.",
     icon: UserCheck,
     items: [
       {
         href: ADMIN_DIGI_PARTNERS_ROUTE,
-        label: "Digi Partners",
+        label: "DC Partners",
         description: "Every partner, their KYC and their performance",
         icon: UserCheck,
         emphasis: true,
@@ -606,7 +606,7 @@ export const ADMIN_WORKSPACES: AdminWorkspace[] = [
   {
     id: "partner",
     label: "Partners & Staff",
-    tagline: "Digi Partners, commissions and branches",
+    tagline: "DC Partners, commissions and branches",
     icon: UserCheck,
     home: ADMIN_PARTNER_HOME,
     groups: PARTNER_GROUPS,

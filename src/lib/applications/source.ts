@@ -20,7 +20,7 @@ type SourceInput = {
 
 /**
  * Deterministic source resolution (highest priority first):
- * 1. agency_partner_id / explicit partner source → Digi Partner
+ * 1. agency_partner_id / explicit partner source → DC Partner
  * 2. Explicit admin / admin submitter → Admin Created
  * 3. Otherwise → Customer
  *
@@ -33,7 +33,7 @@ export function resolveApplicationOrigin(app: SourceInput): ApplicationOrigin {
   const submittedBy = String(app.submitted_by_role ?? app.created_by_role ?? "").toLowerCase().trim();
   const enumSource = String(app.source ?? "").toLowerCase().trim();
 
-  // 1. Digi Partner — strongest signals
+  // 1. DC Partner — strongest signals
   if (app.agency_partner_id) return "agency_partner";
   if (textSource === "agency_partner" || textSource === "digi_partner" || textSource.includes("partner")) {
     return "agency_partner";
@@ -58,7 +58,7 @@ export function resolveApplicationSourceInfo(app: SourceInput): ApplicationSourc
   if (origin === "agency_partner") {
     return {
       origin,
-      label: "Digi Partner",
+      label: "DC Partner",
       badgeClass: "border-violet-200 bg-violet-50 text-violet-800",
     };
   }

@@ -29,7 +29,7 @@ export function ShareServiceMenu({ serviceName, serviceSlug, triggerClassName, c
       if (res.ok && data.token) {
         setRefToken(data.token);
       } else {
-        // User may not be an agency partner — share without referral
+        // User may not be a DC Partner — share without referral
         setRefToken(null);
       }
     } catch {

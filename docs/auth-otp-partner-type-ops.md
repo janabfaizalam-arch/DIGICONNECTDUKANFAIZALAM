@@ -1,4 +1,4 @@
-# Auth OTP + Agency Partner type — ops checklist
+# Auth OTP + DC Partner type — ops checklist
 
 ## Customer Signup OTP (AiSensy)
 
@@ -108,7 +108,7 @@ Accepted API response ≠ WhatsApp inbox delivery. Use `submitted_message_id` in
 
 ---
 
-## Agency Partner `partner_type` CHECK
+## DC Partner `partner_type` CHECK
 
 Canonical values (app + DB):
 

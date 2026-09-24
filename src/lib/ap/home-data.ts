@@ -1,5 +1,5 @@
 // ============================================================================
-// Digi Partner home — server data loader
+// DC Partner home — server data loader
 // ============================================================================
 
 import { getAgentAssignedApplications } from "@/lib/agent-data";

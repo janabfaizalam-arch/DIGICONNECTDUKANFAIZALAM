@@ -13,7 +13,7 @@ const apRoute = readSrc("src/app/api/ap/applications/[id]/transition/route.ts");
 const adminRoute = readSrc("src/app/api/admin/applications/[id]/route.ts");
 
 describe("what a partner is shown is what they are paid", () => {
-  it("computes the service card payout the same way the AP panel renders it", () => {
+  it("computes the service card payout the same way the DC Partners panel renders it", () => {
     // The "+₹50 earn" badge and the settlement amount must not drift apart.
     expect(
       payoutForAgentService({ customer_fee: 1199, agent_payout: 400, payout_type: "fixed", payout_percentage: 0 }),

@@ -1,5 +1,5 @@
 // ============================================================================
-// Digi Partner announcement banners (partner_dashboard audience)
+// DC Partner announcement banners (partner_dashboard audience)
 // ============================================================================
 
 import type { DigiPartnerType } from "@/lib/ap/partner-type";

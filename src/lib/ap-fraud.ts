@@ -1,5 +1,5 @@
 // ============================================================================
-// Agency Partner Fraud Detection
+// DC Partner Fraud Detection
 // DigiConnect Dukan — AP Ecosystem
 // ============================================================================
 

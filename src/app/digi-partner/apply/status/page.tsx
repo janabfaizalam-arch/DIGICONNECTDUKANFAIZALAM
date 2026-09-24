@@ -8,8 +8,8 @@ import { PartnerApplicationStatusLookup } from "@/components/partner/partner-app
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Track your Digi Partner application | DigiConnect Dukan",
-  description: "Check the status of your DigiConnect Digi Partner application with your tracking code.",
+  title: "Track your DC Partner application | DigiConnect Dukan",
+  description: "Check the status of your DigiConnect DC Partner application with your tracking code.",
   alternates: { canonical: "/digi-partner/apply/status" },
 };
 
@@ -29,7 +29,7 @@ export default async function PartnerApplicationStatusPage({ searchParams }: Pag
 
   return (
     <AuthScene
-      eyebrow="Digi Partner Network"
+      eyebrow="DC Partner Network"
       kicker="Already applied"
       headline={
         <>

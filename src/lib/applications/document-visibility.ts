@@ -11,7 +11,7 @@ export function isCustomerVisibleDocument(document: ApplicationDocument) {
   return true;
 }
 
-/** Digi Partner dashboard — final docs and partner-hidden docs stay out. */
+/** DC Partner dashboard — final docs and partner-hidden docs stay out. */
 export function isPartnerVisibleDocument(document: ApplicationDocument) {
   if (isFinalApplicationDocument(document)) return false;
   if (document.partner_visible === false) return false;

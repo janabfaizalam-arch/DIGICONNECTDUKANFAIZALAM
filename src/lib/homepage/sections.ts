@@ -170,7 +170,7 @@ export const HOMEPAGE_SECTIONS: HomepageSectionSpec[] = [
   },
   {
     id: "become_partner",
-    label: "Become a Digi Partner",
+    label: "Become a DC Partner",
     blurb: "The pitch to people who want to sell your services",
     editHref: null,
   },

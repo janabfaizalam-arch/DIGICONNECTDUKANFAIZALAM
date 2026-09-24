@@ -1,5 +1,5 @@
 // ============================================================================
-// Agency Partner Commission Engine
+// DC Partner Commission Engine
 // DigiConnect Dukan — AP Ecosystem
 // ============================================================================
 

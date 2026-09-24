@@ -1,4 +1,4 @@
-/** Shared Digi Partner accessibility helpers. */
+/** Shared DC Partner accessibility helpers. */
 
 export function prefersReducedMotion(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {

@@ -57,7 +57,7 @@ export default async function APCustomersPage(props: {
         <PageHeader
           eyebrow="Customers"
           title="Customer management"
-          description="Your Digi Partner CRM — create profiles, track activity and launch applications quickly."
+          description="Your DC Partner CRM — create profiles, track activity and launch applications quickly."
           actions={
             <Link
               href="/ap/applications/new"

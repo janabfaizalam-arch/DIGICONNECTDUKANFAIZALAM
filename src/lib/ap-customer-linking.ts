@@ -1,5 +1,5 @@
 // ============================================================================
-// Customer Mobile Linking for Agency Partner Ecosystem
+// Customer Mobile Linking for DC Partner Ecosystem
 // DigiConnect Dukan — AP Ecosystem
 //
 // When a customer signs up or logs in with a mobile number,
@@ -11,7 +11,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logAuditEvent } from "@/lib/ap-audit";
 
 /**
- * Link applications created by agency partners to a customer who signs up
+ * Link applications created by DC Partners to a customer who signs up
  * with the same mobile number.
  *
  * This is idempotent — safe to call multiple times.

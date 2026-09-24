@@ -1,5 +1,5 @@
 // ============================================================================
-// Digi Partner home — quick actions & overview config (source of truth)
+// DC Partner home — quick actions & overview config (source of truth)
 // ============================================================================
 
 import type { DigiPartnerType } from "@/lib/ap/partner-type";

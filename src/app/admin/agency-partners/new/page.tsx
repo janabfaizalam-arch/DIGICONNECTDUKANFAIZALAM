@@ -24,11 +24,11 @@ export default async function NewAPOnboardingPage() {
       <div className="mx-auto max-w-3xl space-y-5">
         <Link href={ADMIN_AGENCY_PARTNERS_ROUTE} className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)] hover:underline">
           <ArrowLeft className="h-4 w-4" />
-          Back to Agency Partners
+          Back to DC Partners
         </Link>
         <AdminPageHeader
           eyebrow="Onboarding Wizard"
-          title="Register Agency Partner"
+          title="Register DC Partner"
           description="Provision secure login credentials and configure commission rules for a verified field partner or shop owner."
         />
         <CreateAPForm defaultPartnerCode={defaultPartnerCode} />

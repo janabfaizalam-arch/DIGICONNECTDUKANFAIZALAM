@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     if (!supabase) {
       console.error("[admin-ap] Supabase admin client is missing.");
-      return jsonError("Agency Partner creation is not available right now.", 500);
+      return jsonError("DC Partner creation is not available right now.", 500);
     }
 
     const body = await request.json();
@@ -232,7 +232,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: "Agency Partner created successfully.",
+      message: "DC Partner created successfully.",
       partnerId: created.user.id,
       partnerCode,
     });

@@ -35,7 +35,7 @@ export default async function ApDirectoryPage() {
       <div className="mx-auto max-w-5xl space-y-6">
         <header>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--dc-flame)]">
-            Digi Partner
+            DC Partner
           </p>
           <h1 className="mt-1.5 text-[1.6rem] font-black tracking-tight text-slate-900 sm:text-[2rem]">
             Sab kuch, ek jagah

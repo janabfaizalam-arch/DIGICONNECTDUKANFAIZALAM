@@ -201,7 +201,7 @@ export default function AdminTicketsPage() {
       <AdminPageHeader
         eyebrow="CRM Operations"
         title="Support Tickets Desk"
-        description="Communicate with agency partners in real-time, resolve operational blockages, and check escalation SLA parameters."
+        description="Communicate with DC Partners in real-time, resolve operational blockages, and check escalation SLA parameters."
       />
 
       <div className="grid gap-6 lg:grid-cols-[22rem_1fr] h-[calc(100vh-14rem)] min-h-[500px]">

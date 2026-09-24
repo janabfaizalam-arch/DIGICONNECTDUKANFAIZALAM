@@ -147,7 +147,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
 
       {sourceInfo.origin === "agency_partner" ? (
         <Card className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 shadow-none">
-          <h2 className="text-sm font-bold text-violet-950">Digi Partner</h2>
+          <h2 className="text-sm font-bold text-violet-950">DC Partner</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <DetailRow label="Partner Name" value={partner?.full_name || "—"} />
             <DetailRow label="Partner ID" value={partner?.partner_code || application.agency_partner_id} mono />

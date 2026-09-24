@@ -23,7 +23,7 @@ function isValidEmail(value: string) {
 }
 
 /**
- * Resolve login email for Digi Partner identifiers.
+ * Resolve login email for DC Partner identifiers.
  * Prefer auth.users.email over profiles.email so a corrupted profile email
  * (e.g. admin promotion overwrite) cannot sign into the wrong Auth user.
  */
@@ -62,7 +62,7 @@ async function resolveAgentEmail(identifier: string) {
     if (isValidEmail(email)) return email;
   }
 
-  // Agency partner codes (and optional username column when present)
+  // DC Partner codes (and optional username column when present)
   const { data: byPartnerCode } = await supabaseAdmin
     .from("agency_partners")
     .select("user_id")
@@ -163,13 +163,13 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({
-      message: "Digi Partner login successful.",
+      message: "DC Partner login successful.",
       destination: "/ap/dashboard",
       redirectTo: "/ap/dashboard",
     });
     return setPortalCookie(response);
   } catch (error) {
     console.error("[agent-login] Login failed.", error);
-    return jsonError("Digi Partner login failed. Please try again.", 500);
+    return jsonError("DC Partner login failed. Please try again.", 500);
   }
 }

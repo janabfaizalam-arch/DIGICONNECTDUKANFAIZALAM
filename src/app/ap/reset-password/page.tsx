@@ -75,7 +75,7 @@ export default function APResetPasswordPage() {
             Reset Password
           </h1>
           <p className="text-xs text-slate-400 font-semibold leading-relaxed max-w-[300px] mx-auto">
-            Enter your new DigiPartner password below.
+            Enter your new DC Partners password below.
           </p>
         </div>
 

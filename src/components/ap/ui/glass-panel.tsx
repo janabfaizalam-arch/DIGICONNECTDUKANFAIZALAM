@@ -17,7 +17,7 @@ const paddingMap = {
 } as const;
 
 /**
- * Premium liquid-glass surface used across the Digi Partner OS.
+ * Premium liquid-glass surface used across the DC Partner OS.
  * Matches the Clear Liquid Glass language from the auth design system.
  */
 export function GlassPanel({ children, className, as: Tag = "div", padding = "md" }: GlassPanelProps) {

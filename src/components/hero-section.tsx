@@ -31,7 +31,7 @@ const trustBadges = [
 
 function getDashboardConfig(viewer: Exclude<HeroViewer, null>) {
   if (viewer.role === "agent") {
-    return { href: "/ap/dashboard", label: "Digi Partner Dashboard" };
+    return { href: "/ap/dashboard", label: "DC Partner Dashboard" };
   }
 
   if (viewer.role === "admin") {

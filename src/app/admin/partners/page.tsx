@@ -28,7 +28,7 @@ export default async function AdminPartnersHomePage() {
       <AdminPageHeader
         eyebrow="Partners & Staff"
         title="Partner workspace"
-        description="Digi Partners, what they earn, and where your branches are. The customer business lives in the other workspace — switch with the toggle at the top of the sidebar."
+        description="DC Partners, what they earn, and where your branches are. The customer business lives in the other workspace — switch with the toggle at the top of the sidebar."
       />
       <AdminWorkspaceDirectory workspace="partner" />
     </div>

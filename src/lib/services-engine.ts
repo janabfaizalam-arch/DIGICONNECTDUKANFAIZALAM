@@ -1,5 +1,5 @@
 // ============================================================================
-// DigiPartner DS-OS: Universal Service & Form Engine Core
+// DC Partners DS-OS: Universal Service & Form Engine Core
 // DigiConnect Dukan — 2026-06-13
 // ============================================================================
 

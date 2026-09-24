@@ -1,5 +1,5 @@
 /**
- * Shared search / type filtering for the admin Digi Partner list.
+ * Shared search / type filtering for the admin DC Partner list.
  *
  * The console page and the Excel export both run this, so a download always
  * contains exactly the rows the admin is looking at.

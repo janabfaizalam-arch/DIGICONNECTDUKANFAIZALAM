@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 /**
- * What the Digi Partner panel contains, and where each thing lives.
+ * What the DC Partner panel contains, and where each thing lives.
  *
  * The panel had grown to thirty-odd screens behind a seven-link bar and one
  * enormous hard-coded menu. Half of them — the offline invoice book, the

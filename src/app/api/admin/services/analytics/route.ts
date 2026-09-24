@@ -68,7 +68,7 @@ export async function GET(request: Request) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // 3. Fetch Agency Partners for Branch aggregation
+    // 3. Fetch DC Partners for Branch aggregation
     const agencyPartnerIds = Array.from(new Set(apps.map((a) => a.agency_partner_id).filter(Boolean)));
     const { data: agencyPartners } = agencyPartnerIds.length
       ? await supabase.from("agency_partners").select("id, state, district").in("id", agencyPartnerIds)

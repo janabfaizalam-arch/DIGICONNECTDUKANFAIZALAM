@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: "Agency Partner created. Username login enabled; password change required on first login.",
+      message: "DC Partner created. Username login enabled; password change required on first login.",
       userId,
       partnerId: partner?.id ?? null,
       partnerCode: body.partnerCode ?? null,

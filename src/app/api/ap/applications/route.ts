@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
 
     if (!user || !(await isActiveAgent(user))) {
-      return jsonError("Agency Partner access required.", 403);
+      return jsonError("DC Partner access required.", 403);
     }
 
     const supabase = getSupabaseAdmin();
@@ -131,11 +131,11 @@ export async function POST(request: Request) {
     // Lookup AP record
     const ap = await getAgencyPartnerByUserId(user.id);
     if (!ap) {
-      return jsonError("Agency Partner record not found or profile is not active.", 403);
+      return jsonError("DC Partner record not found or profile is not active.", 403);
     }
 
     if (ap.status !== "active" || ap.kyc_status !== "approved") {
-      return jsonError("Your Agency Partner profile is pending KYC approval or suspended.", 403);
+      return jsonError("Your DC Partner profile is pending KYC approval or suspended.", 403);
     }
 
     const formData = await request.formData();
@@ -525,7 +525,7 @@ export async function POST(request: Request) {
       application_id: application.id,
       changed_by: user.id,
       new_status: paymentMode === "link" ? "payment_pending" : "in_process",
-      note: paymentMode === "link" ? "Application created by Agency Partner. Pending remote payment link." : "Application created by Agency Partner after Razorpay payment.",
+      note: paymentMode === "link" ? "Application created by DC Partner. Pending remote payment link." : "Application created by DC Partner after Razorpay payment.",
     });
 
     // Check if there is an existing customer auth user matching this mobile number,
@@ -547,8 +547,8 @@ export async function POST(request: Request) {
     await createAdminNotifications(supabase, [
       {
         type: "new_application",
-        title: "New Agency Partner Application",
-        message: `${customer.full_name} submitted ${service.title} through Agency Partner POS.`,
+        title: "New DC Partner Application",
+        message: `${customer.full_name} submitted ${service.title} through DC Partner POS.`,
         relatedType: "application",
         relatedId: application.id,
       },

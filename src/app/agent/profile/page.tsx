@@ -24,7 +24,7 @@ export default async function AgentProfilePage() {
     ["Name", profile?.full_name],
     ["Mobile", profile?.mobile],
     ["Email", profile?.email],
-    ["Agent Code", profile?.agent_code],
+    ["DC Partner Code", profile?.agent_code],
     ["Area", profile?.area || profile?.address],
     ["Bank Account Name", profile?.bank_account_name],
     ["Bank Account Number", profile?.bank_account_number],

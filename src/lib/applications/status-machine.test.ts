@@ -89,7 +89,7 @@ describe("application status machine", () => {
 describe("application source", () => {
   it("prioritizes agency_partner_id", () => {
     expect(resolveApplicationOrigin({ agency_partner_id: "x", application_source: "customer" })).toBe("agency_partner");
-    expect(resolveApplicationSourceInfo({ agency_partner_id: "x" }).label).toBe("Digi Partner");
+    expect(resolveApplicationSourceInfo({ agency_partner_id: "x" }).label).toBe("DC Partner");
   });
 
   it("detects explicit partner source text", () => {

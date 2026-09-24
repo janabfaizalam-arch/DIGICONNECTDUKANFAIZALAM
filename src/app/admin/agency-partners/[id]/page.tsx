@@ -118,12 +118,12 @@ export default async function AdminAPDetailPage({ params, searchParams }: PagePr
         className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Agency Partners
+        Back to DC Partners
       </Link>
 
       <AdminPageHeader
-        eyebrow="AP Detailing Center"
-        title={ap.full_name || "Agency Partner"}
+        eyebrow="DC Partner Detailing Center"
+        title={ap.full_name || "DC Partner"}
         description="Verify uploaded KYC documents, perform wallet adjustments, audit commissions, and update configurations."
       />
 

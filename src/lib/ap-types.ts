@@ -1,5 +1,5 @@
 // ============================================================================
-// Agency Partner Type Definitions
+// DC Partner Type Definitions
 // DigiConnect Dukan — AP Ecosystem
 // ============================================================================
 
@@ -24,7 +24,7 @@ export type APTier = {
   updated_at: string;
 };
 
-// ── Agency Partner ─────────────────────────────────────────────────────────
+// ── DC Partner ─────────────────────────────────────────────────────────
 
 /** @deprecated Prefer DigiPartnerType from @/lib/ap/partner-type */
 export type APPartnerType = DigiPartnerType;

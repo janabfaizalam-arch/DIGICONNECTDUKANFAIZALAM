@@ -59,7 +59,7 @@ function matchesPath(pathname: string, base: string, exactOnly?: boolean): boole
 }
 
 /**
- * Reliable active-tab matching for Digi Partner mobile bottom nav.
+ * Reliable active-tab matching for DC Partner mobile bottom nav.
  * Home is exact-only so nested partner routes do not steal the Home highlight.
  */
 export function isNavItemActive(pathname: string, item: ApMobileNavItem): boolean {

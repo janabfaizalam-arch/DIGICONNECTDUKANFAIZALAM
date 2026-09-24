@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DIGI_PARTNER_LANDING_ROUTE, DIGI_PARTNER_LOGIN_ROUTE, normalizePartnerRole } from "./partner-access";
 
-describe("Digi Partner hub routes (stages 4–5)", () => {
+describe("DC Partner hub routes (stages 4–5)", () => {
   it("keeps canonical login and landing routes stable", () => {
     expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/ap/login");
     expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/digi-partner");

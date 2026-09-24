@@ -37,10 +37,10 @@ export async function POST(
       return NextResponse.json({ error: "Database service unavailable." }, { status: 500 });
     }
 
-    // 1. Load Agency Partner record
+    // 1. Load DC Partner record
     const ap = await getAgencyPartnerByUserId(user.id);
     if (!ap) {
-      return NextResponse.json({ error: "Agency Partner profile not found." }, { status: 403 });
+      return NextResponse.json({ error: "DC Partner profile not found." }, { status: 403 });
     }
 
     // 2. Fetch the application

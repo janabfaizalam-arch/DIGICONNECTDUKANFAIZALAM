@@ -59,9 +59,9 @@ describe("admin nav IA", () => {
     expect(sidebar).toContain("/admin/communications");
   });
 
-  it("uses Digi Partners label", () => {
+  it("uses DC Partners label", () => {
     const partners = flattenAdminNav().find((item) => item.href === "/admin/agency-partners");
-    expect(partners?.label).toBe("Digi Partners");
+    expect(partners?.label).toBe("DC Partners");
   });
 
   it("groups the customer workspace in the order the day runs", () => {
@@ -97,6 +97,6 @@ describe("admin nav IA", () => {
   it("builds breadcrumbs", () => {
     const crumbs = resolveAdminBreadcrumbs("/admin/agency-partners");
     expect(crumbs[0]?.label).toBe("Admin");
-    expect(crumbs.some((c) => c.label === "Digi Partners")).toBe(true);
+    expect(crumbs.some((c) => c.label === "DC Partners")).toBe(true);
   });
 });

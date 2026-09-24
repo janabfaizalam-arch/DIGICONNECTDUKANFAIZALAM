@@ -111,10 +111,10 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
         const result = (await response.json().catch(() => ({}))) as CreateAPResult & { error?: string; ok?: boolean };
 
         if (!response.ok) {
-          throw new Error(result.error ?? result.message ?? "Agency Partner could not be created.");
+          throw new Error(result.error ?? result.message ?? "DC Partner could not be created.");
         }
 
-        success(result.message ?? "Agency Partner registered successfully!");
+        success(result.message ?? "DC Partner registered successfully!");
         setCreatedAP({
           message: result.message,
           partnerId: result.partnerId,
@@ -125,8 +125,8 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
         setWhatsapp("");
         setPartnerCode(defaultPartnerCode);
       } catch (error) {
-        setFormError(error instanceof Error ? error.message : "Error onboarding AP.");
-        toastError(error instanceof Error ? error.message : "Error onboarding AP.");
+        setFormError(error instanceof Error ? error.message : "Error onboarding DC Partner.");
+        toastError(error instanceof Error ? error.message : "Error onboarding DC Partner.");
       }
     });
   }
@@ -138,8 +138,8 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
             <div>
-              <p className="font-bold">Agency Partner created successfully!</p>
-              <p className="mt-2">AP ID / Code: <span className="font-mono font-bold text-slate-900">{createdAP.partnerCode}</span></p>
+              <p className="font-bold">DC Partner created successfully!</p>
+              <p className="mt-2">DC Partner ID / Code: <span className="font-mono font-bold text-slate-900">{createdAP.partnerCode}</span></p>
               <p className="mt-1">
                 Portal Login:{" "}
                 <Link href="/ap/login" className="font-bold text-emerald-800 underline">
@@ -160,7 +160,7 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-slate-700">Full Name *</span>
-                <Input name="fullName" placeholder="AP Representative full name" required />
+                <Input name="fullName" placeholder="DC Partner representative full name" required />
               </label>
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-slate-700">Mobile Number *</span>

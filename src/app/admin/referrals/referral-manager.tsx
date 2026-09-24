@@ -598,7 +598,7 @@ export function AdminReferralManager({
             </div>
 
             <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Target Agency Partner</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Target DC Partner</label>
               <select
                 value={targetPartnerId}
                 onChange={(e) => setTargetPartnerId(e.target.value)}
