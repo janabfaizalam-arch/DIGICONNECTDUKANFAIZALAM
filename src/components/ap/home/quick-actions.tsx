@@ -118,6 +118,11 @@ export function QuickActions({ partnerType }: QuickActionsProps) {
       <div
         className={cn(
           "-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1",
+          // scroll-padding, not just padding: a mandatory snap container aligns
+          // the first card to its *snapport*, which ignores padding-left and
+          // pulls the card flush against the screen edge. This keeps the rail's
+          // gutter equal to the page's.
+          "scroll-pl-4 md:scroll-pl-0",
           "[scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden",
           "md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:pb-0 lg:grid-cols-7",
         )}

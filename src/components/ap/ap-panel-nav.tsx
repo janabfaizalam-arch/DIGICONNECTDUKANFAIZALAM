@@ -9,6 +9,7 @@ import {
   Layers,
   Users,
   Bell,
+  ChevronDown,
   Search,
   X,
   Compass,
@@ -318,19 +319,24 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
               </AnimatePresence>
             </div>
 
-            {/* Settings Drawer Button (Profile Badging) */}
+            {/*
+              The panel's only nav now that the permanent left sidebar is gone,
+              so it stops looking like a settings affordance: a filled control
+              with the word on it from `sm` up, not a ghost icon.
+            */}
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="flex h-10 items-center justify-center gap-1.5 rounded-xl px-1.5 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:h-11 md:px-2"
-              aria-label="Open account menu"
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] px-2 text-[var(--dcp-ink-2)] shadow-[var(--dcp-e1)] transition hover:border-[var(--dcp-line-2)] hover:bg-[var(--dcp-surface-3)] hover:text-[var(--dcp-ink)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] md:h-11 md:px-2.5"
+              aria-label="Open panel menu"
               aria-expanded={drawerOpen}
               aria-haspopup="dialog"
             >
-              <div className="h-6 w-6 rounded-full bg-blue-100 border border-blue-200/50 flex items-center justify-center text-blue-700 text-xs font-bold font-mono">
+              <span className="dcp-chip dcp-chip-filled h-6 w-6 font-mono text-[10px] font-bold">
                 {partnerCode ? partnerCode.slice(-2) : "DC"}
-              </div>
-              <span className="hidden text-xs font-bold text-slate-600 md:inline-block">Menu</span>
+              </span>
+              <span className="hidden text-xs font-bold sm:inline-block">Menu</span>
+              <ChevronDown className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
             </button>
           </div>
 

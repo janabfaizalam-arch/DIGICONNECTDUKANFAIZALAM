@@ -1,5 +1,4 @@
 import { ApContentShell } from "@/components/ap/ap-content-shell";
-import { ApSidebar } from "@/components/ap/ap-sidebar";
 import { APPanelNav } from "@/components/ap/ap-panel-nav";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { canManagePartnerTeam } from "@/lib/ap/partner-type";
@@ -24,8 +23,14 @@ export default async function APLayout({ children }: { children: React.ReactNode
     // nothing outside the panel is touched.
     <div data-dcp>
       <APPanelNav canManageTeam={canManageTeam} />
-      <div className="mx-auto flex w-full max-w-[1600px]">
-        <ApSidebar canManageTeam={canManageTeam} />
+      {/*
+        One nav, not two. The panel used to carry a permanently open sidebar on
+        the left AND the same map again behind the Menu button on the right,
+        which cost the content a 252px column on every screen to say something
+        the drawer already said. The drawer is the nav; the width goes to the
+        work.
+      */}
+      <div className="mx-auto flex w-full max-w-[1800px]">
         <ApContentShell>{children}</ApContentShell>
       </div>
     </div>
