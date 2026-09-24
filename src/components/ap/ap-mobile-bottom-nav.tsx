@@ -114,17 +114,17 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
             type="button"
             aria-label="Close"
             onClick={() => setSheetOpen(false)}
-            className="absolute inset-0 h-full w-full bg-slate-900/40 backdrop-blur-[2px]"
+            className="absolute inset-0 h-full w-full bg-[rgba(10,24,52,0.3)] backdrop-blur-sm"
           />
 
           <div
-            className="absolute inset-x-0 bottom-0 max-h-[86dvh] overflow-y-auto rounded-t-[26px] bg-white pb-[calc(112px+env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(15,23,42,0.18)]"
+            className="absolute inset-x-0 bottom-0 max-h-[86dvh] overflow-y-auto rounded-t-[24px] border-t border-white/60 bg-[rgba(246,249,255,0.94)] pb-[calc(106px+env(safe-area-inset-bottom))] shadow-[0_-16px_48px_-12px_rgba(10,24,52,0.35)] backdrop-blur-2xl"
             style={{ animation: "dc-sheet-up 220ms cubic-bezier(0.16,1,0.3,1)" }}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--dcp-line)] bg-[rgba(246,249,255,0.92)] px-4 py-3 backdrop-blur-xl">
               <div>
-                <p className="text-[15px] font-black text-slate-900">Sab kuch</p>
-                <p className="text-[11.5px] font-semibold text-slate-500">
+                <p className="text-[15px] font-bold text-[var(--dcp-ink)]">Sab kuch</p>
+                <p className="text-[11.5px] font-medium text-[var(--dcp-ink-3)]">
                   Panel ka har section, ek jagah
                 </p>
               </div>
@@ -132,7 +132,7 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
                 type="button"
                 onClick={() => setSheetOpen(false)}
                 aria-label="Close"
-                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition active:scale-95 hover:bg-slate-100"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--dcp-ink-3)] transition active:scale-95 hover:bg-white hover:text-[var(--dcp-ink)]"
               >
                 <X className="h-5 w-5" aria-hidden />
               </button>
@@ -141,7 +141,7 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
             <div className="space-y-5 px-4 pt-4">
               {groups.map((group) => (
                 <section key={group.id}>
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-[var(--dcp-ink-4)]">
                     {group.label}
                   </p>
                   <ul className="mt-2 grid gap-2">
@@ -157,26 +157,26 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
                               "flex min-h-[56px] items-center gap-3 rounded-2xl border px-3 py-2.5 transition active:scale-[0.99]",
                               active
                                 ? "border-blue-200 bg-blue-50"
-                                : "border-slate-200 bg-white hover:border-slate-300",
+                                : "border-[var(--dcp-line)] bg-white hover:border-[var(--dcp-line-2)]",
                             )}
                           >
                             <span
                               className={cn(
                                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                                active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500",
+                                active ? "bg-blue-600 text-white" : "bg-[var(--dcp-surface-3)] text-[var(--dcp-ink-3)]",
                               )}
                             >
                               <Icon className="h-4.5 w-4.5" aria-hidden />
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-[13.5px] font-bold text-slate-900">
+                              <span className="block truncate text-[13.5px] font-bold text-[var(--dcp-ink)]">
                                 {item.label}
                               </span>
                               {/*
                                 Two lines, not one clipped one. A sentence cut
                                 mid-word tells a partner less than no sentence.
                               */}
-                              <span className="mt-0.5 block text-[11.5px] font-medium leading-snug text-slate-500 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                              <span className="mt-0.5 block text-[11.5px] font-medium leading-snug text-[var(--dcp-ink-3)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
                                 {item.description}
                               </span>
                             </span>
@@ -203,9 +203,12 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
         <nav
           aria-label="DC Partner primary"
           className={cn(
-            "pointer-events-auto mx-auto flex h-[70px] items-stretch justify-between gap-0.5 px-1.5 py-1.5",
-            "rounded-[22px] border border-white/70 bg-white/92 backdrop-blur-xl",
-            "shadow-[0_10px_36px_rgba(15,23,42,0.14)]",
+            "pointer-events-auto mx-auto flex h-[64px] items-stretch justify-between gap-0.5 px-1.5 py-1.5",
+            // Real glass: 68% white over a heavy blur and a saturation boost,
+            // so the page colour beneath comes through instead of the bar
+            // reading as a solid white slab with a blur nobody can see.
+            "rounded-[20px] border border-white/60 bg-white/68 backdrop-blur-2xl [backdrop-filter:blur(26px)_saturate(1.8)]",
+            "shadow-[0_14px_40px_-10px_rgba(10,24,52,0.28),inset_0_1px_0_rgba(255,255,255,0.75)]",
           )}
         >
           {dock.map((item) => {
@@ -221,11 +224,13 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
                 className={cn(
                   "relative flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1",
                   "transition-colors duration-200 active:scale-95",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
-                  active ? "bg-blue-50 text-blue-700" : "text-slate-400 hover:bg-slate-50/80 hover:text-slate-600",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] focus-visible:ring-offset-2",
+                  active
+                    ? "text-white shadow-[0_6px_16px_-8px_rgba(18,104,232,0.9)] [background-image:var(--dcp-g-brand)]"
+                    : "text-[var(--dcp-ink-3)] hover:bg-white/60 hover:text-[var(--dcp-ink)]",
                 )}
               >
-                <Icon className={cn("h-[22px] w-[22px]", active ? "stroke-[2.2]" : "stroke-[1.7]")} aria-hidden />
+                <Icon className={cn("h-[20px] w-[20px]", active ? "stroke-[2.2]" : "stroke-[1.7]")} aria-hidden />
                 <span
                   className={cn(
                     "max-w-full truncate text-[11px] leading-none tracking-wide",
@@ -234,7 +239,6 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
                 >
                   {item.label}
                 </span>
-                {active ? <span className="absolute bottom-1 h-1 w-1 rounded-full bg-blue-600" aria-hidden /> : null}
               </Link>
             );
           })}
@@ -247,12 +251,14 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
             className={cn(
               "relative flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1",
               "transition-colors duration-200 active:scale-95",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
-              sheetOpen ? "bg-blue-50 text-blue-700" : "text-slate-400 hover:bg-slate-50/80 hover:text-slate-600",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] focus-visible:ring-offset-2",
+              sheetOpen
+                ? "text-white shadow-[0_6px_16px_-8px_rgba(18,104,232,0.9)] [background-image:var(--dcp-g-brand)]"
+                : "text-[var(--dcp-ink-3)] hover:bg-white/60 hover:text-[var(--dcp-ink)]",
             )}
           >
             <LayoutGrid
-              className={cn("h-[22px] w-[22px]", sheetOpen ? "stroke-[2.2]" : "stroke-[1.7]")}
+              className={cn("h-[20px] w-[20px]", sheetOpen ? "stroke-[2.2]" : "stroke-[1.7]")}
               aria-hidden
             />
             <span
