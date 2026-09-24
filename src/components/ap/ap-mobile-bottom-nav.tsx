@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { LayoutGrid, X } from "lucide-react";
 
 import { apDockItems, apNavGroups, isApNavItemActive } from "@/lib/ap/nav";
@@ -23,9 +23,24 @@ import { cn } from "@/lib/utils";
  */
 export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  /**
+   * The tab the partner just tapped, highlighted before the route has settled.
+   *
+   * A dynamic route takes a round trip, and a dock that only lights up once
+   * the server answers feels broken on a slow connection — people tap again.
+   * This lights the tab on touch and hands over to the real pathname when it
+   * arrives.
+   */
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [navVisible, setNavVisible] = useState(true);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
   const lastScrollY = useRef(0);
   const rafId = useRef<number | null>(null);
 
@@ -203,41 +218,57 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
         <nav
           aria-label="DC Partner primary"
           className={cn(
-            "pointer-events-auto mx-auto flex h-[64px] items-stretch justify-between gap-0.5 px-1.5 py-1.5",
-            // Real glass: 68% white over a heavy blur and a saturation boost,
-            // so the page colour beneath comes through instead of the bar
-            // reading as a solid white slab with a blur nobody can see.
-            "rounded-[20px] border border-white/60 bg-white/68 backdrop-blur-2xl [backdrop-filter:blur(26px)_saturate(1.8)]",
-            "shadow-[0_14px_40px_-10px_rgba(10,24,52,0.28),inset_0_1px_0_rgba(255,255,255,0.75)]",
+            "pointer-events-auto mx-auto flex h-[58px] items-stretch justify-between gap-0.5 p-1",
+            // Liquid glass: barely-there white over a deep, saturated blur, a
+            // bright rim along the top edge and a soft one inside the bottom.
+            // The page colour is meant to move through it as you scroll — at
+            // 68% it still read as a white bar with a blur behind it.
+            "rounded-[22px] border border-white/50 bg-white/45",
+            "[backdrop-filter:blur(34px)_saturate(2)] [-webkit-backdrop-filter:blur(34px)_saturate(2)]",
+            "shadow-[0_18px_44px_-12px_rgba(10,24,52,0.32),inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(255,255,255,0.35)]",
           )}
         >
           {dock.map((item) => {
             const Icon = item.icon;
-            const active = !sheetOpen && isApNavItemActive(pathname, item);
+            const active =
+              !sheetOpen &&
+              (pendingHref ? pendingHref === item.href : isApNavItemActive(pathname, item));
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
+                onPointerDown={() => setPendingHref(item.href)}
+                onClick={(event) => {
+                  // Take over the navigation so the highlight and the route
+                  // change begin in the same tick.
+                  event.preventDefault();
+                  setPendingHref(item.href);
+                  startTransition(() => router.push(item.href));
+                }}
                 className={cn(
-                  "relative flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1",
-                  "transition-colors duration-200 active:scale-95",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] focus-visible:ring-offset-2",
+                  "relative flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-[3px] rounded-[18px] px-0.5",
+                  "transition-all duration-200 active:scale-[0.92]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)]",
                   active
-                    ? "text-white shadow-[0_6px_16px_-8px_rgba(18,104,232,0.9)] [background-image:var(--dcp-g-brand)]"
-                    : "text-[var(--dcp-ink-3)] hover:bg-white/60 hover:text-[var(--dcp-ink)]",
+                    ? "bg-white/70 text-[var(--dcp-brand-deep)] shadow-[0_2px_8px_-3px_rgba(10,24,52,0.18)]"
+                    : "text-[var(--dcp-ink-3)] active:bg-white/40",
                 )}
               >
-                <Icon className={cn("h-[20px] w-[20px]", active ? "stroke-[2.2]" : "stroke-[1.7]")} aria-hidden />
+                <Icon
+                  className={cn("h-[19px] w-[19px] transition-transform duration-200", active ? "stroke-[2.1] scale-105" : "stroke-[1.6]")}
+                  aria-hidden
+                />
                 <span
                   className={cn(
-                    "max-w-full truncate text-[11px] leading-none tracking-wide",
-                    active ? "font-semibold" : "font-medium",
+                    "max-w-full truncate text-[9.5px] leading-none tracking-[0.01em]",
+                    active ? "font-bold" : "font-medium",
                   )}
                 >
-                  {item.label}
+                  {item.dockLabel ?? item.label}
                 </span>
               </Link>
             );
@@ -249,25 +280,25 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
             aria-expanded={sheetOpen}
             aria-label="Sab kuch — all sections"
             className={cn(
-              "relative flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1",
-              "transition-colors duration-200 active:scale-95",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)] focus-visible:ring-offset-2",
+              "relative flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-[3px] rounded-[18px] px-0.5",
+              "transition-all duration-200 active:scale-[0.92]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dcp-brand)]",
               sheetOpen
-                ? "text-white shadow-[0_6px_16px_-8px_rgba(18,104,232,0.9)] [background-image:var(--dcp-g-brand)]"
-                : "text-[var(--dcp-ink-3)] hover:bg-white/60 hover:text-[var(--dcp-ink)]",
+                ? "bg-white/70 text-[var(--dcp-brand-deep)] shadow-[0_2px_8px_-3px_rgba(10,24,52,0.18)]"
+                : "text-[var(--dcp-ink-3)] active:bg-white/40",
             )}
           >
             <LayoutGrid
-              className={cn("h-[20px] w-[20px]", sheetOpen ? "stroke-[2.2]" : "stroke-[1.7]")}
+              className={cn("h-[19px] w-[19px] transition-transform duration-200", sheetOpen ? "stroke-[2.1] scale-105" : "stroke-[1.6]")}
               aria-hidden
             />
             <span
               className={cn(
-                "max-w-full truncate text-[11px] leading-none tracking-wide",
-                sheetOpen ? "font-semibold" : "font-medium",
+                "max-w-full truncate text-[9.5px] leading-none tracking-[0.01em]",
+                sheetOpen ? "font-bold" : "font-medium",
               )}
             >
-              Sab kuch
+              More
             </span>
           </button>
         </nav>
