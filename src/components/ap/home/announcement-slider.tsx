@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { prefersReducedMotion } from "@/lib/ap/a11y";
 import type { PartnerAnnouncementBanner } from "@/lib/ap/home-types";
 import { cn } from "@/lib/utils";
 
@@ -11,20 +13,99 @@ type AnnouncementSliderProps = {
   banners: PartnerAnnouncementBanner[];
 };
 
+const ROTATE_MS = 6000;
+
 function isExternalUrl(url: string) {
   return /^https?:\/\//i.test(url);
 }
 
-function mobileBannerSrc(banner: PartnerAnnouncementBanner) {
-  return banner.mobile_image_url || banner.image_url;
+function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priority: boolean }) {
+  const alt = banner.title || "DC Partners announcement";
+  const href = banner.button_url?.trim() || null;
+  const hasOverlay = Boolean(banner.title || banner.description || banner.button_text);
+
+  const overlay = hasOverlay ? (
+    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent p-4 sm:p-6">
+      {banner.title ? (
+        <p className="text-sm font-bold leading-tight text-white sm:text-lg">{banner.title}</p>
+      ) : null}
+      {banner.description ? (
+        <p className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-white/85 sm:text-sm">
+          {banner.description}
+        </p>
+      ) : null}
+      {banner.button_text && href ? (
+        <span className="mt-3 inline-flex rounded-xl bg-[#ff6800] px-3.5 py-2 text-xs font-bold text-white">
+          {banner.button_text}
+        </span>
+      ) : null}
+    </div>
+  ) : null;
+
+  const media = (
+    <>
+      {/* Phone gets the portrait-friendly crop; desktop gets the wide hero. */}
+      <div className="relative aspect-[7/3] w-full overflow-hidden bg-slate-100 md:hidden">
+        <Image
+          src={banner.mobile_image_url || banner.image_url}
+          alt={alt}
+          fill
+          sizes="100vw"
+          className="object-cover"
+          priority={priority}
+        />
+        {overlay}
+      </div>
+      <div className="relative hidden aspect-[21/9] w-full overflow-hidden bg-slate-100 md:block">
+        <Image
+          src={banner.image_url}
+          alt={alt}
+          fill
+          sizes="(max-width: 1600px) 100vw, 1600px"
+          className="object-cover"
+          priority={priority}
+        />
+        {overlay}
+      </div>
+    </>
+  );
+
+  if (!href) return media;
+
+  return (
+    <Link
+      href={href}
+      target={isExternalUrl(href) ? "_blank" : undefined}
+      rel={isExternalUrl(href) ? "noopener noreferrer" : undefined}
+      className="block rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+    >
+      {media}
+    </Link>
+  );
 }
 
+/**
+ * The offers and announcements rail.
+ *
+ * All slides are laid out in one flex track and moved with a transform, so
+ * changing slide is a compositor job rather than a swap of `<Image>` sources —
+ * that is what stops the flash the old one-slide-at-a-time version had, and it
+ * keeps the next banner already decoded.
+ *
+ * Auto-rotation stops while the pointer is over it, while focus is inside it,
+ * and entirely when the reader asks for reduced motion.
+ */
 export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [held, setHeld] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const count = banners.length;
+
+  useEffect(() => {
+    setReduceMotion(prefersReducedMotion());
+  }, []);
 
   const goTo = useCallback(
     (next: number) => {
@@ -35,72 +116,22 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
   );
 
   useEffect(() => {
-    if (count <= 1 || paused) return;
-    const timer = window.setInterval(() => goTo(index + 1), 5500);
+    if (count <= 1 || held || reduceMotion) return;
+    const timer = window.setInterval(() => setIndex((i) => (i + 1) % count), ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [count, goTo, index, paused]);
+  }, [count, held, reduceMotion]);
 
   if (!count) return null;
 
-  const current = banners[index];
-  const href = current.button_url?.trim() || null;
-  const mobileSrc = mobileBannerSrc(current);
-  const desktopSrc = current.image_url;
-  const alt = current.title || "DC Partner announcement";
-
-  const overlay =
-    current.title || current.description || current.button_text ? (
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/70 via-slate-950/25 to-transparent p-4 sm:p-6">
-        {current.title ? (
-          <p className="text-sm font-extrabold text-white sm:text-lg">{current.title}</p>
-        ) : null}
-        {current.description ? (
-          <p className="mt-1 line-clamp-2 text-xs font-medium text-white/85 sm:text-sm">{current.description}</p>
-        ) : null}
-        {current.button_text && href ? (
-          <span className="mt-3 inline-flex rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
-            {current.button_text}
-          </span>
-        ) : null}
-      </div>
-    ) : null;
-
-  const slideInner = (
-    <>
-      {/* Mobile: locked 7:3 — no desktop aspect / fixed heights */}
-      <div className="relative aspect-[7/3] w-full overflow-hidden bg-slate-100 md:hidden">
-        <Image
-          src={mobileSrc}
-          alt={alt}
-          fill
-          sizes="100vw"
-          className="object-cover"
-          priority={index === 0}
-        />
-        {overlay}
-      </div>
-
-      {/* Desktop: wider hero ratio */}
-      <div className="relative hidden aspect-[21/9] w-full overflow-hidden bg-slate-100 md:block">
-        <Image
-          src={desktopSrc}
-          alt={alt}
-          fill
-          sizes="100vw"
-          className="object-cover"
-          priority={index === 0}
-        />
-        {overlay}
-      </div>
-    </>
-  );
-
   return (
     <section
-      aria-label="Partner announcements"
-      className="relative w-full overflow-hidden"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      aria-roledescription="carousel"
+      aria-label="Offers and announcements"
+      className="relative overflow-hidden rounded-[18px] border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      onMouseEnter={() => setHeld(true)}
+      onMouseLeave={() => setHeld(false)}
+      onFocusCapture={() => setHeld(true)}
+      onBlurCapture={() => setHeld(false)}
       onTouchStart={(event) => {
         touchStartX.current = event.changedTouches[0]?.clientX ?? null;
       }}
@@ -114,35 +145,61 @@ export function AnnouncementSlider({ banners }: AnnouncementSliderProps) {
         goTo(delta < 0 ? index + 1 : index - 1);
       }}
     >
-      {href ? (
-        <Link
-          href={href}
-          target={isExternalUrl(href) ? "_blank" : undefined}
-          rel={isExternalUrl(href) ? "noopener noreferrer" : undefined}
-          className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-        >
-          {slideInner}
-        </Link>
-      ) : (
-        slideInner
-      )}
+      <div
+        className={cn("flex w-full", !reduceMotion && "transition-transform duration-500 ease-out")}
+        style={{ transform: `translate3d(-${index * 100}%, 0, 0)` }}
+      >
+        {banners.map((banner, i) => (
+          <div
+            key={banner.id}
+            className="w-full shrink-0"
+            aria-roledescription="slide"
+            aria-label={`${i + 1} of ${count}`}
+            // Off-screen slides keep their layout but leave the tab order, so a
+            // keyboard never lands on a link that is scrolled out of view.
+            aria-hidden={i !== index}
+            inert={i !== index}
+          >
+            <Slide banner={banner} priority={i === 0} />
+          </div>
+        ))}
+      </div>
 
       {count > 1 ? (
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
-          {banners.map((banner, i) => (
-            <button
-              key={banner.id}
-              type="button"
-              aria-label={`Go to announcement ${i + 1}`}
-              aria-current={i === index}
-              onClick={() => goTo(i)}
-              className={cn(
-                "h-2 w-2 rounded-full transition",
-                i === index ? "bg-white" : "bg-white/50 hover:bg-white/80",
-              )}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            aria-label="Previous announcement"
+            onClick={() => goTo(index - 1)}
+            className="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow-sm backdrop-blur transition duration-150 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] md:flex"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            aria-label="Next announcement"
+            onClick={() => goTo(index + 1)}
+            className="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow-sm backdrop-blur transition duration-150 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] md:flex"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+
+          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
+            {banners.map((banner, i) => (
+              <button
+                key={banner.id}
+                type="button"
+                aria-label={`Go to announcement ${i + 1}`}
+                aria-current={i === index}
+                onClick={() => goTo(i)}
+                className={cn(
+                  "h-2 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+                  i === index ? "w-5 bg-white" : "w-2 bg-white/55 hover:bg-white/80",
+                )}
+              />
+            ))}
+          </div>
+        </>
       ) : null}
     </section>
   );
