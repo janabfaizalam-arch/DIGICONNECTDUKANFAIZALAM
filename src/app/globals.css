@@ -2506,3 +2506,271 @@ input[id*="email"],
     transform: none;
   }
 }
+
+/* ==========================================================================
+   DC Partners panel — design system
+   ==========================================================================
+
+   Style: "Soft UI Evolution" — subtle depth and improved shadows, softer than
+   flat design and far clearer than neumorphism; WCAG AA+ throughout.
+
+   The panel used to be white cards on a near-white page, which read as an
+   unfinished admin tool rather than a product a partner pays attention to.
+   Two things fix that and both live here rather than in the components:
+
+   1. A tinted surface ladder. The page is not white and not grey — it is a
+      navy-tinted wash, and every card sits a measurable step above it. Depth
+      comes from that step, not from borders doing all the work.
+   2. Colour that means something. Actions wear brand gradients; state wears a
+      reserved status hue with a soft companion for its background.
+
+   Scoped to [data-dcp] so nothing outside the partner panel inherits it.
+   ========================================================================== */
+
+[data-dcp] {
+  /* ── Surface ladder ───────────────────────────────────────────────────── */
+  --dcp-canvas: #edf1fa;
+  --dcp-surface: #ffffff;
+  --dcp-surface-2: #f5f8ff;
+  --dcp-surface-3: #e9f0fd;
+  --dcp-line: #dde5f4;
+  --dcp-line-2: #c6d4ec;
+
+  /* ── Ink. Navy-black, not slate — it reads warmer against the tint. ───── */
+  --dcp-ink: #0a1834;
+  --dcp-ink-2: #37496b;
+  --dcp-ink-3: #5d6e8f;
+  --dcp-ink-4: #636d82;
+
+  /* ── Brand ────────────────────────────────────────────────────────────── */
+  --dcp-brand: #1268e8;
+  --dcp-brand-deep: #0b4fb8;
+  --dcp-brand-soft: #e7f0fe;
+  --dcp-accent: #f25a00;
+  --dcp-accent-soft: #fff1e7;
+  --dcp-navy: #082b63;
+
+  /* ── State. Reserved: never reused as a data series. ──────────────────── */
+  --dcp-good: #0f9268;
+  --dcp-good-soft: #e6f7f1;
+  --dcp-warn: #c98500;
+  --dcp-warn-soft: #fdf5e6;
+  --dcp-bad: #d1344a;
+  --dcp-bad-soft: #fdeef0;
+
+  /* ── Gradients. What makes a button look pressed-on rather than drawn. ── */
+  --dcp-g-brand: linear-gradient(135deg, #0b4fb8 0%, #1268e8 100%);
+  --dcp-g-accent: linear-gradient(135deg, #ff6800 0%, #ffa15c 100%);
+  --dcp-g-navy: linear-gradient(140deg, #061a42 0%, #0b4fb8 58%, #1b74ee 100%);
+  --dcp-g-good: linear-gradient(135deg, #0b7c58 0%, #0e8661 100%);
+
+  /* ── Elevation ────────────────────────────────────────────────────────── */
+  --dcp-e1: 0 1px 2px rgba(10, 24, 52, 0.05), 0 1px 3px rgba(10, 24, 52, 0.04);
+  --dcp-e2: 0 2px 6px rgba(10, 24, 52, 0.05), 0 10px 20px -8px rgba(10, 24, 52, 0.12);
+  --dcp-e3: 0 6px 14px rgba(10, 24, 52, 0.06), 0 22px 40px -16px rgba(10, 24, 52, 0.2);
+
+  /* ── Radius ───────────────────────────────────────────────────────────── */
+  --dcp-r-card: 16px;
+  --dcp-r-ctrl: 11px;
+
+  /* ── Density 8/10 — a dashboard, not a marketing page. ────────────────── */
+  --dcp-gap: 10px;
+  --dcp-section: 18px;
+  --dcp-pad: 14px;
+
+  color: var(--dcp-ink);
+}
+
+/* The page itself. Two very wide, very faint brand washes stop the canvas
+   reading as flat paint; they are fixed so scrolling does not drag them. */
+[data-dcp-page] {
+  background-color: var(--dcp-canvas);
+  background-image:
+    radial-gradient(900px 480px at 8% -8%, rgba(18, 104, 232, 0.1), transparent 62%),
+    radial-gradient(760px 420px at 102% 4%, rgba(242, 90, 0, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  /* ── Card ───────────────────────────────────────────────────────────────
+     A hairline plus a soft shadow. The hairline alone reads as a wireframe;
+     the shadow alone smudges against the tint. */
+  .dcp-card {
+    background: var(--dcp-surface);
+    border: 1px solid var(--dcp-line);
+    border-radius: var(--dcp-r-card);
+    box-shadow: var(--dcp-e1);
+  }
+
+  .dcp-card-raised {
+    box-shadow: var(--dcp-e2);
+  }
+
+  /* An interactive card lifts 1px. Anything more and a grid of them wobbles. */
+  .dcp-card-link {
+    transition:
+      box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 200ms ease;
+  }
+  .dcp-card-link:hover {
+    border-color: var(--dcp-line-2);
+    box-shadow: var(--dcp-e2);
+    transform: translateY(-1px);
+  }
+  .dcp-card-link:active {
+    transform: translateY(0) scale(0.995);
+  }
+
+  /* ── Inset ──────────────────────────────────────────────────────────────
+     A panel inside a card. Tinted rather than grey, so nesting stays legible. */
+  .dcp-inset {
+    background: var(--dcp-surface-2);
+    border: 1px solid color-mix(in srgb, var(--dcp-line) 60%, transparent);
+    border-radius: 12px;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────────
+     The gradient runs 135°; the inset top highlight is what keeps it from
+     looking like a flat fill with a colour ramp painted on. */
+  .dcp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border-radius: var(--dcp-r-ctrl);
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
+      filter 200ms ease;
+  }
+  .dcp-btn:active {
+    transform: scale(0.97);
+  }
+
+  .dcp-btn-brand {
+    background-image: var(--dcp-g-brand);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 6px 16px -6px rgba(18, 104, 232, 0.6);
+  }
+  .dcp-btn-brand:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 10px 22px -8px rgba(18, 104, 232, 0.7);
+  }
+
+  .dcp-btn-accent {
+    background-image: var(--dcp-g-accent);
+    color: var(--dcp-ink);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 6px 16px -6px rgba(242, 90, 0, 0.6);
+  }
+  .dcp-btn-accent:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 10px 22px -8px rgba(242, 90, 0, 0.7);
+  }
+
+  .dcp-btn-good {
+    background-image: var(--dcp-g-good);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.26),
+      0 6px 16px -6px rgba(15, 146, 104, 0.6);
+  }
+  .dcp-btn-good:hover {
+    filter: brightness(1.06);
+  }
+
+  /* The quiet button. Tinted, never plain white — white-on-white was half of
+     what made the old panel read as unfinished. */
+  .dcp-btn-quiet {
+    background: var(--dcp-surface-2);
+    border: 1px solid var(--dcp-line);
+    color: var(--dcp-ink-2);
+    box-shadow: var(--dcp-e1);
+  }
+  .dcp-btn-quiet:hover {
+    background: var(--dcp-surface-3);
+    border-color: var(--dcp-line-2);
+    color: var(--dcp-ink);
+  }
+
+  /* ── Icon chip ──────────────────────────────────────────────────────────
+     The square behind a quick-action or nav icon. */
+  .dcp-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--dcp-brand-soft);
+    color: var(--dcp-brand-deep);
+    transition:
+      background 200ms ease,
+      color 200ms ease,
+      box-shadow 200ms ease;
+  }
+  .dcp-chip-filled {
+    background-image: var(--dcp-g-brand);
+    color: #fff;
+    box-shadow: 0 4px 10px -4px rgba(18, 104, 232, 0.65);
+  }
+
+  /* ── Section heading ────────────────────────────────────────────────────
+     A short brand rule before the words, so sections separate without a
+     divider line across the whole width. */
+  .dcp-h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--dcp-ink);
+  }
+  .dcp-h2::before {
+    content: "";
+    width: 3px;
+    height: 14px;
+    border-radius: 999px;
+    background-image: var(--dcp-g-brand);
+  }
+
+  /* ── Focus ──────────────────────────────────────────────────────────────
+     One visible ring for the whole panel; never removed. */
+  [data-dcp] :focus-visible {
+    outline: 2px solid var(--dcp-brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dcp] .dcp-card-link,
+  [data-dcp] .dcp-btn {
+    transition: none;
+  }
+  [data-dcp] .dcp-card-link:hover,
+  [data-dcp] .dcp-card-link:active,
+  [data-dcp] .dcp-btn:active {
+    transform: none;
+  }
+}
+
+/* The panel's face. Declared after the token block so it wins over --font-sans
+   for everything inside [data-dcp] without touching the marketing site. */
+[data-dcp] {
+  font-family: var(--font-dcp), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv05" 1;
+}

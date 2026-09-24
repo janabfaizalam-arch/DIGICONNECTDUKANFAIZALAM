@@ -23,17 +23,17 @@ export function OfficeWorkSummary({ summary }: OfficeWorkSummaryProps) {
 
   return (
     <section aria-label="Office work" className="space-y-2.5">
-      <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Office work</h2>
+      <h2 className="dcp-h2">Office work</h2>
 
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Link
             key={tile.label}
             href={tile.href}
-            className="rounded-[18px] border border-slate-200/70 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 hover:border-slate-300 hover:shadow-[0_10px_26px_-16px_rgba(15,23,42,0.3)] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+            className="rounded-[18px] border border-[var(--dcp-line)] bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 hover:border-[var(--dcp-line-2)] hover:shadow-[0_10px_26px_-16px_rgba(15,23,42,0.3)] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tile.label}</p>
-            <p className="mt-1.5 text-[22px] font-bold leading-none tracking-tight text-slate-950">{tile.value}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--dcp-ink-4)]">{tile.label}</p>
+            <p className="mt-1.5 text-[21px] font-bold leading-none tracking-[-0.02em] text-[var(--dcp-ink)]">{tile.value}</p>
           </Link>
         ))}
       </div>

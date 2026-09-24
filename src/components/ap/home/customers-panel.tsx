@@ -23,8 +23,8 @@ export function CustomersPanel({ customers, variant = "own" }: CustomersPanelPro
   return (
     <section aria-label={heading} className="space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[13px] font-bold tracking-tight text-slate-900">{heading}</h2>
-        <Link href="/ap/customers" className="text-xs font-bold text-[#1268e8] hover:underline">
+        <h2 className="dcp-h2">{heading}</h2>
+        <Link href="/ap/customers" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
           All customers
         </Link>
       </div>
@@ -39,12 +39,12 @@ export function CustomersPanel({ customers, variant = "own" }: CustomersPanelPro
           }
         />
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-[18px] border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <ul className="divide-y divide-[var(--dcp-line)] overflow-hidden dcp-card">
           {customers.map((customer) => (
             <li key={customer.id}>
               <Link
                 href={customer.href}
-                className="flex items-center gap-3 px-3.5 py-3 transition duration-150 hover:bg-slate-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1268e8]"
+                className="flex items-center gap-3 px-3.5 py-3 transition duration-150 hover:bg-[var(--dcp-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1268e8]"
               >
                 <span
                   aria-hidden
@@ -53,8 +53,8 @@ export function CustomersPanel({ customers, variant = "own" }: CustomersPanelPro
                   {partnerInitials(customer.name)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-slate-900">{customer.name}</span>
-                  <span className="block truncate font-mono text-[11px] font-medium text-slate-400">
+                  <span className="block truncate text-sm font-bold text-[var(--dcp-ink)]">{customer.name}</span>
+                  <span className="block truncate font-mono text-[11px] font-medium text-[var(--dcp-ink-4)]">
                     {customer.mobile}
                   </span>
                 </span>
@@ -67,7 +67,7 @@ export function CustomersPanel({ customers, variant = "own" }: CustomersPanelPro
       {variant === "own" ? (
         <Link
           href="/ap/customers/new"
-          className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition duration-150 hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2"
+          className="dcp-btn dcp-btn-quiet"
         >
           <UserPlus className="h-3.5 w-3.5" aria-hidden />
           New customer

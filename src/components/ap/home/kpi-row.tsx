@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BadgeIndianRupee, FileStack, Layers, Wallet } from "lucide-react";
 
 import type { PartnerKpi } from "@/lib/ap/home-types";
 import { cn } from "@/lib/utils";
@@ -8,57 +8,90 @@ type KpiRowProps = {
   kpis: PartnerKpi[];
 };
 
+/** Each KPI's own hue, so the four tiles read as four things, not one grid. */
 const TONE = {
-  default: { rail: "bg-[#1268e8]", spark: "#1268e8" },
-  success: { rail: "bg-[#0f9268]", spark: "#0f9268" },
-  pending: { rail: "bg-[#c98500]", spark: "#c98500" },
-  urgent: { rail: "bg-[#d1344a]", spark: "#d1344a" },
+  default: { ink: "var(--dcp-brand)", grad: "var(--dcp-g-brand)", soft: "var(--dcp-brand-soft)" },
+  success: { ink: "var(--dcp-good)", grad: "var(--dcp-g-good)", soft: "var(--dcp-good-soft)" },
+  pending: { ink: "var(--dcp-warn)", grad: "linear-gradient(135deg,#B37600 0%,#E9A61F 100%)", soft: "var(--dcp-warn-soft)" },
+  urgent: { ink: "var(--dcp-bad)", grad: "linear-gradient(135deg,#B62B3E 0%,#E8556B 100%)", soft: "var(--dcp-bad-soft)" },
+} as const;
+
+const ICONS = {
+  "today-collection": Wallet,
+  "today-applications": FileStack,
+  "open-work": Layers,
+  "commission-earned": BadgeIndianRupee,
 } as const;
 
 const DELTA = {
-  up: { Icon: ArrowUpRight, className: "text-[#0f7a57]" },
-  down: { Icon: ArrowDownRight, className: "text-[#c22e42]" },
-  flat: { Icon: Minus, className: "text-slate-500" },
+  up: { Icon: ArrowUpRight, className: "text-[var(--dcp-good)]" },
+  down: { Icon: ArrowDownRight, className: "text-[var(--dcp-bad)]" },
+  flat: { Icon: null, className: "text-[var(--dcp-ink-3)]" },
 } as const;
 
 /**
  * A 12-point sparkline, drawn by hand rather than by a chart library.
  *
- * It is decoration for a number that is already written out beside it, so it
- * gets `aria-hidden` and no axes, no tooltip and no legend: a reader who
- * cannot see it loses nothing. Hand-rolled because pulling Recharts into the
+ * Decoration for a number already written out beside it, so it is
+ * `aria-hidden` and carries no axes, tooltip or legend — a reader who cannot
+ * see it loses nothing. Hand-rolled because pulling Recharts into the
  * server-rendered KPI row would make four tiles cost a client bundle.
+ *
+ * A flat series is the case worth designing for: a new partner sees all
+ * zeroes, and a dead straight line pinned to the floor looks like a rendering
+ * bug. A flat run is drawn on the baseline as a dashed rule instead.
  */
 function Sparkline({ values, color }: { values: number[]; color: string }) {
   if (values.length < 2) return null;
 
   const width = 100;
-  const height = 28;
+  const height = 30;
   const max = Math.max(...values);
   const min = Math.min(...values);
-  const span = max - min || 1;
-  const step = width / (values.length - 1);
+  const flat = max === min;
 
+  if (flat) {
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-[30px] w-full" aria-hidden focusable="false">
+        <line
+          x1="0"
+          y1={height - 6}
+          x2={width}
+          y2={height - 6}
+          stroke={color}
+          strokeWidth={2}
+          strokeDasharray="3 5"
+          strokeLinecap="round"
+          opacity={0.45}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
+  }
+
+  const span = max - min;
+  const step = width / (values.length - 1);
   const points = values.map((value, index) => {
     const x = index * step;
-    // 2px of padding top and bottom so the stroke never clips at the extremes.
-    const y = height - 2 - ((value - min) / span) * (height - 4);
+    // 3px of padding top and bottom so the stroke never clips at the extremes.
+    const y = height - 3 - ((value - min) / span) * (height - 6);
     return [x, y] as const;
   });
 
   const line = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const area = `${line} L${width},${height} L0,${height} Z`;
   const [lastX, lastY] = points[points.length - 1];
+  const gradientId = `spark-${color.replace(/[^a-z0-9]/gi, "")}`;
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      className="mt-2 h-7 w-full"
-      aria-hidden
-      focusable="false"
-    >
-      <path d={area} fill={color} fillOpacity={0.1} />
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-[30px] w-full" aria-hidden focusable="false">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.26} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradientId})`} />
       <path
         d={line}
         fill="none"
@@ -77,53 +110,66 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
 /**
  * The four headline numbers.
  *
- * Four, not six: the old overview grid repeated figures that the earnings and
- * team panels below were already showing, so the page said the same thing
- * three times. Anything stated here is not restated further down.
+ * Four, not six: the old overview grid repeated figures the earnings and team
+ * panels below were already showing, so the page said the same thing three
+ * times. Anything stated here is not restated further down.
  */
 export function KpiRow({ kpis }: KpiRowProps) {
   if (!kpis.length) return null;
 
   return (
-    <section aria-label="Key numbers" className="space-y-2.5">
-      <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Key numbers</h2>
+    <section aria-label="Key numbers" className="space-y-2">
+      <h2 className="dcp-h2">Key numbers</h2>
 
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const tone = TONE[kpi.tone];
           const delta = kpi.delta ? DELTA[kpi.delta.tone] : null;
+          const Icon = ICONS[kpi.key as keyof typeof ICONS] ?? Wallet;
 
           return (
             <Link
               key={kpi.key}
               href={kpi.href}
-              className={cn(
-                "group relative flex flex-col overflow-hidden rounded-[18px] border border-slate-200/70 bg-white p-3.5",
-                "shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200",
-                "hover:border-slate-300 hover:shadow-[0_10px_26px_-16px_rgba(15,23,42,0.3)]",
-                "active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1268e8] focus-visible:ring-offset-2",
-              )}
+              className="dcp-card dcp-card-link group relative flex flex-col overflow-hidden p-3"
             >
-              {/* Tone rail — a second, non-colour-only cue sits in the delta text. */}
-              <span aria-hidden className={cn("absolute inset-x-0 top-0 h-[3px]", tone.rail)} />
+              {/* A faint wash of the tile's own hue, so the four read apart. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full opacity-[0.5] blur-2xl transition-opacity duration-300 group-hover:opacity-80"
+                style={{ background: tone.soft }}
+              />
 
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{kpi.label}</p>
+              <div className="relative flex items-start justify-between gap-2">
+                <p className="text-[9.5px] font-bold uppercase leading-tight tracking-[0.1em] text-[var(--dcp-ink-3)]">
+                  {kpi.label}
+                </p>
+                <span
+                  aria-hidden
+                  className="dcp-chip h-7 w-7 shrink-0 text-white"
+                  style={{ backgroundImage: tone.grad }}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+              </div>
 
-              <p className="mt-1.5 truncate text-[22px] font-bold leading-none tracking-tight text-slate-950 lg:text-2xl">
+              <p className="relative mt-1.5 truncate text-[23px] font-bold leading-none tracking-[-0.02em] text-[var(--dcp-ink)]">
                 {kpi.value}
               </p>
 
               {kpi.delta && delta ? (
-                <p className={cn("mt-1.5 flex items-center gap-1 text-[11px] font-bold", delta.className)}>
-                  <delta.Icon className="h-3 w-3" aria-hidden />
+                <p className={cn("relative mt-1 flex items-center gap-1 text-[10.5px] font-bold", delta.className)}>
+                  {delta.Icon ? <delta.Icon className="h-3 w-3" aria-hidden /> : null}
                   {kpi.delta.label}
-                  <span className="font-semibold text-slate-400">{kpi.delta.caption}</span>
+                  <span className="font-medium text-[var(--dcp-ink-4)]">{kpi.delta.caption}</span>
                 </p>
               ) : (
-                <p className="mt-1.5 text-[11px] font-semibold text-slate-400">&nbsp;</p>
+                <p className="relative mt-1 text-[10.5px] font-medium text-[var(--dcp-ink-4)]">&nbsp;</p>
               )}
 
-              <Sparkline values={kpi.spark} color={tone.spark} />
+              <div className="relative mt-1.5">
+                <Sparkline values={kpi.spark} color={tone.ink} />
+              </div>
             </Link>
           );
         })}

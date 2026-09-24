@@ -24,7 +24,7 @@ export default async function APDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F6F8FC] text-[#0F172A]">
+    <main data-dcp-page className="min-h-screen">
       <PartnerHomeView data={data} />
     </main>
   );

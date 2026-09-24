@@ -19,12 +19,15 @@ export default async function APLayout({ children }: { children: React.ReactNode
   const canManageTeam = canManagePartnerTeam(partner?.partner_type);
 
   return (
-    <>
+    // data-dcp scopes the panel's design system (see globals.css). Everything
+    // inside gets the tinted surface ladder, IBM Plex Sans and the focus ring;
+    // nothing outside the panel is touched.
+    <div data-dcp>
       <APPanelNav canManageTeam={canManageTeam} />
       <div className="mx-auto flex w-full max-w-[1600px]">
         <ApSidebar canManageTeam={canManageTeam} />
         <ApContentShell>{children}</ApContentShell>
       </div>
-    </>
+    </div>
   );
 }

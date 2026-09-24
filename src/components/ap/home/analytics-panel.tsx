@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  * paint and become clickable first; the placeholders hold the charts' exact
  * final height meanwhile, so nothing shifts when it lands.
  */
-const chartLoading = () => <div className="h-[170px] animate-pulse rounded-xl bg-slate-100" aria-hidden />;
+const chartLoading = () => <div className="h-[170px] animate-pulse rounded-xl bg-[var(--dcp-surface-3)]" aria-hidden />;
 
 const CollectionTrend = dynamic(
   () => import("@/components/ap/home/analytics-charts").then((m) => m.CollectionTrend),
@@ -31,7 +31,7 @@ const ApplicationsTrend = dynamic(
 );
 const ServiceMix = dynamic(
   () => import("@/components/ap/home/analytics-charts").then((m) => m.ServiceMix),
-  { loading: () => <div className="h-[136px] animate-pulse rounded-xl bg-slate-100" aria-hidden /> },
+  { loading: () => <div className="h-[136px] animate-pulse rounded-xl bg-[var(--dcp-surface-3)]" aria-hidden /> },
 );
 
 type AnalyticsPanelProps = {
@@ -53,9 +53,9 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[18px] border border-slate-200/70 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <p className="text-[13px] font-bold tracking-tight text-slate-900">{title}</p>
-      <p className="mt-0.5 text-[11px] font-medium text-slate-500">{subtitle}</p>
+    <div className="dcp-card p-3.5">
+      <p className="dcp-h2">{title}</p>
+      <p className="mt-0.5 text-[11px] font-medium text-[var(--dcp-ink-3)]">{subtitle}</p>
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -106,19 +106,19 @@ function StatusMix({ analytics }: { analytics: PartnerAnalytics }) {
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: STATUS_BUCKET_COLOR[item.key] }}
               />
-              <span className="w-28 shrink-0 truncate text-[11px] font-semibold text-slate-700 sm:w-32">
+              <span className="w-28 shrink-0 truncate text-[11px] font-semibold text-[var(--dcp-ink-2)] sm:w-32">
                 {item.label}
               </span>
-              <span aria-hidden className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <span aria-hidden className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--dcp-surface-3)]">
                 <span
                   className="block h-full rounded-full"
                   style={{ width: `${share}%`, backgroundColor: STATUS_BUCKET_COLOR[item.key] }}
                 />
               </span>
-              <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-slate-400">
+              <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-[var(--dcp-ink-4)]">
                 {share}%
               </span>
-              <span className="w-7 shrink-0 text-right text-[11px] font-bold tabular-nums text-slate-900">
+              <span className="w-7 shrink-0 text-right text-[11px] font-bold tabular-nums text-[var(--dcp-ink)]">
                 {item.count}
               </span>
             </li>
@@ -152,7 +152,7 @@ export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
   if (analytics.isEmpty) {
     return (
       <section aria-label="Business analytics" className="space-y-2.5">
-        <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Business analytics</h2>
+        <h2 className="dcp-h2">Business analytics</h2>
         <DashboardEmptyState
           title="Charts appear after your first application"
           description="Collection, service mix and status trends all build from the applications you submit."
@@ -164,9 +164,9 @@ export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
   return (
     <section aria-label="Business analytics" className="space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[13px] font-bold tracking-tight text-slate-900">Business analytics</h2>
+        <h2 className="dcp-h2">Business analytics</h2>
 
-        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5" role="group" aria-label="Chart range">
+        <div className="inline-flex rounded-[11px] border border-[var(--dcp-line)] bg-[var(--dcp-surface)] p-0.5 shadow-[var(--dcp-e1)]" role="group" aria-label="Chart range">
           {RANGES.map((option) => (
             <button
               key={option.key}
@@ -175,7 +175,9 @@ export function AnalyticsPanel({ analytics }: AnalyticsPanelProps) {
               onClick={() => setRange(option.key)}
               className={cn(
                 "rounded-[10px] px-3 py-1.5 text-[11px] font-bold transition duration-150",
-                range === option.key ? "bg-[#1268e8] text-white" : "text-slate-600 hover:bg-slate-50",
+                range === option.key
+                  ? "text-white shadow-[0_5px_14px_-7px_rgba(18,104,232,0.85)] [background-image:var(--dcp-g-brand)]"
+                  : "text-[var(--dcp-ink-2)] hover:bg-[var(--dcp-surface-2)]",
               )}
             >
               {option.label}
