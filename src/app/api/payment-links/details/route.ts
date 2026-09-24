@@ -1,6 +1,30 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
+/*
+  Why this route reads four tables instead of one clever query.
+
+  It used to select
+    "*, applications(...), agency_partners(...), profiles(full_name)"
+  and every one of those embeds was a trap:
+
+    profiles      - payment_links.customer_id references auth.users(id), not
+                    public.profiles, so PostgREST has no relationship to walk.
+    applications  - there are TWO foreign keys between these tables:
+                      payment_links.application_id -> applications.id
+                      applications.payment_link_id -> payment_links.id
+                    PostgREST refuses an embed it cannot disambiguate, and the
+                    ambiguity fails the WHOLE query, not just that column.
+    agency_partners - one FK today, but it rides in the same select, so it dies
+                    with the rest and would break the same way the moment a
+                    second FK is added.
+
+  A failed query returns no row, and the customer was told the link did not
+  exist. Every related row is now fetched by its own id in its own query: no
+  relationship to resolve, nothing to disambiguate, and a later schema change
+  cannot silently take the page down again. Do not reintroduce the embeds.
+*/
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,20 +39,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Database configuration error." }, { status: 500 });
     }
 
-    /*
-      Lookup payment link.
-
-      `profiles(full_name)` used to be embedded here and it could never work:
-      payment_links.customer_id references auth.users(id), not public.profiles,
-      so PostgREST has no relationship to follow and fails the whole query. The
-      branch below then reported that failure as "Payment link not found", so
-      every customer who opened a perfectly valid link was told it did not
-      exist. The customer's name is read separately, by id — profiles.id is the
-      auth user id in this schema, so one direct lookup answers it.
-    */
     const { data: link, error: linkError } = await supabase
       .from("payment_links")
-      .select("*, applications(service_name, status, service_slug), agency_partners(full_name)")
+      .select("*")
       .eq("code", code)
       .maybeSingle();
 
@@ -45,13 +58,32 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Payment link not found." }, { status: 404 });
     }
 
-    const { data: customerProfile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", link.customer_id)
-      .maybeSingle();
+    // Names are decoration on this page: the amount, the code and the expiry
+    // are what the customer pays against. A lookup that fails falls back to a
+    // generic label rather than taking a working link down with it.
+    const [customerResult, partnerResult, applicationResult] = await Promise.all([
+      link.customer_id
+        ? supabase.from("profiles").select("full_name").eq("id", link.customer_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      link.partner_id
+        ? supabase
+            .from("agency_partners")
+            .select("full_name")
+            .eq("id", link.partner_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      link.application_id
+        ? supabase
+            .from("applications")
+            .select("service_name, status, service_slug")
+            .eq("id", link.application_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
-    const customerName = customerProfile?.full_name || "Customer";
+    const customerName = customerResult.data?.full_name || "Customer";
+    const partnerName = partnerResult.data?.full_name || "DigiConnect";
+    const serviceName = applicationResult.data?.service_name || "Service";
 
     const now = new Date();
     const expiresAt = new Date(link.expires_at);
@@ -71,17 +103,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "This payment link has been cancelled." }, { status: 400 });
     }
 
-    const partnerName = (link.agency_partners as unknown as Record<string, unknown> | null)?.full_name as string | null || "DigiConnect";
-
     if (link.status === "paid") {
-      return NextResponse.json({ 
-        success: true, 
-        status: "paid", 
+      return NextResponse.json({
+        success: true,
+        status: "paid",
         paidAt: link.paid_at,
         customerName,
-        serviceName: link.applications?.service_name || "Service",
+        serviceName,
         partnerName,
-        amount: link.amount 
+        amount: link.amount,
       });
     }
 
@@ -100,7 +130,7 @@ export async function GET(request: Request) {
       baseAmount,
       gstAmount,
       customerName,
-      serviceName: link.applications?.service_name || "Service",
+      serviceName,
       partnerName,
       applicationId: link.application_id,
       expiresAt: link.expires_at,

@@ -84,6 +84,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Application is already paid." }, { status: 400 });
     }
 
+    /*
+      payment_links.application_id is UNIQUE, so there is at most one link per
+      application and a plain insert fails the second time a partner presses
+      Generate — which they do constantly, because the first link expired, or
+      because they simply want the WhatsApp message again. That failure read
+      "Failed to save payment link details.", which says nothing.
+
+      So: a live link is handed back as-is (pressing Generate twice should give
+      the same link, not an error), and a dead one is replaced in place.
+    */
+    const { data: existingLink } = await supabase
+      .from("payment_links")
+      .select("id, code, status, expires_at")
+      .eq("application_id", application.id)
+      .maybeSingle();
+
+    const isLive =
+      existingLink?.status === "pending" && new Date(existingLink.expires_at) > new Date();
+
+    if (existingLink?.status === "paid") {
+      return NextResponse.json({ error: "Application is already paid." }, { status: 400 });
+    }
+
     // Generate unique code
     let code = generatePaymentCode();
     let isUnique = false;
@@ -116,22 +139,32 @@ export async function POST(request: Request) {
 
     const customerName = customer?.full_name || "Customer";
 
-    // Insert payment link
-    const { error: insertError } = await supabase
-      .from("payment_links")
-      .insert({
+    if (isLive && existingLink) {
+      // Reuse the live link rather than minting a second one this table cannot
+      // hold. Its own code and expiry are what the customer already has.
+      code = existingLink.code;
+      expiresAt.setTime(new Date(existingLink.expires_at).getTime());
+    } else {
+      const row = {
         code,
         application_id: application.id,
         partner_id: ap.id,
         customer_id: application.user_id,
         amount: application.amount,
-        status: "pending",
+        status: "pending" as const,
         expires_at: expiresAt.toISOString(),
-      });
+        paid_at: null,
+        updated_at: new Date().toISOString(),
+      };
 
-    if (insertError) {
-      console.error("[payment-links/generate] Insert error:", insertError);
-      return NextResponse.json({ error: "Failed to save payment link details." }, { status: 500 });
+      const { error: writeError } = existingLink
+        ? await supabase.from("payment_links").update(row).eq("id", existingLink.id)
+        : await supabase.from("payment_links").insert(row);
+
+      if (writeError) {
+        console.error("[payment-links/generate] Write error:", writeError);
+        return NextResponse.json({ error: "Failed to save payment link details." }, { status: 500 });
+      }
     }
 
     const paymentLinkUrl = `${request.headers.get("origin") || "https://rnos.in"}/pay/${code}`;

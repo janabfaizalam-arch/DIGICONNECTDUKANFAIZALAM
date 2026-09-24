@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
+import { attachPaymentLinkRelations } from "@/lib/payments/payment-link-relations";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { APPaymentLinksClient } from "./client";
 
@@ -27,26 +28,12 @@ export default async function APPaymentLinksPage() {
     return <div>Database connection error</div>;
   }
 
-  // Fetch payment links
+  // Plain columns only, then the names by id: embedding applications or
+  // profiles here fails the whole query and empties this page. See
+  // attachPaymentLinkRelations for why.
   const { data: links, error } = await supabase
     .from("payment_links")
-    .select(`
-      id,
-      code,
-      amount,
-      status,
-      created_at,
-      expires_at,
-      paid_at,
-      applications (
-        service_name,
-        customer_details
-      ),
-      profiles (
-        full_name,
-        mobile
-      )
-    `)
+    .select("id, code, amount, status, created_at, expires_at, paid_at, application_id, customer_id, partner_id")
     .eq("partner_id", ap.id)
     .order("created_at", { ascending: false });
 
@@ -54,5 +41,7 @@ export default async function APPaymentLinksPage() {
     console.error("Error fetching payment links:", error);
   }
 
-  return <APPaymentLinksClient links={(links as unknown) as import("./client").PaymentLink[]} />;
+  const hydrated = await attachPaymentLinkRelations(supabase, links);
+
+  return <APPaymentLinksClient links={(hydrated as unknown) as import("./client").PaymentLink[]} />;
 }

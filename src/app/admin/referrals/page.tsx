@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { attachPaymentLinkRelations } from "@/lib/payments/payment-link-relations";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminReferralManager } from "./referral-manager";
@@ -28,11 +29,15 @@ export default async function AdminReferralsPage() {
     .select("*, agency_partners(id, full_name, business_name)")
     .order("created_at", { ascending: false });
 
-  // Load Payment Links
-  const { data: paymentLinks } = await supabase
+  // Load Payment Links. Plain columns, then the names by id — the embeds this
+  // used to carry fail outright in this schema and left the tab empty. See
+  // attachPaymentLinkRelations.
+  const { data: paymentLinkRows } = await supabase
     .from("payment_links")
-    .select("*, applications(service_name, status), profiles(full_name), agency_partners(full_name)")
+    .select("*")
     .order("created_at", { ascending: false });
+
+  const paymentLinks = await attachPaymentLinkRelations(supabase, paymentLinkRows);
 
   // Load Commissions
   const { data: commissions } = await supabase
