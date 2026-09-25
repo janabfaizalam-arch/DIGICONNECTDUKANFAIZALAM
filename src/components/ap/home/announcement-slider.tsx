@@ -58,16 +58,28 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
         {overlay}
       </div>
       {/*
-        The ratio sets the height until the panel gets wide, then a cap takes
-        over: at 1700px a 21:9 banner is 730px tall and owns the whole first
-        screen. object-cover crops rather than squashes past the cap.
+        One ratio, no height cap.
+
+        This used to be `aspect-[21/9] max-h-[230px]`, and the cap won at every
+        desktop width -- 21:9 only fits under 230px below 537px wide, which the
+        panel never is. So the box was really "whatever is wide by 230 tall",
+        a strip that ran from 3.2:1 on a small laptop to 7.6:1 on a large
+        screen. Two things followed: it read as a letterbox rather than a
+        banner, and because object-cover crops to fill, a 21:9 artwork lost
+        over two thirds of its height at 1750px -- which is how a headline came
+        to be sliced through the middle.
+
+        5:1 is the whole rule now. The height simply follows the width (145px
+        at a small laptop, 350px at full width), the proportion never changes,
+        and one 5:1 artwork fits every screen with nothing cropped.
       */}
-      <div className="relative hidden aspect-[21/9] max-h-[230px] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
+      <div className="relative hidden aspect-[5/1] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
         <Image
           src={banner.image_url}
           alt={alt}
           fill
-          sizes="(max-width: 1600px) 100vw, 1600px"
+          // The panel caps at 1800px, so that is the widest this is ever drawn.
+          sizes="(max-width: 1800px) 100vw, 1800px"
           className="object-cover"
           priority={priority}
         />
