@@ -14,7 +14,7 @@ import {
   FileText, UserCheck, Building, Briefcase, Car, FileCheck,
   HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
   SwitchCamera, Zap, ZapOff, Clock, CheckCircle2, History,
-  MapPin, User, TrendingUp, Award, Link2, Copy,
+  MapPin, User, TrendingUp, Award, Copy,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
@@ -384,10 +384,36 @@ export function PartnerApplicationWizard({
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [isScriptReady, setIsScriptReady] = useState(false);
   const [paymentError,  setPaymentError]  = useState<string | null>(null);
-  const [paymentMethodType, setPaymentMethodType] = useState<"immediate" | "link">("immediate");
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
   const [paymentLinkCode, setPaymentLinkCode] = useState<string | null>(null);
   const [paymentLinkUpiQr, setPaymentLinkUpiQr] = useState<string | null>(null);
+
+  /*
+    The payment step prepares itself.
+
+    It used to ask the partner to pick a method and press Generate, which meant
+    the customer standing at the counter waited through a choice, a submit and
+    a page change before a QR existed. Now reaching this step — which only
+    happens by pressing Proceed on Review — creates the applications, the order
+    and the link up front, so the QR is simply there to be scanned.
+
+    The order is kept rather than re-created, so pressing "Pay by card" opens
+    the checkout for the very order the QR is for, never a second one.
+  */
+  const [preparedOrder, setPreparedOrder] = useState<{
+    orderId: string;
+    amount: number;
+    currency: string;
+    applicationIds: string[];
+  } | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
+  /*
+    What the prepared payment was prepared *for*. A partner who goes back and
+    edits the cart must not be handed the previous cart's QR, so re-entering
+    the step with a different signature prepares again.
+  */
+  const preparedSignatureRef = useRef<string | null>(null);
   const [paymentLinkMessage, setPaymentLinkMessage] = useState<string | null>(null);
 
   // Camera extras
@@ -858,12 +884,21 @@ export function PartnerApplicationWizard({
     }
   }, [cartItems, cartTotal, customer, docFiles, toastSuccess, toastError]);
 
-  const triggerPaymentLinkGeneration = useCallback(async () => {
-    setIsSubmitting(true);
-    setPaymentError(null);
+  /**
+   * Create the applications, the Razorpay order and the payment link, in that
+   * order, and keep all three.
+   *
+   * This runs on arriving at the payment step rather than on a button, so the
+   * QR is on screen before the customer has their phone out. Everything it
+   * produces is reused: the order by the card checkout, the link by the QR and
+   * the share buttons.
+   */
+  const preparePayment = useCallback(async (signature: string) => {
+    setIsPreparing(true);
+    setPrepareError(null);
     try {
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
-      
+
       const orderRes = await fetch("/api/create-order", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -892,23 +927,25 @@ export function PartnerApplicationWizard({
 
       const orderData = await orderRes.json();
       if (!orderRes.ok || !orderData.application_ids?.length) {
-        throw new Error(orderData.error ?? orderData.message ?? `Order creation failed (HTTP ${orderRes.status})`);
+        throw new Error(orderData.error ?? orderData.message ?? `Could not prepare the payment (HTTP ${orderRes.status})`);
       }
 
-      // Generate one payment link for the whole cart. Sending only the first
-      // application is how the customer came to be charged for one service
-      // while the partner was shown the cart total.
+      setPreparedOrder({
+        orderId: orderData.order_id,
+        amount: Number(orderData.amount ?? 0),
+        currency: orderData.currency ?? "INR",
+        applicationIds: orderData.application_ids as string[],
+      });
+
       const linkRes = await fetch("/api/payment-links/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicationIds: orderData.application_ids,
-        }),
+        body: JSON.stringify({ applicationIds: orderData.application_ids }),
       });
       const linkData = await linkRes.json();
 
       if (!linkRes.ok) {
-        throw new Error(linkData.error ?? "Failed to generate payment link");
+        throw new Error(linkData.error ?? "Could not create the payment link");
       }
 
       setPaymentLinkUrl(linkData.url);
@@ -919,20 +956,91 @@ export function PartnerApplicationWizard({
       setSuccessDetails({
         applicationIds: orderData.application_ids,
         customerName:   customer.name,
-        serviceTitle:   cartItems.map(i => `${i.service.title} ×${i.quantity}`).join(", "),
-        // The server is the authority on what the link actually charges.
+        serviceTitle:   cartItems.map(i => `${i.service.title} \u00d7${i.quantity}`).join(", "),
         amountPaid:     Number(linkData.amount ?? cartTotal),
       });
-      setCurrentStep(6);
-      toastSuccess?.("Payment link generated!");
-    } catch (e: any) {
+
+      preparedSignatureRef.current = signature;
+    } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
-      setPaymentError(errMsg);
+      setPrepareError(errMsg);
       toastError?.(errMsg);
     } finally {
-      setIsSubmitting(false);
+      setIsPreparing(false);
     }
-  }, [cartItems, customer, toastError, toastSuccess, cartTotal]);
+  }, [cartItems, customer, cartTotal, toastError]);
+
+  /**
+   * Open Razorpay Checkout for an order that already exists.
+   *
+   * Extracted so the payment step's prepared order and the fallback path that
+   * creates one both open the same checkout, verify the same way, and finalise
+   * the same applications.
+   */
+  const openRazorpayCheckout = useCallback((orderData: {
+    order_id: string;
+    amount: number;
+    currency?: string;
+    application_id?: string;
+    application_ids?: string[];
+  }) => {
+    const rzpOptions = {
+      key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount:      orderData.amount,         // ← AUTHORITATIVE — from server, never frontend
+      currency:    orderData.currency ?? "INR",
+      name:        "DigiConnect Dukan",
+      description: cartItems.map(i => i.service.title).join(", "),
+      order_id:    orderData.order_id,
+      prefill: { name: customer.name, contact: customer.mobile },
+      theme: { color: "#2563eb" },
+      handler: async (payRes: Record<string, unknown>) => {
+        payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id, stage: "SUCCESS" });
+        try {
+          // Verify signature
+          payLog("VERIFY", { applicationIds: orderData.application_ids, stage: "START" });
+          const verRes  = await fetch("/api/verify-payment", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...payRes,
+              application_id:  orderData.application_id,
+              application_ids: orderData.application_ids,
+            }),
+          });
+          const verData = await verRes.json();
+          payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback, stage: "DONE" });
+
+          if (!verRes.ok || !verData.success) {
+            throw new Error(verData.error ?? verData.message ?? `Verification failed (HTTP ${verRes.status})`);
+          }
+
+          // Finalize applications
+          payLog("FINALIZE", { applicationIds: orderData.application_ids, stage: "START" });
+          await handleFinalSubmit(
+            { ...payRes, amount_paise: orderData.amount },
+            orderData.application_ids as string[],
+          );
+          payLog("FINALIZE", { stage: "COMPLETED" });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Verification failed.";
+          setPaymentError(msg);
+          toastError(msg);
+          setIsSubmitting(false);
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          payLog("RAZORPAY_OPEN", { stage: "CANCELLED" });
+          toastError("Payment cancelled.");
+          setIsSubmitting(false);
+        },
+      },
+    };
+
+    const rzp = new (window as any).Razorpay(rzpOptions);
+    rzp.open();
+    payLog("RAZORPAY_OPEN", { stage: "OPENED" });
+  }, [cartItems, customer, handleFinalSubmit, toastError]);
 
   // ── Razorpay checkout — server is SOLE source of amount ──────────────────
   const triggerRazorpayCheckout = useCallback(async () => {
@@ -950,6 +1058,25 @@ export function PartnerApplicationWizard({
     }, 15000);
 
     try {
+      /*
+        The payment step already created the applications and an order when it
+        prepared the QR. Reuse that order: creating a second one here would
+        leave two orders for one payment, and the QR the customer may already
+        have scanned would belong to the wrong one.
+      */
+      if (preparedOrder?.orderId) {
+        clearTimeout(timeoutId);
+        payLog("RAZORPAY_OPEN", { orderId: preparedOrder.orderId, stage: "REUSE_PREPARED" });
+        openRazorpayCheckout({
+          order_id: preparedOrder.orderId,
+          amount: preparedOrder.amount,
+          currency: preparedOrder.currency,
+          application_id: preparedOrder.applicationIds[0],
+          application_ids: preparedOrder.applicationIds,
+        });
+        return;
+      }
+
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
       payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile, stage: "START" });
 
@@ -1010,62 +1137,7 @@ export function PartnerApplicationWizard({
 
       payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100, stage: "INITIALIZE" });
 
-      const rzpOptions = {
-        key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount:      orderData.amount,         // ← AUTHORITATIVE — from server, never frontend
-        currency:    orderData.currency ?? "INR",
-        name:        "DigiConnect Dukan",
-        description: cartItems.map(i => i.service.title).join(", "),
-        order_id:    orderData.order_id,
-        prefill: { name: customer.name, contact: customer.mobile },
-        theme: { color: "#2563eb" },
-        handler: async (payRes: Record<string, unknown>) => {
-          payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id, stage: "SUCCESS" });
-          try {
-            // Verify signature
-            payLog("VERIFY", { applicationIds: orderData.application_ids, stage: "START" });
-            const verRes  = await fetch("/api/verify-payment", {
-              method:  "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...payRes,
-                application_id:  orderData.application_id,
-                application_ids: orderData.application_ids,
-              }),
-            });
-            const verData = await verRes.json();
-            payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback, stage: "DONE" });
-
-            if (!verRes.ok || !verData.success) {
-              throw new Error(verData.error ?? verData.message ?? `Verification failed (HTTP ${verRes.status})`);
-            }
-
-            // Finalize applications
-            payLog("FINALIZE", { applicationIds: orderData.application_ids, stage: "START" });
-            await handleFinalSubmit(
-              { ...payRes, amount_paise: orderData.amount },
-              orderData.application_ids as string[],
-            );
-            payLog("FINALIZE", { stage: "COMPLETED" });
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : "Verification failed.";
-            setPaymentError(msg);
-            toastError(msg);
-            setIsSubmitting(false);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            payLog("RAZORPAY_OPEN", { stage: "CANCELLED" });
-            toastError("Payment cancelled.");
-            setIsSubmitting(false);
-          },
-        },
-      };
-
-      const rzp = new (window as any).Razorpay(rzpOptions);
-      rzp.open();
-      payLog("RAZORPAY_OPEN", { stage: "OPENED" });
+      openRazorpayCheckout(orderData);
     } catch (e: any) {
       clearTimeout(timeoutId);
       let errMsg = "Payment initialisation error.";
@@ -1080,7 +1152,31 @@ export function PartnerApplicationWizard({
       toastError(errMsg);
       setIsSubmitting(false);
     }
-  }, [cartItems, customer, cartTotal, handleFinalSubmit, toastError]);
+  }, [cartItems, customer, cartTotal, toastError, openRazorpayCheckout, preparedOrder]);
+
+  /*
+    Arriving at the payment step prepares it.
+
+    Keyed on what is being paid for, so editing the cart and coming back
+    prepares again rather than presenting the previous cart's QR. The ref means
+    simply stepping back and forward does not.
+  */
+  const paymentSignature = useMemo(
+    () =>
+      JSON.stringify({
+        items: cartItems.map(i => [i.service.slug, i.quantity]),
+        mobile: customer.mobile,
+        name: customer.name,
+      }),
+    [cartItems, customer.mobile, customer.name],
+  );
+
+  useEffect(() => {
+    if (currentStep !== 5) return;
+    if (isPreparing) return;
+    if (preparedSignatureRef.current === paymentSignature) return;
+    void preparePayment(paymentSignature);
+  }, [currentStep, paymentSignature, preparePayment, isPreparing]);
 
   // ── Step navigation ───────────────────────────────────────────────────────
   const handleNext = useCallback(() => {
@@ -1096,13 +1192,10 @@ export function PartnerApplicationWizard({
     } else if (currentStep === 4) {
       setCurrentStep(5);
     } else if (currentStep === 5) {
-      if (paymentMethodType === "immediate") {
-        triggerRazorpayCheckout();
-      } else {
-        triggerPaymentLinkGeneration();
-      }
+      // The QR is already on screen; this button is the card/netbanking path.
+      triggerRazorpayCheckout();
     }
-  }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, triggerPaymentLinkGeneration, paymentMethodType, toastError, isSubmitting]);
+  }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, toastError, isSubmitting]);
 
   const handlePrev = useCallback(() => {
     if (currentStep > 1 && currentStep < 6) setCurrentStep(p => p - 1);
@@ -1821,57 +1914,86 @@ export function PartnerApplicationWizard({
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
                   <h2 className="text-lg font-black text-[var(--dcp-ink)]">Payment</h2>
-                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">Secure online payment via Razorpay gateway.</p>
+                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">
+                    Let the customer scan, or send them the link.
+                  </p>
                 </div>
 
                 {/* Amount summary */}
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-2">
                   {cartItems.map(item => (
                     <div key={item.service.slug} className="flex justify-between text-xs text-[var(--dcp-ink-2)]">
-                      <span>{item.service.title}{item.quantity > 1 && ` ×${item.quantity}`}</span>
+                      <span>{item.service.title}{item.quantity > 1 && ` \u00d7${item.quantity}`}</span>
                       <span className="font-bold">₹{item.service.customer_fee * item.quantity}</span>
                     </div>
                   ))}
                   <div className="border-t border-blue-200 pt-2 flex justify-between items-center">
-                    <span className="text-sm font-black text-[var(--dcp-ink)]">Estimated Total</span>
-                    <span className="text-xl font-black text-[var(--dcp-brand-deep)]">₹{cartTotal}</span>
+                    <span className="text-sm font-black text-[var(--dcp-ink)]">Total</span>
+                    <span className="text-xl font-black text-[var(--dcp-brand-deep)]">
+                      ₹{preparedOrder ? preparedOrder.amount / 100 : cartTotal}
+                    </span>
                   </div>
-                  <p className="text-[10px] text-blue-500 font-semibold">
-                    ✓ Exact payable amount confirmed by server at payment time.
-                  </p>
                 </div>
 
-                {/* Razorpay method card */}
-                <div 
-                  onClick={() => setPaymentMethodType("immediate")}
-                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "immediate" ? "border-blue-500 shadow-sm" : "border-[var(--dcp-line)] opacity-70 hover:opacity-100")}>
-                  <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "immediate" ? "bg-blue-600" : "bg-slate-200")}>
-                    <CreditCard className={cn("h-5 w-5", paymentMethodType === "immediate" ? "text-white" : "text-[var(--dcp-ink-3)]")} />
+                {isPreparing && !paymentLinkUrl ? (
+                  <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--dcp-line-2)] bg-[var(--dcp-surface-2)] px-4 py-10">
+                    <RefreshCw className="h-5 w-5 animate-spin text-[var(--dcp-brand)]" />
+                    <p className="text-xs font-bold text-[var(--dcp-ink-3)]">Preparing the payment…</p>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-extrabold text-[var(--dcp-ink)]">Razorpay Secure Checkout</p>
-                    <p className="text-[10px] text-[var(--dcp-ink-4)] font-semibold mt-0.5">
-                      Cards • UPI • NetBanking • Wallets
+                ) : null}
+
+                {prepareError && !paymentLinkUrl ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-xs font-black text-red-700">Could not prepare the payment</p>
+                    <p className="mt-1 text-[11px] font-medium leading-snug text-red-600">{prepareError}</p>
+                    <button
+                      onClick={() => void preparePayment(paymentSignature)}
+                      disabled={isPreparing}
+                      className="dcp-btn dcp-btn-quiet mt-3 text-xs disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Try again
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* The QR, at the size the customer actually scans it from. */}
+                {paymentLinkUrl ? (
+                  <div className="flex flex-col items-center rounded-2xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] p-2 sm:p-4">
+                    <PaymentLinkQr
+                      url={paymentLinkUrl}
+                      code={paymentLinkCode ?? undefined}
+                      upiQrImageUrl={paymentLinkUpiQr}
+                      amount={preparedOrder ? preparedOrder.amount / 100 : cartTotal}
+                    />
+
+                    {/* Sharing sits under the QR: the same link, for a customer
+                        who is not standing here. */}
+                    <div className="mt-4 flex w-full max-w-[400px] gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(paymentLinkUrl);
+                          toastSuccess?.("Link copied!");
+                        }}
+                        className="dcp-btn dcp-btn-quiet h-10 flex-1 text-xs"
+                      >
+                        <Copy className="h-3.5 w-3.5" /> Copy link
+                      </button>
+                      <a
+                        href={`https://wa.me/${customer.mobile ? `91${customer.mobile}` : ""}?text=${encodeURIComponent(paymentLinkMessage || paymentLinkUrl)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#25D366] text-xs font-bold text-white transition hover:bg-[#20ba56]"
+                      >
+                        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a5.8 5.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                        WhatsApp
+                      </a>
+                    </div>
+
+                    <p className="mt-3 text-center text-[10.5px] font-medium text-[var(--dcp-ink-4)]">
+                      Application is saved. It is marked paid the moment the payment lands.
                     </p>
                   </div>
-                  {paymentMethodType === "immediate" && <Check className="h-5 w-5 text-[var(--dcp-brand)]" />}
-                </div>
-                
-                {/* Payment Link method card */}
-                <div 
-                  onClick={() => setPaymentMethodType("link")}
-                  className={cn("flex items-center gap-3 bg-white border-2 rounded-xl p-4 cursor-pointer transition-all", paymentMethodType === "link" ? "border-blue-500 shadow-sm" : "border-[var(--dcp-line)] opacity-70 hover:opacity-100")}>
-                  <div className={cn("p-2.5 rounded-xl shrink-0 transition-colors", paymentMethodType === "link" ? "bg-blue-600" : "bg-slate-200")}>
-                    <Link2 className={cn("h-5 w-5", paymentMethodType === "link" ? "text-white" : "text-[var(--dcp-ink-3)]")} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-extrabold text-[var(--dcp-ink)]">Generate Payment Link</p>
-                    <p className="text-[10px] text-[var(--dcp-ink-4)] font-semibold mt-0.5">
-                      Send a secure link to the customer
-                    </p>
-                  </div>
-                  {paymentMethodType === "link" && <Check className="h-5 w-5 text-[var(--dcp-brand)]" />}
-                </div>
+                ) : null}
 
                 {!isScriptReady && (
                   <div className="flex items-center gap-2 text-xs text-[var(--dcp-ink-4)] font-semibold">
@@ -1904,50 +2026,6 @@ export function PartnerApplicationWizard({
                   <span className="font-bold text-emerald-700">Services: </span>
                   <span className="text-emerald-600">{successDetails.serviceTitle}</span>
                 </div>
-                {paymentMethodType === "link" && paymentLinkUrl && (
-                  <div className="w-full space-y-3 pt-3 border-t border-[var(--dcp-line)]">
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col items-center">
-                      <p className="text-xs font-bold text-blue-800 mb-3">Payment Link Generated</p>
-
-                      {/* The customer is standing right here: let them scan
-                          rather than wait for a message to arrive. */}
-                      <PaymentLinkQr
-                        url={paymentLinkUrl}
-                        code={paymentLinkCode ?? undefined}
-                        upiQrImageUrl={paymentLinkUpiQr}
-                        amount={successDetails.amountPaid}
-                        className="mb-3"
-                      />
-
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={paymentLinkUrl}
-                        className="w-full text-center text-xs font-mono bg-white border border-blue-200 rounded-lg py-2 px-3 focus:outline-none"
-                      />
-                      <div className="flex gap-2 mt-3 w-full">
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(paymentLinkUrl);
-                            toastSuccess?.("Link copied!");
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-blue-200 text-[var(--dcp-brand-deep)] font-bold py-2 rounded-lg text-xs hover:bg-blue-50"
-                        >
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </button>
-                        <a 
-                          href={`https://wa.me/?text=${encodeURIComponent(paymentLinkMessage || paymentLinkUrl)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white font-bold py-2 rounded-lg text-xs hover:bg-green-700"
-                        >
-                          <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a5.8 5.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-                          WhatsApp
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 <button
                   onClick={() => window.location.reload()}
                   className="[background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors active:scale-95"
@@ -2017,7 +2095,7 @@ export function PartnerApplicationWizard({
 
           <button
             onClick={handleNext}
-            disabled={isSubmitting || (currentStep === 5 && paymentMethodType === "immediate" && !isScriptReady)}
+            disabled={isSubmitting || (currentStep === 5 && (!isScriptReady || isPreparing || !preparedOrder))}
             className={cn(
               "dcp-btn h-11 flex-1 text-[13px] disabled:opacity-60",
               currentStep === 5 ? "dcp-btn-good" : "dcp-btn-brand",
@@ -2026,9 +2104,7 @@ export function PartnerApplicationWizard({
             {isSubmitting ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                {currentStep === 5
-                  ? (paymentMethodType === "immediate" ? "Preparing secure payment…" : "Generating payment link…")
-                  : "Please wait..."}
+                {currentStep === 5 ? "Opening secure payment…" : "Please wait..."}
               </>
             ) : currentStep === 1 ? (
               <>
@@ -2038,8 +2114,8 @@ export function PartnerApplicationWizard({
               </>
             ) : currentStep === 5 ? (
               <>
-                {paymentMethodType === "immediate" ? <CreditCard className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
-                {paymentMethodType === "immediate" ? "Pay with Razorpay" : "Generate Link"}
+                <CreditCard className="h-4 w-4" />
+                Pay by card / netbanking
               </>
             ) : (
               <>Continue <ArrowRight className="h-4 w-4" /></>
@@ -2118,11 +2194,7 @@ export function PartnerApplicationWizard({
             <button
               onClick={() => {
                 setPaymentError(null);
-                if (paymentMethodType === "immediate") {
-                  void triggerRazorpayCheckout();
-                } else {
-                  void triggerPaymentLinkGeneration();
-                }
+                void triggerRazorpayCheckout();
               }}
               disabled={isSubmitting}
               className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-[11px] font-black hover:bg-white/25 transition disabled:opacity-50"
