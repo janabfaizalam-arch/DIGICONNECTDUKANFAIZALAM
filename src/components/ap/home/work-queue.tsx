@@ -13,6 +13,8 @@ type WorkQueueProps = {
   className?: string;
 };
 
+const VISIBLE = 4;
+
 function QueueRow({ item }: { item: PartnerPendingWorkItem }) {
   return (
     <li className="dcp-card flex flex-col gap-2.5 p-2.5 transition duration-150 hover:border-[var(--dcp-line-2)] sm:flex-row sm:items-center sm:gap-3">
@@ -70,14 +72,18 @@ export function WorkQueue({ groups, className }: WorkQueueProps) {
     );
   }
 
+  /*
+    Four rows a group. The tab's own badge still shows the real count, so
+    nothing is hidden -- the rail just stops being a list to scroll past.
+  */
   const current = populated[Math.min(active, populated.length - 1)];
 
   return (
     <section aria-label="Work queue" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Work queue</h2>
-        <Link href="/ap/applications" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
-          All applications
+        <Link href="/ap/applications" className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95">
+          See all
         </Link>
       </div>
 
@@ -124,10 +130,20 @@ export function WorkQueue({ groups, className }: WorkQueueProps) {
         aria-labelledby={populated.length > 1 ? `work-tab-${current.key}` : undefined}
         className="space-y-2"
       >
-        {current.items.map((item) => (
+        {current.items.slice(0, VISIBLE).map((item) => (
           <QueueRow key={item.id} item={item} />
         ))}
       </ul>
+
+      {/* The tab already carries the true count; this is the way to the rest. */}
+      {current.items.length > VISIBLE ? (
+        <Link
+          href="/ap/applications"
+          className="dcp-btn dcp-btn-quiet w-full text-[11.5px]"
+        >
+          {current.items.length - VISIBLE} more in {current.label.toLowerCase()}
+        </Link>
+      ) : null}
     </section>
   );
 }

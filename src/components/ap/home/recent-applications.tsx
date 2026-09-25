@@ -39,13 +39,29 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+/**
+ * Four rows, then a link.
+ *
+ * The dashboard's job is to say what needs attention, not to be the
+ * applications page; eight rows of it pushed everything below off the screen
+ * and were scrolled past rather than read. The rest are one tap away, and the
+ * link carries the count so the number is never hidden.
+ */
+const VISIBLE = 4;
+
 export function RecentApplications({ items, className }: RecentApplicationsProps) {
+  const shown = items.slice(0, VISIBLE);
+  const hidden = items.length - shown.length;
+
   return (
     <section aria-label="Recent applications" className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="dcp-h2">Recent applications</h2>
-        <Link href="/ap/applications" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
-          View all
+        <Link
+          href="/ap/applications"
+          className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95"
+        >
+          {hidden > 0 ? `See all · ${items.length}` : "See all"}
         </Link>
       </div>
 
@@ -66,7 +82,7 @@ export function RecentApplications({ items, className }: RecentApplicationsProps
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--dcp-line)]">
-                {items.map((item) => (
+                {shown.map((item) => (
                   <tr key={item.id} className="transition duration-150 hover:bg-[var(--dcp-surface-2)]">
                     <td className="px-4 py-2.5 font-bold text-[var(--dcp-ink)]">{item.customerName}</td>
                     <td className="px-4 py-2.5 text-[var(--dcp-ink-2)]">{item.serviceName}</td>
@@ -93,7 +109,7 @@ export function RecentApplications({ items, className }: RecentApplicationsProps
 
           {/* Phone: cards, because a five-column table on 360px is unreadable. */}
           <ul className="space-y-2 md:hidden">
-            {items.map((item) => (
+            {shown.map((item) => (
               <li
                 key={item.id}
                 className="dcp-card p-3.5"
