@@ -34,10 +34,34 @@ describe("DC Partner payment preparation contract", () => {
   it("partner wizard marks portal=ap and does not send client amount as authority", () => {
     const contents = readFileSync(join(process.cwd(), "src/components/portal/partner-application-wizard.tsx"), "utf8");
     expect(contents).toContain(`portal:   "ap"`);
-    expect(contents).toContain("Preparing secure payment");
     expect(contents).toContain("Retry Payment");
-    // Sticky Pay button must not require Razorpay script for Generate Link mode.
-    expect(contents).toContain('paymentMethodType === "immediate" && !isScriptReady');
+
+    // The wizard never tells the server what to charge. It sends the service
+    // slugs and reads the amount back; a client-supplied `amount` here would
+    // be a price the customer could edit.
+    expect(contents).not.toMatch(/body: JSON\.stringify\(\{\s*\n\s*amount:/);
+    expect(contents).toContain("serviceSlugs: slugs");
+
+    // Card checkout still waits for Razorpay's script before it can open.
+    expect(contents).toContain("!isScriptReady");
+  });
+
+  it("partner wizard prepares the payment on arrival, with no Generate step", () => {
+    const contents = readFileSync(join(process.cwd(), "src/components/portal/partner-application-wizard.tsx"), "utf8");
+
+    // Reaching the payment step creates the applications, the order and the
+    // link, so the QR is on screen without the partner pressing anything.
+    expect(contents).toContain("preparePayment");
+    expect(contents).toContain("if (currentStep !== 5) return;");
+    expect(contents).toContain("preparedSignatureRef.current === paymentSignature");
+
+    // The method toggle and its Generate button are gone.
+    expect(contents).not.toContain("paymentMethodType");
+    expect(contents).not.toContain("Generate Payment Link");
+
+    // Card checkout reuses the prepared order rather than making a second one.
+    expect(contents).toContain("preparedOrder?.orderId");
+    expect(contents).toContain("openRazorpayCheckout(");
   });
 
   it("payment-links generate uses membership-first AP authorization", () => {

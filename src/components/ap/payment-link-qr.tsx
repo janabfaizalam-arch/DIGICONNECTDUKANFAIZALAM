@@ -137,20 +137,31 @@ export function PaymentLinkQr({
   }
 
   return (
-    <div className={cn("flex flex-col items-center", className)}>
+    <div className={cn("flex w-full flex-col items-center", className)}>
       <div
         ref={containerRef}
-        className="rounded-2xl border border-[var(--dcp-line)] bg-white p-3 shadow-sm"
+        className={cn(
+          "rounded-2xl border border-[var(--dcp-line)] bg-white shadow-sm",
+          // The poster carries its own white margin; the drawn QR needs padding.
+          showingUpi ? "w-full max-w-[400px] overflow-hidden p-1" : "p-3",
+        )}
       >
         {showingUpi ? (
-          // Razorpay renders and hosts this one, so it is shown as-is.
+          /*
+            Razorpay does not hand back a bare QR: image_url is a whole
+            printable poster -- its branding, the UPI app logos, the business
+            name -- and the code itself is only the middle third of it. Drawn
+            at the size of a bare QR, the actual code lands around 70px and a
+            phone cannot read it.
+
+            So this one is sized by the width it is given, not by a fixed box,
+            and given a floor that keeps the code inside it scannable.
+          */
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={upiQrImageUrl as string}
             alt="Scan with any UPI app to pay"
-            width={200}
-            height={200}
-            className="h-[200px] w-[200px]"
+            className="block h-auto w-full max-w-[400px]"
           />
         ) : (
         <QRCodeSVG
