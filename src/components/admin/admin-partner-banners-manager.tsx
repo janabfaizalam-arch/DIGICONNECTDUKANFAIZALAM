@@ -10,11 +10,29 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AP_PARTNER_TYPE_LABELS, DIGI_PARTNER_TYPE_VALUES } from "@/lib/ap/partner-type";
 import {
+  PARTNER_DESKTOP_BANNER_SIZE_HINT,
   PARTNER_MOBILE_BANNER_SIZE_HINT,
+  partnerDesktopBannerRatioWarning,
   partnerMobileBannerRatioWarning,
   readImageDimensions,
 } from "@/lib/ap/partner-banner-aspect";
+import { shrinkBannerFormImages } from "@/lib/ap/banner-upload";
 import type { PartnerAnnouncementBanner } from "@/lib/ap/home-types";
+
+/**
+ * A 413 never reaches the route, so there is no message in it to show.
+ *
+ * It means the request body passed the platform's cap. Images are shrunk
+ * before upload now, so reaching this at all means something unusual --
+ * a very large mobile image alongside a very large desktop one, or a browser
+ * where the canvas re-encode was unavailable.
+ */
+function createFailureMessage(status: number) {
+  if (status === 413) {
+    return "Image is too large to upload. Please use a smaller file (under ~2MB each).";
+  }
+  return `Create failed (${status})`;
+}
 
 type ManagerProps = {
   initialBanners: PartnerAnnouncementBanner[];
@@ -41,11 +59,11 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
     setBusy(true);
     setError("");
     try {
-      const body = new FormData(form);
+      const body = await shrinkBannerFormImages(new FormData(form), ["image", "mobile_image"]);
       const res = await fetch("/api/admin/partner-banners", { method: "POST", body });
       const data = await readJsonSafe(res);
       if (!res.ok) {
-        throw new Error(apiErrorMessage(data, `Create failed (${res.status})`));
+        throw new Error(apiErrorMessage(data, createFailureMessage(res.status)));
       }
       // Capture form before await; only reset after success so failures keep input values.
       resetCreateForm(form);
@@ -64,7 +82,7 @@ export function AdminPartnerBannersManager({ initialBanners }: ManagerProps) {
     setBusy(true);
     setError("");
     try {
-      const body = new FormData(form);
+      const body = await shrinkBannerFormImages(new FormData(form), ["image", "mobile_image"]);
       const res = await fetch(`/api/admin/partner-banners/${id}`, { method: "PATCH", body });
       const data = await readJsonSafe(res);
       if (!res.ok) {
@@ -175,6 +193,17 @@ function BannerFields({
   disabled?: boolean;
 }) {
   const [mobileRatioWarning, setMobileRatioWarning] = useState<string | null>(null);
+  const [desktopRatioWarning, setDesktopRatioWarning] = useState<string | null>(null);
+
+  async function onDesktopImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setDesktopRatioWarning(null);
+      return;
+    }
+    const dims = await readImageDimensions(file);
+    setDesktopRatioWarning(dims ? partnerDesktopBannerRatioWarning(dims.width, dims.height) : null);
+  }
 
   async function onMobileImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -195,8 +224,22 @@ function BannerFields({
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Desktop image {banner ? "(optional replace)" : "*"}</span>
-          <Input name="image" type="file" accept="image/jpeg,image/png,image/webp" required={!banner} disabled={disabled} />
-          <span className="text-xs text-slate-500">Recommended: ~1920×823 px (21:9) for desktop.</span>
+          <Input
+            name="image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            required={!banner}
+            disabled={disabled}
+            onChange={onDesktopImageChange}
+          />
+          <span className="text-xs text-slate-500">
+            Recommended: {PARTNER_DESKTOP_BANNER_SIZE_HINT}. Large images are shrunk before upload.
+          </span>
+          {desktopRatioWarning ? (
+            <span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800">
+              {desktopRatioWarning}
+            </span>
+          ) : null}
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Mobile image</span>
