@@ -69,17 +69,18 @@ function Slide({ banner, priority }: { banner: PartnerAnnouncementBanner; priori
         over two thirds of its height at 1750px -- which is how a headline came
         to be sliced through the middle.
 
-        5:1 is the whole rule now. The height simply follows the width (145px
-        at a small laptop, 350px at full width), the proportion never changes,
-        and one 5:1 artwork fits every screen with nothing cropped.
+        7:2 is the whole rule now. The height simply follows the width, the
+        proportion never changes, and one 7:2 artwork fits every screen with
+        nothing cropped. Paired with the width cap on the carousel itself, the
+        banner tops out at 1400x400 rather than running the full panel.
       */}
-      <div className="relative hidden aspect-[5/1] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
+      <div className="relative hidden aspect-[7/2] w-full overflow-hidden bg-[var(--dcp-surface-3)] md:block">
         <Image
           src={banner.image_url}
           alt={alt}
           fill
-          // The panel caps at 1800px, so that is the widest this is ever drawn.
-          sizes="(max-width: 1800px) 100vw, 1800px"
+          // The main column tops out near 1340px, so nothing wider is needed.
+          sizes="(max-width: 1400px) 100vw, 1400px"
           className="object-cover"
           priority={priority}
         />

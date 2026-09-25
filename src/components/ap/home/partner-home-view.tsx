@@ -50,13 +50,22 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
 
   return (
     <div className="w-full px-3 pb-6 pt-3 sm:px-4 md:px-5 md:pb-10 xl:px-6">
-      {/* Offers lead the page: it is the one place the company talks to every
-          partner at once, and a rail at the bottom is where it went unread. */}
-      <AnnouncementSlider banners={data.banners} className="mb-3" />
-
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
         {/* Main column — the work. */}
         <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {/*
+            Offers lead the page: it is the one place the company talks to
+            every partner at once, and a rail at the bottom is where it went
+            unread.
+
+            It sits inside this column rather than above both, so that the
+            banner is the width of the work and not of the whole panel. Run
+            edge to edge it read as a strip; centred with a cap it would have
+            left the sides of a wide screen empty. Here the rail fills them
+            instead, and the banner lands near 1340x383 at full width.
+          */}
+          <AnnouncementSlider banners={data.banners} />
+
           <HomeHeader identity={data.identity} />
 
           <QuickActions partnerType={data.partnerType} />
