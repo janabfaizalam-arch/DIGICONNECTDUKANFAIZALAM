@@ -26,7 +26,7 @@ export function CustomersPanel({ customers, variant = "own", className }: Custom
     <section aria-label={heading} className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">{heading}</h2>
-        <Link href="/ap/customers" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
+        <Link href="/ap/customers" className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95">
           All customers
         </Link>
       </div>
@@ -42,7 +42,7 @@ export function CustomersPanel({ customers, variant = "own", className }: Custom
         />
       ) : (
         <ul className="divide-y divide-[var(--dcp-line)] overflow-hidden dcp-card">
-          {customers.slice(0, 5).map((customer) => (
+          {customers.slice(0, 4).map((customer) => (
             <li key={customer.id}>
               <Link
                 href={customer.href}

@@ -62,7 +62,7 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
             banner is the width of the work and not of the whole panel. Run
             edge to edge it read as a strip; centred with a cap it would have
             left the sides of a wide screen empty. Here the rail fills them
-            instead, and the banner lands near 1340x383 at full width.
+            instead, and the banner lands near 1338x535 at full width.
           */}
           <AnnouncementSlider banners={data.banners} />
 
@@ -82,9 +82,18 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
           <RecentApplications items={data.recentApplications} />
         </div>
 
-        {/* Rail — what is waiting. Fixed width so the main column keeps the
-            room it needs for tables and charts as the screen grows. */}
-        <div className="flex w-full min-w-0 flex-col gap-3 xl:w-[360px] xl:shrink-0 2xl:w-[400px]">
+        {/*
+          Rail — what is waiting. Fixed width so the main column keeps the room
+          it needs for tables and charts as the screen grows.
+
+          It is also sticky. Each of its panels now shows four rows and a link
+          rather than everything it has, which makes the rail short; against a
+          main column carrying a banner, charts and a table, a static rail
+          would end a third of the way down and leave the rest of the right
+          side blank. Sticking it to the top keeps it in view for the whole
+          scroll instead, so there is nothing empty beside anything.
+        */}
+        <div className="flex w-full min-w-0 flex-col gap-3 xl:sticky xl:top-[64px] xl:w-[360px] xl:shrink-0 2xl:w-[400px]">
           <AttentionStrip items={data.attention} />
 
           <WorkQueue groups={data.workQueue} />
