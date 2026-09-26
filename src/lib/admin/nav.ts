@@ -542,10 +542,17 @@ const PARTNER_GROUPS: AdminNavGroup[] = [
       {
         // Belongs with the partners who sell from it, not with the customer
         // catalogue — it carries their pricing, not the shop's.
+        //
+        // Called "Agent Catalogue" until now, from when partners were called
+        // agents. Nobody looking for where partner services are created was
+        // going to find it under that name, and the screen it opens is titled
+        // "Agent Services" on a page headed "Agent Controls" — three names for
+        // one thing, none of them the word somebody searches for.
         href: "/admin/agent-services",
-        label: "Agent Catalogue",
-        description: "The list partners sell from, with their own pricing",
+        label: "Partner Services",
+        description: "Create the services partners sell, with their pricing and copy",
         icon: IdCard,
+        emphasis: true,
       },
     ],
   },
