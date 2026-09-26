@@ -17,6 +17,8 @@ export type ApplicationWhatsAppEvent =
   | "objection_resolved"
   | "completed"
   | "final_document"
+  | "invoice_generated"
+  | "renewal_reminder"
   | "custom_message";
 
 /** Admin Communication tab / API action names (mapped server-side to events). */
@@ -96,6 +98,12 @@ export type ApplicationTemplateContext = {
   supportInfo?: string;
   notes?: string;
   customMessage?: string;
+  /** invoice_generated */
+  invoiceNumber?: string;
+  invoiceLink?: string;
+  /** renewal_reminder — already human-readable, e.g. "12 Oct 2026 (7 days left)" */
+  renewalDue?: string;
+  renewalReference?: string;
 };
 
 export const ADMIN_WHATSAPP_ACTIONS: readonly AdminWhatsAppAction[] = [

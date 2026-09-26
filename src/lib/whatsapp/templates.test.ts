@@ -104,6 +104,33 @@ describe("template contracts", () => {
     expect(APPLICATION_CAMPAIGN_MATRIX.find((row) => row.event === "final_document")?.media).toBe(true);
   });
 
+  it("carries the invoice number, amount and full download link", () => {
+    const link = `https://www.rnos.in/api/invoices/abc/pdf?t=1790000000.${"s".repeat(43)}`;
+    const params = buildApplicationTemplateParams("invoice_generated", {
+      customerName: "Riya",
+      serviceName: "PAN Card",
+      applicationId: "app-9",
+      amount: 199,
+      invoiceNumber: "INV-2026-0042",
+      invoiceLink: link,
+    });
+    expect(params[3]).toBe(`Invoice INV-2026-0042 · Amount ₹199 · Download: ${link}`);
+    expect(getApplicationCampaignName("invoice_generated")).toBe("application_update");
+  });
+
+  it("builds the renewal reminder line", () => {
+    const params = buildApplicationTemplateParams("renewal_reminder", {
+      customerName: "Riya",
+      serviceName: "Bike Insurance",
+      applicationId: "app-9",
+      renewalReference: "POL-123",
+      renewalDue: "26 Oct 2026 (7 days left)",
+    });
+    expect(params[3]).toBe(
+      "Ref POL-123 · Renewal due 26 Oct 2026 (7 days left) · Reply here or visit DigiConnect Dukan to renew on time.",
+    );
+  });
+
   it("resolves campaign env with fallback", () => {
     expect(getApplicationCampaignName("payment_reminder")).toBe("application_update");
     setEnv({ AISENSY_PAYMENT_REMINDER_CAMPAIGN: "pay_reminder_live" });
