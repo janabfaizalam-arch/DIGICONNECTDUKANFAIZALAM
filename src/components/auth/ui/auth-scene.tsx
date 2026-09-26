@@ -37,7 +37,7 @@ const DEFAULT_HEADLINE = "Digital Services Made Simple";
  */
 const BRAND_ARTWORK: string | null = null;
 const ARTWORK_IS_LIGHT = true;
-const BRAND_MASCOT: string | null = null;
+const BRAND_MASCOT: string | null = "/images/auth/brand-hero.webp";
 
 /**
  * The brand side reads as DigiConnect rather than as a gradient.
