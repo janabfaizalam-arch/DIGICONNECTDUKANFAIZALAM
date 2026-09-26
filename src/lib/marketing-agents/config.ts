@@ -83,12 +83,56 @@ export function platformConfigStatus(source: NodeJS.ProcessEnv = process.env) {
   }));
 }
 
-export function textModel() {
-  return env("MARKETING_AGENTS_TEXT_MODEL") || "gemini-2.5-flash";
+/**
+ * Which Gemini models to use.
+ *
+ * Google retires model names for new projects without notice — the first
+ * live run here failed because `gemini-2.5-flash` had been withdrawn. So the
+ * environment can pin a model, and otherwise the newest one the API key can
+ * see is chosen at run time (see `resolveModels` in llm.ts). These fallbacks
+ * are only used if the model list cannot be read at all.
+ */
+export const FALLBACK_TEXT_MODEL = "gemini-3.8-flash";
+export const FALLBACK_IMAGE_MODEL = "gemini-3.8-flash-image";
+
+export function pinnedTextModel() {
+  return env("MARKETING_AGENTS_TEXT_MODEL") || null;
 }
 
-export function imageModel() {
-  return env("MARKETING_AGENTS_IMAGE_MODEL") || "gemini-2.5-flash-image";
+export function pinnedImageModel() {
+  return env("MARKETING_AGENTS_IMAGE_MODEL") || null;
+}
+
+function versionOf(name: string) {
+  return (name.match(/^gemini-(\d+(?:\.\d+)?)-/)?.[1] ?? "0").split(".").map(Number);
+}
+
+function compareVersions(a: number[], b: number[]) {
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/**
+ * The newest Flash model of a kind among the names the API returned
+ * (`models/gemini-3.8-flash` or bare). Stable names beat previews; a preview
+ * is used only when no stable model of that kind exists.
+ */
+export function pickLatestModel(names: string[], kind: "text" | "image"): string | null {
+  const suffix = kind === "image" ? "-flash-image" : "-flash";
+  const stable = new RegExp(`^gemini-\\d+(?:\\.\\d+)?${suffix}$`);
+  const preview = new RegExp(`^gemini-\\d+(?:\\.\\d+)?${suffix}-preview(?:-[\\w-]+)?$`);
+  const bare = names.map((name) => name.replace(/^models\//, ""));
+
+  for (const pattern of [stable, preview]) {
+    const matches = bare.filter((name) => pattern.test(name));
+    if (matches.length) {
+      return matches.sort((a, b) => compareVersions(versionOf(b), versionOf(a)))[0];
+    }
+  }
+  return null;
 }
 
 export function brandName() {

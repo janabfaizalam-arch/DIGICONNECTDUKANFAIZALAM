@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { configuredPlatforms, redact, resolveMarketingAgentsMode } from "@/lib/marketing-agents/config";
+import { configuredPlatforms, pickLatestModel, redact, resolveMarketingAgentsMode } from "@/lib/marketing-agents/config";
 import { campaignName, clampText, composePost, indiaDate, normaliseHashtags, trackedUrl } from "@/lib/marketing-agents/links";
-import { extractJson } from "@/lib/marketing-agents/llm";
+import { extractJson, suggestedReplacementModel } from "@/lib/marketing-agents/llm";
 import { oauth1Signature } from "@/lib/marketing-agents/oauth1";
 import { pickServiceForToday } from "@/lib/marketing-agents/pick-service";
 import { linkedInCommentary } from "@/lib/marketing-agents/publishers/others";
@@ -119,5 +119,32 @@ describe("publishers", () => {
 
   it("escapes LinkedIn's reserved characters but keeps hashtags", () => {
     expect(linkedInCommentary("PAN (new) #GST_Help #India")).toBe("PAN \\(new\\) {hashtag|\\#|GST}\\_Help {hashtag|\\#|India}");
+  });
+});
+
+describe("model choice", () => {
+  it("picks the newest stable Flash model for each kind", () => {
+    const names = [
+      "models/gemini-2.5-flash",
+      "models/gemini-3.8-flash",
+      "models/gemini-3.10-flash",
+      "models/gemini-3.8-flash-image",
+      "models/gemini-3.8-pro",
+      "models/gemini-4.0-flash-preview-09-2026",
+    ];
+    expect(pickLatestModel(names, "text")).toBe("gemini-3.10-flash");
+    expect(pickLatestModel(names, "image")).toBe("gemini-3.8-flash-image");
+  });
+
+  it("uses a preview only when there is no stable model", () => {
+    expect(pickLatestModel(["models/gemini-4.0-flash-image-preview"], "image")).toBe("gemini-4.0-flash-image-preview");
+    expect(pickLatestModel(["models/gemini-3.8-pro"], "text")).toBeNull();
+  });
+
+  it("reads the replacement Google names in a retirement error", () => {
+    const message =
+      '{"error":{"code":404,"message":"This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.8-flash for the latest features and improvements.","status":"NOT_FOUND"}}';
+    expect(suggestedReplacementModel(message)).toBe("gemini-3.8-flash");
+    expect(suggestedReplacementModel("quota exceeded, use less")).toBeNull();
   });
 });
