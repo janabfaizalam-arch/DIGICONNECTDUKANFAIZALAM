@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { BadgeIndianRupee, ShieldCheck, Zap } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
@@ -13,24 +13,31 @@ const TAGLINE = "Connecting People. Empowering Digital India.";
 const DEFAULT_HEADLINE = "Digital Services Made Simple";
 
 /**
- * Brand artwork behind the panel, when there is one.
+ * Two picture slots on the brand panel, both optional.
  *
- * Drop a file at `public/images/auth/brand-hero.webp` and set this to
- * "/images/auth/brand-hero.webp". Until then the panel stands on its own --
- * pointing this at a file that is not there would 404 on every auth page,
- * which is worse than no artwork.
+ * `BRAND_ARTWORK` is a full-bleed backdrop: it fills the panel edge to edge
+ * and a scrim is laid over it so the text stays readable, which means it is
+ * seen through roughly half a wash. That suits a scene -- a storefront, a
+ * street, a texture -- and not a character, which the wash would flatten.
  *
- * It fills the panel (object-cover), so the composition matters more than its
- * exact size: the panel is roughly 3:4 on a desktop and much wider on a
- * phone, which means the middle of the image is the only part guaranteed to
- * survive both. A subject placed low and centre reads at every width.
+ * `BRAND_MASCOT` is a cutout with a transparent background, drawn over the
+ * scrim at full strength in the gap between the logo and the headline. That
+ * is the slot for an avatar or a character, because nothing is laid over it.
  *
- * `ARTWORK_IS_LIGHT` tells the panel which way to shade its text. A light
- * scene like the DigiConnect storefront needs dark text and a white scrim; a
- * dark one keeps the white text the gradient was built for.
+ * Either can be set without the other. Drop the file in
+ * `public/images/auth/` -- that folder's README has the size and composition
+ * each slot crops to -- and point the constant at it. A path that resolves to
+ * nothing falls back to the plain gradient panel rather than leaving a hole,
+ * so a typo in the filename costs a 404 and nothing else.
+ *
+ * `ARTWORK_IS_LIGHT` tells the panel which way to shade its text, and applies
+ * to the backdrop only. A light scene like the DigiConnect storefront needs
+ * dark text and a white scrim; a dark one keeps the white text the gradient
+ * was built for.
  */
 const BRAND_ARTWORK: string | null = null;
 const ARTWORK_IS_LIGHT = true;
+const BRAND_MASCOT: string | null = null;
 
 /**
  * The brand side reads as DigiConnect rather than as a gradient.
@@ -47,6 +54,51 @@ const PROMISES = [
   { Icon: Zap, title: "Applied in minutes", note: "One form, tracked end to end" },
   { Icon: BadgeIndianRupee, title: "Paid the way you like", note: "UPI, cards, netbanking — or a payment link" },
 ];
+
+/**
+ * A panel image that takes itself off the panel if the file is not there.
+ *
+ * These are `fill` images, so each one needs its own positioned box: the
+ * panel itself turns `sticky` at `lg`, which is positioned but is not one of
+ * the values `next/image` accepts as a parent.
+ */
+function PanelImage({
+  src,
+  sizes,
+  priority,
+  className,
+  onBroken,
+}: {
+  src: string;
+  sizes: string;
+  priority?: boolean;
+  className: string;
+  onBroken: () => void;
+}) {
+  const ref = useRef<HTMLImageElement | null>(null);
+
+  /* A `priority` image can finish -- or fail -- before React hydrates, and
+     that error event is gone by the time `onError` is attached. Ask the
+     element instead: a decoded image has a natural width. `onError` still
+     covers a failure that lands after hydration. */
+  useEffect(() => {
+    const img = ref.current;
+    if (img?.complete && img.naturalWidth === 0) onBroken();
+  }, [onBroken]);
+
+  return (
+    <Image
+      ref={ref}
+      src={src}
+      alt=""
+      fill
+      sizes={sizes}
+      priority={priority}
+      onError={onBroken}
+      className={className}
+    />
+  );
+}
 
 type AuthSceneProps = {
   children: ReactNode;
@@ -74,8 +126,17 @@ type AuthSceneProps = {
 export function AuthScene({ children, eyebrow, headline, kicker, className }: AuthSceneProps) {
   const reduceMotion = useReducedMotion();
   const variants = reduceMotion ? staticVariants : staggerContainer;
-  /* Only a light artwork flips the panel to dark text; the gradient is dark. */
-  const onLight = BRAND_ARTWORK !== null && ARTWORK_IS_LIGHT;
+  /* A missing or broken file drops the panel back to the gradient, text and
+     all -- shading for a backdrop that never arrived is how text ends up
+     navy-on-navy. */
+  const [artworkBroken, setArtworkBroken] = useState(false);
+  const [mascotBroken, setMascotBroken] = useState(false);
+  const markArtworkBroken = useCallback(() => setArtworkBroken(true), []);
+  const markMascotBroken = useCallback(() => setMascotBroken(true), []);
+  const artwork = artworkBroken ? null : BRAND_ARTWORK;
+  const mascot = mascotBroken ? null : BRAND_MASCOT;
+  /* Only a light backdrop flips the panel to dark text; the gradient is dark. */
+  const onLight = artwork !== null && ARTWORK_IS_LIGHT;
 
   return (
     <div data-dcp className="flex min-h-[100dvh] w-full flex-col bg-[var(--dcp-canvas)] lg:flex-row">
@@ -87,16 +148,17 @@ export function AuthScene({ children, eyebrow, headline, kicker, className }: Au
         )}
         style={{ background: BRAND_BASE }}
       >
-        {BRAND_ARTWORK ? (
+        {artwork ? (
           <>
-            <Image
-              src={BRAND_ARTWORK}
-              alt=""
-              fill
-              sizes="(max-width: 1024px) 100vw, 46vw"
-              priority
-              className="pointer-events-none object-cover"
-            />
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <PanelImage
+                src={artwork}
+                sizes="(max-width: 1024px) 100vw, 46vw"
+                priority
+                className="object-cover"
+                onBroken={markArtworkBroken}
+              />
+            </div>
             {/*
               A scrim, not a tint: the artwork keeps its colour, and the text
               gets a band it can be read against at the end it sits on.
@@ -124,6 +186,32 @@ export function AuthScene({ children, eyebrow, headline, kicker, className }: Au
             }}
           />
         )}
+
+        {/*
+          The cutout sits above the scrim and below the text, in the band the
+          panel leaves empty: to the right of the compact header on a phone,
+          and between the logo and the headline on a desktop. It is measured
+          off the panel rather than off the text so a longer headline pushes
+          nothing around.
+        */}
+        {mascot ? (
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute z-[5]",
+              "right-3 top-2 bottom-2 w-[30%] max-w-[140px]",
+              "lg:inset-auto lg:right-12 lg:top-[17%] lg:h-[32%] lg:w-[46%] lg:max-w-none",
+            )}
+          >
+            <PanelImage
+              src={mascot}
+              sizes="(max-width: 1024px) 40vw, 21vw"
+              priority
+              className="object-contain object-right-bottom lg:object-right"
+              onBroken={markMascotBroken}
+            />
+          </div>
+        ) : null}
 
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, y: -10 }}
@@ -155,7 +243,12 @@ export function AuthScene({ children, eyebrow, headline, kicker, className }: Au
           variants={variants}
           initial="hidden"
           animate="visible"
-          className="relative z-10 mt-4 max-w-xl lg:mt-0"
+          className={cn(
+            "relative z-10 mt-4 max-w-xl lg:mt-0",
+            /* The desktop panel is tall enough to stack them; the phone
+               header is not, so the text yields the cutout's column. */
+            mascot ? "pr-[34%] lg:pr-0" : "",
+          )}
         >
           <motion.p
             variants={reduceMotion ? staticVariants : revealItem}
