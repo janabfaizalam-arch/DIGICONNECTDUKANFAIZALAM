@@ -23,9 +23,9 @@ export default async function AdminAgentServicesPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader
-        eyebrow="Agent Controls"
-        title="Agent Services"
-        description="Control which services agents can sell and snapshot payout rules when agent applications are created."
+        eyebrow="DC Partners"
+        title="Partner Services"
+        description="Create and price the services DC Partners sell. Set the customer fee and what the partner earns, write the description, eligibility and documents — or draft them with AI and edit before saving."
       />
       <AdminAgentServicesManager services={agentServices} sourceServices={sourceServices} agents={agents} />
     </div>
