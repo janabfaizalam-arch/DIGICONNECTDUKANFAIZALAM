@@ -33,6 +33,10 @@ export type SendApplicationWhatsAppInput = {
   progressMessage?: string;
   customMessage?: string;
   actionLink?: string;
+  invoiceNumber?: string;
+  invoiceLink?: string;
+  renewalDue?: string;
+  renewalReference?: string;
   documentUrl?: string;
   documentName?: string;
   documentId?: string;
@@ -187,6 +191,10 @@ async function enqueueApplicationWhatsAppOnly(
     customMessage: input.customMessage,
     actionLink: input.actionLink,
     notes: input.notes,
+    invoiceNumber: input.invoiceNumber,
+    invoiceLink: input.invoiceLink,
+    renewalDue: input.renewalDue,
+    renewalReference: input.renewalReference,
   });
 
   const enqueued = await enqueueCommunication({
@@ -336,6 +344,10 @@ async function sendApplicationWhatsAppDirect(
     customMessage: input.customMessage,
     actionLink: input.actionLink,
     notes: input.notes,
+    invoiceNumber: input.invoiceNumber,
+    invoiceLink: input.invoiceLink,
+    renewalDue: input.renewalDue,
+    renewalReference: input.renewalReference,
   });
 
   const payload = safeLogPayload({

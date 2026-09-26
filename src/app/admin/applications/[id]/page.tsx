@@ -7,6 +7,8 @@ import { AdminApplicationTabs } from "@/components/admin/admin-application-tabs"
 import { AdminDocumentReviewActions } from "@/components/admin/admin-document-review-actions";
 import { AdminFinalDocumentPreviewButton } from "@/components/admin/admin-final-document-preview-button";
 import { GenerateInvoiceButton } from "@/components/admin/generate-invoice-button";
+import { SendInvoiceWhatsAppButton } from "@/components/admin/send-invoice-whatsapp-button";
+import { RenewalReminderCard } from "@/components/admin/renewal-reminder-card";
 import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
@@ -333,10 +335,13 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                 <p className="font-semibold text-slate-950">{invoice.invoice_number}</p>
                 <p className="mt-0.5 text-xs font-medium text-slate-600">{safeCurrency(invoice.amount)} · <span className="capitalize">{invoice.payment_status}</span></p>
               </div>
-              <Link href={`/invoice/${invoice.id}`} className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-semibold text-white">
-                <ReceiptText className="h-3.5 w-3.5" />
-                Open Invoice
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/invoice/${invoice.id}`} className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-semibold text-white">
+                  <ReceiptText className="h-3.5 w-3.5" />
+                  Open Invoice
+                </Link>
+                <SendInvoiceWhatsAppButton invoiceId={invoice.id} />
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
@@ -536,6 +541,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
             ) : null}
             {!invoice ? <div className="mt-3"><GenerateInvoiceButton applicationId={application.id} /></div> : null}
           </div>
+          <RenewalReminderCard applicationId={application.id} />
         </aside>
       </div>
     </div>

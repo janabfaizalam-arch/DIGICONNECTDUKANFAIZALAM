@@ -27,6 +27,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  BellRing,
   Activity,
   BadgePercent,
   BanknoteArrowUp,
@@ -394,6 +395,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "WhatsApp Outbox",
         description: "Messages sent to customers and their delivery state",
         icon: MessageSquare,
+      },
+      {
+        href: "/admin/renewals",
+        label: "Renewal Reminders",
+        description: "Insurance and other renewals the customer is reminded about on WhatsApp",
+        icon: BellRing,
       },
       {
         href: "/admin/notifications",

@@ -217,3 +217,23 @@ Planned hardening:
 
 ### Rule version binding
 Executions bind to `rule_key` + `rule_version` active when first processed (`exec:{eventId}:{ruleKey}:v{version}`). Deploying a new rule version does **not** auto-replay completed events; deliberate admin retry/replay is required.
+
+## Invoice on WhatsApp + renewal reminders
+
+Both go through `sendApplicationWhatsApp`, so they obey `CRM_NOTIFICATION_DELIVERY_MODE` exactly like the manual admin path (queue → outbox, direct → sent now, disabled/unset → audit row only, nothing sent).
+
+### Invoice (`invoice_generated`)
+
+- Sent automatically when `createInvoiceForApplication` creates or finds an invoice with payment `verified`/`paid` — this covers every purchase flow (Razorpay verify, customer/agent/DC-partner applications, admin "Generate Invoice"). Idempotency version `1` per application, so one invoice message per purchase however many paths see the payment.
+- Admin → application → Invoice card → **Send on WhatsApp** resends (version = current minute, so a double click is one message).
+- Link: `/api/invoices/{id}/pdf?t=…` — HMAC token (label `invoice-pdf-link:v1`, key `AUTH_HMAC_SECRET`), valid 30 days, that invoice only. Without `AUTH_HMAC_SECRET` the message links the login-gated `/invoice/{id}` instead. Signed-in owner or admin can open the PDF without a token.
+- Campaign: `AISENSY_INVOICE_CAMPAIGN` (fallback `AISENSY_APPLICATION_CAMPAIGN`).
+
+### Renewal reminders (`renewal_reminder`)
+
+- Table `service_renewals` (migration `20260926120000_service_renewals.sql`, RLS on, service role only).
+- Admin → application → **Renewal reminder** card: renewal/expiry date, policy/reference no., reminder schedule (default 30, 7, 1 days before + on the day). All renewals: `/admin/renewals`.
+- `/api/cron/renewal-reminders` (Vercel cron `30 3 * * *` = 9:00 IST, `Authorization: Bearer <CRON_SECRET>`). Per run, at most one message per renewal: the closest passed stage; older missed stages are settled, not sent late. Nothing is sent after the renewal date.
+- Idempotency version = `YYYYMMDD * 1000 + stage` — re-running the cron the same day never double-sends; moving the date (e.g. **Renewed, +1 year**) starts a new cycle.
+- A stage is settled when the message is sent or queued. If delivery mode is disabled or AiSensy is not configured, the stage stays open and is retried the next morning.
+- Campaign: `AISENSY_RENEWAL_REMINDER_CAMPAIGN` (fallback `AISENSY_APPLICATION_CAMPAIGN`). Register it on Meta as a **Utility** template.
