@@ -15,6 +15,9 @@ nothing else.
 | Backdrop | `BRAND_ARTWORK` | fills the panel edge to edge, under a scrim |
 | Cutout | `BRAND_MASCOT` | a character drawn over the scrim, at full strength |
 
+`brand-hero.webp` is the cutout in use: the DigiConnect Dukan mascot, trimmed
+to the subject and scaled to 900 × 912.
+
 ## Which slot
 
 **A character — an avatar, a mascot, a person — goes in `BRAND_MASCOT`.** It is
