@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getAdminCreditReports } from "@/lib/credit/client";
 import { creditAdminFilterSchema } from "@/lib/credit/validators";
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   try {
     // 1. Authenticate user
     const user = await getCurrentUser();
-    const isAdmin = isAdminUser(user);
+    const isAdmin = await hasAdminAccess(user);
 
     if (!user || !isAdmin) {
       return NextResponse.json({ error: "Unauthorized. Admin credentials required." }, { status: 401 });

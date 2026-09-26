@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import Link from "next/link";
 import { ArrowRight, Headphones, MapPinned, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 

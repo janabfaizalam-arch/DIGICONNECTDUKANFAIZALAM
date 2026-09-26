@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { Quote, Star } from "lucide-react";
 
 import { HomepageSection, HomepageSectionHeader } from "@/components/homepage/ui";

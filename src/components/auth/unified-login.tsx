@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useState, useTransition, forwardRef } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import Link from "next/link";
 import {
   Eye,

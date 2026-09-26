@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Script from "next/script";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import {
   ArrowLeft,

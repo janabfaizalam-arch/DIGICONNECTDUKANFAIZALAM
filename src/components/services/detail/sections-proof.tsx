@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { toPrivacyEmbedUrl } from "@/lib/embeds";
 import { Quote, Star, Trophy } from "lucide-react";
 

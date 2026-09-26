@@ -384,6 +384,17 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   return "customer";
 }
 
+/**
+ * Admin check for server code: trusted token claims, the admin allowlist, or
+ * an admin role in the profiles/users tables — never user_metadata.
+ */
+export async function hasAdminAccess(user: User | null): Promise<boolean> {
+  if (!user) return false;
+  if (isDemotedAdminEmail(String(user.email ?? "").toLowerCase())) return false;
+  if (isAdminUser(user)) return true;
+  return isAdminRole(await getCurrentUserRole(user));
+}
+
 export function getRoleHome(role: AppRole | string | null | undefined) {
   if (isAdminRole(role)) {
     return "/admin";

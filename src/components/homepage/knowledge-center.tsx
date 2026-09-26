@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import Link from "next/link";
 import { BookOpen, ArrowRight, Calendar } from "lucide-react";
 

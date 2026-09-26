@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Globe2, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 

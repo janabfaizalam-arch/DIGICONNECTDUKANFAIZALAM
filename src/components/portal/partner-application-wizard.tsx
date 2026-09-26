@@ -6,7 +6,7 @@ import React, {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import {
   type LucideIcon,
   Search, Check, Shield, CreditCard, AlertTriangle,

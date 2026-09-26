@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { BadgeCheck, Clock3, Landmark, Lock, MessageCircle, ShieldCheck } from "lucide-react";
 import { m } from "framer-motion";
 

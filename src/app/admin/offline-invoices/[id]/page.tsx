@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { notFound, redirect } from "next/navigation";
 
 import { OfflineInvoicePrintActions } from "@/components/admin/offline-invoice-actions";
