@@ -1,5 +1,7 @@
 "use client";
 
+import { hasConsent } from "@/lib/consent/consent";
+
 export type GoogleAnalyticsEventParameters = Record<string, string | number | boolean | undefined>;
 
 type GtagCommand = "config" | "consent" | "event" | "js";
@@ -37,6 +39,11 @@ function trackEvent(eventName: string, parameters?: GoogleAnalyticsEventParamete
     return false;
   }
 
+  if (!hasConsent("analytics")) {
+    debugAnalytics("event skipped: no analytics consent", { event_name: eventName });
+    return false;
+  }
+
   if (typeof window.gtag !== "function") {
     debugAnalytics("event skipped: window.gtag missing", { event_name: eventName });
     return false;
@@ -56,6 +63,10 @@ export function trackPageView(path: string) {
 
   if (!isGoogleAnalyticsEnabled() || !measurementId) {
     debugAnalytics("page_view skipped: GA disabled", { page_path: path });
+    return;
+  }
+
+  if (!hasConsent("analytics")) {
     return;
   }
 

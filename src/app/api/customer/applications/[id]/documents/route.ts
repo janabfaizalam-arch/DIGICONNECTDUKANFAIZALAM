@@ -5,6 +5,7 @@ import { createAdminNotification } from "@/lib/admin-notifications";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { validateFileSignature } from "@/lib/file-validation";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
@@ -19,6 +20,9 @@ function jsonError(message: string, status: number) {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const rate = checkRateLimit(`customer-doc-upload:${getClientIp(request)}`, 20, 60_000);
+    if (!rate.ok) return rateLimitResponse(rate.retryAfter);
+
     const user = await getCurrentUser();
 
     if (!user) {
@@ -73,8 +77,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const storagePath = `applications/${id}/customer-documents/${Date.now()}-${cleanFileName(fileObj.name)}`;
     console.info("[customer-documents] Upload received", {
       applicationId: id,
-      fileName: fileObj.name,
       fileType: fileObj.type,
+      size: fileObj.size,
     });
 
     const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, fileObj, {
@@ -83,7 +87,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
 
     if (uploadError) {
-      return jsonError(uploadError.message, 500);
+      console.error("[customer-documents] storage_upload_failed", { applicationId: id, message: uploadError.message });
+      return jsonError("Document could not be uploaded. Please try again.", 500);
     }
 
     const { data: signedUrlData } = await supabase.storage.from("documents").createSignedUrl(storagePath, 60 * 60);

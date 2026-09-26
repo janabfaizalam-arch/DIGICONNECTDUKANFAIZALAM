@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { type ChangeEvent, FormEvent, useState } from "react";
 import { ImagePlus, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 

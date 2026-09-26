@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { type ChangeEvent, type FormEvent, type ReactNode, useState } from "react";
 import {
   ArrowDown,

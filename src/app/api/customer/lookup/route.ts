@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { normalizeAppRole } from "@/lib/auth";
+import { getCurrentUserRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const metadataRole = normalizeAppRole(user.user_metadata?.role);
-    let role = metadataRole;
-    if (!role) {
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-      role = normalizeAppRole(profile?.role);
-    }
+    // Trusted sources only (app_metadata, then the profiles/users tables).
+    // user_metadata is user-writable: a customer who set role "agency_partner"
+    // on themselves could otherwise look up any customer by mobile number.
+    const role = await getCurrentUserRole(user);
 
     if (role !== "agency_partner" && role !== "admin") {
       return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });

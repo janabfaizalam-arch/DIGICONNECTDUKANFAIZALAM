@@ -105,6 +105,18 @@ export async function getCurrentUser() {
   return null;
 }
 
+/**
+ * The role a session token vouches for — from app_metadata only.
+ *
+ * Never user_metadata: Supabase lets every signed-in user rewrite their own
+ * user_metadata with the public anon key (`auth.updateUser({ data })`), so a
+ * role read from there is whatever the caller typed. app_metadata can only be
+ * written with the service role.
+ */
+export function trustedTokenRole(user: User | null | undefined): AppRole | null {
+  return normalizeAppRole((user?.app_metadata as Record<string, unknown> | undefined)?.role);
+}
+
 export function isAdminUser(user: User | null) {
   if (!user) {
     return false;
@@ -115,9 +127,7 @@ export function isAdminUser(user: User | null) {
     return false;
   }
 
-  const role =
-    normalizeAppRole(user.user_metadata?.role) ??
-    normalizeAppRole((user.app_metadata as Record<string, unknown> | undefined)?.role);
+  const role = trustedTokenRole(user);
 
   if (role === "admin") {
     return true;
@@ -333,10 +343,10 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   }
 
   const supabaseAdmin = getSupabaseAdmin();
-  const metadataRole = normalizeAppRole(user.user_metadata.role);
+  const tokenRole = trustedTokenRole(user);
 
-  if (metadataRole) {
-    return metadataRole;
+  if (tokenRole) {
+    return tokenRole;
   }
 
   if (isAdminUser(user)) {
@@ -372,6 +382,17 @@ export async function getCurrentUserRole(user: User | null): Promise<AppRole> {
   }
 
   return "customer";
+}
+
+/**
+ * Admin check for server code: trusted token claims, the admin allowlist, or
+ * an admin role in the profiles/users tables — never user_metadata.
+ */
+export async function hasAdminAccess(user: User | null): Promise<boolean> {
+  if (!user) return false;
+  if (isDemotedAdminEmail(String(user.email ?? "").toLowerCase())) return false;
+  if (isAdminUser(user)) return true;
+  return isAdminRole(await getCurrentUserRole(user));
 }
 
 export function getRoleHome(role: AppRole | string | null | undefined) {

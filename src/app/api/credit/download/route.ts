@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const isAdmin = isAdminUser(user);
+    const isAdmin = await hasAdminAccess(user);
 
     // 2. Fetch record
     const supabase = getSupabaseAdmin();
@@ -42,7 +42,9 @@ export async function GET(request: Request) {
 
     // 3. Authorization check
     if (!isAdmin && record.customer_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden. You cannot access this credit report." }, { status: 403 });
+      // Same answer as a missing report: whether someone else's report exists
+      // is not something to confirm.
+      return NextResponse.json({ error: "Credit report not found" }, { status: 404 });
     }
 
     if (!record.report_pdf_url) {
@@ -55,7 +57,7 @@ export async function GET(request: Request) {
       .download(record.report_pdf_url);
 
     if (storageErr || !fileData) {
-      console.error("[credit/download] Storage error:", storageErr);
+      console.error("[credit/download] storage_error", { reportId: record.id, message: storageErr?.message });
       return NextResponse.json({ error: "Failed to retrieve report PDF from storage." }, { status: 500 });
     }
 
@@ -78,11 +80,16 @@ export async function GET(request: Request) {
     return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="credit-report-${record.full_name.replace(/\s+/g, "_")}.pdf"`,
+        // ASCII-only and quote-free: a name with a quote, a newline or
+        // Devanagari in it must not be able to break the header.
+        "Content-Disposition": `attachment; filename="credit-report-${
+          String(record.full_name ?? "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "report"
+        }.pdf"`,
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {
-    console.error("[credit/download] Download error:", error);
+    console.error("[credit/download] failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }

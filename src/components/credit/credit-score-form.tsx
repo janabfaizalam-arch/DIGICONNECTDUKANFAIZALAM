@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormPrivacyNotice } from "@/components/privacy/form-privacy-notice";
 import { creditReportRequestSchema, type CreditReportRequestInput } from "@/lib/credit/validators";
 import { CREDIT_PACKAGES, TEST_MODE } from "@/lib/credit/constants";
 import { CreditScoreCard } from "./credit-score-card";
@@ -45,7 +46,7 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
     setValue,
     watch,
     trigger,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<CreditReportRequestInput>({
     resolver: zodResolver(creditReportRequestSchema),
     defaultValues: {
@@ -86,12 +87,6 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
       return age >= 18;
     })();
 
-  // Temporary debugging console logs as requested
-  console.log("--- CREDIT SCORE FORM DEBUG ---");
-  console.log("formState.isValid:", isValid);
-  console.log("errors:", errors);
-  console.log("disabled state:", !isStep1Valid);
-  console.log("current values:", { fullName, mobile, pan, dob });
 
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -328,19 +323,24 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
               id="consent"
               checked={consentChecked}
               onChange={(e) => setValue("consent", e.target.checked)}
-              className="mt-1 border-white/30 rounded bg-white/5 text-slate-950 focus:ring-0 w-4 h-4 cursor-pointer"
+              className="mt-1 border-white/30 rounded bg-white/5 text-slate-950 w-4 h-4 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             />
             <label htmlFor="consent" className="text-xs text-white/80 leading-normal cursor-pointer select-none">
               I agree and authorize DigiConnect Dukan to check my credit rating score and download my reports.
             </label>
           </div>
 
+          <FormPrivacyNotice
+            tone="dark"
+            purpose="to fetch the credit report you request from a credit information provider and show it to you"
+          />
+
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep(1)} className="flex-1 border-white/10 hover:bg-white/5 text-white h-11">
               Back
             </Button>
             <Button onClick={handleProceedToPackages} className="flex-1 bg-white hover:bg-white/95 text-black font-semibold h-11">
-              Next
+              Choose a package
             </Button>
           </div>
         </div>
