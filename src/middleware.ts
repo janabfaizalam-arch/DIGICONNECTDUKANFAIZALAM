@@ -422,9 +422,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // app_metadata only — user_metadata is user-writable and never grants a role.
   let role =
     normalizeAppRole((user?.app_metadata as Record<string, unknown> | undefined)?.role) ??
-    normalizeAppRole(user?.user_metadata?.role) ??
     "customer";
   let profile: ProfileAuthShape | null = null;
   let partnerActive = false;
@@ -451,9 +451,7 @@ export async function middleware(request: NextRequest) {
       left runs concurrently, which makes the cost one round trip rather than
       the sum of two, and it is skipped where nothing reads it.
     */
-    const metadataRole =
-      normalizeAppRole((user.app_metadata as Record<string, unknown> | undefined)?.role) ??
-      normalizeAppRole(user.user_metadata?.role);
+    const metadataRole = normalizeAppRole((user.app_metadata as Record<string, unknown> | undefined)?.role);
 
     // Membership matters on the partner-facing paths, for a user whose token
     // already says partner, and when the token records no role at all — that

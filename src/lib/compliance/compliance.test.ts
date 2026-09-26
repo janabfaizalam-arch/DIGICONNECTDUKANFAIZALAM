@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 
@@ -82,7 +82,7 @@ describe("security regressions", () => {
   });
 
   it("the documents bucket has no anonymous or all-users read policy", () => {
-    const migration = read("supabase/migrations/20260925120000_close_documents_bucket_reads.sql");
+    const migration = read("supabase/migrations/20260926090000_close_documents_bucket_reads.sql");
     expect(migration).toContain('drop policy if exists "Public can read documents bucket"');
     expect(migration).toContain('drop policy if exists "Authenticated users can read documents"');
     expect(migration).toContain('drop policy if exists "Public can upload lead files"');
@@ -92,5 +92,17 @@ describe("security regressions", () => {
   it("the credit form does not log personal data", () => {
     const source = read("src/components/credit/credit-score-form.tsx");
     expect(source).not.toMatch(/console\.log\([^)]*\b(pan|mobile|dob)\b/);
+  });
+});
+
+describe("migration history", () => {
+  it("every migration has a unique version", () => {
+    // Supabase keys applied migrations by the numeric prefix; two files with
+    // the same prefix make `supabase db push` fail on the second one.
+    const versions = readdirSync(join(root, "supabase/migrations"))
+      .filter((f: string) => f.endsWith(".sql"))
+      .map((f: string) => f.split("_")[0]);
+    const duplicates = versions.filter((v: string, i: number) => versions.indexOf(v) !== i);
+    expect(duplicates).toEqual([]);
   });
 });

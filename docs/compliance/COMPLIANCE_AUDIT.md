@@ -20,7 +20,7 @@ Items marked *Manual* need a business owner or a qualified lawyer.
 
 | # | Area | Finding | Priority | Status |
 |---|---|---|---|---|
-| 1 | Storage | `documents` bucket had storage.objects SELECT policies for **anon** and **all authenticated users** → customer Aadhaar/PAN uploads listable and downloadable with the public anon key | P0 | Fixed — migration `20260925120000_close_documents_bucket_reads.sql` (**must be applied**) |
+| 1 | Storage | `documents` bucket had storage.objects SELECT policies for **anon** and **all authenticated users** → customer Aadhaar/PAN uploads listable and downloadable with the public anon key | P0 | Fixed — migration `20260926090000_close_documents_bucket_reads.sql` (**must be applied**) |
 | 2 | Storage | Anonymous INSERT policy into `documents/public-leads` | P0 | Fixed (same migration) |
 | 3 | Payments | `/api/create-order` created a Razorpay order for any client-supplied amount, unauthenticated, when no service/application was given | P0 | Fixed — request now rejected (400) |
 | 4 | Logging | Credit form logged PAN, mobile, DOB to browser console on every render | P0 | Fixed |
