@@ -324,6 +324,13 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         icon: Share2,
       },
       {
+        href: "/admin/marketing-agents",
+        label: "Marketing Agents",
+        description: "Daily research, posts, blog article and auto-posting to social media",
+        icon: Sparkles,
+        emphasis: true,
+      },
+      {
         href: "/admin/services/csc-olympiad",
         label: "CSC Olympiad Page",
         description: "Settings for the Olympiad landing page",
