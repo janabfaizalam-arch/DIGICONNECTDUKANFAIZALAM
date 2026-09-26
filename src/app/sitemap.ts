@@ -32,6 +32,10 @@ const STATIC: Array<{ path: string; changeFrequency: Entry["changeFrequency"]; p
   { path: "/credit-cards", changeFrequency: "monthly", priority: 0.6 },
   { path: "/privacy-policy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/terms-and-conditions", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/cookie-policy", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/refund-policy", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/disclaimer", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/contact", changeFrequency: "yearly", priority: 0.5 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

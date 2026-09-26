@@ -55,6 +55,14 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(self), microphone=(), geolocation=()',
   },
+  {
+    /*
+      Isolates our window from pages we open, while still allowing the
+      popups Razorpay checkout and social sign-in rely on.
+    */
+    key: 'Cross-Origin-Opener-Policy',
+    value: 'same-origin-allow-popups',
+  },
 ];
 
 const nextConfig: NextConfig = {

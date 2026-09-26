@@ -5,8 +5,8 @@ import GSTRegistrationClient from "./gst-registration-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "GST Registration Online - Fast & CA-Assisted | DigiConnect Dukan",
-  description: "Register your business for GST online. End-to-end expert CA support, document verification, quick ARN generation, and lifetime compliance tracking for ₹2,499.",
+  title: "GST Registration Online - Assisted Filing | DigiConnect Dukan",
+  description: "Register your business for GST online with guided support: document checks, application filing, ARN tracking and WhatsApp updates, from ₹2,499.",
   keywords: [
     "GST registration online",
     "Apply for GSTIN",
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     canonical: "/services/gst-registration",
   },
   openGraph: {
-    title: "GST Registration Online - Fast & CA-Assisted | DigiConnect Dukan",
-    description: "Register your business for GST online. End-to-end expert CA support, document verification, quick ARN generation, and lifetime compliance tracking for ₹2,499.",
+    title: "GST Registration Online - Assisted Filing | DigiConnect Dukan",
+    description: "Register your business for GST online with guided support: document checks, application filing, ARN tracking and WhatsApp updates, from ₹2,499.",
     type: "website",
     url: "/services/gst-registration",
     images: [
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "GST Registration Online - Fast & CA-Assisted | DigiConnect Dukan",
-    description: "Register your business for GST online. End-to-end expert CA support, document verification, quick ARN generation, and lifetime compliance tracking for ₹2,499.",
+    title: "GST Registration Online - Assisted Filing | DigiConnect Dukan",
+    description: "Register your business for GST online with guided support: document checks, application filing, ARN tracking and WhatsApp updates, from ₹2,499.",
   }
 };
 
@@ -110,7 +110,7 @@ const faqs = [
   },
   {
     question: "What is the process if my GST application gets rejected?",
-    answer: "If the tax officer requests additional clarification (a show-cause notice is issued), our CAs will formulate and submit the response on your behalf. In the rare case of a final rejection, we will refile the application or provide a full refund of our professional charges."
+    answer: "If the tax officer requests additional clarification (a show-cause notice is issued), our team will help you prepare and submit the response. In the rare case of a final rejection, we will refile the application or provide a full refund of our professional charges."
   },
   {
     question: "Do I need to file GST returns even if I have no sales?",

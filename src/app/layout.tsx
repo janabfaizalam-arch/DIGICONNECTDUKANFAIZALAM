@@ -3,15 +3,15 @@ import { Suspense } from "react";
 import { IBM_Plex_Sans, Inter, Noto_Sans_Devanagari, Playfair_Display, Poppins } from "next/font/google";
 import Script from "next/script";
 
-import { GoogleAnalytics } from "@/components/google-analytics";
-import { MetaPixelEvents } from "@/components/meta-pixel-events";
+import { CookieConsent } from "@/components/privacy/cookie-consent";
+import { TrackingScripts } from "@/components/privacy/tracking-scripts";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { SiteHeader } from "@/components/site-header";
-import { VisitTracker } from "@/components/analytics/visit-tracker";
 import { BottomNav } from "@/components/bottom-nav";
+import { business } from "@/lib/compliance/config";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -141,17 +141,29 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale: locking zoom stops low-vision visitors from enlarging
+  // text (WCAG 2.2 SC 1.4.4 Resize Text).
   viewportFit: "cover",
 };
 
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "DigiConnect Dukan",
+  name: business.brand,
+  legalName: business.legalEntity,
+  slogan: business.tagline,
+  description:
+    "DigiConnect Dukan provides private digital assistance and documentation support services. Not an official government portal.",
   url: siteUrl,
-  email: "support@rnos.in",
-  telephone: "7007595931",
+  logo: `${siteUrl.replace(/\/$/, "")}/icons/icon-512.png`,
+  email: business.email,
+  telephone: `+91-${business.phone}`,
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Orai",
+    addressRegion: "Uttar Pradesh",
+    addressCountry: "IN",
+  },
   areaServed: "IN",
 };
 
@@ -163,40 +175,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} ${inter.variable} ${ibmPlexSans.variable} ${playfair.variable} ${notoDevanagari.variable} font-sans antialiased`}>
-        {process.env.NODE_ENV === "production" && gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
-        {metaPixelId ? (
-          <>
-            <Script
-              id="meta-pixel"
-              strategy="afterInteractive"
-              dangerouslySetInnerHTML={{
-                __html: `
-                  !function(f,b,e,v,n,t,s)
-                  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                  n.queue=[];t=b.createElement(e);t.async=!0;
-                  t.src=v;s=b.getElementsByTagName(e)[0];
-                  s.parentNode.insertBefore(t,s)}(window, document,'script',
-                  'https://connect.facebook.net/en_US/fbevents.js');
-                  fbq('init', ${JSON.stringify(metaPixelId)});
-                  fbq('track', 'PageView');
-                `,
-              }}
-            />
-            <noscript>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                height="1"
-                width="1"
-                style={{ display: "none" }}
-                alt=""
-                src={`https://www.facebook.com/tr?id=${encodeURIComponent(metaPixelId)}&ev=PageView&noscript=1`}
-              />
-            </noscript>
-            <MetaPixelEvents />
-          </>
-        ) : null}
         <SessionProvider>
         <ToastProvider>
           <a
@@ -209,15 +187,15 @@ export default function RootLayout({
             <NavigationProgress />
           </Suspense>
           {/*
-            Counts a page view for the admin panel's own analytics.
-
-            Renders nothing, sets no cookie, and hands the browser a beacon
-            rather than a request it has to wait for. See
-            src/components/analytics/visit-tracker.tsx.
+            Every non-essential tracker — Google Analytics, the Meta Pixel and
+            the admin panel's first-party visit counter — loads from here, and
+            only as far as the visitor's cookie choice allows. See
+            src/components/privacy/tracking-scripts.tsx.
           */}
-          <Suspense fallback={null}>
-            <VisitTracker />
-          </Suspense>
+          <TrackingScripts
+            gaMeasurementId={process.env.NODE_ENV === "production" ? gaMeasurementId : undefined}
+            metaPixelId={metaPixelId}
+          />
           {/*
             No announcement strip above the header.
 
@@ -234,6 +212,7 @@ export default function RootLayout({
             <BottomNav />
           </Suspense>
           <PwaInstallPrompt />
+          <CookieConsent />
           <Script id="organization-schema" type="application/ld+json">
             {JSON.stringify(organizationSchema)}
           </Script>

@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
   X,
-  Star,
   Shield,
   Clock,
   ArrowRight,
@@ -27,7 +26,6 @@ import {
   Compass,
   HeartHandshake
 } from "lucide-react";
-import { OfferCountdown } from "./offer-countdown";
 
 // Custom SVG WhatsApp icon
 const WhatsAppIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
@@ -41,43 +39,6 @@ const WhatsAppIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   </svg>
 );
 
-// Dynamic Count-Up Component
-function Counter({ value, suffix = "", duration = 1500 }: { value: number; suffix?: string; duration?: number }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  useEffect(() => {
-    if (!isInView) return;
-    const end = value;
-    const totalSteps = 60;
-    const stepTime = duration / totalSteps;
-    let currentStep = 0;
-
-    const timer = setInterval(() => {
-      currentStep++;
-      const progress = currentStep / totalSteps;
-      // Ease out quad
-      const currentCount = Math.floor(end * (progress * (2 - progress)));
-      setCount(currentCount);
-
-      if (currentStep >= totalSteps) {
-        clearInterval(timer);
-        setCount(end);
-      }
-    }, stepTime);
-
-    return () => clearInterval(timer);
-  }, [isInView, value, duration]);
-
-  return (
-    <span ref={ref} className="font-heading font-bold tabular-nums">
-      {count}
-      {suffix}
-    </span>
-  );
-}
-
 interface GSTClientProps {
   isLoggedIn: boolean;
 }
@@ -85,15 +46,6 @@ interface GSTClientProps {
 export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
   // States
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-
-  // Auto scroll logic for testimonials
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, []);
 
   const whatsappNumber = "917007595931";
   const supportPhoneNumber = "+917007595931";
@@ -145,7 +97,10 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                 </p>
               </motion.div>
 
-              {/* Pricing Callout & Urgency Badge */}
+              {/* Pricing callout. A crossed-out "₹4,999 / Save ₹2,500" and a
+                  countdown that reset every midnight used to sit here: a
+                  reference price nobody was charged and urgency that was not
+                  real are both dark patterns, so both are gone. */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -155,15 +110,8 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                 <div className="space-y-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-heading font-bold text-slate-900">₹2,499</span>
-                    <span className="text-slate-400 line-through text-sm">₹4,999</span>
-                    <span className="text-emerald-700 text-xs font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/50">
-                      Save ₹2,500
-                    </span>
                   </div>
                   <p className="text-xs text-slate-400">All government and professional consultation fees included</p>
-                </div>
-                <div className="ml-auto">
-                  <OfferCountdown />
                 </div>
               </motion.div>
 
@@ -212,12 +160,12 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                       IN
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Government Portal</p>
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Illustration</p>
                       <p className="text-xs font-bold text-slate-700">GSTIN Network Assistance</p>
                     </div>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-blue-50 text-[10px] font-bold text-blue-700 border border-blue-100">
-                    Active Integrations
+                    Sample workflow
                   </span>
                 </div>
 
@@ -253,7 +201,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-slate-800">Document Audit</p>
-                        <p className="text-[10px] text-slate-400">Verified by CA Expert</p>
+                        <p className="text-[10px] text-slate-500">Checked before filing</p>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100/50">
@@ -282,7 +230,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
 
                 <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-100/80 pt-4">
                   <span className="flex items-center gap-1">
-                    <Lock className="h-3 w-3" /> Secure 256-bit encryption
+                    <Lock className="h-3 w-3" aria-hidden="true" /> HTTPS encrypted
                   </span>
                   <span className="font-semibold text-slate-600">DigiConnect Dukan</span>
                 </div>
@@ -299,19 +247,19 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
           <div className="flex flex-wrap items-center justify-between gap-y-6 gap-x-8">
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <Building className="h-4 w-4 text-blue-600" />
-              <span>Government Assistance Assured</span>
+              <span>Guided GST application support</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <UserCheck className="h-4 w-4 text-blue-600" />
-              <span>Experienced Legal Experts</span>
+              <span>Document checks before filing</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <Shield className="h-4 w-4 text-blue-600" />
-              <span>100% Secure Document Handling</span>
+              <span>Private, access-controlled document storage</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <Clock className="h-4 w-4 text-blue-600" />
-              <span>Super Fast End-to-End Processing</span>
+              <span>Status updates on WhatsApp</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <BadgePercent className="h-4 w-4 text-blue-600" />
@@ -423,9 +371,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-heading font-bold text-slate-900">₹2,499</span>
-                    <span className="text-slate-400 line-through text-sm">₹4,999</span>
                   </div>
-                  <p className="text-xs text-emerald-700 font-bold mt-1">Save ₹2,500 on basic registration</p>
                 </div>
 
                 <div className="border-t border-slate-100 pt-6 space-y-3.5">
@@ -466,9 +412,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-heading font-bold text-slate-900">₹2,799</span>
-                    <span className="text-slate-400 line-through text-sm">₹6,999</span>
                   </div>
-                  <p className="text-xs text-emerald-700 font-bold mt-1">Save ₹4,200 (Best professional deal)</p>
                 </div>
 
                 <div className="border-t border-slate-100 pt-6 space-y-3.5">
@@ -510,9 +454,7 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-heading font-bold text-white">₹3,899</span>
-                    <span className="text-slate-500 line-through text-sm">₹18,499</span>
                   </div>
-                  <p className="text-xs text-emerald-400 font-bold mt-1">Save ₹14,600 (Launch discount)</p>
                 </div>
 
                 <div className="border-t border-slate-800 pt-6 space-y-3.5">
@@ -752,134 +694,13 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
         </div>
       </section>
 
-      {/* 12. Statistics (Counter Section) */}
-      <section className="py-16 bg-slate-900 text-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(37,99,235,0.08),transparent_50%)] pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-1">
-              <p className="text-4xl md:text-5xl font-heading font-extrabold text-blue-400">
-                <Counter value={5000} suffix="+" />
-              </p>
-              <p className="text-xs text-slate-400">Businesses Registered</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-4xl md:text-5xl font-heading font-extrabold text-blue-400">
-                <Counter value={99} suffix="%" />
-              </p>
-              <p className="text-xs text-slate-400">Application Approval Rate</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-4xl md:text-5xl font-heading font-extrabold text-blue-400">
-                <Counter value={4} suffix=".9★" />
-              </p>
-              <p className="text-xs text-slate-400">Customer Star Rating</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-4xl md:text-5xl font-heading font-extrabold text-blue-400">
-                24×7
-              </p>
-              <p className="text-xs text-slate-400">Dedicated Expert Support</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 13. Customer Testimonials & Google Reviews */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 space-y-16">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Google review details */}
-            <div className="lg:col-span-4 space-y-6">
-              <h2 className="text-3xl font-heading font-bold text-slate-900 tracking-tight leading-tight">
-                What Our Customers Say About Us
-              </h2>
-              <p className="text-slate-500 text-sm">
-                Real feedback from real businesses across India. Transparent, unedited reviews sourced from Google Profile updates.
-              </p>
-
-              {/* Google Reviews Card */}
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-xs">
-                    {/* Mock Google Logo Icon */}
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-700">Google Rating</p>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-black text-slate-900">4.9 / 5</span>
-                      <div className="flex text-amber-500">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-amber-500 text-amber-500" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-400">Based on 1,248 verified customer submissions</p>
-              </div>
-            </div>
-
-            {/* Testimonials Slider */}
-            <div className="lg:col-span-8 relative">
-              <div className="overflow-hidden rounded-[24px] bg-slate-50/50 border border-slate-100 p-8 md:p-10 relative min-h-[220px] flex flex-col justify-between">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentTestimonial}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.4 }}
-                    className="space-y-6"
-                  >
-                    <div className="flex text-amber-500 gap-0.5">
-                      {[...Array(testimonials[currentTestimonial].rating)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-amber-500 text-amber-500" />
-                      ))}
-                    </div>
-                    <p className="text-sm md:text-base text-slate-600 italic font-medium leading-relaxed">
-                      &ldquo;{testimonials[currentTestimonial].review}&rdquo;
-                    </p>
-                    <div className="flex items-center gap-3 pt-4 border-t border-slate-100/80">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
-                        {testimonials[currentTestimonial].name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{testimonials[currentTestimonial].name}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {testimonials[currentTestimonial].business} • {testimonials[currentTestimonial].location}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
-
-                {/* Slider Dots */}
-                <div className="flex justify-start gap-2 mt-6">
-                  {testimonials.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentTestimonial(idx)}
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        idx === currentTestimonial ? "w-6 bg-blue-600" : "w-2 bg-slate-200 hover:bg-slate-300"
-                      }`}
-                      aria-label={`Go to slide ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-          </div>
-        </div>
-      </section>
+      {/*
+        Sections 12 and 13 — a "5,000+ businesses / 99% approval / 4.9★"
+        counter band and a "Google Rating 4.9 from 1,248 reviews" panel with
+        four named testimonials — were removed. None of it came from real
+        data, and invented reviews and ratings mislead customers. Real,
+        consented testimonials are managed at /admin/homepage (testimonials).
+      */}
 
       {/* 14. FAQ Section */}
       <section className="py-20 bg-slate-50/50" id="faqs">
@@ -941,13 +762,12 @@ export default function GSTRegistrationClient({ isLoggedIn }: GSTClientProps) {
             Start Your GST Registration Today
           </h2>
           <p className="text-slate-500 text-sm md:text-base max-w-xl mx-auto">
-            Avoid penalties, claim Input Tax Credit, and legitimise your operations. Join thousands of growth-focused businesses who chose DigiConnect Dukan.
+            Avoid penalties, claim Input Tax Credit, and legitimise your operations. DigiConnect Dukan helps you prepare, file and track your application.
           </p>
 
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-heading font-black text-slate-900">₹2,499</span>
-              <span className="text-slate-400 line-through text-sm">₹4,999</span>
               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/50">
                 All-Inclusive Fee
               </span>
@@ -1136,7 +956,7 @@ const comparisonPoints = [
 
 const packageFeatures = [
   { feature: "GST Registration Filing", basic: true, msme: true, starter: true },
-  { feature: "Expert CA Document Review", basic: true, msme: true, starter: true },
+  { feature: "Document Review Before Filing", basic: true, msme: true, starter: true },
   { feature: "ARN Tracking & Updates", basic: true, msme: true, starter: true },
   { feature: "GST Certificate Delivery", basic: true, msme: true, starter: true },
   { feature: "Udyam MSME Certificate", basic: false, msme: true, starter: true },
@@ -1145,13 +965,13 @@ const packageFeatures = [
   { feature: "FSSAI Food Licence Registration", basic: false, msme: false, starter: true },
   { feature: "Premium Business Landing Page", basic: false, msme: false, starter: true },
   { feature: "6 Months Web Maintenance", basic: false, msme: false, starter: true },
-  { feature: "Dedicated Relationship Manager", basic: "Email Support", msme: "WhatsApp + Call", starter: "24/7 VIP Dedicated" },
-  { feature: "Average Processing Speed", basic: "5-7 Days", msme: "3-5 Days", starter: "2-3 Days" }
+  { feature: "Dedicated Relationship Manager", basic: "Email Support", msme: "WhatsApp + Call", starter: "Priority WhatsApp + Call" },
+  { feature: "Typical Timeline (not guaranteed)", basic: "5-7 Days", msme: "3-5 Days", starter: "2-3 Days" }
 ];
 
 const timelineSteps = [
   { title: "Submit Details", desc: "Fill our secure form with basic details and upload files in under 3 minutes." },
-  { title: "Doc Verification", desc: "Our experienced CA expert reviews the files for zero rejection rate." },
+  { title: "Doc Verification", desc: "Our team reviews your files for completeness before filing." },
   { title: "Application Filing", desc: "We prepare and submit the formal application dossiers onto the GSTN Portal." },
   { title: "Government Processing", desc: "The government GST inspector reviews the application and validates credentials." },
   { title: "Certificate Delivered", desc: "Your official GSTIN registration certificate is delivered directly to your inbox." }
@@ -1237,18 +1057,18 @@ const industries = [
 const whyChoosePoints = [
   {
     icon: <UserCheck className="h-5.5 w-5.5" />,
-    title: "Dedicated Expert Team",
-    desc: "Experienced CAs and tax professionals manage your application, ensuring zero filing errors."
+    title: "Guided by our team",
+    desc: "Our team checks your details and documents before filing to reduce avoidable queries and delays."
   },
   {
     icon: <Lock className="h-5.5 w-5.5" />,
-    title: "100% Secure Process",
-    desc: "Your business documents are encrypted and only shared with verified GST portal assessors."
+    title: "Careful document handling",
+    desc: "Documents are kept in private storage and used only to prepare and file your GST application."
   },
   {
     icon: <Zap className="h-5.5 w-5.5" />,
-    title: "Fast Approvals",
-    desc: "We file documents daily to minimize processing delays and resolve officer queries instantly."
+    title: "Prompt follow-up",
+    desc: "We track your ARN and help you respond to officer queries. Approval is decided by the GST department."
   },
   {
     icon: <BadgePercent className="h-5.5 w-5.5" />,
@@ -1264,37 +1084,6 @@ const whyChoosePoints = [
     icon: <CheckCircle className="h-5.5 w-5.5" />,
     title: "WhatsApp Alerts",
     desc: "Get instant milestone updates via automated WhatsApp messages."
-  }
-];
-
-const testimonials = [
-  {
-    name: "Amit Sharma",
-    business: "Sharma Electronics",
-    rating: 5,
-    review: "We registered our GST through DigiConnect Dukan. The process was super fast. The CA verified our rent agreement and within 4 days we got our GST certificate. Highly recommended!",
-    location: "New Delhi"
-  },
-  {
-    name: "Sneha Patel",
-    business: "Vibrant Designs E-commerce",
-    rating: 5,
-    review: "As an online seller on Amazon, I needed a GSTIN quickly. They not only registered my GST but also guided me on how to claim ITC on courier charges. Incredible service!",
-    location: "Ahmedabad"
-  },
-  {
-    name: "Rohan Das",
-    business: "Das Logistics Solutions",
-    rating: 5,
-    review: "I took the GST + MSME combo. The Udyam certificate helps us get loans easily, and they set it up in just 3 days. Extremely professional team.",
-    location: "Kolkata"
-  },
-  {
-    name: "Dr. K. Raghavan",
-    business: "Raghav Diagnostics",
-    rating: 5,
-    review: "Clean user interface and expert compliance. There was a query from the officer on our clinic's tax receipt, and the DigiConnect team resolved it immediately without extra charges.",
-    location: "Chennai"
   }
 ];
 
@@ -1369,7 +1158,7 @@ const faqsList = [
   },
   {
     question: "What is the process if my GST application gets rejected?",
-    answer: "If the tax officer requests additional clarification (a show-cause notice is issued), our CAs will formulate and submit the response on your behalf. In the rare case of a final rejection, we will refile the application or provide a full refund of our professional charges."
+    answer: "If the tax officer requests additional clarification (a show-cause notice is issued), our team will help you prepare and submit the response. In the rare case of a final rejection, we will refile the application or provide a full refund of our professional charges."
   },
   {
     question: "Do I need to file GST returns even if I have no sales?",

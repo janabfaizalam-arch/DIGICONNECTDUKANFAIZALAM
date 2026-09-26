@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { toPrivacyEmbedUrl } from "@/lib/embeds";
 import { Quote, Star, Trophy } from "lucide-react";
 
 import { ServiceCard, ServiceSection } from "@/components/services/shell";
@@ -145,11 +146,16 @@ export function ServiceVideosSection({ detail }: { detail: ServiceDetail }) {
   return (
     <ServiceSection id="videos" surface="white" eyebrow="Watch" title="Videos">
       <ul className={`grid gap-3 ${detail.videos.length > 1 ? "lg:grid-cols-2" : ""}`}>
-        {detail.videos.slice(0, 4).map((url) => (
+        {detail.videos
+          .slice(0, 4)
+          .map((url) => toPrivacyEmbedUrl(url))
+          .filter((url): url is string => Boolean(url))
+          .map((url) => (
           <li key={url}>
             <div className="lg-card overflow-hidden">
               <iframe
                 src={url}
+                referrerPolicy="strict-origin-when-cross-origin"
                 title={`${detail.service.title} video`}
                 className="aspect-video w-full border-0"
                 loading="lazy"

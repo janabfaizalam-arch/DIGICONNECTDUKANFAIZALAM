@@ -690,7 +690,7 @@ export function useApplyFlow({
 
     try {
       const slugs = cartItems.flatMap(item => Array<string>(item.quantity).fill(item.service.slug));
-      payLog("ORDER_CREATE", { slugs, customer: customer.name, mobile: customer.mobile, stage: "START" });
+      payLog("ORDER_CREATE", { slugs, stage: "START" });
 
       payLog("ORDER_CREATE", { stage: "SEND_REQUEST" });
       const orderRes = await fetch("/api/create-order", {

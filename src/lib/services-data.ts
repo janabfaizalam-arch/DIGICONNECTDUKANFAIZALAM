@@ -196,7 +196,7 @@ export const serviceCategories: ServiceCategory[] = [
     title: "Tax & GST",
     slug: "tax",
     heading: "Tax & GST Registration",
-    description: "GST Registration, GST filing support, and ITR return filing with certified assistance.",
+    description: "GST Registration, GST filing support, and ITR return filing with guided assistance.",
     icon: ReceiptText,
     featuredSlugs: ["gst-registration", "itr-filing"],
   },
@@ -768,7 +768,7 @@ const rawServices: RawService[] = [
     iconKey: "compliance",
     badge: "State Service",
     documents: ["Aadhaar Card", "Land Registry Copy or Voter List", "Self Declaration Form"],
-    benefits: ["Residency document preparation", "Official government submittal checks", "Verified digital certificate copy"],
+    benefits: ["Residency document preparation", "Application checks before submission", "Digital copy of the issued certificate"],
   },
   {
     title: "Ayushman Card",

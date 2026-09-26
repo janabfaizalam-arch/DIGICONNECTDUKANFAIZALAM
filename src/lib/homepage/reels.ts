@@ -55,7 +55,7 @@ export function resolveReelSource(rawUrl: string | null | undefined): ReelSource
   }
 
   const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeo) return { kind: "embed", src: `https://player.vimeo.com/video/${vimeo[1]}?muted=1&loop=1` };
+  if (vimeo) return { kind: "embed", src: `https://player.vimeo.com/video/${vimeo[1]}?muted=1&loop=1&dnt=1` };
 
   return { kind: "unsupported" };
 }
