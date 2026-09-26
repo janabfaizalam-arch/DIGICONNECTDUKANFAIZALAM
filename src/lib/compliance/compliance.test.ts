@@ -106,3 +106,14 @@ describe("migration history", () => {
     expect(duplicates).toEqual([]);
   });
 });
+
+describe("API route inventory", () => {
+  it("has no route left needing review", async () => {
+    const { execFileSync } = await import("child_process");
+    const rows = JSON.parse(
+      execFileSync("node", ["scripts/security/api-inventory.mjs", "--json"], { cwd: root, encoding: "utf8" }),
+    ) as { route: string; risk: string }[];
+    expect(rows.length).toBeGreaterThan(200);
+    expect(rows.filter((r) => r.risk === "review").map((r) => r.route)).toEqual([]);
+  });
+});

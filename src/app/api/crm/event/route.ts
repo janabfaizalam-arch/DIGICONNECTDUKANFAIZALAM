@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const EVENT_SCORES: Record<string, number> = {
@@ -11,18 +12,36 @@ const EVENT_SCORES: Record<string, number> = {
   smart_chat_interaction: 15,
 };
 
+const failed = () => NextResponse.json({ error: "CRM event tracking failed." }, { status: 500 });
+
+/**
+ * Lead-scoring events from the public site.
+ *
+ * Public by design (visitors are not signed in), so it is rate-limited, takes
+ * only known event names and bounded strings, never overwrites a name staff
+ * already have on a lead, and answers without lead ids or database errors.
+ */
 export async function POST(request: Request) {
   try {
+    const rate = checkRateLimit(`crm-event:${getClientIp(request)}`, 30, 60_000);
+    if (!rate.ok) return rateLimitResponse(rate.retryAfter);
+
     const supabase = getSupabaseAdmin();
     if (!supabase) {
-      return NextResponse.json({ error: "Supabase admin key missing." }, { status: 500 });
+      return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
     }
 
-    const body = await request.json();
-    const { mobile, name, service, event } = body;
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+    const mobile = body?.mobile;
+    const name = typeof body?.name === "string" ? body.name.trim().slice(0, 80) : "";
+    const service = typeof body?.service === "string" ? body.service.trim().slice(0, 120) : "";
+    const event = typeof body?.event === "string" ? body.event : "";
 
     if (!mobile || !service || !event) {
       return NextResponse.json({ error: "Mobile, service, and event are required." }, { status: 400 });
+    }
+    if (!Object.hasOwn(EVENT_SCORES, event)) {
+      return NextResponse.json({ error: "Unknown event." }, { status: 400 });
     }
 
     const cleanMobile = String(mobile).replace(/\D/g, "").slice(-10);
@@ -41,7 +60,8 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (selectError) {
-      return NextResponse.json({ error: selectError.message }, { status: 500 });
+      console.error("[crm-event] select_failed", { code: selectError.code });
+      return failed();
     }
 
     let updatedNotes = "";
@@ -76,15 +96,17 @@ export async function POST(request: Request) {
         .from("leads")
         .update({
           notes: updatedNotes,
-          name: name || existingLead.name || "Customer",
+          // An anonymous caller may fill in a missing name, never replace one.
+          name: existingLead.name || name || "Customer",
         })
         .eq("id", existingLead.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
+        console.error("[crm-event] update_failed", { code: updateError.code });
+        return failed();
       }
 
-      return NextResponse.json({ ok: true, leadId: existingLead.id, score: finalScore });
+      return NextResponse.json({ ok: true });
     } else {
       // Create new lead
       updatedNotes = JSON.stringify({ score: finalScore, events: eventsList });
@@ -102,16 +124,15 @@ export async function POST(request: Request) {
         .select("id")
         .single();
 
-      if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      if (insertError || !newLead) {
+        console.error("[crm-event] insert_failed", { code: insertError?.code });
+        return failed();
       }
 
-      return NextResponse.json({ ok: true, leadId: newLead.id, score: finalScore });
+      return NextResponse.json({ ok: true });
     }
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "CRM event tracking failed." },
-      { status: 500 }
-    );
+    console.error("[crm-event] failed", error instanceof Error ? error.message : "unknown");
+    return failed();
   }
 }

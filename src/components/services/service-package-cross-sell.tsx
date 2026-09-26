@@ -17,7 +17,7 @@ export function ServicePackageCrossSell({ currentServiceSlug }: ServicePackageCr
   useEffect(() => {
     async function loadPackages() {
       try {
-        const res = await fetch("/api/admin/packages");
+        const res = await fetch("/api/packages");
         if (res.ok) {
           const data = await res.json();
           // Filter packages that contain the current service in their items list

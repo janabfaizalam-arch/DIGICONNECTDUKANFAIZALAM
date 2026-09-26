@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { agencyInternalEmail } from "@/lib/auth/phone";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
-import { logAuthSecurityEvent } from "@/lib/auth/security-log";
+import { isAuthLockedOut, logAuthSecurityEvent } from "@/lib/auth/security-log";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { signInWithPasswordCookies } from "@/lib/auth/session-cookies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -15,6 +16,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ipRate = checkRateLimit(`ap-login:${getClientIp(request) ?? "unknown"}`, 10, 60_000);
+  if (!ipRate.ok) return rateLimitResponse(ipRate.retryAfter);
+
   try {
     const body = schema.parse(await request.json());
     const username = body.username.trim().toLowerCase();
@@ -79,6 +83,19 @@ export async function POST(request: Request) {
     }
     if (profile.account_status === "blocked" || profile.account_status === "suspended") {
       return NextResponse.json({ error: "Account suspended hai." }, { status: 403 });
+    }
+
+    // Ten wrong passwords in 15 minutes lock this partner's sign-in for the
+    // rest of the window, whichever IPs the attempts come from.
+    if (
+      await isAuthLockedOut({
+        userId: partner.user_id as string,
+        eventTypes: ["ap_login_failed"],
+        maxFailures: 10,
+        windowMs: 15 * 60_000,
+      })
+    ) {
+      return NextResponse.json({ error: "Bahut zyada galat attempts. 15 minute baad try karein." }, { status: 429 });
     }
 
     const email = agencyInternalEmail(username);

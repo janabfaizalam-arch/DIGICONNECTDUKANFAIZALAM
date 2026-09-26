@@ -3,15 +3,24 @@ import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET() {
+  // Admin-only like the writes: rows carry agent cost and partner payout.
+  const user = await getCurrentUser();
+  const role = await getCurrentUserRole(user);
+  if (!user || !isAdminRole(role)) return NextResponse.json({ message: "Admin access required." }, { status: 403 });
+
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ message: "Database client unavailable." }, { status: 500 });
 
   try {
     const { data, error } = await supabase.from("service_packages").select("*").order("created_at", { ascending: false });
-    if (error) return NextResponse.json({ message: error.message }, { status: 500 });
+    if (error) {
+      console.error("[admin/packages] list_failed", { code: error.code });
+      return NextResponse.json({ message: "Packages could not be loaded." }, { status: 500 });
+    }
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : "Request failed." }, { status: 500 });
+    console.error("[admin/packages] failed", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ message: "Request failed." }, { status: 500 });
   }
 }
 

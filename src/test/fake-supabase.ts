@@ -73,12 +73,27 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
   private returning = false;
   private cardinality: "one" | "maybe" | null = null;
   private limitN: number | null = null;
+  private countOnly = false;
 
   constructor(private db: FakeSupabase, private table: string) {}
 
-  select() {
+  select(_columns?: string, options?: { count?: string; head?: boolean }) {
     if (this.op === "select") this.op = "select";
     else this.returning = true;
+    if (options?.head) this.countOnly = true;
+    return this;
+  }
+  gte(column: string, value: string | number) {
+    this.filters.push((row) => String(row[column] ?? "") >= String(value));
+    return this;
+  }
+  lte(column: string, value: string | number) {
+    this.filters.push((row) => String(row[column] ?? "") <= String(value));
+    return this;
+  }
+  not(column: string, operator: string, value: unknown) {
+    if (operator !== "eq") throw new Error("fake not() supports eq only");
+    this.filters.push((row) => row[column] !== value);
     return this;
   }
   insert(rows: Row | Row[]) {
@@ -162,7 +177,8 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
     return rows.filter((row) => this.filters.every((f) => f(row)));
   }
 
-  private execute(): { data: unknown; error: unknown } {
+  private execute(): { data: unknown; error: unknown; count?: number } {
+    if (this.countOnly) return { data: null, error: null, count: this.matching().length };
     let result: Row[];
     if (this.op === "insert") {
       this.db.tables[this.table].push(...this.payload);

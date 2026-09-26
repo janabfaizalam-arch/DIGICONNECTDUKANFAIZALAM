@@ -161,7 +161,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const err = error as Error;
-    console.error("[credit/verify-payment] Payment verification failed:", err);
-    return NextResponse.json({ error: err.message || "Payment verification failed." }, { status: 500 });
+    console.error("[credit/verify-payment] failed", err instanceof Error ? err.message : "unknown");
+    return NextResponse.json({ error: "Payment verification failed." }, { status: 500 });
   }
 }

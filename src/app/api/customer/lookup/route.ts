@@ -44,7 +44,8 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      console.error("[customer/lookup] query_failed", { code: error.code });
+      return NextResponse.json({ success: false, error: "Lookup failed." }, { status: 500 });
     }
 
     let profile = profileData;
@@ -58,7 +59,8 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       if (custError) {
-        return NextResponse.json({ success: false, error: custError.message }, { status: 500 });
+        console.error("[lookup] query_failed", { code: custError.code });
+        return NextResponse.json({ success: false, error: "Lookup failed." }, { status: 500 });
       }
 
       if (!custProfile) {
@@ -149,7 +151,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[customer_lookup_api_error]", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }
