@@ -65,7 +65,9 @@ export function AuthButton({
       : status === "error"
         ? "bg-rose-600 text-white shadow-[0_10px_30px_rgba(244,63,94,0.30)]"
         : variant === "primary"
-          ? "bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white shadow-[0_10px_30px_rgba(37,99,235,0.28)] md:hover:shadow-[0_16px_40px_rgba(37,99,235,0.36)]"
+          // DigiConnect blue, not blue-to-indigo: the old ramp ended on #4F46E5
+          // and read as purple, which is not a brand colour anywhere else.
+          ? "bg-[linear-gradient(135deg,#0b4fb8_0%,#1268e8_100%)] text-white shadow-[0_10px_30px_rgba(18,104,232,0.32)] md:hover:shadow-[0_16px_40px_rgba(18,104,232,0.42)] md:hover:brightness-[1.06]"
           : variant === "neutral"
             ? "border border-slate-200 bg-white/80 text-slate-900 shadow-sm md:hover:bg-white"
             : "text-blue-700 hover:bg-blue-50/70";

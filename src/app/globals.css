@@ -1824,6 +1824,84 @@ body:has([data-announcement="true"]) .homepage-mobile-shell.home-option3 {
   }
 }
 
+/* ── Auth brand panel: the stage the mascot stands on ──────────────────────
+   Depth is built in layers rather than in one gradient: two drifting colour
+   blooms, a masked grid, a spotlight, then the cutout on top. Everything
+   animates transform/opacity only, so none of it touches layout. */
+
+@keyframes dcp-auth-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8%, -6%, 0) scale(1.18); }
+}
+
+@keyframes dcp-auth-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.08); }
+  50% { transform: translate3d(-7%, 5%, 0) scale(1); }
+}
+
+@keyframes dcp-auth-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+
+@keyframes dcp-auth-orbit {
+  to { transform: rotate(360deg); }
+}
+
+.dcp-auth-bloom-a { animation: dcp-auth-drift-a 17s ease-in-out infinite; }
+.dcp-auth-bloom-b { animation: dcp-auth-drift-b 21s ease-in-out infinite; }
+.dcp-auth-orbit { animation: dcp-auth-orbit 46s linear infinite; }
+
+/* Each floater gets its own phase, so they never bob in lockstep. */
+.dcp-auth-float { animation: dcp-auth-float 6s ease-in-out infinite; }
+.dcp-auth-float-1 { animation-duration: 6.5s; animation-delay: -0.4s; }
+.dcp-auth-float-2 { animation-duration: 7.4s; animation-delay: -2.1s; }
+.dcp-auth-float-3 { animation-duration: 6.9s; animation-delay: -3.6s; }
+.dcp-auth-float-4 { animation-duration: 8.1s; animation-delay: -1.3s; }
+
+/* The grid reads as texture near the middle and fades out before it reaches
+   the text, which is what keeps it from competing with the headline. */
+.dcp-auth-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(68% 52% at 62% 34%, #000 0%, transparent 78%);
+  mask-image: radial-gradient(68% 52% at 62% 34%, #000 0%, transparent 78%);
+}
+
+/* The same grid on the light half, at a fraction of the strength, so the two
+   sides read as one surface rather than as a dark panel beside white space. */
+.dcp-auth-grid-light {
+  background-image:
+    linear-gradient(to right, rgba(8, 43, 99, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(8, 43, 99, 0.055) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(70% 60% at 78% 4%, #000 0%, transparent 72%);
+  mask-image: radial-gradient(70% 60% at 78% 4%, #000 0%, transparent 72%);
+}
+
+/* A pill that reads as glass on the dark panel without a backdrop-filter per
+   chip -- a dozen blurred layers is what makes a page like this drop frames. */
+.dcp-auth-chip {
+  /* Navy glass, not white glass: the blooms behind these pills are bright, and
+     a light pill left the white label at about 1.8:1 against them. */
+  background: linear-gradient(140deg, rgba(6, 22, 56, 0.74), rgba(6, 22, 56, 0.56));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 10px 26px rgba(4, 18, 48, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dcp-auth-bloom-a,
+  .dcp-auth-bloom-b,
+  .dcp-auth-orbit,
+  .dcp-auth-float {
+    animation: none !important;
+  }
+}
+
 /* Autofill Premium Styling overrides */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
