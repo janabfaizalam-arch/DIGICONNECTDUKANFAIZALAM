@@ -3,6 +3,7 @@ import "server-only";
 import { GoogleGenAI, Type } from "@google/genai";
 
 import { GeminiError } from "@/lib/ai/gemini";
+import { FALLBACK_TEXT_MODEL, pickLatestModel, pinnedTextModel } from "@/lib/marketing-agents/config";
 
 /**
  * Drafting the words for a partner service.
@@ -24,8 +25,44 @@ import { GeminiError } from "@/lib/ai/gemini";
  * endpoint; only the model and the prompt differ.
  */
 
-/** Text model. The photo endpoint uses the image sibling of the same family. */
-const MODEL = "gemini-2.5-flash";
+/**
+ * Which text model to call.
+ *
+ * Not a constant. `gemini-2.5-flash` was hard-coded here until the marketing
+ * agents hit it in production: Google had retired it for new keys, and every
+ * call came back 404. So this asks the key which models it can actually see
+ * and takes the newest stable Flash, exactly as those agents do -- the same
+ * picker, so a retirement is handled once rather than in two places. The
+ * lookup happens once per server instance; a failed lookup falls back to the
+ * newest name known at the time of writing.
+ *
+ * `MARKETING_AGENTS_TEXT_MODEL` pins it, because a deployment that has pinned
+ * a model wants that model everywhere, not just in the agents.
+ */
+let resolvedModel: Promise<string> | null = null;
+
+async function textModel(apiKey: string): Promise<string> {
+  const pinned = pinnedTextModel();
+  if (pinned) return pinned;
+
+  resolvedModel ??= (async () => {
+    const names: string[] = [];
+    try {
+      const pager = await new GoogleGenAI({ apiKey }).models.list({ config: { pageSize: 200 } });
+      for await (const model of pager) {
+        if (model.name && (model.supportedActions ?? ["generateContent"]).includes("generateContent")) {
+          names.push(model.name);
+        }
+      }
+    } catch {
+      // Listing is a convenience, not the job. A key that cannot list can
+      // still generate, so fall through to the known name rather than fail.
+    }
+    return pickLatestModel(names, "text") ?? FALLBACK_TEXT_MODEL;
+  })().catch(() => FALLBACK_TEXT_MODEL);
+
+  return resolvedModel;
+}
 
 /**
  * How long to wait before giving up.
@@ -196,12 +233,13 @@ export async function draftServiceCopy(request: ServiceCopyRequest): Promise<Ser
   }
 
   const ai = new GoogleGenAI({ apiKey });
+  const model = await textModel(apiKey);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
     const response = await ai.models.generateContent({
-      model: MODEL,
+      model,
       contents: buildPrompt({ ...request, title }),
       config: {
         systemInstruction: SYSTEM_RULES,

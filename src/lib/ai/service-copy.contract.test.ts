@@ -115,6 +115,20 @@ describe("the prompt guards the facts that matter", () => {
     expect(rules).toMatch(/never invent the shop's own price/i);
   });
 
+  it("never hard-codes a model name", () => {
+    // gemini-2.5-flash was hard-coded here and Google retired it for new
+    // keys; the marketing agents found that in production with a 404 on
+    // every call. The name is discovered now, through the same picker.
+    expect(lib).toContain("pickLatestModel");
+    expect(lib).toContain("FALLBACK_TEXT_MODEL");
+    expect(lib).not.toMatch(/model:\s*"gemini-/);
+    expect(lib).not.toMatch(/const MODEL\s*=\s*"gemini-/);
+  });
+
+  it("honours a pinned model, so a deployment pins it once", () => {
+    expect(lib).toContain("pinnedTextModel");
+  });
+
   it("asks for a schema rather than for JSON in prose", () => {
     expect(lib).toContain("responseSchema");
     expect(lib).toContain('responseMimeType: "application/json"');
