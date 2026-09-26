@@ -78,7 +78,12 @@ export function MarketingAgentsConsole() {
         body: JSON.stringify({ mode }),
       });
       const body = await res.json();
-      setMessage(body.ok ? `Run ${body.status} — ${body.service}` : body.skipped || body.error || "Run did not start");
+      const messages: Record<string, string> = {
+        completed: "Run ho gaya — niche posts dekhein.",
+        partial: "Run ho gaya, lekin kuch hissa fail hua — niche laal error dekhein.",
+        failed: "Run fail hua — niche laal error dekhein.",
+      };
+      setMessage(body.ok ? messages[body.status] ?? `Run ${body.status}` : body.skipped || body.error || "Run did not start");
     } catch {
       setMessage("Run request failed.");
     } finally {
