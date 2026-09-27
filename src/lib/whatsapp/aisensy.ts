@@ -17,6 +17,11 @@ import type {
   SendAisensyCampaignResult,
 } from "@/lib/whatsapp/types";
 import { WHATSAPP_MOBILE_REQUIRED_ERROR } from "@/lib/whatsapp/types";
+import {
+  buildMetaTemplatePayload,
+  loadMetaConfig,
+  postMetaTemplate,
+} from "@/lib/whatsapp/meta-cloud";
 
 const DEFAULT_AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -335,7 +340,7 @@ export function loadAisensyConfig():
   if (provider !== "aisensy") {
     return {
       ok: false,
-      error: `Unsupported WHATSAPP_PROVIDER="${provider}". Expected "aisensy".`,
+      error: `Unsupported WHATSAPP_PROVIDER="${provider}". Expected "aisensy" or "meta".`,
       code: "unsupported_provider",
     };
   }
@@ -492,6 +497,10 @@ export async function sendAisensyCampaign(
       errorCode: "missing_campaign",
       errorMessage: "Campaign name is required.",
     });
+  }
+
+  if (getWhatsappProvider() === "meta") {
+    return sendViaMetaCloud(options, requestId, campaignName);
   }
 
   const loaded = loadAisensyConfig();
@@ -685,6 +694,128 @@ export async function sendAisensyCampaign(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * WHATSAPP_PROVIDER=meta: the same contract as the AiSensy path (campaign
+ * name = Meta template name, params fill {{1}}…), sent straight to Meta's
+ * WhatsApp Cloud API. OTP, application messages and the outbox all come
+ * through here, so switching provider is one env var.
+ */
+async function sendViaMetaCloud(
+  options: SendAisensyCampaignInput,
+  requestId: string,
+  campaignName: string,
+): Promise<SendAisensyCampaignResult> {
+  const loaded = loadMetaConfig();
+  if (!loaded.ok) {
+    console.error("[meta-whatsapp] config_error", { campaign: campaignName, requestId, code: loaded.code });
+    return emptyCampaignResult(requestId, {
+      configuration_required: true,
+      queued: true,
+      failed: false,
+      errorCode: loaded.code,
+      errorMessage: loaded.error,
+      campaignName,
+    });
+  }
+
+  const phone = normalizeAisensyDestination(options.destination);
+  if (!phone.ok) {
+    return emptyCampaignResult(requestId, { errorCode: "invalid_phone", errorMessage: phone.error, campaignName });
+  }
+  // Meta wants digits with country code and no "+".
+  const to = `91${phone.local}`;
+
+  const templateParams = (options.templateParams ?? []).map((value) => String(value ?? "").trim());
+  if (templateParams.some((value) => !value)) {
+    return emptyCampaignResult(requestId, {
+      errorCode: "invalid_template_params",
+      errorMessage: "Template parameters cannot be empty.",
+      campaignName,
+      destination: to,
+    });
+  }
+
+  const useDedupe = options.dedupe !== false;
+  if (useDedupe && !claimSendSlot(to, campaignName)) {
+    console.warn("[meta-whatsapp] duplicate_send_blocked", { campaign: campaignName, phone: maskPhoneLocal(phone.local), requestId });
+    return emptyCampaignResult(requestId, {
+      errorCode: "duplicate_send",
+      errorMessage: "Duplicate send blocked.",
+      campaignName,
+      destination: to,
+    });
+  }
+
+  const payload = buildMetaTemplatePayload({
+    to,
+    templateName: campaignName,
+    language: loaded.config.language,
+    bodyParams: templateParams,
+    buttons: options.buttons,
+    media: options.media,
+  });
+
+  console.info("[meta-whatsapp] send_start", {
+    template: campaignName,
+    phone: maskPhoneLocal(phone.local),
+    requestId,
+    source: options.source ?? "digiconnect",
+    hasMedia: Boolean(options.media?.url),
+    templateParamCount: templateParams.length,
+    templateParamsMasked: templateParams.map(maskTemplateParamForLog),
+    buttonCount: options.buttons?.length ?? 0,
+  });
+
+  const outcome = await postMetaTemplate(loaded.config, payload, {
+    fetchImpl: options.fetchImpl,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+  });
+
+  if (!outcome.ok) {
+    if (useDedupe) recentSendKeys.delete(sendDedupeKey(to, campaignName));
+    console.error("[meta-whatsapp] send_failed", {
+      template: campaignName,
+      requestId,
+      httpStatus: outcome.httpStatus,
+      code: outcome.code,
+      metaCode: outcome.metaCode,
+      detail: redactSecrets(outcome.message, loaded.config.accessToken),
+      phone: maskPhoneLocal(phone.local),
+    });
+    return emptyCampaignResult(requestId, {
+      errorCode: outcome.code,
+      errorMessage: `WhatsApp delivery failed: ${redactSecrets(outcome.message, loaded.config.accessToken)}`,
+      campaignName,
+      destination: to,
+      // Rate limits come back as HTTP 400 with a Meta code; report 429 so the outbox retries later.
+      httpStatus: outcome.code === "meta_rate_limited" ? 429 : outcome.httpStatus,
+    });
+  }
+
+  console.info("[meta-whatsapp] send_accepted", {
+    template: campaignName,
+    requestId,
+    messageId: outcome.messageId,
+    phone: maskPhoneLocal(phone.local),
+    note: "API accept ≠ delivered. Delivery arrives on /api/webhooks/meta-whatsapp.",
+  });
+
+  return {
+    ok: true,
+    queued: false,
+    sent: true,
+    failed: false,
+    configuration_required: false,
+    providerMessageId: outcome.messageId,
+    errorCode: null,
+    errorMessage: null,
+    campaignName,
+    destination: to,
+    requestId,
+    httpStatus: outcome.httpStatus,
+  };
 }
 
 export type SendAisensyOtpOptions = {

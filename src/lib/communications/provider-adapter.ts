@@ -1,6 +1,12 @@
 import "server-only";
 
-import { sendAisensyCampaign, normalizeAisensyDestination, loadAisensyConfig } from "@/lib/whatsapp/aisensy";
+import {
+  getWhatsappProvider,
+  loadAisensyConfig,
+  normalizeAisensyDestination,
+  sendAisensyCampaign,
+} from "@/lib/whatsapp/aisensy";
+import { loadMetaConfig } from "@/lib/whatsapp/meta-cloud";
 import { classifyProviderFailure } from "@/lib/communications/comms-core";
 
 export type ProviderSendInput = {
@@ -34,15 +40,16 @@ export type CommunicationProviderAdapter = {
 };
 
 /**
- * Hardened AiSensy adapter — wraps existing campaign client.
- * Does not invent webhook signatures; delivery webhooks stay shared-secret based.
+ * Hardened WhatsApp adapter — wraps the campaign client, which sends through
+ * AiSensy or, with WHATSAPP_PROVIDER=meta, Meta's WhatsApp Cloud API.
+ * (Name kept for existing call sites.)
  */
 export function createAisensyAdapter(): CommunicationProviderAdapter {
+  const provider = getWhatsappProvider() === "meta" ? "meta" : "aisensy";
   return {
-    name: "aisensy",
+    name: provider,
     async isConfigured() {
-      const cfg = loadAisensyConfig();
-      return Boolean(cfg.ok);
+      return Boolean(provider === "meta" ? loadMetaConfig().ok : loadAisensyConfig().ok);
     },
     async sendTemplate(input) {
       const dest = normalizeAisensyDestination(input.destination);
@@ -72,7 +79,7 @@ export function createAisensyAdapter(): CommunicationProviderAdapter {
           ok: false,
           retryClass: "configuration_required",
           failureCode: "configuration_required",
-          failureSummary: "AiSensy is not configured.",
+          failureSummary: provider === "meta" ? "Meta WhatsApp is not configured." : "AiSensy is not configured.",
           configurationRequired: true,
         };
       }

@@ -34,6 +34,8 @@ type CampaignEnvKey =
   | "AISENSY_APPLICATION_COMPLETED_CAMPAIGN"
   | "AISENSY_FINAL_DOCUMENT_CAMPAIGN"
   | "AISENSY_PAYMENT_REMINDER_CAMPAIGN"
+  | "AISENSY_INVOICE_CAMPAIGN"
+  | "AISENSY_RENEWAL_REMINDER_CAMPAIGN"
   | "AISENSY_APPLICATION_CAMPAIGN";
 
 const EVENT_CAMPAIGN_ENV: Record<ApplicationWhatsAppEvent, CampaignEnvKey[]> = {
@@ -54,6 +56,8 @@ const EVENT_CAMPAIGN_ENV: Record<ApplicationWhatsAppEvent, CampaignEnvKey[]> = {
   objection_resolved: ["AISENSY_OBJECTION_RESOLVED_CAMPAIGN", "AISENSY_APPLICATION_CAMPAIGN"],
   completed: ["AISENSY_APPLICATION_COMPLETED_CAMPAIGN", "AISENSY_APPLICATION_CAMPAIGN"],
   final_document: ["AISENSY_FINAL_DOCUMENT_CAMPAIGN", "AISENSY_APPLICATION_CAMPAIGN"],
+  invoice_generated: ["AISENSY_INVOICE_CAMPAIGN", "AISENSY_APPLICATION_CAMPAIGN"],
+  renewal_reminder: ["AISENSY_RENEWAL_REMINDER_CAMPAIGN", "AISENSY_APPLICATION_CAMPAIGN"],
   custom_message: ["AISENSY_APPLICATION_CAMPAIGN"],
 };
 
@@ -152,6 +156,35 @@ export function buildApplicationTemplateParams(
         ctx.notes || "Final document delivered on WhatsApp. Link is temporary and secure.",
       );
       break;
+    case "invoice_generated":
+      // The invoice link is the point of this message, so it is never truncated away.
+      detail = [
+        truncate(
+          [
+            ctx.invoiceNumber ? `Invoice ${ctx.invoiceNumber}` : "Your invoice is ready",
+            amount ? `Amount ${amount}` : null,
+            ctx.notes || null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          140,
+        ),
+        ctx.invoiceLink?.trim() ? `Download: ${ctx.invoiceLink.trim()}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      break;
+    case "renewal_reminder":
+      detail = truncate(
+        [
+          ctx.renewalReference ? `Ref ${ctx.renewalReference}` : null,
+          ctx.renewalDue ? `Renewal due ${ctx.renewalDue}` : "Renewal is due soon",
+          ctx.notes || "Reply here or visit DigiConnect Dukan to renew on time.",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      );
+      break;
     case "custom_message":
       detail = truncate(ctx.customMessage || ctx.notes || "Update from DigiConnect Dukan.");
       break;
@@ -160,7 +193,7 @@ export function buildApplicationTemplateParams(
   }
 
   const actionHint =
-    eventType !== "final_document" && ctx.actionLink?.trim()
+    eventType !== "final_document" && eventType !== "invoice_generated" && ctx.actionLink?.trim()
       ? truncate(`Open: ${ctx.actionLink.trim()}`, 120)
       : "";
 
@@ -266,6 +299,18 @@ export const APPLICATION_CAMPAIGN_MATRIX: Array<{
     envVariable: "AISENSY_FINAL_DOCUMENT_CAMPAIGN",
     parameters: ["customerName", "serviceName", "applicationNumber", "note"],
     media: true,
+  },
+  {
+    event: "invoice_generated",
+    envVariable: "AISENSY_INVOICE_CAMPAIGN",
+    parameters: ["customerName", "serviceName", "applicationNumber", "invoiceNumberAmountAndLink"],
+    media: false,
+  },
+  {
+    event: "renewal_reminder",
+    envVariable: "AISENSY_RENEWAL_REMINDER_CAMPAIGN",
+    parameters: ["customerName", "serviceName", "applicationNumber", "renewalDueDate"],
+    media: false,
   },
   {
     event: "custom_message",

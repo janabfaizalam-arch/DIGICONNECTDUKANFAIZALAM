@@ -9,9 +9,11 @@ import {
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   describeOtpPayloadContract,
+  getWhatsappProvider,
   resolveOtpCampaign,
   type AisensyOtpPayloadContract,
 } from "@/lib/whatsapp/aisensy";
+import { loadMetaConfig } from "@/lib/whatsapp/meta-cloud";
 
 const ATTEMPT_LIMIT = 25;
 
@@ -69,10 +71,14 @@ export async function loadOtpDiagnostics(): Promise<OtpDiagnostics> {
   const login = resolveOtpCampaign("login");
   const reset = resolveOtpCampaign("forgot_pin");
 
-  const apiKeyConfigured = Boolean(
-    process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim(),
+  // WHATSAPP_PROVIDER=meta sends through Meta's Cloud API: its token and app secret stand in for AiSensy's.
+  const onMeta = getWhatsappProvider() === "meta";
+  const apiKeyConfigured = onMeta
+    ? loadMetaConfig().ok
+    : Boolean(process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim());
+  const webhookSecretConfigured = Boolean(
+    (onMeta ? process.env.META_APP_SECRET : process.env.AISENSY_WEBHOOK_SECRET)?.trim(),
   );
-  const webhookSecretConfigured = Boolean(process.env.AISENSY_WEBHOOK_SECRET?.trim());
 
   const config: OtpDiagnostics["config"] = {
     apiKeyConfigured,

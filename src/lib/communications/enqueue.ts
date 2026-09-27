@@ -11,6 +11,7 @@ import {
 } from "@/lib/communications/comms-core";
 import { normalizeLeadMobile, isValidLeadMobile } from "@/lib/crm/leads-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getWhatsappProvider } from "@/lib/whatsapp/aisensy";
 import { getApplicationCampaignName } from "@/lib/whatsapp/templates";
 
 export type EnqueueCommunicationInput = {
@@ -81,7 +82,7 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
             customer_id: input.customerId,
             lead_id: input.leadId ?? null,
             channel: input.channel ?? "whatsapp",
-            provider: "aisensy",
+            provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
             event_type: input.purpose,
             purpose: input.purpose,
             template_name: input.campaignName ?? null,
@@ -140,7 +141,7 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
       payment_id: input.paymentId ?? null,
       follow_up_id: input.followUpId ?? null,
       channel: input.channel ?? "whatsapp",
-      provider: "aisensy",
+      provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
       event_type: input.purpose,
       purpose: input.purpose,
       template_name: campaignName,
