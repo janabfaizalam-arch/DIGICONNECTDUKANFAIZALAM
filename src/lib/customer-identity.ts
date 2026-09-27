@@ -613,7 +613,11 @@ export async function consolidateCustomerRows(
   const targetEmail = normalizeEmail(email);
   const targetMobile = normalizeCustomerMobile(mobile);
 
-  console.info("CONSOLIDATE_CUSTOMER_ROWS_START", { userId, email: targetEmail, mobile: targetMobile });
+  console.info("CONSOLIDATE_CUSTOMER_ROWS_START", {
+    userId,
+    hasEmail: Boolean(targetEmail),
+    mobileTail: targetMobile ? targetMobile.slice(-4) : null,
+  });
 
   // 1. Find all matching rows in public.customers:
   // - Rows owned by current userId

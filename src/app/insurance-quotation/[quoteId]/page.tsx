@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { notFound } from "next/navigation";
 import { AlertTriangle, CalendarDays, Car, FileText, Receipt, ShieldCheck } from "lucide-react";
 

@@ -84,7 +84,8 @@ export async function GET(request: Request) {
       .limit(10);
 
     if (customerError) {
-      return NextResponse.json({ message: customerError.message }, { status: 500 });
+      console.error("[lookup] query_failed", { code: customerError.code });
+        return NextResponse.json({ message: "Lookup failed." }, { status: 500 });
     }
 
     const results = [];
@@ -117,7 +118,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ results });
   } catch (error) {
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Internal server error" },
+      { message: "Internal server error" },
       { status: 500 }
     );
   }

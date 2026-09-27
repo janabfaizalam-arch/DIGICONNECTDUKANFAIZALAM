@@ -27,9 +27,7 @@ import { HomepagePreviewBridge } from "@/components/homepage/preview-bridge";
 import { getHomepageLayout } from "@/lib/homepage/layout-data";
 import type { HomepageSectionId } from "@/lib/homepage/sections";
 import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
-import { buildAggregateRatingJsonLd, getHomepageTestimonials } from "@/lib/homepage/testimonials";
 import { buildReelsJsonLd, getHomepageReels } from "@/lib/homepage/reels";
-import { contactDetails } from "@/lib/constants";
 import { getCachedFooterSocialLinks, getCachedHomepageFaqs, getCachedHomepageReels, getCachedHomepageSlides, getCachedHomepageTestimonials, getCachedPublicServices } from "@/lib/homepage/cached";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -108,18 +106,11 @@ export default async function Home({
     amount: s.amount,
   }));
 
-  const organizationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "RNOS India Private Limited",
-    alternateName: "DigiConnect Dukan",
-    url: siteUrl,
-    email: contactDetails.email,
-    telephone: `+91${contactDetails.phone}`,
-    description:
-      "DigiConnect Dukan provides private digital assistance and documentation support services. Not an official government portal.",
-  };
-
+  /*
+    The Organization entity is published once, site-wide, from the root
+    layout. A second copy here named the company differently and made the two
+    contradict each other.
+  */
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -127,10 +118,14 @@ export default async function Home({
     url: siteUrl,
   };
 
-  // Both are null until real content exists — an empty FAQPage or a rating
-  // built from one review is worse than no structured data at all.
+  // Null until real content exists — an empty FAQPage is worse than none.
   const faqJsonLd = buildFaqJsonLd(faqs);
-  const ratingJsonLd = buildAggregateRatingJsonLd(testimonials, "RNOS India Private Limited");
+  /*
+    No AggregateRating. Ratings collected on our own site and attached to our
+    own Organization are "self-serving reviews" under Google's review-snippet
+    rules — ineligible, and liable to be read as manipulative. Testimonials are
+    still shown on the page itself, where a reader can see what they are.
+  */
   // Reels have no per-row publish date, so the page render date stands in.
   const reelsJsonLd = buildReelsJsonLd(reels, new Date().toISOString());
 
@@ -164,13 +159,9 @@ export default async function Home({
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       {faqJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      ) : null}
-      {ratingJsonLd ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ratingJsonLd) }} />
       ) : null}
       {reelsJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(reelsJsonLd) }} />

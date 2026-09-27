@@ -6,7 +6,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Database, ShieldAlert, FileText } from "lucide-react";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,7 +24,7 @@ export default async function AdminReportDetailPage({ params }: AdminReportDetai
 
   // 1. Authenticate admin user
   const user = await getCurrentUser();
-  const isAdmin = isAdminUser(user);
+  const isAdmin = await hasAdminAccess(user);
 
   if (!user || !isAdmin) {
     redirect(`/login?redirect=/admin/credit-reports/${id}`);

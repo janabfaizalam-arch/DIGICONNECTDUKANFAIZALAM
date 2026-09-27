@@ -13,7 +13,7 @@ import {
   Monitor, Camera, MapPin, FileText, Send
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { useToast } from "@/components/providers/toast-provider";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

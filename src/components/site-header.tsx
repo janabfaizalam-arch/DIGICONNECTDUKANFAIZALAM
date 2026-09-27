@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { Bell, LayoutDashboard, LogIn, Search, UserRound, WalletCards, X, AlertCircle, FileText, Gift, Info, CheckCircle2, Coins, ArrowRight, Check, Layers, Users, Inbox, BadgeCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { usePathname } from "next/navigation";

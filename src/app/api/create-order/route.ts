@@ -883,6 +883,14 @@ export async function POST(request: Request) {
       walletUsed = walletRedeemAmount;
       rewardUsed = walletRedeemAmount;
       finalPayable = freshPayableAmount;
+    } else {
+      /*
+        Every order must be priced by the server from a service or an existing
+        application. Without either, the only price left is the one the client
+        sent — and an anonymous caller could open Razorpay orders of any amount
+        against the merchant account. No caller in the app takes this path.
+      */
+      return jsonError("A service or application is required to create a payment order.", 400, "order_target_required");
     }
 
     if (!Number.isFinite(amount) || amount < 100) {
@@ -909,7 +917,7 @@ export async function POST(request: Request) {
       currency,
       receipt,
     });
-    console.log(`[CREATE-ORDER] Razorpay order creation result:`, order);
+    console.log(`[CREATE-ORDER] Razorpay order created`, { orderId: order.id, amount: order.amount, status: order.status });
 
     if (applicationIds.length) {
       const supabase = getSupabaseAdmin();

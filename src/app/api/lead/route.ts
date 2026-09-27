@@ -86,15 +86,18 @@ export async function POST(request: Request) {
       });
 
       if (uploadError) {
-        console.error("[api/lead] Storage upload failed", uploadError);
-        return jsonError(uploadError.message, 500);
+        console.error("[api/lead] Storage upload failed", uploadError.message);
+        return jsonError("Your file could not be uploaded. Please try again.", 500);
       }
 
-      const { data } = supabase.storage.from("documents").getPublicUrl(storagePath);
-
+      /*
+        No public URL: the bucket is private, so a "public" link would either
+        not work or — worse — work for anybody who has it. Staff open the file
+        through a signed URL generated from storage_path.
+      */
       fileMetadata = {
         file_name: file.name,
-        file_url: data.publicUrl,
+        file_url: null,
         file_type: file.type,
         storage_path: storagePath,
       };
@@ -124,7 +127,7 @@ export async function POST(request: Request) {
       deduped: ingested.deduped,
     });
   } catch (error) {
-    console.error("[api/lead] Unhandled error", error);
-    return jsonError(error instanceof Error ? error.message : "Lead submission failed.", 500);
+    console.error("[api/lead] Unhandled error", error instanceof Error ? error.message : error);
+    return jsonError("Lead submission failed. Please try again.", 500);
   }
 }

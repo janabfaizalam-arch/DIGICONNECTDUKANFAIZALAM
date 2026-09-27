@@ -38,7 +38,8 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[ap/change-password] update_failed", { message: error.message });
+    return NextResponse.json({ error: "Password could not be changed. Please try again." }, { status: 500 });
   }
 
   await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);

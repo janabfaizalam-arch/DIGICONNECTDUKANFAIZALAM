@@ -5,6 +5,7 @@ import { MessageCircle, Phone, ArrowLeft, RefreshCw, LogIn } from "lucide-react"
 import { Input } from "@/components/ui/input";
 import { ButtonSpinner, FormSubmitButton } from "@/components/ui/loading";
 import { useToast } from "@/components/providers/toast-provider";
+import { FormPrivacyNotice } from "@/components/privacy/form-privacy-notice";
 import { indianMobilePattern } from "@/lib/customer-oauth";
 
 type AuthPhase = "mobile" | "otp";
@@ -159,10 +160,11 @@ export function WhatsappAuthFlow({
         <label className="grid gap-2">
           <span className="text-sm font-semibold text-slate-700">WhatsApp Number</span>
           <div className="relative">
-            <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input
               type="tel"
               inputMode="numeric"
+              autoComplete="tel-national"
               maxLength={10}
               placeholder="10 digit mobile number"
               value={mobile}
@@ -185,6 +187,7 @@ export function WhatsappAuthFlow({
         >
           Continue with WhatsApp
         </FormSubmitButton>
+        <FormPrivacyNotice purpose="to send you a one-time password on WhatsApp and sign you in" />
       </div>
     );
   }
@@ -192,8 +195,10 @@ export function WhatsappAuthFlow({
   return (
     <div className="flex flex-col gap-4 text-left animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="flex items-center gap-2">
-        <button 
-          onClick={() => setPhase("mobile")} 
+        <button
+          type="button"
+          aria-label="Back to change mobile number"
+          onClick={() => setPhase("mobile")}
           disabled={isVerifying}
           className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
         >

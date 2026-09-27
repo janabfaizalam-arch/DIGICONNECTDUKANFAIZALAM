@@ -1,17 +1,24 @@
 import type { NextConfig } from "next";
 
+import { buildCspHeaders, cspOptionsFromEnv } from "./src/lib/security/csp";
+import { remoteImagePatterns } from "./src/lib/security/image-hosts";
+
+const csp = cspOptionsFromEnv();
+
 /**
  * Nothing on this site may be put in a frame by anybody.
  *
  * The panel and the portal both carry live sessions and one-click actions, so
  * a page of ours inside somebody else's frame is a click a customer did not
  * mean to make.
+ *
+ * `frame-ancestors` lives inside the full Content-Security-Policy (see
+ * src/lib/security/csp.ts): a repeated header key is sent only once — the last
+ * match wins — so the framing rule and the rest of the policy must travel in
+ * the same header value.
  */
 const noFraming = [
-  {
-    key: 'Content-Security-Policy',
-    value: "frame-ancestors 'none';",
-  },
+  ...buildCspHeaders({ ...csp, frameAncestors: "'none'" }),
   {
     key: 'X-Frame-Options',
     value: 'DENY',
@@ -28,10 +35,7 @@ const noFraming = [
  * origin. `SAMEORIGIN` says the same thing to browsers that predate CSP.
  */
 const sameOriginFraming = [
-  {
-    key: 'Content-Security-Policy',
-    value: "frame-ancestors 'self';",
-  },
+  ...buildCspHeaders({ ...csp, frameAncestors: "'self'" }),
   {
     key: 'X-Frame-Options',
     value: 'SAMEORIGIN',
@@ -54,6 +58,24 @@ const securityHeaders = [
   {
     key: 'Permissions-Policy',
     value: 'camera=(self), microphone=(), geolocation=()',
+  },
+  {
+    /*
+      Our responses may only be embedded by pages on rnos.in (and its
+      subdomains). Stops other sites hot-linking or side-channel probing
+      authenticated responses; server-side fetchers (link previews, crawlers)
+      are unaffected.
+    */
+    key: 'Cross-Origin-Resource-Policy',
+    value: 'same-site',
+  },
+  {
+    /*
+      Isolates our window from pages we open, while still allowing the
+      popups Razorpay checkout and social sign-in rely on.
+    */
+    key: 'Cross-Origin-Opener-Policy',
+    value: 'same-origin-allow-popups',
   },
 ];
 
@@ -103,12 +125,8 @@ const nextConfig: NextConfig = {
   // Keep native Argon2 out of the bundler graph for App Router server code.
   serverExternalPackages: ["argon2"],
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    // An explicit list, never "**" — see src/lib/security/image-hosts.ts.
+    remotePatterns: remoteImagePatterns(),
   },
   async headers() {
     /*

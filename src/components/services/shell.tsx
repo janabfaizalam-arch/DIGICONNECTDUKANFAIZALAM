@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useInView } from "framer-motion";

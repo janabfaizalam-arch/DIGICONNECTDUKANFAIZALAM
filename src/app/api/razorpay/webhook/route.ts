@@ -170,6 +170,32 @@ export async function POST(request: Request) {
       }
     }
 
+    /*
+      The QR is created fixed-amount, so Razorpay should never credit less than
+      the cart. Check anyway before marking anything paid: if the amount is
+      short, the payment is recorded above but the applications stay unpaid
+      for staff to reconcile.
+    */
+    const { data: owed } = await supabase
+      .from("applications")
+      .select("fresh_payable_amount, real_payment_amount, amount")
+      .in("id", applicationIds);
+    const owedPaise = Math.round(
+      (owed ?? []).reduce(
+        (sum, row) => sum + Number(row.fresh_payable_amount ?? row.real_payment_amount ?? row.amount ?? 0),
+        0,
+      ) * 100,
+    );
+    if (owedPaise > 0 && Number(payment.amount ?? 0) < owedPaise) {
+      console.error("[razorpay/webhook] qr_underpaid", {
+        paymentId: payment.id,
+        paidPaise: payment.amount ?? 0,
+        owedPaise,
+        linkId: link.id,
+      });
+      return NextResponse.json({ received: true });
+    }
+
     await settleApplicationPayment(
       supabase,
       applicationIds,

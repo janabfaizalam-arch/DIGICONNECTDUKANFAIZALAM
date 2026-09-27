@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSignedReportUrl } from "@/lib/credit/client";
 import { sanitizePanForLog } from "@/lib/credit/validators";
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const isAdmin = isAdminUser(user);
+    const isAdmin = await hasAdminAccess(user);
 
     // 2. Fetch credit report record
     const supabase = getSupabaseAdmin();
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
     // 3. Authorization check
     if (!isAdmin && record.customer_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden. You cannot access this credit report." }, { status: 403 });
+      return NextResponse.json({ error: "Credit report not found" }, { status: 404 });
     }
 
     // 4. Generate signed PDF URL on demand if PDF exists

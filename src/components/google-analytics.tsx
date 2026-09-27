@@ -22,6 +22,13 @@ function getContactType(href: string) {
   return null;
 }
 
+/**
+ * Google Analytics 4.
+ *
+ * Mounted only after the visitor allows analytics cookies (see
+ * `components/privacy/tracking-scripts.tsx`). Advertising storage and Google
+ * signals stay off: analytics consent is not advertising consent.
+ */
 export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   const pathname = usePathname();
   const previousPathname = useRef<string | null>(null);
@@ -84,9 +91,10 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
           __html: `
             window.dataLayer = window.dataLayer || [];
             window.gtag = window.gtag || function gtag(){window.dataLayer.push(arguments);}
-            window.gtag('consent', 'default', { analytics_storage: 'granted' });
+            window.gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+            window.gtag('set', 'anonymize_ip', true);
             window.gtag('js', new Date());
-            window.gtag('config', ${JSON.stringify(measurementId)});
+            window.gtag('config', ${JSON.stringify(measurementId)}, { allow_google_signals: false, allow_ad_personalization_signals: false });
             if (${JSON.stringify(process.env.NODE_ENV === "development")}) {
               console.debug('[ga4] gtag initialized', { measurementId: ${JSON.stringify(measurementId)} });
             }
