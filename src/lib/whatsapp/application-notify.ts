@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 
-import { normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import { getWhatsappProvider, normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
 import {
   buildApplicationTemplateParams,
   getApplicationCampaignName,
@@ -33,6 +33,10 @@ export type SendApplicationWhatsAppInput = {
   progressMessage?: string;
   customMessage?: string;
   actionLink?: string;
+  invoiceNumber?: string;
+  invoiceLink?: string;
+  renewalDue?: string;
+  renewalReference?: string;
   documentUrl?: string;
   documentName?: string;
   documentId?: string;
@@ -187,6 +191,10 @@ async function enqueueApplicationWhatsAppOnly(
     customMessage: input.customMessage,
     actionLink: input.actionLink,
     notes: input.notes,
+    invoiceNumber: input.invoiceNumber,
+    invoiceLink: input.invoiceLink,
+    renewalDue: input.renewalDue,
+    renewalReference: input.renewalReference,
   });
 
   const enqueued = await enqueueCommunication({
@@ -336,6 +344,10 @@ async function sendApplicationWhatsAppDirect(
     customMessage: input.customMessage,
     actionLink: input.actionLink,
     notes: input.notes,
+    invoiceNumber: input.invoiceNumber,
+    invoiceLink: input.invoiceLink,
+    renewalDue: input.renewalDue,
+    renewalReference: input.renewalReference,
   });
 
   const payload = safeLogPayload({
@@ -360,7 +372,7 @@ async function sendApplicationWhatsAppDirect(
         application_id: input.applicationId,
         customer_id: input.customerId ?? null,
         channel: "whatsapp",
-        provider: "aisensy",
+        provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
         event_type: input.eventType,
         purpose: input.eventType,
         template_name: campaignName,

@@ -2,6 +2,7 @@ import { scheduleCrmSync } from "@/lib/crmSync";
 import { createInvoiceNumber, portalServices } from "@/lib/portal-data";
 import type { Application, ApplicationDocument, Commission, Customer, Invoice, Payment, PortalUser, ServiceCatalogItem } from "@/lib/portal-types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendInvoiceWhatsApp } from "@/lib/invoices/invoice-whatsapp";
 
 export const primaryPhone = "7007595931";
 
@@ -272,6 +273,7 @@ export async function createInvoiceForApplication({
 
   if (existing?.id) {
     await supabase.from("applications").update({ invoice_id: existing.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
+    await notifyPaidInvoice(existing.id, paymentStatus);
     return existing as Invoice;
   }
 
@@ -306,9 +308,32 @@ export async function createInvoiceForApplication({
   if (data?.id) {
     await supabase.from("applications").update({ invoice_id: data.id, updated_at: new Date().toISOString() }).eq("id", applicationId);
     await scheduleCrmSync(applicationId, "invoice_generated");
+    await notifyPaidInvoice(data.id, paymentStatus);
   }
 
   return data as Invoice | null;
+}
+
+/**
+ * A paid purchase sends its invoice to the customer's WhatsApp. Every flow
+ * that takes a payment creates its invoice through this module, so this is
+ * the one place that covers them all. Idempotent (version 1 per
+ * application), so the several paths that can see the same payment send it
+ * once. Never throws: an invoice must not fail because WhatsApp did.
+ */
+async function notifyPaidInvoice(invoiceId: string, paymentStatus: string) {
+  if (!["verified", "paid"].includes(String(paymentStatus).toLowerCase())) return;
+  try {
+    const result = await sendInvoiceWhatsApp(invoiceId);
+    if (!result.ok && !["queued", "configuration_required"].includes(result.code)) {
+      console.warn("[crm] Invoice WhatsApp not sent", { invoiceId, code: result.code });
+    }
+  } catch (error) {
+    console.error("[crm] Invoice WhatsApp failed", {
+      invoiceId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 export async function hydrateApplications(applications: Application[]) {
