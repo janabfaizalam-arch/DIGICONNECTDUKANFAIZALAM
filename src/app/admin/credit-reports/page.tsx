@@ -4,7 +4,7 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getAdminCreditAnalytics } from "@/lib/credit/client";
 import { CreditAdminDashboard } from "@/components/credit/credit-admin-dashboard";
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminCreditDashboardPage() {
   // 1. Authenticate admin user
   const user = await getCurrentUser();
-  const isAdmin = isAdminUser(user);
+  const isAdmin = await hasAdminAccess(user);
 
   if (!user || !isAdmin) {
     redirect("/login?redirect=/admin/credit-reports");

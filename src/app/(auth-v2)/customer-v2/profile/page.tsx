@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { User, MapPin, Loader2, Save, Camera } from "lucide-react";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 
 export default function ProfilePage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

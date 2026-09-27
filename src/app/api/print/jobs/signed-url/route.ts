@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type SignedUrlBody = {
@@ -10,7 +10,7 @@ type SignedUrlBody = {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    const isAdmin = isAdminUser(user);
+    const isAdmin = await hasAdminAccess(user);
 
     if (!user || !isAdmin) {
       return NextResponse.json({ error: "Unauthorized. Admin privileges required." }, { status: 401 });

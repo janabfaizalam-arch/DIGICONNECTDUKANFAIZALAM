@@ -4,6 +4,19 @@
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
+/*
+  A visible keyboard focus ring for every interactive element that does not
+  bring its own (WCAG 2.2 SC 2.4.7). `:where()` keeps specificity at zero and
+  the base layer sits under utilities, so any component's focus-visible
+  classes still win — this only fills the gaps.
+*/
+@layer base {
+  :where(a[href], button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+  }
+}
+
 @media print {
   [data-admin-chrome],
   [data-print-hide] {

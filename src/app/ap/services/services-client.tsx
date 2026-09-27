@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { Search, Star, ArrowRight, FileText, Sparkles, Layers, History, Copy, MessageSquare, QrCode, X, Download, Loader2, AlertCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -92,10 +92,9 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
       <html>
         <head>
           <title>Print Poster - ${sharingService.title}</title>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
           <style>
             body {
-              font-family: 'Inter', sans-serif;
+              font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif;
               margin: 0;
               padding: 0;
               background-color: #ffffff;

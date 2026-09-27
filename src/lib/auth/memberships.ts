@@ -140,12 +140,14 @@ export function resolveAdminMembershipFromHints(input: {
     return { ok: true, reason: "allowlisted_email" };
   }
 
-  const roles = [input.profileRole, input.metadataRole, input.appMetadataRole]
+  // `metadataRole` (user_metadata) is accepted for call-site compatibility and
+  // deliberately ignored: users can set it on themselves.
+  const roles = [input.profileRole, input.appMetadataRole]
     .map((r) => String(r ?? "").toLowerCase())
     .filter(Boolean);
 
   if (roles.some((r) => r === "admin" || r === "super_admin")) {
-    return { ok: true, reason: roles.includes(String(input.profileRole ?? "").toLowerCase()) ? "profile_admin" : "metadata_admin" };
+    return { ok: true, reason: String(input.profileRole ?? "").toLowerCase() === "admin" || String(input.profileRole ?? "").toLowerCase() === "super_admin" ? "profile_admin" : "metadata_admin" };
   }
 
   return { ok: false, reason: "none" };

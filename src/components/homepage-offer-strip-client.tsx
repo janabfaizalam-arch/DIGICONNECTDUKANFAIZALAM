@@ -23,7 +23,7 @@ const fallbackBanners = [
   {
     title: "GST Registration Offer",
     tag: "GST Services",
-    desc: "Register your business online. Get verified GSTIN in 3 days. CA-assisted process.",
+    desc: "Register your business online with guided document checks and filing support.",
     cta: "Apply GSTIN",
     gradient: "from-[#047857] via-[#059669] to-[#10b981]",
     accent: "bg-[#f59e0b]",

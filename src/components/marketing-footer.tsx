@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import {
-  Globe,
+  MapPin,
   MessageCircle,
   Phone,
   Mail,
@@ -11,15 +11,16 @@ import {
   Lock,
   Printer,
   Radar,
+  Smartphone,
   Zap,
-  Play,
   ArrowRight,
-  CheckCircle2,
 } from "lucide-react";
 import { contactDetails } from "@/lib/constants";
 import { buildSupportWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 import { getEnabledSocialLinks, type SocialLink } from "@/lib/social-links";
 import { FooterSocial } from "@/components/footer-social";
+import { CookieSettingsButton } from "@/components/privacy/cookie-consent";
+import { business, legalLinks } from "@/lib/compliance/config";
 
 
 const servicesLinks = [
@@ -32,22 +33,16 @@ const servicesLinks = [
 ];
 
 const companyLinks = [
-  { label: "About RNOS", href: "https://www.rnos.in", external: true },
-  { label: "Become a DC Partner", href: "/digi-partner" },
-  { label: "DC Partner Login", href: "/ap/login" },
-  { label: "Contact Us", href: "/#support" },
-  { label: "Support Desk", href: "/#support" },
-  { label: "FAQ Center", href: "/#faq" },
+  { label: "About Us", href: "/about", external: false },
+  { label: "RNOS India (rnos.in)", href: "https://www.rnos.in", external: true },
+  { label: "Become a DC Partner", href: "/digi-partner", external: false },
+  { label: "DC Partner Login", href: "/ap/login", external: false },
+  { label: "Contact Us", href: "/contact", external: false },
+  { label: "FAQ", href: "/#faq", external: false },
 ];
 
-const legalLinks = [
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Terms & Conditions", href: "/terms-and-conditions" },
-  { label: "Refund / Cancellation", href: "/terms-and-conditions" },
-  { label: "Grievance", href: "/#support" },
-  { label: "Accessibility", href: "/#support" },
-  { label: "Sitemap", href: "/sitemap.xml" },
-];
+/** Every policy page, plus the grievance desk — from the compliance config. */
+const footerLegalLinks = legalLinks.map((link) => ({ label: link.label, href: link.href }));
 
 
 
@@ -71,23 +66,12 @@ export function MarketingFooter({
   /** Admin-managed links, resolved on the server. Falls back to code defaults. */
   socialLinks?: SocialLink[];
 }) {
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
   const isHomepage = variant === "homepage";
   const enabledSocial = socialLinks?.length ? socialLinks : getEnabledSocialLinks();
 
   const whatsappUrl = buildWhatsAppUrl(
     buildSupportWhatsAppMessage({ page: "footer", topic: "Website footer service enquiry" })
   );
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = email.trim();
-    if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return;
-    setSubscribed(true);
-    setEmail("");
-    setTimeout(() => setSubscribed(false), 5000);
-  };
 
   if (isHomepage) {
     return (
@@ -215,7 +199,7 @@ export function MarketingFooter({
           </div>
 
           {/* Everything else is one quiet line of links, not four columns. */}
-          <nav className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2.5 border-t border-[var(--dc-blue-bright)]/12 pt-6 text-[13.5px] font-semibold text-[var(--dc-body)]">
+          <nav aria-label="Footer" className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2.5 border-t border-[var(--dc-blue-bright)]/12 pt-6 text-[13.5px] font-semibold text-[var(--dc-body)]">
             {dedupeLinks([
               { label: "All services", href: "/services" },
               { label: "Government schemes", href: "/#schemes" },
@@ -224,13 +208,13 @@ export function MarketingFooter({
               { label: "Partner login", href: "/ap/login" },
               { label: "FAQ", href: "/#faq" },
               { label: "Support", href: "/#support" },
-              { label: "Privacy Policy", href: "/privacy-policy" },
-              { label: "Terms & Conditions", href: "/terms-and-conditions" },
+              ...footerLegalLinks,
             ]).map((link) => (
               <Link key={link.label} href={link.href} className="inline-flex min-h-11 items-center py-2 transition hover:text-[var(--dc-blue-700)]">
                 {link.label}
               </Link>
             ))}
+            <CookieSettingsButton className="inline-flex min-h-11 items-center py-2 transition hover:text-[var(--dc-blue-700)]" />
           </nav>
 
           {/* The sign-off, as one glass panel rather than three loose rows.
@@ -274,8 +258,8 @@ export function MarketingFooter({
 
               <ul className="mt-5 flex flex-wrap gap-2">
                 {[
-                  { icon: ShieldCheck, label: "Razorpay secured" },
-                  { icon: Lock, label: "SSL encrypted" },
+                  { icon: ShieldCheck, label: "Payments via Razorpay" },
+                  { icon: Lock, label: "HTTPS encrypted" },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -293,8 +277,8 @@ export function MarketingFooter({
           </div>
 
           <p className="mt-5 text-[12.5px] font-medium leading-relaxed text-[var(--dc-muted)]">
-            &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited — private assistance
-            platform, not a government portal.
+            &copy; {new Date().getFullYear()} DigiConnect Dukan · RNOS India Private Limited, {business.location} — private
+            assistance platform, not a government portal.
           </p>
         </div>
       </footer>
@@ -304,180 +288,130 @@ export function MarketingFooter({
   return (
     <footer className="relative bg-slate-50/80 border-t border-slate-200/50 pt-16 pb-8 pb-safe-bottom print:hidden overflow-hidden noise-bg">
       {/* Background lights */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
-      
-      <div className="container-shell relative z-10">
-        
-        {/* Upper Part: Newsletter and App Link */}
-        <div className="grid gap-8 pb-12 mb-12 border-b border-slate-200/60 lg:grid-cols-2 lg:items-center">
-          <div>
-            <h3 className="text-base font-black text-slate-800 tracking-tight">Stay updated on compliance alerts</h3>
-            <p className="text-xs font-semibold text-slate-400 mt-1">Get legal deadlines, GST schedules, and scheme notifications directly to your inbox.</p>
-            <form onSubmit={handleSubscribe} className="mt-4 flex max-w-md gap-2">
-              <div className="relative flex-1">
-                <input
-                  id="newsletter-email"
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition"
-                  required
-                />
-                {subscribed && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Subscribed
-                  </div>
-                )}
-              </div>
-              <button
-                id="newsletter-submit"
-                type="submit"
-                className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white hover:bg-slate-800 active:scale-[0.98] transition cursor-pointer"
-              >
-                Subscribe
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </button>
-            </form>
-          </div>
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-start lg:justify-end gap-6">
-            <div>
-              <p className="text-xs font-black text-slate-700">Download DigiConnect Dukan Mobile App</p>
-              <p className="text-[11px] font-semibold text-slate-400 mt-0.5">Apply for services on-the-go with real-time push tracking.</p>
-            </div>
-            <div className="flex flex-wrap gap-2.5">
-              <a
-                id="footer-google-play"
-                href="/download-app"
-                className="inline-flex h-11 items-center gap-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition active:scale-[0.98] shadow-sm border border-slate-800"
-              >
-                <Play className="h-5 w-5 fill-current text-white stroke-[0.5]" />
-                <div className="text-left leading-none">
-                  <p className="text-[8px] font-bold text-slate-400 uppercase">Get it on</p>
-                  <p className="text-xs font-black mt-0.5">Google Play</p>
-                </div>
-              </a>
-              
-              <a
-                id="footer-app-store"
-                href="/download-app"
-                className="inline-flex h-11 items-center gap-2 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 transition active:scale-[0.98] shadow-sm"
-              >
-                <svg className="h-5 w-5 fill-current text-slate-800" viewBox="0 0 24 24">
-                  <path d="M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.1,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.1,16.67C20.08,16.74 19.67,18.11 18.71,19.5M15.97,4.17C16.63,3.37 17.07,2.28 16.95,1C16,1.04 14.9,1.6 14.24,2.38C13.68,3.04 13.19,4.14 13.34,5.39C14.39,5.47 15.4,4.88 15.97,4.17Z" />
-                </svg>
-                <div className="text-left leading-none">
-                  <p className="text-[8px] font-bold text-slate-400 uppercase">Download on the</p>
-                  <p className="text-xs font-black mt-0.5">App Store</p>
-                </div>
-              </a>
-            </div>
+      <div className="container-shell relative z-10">
+
+        {/* Upper Part: App link.
+
+            A newsletter box used to sit here. It stored nothing — the address
+            was thrown away and "Subscribed" shown anyway — so it has gone
+            until there is a real, consented mailing list behind it. The Google
+            Play / App Store badges went too: there is no store listing, only
+            the Android app on /download-app. */}
+        <div className="flex flex-col gap-4 pb-12 mb-12 border-b border-slate-200/60 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-slate-800">DigiConnect Dukan on your phone</p>
+            <p className="text-xs font-semibold text-slate-600 mt-0.5">Install the Android app or add the website to your home screen.</p>
           </div>
+          <Link
+            id="footer-download-app"
+            href="/download-app"
+            className="inline-flex min-h-11 items-center gap-2 self-start rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 sm:self-auto"
+          >
+            <Smartphone className="h-4 w-4" aria-hidden="true" />
+            Get the Android app
+          </Link>
         </div>
 
         {/* Middle Part: Multi-column links grid */}
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-          
+
           {/* Brand/Identity column */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-lg font-black text-slate-800">DigiConnect Dukan</h3>
-            <p className="text-xs font-semibold text-slate-400 leading-normal">
-              Connecting People, Empowering Digital India. <br />
-              India&apos;s premium digital services marketplace offering hassle-free processing for corporate compliance, taxes, and government registrations.
+            <h2 className="text-lg font-black text-slate-800">{business.brand}</h2>
+            <p className="text-xs font-semibold text-slate-600 leading-normal">
+              {business.tagline}. <br />
+              Private digital assistance for tax, business, identity, insurance and selected government-scheme
+              applications. We are not a government department or an official government portal.
             </p>
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Corporate entity</p>
-              <p className="text-xs font-black text-slate-700">RNOS India Private Limited</p>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="https://www.rnos.in"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
-              >
-                <Globe className="h-3.5 w-3.5 text-blue-500" />
-                rnos.in
-              </Link>
-              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-500">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                GSTIN Verified
-              </div>
+              <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Powered by</p>
+              <p className="text-xs font-black text-slate-700">{business.legalEntity}</p>
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                <MapPin className="h-3.5 w-3.5 text-blue-600" aria-hidden="true" />
+                {business.location}
+              </p>
             </div>
           </div>
 
           {/* Quick Services column */}
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-4">Core Services</p>
-            <nav className="-my-2 grid gap-0.5">
+          <nav aria-label="Popular services">
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-4">Popular services</h2>
+            <ul className="-my-2 grid gap-0.5">
               {servicesLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-
-          {/* Company links column */}
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-4">Company</p>
-            <nav className="-my-2 grid gap-0.5">
-              {companyLinks.map((link) => (
-                link.external ? (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
-                  >
-                    {link.label}
-                  </a>
-                ) : (
+                <li key={link.label}>
                   <Link
-                    key={link.label}
                     href={link.href}
-                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
+                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-600 transition hover:text-slate-900"
                   >
                     {link.label}
                   </Link>
-                )
+                </li>
               ))}
-            </nav>
-          </div>
+            </ul>
+          </nav>
+
+          {/* Company links column */}
+          <nav aria-label="Company">
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-4">Company</h2>
+            <ul className="-my-2 grid gap-0.5">
+              {companyLinks.map((link) => (
+                <li key={link.label}>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-600 transition hover:text-slate-900"
+                    >
+                      {link.label}
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-600 transition hover:text-slate-900"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           {/* Contact Support & Legal column */}
           <div className="space-y-6">
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">Legal desk</p>
-              <nav className="-my-2 grid">
-                {legalLinks.map((link) => (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-500 transition hover:text-slate-900"
-                  >
-                    {link.label}
-                  </Link>
+            <nav aria-label="Legal">
+              <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-3">Legal</h2>
+              <ul className="-my-2 grid">
+                {footerLegalLinks.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-600 transition hover:text-slate-900"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
                 ))}
-              </nav>
-            </div>
-            
+                <li>
+                  <CookieSettingsButton className="inline-flex min-h-11 items-center py-2 text-xs font-bold text-slate-600 underline-offset-2 transition hover:text-slate-900 hover:underline" />
+                </li>
+              </ul>
+            </nav>
+
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">Helpline</p>
-              <div className="-my-1.5 text-xs font-bold text-slate-500">
+              <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-3">Helpline</h2>
+              <p className="text-[11px] font-semibold text-slate-600">{business.supportHours}</p>
+              <div className="-my-1.5 text-xs font-bold text-slate-600">
                 <a href={`tel:+91${contactDetails.primaryPhone}`} className="flex min-h-11 items-center gap-1.5 transition hover:text-slate-900">
-                  <Phone className="h-3.5 w-3.5 text-blue-500" />
+                  <Phone className="h-3.5 w-3.5 text-blue-600" aria-hidden="true" />
                   +91 {contactDetails.primaryPhone}
                 </a>
                 <a href={`mailto:${contactDetails.email}`} className="flex min-h-11 items-center gap-1.5 truncate transition hover:text-slate-900">
-                  <Mail className="h-3.5 w-3.5 text-slate-400" />
+                  <Mail className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
                   {contactDetails.email}
                 </a>
                 <a
@@ -485,10 +419,11 @@ export function MarketingFooter({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 text-[10px] font-bold text-emerald-700 transition"
+                  className="mt-2 inline-flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 text-xs font-bold text-emerald-800 transition"
                 >
-                  <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
-                  WhatsApp Desk
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
+                  WhatsApp support
+                  <span className="sr-only"> (opens WhatsApp in a new tab)</span>
                 </a>
               </div>
             </div>
@@ -496,17 +431,18 @@ export function MarketingFooter({
 
         </div>
 
-        {/* Bottom Bar: License and Copyright */}
-        <div className="mt-12 pt-6 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-bold text-slate-400">
-          <div className="flex flex-wrap justify-center sm:justify-start gap-x-4 gap-y-1">
-            <p>&copy; {new Date().getFullYear()} DigiConnect Dukan. All rights reserved.</p>
-            <p className="hidden sm:inline">|</p>
-            <p>Certified ISO 9001:2015 Compliant Entity</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <span>Secured by Razorpay and SSL encryption</span>
-          </div>
+        {/* Bottom Bar: copyright.
+
+            "Certified ISO 9001:2015 Compliant Entity" and a "GSTIN Verified"
+            badge used to sit here and in the brand column. Neither was backed
+            by anything the site could show, so both are gone; add them back
+            only with the certificate / GSTIN published alongside. */}
+        <div className="mt-12 pt-6 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-bold text-slate-600">
+          <p>&copy; {new Date().getFullYear()} {business.brand} · {business.legalEntity}. All rights reserved.</p>
+          <p className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+            <span>Online payments processed by Razorpay over HTTPS</span>
+          </p>
         </div>
 
       </div>

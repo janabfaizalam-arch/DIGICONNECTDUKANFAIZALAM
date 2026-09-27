@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { acceptInsuranceQuotation, getPublicInsuranceQuotation } from "@/lib/insurance-quotations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -13,11 +14,13 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
  * identifies the row — the id is never accepted here — and the only field it
  * can change is the status, to one value.
  *
- * Rate limiting is deliberately absent rather than forgotten: the endpoint is
- * idempotent, sets a single enum, and the worst a flood does is set the same
- * value repeatedly on a row the caller already has the token for.
+ * The status change is idempotent, but every call also notifies the shop, so
+ * it is rate-limited to keep a flood from burying the admin notifications.
  */
-export async function POST(_request: Request, context: { params: Promise<{ token: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ token: string }> }) {
+  const rate = checkRateLimit(`insurance-accept:${getClientIp(request)}`, 10, 60_000);
+  if (!rate.ok) return rateLimitResponse(rate.retryAfter);
+
   const { token } = await context.params;
 
   const result = await acceptInsuranceQuotation(token);

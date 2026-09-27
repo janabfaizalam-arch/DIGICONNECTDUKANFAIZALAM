@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { AuthButton, TextField } from "@/components/auth/ui";
+import { FormPrivacyNotice } from "@/components/privacy/form-privacy-notice";
 import { useToast } from "@/components/providers/toast-provider";
 import {
   DIGI_PARTNER_TYPES,
@@ -379,9 +380,13 @@ export function PartnerApplicationForm() {
         <AuthButton type="submit" loading={isPending} loadingText="Sending…">
           Submit application
         </AuthButton>
-        <p className="text-center text-[11.5px] font-medium leading-relaxed text-slate-500">
+        <p className="text-center text-[11.5px] font-medium leading-relaxed text-slate-600">
           No documents needed now. PAN and Aadhaar come later, before your first payout.
         </p>
+        <FormPrivacyNotice
+          className="text-center"
+          purpose="to review your DC Partner application and contact you about it"
+        />
       </div>
 
       <div className="flex flex-col items-center gap-2 border-t border-slate-100 pt-4 text-center text-sm font-semibold text-slate-500">

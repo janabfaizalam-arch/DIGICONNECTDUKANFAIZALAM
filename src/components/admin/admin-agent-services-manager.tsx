@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Edit3, Plus, Search, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import { Edit3, Loader2, Plus, Search, Sparkles, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
 import { useToast } from "@/components/providers/toast-provider";
@@ -217,6 +217,7 @@ export function AdminAgentServicesManager({
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(services);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [drafting, setDrafting] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -267,6 +268,78 @@ export function AdminAgentServicesManager({
           }))
         : [],
     }));
+  }
+
+  /**
+   * Fill the wording from the service name.
+   *
+   * Only the blank fields are filled. Overwriting what somebody has already
+   * typed is the one thing a button like this must not do -- an admin who has
+   * written three careful paragraphs and then presses "Write with AI" out of
+   * curiosity should lose nothing. Clearing a field and pressing it again is
+   * how you ask for a replacement.
+   */
+  async function draftWithAi() {
+    if (!draft) return;
+    const title = draft.title.trim();
+    if (!title) {
+      toastError("Pehle service ka naam likhiye.");
+      return;
+    }
+
+    setDrafting(true);
+    try {
+      const response = await fetch("/api/admin/agent-services/ai-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, category: draft.category, customer_fee: draft.customer_fee }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        draft?: Partial<Record<"description" | "eligibility" | "required_documents" | "processing_time" | "instructions", string>> & {
+          faq?: { question: string; answer: string }[];
+        };
+        message?: string;
+      };
+
+      if (!response.ok || !payload.draft) {
+        toastError(payload.message ?? "AI draft nahi bana.");
+        return;
+      }
+
+      const suggestion = payload.draft;
+      const filled: string[] = [];
+      setDraft((current) => {
+        if (!current) return current;
+        const next = { ...current };
+        const fill = (key: "description" | "eligibility" | "required_documents" | "processing_time" | "instructions", label: string) => {
+          const value = suggestion[key]?.trim();
+          if (value && !next[key].trim()) {
+            next[key] = value;
+            filled.push(label);
+          }
+        };
+        fill("description", "description");
+        fill("eligibility", "eligibility");
+        fill("required_documents", "documents");
+        fill("processing_time", "processing time");
+        fill("instructions", "instructions");
+        if (suggestion.faq?.length && !next.faq.length) {
+          next.faq = suggestion.faq;
+          filled.push("FAQ");
+        }
+        return next;
+      });
+
+      if (filled.length) {
+        success(`AI ne bhara: ${filled.join(", ")}`, "Padh kar theek kar lijiye, phir save kijiye.");
+      } else {
+        success("Sab fields pehle se bhari hain", "Jo field AI se likhwana hai use khaali kar ke dobara try kijiye.");
+      }
+    } catch {
+      toastError("AI draft nahi bana. Dobara try kijiye.");
+    } finally {
+      setDrafting(false);
+    }
   }
 
   function saveDraft() {
@@ -434,7 +507,28 @@ export function AdminAgentServicesManager({
                 </Select>
 
                 <label className="block text-xs font-bold text-slate-600">Title</label>
-                <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: draft.slug || slugify(event.target.value) })} placeholder="Agent display title" />
+                <Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: draft.slug || slugify(event.target.value) })} placeholder="Partner display title" />
+
+                {/* Drafting is offered where the name is typed, because the
+                    name is all it needs -- and it fills the fields further
+                    down this form and on the other tabs. */}
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-orange-300 bg-orange-50/70 p-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={draftWithAi}
+                    disabled={drafting || !draft.title.trim()}
+                    className="h-9 gap-2 border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
+                  >
+                    {drafting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
+                    {drafting ? "Likh raha hai..." : "Write with AI"}
+                  </Button>
+                  <p className="min-w-0 flex-1 text-[11px] font-medium leading-snug text-orange-900/80">
+                    Naam se description, eligibility, documents, processing time aur FAQ bhar dega.
+                    Sirf khaali fields bharta hai — jo aapne likha hai wo nahi badlega. Save karne se
+                    pehle padh lijiye.
+                  </p>
+                </div>
                 
                 <label className="block text-xs font-bold text-slate-600">Slug</label>
                 <Input value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: slugify(event.target.value) })} placeholder="service-slug" />

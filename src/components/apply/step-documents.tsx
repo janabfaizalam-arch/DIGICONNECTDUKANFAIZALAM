@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 import { AnimatePresence, m } from "framer-motion";
 import { Camera, Check, Trash2, Upload } from "lucide-react";
 

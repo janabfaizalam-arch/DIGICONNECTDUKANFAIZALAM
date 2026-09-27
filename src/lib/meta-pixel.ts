@@ -1,5 +1,7 @@
 "use client";
 
+import { hasConsent } from "@/lib/consent/consent";
+
 type MetaPixelEvent = "Contact" | "Lead" | "PageView" | "Purchase" | "SubmitApplication";
 type MetaPixelParameters = Record<string, string | number | boolean | undefined>;
 
@@ -14,7 +16,7 @@ export function isMetaPixelEnabled() {
 }
 
 function track(event: MetaPixelEvent, parameters?: MetaPixelParameters) {
-  if (typeof window === "undefined" || !isMetaPixelEnabled() || typeof window.fbq !== "function") {
+  if (typeof window === "undefined" || !isMetaPixelEnabled() || typeof window.fbq !== "function" || !hasConsent("marketing")) {
     return;
   }
 

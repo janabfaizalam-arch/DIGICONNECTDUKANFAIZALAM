@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toPrivacyEmbedUrl } from "@/lib/embeds";
 import { m } from "framer-motion";
 import {
   ArrowRight,
@@ -392,18 +393,5 @@ export function DprVideoSection({ section, ctx, banners, videoUrl }: IntroProps)
 }
 
 function toEmbedUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes("youtube.com")) {
-      const id = parsed.searchParams.get("v");
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    if (parsed.hostname === "youtu.be") {
-      const id = parsed.pathname.replace("/", "");
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    return url;
-  } catch {
-    return null;
-  }
+  return toPrivacyEmbedUrl(url);
 }

@@ -1,10 +1,32 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser, getCurrentUserRole, isAgentRole } from "@/lib/auth";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Staff-only duplicate check across applications.
+ *
+ * It searches every application's form data for an identifier (PAN, Aadhaar,
+ * mobile…) and says which application holds it. That answer is personal data
+ * about whoever applied, so the endpoint was an enumeration oracle while it
+ * was open to anonymous callers. It is now limited to admins and DC Partners
+ * (who check before filing on a walk-in customer's behalf) and rate-limited.
+ */
 export async function POST(request: Request) {
   try {
+    const rate = checkRateLimit(`check-duplicate:${getClientIp(request)}`, 30, 60_000);
+    if (!rate.ok) return rateLimitResponse(rate.retryAfter);
+
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Please log in." }, { status: 401 });
+    }
+    if (!isAgentRole(await getCurrentUserRole(user))) {
+      return NextResponse.json({ success: false, error: "Not allowed." }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => null);
     const serviceSlug = String(body?.serviceSlug ?? "").trim();
     const identifiers = body?.identifiers ?? {}; // key-value pairs (e.g. { panNumber: '...', aadhaar: '...' })
@@ -35,7 +57,8 @@ export async function POST(request: Request) {
       .not("status", "eq", "rejected");
 
     if (queryError) {
-      return NextResponse.json({ success: false, error: queryError.message }, { status: 500 });
+      console.error("[duplicate_check] query_failed", { code: queryError.code });
+      return NextResponse.json({ success: false, error: "Duplicate check failed." }, { status: 500 });
     }
 
     if (apps && apps.length > 0) {
@@ -75,10 +98,7 @@ export async function POST(request: Request) {
       duplicates: duplicateApps
     });
   } catch (error) {
-    console.error("[duplicate_check_error]", error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[duplicate_check_error]", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

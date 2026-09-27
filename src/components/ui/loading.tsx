@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/safe-image";
 
 import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { Button, type ButtonProps } from "@/components/ui/button";

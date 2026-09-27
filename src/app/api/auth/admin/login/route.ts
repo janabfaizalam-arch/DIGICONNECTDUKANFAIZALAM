@@ -20,7 +20,8 @@ import {
 } from "@/lib/auth/primary-admin";
 import { isValidPinFormat } from "@/lib/auth/pin";
 import { getClientIp, getUserAgent } from "@/lib/auth/request-meta";
-import { logAuthSecurityEvent } from "@/lib/auth/security-log";
+import { isAuthLockedOut, logAuthSecurityEvent } from "@/lib/auth/security-log";
+import { checkRateLimit, getClientIp as getRateLimitIp, rateLimitResponse } from "@/lib/rate-limit";
 import { signInWithPasswordCookies } from "@/lib/auth/session-cookies";
 import { clearAuthCookies } from "@/lib/auth-v2/session";
 import { verifyPin } from "@/lib/auth-v2/password";
@@ -132,6 +133,9 @@ async function assertAdminProfile(userId: string, email: string | null | undefin
 }
 
 export async function POST(request: Request) {
+  const ipRate = checkRateLimit(`admin-login:${getRateLimitIp(request)}`, 10, 60_000);
+  if (!ipRate.ok) return rateLimitResponse(ipRate.retryAfter);
+
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
 
@@ -328,6 +332,24 @@ export async function POST(request: Request) {
     if (customer.is_active === false) {
       logAdminLogin("admin_login_auth_failed", { method, reason: "inactive" });
       return NextResponse.json({ error: "Account is inactive. Please contact support." }, { status: 403 });
+    }
+
+    // A 6-digit PIN for a publicly listed number is guessable without this:
+    // five wrong PINs lock PIN sign-in for this account for 15 minutes, from
+    // every IP. Email + password (Supabase-rate-limited) stays available.
+    if (
+      await isAuthLockedOut({
+        userId: String(adminProfile.id),
+        eventTypes: ["admin_login_failed_pin"],
+        maxFailures: 5,
+        windowMs: 15 * 60_000,
+      })
+    ) {
+      logAdminLogin("admin_login_auth_failed", { method, reason: "locked_out" });
+      return NextResponse.json(
+        { error: "Too many wrong PINs. PIN login is locked for 15 minutes — use email + password, or try later." },
+        { status: 429 },
+      );
     }
 
     const valid = await verifyPin(body.pin, String(customer.hashed_pin));

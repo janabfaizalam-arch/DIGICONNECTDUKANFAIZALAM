@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { getCurrentUserRole, isAgentRole } from "@/lib/auth";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -35,8 +36,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Check ownership or admin/agent role
-    const userRole = user.user_metadata?.role || "customer";
-    if (app.user_id !== user.id && userRole !== "admin" && userRole !== "agent") {
+    // Role from the database / app_metadata — never user_metadata, which the
+    // caller can set on themselves.
+    const userRole = await getCurrentUserRole(user);
+    if (app.user_id !== user.id && !isAgentRole(userRole)) {
       return NextResponse.json({ success: false, error: "Access denied to this resource" }, { status: 403 });
     }
 
