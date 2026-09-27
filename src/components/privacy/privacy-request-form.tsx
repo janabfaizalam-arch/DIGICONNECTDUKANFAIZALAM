@@ -19,11 +19,11 @@ type RequestType = (typeof REQUEST_TYPES)[number]["value"];
 /**
  * Privacy / data-rights request.
  *
- * Deliberately stores nothing: it composes the request and hands it to the
- * visitor's own email app or WhatsApp, both of which already reach the team
- * that answers. That keeps an identity-verification step (a reply to the
- * registered mobile / email) with a person, and avoids a new table of
- * unauthenticated personal data just to ask about personal data.
+ * Records the request (POST /api/privacy-requests) so it has a reference and
+ * a place in the admin queue, then offers email / WhatsApp as a follow-up
+ * channel quoting that reference. If recording fails, email and WhatsApp are
+ * still offered so the request is never lost. Identity is verified by a
+ * person before anything is done with the requester's data.
  */
 export function PrivacyRequestForm() {
   const [type, setType] = useState<RequestType | "">("");
@@ -32,11 +32,15 @@ export function PrivacyRequestForm() {
   const [details, setDetails] = useState("");
   const [errors, setErrors] = useState<{ type?: string; name?: string; mobile?: string }>({});
   const [ready, setReady] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const errorSummaryId = useId();
 
   const label = REQUEST_TYPES.find((option) => option.value === type)?.label ?? "";
   const message = [
     `Privacy request: ${label}`,
+    reference ? `Reference: ${reference}` : "",
     `Name: ${name.trim()}`,
     `Registered mobile: ${mobile.trim()}`,
     details.trim() ? `Details: ${details.trim()}` : "",
@@ -65,9 +69,34 @@ export function PrivacyRequestForm() {
     <form
       noValidate
       aria-describedby={errorKeys.length ? errorSummaryId : undefined}
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
-        setReady(validate());
+        if (!validate()) {
+          setReady(false);
+          return;
+        }
+        setSubmitting(true);
+        setSubmitError(null);
+        try {
+          const response = await fetch("/api/privacy-requests", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ requestType: type, name, mobile, details }),
+          });
+          const result = (await response.json().catch(() => ({}))) as { ok?: boolean; reference?: string; error?: string };
+          if (response.ok && result.ok && result.reference) {
+            setReference(result.reference);
+          } else {
+            setReference(null);
+            setSubmitError(result.error || "We could not record your request online. Please send it by email or WhatsApp below.");
+          }
+        } catch {
+          setReference(null);
+          setSubmitError("We could not record your request online. Please send it by email or WhatsApp below.");
+        } finally {
+          setSubmitting(false);
+          setReady(true);
+        }
       }}
       className="space-y-4"
     >
@@ -185,14 +214,33 @@ export function PrivacyRequestForm() {
 
       <button
         type="submit"
-        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-800 px-5 text-sm font-bold text-white transition hover:bg-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
+        disabled={submitting}
+        aria-busy={submitting}
+        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-800 px-5 text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
       >
-        Prepare my privacy request
+        {submitting ? "Sending…" : "Submit privacy request"}
       </button>
 
       {ready ? (
-        <div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
-          <p className="font-bold">Your request is ready. Send it by email or WhatsApp:</p>
+        <div
+          role="status"
+          className={`rounded-xl border p-4 text-sm ${
+            reference ? "border-emerald-300 bg-emerald-50 text-emerald-950" : "border-amber-300 bg-amber-50 text-amber-950"
+          }`}
+        >
+          {reference ? (
+            <>
+              <p className="font-bold">
+                Request recorded. Your reference is <span className="font-mono">{reference}</span>.
+              </p>
+              <p className="mt-1">
+                We will contact you on your registered mobile to confirm it is you before acting on it. You can also
+                follow up by email or WhatsApp quoting the reference:
+              </p>
+            </>
+          ) : (
+            <p className="font-bold">{submitError}</p>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             <a
               href={`mailto:${privacyContact.email}?subject=${encodeURIComponent(`Privacy request: ${label}`)}&body=${encodeURIComponent(message)}`}
@@ -210,7 +258,7 @@ export function PrivacyRequestForm() {
             </a>
           </div>
           <p className="mt-2 text-[13px]">
-            Nothing is saved on this page. We aim to acknowledge requests within {privacyContact.acknowledgeWithin}.
+            We aim to acknowledge requests within {privacyContact.acknowledgeWithin}.
           </p>
         </div>
       ) : null}
