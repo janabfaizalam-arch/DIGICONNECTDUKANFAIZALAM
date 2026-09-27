@@ -78,7 +78,7 @@ export function isDisabledDeliveryMode(mode: CrmNotificationDeliveryMode): boole
   return mode === "disabled";
 }
 
-/** Whether outbox processor may claim/send AiSensy work. */
+/** Whether outbox processor may claim/send WhatsApp work. */
 export function outboxMaySend(mode: CrmNotificationDeliveryMode): boolean {
   return mode === "queue";
 }

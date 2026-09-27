@@ -10,7 +10,7 @@ import { rulesForEventType, type AutomationRuleDefinition } from "@/lib/automati
 import { enqueueCommunication } from "@/lib/communications/enqueue";
 import {
   buildApplicationTemplateParams,
-  getApplicationCampaignName,
+  getApplicationTemplateName,
 } from "@/lib/whatsapp/templates";
 import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -31,7 +31,7 @@ const MAX_ACTIONS_PER_EVENT = 8;
 
 /**
  * Process pending automation events.
- * Never calls AiSensy — only enqueue_communication / alerts / activity.
+ * Never calls the WhatsApp API — only enqueue_communication / alerts / activity.
  * Finalize requires matching processing_owner.
  */
 export async function processAutomationEvents(input?: {
@@ -389,13 +389,13 @@ async function enqueueFromEvent(
     rule.templateEvent || meta.whatsapp_event || rule.purpose || "application_submitted",
   ) as ApplicationWhatsAppEvent;
 
-  const campaignName = getApplicationCampaignName(templateEvent);
-  if (!campaignName) {
+  const templateName = getApplicationTemplateName(templateEvent);
+  if (!templateName) {
     await createOpsAlert({
       alertType: "missing_template_mapping",
       severity: "warning",
       title: "Missing WhatsApp template mapping",
-      safeSummary: `No campaign for ${templateEvent}`,
+      safeSummary: `No template for ${templateEvent}`,
       relatedEntityType: "application",
       relatedEntityId: applicationId,
       sourceEventId: String(event.id),
@@ -429,7 +429,7 @@ async function enqueueFromEvent(
     idempotencyKey: queueOutboxKey,
     templateParams,
     userName: String(app.customer_name || "Customer"),
-    campaignName,
+    templateName,
     classification: rule.classification ?? "transactional",
     consentBasis: "transactional_ops",
     correlationId: event.correlation_id ? String(event.correlation_id) : undefined,

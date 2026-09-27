@@ -38,7 +38,7 @@ export type EmitAutomationEventResult =
 
 /**
  * Idempotent automation event insert. Never stores secrets/PIN/OTP/document content.
- * Does not call AiSensy. Ordinary roles cannot invent event types via this API.
+ * Does not call the WhatsApp API. Ordinary roles cannot invent event types via this API.
  */
 export async function emitAutomationEvent(
   input: EmitAutomationEventInput,

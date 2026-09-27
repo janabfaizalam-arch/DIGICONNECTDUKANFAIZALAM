@@ -1,10 +1,10 @@
 /**
  * Classification of a stored OTP attempt.
  *
- * The distinction that matters operationally: AiSensy returning `success=true`
- * only means it ACCEPTED the submit. WhatsApp delivery is a separate, later
- * fact that arrives on the delivery webhook. Treating "accepted" as "delivered"
- * is what makes a broken campaign look healthy from inside the app.
+ * The distinction that matters operationally: Meta's Cloud API returning a
+ * message id only means it ACCEPTED the send. WhatsApp delivery is a separate,
+ * later fact that arrives on the Meta webhook. Treating "accepted" as
+ * "delivered" is what makes a broken template look healthy from inside the app.
  */
 export type OtpAttemptVerdict =
   | "delivered"
@@ -70,7 +70,7 @@ export function classifyOtpAttempt(metadata: unknown): OtpAttemptClassification 
   if (storedStatus === "failed") {
     return {
       verdict: "rejected_by_provider",
-      label: "AiSensy refused the send",
+      label: "Meta refused the send",
       unknownDelivery: false,
       tone: "bad",
       detail: submitError,
@@ -83,7 +83,7 @@ export function classifyOtpAttempt(metadata: unknown): OtpAttemptClassification 
       label: "Submitted — delivery unknown",
       unknownDelivery: true,
       tone: "warn",
-      detail: "AiSensy accepted the request. Nothing has confirmed WhatsApp delivered it.",
+      detail: "Meta accepted the request. Nothing has confirmed WhatsApp delivered it.",
     };
   }
 
@@ -138,24 +138,24 @@ export type OtpHealthVerdict = {
  *
  * The "blind" case is the important one and the reason this screen exists: every
  * send is accepted and nothing is ever confirmed, which is indistinguishable
- * from a totally broken campaign unless the delivery webhook is wired up.
+ * from a totally broken template unless the delivery webhook is wired up.
  */
 export function assessOtpHealth(input: {
-  apiKeyConfigured: boolean;
-  signupCampaignConfigured: boolean;
+  accessTokenConfigured: boolean;
+  signupTemplateConfigured: boolean;
   webhookSecretConfigured: boolean;
   summary: OtpAttemptSummary;
 }): OtpHealthVerdict {
-  if (!input.apiKeyConfigured || !input.signupCampaignConfigured) {
+  if (!input.accessTokenConfigured || !input.signupTemplateConfigured) {
     return {
       severity: "misconfigured",
       headline: "OTP sending is not configured",
-      explanation: !input.apiKeyConfigured
-        ? "AISENSY_API_KEY is missing, so no OTP can leave the server."
-        : "No signup campaign is configured, so the signup OTP has nowhere to go.",
+      explanation: !input.accessTokenConfigured
+        ? "META_WHATSAPP_ACCESS_TOKEN or META_WHATSAPP_PHONE_NUMBER_ID is missing, so no OTP can leave the server."
+        : "No signup template is configured, so the signup OTP has nowhere to go.",
       nextSteps: [
-        "Set AISENSY_API_KEY (or AISENSY_PROJECT_API_KEY) in Vercel for the Production environment.",
-        "Set AISENSY_SIGNUP_CAMPAIGN to the exact Live campaign name in AiSensy.",
+        "Set META_WHATSAPP_ACCESS_TOKEN (System User permanent token) and META_WHATSAPP_PHONE_NUMBER_ID in Vercel for the Production environment.",
+        "Create and get approved the `signup_otp` Authentication template in WhatsApp Manager (or set WHATSAPP_TEMPLATE_SIGNUP_OTP to the approved name).",
         "Redeploy — environment variables are read at runtime on the server.",
       ],
     };
@@ -177,13 +177,12 @@ export function assessOtpHealth(input: {
       severity: "broken",
       headline: "WhatsApp is rejecting the OTP messages",
       explanation:
-        "AiSensy accepted these sends but WhatsApp refused to deliver them. The reason code is shown against each attempt below — this is a template or account problem, not an app bug.",
+        "Meta accepted these sends but WhatsApp refused to deliver them. The reason code is shown against each attempt below — this is a template or account problem, not an app bug.",
       nextSteps: [
-        "Open AiSensy → Manage → Template Message and check the signup template's status. Anything other than Approved (Rejected, Paused, Pending) is accepted by AiSensy and then dropped by WhatsApp.",
+        "Open WhatsApp Manager → Message templates and check the signup template's status. Anything other than Approved (Rejected, Paused, Pending) will not be delivered.",
         "If it is Rejected, open it for Meta's reason. Authentication templates must use Meta's fixed wording — custom body text like \"Welcome to <brand>, your OTP is {{1}}\" is rejected on sight.",
-        "Confirm the campaign itself is Live and API-enabled.",
-        "Compare the campaign's Test Campaign cURL against the payload contract shown above — the templateParams count must match exactly.",
-        "Check the AiSensy wallet balance and plan status.",
+        "Check the template's language matches META_WHATSAPP_TEMPLATE_LANGUAGE (or WHATSAPP_TEMPLATE_SIGNUP_OTP_LANGUAGE) exactly — en and en_US are different templates to Meta.",
+        "Check WhatsApp Manager → Overview for the number's quality rating, messaging limit and a valid payment method."
       ],
     };
   }
@@ -191,13 +190,13 @@ export function assessOtpHealth(input: {
   if (summary.rejectedByProvider > 0 && summary.delivered === 0) {
     return {
       severity: "broken",
-      headline: "AiSensy is refusing the sends",
+      headline: "Meta is refusing the sends",
       explanation:
         "The requests never reached WhatsApp. The refusal reason is recorded against each attempt below.",
       nextSteps: [
-        "Verify AISENSY_API_KEY is the current Campaign API key for this AiSensy project.",
-        "Verify the signup campaign name matches AiSensy exactly, including case.",
-        "Check the AiSensy wallet balance and plan status.",
+        "Verify META_WHATSAPP_ACCESS_TOKEN is a current System User token with whatsapp_business_messaging permission (error 190 = expired token).",
+        "Verify the signup template name and language match WhatsApp Manager exactly, including case (error 132001 = template not found).",
+        "Check WhatsApp Manager → Overview for account restrictions and a valid payment method.",
       ],
     };
   }
@@ -207,13 +206,11 @@ export function assessOtpHealth(input: {
       severity: "blind",
       headline: "Every send is accepted, but nothing confirms delivery",
       explanation:
-        "AISENSY_WEBHOOK_SECRET is not set, so AiSensy never tells this app what WhatsApp did. Customers reporting 'OTP nahi aaya' cannot be confirmed or ruled out from here — the app shows 'sent' either way.",
+        "META_APP_SECRET is not set, so the Meta webhook's delivery reports are refused and this app never learns what WhatsApp did. Customers reporting 'OTP nahi aaya' cannot be confirmed or ruled out from here — the app shows 'sent' either way.",
       nextSteps: [
-        "First: AiSensy → Manage → Template Message. If the signup template is Rejected or Paused, that alone explains it — AiSensy accepts the send and WhatsApp discards it, with no error visible here.",
-        "Set AISENSY_WEBHOOK_SECRET (16+ characters) in Vercel and redeploy.",
-        "In AiSensy, point the delivery webhook at /api/webhooks/aisensy and send the same secret as the x-aisensy-webhook-secret header.",
-        "Until then, confirm delivery manually in AiSensy → Campaigns → Sent using the submitted message id shown below.",
-        "Check the AiSensy wallet balance — an empty balance accepts submits and never delivers.",
+        "First: WhatsApp Manager → Message templates. If the signup template is Rejected or Paused, that alone explains it.",
+        "Set META_APP_SECRET (Meta app → App settings → Basic → App secret) in Vercel and redeploy.",
+        "Make sure the app's webhook points at /api/webhooks/meta-whatsapp with the messages field subscribed.",
       ],
     };
   }
@@ -233,9 +230,9 @@ export function assessOtpHealth(input: {
     explanation:
       "Sends are being accepted but no delivery confirmation has arrived yet. If this stays unchanged for more than a few minutes, treat it as undelivered.",
     nextSteps: [
-      "Check the signup template's status in AiSensy first — a Rejected or Paused template is the most common cause of accepted-but-never-delivered.",
-      "Confirm the signup campaign is Live and API-enabled.",
-      "Check the AiSensy wallet balance and plan status.",
+      "Check the signup template's status in WhatsApp Manager first — a Rejected or Paused template is the most common cause of accepted-but-never-delivered.",
+      "Check the Meta webhook is subscribed to the messages field so delivery reports arrive.",
+      "Check WhatsApp Manager → Overview for quality rating and messaging limits.",
     ],
   };
 }

@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     maskedPhone: masked,
     providerRequestId: result.requestId,
     submitted_message_id: result.providerMessageId,
-    campaignName: result.campaignName,
+    templateName: result.templateName,
   });
 
   return NextResponse.json({
@@ -111,8 +111,8 @@ export async function POST(request: Request) {
     maskedPhone: masked,
     requestId: result.requestId,
     submittedMessageId: result.providerMessageId ?? null,
-    campaignName: result.campaignName,
+    templateName: result.templateName,
     note:
-      "submittedMessageId is AiSensy accept id — confirm Delivered in Campaign → Sent or GET /api/admin/diagnostics/otp-delivery-status",
+      "submittedMessageId is the Meta wamid — delivery arrives on the Meta webhook; check GET /api/admin/diagnostics/otp-delivery-status",
   });
 }

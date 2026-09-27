@@ -301,7 +301,7 @@ export async function explicitResendCommunication(input: {
       ? (payload.template_params as string[])
       : [],
     userName: String(payload.user_name ?? "Customer"),
-    campaignName: String(source.template_name),
+    templateName: String(source.template_name),
     // Server-mapped classification — ignore any client attempt to relabel
     classification: purposeClassification(purpose),
     consentBasis: "manual_authorized_resend",

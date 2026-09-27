@@ -13,15 +13,15 @@ const root = process.cwd();
 const readSrc = (rel: string) => readFileSync(join(root, rel), "utf8");
 
 const HEALTHY_CONFIG = {
-  apiKeyConfigured: true,
-  signupCampaignConfigured: true,
+  accessTokenConfigured: true,
+  signupTemplateConfigured: true,
   webhookSecretConfigured: true,
 };
 
 describe("classifying an OTP attempt", () => {
   it("does not call an accepted submit a delivery", () => {
     // This is the whole point: our DB writes delivery_status "sent" the moment
-    // AiSensy accepts, long before WhatsApp has done anything.
+    // Meta accepts, long before WhatsApp has done anything.
     const result = classifyOtpAttempt({ delivery_status: "sent" });
     expect(result.verdict).toBe("accepted_only");
     expect(result.unknownDelivery).toBe(true);
@@ -45,7 +45,7 @@ describe("classifying an OTP attempt", () => {
     expect(classifyOtpAttempt({ provider_delivery_status: "delivered" }).verdict).toBe("delivered");
   });
 
-  it("separates an AiSensy refusal from a WhatsApp rejection", () => {
+  it("separates a Meta API refusal from a WhatsApp rejection", () => {
     const refused = classifyOtpAttempt({
       delivery_status: "failed",
       provider_code: "provider_rejected",
@@ -90,7 +90,7 @@ describe("assessing overall health", () => {
   it("reports missing configuration ahead of anything else", () => {
     const verdict = assessOtpHealth({
       ...HEALTHY_CONFIG,
-      apiKeyConfigured: false,
+      accessTokenConfigured: false,
       summary: empty,
     });
     expect(verdict.severity).toBe("misconfigured");
@@ -111,10 +111,10 @@ describe("assessing overall health", () => {
     });
 
     expect(verdict.severity).toBe("blind");
-    expect(verdict.explanation).toContain("AISENSY_WEBHOOK_SECRET");
-    expect(verdict.nextSteps.some((step) => /wallet balance/i.test(step))).toBe(true);
-    // Template status leads: a Rejected template is accepted by AiSensy and
-    // silently discarded by WhatsApp, which is exactly this symptom.
+    expect(verdict.explanation).toContain("META_APP_SECRET");
+    expect(verdict.nextSteps.some((step) => /meta-whatsapp/i.test(step))).toBe(true);
+    // Template status leads: a Rejected template is accepted by the API and
+    // never delivered by WhatsApp, which is exactly this symptom.
     expect(verdict.nextSteps[0]).toMatch(/template/i);
   });
 
@@ -173,7 +173,7 @@ describe("admin OTP diagnostics screen", () => {
 
   it("judges signup health on signup attempts only", () => {
     // A working password_reset campaign must not make a dead signup campaign
-    // look healthy — they can be different AiSensy campaigns.
+    // look healthy — they are different Meta templates.
     const data = readSrc("src/lib/admin/otp-diagnostics-data.ts");
     expect(data).toContain('attempt.purpose === "customer_signup"');
   });

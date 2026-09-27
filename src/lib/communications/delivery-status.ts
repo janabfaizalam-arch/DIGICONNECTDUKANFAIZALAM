@@ -5,7 +5,7 @@ import {
   normalizeProviderDeliveryStatus,
 } from "@/lib/communications/comms-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { redactSecrets } from "@/lib/whatsapp/aisensy";
+import { redactSecrets } from "@/lib/whatsapp/client";
 
 export type ProviderDeliveryEvent = {
   providerMessageId: string;
@@ -16,7 +16,7 @@ export type ProviderDeliveryEvent = {
 };
 
 /**
- * Apply one provider delivery-status event (AiSensy or Meta webhook):
+ * Apply one Meta delivery-status event (sent / delivered / read / failed):
  * log it idempotently, advance the matching outbox row, and copy delivery
  * metadata onto the OTP request that sent it.
  *

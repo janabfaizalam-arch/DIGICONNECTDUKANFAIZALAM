@@ -29,7 +29,7 @@ export type ProcessOutboxSummary = {
 /**
  * Process queued communications.
  * Claim via RPC (transaction closes before HTTP). Finalize requires matching processing_owner.
- * Outbox processor owns durable retries — AiSensy HTTP client does not nested-retry.
+ * Outbox processor owns durable retries — the WhatsApp client does not nested-retry.
  */
 export async function processCommunicationOutbox(input?: {
   batchSize?: number;
@@ -143,14 +143,13 @@ export async function processCommunicationOutbox(input?: {
     const templateParams = Array.isArray(payload.template_params)
       ? (payload.template_params as string[])
       : [];
-    const userName = String(payload.user_name ?? "Customer");
-    const campaignName = String(fresh.template_name ?? "").trim();
+    const templateName = String(fresh.template_name ?? "").trim();
 
-    if (!campaignName) {
+    if (!templateName) {
       await finalize(supabase, id, workerId, {
         status: "failed",
         failure_code: "missing_template",
-        failure_summary: "Template/campaign mapping missing.",
+        failure_summary: "Template mapping missing.",
         failed_at: new Date().toISOString(),
       });
       summary.failed += 1;
@@ -159,9 +158,8 @@ export async function processCommunicationOutbox(input?: {
 
     // HTTP outside claim transaction
     const send = await provider.sendTemplate({
-      campaignName,
+      templateName,
       destination: String(fresh.recipient),
-      userName,
       templateParams,
       source: `digiconnect-outbox:${String(fresh.purpose ?? fresh.event_type)}`,
       correlationId: fresh.correlation_id ? String(fresh.correlation_id) : undefined,

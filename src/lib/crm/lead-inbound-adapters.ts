@@ -9,16 +9,13 @@ import {
 
 /**
  * Provider-neutral inbound lead adapters.
- * WhatsApp / Sheets are READY but NOT activated — no live webhook enablement here.
+ * Sheets is READY but NOT activated — no live webhook enablement here.
  *
- * WhatsApp / AiSensy readiness (inactive until explicitly configured):
- * - Authenticity: shared secret header `x-aisensy-webhook-secret` (existing delivery webhook pattern).
- *   Do not invent HMAC schemes the account does not support.
- * - Event/message ID → externalId for idempotency + replay protection via lead_ingestion_keys.
- * - Delivery-status webhook (`/api/webhooks/aisensy`) stays SEPARATE from lead ingest.
- * - Consent/source metadata via campaignAttribution / notes only (no raw auth headers stored).
- * - Required env names (no values): AISENSY_WEBHOOK_SECRET (+ existing AiSensy campaign envs).
- * - Leave lead-ingest route disabled until approval; unknown events should 202/ignore safely.
+ * WhatsApp inbound is LIVE, but not through here: customer messages arrive on
+ * the Meta webhook (/api/webhooks/meta-whatsapp, X-Hub-Signature-256 verified)
+ * and go through `recordInboundWhatsAppMessage` (src/lib/crm/whatsapp-inbound.ts),
+ * which appends to an open lead or creates one via ingestLead, idempotent on
+ * the wamid. `ingestWhatsAppReadyLead` below remains for other WhatsApp sources.
  *
  * Google Sheets readiness (inactive; DB authoritative for leads):
  * - No dual-write loop: outbound CRM sync is applications/customers only.

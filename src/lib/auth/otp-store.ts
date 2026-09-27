@@ -60,7 +60,7 @@ export async function createAndSendOtp(input: {
   userAgent: string;
   metadata?: Record<string, unknown>;
 }): Promise<
-  | { ok: true; requestId?: string; campaignName?: string; providerMessageId?: string | null }
+  | { ok: true; requestId?: string; templateName?: string; providerMessageId?: string | null }
   | { ok: false; error: string; status: number }
 > {
   const supabase = getSupabaseAdmin();
@@ -168,7 +168,7 @@ export async function createAndSendOtp(input: {
           ...(input.metadata ?? {}),
           delivery_status: "failed",
           provider: sendResult.provider,
-          campaign: sendResult.campaignName ?? null,
+          template: sendResult.templateName ?? null,
           provider_code: sendResult.code ?? null,
           provider_request_id: sendResult.requestId ?? null,
           submitted_message_id: sendResult.providerMessageId ?? null,
@@ -182,7 +182,7 @@ export async function createAndSendOtp(input: {
       purpose: input.purpose,
       otpRequestId: inserted.id,
       provider: sendResult.provider,
-      campaign: sendResult.campaignName,
+      template: sendResult.templateName,
       code: sendResult.code,
       requestId: sendResult.requestId,
       submitted_message_id: sendResult.providerMessageId,
@@ -193,10 +193,10 @@ export async function createAndSendOtp(input: {
     return {
       ok: false,
       error:
-        sendResult.code === "OTP_PROVIDER_CONFIG_MISSING" || sendResult.code === "missing_api_key"
+        sendResult.code === "OTP_PROVIDER_CONFIG_MISSING" || sendResult.code === "missing_meta_config"
           ? "OTP provider is not configured. Please contact support."
           : "Unable to send OTP. Please try again in a few minutes.",
-      status: sendResult.code === "OTP_PROVIDER_CONFIG_MISSING" || sendResult.code === "missing_api_key" ? 503 : 502,
+      status: sendResult.code === "OTP_PROVIDER_CONFIG_MISSING" || sendResult.code === "missing_meta_config" ? 503 : 502,
     };
   }
 
@@ -206,8 +206,8 @@ export async function createAndSendOtp(input: {
       metadata: {
         ...(input.metadata ?? {}),
         delivery_status: "sent",
-        provider: sendResult.provider ?? "aisensy",
-        campaign: sendResult.campaignName ?? null,
+        provider: sendResult.provider ?? "meta",
+        template: sendResult.templateName ?? null,
         provider_request_id: sendResult.requestId ?? null,
         submitted_message_id: sendResult.providerMessageId ?? null,
       },
@@ -218,7 +218,7 @@ export async function createAndSendOtp(input: {
     purpose: input.purpose,
     otpRequestId: inserted.id,
     provider: sendResult.provider,
-    campaign: sendResult.campaignName,
+    template: sendResult.templateName,
     requestId: sendResult.requestId,
     submitted_message_id: sendResult.providerMessageId,
   });
@@ -226,7 +226,7 @@ export async function createAndSendOtp(input: {
   return {
     ok: true,
     requestId: sendResult.requestId,
-    campaignName: sendResult.campaignName,
+    templateName: sendResult.templateName,
     providerMessageId: sendResult.providerMessageId ?? null,
   };
 }

@@ -11,8 +11,8 @@ import {
 } from "@/lib/communications/comms-core";
 import { normalizeLeadMobile, isValidLeadMobile } from "@/lib/crm/leads-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getWhatsappProvider } from "@/lib/whatsapp/aisensy";
-import { getApplicationCampaignName } from "@/lib/whatsapp/templates";
+import { WHATSAPP_PROVIDER } from "@/lib/communications/provider-adapter";
+import { getApplicationTemplateName } from "@/lib/whatsapp/templates";
 
 export type EnqueueCommunicationInput = {
   purpose: CommunicationPurpose | string;
@@ -27,7 +27,7 @@ export type EnqueueCommunicationInput = {
   eventKeyParts: string[];
   templateParams?: string[];
   userName?: string;
-  campaignName?: string | null;
+  templateName?: string | null;
   classification?: CommunicationClassification;
   consentBasis?: string | null;
   correlationId?: string | null;
@@ -48,7 +48,7 @@ export type EnqueueResult =
   | { ok: false; error: string; status: number; code?: string };
 
 /**
- * Canonical enqueue — inserts queued outbox row only. Never calls AiSensy.
+ * Canonical enqueue — inserts queued outbox row only. Never calls the WhatsApp API.
  * Idempotent on event-scoped key. Changing a random clientKey must not duplicate
  * the same business event when eventKeyParts are stable.
  */
@@ -82,10 +82,10 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
             customer_id: input.customerId,
             lead_id: input.leadId ?? null,
             channel: input.channel ?? "whatsapp",
-            provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
+            provider: WHATSAPP_PROVIDER,
             event_type: input.purpose,
             purpose: input.purpose,
-            template_name: input.campaignName ?? null,
+            template_name: input.templateName ?? null,
             recipient: mobile || "suppressed",
             status: "suppressed",
             idempotency_key: suppressedKey,
@@ -113,10 +113,10 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
   const idempotencyKey =
     input.idempotencyKey?.trim() ||
     buildCommunicationIdempotencyKey([input.purpose, ...input.eventKeyParts]);
-  const campaignName =
-    input.campaignName ||
+  const templateName =
+    input.templateName ||
     (input.purpose.startsWith("application") || input.purpose.includes("payment") || input.purpose.includes("document")
-      ? getApplicationCampaignName(input.purpose as never)
+      ? getApplicationTemplateName(input.purpose as never)
       : null);
 
   const { data: existing } = await supabase
@@ -141,10 +141,10 @@ export async function enqueueCommunication(input: EnqueueCommunicationInput): Pr
       payment_id: input.paymentId ?? null,
       follow_up_id: input.followUpId ?? null,
       channel: input.channel ?? "whatsapp",
-      provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
+      provider: WHATSAPP_PROVIDER,
       event_type: input.purpose,
       purpose: input.purpose,
-      template_name: campaignName,
+      template_name: templateName,
       recipient: mobile || "audit",
       status,
       idempotency_key: idempotencyKey,

@@ -21,7 +21,7 @@ export type DispatchApplicationNotificationInput = SendApplicationWhatsAppInput 
   sourceHistoryTable?: string | null;
   actorId?: string | null;
   actorOrigin?: "system" | "admin" | "agency_partner" | "customer" | "webhook" | "cron";
-  /** Process matching rules inline after emit (queue mode only; no AiSensy). */
+  /** Process matching rules inline after emit (queue mode only; no WhatsApp API call). */
   processRulesInline?: boolean;
 };
 
@@ -46,9 +46,9 @@ const EVENT_TYPE_TO_AUTOMATION: Partial<Record<ApplicationWhatsAppEvent, Automat
  * Browser cannot choose delivery mode.
  *
  * Fail-closed:
- * - queue  → emit automation event (+ optional inline rule processing → enqueue only). Never AiSensy.
+ * - queue  → emit automation event (+ optional inline rule processing → enqueue only). Never calls the WhatsApp API.
  * - direct → send in-process once; mark event completed/direct_handled (never enqueue claimable duplicate).
- * - disabled / unset / invalid → suppressed/configuration-required audit only; never AiSensy; never sendable queue.
+ * - disabled / unset / invalid → suppressed/configuration-required audit only; never calls the WhatsApp API; never sendable queue.
  *
  * OTP must not use this function — OTP does not use CRM_NOTIFICATION_DELIVERY_MODE.
  */
@@ -151,7 +151,7 @@ export async function dispatchApplicationNotification(
     return { ...result, deliveryMode: mode, deliveryReason: detailed.reason };
   }
 
-  // queue mode — emit pending; optionally process rules inline (enqueue only; never AiSensy here)
+  // queue mode — emit pending; optionally process rules inline (enqueue only; never the WhatsApp API here)
   const emit = await emitAutomationEvent({
     eventType: automationType,
     entityType: "application",
