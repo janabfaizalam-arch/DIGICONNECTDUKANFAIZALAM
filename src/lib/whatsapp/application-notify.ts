@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 
-import { normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import { getWhatsappProvider, normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
 import {
   buildApplicationTemplateParams,
   getApplicationCampaignName,
@@ -372,7 +372,7 @@ async function sendApplicationWhatsAppDirect(
         application_id: input.applicationId,
         customer_id: input.customerId ?? null,
         channel: "whatsapp",
-        provider: "aisensy",
+        provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
         event_type: input.eventType,
         purpose: input.eventType,
         template_name: campaignName,

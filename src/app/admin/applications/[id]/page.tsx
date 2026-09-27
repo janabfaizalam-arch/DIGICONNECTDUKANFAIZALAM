@@ -9,6 +9,8 @@ import { AdminFinalDocumentPreviewButton } from "@/components/admin/admin-final-
 import { GenerateInvoiceButton } from "@/components/admin/generate-invoice-button";
 import { SendInvoiceWhatsAppButton } from "@/components/admin/send-invoice-whatsapp-button";
 import { RenewalReminderCard } from "@/components/admin/renewal-reminder-card";
+import { getInvoiceShareUrl } from "@/lib/invoices/invoice-link";
+import { buildCustomerWhatsAppUrl } from "@/lib/whatsapp";
 import { AdminUpdateForm } from "@/components/portal/admin-update-form";
 import { PaymentBadge, StatusBadge } from "@/components/portal/status-badge";
 import { Card } from "@/components/ui/card";
@@ -117,6 +119,18 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
   const { application, payment, invoice, customer, documents, invoices, payments, notes, statusLogs, agents, facts, partner, whatsappMessages = [], whatsappLogsAvailable } = detail;
   const formData = asRecord(application.form_data);
   const customerMobile = customer.mobile;
+  // wa.me fallback: works with no WhatsApp API at all — the admin taps Send in their own WhatsApp.
+  const manualInvoiceWhatsAppUrl = invoice
+    ? buildCustomerWhatsAppUrl(
+        [
+          `Namaste ${customer.name || "ji"},`,
+          `Aapka invoice ${invoice.invoice_number} (${application.service_name}) — ₹${Number(invoice.amount ?? 0).toLocaleString("en-IN")}.`,
+          `Download: ${getInvoiceShareUrl(invoice.id)}`,
+          "— DigiConnect Dukan",
+        ].join("\n"),
+        customerMobile,
+      )
+    : "";
   const sourceInfo = resolveApplicationSourceInfo(application);
   const finalDocuments = documents.filter((document) => isFinalApplicationDocument(document));
   const customerDocuments = documents.filter((document) => !isFinalApplicationDocument(document));
@@ -341,6 +355,17 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
                   Open Invoice
                 </Link>
                 <SendInvoiceWhatsAppButton invoiceId={invoice.id} />
+                {manualInvoiceWhatsAppUrl ? (
+                  <a
+                    href={manualInvoiceWhatsAppUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Opens WhatsApp with the invoice message typed — works without any WhatsApp API"
+                    className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-600 px-3 text-xs font-semibold text-emerald-700"
+                  >
+                    Manual WhatsApp
+                  </a>
+                ) : null}
               </div>
             </div>
           ) : (

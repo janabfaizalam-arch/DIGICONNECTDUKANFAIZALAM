@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BellRing, CheckCircle2, LoaderCircle, Send, XCircle } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
+import { buildCustomerWhatsAppUrl } from "@/lib/whatsapp";
 
 export type RenewalRow = {
   id: string;
@@ -43,6 +44,20 @@ function nextYear(date: string) {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCFullYear(d.getUTCFullYear() + 1);
   return d.toISOString().slice(0, 10);
+}
+
+function manualReminderUrl(renewal: RenewalRow) {
+  const left = daysLeft(renewal.renewal_date);
+  const when = left <= 0 ? "aaj" : left === 1 ? "kal" : `${left} din mein`;
+  return buildCustomerWhatsAppUrl(
+    [
+      `Namaste ${renewal.customer_name},`,
+      `Aapka ${renewal.service_name}${renewal.reference_number ? ` (Ref ${renewal.reference_number})` : ""} ${formatDate(renewal.renewal_date)} ko renew hona hai — ${when}.`,
+      "Samay par renew karwane ke liye isi number par reply karein.",
+      "— DigiConnect Dukan",
+    ].join("\n"),
+    renewal.customer_mobile,
+  );
 }
 
 function DueLabel({ renewal }: { renewal: RenewalRow }) {
@@ -212,6 +227,17 @@ export function RenewalsManager({ applicationId, compact = false }: { applicatio
                   >
                     <Send className="h-3 w-3" /> Send now
                   </button>
+                  {manualReminderUrl(renewal) ? (
+                    <a
+                      href={manualReminderUrl(renewal)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Opens WhatsApp with the reminder typed — works without any WhatsApp API"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-emerald-600 bg-white px-2.5 text-[11px] font-bold text-emerald-700"
+                    >
+                      Manual WhatsApp
+                    </a>
+                  ) : null}
                   <button
                     type="button"
                     disabled={busyId === renewal.id}

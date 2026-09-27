@@ -7,6 +7,8 @@ import { getAutomationRuleCatalogue } from "@/lib/automation/rules";
 import { resolveCrmNotificationDeliveryModeDetailed } from "@/lib/automation/delivery-mode";
 import { retryAutomationEvent } from "@/lib/automation/retry-event";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getWhatsappProvider } from "@/lib/whatsapp/aisensy";
+import { loadMetaConfig } from "@/lib/whatsapp/meta-cloud";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -56,7 +58,10 @@ export async function GET(request: Request) {
   }
 
   const delivery = resolveCrmNotificationDeliveryModeDetailed();
-  const aisensyConfigured = Boolean(String(process.env.AISENSY_API_KEY ?? "").trim());
+  const aisensyConfigured =
+    getWhatsappProvider() === "meta"
+      ? loadMetaConfig().ok
+      : Boolean(String(process.env.AISENSY_API_KEY ?? "").trim());
 
   return NextResponse.json({
     ok: true,

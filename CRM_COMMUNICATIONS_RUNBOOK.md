@@ -237,3 +237,19 @@ Both go through `sendApplicationWhatsApp`, so they obey `CRM_NOTIFICATION_DELIVE
 - Idempotency version = `YYYYMMDD * 1000 + stage` — re-running the cron the same day never double-sends; moving the date (e.g. **Renewed, +1 year**) starts a new cycle.
 - A stage is settled when the message is sent or queued. If delivery mode is disabled or AiSensy is not configured, the stage stays open and is retried the next morning.
 - Campaign: `AISENSY_RENEWAL_REMINDER_CAMPAIGN` (fallback `AISENSY_APPLICATION_CAMPAIGN`). Register it on Meta as a **Utility** template.
+
+## Meta WhatsApp Cloud API (`WHATSAPP_PROVIDER=meta`)
+
+Sends straight to Meta instead of AiSensy. Everything else is unchanged: OTP, application messages, invoices, renewals and the outbox all go through `sendAisensyCampaign`, which hands off to `src/lib/whatsapp/meta-cloud.ts` when the provider is `meta`.
+
+- **Template names:** each `AISENSY_*_CAMPAIGN` value (and the OTP campaign names `signup_otp`, `login_otp`, `password_reset`) is used as the Meta template name. Create templates on Meta with those exact names.
+  - Application messages: body `{{1}}` customer, `{{2}}` service, `{{3}}` application no., `{{4}}` detail. Category **Utility**.
+  - OTP: category **Authentication**, copy-code button. The code goes in `{{1}}` and on the button.
+  - Final document: add a **Document** header.
+- **Env:** `META_WHATSAPP_PHONE_NUMBER_ID`, `META_WHATSAPP_ACCESS_TOKEN` (System User permanent token), optional `META_WHATSAPP_API_VERSION` (default `v23.0`) and `META_WHATSAPP_TEMPLATE_LANGUAGE` (default `en`). Missing → `configuration_required`, nothing sent.
+- **Errors:** Meta rate/spam limits are reported as HTTP 429, so the outbox retries them. Token/permission errors (190, 10, 200) are terminal until the token is fixed. Wrong template name or params (132xxx) is terminal.
+- **Webhook:** `GET/POST /api/webhooks/meta-whatsapp`.
+  - GET answers Meta's verify handshake with `META_WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
+  - POST requires a valid `X-Hub-Signature-256` made with `META_APP_SECRET`. It applies `statuses[]` (sent / delivered / read / failed) through the same `applyProviderDeliveryEvent` the AiSensy webhook uses.
+  - Outbox rows are recorded with `provider = 'meta'`.
+- **Manual fallback:** the invoice card and renewal list have **Manual WhatsApp** (wa.me) links that open the admin's own WhatsApp with the message typed. They work with no API at all.
