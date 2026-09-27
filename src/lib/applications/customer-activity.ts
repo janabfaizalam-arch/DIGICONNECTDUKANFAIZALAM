@@ -8,7 +8,8 @@ const INTERNAL_NOTE_PATTERNS = [
   /\badmin\b/i,
   /\bcommission\b/i,
   /\bwhatsapp\b/i,
-  /\baisensy\b/i,
+  /\baisensy\b/i, // historical notes from the former provider
+  /\bmeta\b/i,
   /\bstorage[_ ]?path\b/i,
   /\bsigned[_ ]?url\b/i,
   /\bprovider\b/i,

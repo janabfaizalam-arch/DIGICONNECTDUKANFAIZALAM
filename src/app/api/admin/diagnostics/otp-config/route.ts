@@ -1,23 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
-import {
-  describeOtpPayloadContract,
-  loadAisensyConfig,
-  resolveOtpCampaign,
-} from "@/lib/whatsapp/aisensy";
+import { describeOtpPayloadContract, isWhatsAppConfigured, resolveOtpTemplate } from "@/lib/whatsapp/client";
 
 export const dynamic = "force-dynamic";
 
-function maskCampaign(name: string): string {
-  const value = name.trim();
-  if (value.length <= 6) return `${value.slice(0, 1)}***`;
-  return `${value.slice(0, 4)}***${value.slice(-3)}`;
-}
-
 /**
- * Safe OTP / AiSensy configuration health check for admins.
- * Never returns secrets or full campaign-sensitive payloads.
+ * Safe OTP / Meta WhatsApp configuration health check for admins.
+ * Reports only whether things are set — never secrets or tokens.
  */
 export async function GET() {
   const user = await getCurrentUser();
@@ -28,35 +18,25 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const config = loadAisensyConfig();
-  const signup = resolveOtpCampaign("customer_signup");
-  const login = resolveOtpCampaign("login");
-  const reset = resolveOtpCampaign("forgot_pin");
-  const payloadContract = describeOtpPayloadContract();
-
-  const baseUrlConfigured = Boolean(
-    process.env.AISENSY_BASE_URL?.trim() || process.env.AISENSY_API_URL?.trim(),
-  );
-  const apiKeyConfigured = Boolean(
-    process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim(),
-  );
+  const signup = resolveOtpTemplate("customer_signup");
+  const login = resolveOtpTemplate("login");
+  const reset = resolveOtpTemplate("forgot_pin");
 
   return NextResponse.json({
     ok: true,
-    aisensyBaseUrlConfigured: baseUrlConfigured,
-    aisensyApiKeyConfigured: apiKeyConfigured,
-    aisensyConfigLoadOk: config.ok,
-    signupCampaignConfigured: signup.ok,
-    signupCampaignSource: signup.ok ? signup.source : null,
-    signupCampaignMasked: signup.ok ? maskCampaign(signup.campaignName) : null,
-    loginCampaignConfigured: login.ok,
-    resetCampaignConfigured: reset.ok,
-    otpPayloadContract: payloadContract,
-    messageStatusUrlConfigured: Boolean(process.env.AISENSY_MESSAGE_STATUS_URL?.trim()),
-    webhookSecretConfigured: Boolean(process.env.AISENSY_WEBHOOK_SECRET?.trim()),
+    provider: "meta",
+    metaConfigured: isWhatsAppConfigured(),
+    phoneNumberIdConfigured: Boolean(process.env.META_WHATSAPP_PHONE_NUMBER_ID?.trim()),
+    accessTokenConfigured: Boolean(process.env.META_WHATSAPP_ACCESS_TOKEN?.trim()),
+    wabaIdConfigured: Boolean(process.env.META_WHATSAPP_WABA_ID?.trim()),
+    appSecretConfigured: Boolean(process.env.META_APP_SECRET?.trim()),
+    webhookVerifyTokenConfigured: Boolean(process.env.META_WHATSAPP_WEBHOOK_VERIFY_TOKEN?.trim()),
+    signupTemplate: signup.ok ? { name: signup.templateName, language: signup.language, source: signup.source } : null,
+    loginTemplate: login.ok ? { name: login.templateName, language: login.language, source: login.source } : null,
+    resetTemplate: reset.ok ? { name: reset.templateName, language: reset.language, source: reset.source } : null,
+    otpPayloadContract: describeOtpPayloadContract(),
     otpStore: "supabase",
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
-    note:
-      "API accept (success=true) ≠ WhatsApp Delivered. Match Live campaign Test Campaign cURL before changing AISENSY_OTP_* envs.",
+    note: "API accept ≠ WhatsApp delivered. Live template approval: GET /api/admin/whatsapp/templates.",
   });
 }

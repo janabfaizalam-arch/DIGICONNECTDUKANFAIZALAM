@@ -1,84 +1,30 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  APPLICATION_CAMPAIGN_MATRIX,
+  APPLICATION_TEMPLATE_MATRIX,
   buildApplicationTemplateParams,
-  getApplicationCampaignName,
+  getApplicationTemplateName,
 } from "@/lib/whatsapp/templates";
-import { WHATSAPP_MOBILE_REQUIRED_ERROR } from "@/lib/whatsapp/types";
 import {
-  __resetAisensySendDedupeForTests,
-  normalizeAisensyDestination,
-  sendAisensyCampaign,
-} from "@/lib/whatsapp/aisensy";
+  WHATSAPP_TEMPLATES,
+  compareWithMetaTemplates,
+  resolveTemplate,
+  resolveTemplateLanguage,
+} from "@/lib/whatsapp/template-registry";
 
-const ENV_KEYS = [
-  "WHATSAPP_PROVIDER",
-  "AISENSY_API_KEY",
-  "AISENSY_API_URL",
-  "AISENSY_APPLICATION_CAMPAIGN",
-  "AISENSY_PAYMENT_REMINDER_CAMPAIGN",
-  "AISENSY_FINAL_DOCUMENT_CAMPAIGN",
-] as const;
-
-const originalEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
-
-function setEnv(values: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>) {
-  for (const key of Object.keys(values) as Array<(typeof ENV_KEYS)[number]>) {
-    const value = values[key];
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  }
-}
-
-function mockFetch(options: { status: number; body: unknown }) {
-  return vi.fn(async () => {
-    return {
-      status: options.status,
-      ok: options.status >= 200 && options.status < 300,
-      text: async () => (typeof options.body === "string" ? options.body : JSON.stringify(options.body)),
-    } as Response;
-  });
-}
-
-beforeEach(() => {
-  for (const key of ENV_KEYS) originalEnv[key] = process.env[key];
-  __resetAisensySendDedupeForTests();
-  setEnv({
-    WHATSAPP_PROVIDER: "aisensy",
-    AISENSY_API_KEY: "test-api-key-abcdef123456",
-    AISENSY_API_URL: "https://backend.aisensy.com/campaign/t1/api/v2",
-    AISENSY_APPLICATION_CAMPAIGN: "application_update",
-    AISENSY_PAYMENT_REMINDER_CAMPAIGN: undefined,
-    AISENSY_FINAL_DOCUMENT_CAMPAIGN: "final_doc_campaign",
-  });
-});
-
+const TOUCHED = [
+  "WHATSAPP_TEMPLATE_PAYMENT_REMINDER",
+  "WHATSAPP_TEMPLATE_APPLICATION_UPDATE",
+  "WHATSAPP_TEMPLATE_LOGIN_OTP",
+  "WHATSAPP_TEMPLATE_LOGIN_OTP_LANGUAGE",
+  "META_WHATSAPP_TEMPLATE_LANGUAGE",
+];
+const saved = Object.fromEntries(TOUCHED.map((key) => [key, process.env[key]]));
 afterEach(() => {
-  for (const key of ENV_KEYS) {
-    const value = originalEnv[key];
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
+  for (const key of TOUCHED) {
+    if (saved[key] === undefined) delete process.env[key];
+    else process.env[key] = saved[key];
   }
-  __resetAisensySendDedupeForTests();
-});
-
-describe("normalizeAisensyDestination", () => {
-  it("accepts common Indian formats", () => {
-    for (const input of ["9876543210", "919876543210", "+919876543210", "98765 43210", "98765-43210"]) {
-      const result = normalizeAisensyDestination(input);
-      expect(result.ok).toBe(true);
-      if (result.ok) expect(result.destination).toBe("919876543210");
-    }
-  });
-
-  it("rejects invalid numbers with admin-facing message", () => {
-    for (const input of ["", "123", "5123456789", "abcdefghij"]) {
-      const result = normalizeAisensyDestination(input);
-      expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error).toBe(WHATSAPP_MOBILE_REQUIRED_ERROR);
-    }
-  });
 });
 
 describe("template contracts", () => {
@@ -101,7 +47,7 @@ describe("template contracts", () => {
       actionLink: "https://signed.example/secret",
     });
     expect(params.join(" ")).not.toContain("signed.example");
-    expect(APPLICATION_CAMPAIGN_MATRIX.find((row) => row.event === "final_document")?.media).toBe(true);
+    expect(APPLICATION_TEMPLATE_MATRIX.find((row) => row.event === "final_document")?.media).toBe(true);
   });
 
   it("carries the invoice number, amount and full download link", () => {
@@ -115,7 +61,7 @@ describe("template contracts", () => {
       invoiceLink: link,
     });
     expect(params[3]).toBe(`Invoice INV-2026-0042 · Amount ₹199 · Download: ${link}`);
-    expect(getApplicationCampaignName("invoice_generated")).toBe("application_update");
+    expect(getApplicationTemplateName("invoice_generated")).toBe("application_update");
   });
 
   it("builds the renewal reminder line", () => {
@@ -131,115 +77,55 @@ describe("template contracts", () => {
     );
   });
 
-  it("resolves campaign env with fallback", () => {
-    expect(getApplicationCampaignName("payment_reminder")).toBe("application_update");
-    setEnv({ AISENSY_PAYMENT_REMINDER_CAMPAIGN: "pay_reminder_live" });
-    expect(getApplicationCampaignName("payment_reminder")).toBe("pay_reminder_live");
-    expect(getApplicationCampaignName("final_document")).toBe("final_doc_campaign");
+  it("uses application_update for every event unless one is overridden", () => {
+    expect(getApplicationTemplateName("payment_reminder")).toBe("application_update");
+    process.env.WHATSAPP_TEMPLATE_PAYMENT_REMINDER = "payment_reminder_v1";
+    expect(getApplicationTemplateName("payment_reminder")).toBe("payment_reminder_v1");
+    process.env.WHATSAPP_TEMPLATE_APPLICATION_UPDATE = "application_update_v2";
+    expect(getApplicationTemplateName("completed")).toBe("application_update_v2");
+    expect(APPLICATION_TEMPLATE_MATRIX.find((row) => row.event === "invoice_generated")?.envVariable).toBe(
+      "WHATSAPP_TEMPLATE_INVOICE_GENERATED",
+    );
   });
 });
 
-describe("sendAisensyCampaign", () => {
-  it("returns configuration_required when API key missing", async () => {
-    setEnv({ AISENSY_API_KEY: undefined });
-    const result = await sendAisensyCampaign({
-      campaignName: "application_update",
-      destination: "9876543210",
-      templateParams: ["A", "B", "C", "D"],
-      dedupe: false,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.configuration_required).toBe(true);
-    expect(result.queued).toBe(true);
-    expect(result.sent).toBe(false);
+describe("template registry", () => {
+  it("lists the four business templates with their Meta categories", () => {
+    expect(Object.keys(WHATSAPP_TEMPLATES).sort()).toEqual(
+      ["application_update", "login_otp", "password_reset", "signup_otp"].sort(),
+    );
+    expect(WHATSAPP_TEMPLATES.application_update.category).toBe("UTILITY");
+    expect(WHATSAPP_TEMPLATES.application_update.bodyParams).toHaveLength(4);
+    expect(WHATSAPP_TEMPLATES.login_otp.category).toBe("AUTHENTICATION");
+    expect(WHATSAPP_TEMPLATES.login_otp.otpButton).toBe(true);
   });
 
-  it("posts exact payload and treats success correctly", async () => {
-    const fetchImpl = mockFetch({
-      status: 200,
-      body: { success: true, submitted_message_id: "msg-99" },
+  it("takes name and language from the environment when set", () => {
+    expect(resolveTemplate("login_otp")).toMatchObject({ name: "login_otp", language: "en", nameSource: "default" });
+    process.env.META_WHATSAPP_TEMPLATE_LANGUAGE = "en_US";
+    process.env.WHATSAPP_TEMPLATE_LOGIN_OTP = "login_code";
+    process.env.WHATSAPP_TEMPLATE_LOGIN_OTP_LANGUAGE = "hi";
+    expect(resolveTemplate("login_otp")).toMatchObject({
+      name: "login_code",
+      language: "hi",
+      nameSource: "WHATSAPP_TEMPLATE_LOGIN_OTP",
     });
-    const result = await sendAisensyCampaign({
-      campaignName: "application_update",
-      destination: "9876543210",
-      userName: "Riya",
-      templateParams: ["Riya", "ITR", "app-1", "Update"],
-      source: "digiconnect-application:progress_update",
-      media: { url: "https://signed.example/a.pdf", filename: "a.pdf" },
-      dedupe: false,
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    });
-    expect(result.ok).toBe(true);
-    expect(result.sent).toBe(true);
-    expect(result.providerMessageId).toBe("msg-99");
-    const body = JSON.parse(String((fetchImpl.mock.calls[0]?.[1] as RequestInit).body));
-    expect(body).toMatchObject({
-      campaignName: "application_update",
-      destination: "919876543210",
-      userName: "Riya",
-      templateParams: ["Riya", "ITR", "app-1", "Update"],
-      source: "digiconnect-application:progress_update",
-      media: { url: "https://signed.example/a.pdf", filename: "a.pdf" },
-    });
-    expect(body.apiKey).toBe("test-api-key-abcdef123456");
+    expect(resolveTemplate("signup_otp").language).toBe("en_US");
+    expect(resolveTemplateLanguage("login_code")).toBe("hi");
+    expect(resolveTemplateLanguage("something_else")).toBe("en_US");
   });
 
-  it("fails on non-2xx and empty success body", async () => {
-    const fail = await sendAisensyCampaign({
-      campaignName: "application_update",
-      destination: "9876543210",
-      templateParams: ["A", "B", "C", "D"],
-      dedupe: false,
-      fetchImpl: mockFetch({ status: 500, body: "error" }) as unknown as typeof fetch,
-    });
-    expect(fail.ok).toBe(false);
-    expect(fail.errorCode).toBe("provider_rejected");
-
-    const empty = await sendAisensyCampaign({
-      campaignName: "application_update",
-      destination: "9876543210",
-      templateParams: ["A", "B", "C", "D"],
-      dedupe: false,
-      fetchImpl: mockFetch({ status: 200, body: {} }) as unknown as typeof fetch,
-    });
-    expect(empty.ok).toBe(false);
-  });
-
-  it("times out safely", async () => {
-    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      return await new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener("abort", () => {
-          const err = new Error("Aborted");
-          err.name = "AbortError";
-          reject(err);
-        });
-      });
-    });
-
-    const result = await sendAisensyCampaign({
-      campaignName: "application_update",
-      destination: "9876543210",
-      templateParams: ["A", "B", "C", "D"],
-      dedupe: false,
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.errorCode).toBe("timeout");
-  }, 20_000);
-
-  it("does not log API key in network error path", async () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    await sendAisensyCampaign({
-      campaignName: "application_update",
-      destination: "9876543210",
-      templateParams: ["A", "B", "C", "D"],
-      dedupe: false,
-      fetchImpl: vi.fn(async () => {
-        throw new Error("upstream failed apiKey=test-api-key-abcdef123456");
-      }) as unknown as typeof fetch,
-    });
-    const dumped = JSON.stringify(spy.mock.calls);
-    expect(dumped).not.toContain("test-api-key-abcdef123456");
-    spy.mockRestore();
+  it("never calls a template sendable unless Meta reports it APPROVED", () => {
+    const report = compareWithMetaTemplates([
+      { name: "application_update", language: "en", status: "APPROVED", category: "UTILITY" },
+      { name: "login_otp", language: "en", status: "PENDING", category: "AUTHENTICATION" },
+      // Same name, other language — not the template we send.
+      { name: "signup_otp", language: "en_US", status: "APPROVED", category: "AUTHENTICATION" },
+    ]);
+    const byKey = Object.fromEntries(report.map((row) => [row.key, row]));
+    expect(byKey.application_update).toMatchObject({ status: "APPROVED", sendable: true });
+    expect(byKey.login_otp).toMatchObject({ status: "PENDING", sendable: false });
+    expect(byKey.signup_otp).toMatchObject({ status: "MISSING", sendable: false });
+    expect(byKey.password_reset).toMatchObject({ status: "MISSING", sendable: false });
   });
 });

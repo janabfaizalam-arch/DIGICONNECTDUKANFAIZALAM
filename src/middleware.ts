@@ -198,7 +198,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // Preserve AiSensy customer auth entrypoints
+  // Preserve WhatsApp OTP customer auth entrypoints
   if (pathname === "/login" || pathname === "/login/customer" || pathname === "/customer-login") {
     return NextResponse.redirect(new URL("/customer/login", request.url));
   }

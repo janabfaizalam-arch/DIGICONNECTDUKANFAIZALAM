@@ -157,7 +157,8 @@ describe("migrated route static producer guardrails", () => {
   it("migrated queue-mode routes do not import direct provider/enqueue helpers", () => {
     for (const file of migratedRoutes) {
       const src = readFileSync(join(process.cwd(), file), "utf8");
-      expect(src).not.toMatch(/createAisensyAdapter/);
+      expect(src).not.toMatch(/createWhatsAppAdapter/);
+      expect(src).not.toMatch(/sendWhatsAppTemplate/);
       expect(src).not.toMatch(/enqueueCommunication/);
       expect(src).not.toMatch(/sendApplicationWhatsApp/);
       expect(src).toMatch(/dispatchApplicationNotification|emitApplicationStatusChangedFromHistory/);

@@ -1,6 +1,6 @@
 # DigiConnect Dukan — CRM Communications Runbook (Phase 5A + 5B)
 
-Last updated: 2026-08-05  
+Last updated: 2026-09-27  
 Status: **Phase 5B implementation complete locally; staging database, CI, scheduler, provider and browser verification pending.**  
 **Not production-ready.** Do not activate live webhooks, cron schedules, or production migrations without explicit approval.
 
@@ -8,14 +8,15 @@ Status: **Phase 5B implementation complete locally; staging database, CI, schedu
 
 | Name | Required? | Purpose | Disabled behavior |
 |------|-----------|---------|-------------------|
-| `AISENSY_API_KEY` / `AISENSY_PROJECT_API_KEY` | For live send | Campaign API auth | `configuration_required` |
-| `AISENSY_API_URL` (+ aliases) | Optional | Campaign endpoint | Default URL / fail |
-| `AISENSY_*_CAMPAIGN` | Per event | Approved template names | Missing → failed mapping |
-| `AISENSY_WEBHOOK_SECRET` | For webhook | Header shared secret (min 16) | Webhook 503 |
-| `AISENSY_MESSAGE_STATUS_URL` | Optional | Diagnostics GET `{id}` | Skip lookup |
+| `META_WHATSAPP_PHONE_NUMBER_ID` | For live send | Cloud API sender (`/{id}/messages`) | `configuration_required` |
+| `META_WHATSAPP_ACCESS_TOKEN` | For live send | System User permanent token | `configuration_required` |
+| `META_APP_SECRET` | For webhook POST | Verifies `X-Hub-Signature-256` | Webhook POST 503 |
+| `META_WHATSAPP_WEBHOOK_VERIFY_TOKEN` | For webhook GET | Meta verify handshake | Webhook GET 503 |
+| `META_WHATSAPP_WABA_ID` | Optional | Live template status in admin diagnostics | Status check unavailable |
+| `META_WHATSAPP_API_VERSION` | Optional | Graph API version (default `v23.0`) | Default |
+| `META_WHATSAPP_TEMPLATE_LANGUAGE` / `WHATSAPP_TEMPLATE_*` | Optional | Template name/language overrides | Registry defaults |
 | `COMMS_CRON_SECRET` | Preferred | Outbox cron Bearer (min 16) | See precedence |
 | `CRON_SECRET` | Legacy fallback | Only if `COMMS_CRON_SECRET` **unset** | Cron 503 |
-| `WHATSAPP_PROVIDER` | Optional | Must be `aisensy` | Client rejects others |
 
 All of the above are **server-only** (never `NEXT_PUBLIC_*` except unrelated UI flags).
 
@@ -26,8 +27,9 @@ All of the above are **server-only** (never `NEXT_PUBLIC_*` except unrelated UI 
 
 ## Template mapping
 
-Server resolves campaigns via `src/lib/whatsapp/templates.ts`.  
-Browsers must not supply arbitrary campaign/template IDs or destination numbers on ops APIs.
+Templates are defined once in `src/lib/whatsapp/template-registry.ts` (`application_update`, `login_otp`, `signup_otp`, `password_reset`); application events map to them in `src/lib/whatsapp/templates.ts`.  
+The registry never claims a template is approved — `/admin/diagnostics/otp` and `GET /api/admin/whatsapp/templates` read the live status from Meta.  
+Browsers must not supply arbitrary template names or destination numbers on ops APIs.
 
 ## Provider-disabled behavior
 
@@ -38,7 +40,7 @@ Browsers must not supply arbitrary campaign/template IDs or destination numbers 
 
 | Layer | Retries? |
 |-------|----------|
-| AiSensy HTTP client | **No** nested retry loop — single attempt, 15s timeout |
+| WhatsApp client (`src/lib/whatsapp/client.ts`) | **No** nested retry loop — single attempt, 15s timeout |
 | Outbox processor | **Owns** durable retries (`retryable` + backoff + `max_attempts`, default 5) |
 
 - Ambiguous timeout → `ambiguous_timeout` / `retryable` (not `sent`, not `delivered`).
@@ -55,16 +57,16 @@ Browsers must not supply arbitrary campaign/template IDs or destination numbers 
 
 ## Webhook validation
 
-Route: `POST /api/webhooks/aisensy`
+Route: `GET/POST /api/webhooks/meta-whatsapp` — public (no session/JWT; middleware passes `/api/*` through).
 
-- Auth: `x-aisensy-webhook-secret` or `x-webhook-secret` only (timing-safe SHA-256 compare).
-- **Query-string secrets rejected.**
-- **Limitation:** AiSensy provides **shared-secret only** in this integration — no cryptographic signature is invented or assumed.
-- Body size bound; schema parse before field use; rate limit does not reveal customer existence.
-- Outbox update only when exactly **one** row matches `provider_message_id` (ambiguous duplicates → no status flip; event still logged).
+- GET: `hub.mode=subscribe` + `hub.verify_token` equal to `META_WHATSAPP_WEBHOOK_VERIFY_TOKEN` (timing-safe) → `hub.challenge` with 200; otherwise 403.
+- POST: `X-Hub-Signature-256` must be a valid HMAC-SHA256 of the raw body with `META_APP_SECRET`, or 401. No secret configured → 503.
+- Body size bound (256 KB); only `object = whatsapp_business_account`; messages for another phone number ID on the WABA are ignored.
+- `statuses[]` → `applyProviderDeliveryEvent` (`src/lib/communications/delivery-status.ts`): idempotent event log; outbox update only when exactly **one** row matches `provider_message_id`; never regresses a status.
+- `messages[]` → CRM (`src/lib/crm/whatsapp-inbound.ts`): open lead for the number gets a `whatsapp_inbound` activity, otherwise a `whatsapp` lead is created; idempotent on the wamid (`lead_ingestion_keys.key = whatsapp_inbound:{wamid}`). "STOP" from a known customer sets `opt_out_promotional` (transactional continues) with history.
+- 200 once handled; **500 only** when an inbound message could not be stored (claim released) so Meta redelivers — safe because everything is idempotent.
 - OTP path updates **delivery_* metadata only** — never OTP codes/hashes/verified flags.
-- Unknown events → safe ack after auth + schema check.
-- Logs: masked destination, no secrets/bodies.
+- Logs: counts and masked numbers only; no secrets, tokens or message bodies.
 
 ## Consent
 
@@ -107,14 +109,14 @@ These exception paths are not used as queue-mode communication producers for mig
 
 | Call site | Notes |
 |-----------|-------|
-| `sendAisensyOtp` → `sendAisensyCampaign` | Latency-sensitive auth |
+| `sendWhatsAppOtp` → `sendWhatsAppTemplate` | Latency-sensitive auth |
 | `sendCustomerWhatsappOtp` / `whatsapp-auth` | OTP only |
 
 ### Adapter / processor
 
 | Call site | Notes |
 |-----------|-------|
-| `createAisensyAdapter` | Only production CRM send wrapper for outbox |
+| `createWhatsAppAdapter` | Only production CRM send wrapper for outbox |
 | `processCommunicationOutbox` | Async durable path |
 
 ### Non-exception migrated flows
@@ -142,7 +144,7 @@ See prior sections; lease recovery + Communications UI; compare `idempotency_key
 ## Rollback / disable
 
 1. Do not register / remove cron schedule.  
-2. Unset `AISENSY_API_KEY` / webhook / cron secrets.  
+2. Unset `META_WHATSAPP_ACCESS_TOKEN` / webhook / cron secrets.  
 3. Drop additive objects if needed — **never delete** message history.
 
 ## Phase 5B delivery mode (FAIL-CLOSED)
@@ -151,18 +153,18 @@ See prior sections; lease recovery + Communications UI; compare `idempotency_key
 |------|---------|
 | `CRM_NOTIFICATION_DELIVERY_MODE` | Exact `queue` \| `direct` \| `disabled` after trim+lowercase. **Missing / blank / unknown → `disabled`.** Never defaults to live send. |
 
-| Mode | Request path | Automation enqueue customer WA | Outbox processor AiSensy |
+| Mode | Request path | Automation enqueue customer WA | Outbox processor sends |
 |------|--------------|--------------------------------|---------------------------|
 | `queue` | Emit + rules enqueue only | Yes | Yes |
 | `direct` | Sync send once; event `completed/direct_handled` | No | No |
 | `disabled` | Suppressed / configuration_required audit | No | No |
 
-**OTP does not use `CRM_NOTIFICATION_DELIVERY_MODE`.** OTP stays on `sendAisensyOtp`.
+**OTP does not use `CRM_NOTIFICATION_DELIVERY_MODE`.** OTP stays on `sendWhatsAppOtp`.
 
 ### Deployment order (prevent accidental live send)
 1. Deploy code with mode unset/disabled (fail-closed — no non-OTP CRM WhatsApp)  
 2. Apply 5A + 5B migrations on staging  
-3. Configure AiSensy + `COMMS_CRON_SECRET` (do not register vercel cron yet)  
+3. Configure Meta WhatsApp + `COMMS_CRON_SECRET` (do not register vercel cron yet)  
 4. Manually invoke `/api/cron/comms-outbox` and `/api/cron/automation-events` with Bearer auth  
 5. **Only then** set `CRM_NOTIFICATION_DELIVERY_MODE=queue` (or explicit `direct` for temporary compatibility)  
 6. Do not register vercel cron until approved  
@@ -171,7 +173,7 @@ See prior sections; lease recovery + Communications UI; compare `idempotency_key
 
 ### Rollout
 1. Apply 5A + 5B migrations on staging  
-2. Configure AiSensy + `COMMS_CRON_SECRET`  
+2. Configure Meta WhatsApp + `COMMS_CRON_SECRET`  
 3. Manually invoke processors with Bearer auth  
 4. Set `CRM_NOTIFICATION_DELIVERY_MODE=queue`  
 5. Do not register vercel cron until approved  
@@ -180,7 +182,7 @@ See prior sections; lease recovery + Communications UI; compare `idempotency_key
 Set `disabled` (or remove the var — also disabled). Processor claims no sendable work when mode≠queue. Do not invent a dual-send fallback after timeout. Do not reconcile `direct_handled` into queued duplicates.
 
 ### OTP / temporary PIN
-OTP stays on `sendAisensyOtp` and **does not** read `CRM_NOTIFICATION_DELIVERY_MODE`. Temporary PIN WhatsApp is **configuration-disabled** (`onboarding_pin_disabled` rule). Never store PIN/OTP in events/outbox.
+OTP stays on `sendWhatsAppOtp` and **does not** read `CRM_NOTIFICATION_DELIVERY_MODE`. Temporary PIN WhatsApp is **configuration-disabled** (`onboarding_pin_disabled` rule). Never store PIN/OTP in events/outbox.
 
 ### Reconciliation
 `reconcileMissingApplicationCreatedEvents({ lookbackHours, batchSize, dryRun })` — admin/cron only when approved; max lookback 168h; no OTP reconstruction; skips direct_handled/suppressed.
@@ -227,7 +229,7 @@ Both go through `sendApplicationWhatsApp`, so they obey `CRM_NOTIFICATION_DELIVE
 - Sent automatically when `createInvoiceForApplication` creates or finds an invoice with payment `verified`/`paid` — this covers every purchase flow (Razorpay verify, customer/agent/DC-partner applications, admin "Generate Invoice"). Idempotency version `1` per application, so one invoice message per purchase however many paths see the payment.
 - Admin → application → Invoice card → **Send on WhatsApp** resends (version = current minute, so a double click is one message).
 - Link: `/api/invoices/{id}/pdf?t=…` — HMAC token (label `invoice-pdf-link:v1`, key `AUTH_HMAC_SECRET`), valid 30 days, that invoice only. Without `AUTH_HMAC_SECRET` the message links the login-gated `/invoice/{id}` instead. Signed-in owner or admin can open the PDF without a token.
-- Campaign: `AISENSY_INVOICE_CAMPAIGN` (fallback `AISENSY_APPLICATION_CAMPAIGN`).
+- Template: `application_update`, or `WHATSAPP_TEMPLATE_INVOICE_GENERATED` when a separate one is approved.
 
 ### Renewal reminders (`renewal_reminder`)
 
@@ -235,21 +237,18 @@ Both go through `sendApplicationWhatsApp`, so they obey `CRM_NOTIFICATION_DELIVE
 - Admin → application → **Renewal reminder** card: renewal/expiry date, policy/reference no., reminder schedule (default 30, 7, 1 days before + on the day). All renewals: `/admin/renewals`.
 - `/api/cron/renewal-reminders` (Vercel cron `30 3 * * *` = 9:00 IST, `Authorization: Bearer <CRON_SECRET>`). Per run, at most one message per renewal: the closest passed stage; older missed stages are settled, not sent late. Nothing is sent after the renewal date.
 - Idempotency version = `YYYYMMDD * 1000 + stage` — re-running the cron the same day never double-sends; moving the date (e.g. **Renewed, +1 year**) starts a new cycle.
-- A stage is settled when the message is sent or queued. If delivery mode is disabled or AiSensy is not configured, the stage stays open and is retried the next morning.
-- Campaign: `AISENSY_RENEWAL_REMINDER_CAMPAIGN` (fallback `AISENSY_APPLICATION_CAMPAIGN`). Register it on Meta as a **Utility** template.
+- A stage is settled when the message is sent or queued. If delivery mode is disabled or Meta WhatsApp is not configured, the stage stays open and is retried the next morning.
+- Template: `application_update`, or `WHATSAPP_TEMPLATE_RENEWAL_REMINDER` when a separate **Utility** template is approved.
 
-## Meta WhatsApp Cloud API (`WHATSAPP_PROVIDER=meta`)
+## Meta WhatsApp Cloud API (the only provider)
 
-Sends straight to Meta instead of AiSensy. Everything else is unchanged: OTP, application messages, invoices, renewals and the outbox all go through `sendAisensyCampaign`, which hands off to `src/lib/whatsapp/meta-cloud.ts` when the provider is `meta`.
+AiSensy has been removed. Every outgoing WhatsApp — OTP, application updates, invoices, renewals, the outbox — goes through `src/lib/whatsapp/client.ts` (`sendWhatsAppTemplate`, `sendWhatsAppText`, `sendWhatsAppOtp`) to `POST graph.facebook.com/{version}/{META_WHATSAPP_PHONE_NUMBER_ID}/messages`; `src/lib/whatsapp/meta-cloud.ts` is the only file that talks to the Graph API. Server-side only.
 
-- **Template names:** each `AISENSY_*_CAMPAIGN` value (and the OTP campaign names `signup_otp`, `login_otp`, `password_reset`) is used as the Meta template name. Create templates on Meta with those exact names.
-  - Application messages: body `{{1}}` customer, `{{2}}` service, `{{3}}` application no., `{{4}}` detail. Category **Utility**.
-  - OTP: category **Authentication**, copy-code button. The code goes in `{{1}}` and on the button.
-  - Final document: add a **Document** header.
-- **Env:** `META_WHATSAPP_PHONE_NUMBER_ID`, `META_WHATSAPP_ACCESS_TOKEN` (System User permanent token), optional `META_WHATSAPP_API_VERSION` (default `v23.0`) and `META_WHATSAPP_TEMPLATE_LANGUAGE` (default `en`). Missing → `configuration_required`, nothing sent.
-- **Errors:** Meta rate/spam limits are reported as HTTP 429, so the outbox retries them. Token/permission errors (190, 10, 200) are terminal until the token is fixed. Wrong template name or params (132xxx) is terminal.
-- **Webhook:** `GET/POST /api/webhooks/meta-whatsapp`.
-  - GET answers Meta's verify handshake with `META_WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
-  - POST requires a valid `X-Hub-Signature-256` made with `META_APP_SECRET`. It applies `statuses[]` (sent / delivered / read / failed) through the same `applyProviderDeliveryEvent` the AiSensy webhook uses.
-  - Outbox rows are recorded with `provider = 'meta'`.
+- **Templates** (`template-registry.ts`), create and get approved in WhatsApp Manager:
+  - `application_update` — **Utility**; body `{{1}}` customer, `{{2}}` service, `{{3}}` application no., `{{4}}` detail.
+  - `signup_otp`, `login_otp`, `password_reset` — **Authentication**, copy-code button; the code fills `{{1}}` and the button.
+  - A different approved name/language → `WHATSAPP_TEMPLATE_<KEY>` / `WHATSAPP_TEMPLATE_<KEY>_LANGUAGE`.
+- **Free-form text** (`sendWhatsAppText`) is delivered only within 24 h of the customer's last message; otherwise `outside_service_window`.
+- **Errors:** rate/spam limits → reported as 429 → outbox retries. Token/permission (190, 10, 200), template missing/unapproved (132xxx) and outside-window (131047) → terminal.
+- Outbox rows and delivery events are recorded with `provider = 'meta'`. Historical rows keep `aisensy`; nothing is deleted.
 - **Manual fallback:** the invoice card and renewal list have **Manual WhatsApp** (wa.me) links that open the admin's own WhatsApp with the message typed. They work with no API at all.

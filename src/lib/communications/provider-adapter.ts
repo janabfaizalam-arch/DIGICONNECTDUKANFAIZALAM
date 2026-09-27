@@ -1,18 +1,15 @@
 import "server-only";
 
-import {
-  getWhatsappProvider,
-  loadAisensyConfig,
-  normalizeAisensyDestination,
-  sendAisensyCampaign,
-} from "@/lib/whatsapp/aisensy";
-import { loadMetaConfig } from "@/lib/whatsapp/meta-cloud";
 import { classifyProviderFailure } from "@/lib/communications/comms-core";
+import { isWhatsAppConfigured, normalizeWhatsAppDestination, sendWhatsAppTemplate } from "@/lib/whatsapp/client";
+
+/** Provider label stored on outbox rows and delivery events. */
+export const WHATSAPP_PROVIDER = "meta";
 
 export type ProviderSendInput = {
-  campaignName: string;
+  /** Meta template name (from the template registry). */
+  templateName: string;
   destination: string;
-  userName: string;
   templateParams: string[];
   source: string;
   media?: { url: string; filename?: string };
@@ -40,19 +37,17 @@ export type CommunicationProviderAdapter = {
 };
 
 /**
- * Hardened WhatsApp adapter — wraps the campaign client, which sends through
- * AiSensy or, with WHATSAPP_PROVIDER=meta, Meta's WhatsApp Cloud API.
- * (Name kept for existing call sites.)
+ * WhatsApp adapter for the outbox and direct application sends — Meta
+ * WhatsApp Cloud API through the central client.
  */
-export function createAisensyAdapter(): CommunicationProviderAdapter {
-  const provider = getWhatsappProvider() === "meta" ? "meta" : "aisensy";
+export function createWhatsAppAdapter(): CommunicationProviderAdapter {
   return {
-    name: provider,
+    name: WHATSAPP_PROVIDER,
     async isConfigured() {
-      return Boolean(provider === "meta" ? loadMetaConfig().ok : loadAisensyConfig().ok);
+      return isWhatsAppConfigured();
     },
     async sendTemplate(input) {
-      const dest = normalizeAisensyDestination(input.destination);
+      const dest = normalizeWhatsAppDestination(input.destination);
       if (!dest.ok) {
         return {
           ok: false,
@@ -62,10 +57,9 @@ export function createAisensyAdapter(): CommunicationProviderAdapter {
         };
       }
 
-      const result = await sendAisensyCampaign({
-        campaignName: input.campaignName,
+      const result = await sendWhatsAppTemplate({
+        templateName: input.templateName,
         destination: dest.destination,
-        userName: input.userName || "Customer",
         templateParams: input.templateParams,
         source: input.source,
         media: input.media
@@ -79,22 +73,28 @@ export function createAisensyAdapter(): CommunicationProviderAdapter {
           ok: false,
           retryClass: "configuration_required",
           failureCode: "configuration_required",
-          failureSummary: provider === "meta" ? "Meta WhatsApp is not configured." : "AiSensy is not configured.",
+          failureSummary: "Meta WhatsApp is not configured.",
           configurationRequired: true,
         };
       }
 
       if (!result.ok) {
-        const retryClass = classifyProviderFailure({
-          code: result.errorCode,
-          httpStatus: result.httpStatus ?? undefined,
-          configurationRequired: false,
-        });
+        // A template Meta has not approved (or the 24h window) will not fix itself on retry.
+        const terminalCode = ["template_not_approved", "outside_service_window", "meta_auth_failed"].includes(
+          String(result.errorCode),
+        );
+        const retryClass = terminalCode
+          ? "terminal"
+          : classifyProviderFailure({
+              code: result.errorCode,
+              httpStatus: result.httpStatus ?? undefined,
+              configurationRequired: false,
+            });
         return {
           ok: false,
           retryClass,
           failureCode: String(result.errorCode ?? "send_failed"),
-          failureSummary: "Provider send failed.",
+          failureSummary: (result.errorMessage || "Provider send failed.").slice(0, 300),
         };
       }
 
@@ -107,5 +107,5 @@ export function createAisensyAdapter(): CommunicationProviderAdapter {
 }
 
 export function getDefaultCommunicationProvider(): CommunicationProviderAdapter {
-  return createAisensyAdapter();
+  return createWhatsAppAdapter();
 }

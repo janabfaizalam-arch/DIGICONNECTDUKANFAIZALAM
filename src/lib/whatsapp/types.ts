@@ -1,6 +1,5 @@
 /**
- * Shared WhatsApp / AiSensy types for DigiConnect Dukan application messaging.
- * OTP auth types remain in `aisensy.ts`.
+ * Shared WhatsApp types for DigiConnect Dukan messaging (Meta WhatsApp Cloud API).
  */
 
 export type ApplicationWhatsAppEvent =
@@ -32,52 +31,45 @@ export type AdminWhatsAppAction =
   | "completion_message"
   | "custom_message";
 
-export type AisensyCampaignDeliveryStatus =
-  | "sent"
-  | "failed"
-  | "queued"
-  | "configuration_required";
-
-export type AisensyMediaPayload = {
+export type WhatsAppMediaPayload = {
   url: string;
   filename: string;
 };
 
-/**
- * AiSensy Authentication / Copy-Code Test Campaign scripts use Meta-style
- * button components (`sub_type: "url"` with a text OTP parameter).
- * Prefer matching the Live campaign's Test Campaign cURL exactly.
- */
-export type AisensyCampaignButton = {
+/** OTP code on an Authentication template's button 0 (Meta sends it as a url button). */
+export type WhatsAppOtpButton = {
   type: "button";
-  sub_type: "url" | "copy_code";
+  sub_type: "url";
   index: number;
   parameters: Array<{ type: "text"; text: string }>;
 };
 
-export type SendAisensyCampaignInput = {
-  campaignName: string;
+export type SendWhatsAppTemplateInput = {
+  /** Meta template name (resolve it through template-registry, never from the browser). */
+  templateName: string;
+  /** Template language; defaults to the registry's language for this name. */
+  language?: string;
   destination: string;
-  userName?: string;
   templateParams: string[];
   source?: string;
-  media?: AisensyMediaPayload;
-  buttons?: AisensyCampaignButton[];
+  media?: WhatsAppMediaPayload;
+  buttons?: WhatsAppOtpButton[];
   /** When true (default), apply short in-memory duplicate suppression. */
   dedupe?: boolean;
   fetchImpl?: typeof fetch;
 };
 
-export type SendAisensyCampaignResult = {
+export type SendWhatsAppResult = {
   ok: boolean;
   queued: boolean;
   sent: boolean;
   failed: boolean;
   configuration_required: boolean;
+  /** Meta wamid — correlates delivery webhooks. */
   providerMessageId: string | null;
   errorCode: string | null;
   errorMessage: string | null;
-  campaignName: string | null;
+  templateName: string | null;
   destination: string | null;
   requestId: string;
   /** HTTP status when a provider response was received */

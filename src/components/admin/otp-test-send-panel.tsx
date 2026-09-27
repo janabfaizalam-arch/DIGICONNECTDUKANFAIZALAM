@@ -12,7 +12,7 @@ type TestSendResponse = {
   error?: string;
   maskedPhone?: string;
   submittedMessageId?: string | null;
-  campaignName?: string;
+  templateName?: string;
 };
 
 type StatusResponse = {
@@ -20,7 +20,7 @@ type StatusResponse = {
   error?: string;
   stored?: {
     deliveryStatus?: string | null;
-    campaign?: string | null;
+    template?: string | null;
     phoneMasked?: string | null;
   } | null;
   providerStatus?: {
@@ -31,7 +31,7 @@ type StatusResponse = {
 
 /**
  * Sends a real signup OTP to a number the admin controls, then lets them look up
- * what happened to it. This is the only way to tell a broken campaign apart from
+ * what happened to it. This is the only way to tell a broken template apart from
  * a healthy one without leaving the app.
  */
 export function OtpTestSendPanel({ webhookConfigured }: { webhookConfigured: boolean }) {
@@ -49,7 +49,7 @@ export function OtpTestSendPanel({ webhookConfigured }: { webhookConfigured: boo
     if (sending || phone.length !== 10) return;
 
     const confirmed = window.confirm(
-      `Send a real WhatsApp OTP to +91 ${phone}?\n\nUse a number you can check yourself. This consumes one AiSensy message.`,
+      `Send a real WhatsApp OTP to +91 ${phone}?\n\nUse a number you can check yourself. Meta may charge for this message.`,
     );
     if (!confirmed) return;
 
@@ -73,8 +73,8 @@ export function OtpTestSendPanel({ webhookConfigured }: { webhookConfigured: boo
       if (messageId) setLookupId(messageId);
       success(
         messageId
-          ? "AiSensy accepted the send. Now check whether the message actually arrives."
-          : "AiSensy accepted the send but returned no message id.",
+          ? "Meta accepted the send. Now check whether the message actually arrives."
+          : "Meta accepted the send but returned no message id.",
       );
       router.refresh();
     } catch {
@@ -118,7 +118,7 @@ export function OtpTestSendPanel({ webhookConfigured }: { webhookConfigured: boo
     <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
       <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Test send</h2>
       <p className="mt-1 text-xs leading-relaxed text-slate-500">
-        Sends a genuine signup OTP through the same campaign customers use. Limited to 3 per hour.
+        Sends a genuine signup OTP through the same template customers use. Limited to 3 per hour.
         {!webhookConfigured &&
           " Because the delivery webhook is not configured, you must check the phone yourself — the app cannot tell you whether it arrived."}
       </p>
@@ -159,7 +159,7 @@ export function OtpTestSendPanel({ webhookConfigured }: { webhookConfigured: boo
 
       {lastMessageId && (
         <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 font-mono text-[11px] text-slate-600">
-          AiSensy id: {lastMessageId}
+          WhatsApp message id: {lastMessageId}
         </p>
       )}
 
@@ -173,7 +173,7 @@ export function OtpTestSendPanel({ webhookConfigured }: { webhookConfigured: boo
             value={lookupId}
             disabled={looking}
             onChange={(event) => setLookupId(event.target.value)}
-            placeholder="AiSensy submitted message id"
+            placeholder="WhatsApp message id (wamid…)"
             className="h-11 min-w-[200px] flex-1 rounded-xl border border-slate-200 bg-white px-3 font-mono text-xs outline-none focus:border-[var(--primary)] disabled:opacity-50"
           />
           <button

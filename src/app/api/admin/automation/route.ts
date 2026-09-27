@@ -7,8 +7,7 @@ import { getAutomationRuleCatalogue } from "@/lib/automation/rules";
 import { resolveCrmNotificationDeliveryModeDetailed } from "@/lib/automation/delivery-mode";
 import { retryAutomationEvent } from "@/lib/automation/retry-event";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
-import { getWhatsappProvider } from "@/lib/whatsapp/aisensy";
-import { loadMetaConfig } from "@/lib/whatsapp/meta-cloud";
+import { isWhatsAppConfigured } from "@/lib/whatsapp/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,10 +57,7 @@ export async function GET(request: Request) {
   }
 
   const delivery = resolveCrmNotificationDeliveryModeDetailed();
-  const aisensyConfigured =
-    getWhatsappProvider() === "meta"
-      ? loadMetaConfig().ok
-      : Boolean(String(process.env.AISENSY_API_KEY ?? "").trim());
+  const whatsappConfigured = isWhatsAppConfigured();
 
   return NextResponse.json({
     ok: true,
@@ -73,13 +69,13 @@ export async function GET(request: Request) {
       /** OTP does not use CRM_NOTIFICATION_DELIVERY_MODE */
       otpUsesDeliveryMode: false,
       outboxMaySend: delivery.mode === "queue",
-      aisensyKeyConfigured: aisensyConfigured,
+      whatsappConfigured,
       note:
         delivery.mode === "disabled"
           ? "No non-OTP CRM WhatsApp send until mode is explicitly queue or direct."
           : delivery.mode === "direct"
             ? "Temporary compatibility — prefer queue after processor verified."
-            : "Queue mode — processor owns AiSensy sends.",
+            : "Queue mode — outbox processor owns WhatsApp sends.",
     },
     items: data ?? [],
     total: count ?? 0,

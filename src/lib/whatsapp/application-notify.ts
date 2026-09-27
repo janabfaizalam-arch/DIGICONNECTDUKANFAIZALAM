@@ -1,9 +1,9 @@
 import { randomUUID } from "crypto";
 
-import { getWhatsappProvider, normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import { normalizeWhatsAppDestination } from "@/lib/whatsapp/client";
 import {
   buildApplicationTemplateParams,
-  getApplicationCampaignName,
+  getApplicationTemplateName,
 } from "@/lib/whatsapp/templates";
 import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -11,7 +11,7 @@ import {
   FINAL_DOCUMENT_BUCKET,
   WHATSAPP_FINAL_SIGNED_URL_TTL_SECONDS,
 } from "@/lib/documents/final-document-storage";
-import { createAisensyAdapter } from "@/lib/communications/provider-adapter";
+import { WHATSAPP_PROVIDER, createWhatsAppAdapter } from "@/lib/communications/provider-adapter";
 import { purposeClassification } from "@/lib/communications/comms-core";
 import { resolveCrmNotificationDeliveryMode } from "@/lib/automation/delivery-mode";
 import { buildLegacyApplicationOutboxKey } from "@/lib/automation/outbox-key";
@@ -53,7 +53,7 @@ export type SendApplicationWhatsAppResult =
       ok: true;
       requestId: string;
       messageId: string | null;
-      campaignName?: string;
+      templateName?: string;
       deduped?: boolean;
       providerMessageId?: string | null;
       error?: string;
@@ -99,7 +99,7 @@ function safeLogPayload(payload: Record<string, unknown>) {
 
 /**
  * Application WhatsApp — respects CRM_NOTIFICATION_DELIVERY_MODE.
- * queue: enqueue only (no AiSensy). direct: sync adapter send. disabled: skip.
+ * queue: enqueue only (no WhatsApp API call). direct: sync adapter send. disabled: skip.
  * OTP must not call this. Idempotency key remains `${applicationId}:${eventType}:${version}`.
  */
 export async function sendApplicationWhatsApp(
@@ -116,7 +116,7 @@ export async function sendApplicationWhatsApp(
 }
 
 /**
- * Disabled / fail-closed: never call AiSensy; never create a claimable queued row.
+ * Disabled / fail-closed: never call the WhatsApp API; never create a claimable queued row.
  * Idempotent configuration_required audit row (processor claim ignores this status).
  */
 async function recordDisabledApplicationWhatsApp(
@@ -124,7 +124,7 @@ async function recordDisabledApplicationWhatsApp(
 ): Promise<SendApplicationWhatsAppResult> {
   const requestId = input.correlationId || randomUUID();
   const version = input.version ?? 1;
-  const destination = normalizeAisensyDestination(input.recipientMobile);
+  const destination = normalizeWhatsAppDestination(input.recipientMobile);
   const mobile = destination.ok ? destination.destination : "disabled";
 
   const enqueued = await enqueueCommunication({
@@ -140,7 +140,7 @@ async function recordDisabledApplicationWhatsApp(
     })}:disabled`,
     templateParams: [],
     userName: input.customerName || "Customer",
-    campaignName: getApplicationCampaignName(input.eventType),
+    templateName: getApplicationTemplateName(input.eventType),
     classification: purposeClassification(input.eventType),
     consentBasis: "transactional_ops",
     correlationId: requestId,
@@ -173,12 +173,12 @@ async function enqueueApplicationWhatsAppOnly(
 ): Promise<SendApplicationWhatsAppResult> {
   const requestId = input.correlationId || randomUUID();
   const version = input.version ?? 1;
-  const destination = normalizeAisensyDestination(input.recipientMobile);
+  const destination = normalizeWhatsAppDestination(input.recipientMobile);
   if (!destination.ok) {
     return { ok: false, code: "invalid_mobile", error: destination.error, requestId };
   }
 
-  const campaignName = getApplicationCampaignName(input.eventType);
+  const templateName = getApplicationTemplateName(input.eventType);
   const templateParams = buildApplicationTemplateParams(input.eventType, {
     customerName: input.customerName,
     serviceName: input.serviceName,
@@ -210,7 +210,7 @@ async function enqueueApplicationWhatsAppOnly(
     }),
     templateParams,
     userName: input.customerName || "Customer",
-    campaignName,
+    templateName,
     classification: purposeClassification(input.eventType),
     consentBasis: "transactional_ops",
     correlationId: requestId,
@@ -256,7 +256,7 @@ async function sendApplicationWhatsAppDirect(
     eventType: input.eventType,
     version,
   });
-  const destination = normalizeAisensyDestination(input.recipientMobile);
+  const destination = normalizeWhatsAppDestination(input.recipientMobile);
 
   if (!destination.ok) {
     return { ok: false, code: "invalid_mobile", error: destination.error, requestId };
@@ -304,7 +304,7 @@ async function sendApplicationWhatsAppDirect(
       return {
         ok: false,
         code: status === "configuration_required" ? "configuration_required" : "queued",
-        error: "WhatsApp delivery is queued. Configure AiSensy or retry later.",
+        error: "WhatsApp delivery is queued. Configure Meta WhatsApp or retry later.",
         requestId,
         messageId: existing.id,
         queued: true,
@@ -331,7 +331,7 @@ async function sendApplicationWhatsAppDirect(
     }
   }
 
-  const campaignName = getApplicationCampaignName(input.eventType);
+  const templateName = getApplicationTemplateName(input.eventType);
   const templateParams = buildApplicationTemplateParams(input.eventType, {
     customerName: input.customerName,
     serviceName: input.serviceName,
@@ -372,10 +372,10 @@ async function sendApplicationWhatsAppDirect(
         application_id: input.applicationId,
         customer_id: input.customerId ?? null,
         channel: "whatsapp",
-        provider: getWhatsappProvider() === "meta" ? "meta" : "aisensy",
+        provider: WHATSAPP_PROVIDER,
         event_type: input.eventType,
         purpose: input.eventType,
-        template_name: campaignName,
+        template_name: templateName,
         recipient: e164,
         status: "queued",
         idempotency_key: idempotencyKey,
@@ -415,16 +415,15 @@ async function sendApplicationWhatsAppDirect(
   const messageId = row?.id ?? existing?.id ?? null;
 
   // Provider call outside any open CRM transaction (caller already committed).
-  const adapter = createAisensyAdapter();
+  const adapter = createWhatsAppAdapter();
   const media =
     input.eventType === "final_document" && input.documentUrl
       ? { url: input.documentUrl, filename: input.documentName || "document.pdf" }
       : undefined;
 
   const sendResult = await adapter.sendTemplate({
-    campaignName,
+    templateName,
     destination: e164,
-    userName: input.customerName || "Customer",
     templateParams,
     source: `digiconnect-application:${input.eventType}`,
     media,
@@ -438,8 +437,8 @@ async function sendApplicationWhatsAppDirect(
         .update({
           status: "configuration_required",
           failure_code: "configuration_required",
-          failure_summary: "AiSensy not configured. Delivery not sent.",
-          error_message: "AiSensy not configured. Delivery not sent.",
+          failure_summary: "Meta WhatsApp not configured. Delivery not sent.",
+          error_message: "Meta WhatsApp not configured. Delivery not sent.",
           updated_at: new Date().toISOString(),
         })
         .eq("id", messageId);
@@ -447,7 +446,7 @@ async function sendApplicationWhatsAppDirect(
     return {
       ok: false,
       code: "configuration_required",
-      error: "WhatsApp is not configured. Message queued — configure AiSensy and retry.",
+      error: "WhatsApp is not configured. Message queued — configure Meta WhatsApp and retry.",
       queued: true,
       requestId,
       messageId,
@@ -504,7 +503,7 @@ async function sendApplicationWhatsAppDirect(
     ok: true,
     requestId,
     messageId,
-    campaignName,
+    templateName,
     providerMessageId: sendResult.providerMessageId,
   };
 }

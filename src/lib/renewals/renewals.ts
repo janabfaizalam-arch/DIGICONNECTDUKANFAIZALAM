@@ -9,7 +9,7 @@ import {
   renewalReminderVersion,
 } from "@/lib/renewals/renewal-core";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import { normalizeWhatsAppDestination } from "@/lib/whatsapp/client";
 import {
   sendApplicationWhatsApp,
   type SendApplicationWhatsAppResult,
@@ -95,7 +95,7 @@ export async function createRenewal(
   const mobile = String(
     input.customerMobile || application.customer_mobile || details.mobile || formData.mobile || "",
   ).trim();
-  if (!normalizeAisensyDestination(mobile).ok) {
+  if (!normalizeWhatsAppDestination(mobile).ok) {
     return { ok: false, status: 400, error: "A valid WhatsApp mobile number is required for renewal reminders." };
   }
 

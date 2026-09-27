@@ -181,31 +181,31 @@ describe("cron secret resolution", () => {
 });
 
 describe("provider adapter configuration readiness", () => {
-  it("exposes configuration_required without secrets when key missing", async () => {
-    const keyName = "AISENSY_API_KEY";
-    const prev = process.env[keyName];
-    delete process.env[keyName];
-    delete process.env.AISENSY_PROJECT_API_KEY;
+  it("exposes configuration_required without secrets when Meta credentials are missing", async () => {
+    const prevToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+    const prevPhone = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+    delete process.env.META_WHATSAPP_ACCESS_TOKEN;
+    delete process.env.META_WHATSAPP_PHONE_NUMBER_ID;
 
     vi.resetModules();
-    const { createAisensyAdapter } = await import("@/lib/communications/provider-adapter");
-    const adapter = createAisensyAdapter();
+    const { createWhatsAppAdapter } = await import("@/lib/communications/provider-adapter");
+    const adapter = createWhatsAppAdapter();
     const configured = await adapter.isConfigured();
     expect(configured).toBe(false);
 
     const send = await adapter.sendTemplate({
-      campaignName: "application_update",
+      templateName: "application_update",
       destination: "9876543210",
-      userName: "Test",
       templateParams: ["a", "b", "c", "d"],
       source: "test",
     });
     expect(send.ok).toBe(false);
     if (!send.ok) {
       expect(send.retryClass).toBe("configuration_required");
-      expect(JSON.stringify(send)).not.toMatch(/sk_|Bearer /i);
+      expect(JSON.stringify(send)).not.toMatch(/EAA|Bearer /i);
     }
 
-    if (prev !== undefined) process.env[keyName] = prev;
+    if (prevToken !== undefined) process.env.META_WHATSAPP_ACCESS_TOKEN = prevToken;
+    if (prevPhone !== undefined) process.env.META_WHATSAPP_PHONE_NUMBER_ID = prevPhone;
   });
 });

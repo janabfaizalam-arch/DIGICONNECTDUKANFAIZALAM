@@ -1,26 +1,29 @@
 /**
- * Meta WhatsApp Cloud API — send approved templates straight from Meta,
- * no BSP in between. Selected with WHATSAPP_PROVIDER=meta.
+ * Meta WhatsApp Cloud API — the Graph API layer, and the only file that
+ * talks to graph.facebook.com.
  *
- * The rest of the app still speaks in "campaign name + template params":
- * the campaign name is the Meta template name (create the template on Meta
- * with the same name the AISENSY_*_CAMPAIGN env holds), and the params fill
- * {{1}}, {{2}}, … in the template body, in order.
+ *   POST {base}/{version}/{META_WHATSAPP_PHONE_NUMBER_ID}/messages
+ *   GET  {base}/{version}/{META_WHATSAPP_WABA_ID}/message_templates
  *
- * Pure except for `postMetaTemplate`; never logs the access token.
+ * Server-only by use (the access token is read from the environment); pure
+ * except for `postMetaMessage` and `fetchMetaTemplates`. Never logs the token.
+ * Higher-level sending (validation, dedupe, OTP, logging) lives in
+ * `src/lib/whatsapp/client.ts`.
  */
 
-import type { AisensyCampaignButton, AisensyMediaPayload } from "@/lib/whatsapp/types";
+import "server-only";
+
+import type { WhatsAppMediaPayload, WhatsAppOtpButton } from "@/lib/whatsapp/types";
 
 export const DEFAULT_META_GRAPH_VERSION = "v23.0";
-export const DEFAULT_META_TEMPLATE_LANGUAGE = "en";
 
 export type MetaConfig = {
   phoneNumberId: string;
   accessToken: string;
   graphVersion: string;
-  language: string;
   apiBase: string;
+  /** Needed only for the template status check. */
+  wabaId: string | null;
 };
 
 export function loadMetaConfig(
@@ -38,15 +41,15 @@ export function loadMetaConfig(
   if (!/^\d+$/.test(phoneNumberId)) {
     return { ok: false, code: "invalid_meta_config", error: "META_WHATSAPP_PHONE_NUMBER_ID must be the numeric ID." };
   }
-  const graphVersion = (env.META_WHATSAPP_API_VERSION?.trim() || DEFAULT_META_GRAPH_VERSION).replace(/^v?/, "v");
+  const wabaId = env.META_WHATSAPP_WABA_ID?.trim() || null;
   return {
     ok: true,
     config: {
       phoneNumberId,
       accessToken,
-      graphVersion,
-      language: env.META_WHATSAPP_TEMPLATE_LANGUAGE?.trim() || DEFAULT_META_TEMPLATE_LANGUAGE,
+      graphVersion: (env.META_WHATSAPP_API_VERSION?.trim() || DEFAULT_META_GRAPH_VERSION).replace(/^v?/, "v"),
       apiBase: (env.META_WHATSAPP_API_BASE?.trim() || "https://graph.facebook.com").replace(/\/$/, ""),
+      wabaId: wabaId && /^\d+$/.test(wabaId) ? wabaId : null,
     },
   };
 }
@@ -68,8 +71,8 @@ export type MetaTemplatePayloadInput = {
   templateName: string;
   language: string;
   bodyParams: string[];
-  buttons?: AisensyCampaignButton[];
-  media?: AisensyMediaPayload;
+  buttons?: WhatsAppOtpButton[];
+  media?: WhatsAppMediaPayload;
 };
 
 export function buildMetaTemplatePayload(input: MetaTemplatePayloadInput) {
@@ -103,10 +106,10 @@ export function buildMetaTemplatePayload(input: MetaTemplatePayloadInput) {
   }
 
   return {
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
+    messaging_product: "whatsapp" as const,
+    recipient_type: "individual" as const,
     to: input.to,
-    type: "template",
+    type: "template" as const,
     template: {
       name: input.templateName,
       language: { code: input.language },
@@ -115,19 +118,45 @@ export function buildMetaTemplatePayload(input: MetaTemplatePayloadInput) {
   };
 }
 
+/**
+ * Free-form text. Meta only delivers it inside the 24-hour customer service
+ * window (the customer messaged us in the last 24h); outside it Meta answers
+ * error 131047 and a template must be used instead.
+ */
+export function buildMetaTextPayload(input: { to: string; body: string; previewUrl?: boolean }) {
+  return {
+    messaging_product: "whatsapp" as const,
+    recipient_type: "individual" as const,
+    to: input.to,
+    type: "text" as const,
+    text: { body: String(input.body ?? "").slice(0, 4096), preview_url: Boolean(input.previewUrl) },
+  };
+}
+
+export type MetaMessagePayload = ReturnType<typeof buildMetaTemplatePayload> | ReturnType<typeof buildMetaTextPayload>;
+
 export type MetaSendOutcome =
   | { ok: true; messageId: string | null; httpStatus: number }
   | {
       ok: false;
       httpStatus: number | null;
-      /** Our code: timeout | network_error | meta_auth_failed | meta_rate_limited | provider_rejected */
+      /** timeout | network_error | meta_auth_failed | meta_rate_limited | outside_service_window | template_not_approved | provider_rejected */
       code: string;
       /** Meta's own error code (e.g. 132001 template not found), for the log. */
       metaCode: number | null;
       message: string;
     };
 
-type MetaErrorBody = { error?: { message?: string; code?: number; error_subcode?: number; error_data?: { details?: string } } };
+type MetaErrorBody = {
+  error?: { message?: string; code?: number; error_subcode?: number; error_data?: { details?: string } };
+};
+
+// 190 = token expired/invalid; 10/200 = permission.
+const AUTH_CODES = [190, 10, 200];
+// 4/80007/130429/131048/131056 = rate / spam limits.
+const RATE_CODES = [4, 80007, 130429, 131048, 131056];
+// 132000–132016: template missing, not approved, paused, wrong params/language.
+const TEMPLATE_CODES = [132000, 132001, 132005, 132007, 132012, 132015, 132016];
 
 export function interpretMetaResponse(status: number, body: unknown): MetaSendOutcome {
   const record = (body && typeof body === "object" ? body : {}) as { messages?: Array<{ id?: string }> } & MetaErrorBody;
@@ -137,35 +166,35 @@ export function interpretMetaResponse(status: number, body: unknown): MetaSendOu
 
   const metaCode = typeof record.error?.code === "number" ? record.error.code : null;
   const detail = [record.error?.message, record.error?.error_data?.details].filter(Boolean).join(" — ");
-  // 190 = token expired/invalid; 10/200 = permission. Nothing to retry until someone fixes the token.
-  const authFailure = status === 401 || metaCode === 190 || metaCode === 10 || metaCode === 200;
-  // 4/80007/130429/131048/131056 = rate / spam limits.
-  const rateLimited = status === 429 || [4, 80007, 130429, 131048, 131056].includes(metaCode ?? -1);
+  const code =
+    status === 401 || AUTH_CODES.includes(metaCode ?? -1)
+      ? "meta_auth_failed"
+      : status === 429 || RATE_CODES.includes(metaCode ?? -1)
+        ? "meta_rate_limited"
+        : metaCode === 131047
+          ? "outside_service_window"
+          : TEMPLATE_CODES.includes(metaCode ?? -1)
+            ? "template_not_approved"
+            : "provider_rejected";
 
   return {
     ok: false,
     httpStatus: status,
-    code: authFailure ? "meta_auth_failed" : rateLimited ? "meta_rate_limited" : "provider_rejected",
+    code,
     metaCode,
     message: (detail || `Meta WhatsApp API HTTP ${status}`).slice(0, 400),
   };
 }
 
-export async function postMetaTemplate(
-  config: MetaConfig,
-  payload: ReturnType<typeof buildMetaTemplatePayload>,
-  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
-): Promise<MetaSendOutcome> {
-  const url = `${config.apiBase}/${config.graphVersion}/${config.phoneNumberId}/messages`;
+async function graphFetch(
+  url: string,
+  init: RequestInit,
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number },
+): Promise<{ status: number; body: unknown } | { error: "timeout" | "network_error" }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 15_000);
   try {
-    const response = await (options.fetchImpl ?? fetch)(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.accessToken}` },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+    const response = await (options.fetchImpl ?? fetch)(url, { ...init, signal: controller.signal });
     const text = await response.text();
     let body: unknown = null;
     try {
@@ -173,22 +202,62 @@ export async function postMetaTemplate(
     } catch {
       body = text;
     }
-    return interpretMetaResponse(response.status, body);
+    return { status: response.status, body };
   } catch (error) {
-    const aborted = error instanceof Error && error.name === "AbortError";
-    return {
-      ok: false,
-      httpStatus: null,
-      code: aborted ? "timeout" : "network_error",
-      metaCode: null,
-      message: aborted ? "Meta WhatsApp request timed out." : "Meta WhatsApp request failed.",
-    };
+    return { error: error instanceof Error && error.name === "AbortError" ? "timeout" : "network_error" };
   } finally {
     clearTimeout(timer);
   }
 }
 
-/* ── Webhook (delivery statuses) ───────────────────────────────────────── */
+export async function postMetaMessage(
+  config: MetaConfig,
+  payload: MetaMessagePayload,
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+): Promise<MetaSendOutcome> {
+  const result = await graphFetch(
+    `${config.apiBase}/${config.graphVersion}/${config.phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.accessToken}` },
+      body: JSON.stringify(payload),
+    },
+    options,
+  );
+  if ("error" in result) {
+    return {
+      ok: false,
+      httpStatus: null,
+      code: result.error,
+      metaCode: null,
+      message: result.error === "timeout" ? "Meta WhatsApp request timed out." : "Meta WhatsApp request failed.",
+    };
+  }
+  return interpretMetaResponse(result.status, result.body);
+}
+
+export type MetaTemplateRow = { name?: string; language?: string; status?: string; category?: string };
+
+/** GET /{waba-id}/message_templates — what Meta actually has, with approval status. */
+export async function fetchMetaTemplates(
+  config: MetaConfig,
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+): Promise<{ ok: true; templates: MetaTemplateRow[] } | { ok: false; error: string }> {
+  if (!config.wabaId) return { ok: false, error: "META_WHATSAPP_WABA_ID is not set." };
+  const result = await graphFetch(
+    `${config.apiBase}/${config.graphVersion}/${config.wabaId}/message_templates?fields=name,language,status,category&limit=200`,
+    { method: "GET", headers: { Authorization: `Bearer ${config.accessToken}` } },
+    options,
+  );
+  if ("error" in result) return { ok: false, error: `Meta request ${result.error}.` };
+  const body = (result.body ?? {}) as { data?: MetaTemplateRow[] } & MetaErrorBody;
+  if (result.status >= 300 || !Array.isArray(body.data)) {
+    return { ok: false, error: (body.error?.message || `Meta HTTP ${result.status}`).slice(0, 300) };
+  }
+  return { ok: true, templates: body.data };
+}
+
+/* ── Webhook ───────────────────────────────────────────────────────────── */
 
 /**
  * Meta signs every webhook POST with the app secret:
@@ -215,39 +284,112 @@ export type MetaStatusEvent = {
   errorMessage: string | null;
 };
 
-/** Pull every `statuses[]` entry out of a WhatsApp Business Account webhook. Ignores inbound messages. */
-export function parseMetaStatusEvents(payload: unknown): MetaStatusEvent[] {
+export type MetaInboundMessage = {
+  /** wamid — the idempotency key. */
+  messageId: string;
+  /** Sender, digits with country code, e.g. 919876543210 */
+  from: string;
+  /** WhatsApp profile name, when Meta sends it. */
+  profileName: string | null;
+  /** text | button | interactive | image | document | audio | video | location | … */
+  type: string;
+  /** Readable body: the text, button/list title, or media caption. */
+  text: string | null;
+  timestamp: string | null;
+  /** The phone number ID it was sent to. */
+  toPhoneNumberId: string | null;
+};
+
+type ChangeValue = {
+  metadata?: { phone_number_id?: unknown };
+  statuses?: unknown;
+  messages?: unknown;
+  contacts?: Array<{ wa_id?: unknown; profile?: { name?: unknown } }>;
+};
+
+function webhookChangeValues(payload: unknown): ChangeValue[] {
   if (!payload || typeof payload !== "object") return [];
   const root = payload as { object?: unknown; entry?: unknown };
   if (root.object !== "whatsapp_business_account" || !Array.isArray(root.entry)) return [];
-
-  const events: MetaStatusEvent[] = [];
+  const values: ChangeValue[] = [];
   for (const entry of root.entry.slice(0, 50)) {
     const changes = (entry as { changes?: unknown })?.changes;
     if (!Array.isArray(changes)) continue;
     for (const change of changes.slice(0, 50)) {
-      const value = (change as { value?: { statuses?: unknown } })?.value;
-      if (!value || !Array.isArray(value.statuses)) continue;
-      for (const raw of value.statuses.slice(0, 100)) {
-        const s = raw as {
-          id?: unknown;
-          status?: unknown;
-          timestamp?: unknown;
-          errors?: Array<{ code?: unknown; title?: unknown; message?: unknown; error_data?: { details?: unknown } }>;
-        };
-        if (typeof s?.id !== "string" || typeof s.status !== "string") continue;
-        const error = Array.isArray(s.errors) ? s.errors[0] : undefined;
-        events.push({
-          messageId: s.id,
-          status: s.status,
-          timestamp: typeof s.timestamp === "string" ? s.timestamp : null,
-          errorCode: error?.code != null ? String(error.code) : null,
-          errorMessage: error
-            ? [error.title, error.message, error.error_data?.details].filter((v) => typeof v === "string").join(" — ") || null
-            : null,
-        });
-      }
+      const value = (change as { value?: unknown })?.value;
+      if (value && typeof value === "object") values.push(value as ChangeValue);
+    }
+  }
+  return values;
+}
+
+/** Every `statuses[]` entry (sent / delivered / read / failed) in a webhook. */
+export function parseMetaStatusEvents(payload: unknown): MetaStatusEvent[] {
+  const events: MetaStatusEvent[] = [];
+  for (const value of webhookChangeValues(payload)) {
+    if (!Array.isArray(value.statuses)) continue;
+    for (const raw of value.statuses.slice(0, 100)) {
+      const s = raw as {
+        id?: unknown;
+        status?: unknown;
+        timestamp?: unknown;
+        errors?: Array<{ code?: unknown; title?: unknown; message?: unknown; error_data?: { details?: unknown } }>;
+      };
+      if (typeof s?.id !== "string" || typeof s.status !== "string") continue;
+      const error = Array.isArray(s.errors) ? s.errors[0] : undefined;
+      events.push({
+        messageId: s.id,
+        status: s.status,
+        timestamp: typeof s.timestamp === "string" ? s.timestamp : null,
+        errorCode: error?.code != null ? String(error.code) : null,
+        errorMessage: error
+          ? [error.title, error.message, error.error_data?.details].filter((v) => typeof v === "string").join(" — ") || null
+          : null,
+      });
     }
   }
   return events;
+}
+
+function str(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Every inbound customer message (`messages[]`) in a webhook, flattened to what the CRM needs. */
+export function parseMetaInboundMessages(payload: unknown): MetaInboundMessage[] {
+  const out: MetaInboundMessage[] = [];
+  for (const value of webhookChangeValues(payload)) {
+    if (!Array.isArray(value.messages)) continue;
+    const contacts = Array.isArray(value.contacts) ? value.contacts : [];
+    for (const raw of value.messages.slice(0, 100)) {
+      const m = raw as Record<string, unknown> & {
+        text?: { body?: unknown };
+        button?: { text?: unknown };
+        interactive?: { button_reply?: { title?: unknown }; list_reply?: { title?: unknown } };
+      };
+      const id = str(m?.id);
+      const from = str(m?.from);
+      if (!id || !from) continue;
+      const type = str(m.type) ?? "unknown";
+      const media = m[type] as { caption?: unknown; filename?: unknown } | undefined;
+      const text =
+        str(m.text?.body) ??
+        str(m.button?.text) ??
+        str(m.interactive?.button_reply?.title) ??
+        str(m.interactive?.list_reply?.title) ??
+        str(media?.caption) ??
+        str(media?.filename);
+      const contact = contacts.find((c) => str(c?.wa_id) === from) ?? contacts[0];
+      out.push({
+        messageId: id,
+        from,
+        profileName: str(contact?.profile?.name),
+        type,
+        text: text ? text.slice(0, 2000) : null,
+        timestamp: str(m.timestamp),
+        toPhoneNumberId: str(value.metadata?.phone_number_id),
+      });
+    }
+  }
+  return out;
 }

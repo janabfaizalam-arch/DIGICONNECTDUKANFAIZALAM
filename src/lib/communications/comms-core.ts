@@ -27,7 +27,7 @@ export type OutboxStatus = (typeof OUTBOX_STATUSES)[number];
 /**
  * Centralized outbox state machine (application transitions).
  *
- * AiSensy note: Campaign API HTTP success means the provider *accepted* the request.
+ * Meta note: Cloud API HTTP success means the provider *accepted* the request.
  * That is recorded as `sent` with provider_status often "submitted". We do **not** treat
  * HTTP success as WhatsApp `delivered`. `submitted` is retained in the vocabulary for
  * provider-aligned wording but the app normally writes `sent` after API accept.
