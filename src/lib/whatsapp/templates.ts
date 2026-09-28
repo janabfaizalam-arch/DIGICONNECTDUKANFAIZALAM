@@ -1,11 +1,11 @@
 /**
  * Template parameters for application notifications (Meta template
- * `application_update` by default — see template-registry.ts).
+ * `application_status`, Hindi, by default — see template-registry.ts).
  *
  * Body parameter order ({{1}}…{{4}}) must match the approved template:
  *   [0] customerName
  *   [1] serviceName
- *   [2] applicationNumber
+ *   [2] applicationNumber (customer-facing reference, e.g. PAN-260927-AB12)
  *   [3] detail (status / amount / documents / objection / progress / custom)
  *
  * Final document messages may attach a document header; params never carry signed URLs.
@@ -22,7 +22,8 @@ const DEFAULT_SUPPORT =
 
 /**
  * Meta template for an application event. Every event uses the registry's
- * `application_update` template unless WHATSAPP_TEMPLATE_<EVENT> names a
+ * `application_update` registry template (approved as `application_status`)
+ * unless WHATSAPP_TEMPLATE_<EVENT> names a
  * separately approved one (e.g. WHATSAPP_TEMPLATE_FINAL_DOCUMENT for a
  * template with a document header).
  */

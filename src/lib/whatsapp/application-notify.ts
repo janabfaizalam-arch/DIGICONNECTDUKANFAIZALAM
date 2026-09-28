@@ -6,6 +6,7 @@ import {
   getApplicationTemplateName,
 } from "@/lib/whatsapp/templates";
 import type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
+import { applicationReference } from "@/lib/applications/reference";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   FINAL_DOCUMENT_BUCKET,
@@ -21,6 +22,8 @@ export type { ApplicationWhatsAppEvent } from "@/lib/whatsapp/types";
 
 export type SendApplicationWhatsAppInput = {
   applicationId: string;
+  /** Customer-facing reference (e.g. PAN-260927-AB12); looked up from the application when omitted. */
+  applicationNumber?: string;
   eventType: ApplicationWhatsAppEvent;
   recipientMobile: string;
   customerName: string;
@@ -95,6 +98,23 @@ function safeLogPayload(payload: Record<string, unknown>) {
   if ("signed_url" in copy) copy.signed_url = "[redacted_signed_url]";
   if ("provider_response" in copy) delete copy.provider_response;
   return copy;
+}
+
+/**
+ * The reference the customer sees in {{3}} — the same code the admin panel
+ * and receipts show (PAN-260927-AB12), never the raw uuid.
+ */
+async function resolveApplicationReference(input: SendApplicationWhatsAppInput): Promise<string> {
+  if (input.applicationNumber?.trim()) return input.applicationNumber.trim();
+  const supabase = getSupabaseAdmin();
+  const { data } = supabase
+    ? await supabase.from("applications").select("id, service_name, created_at").eq("id", input.applicationId).maybeSingle()
+    : { data: null };
+  return applicationReference({
+    id: input.applicationId,
+    service_name: (data as { service_name?: string | null } | null)?.service_name ?? input.serviceName,
+    created_at: (data as { created_at?: string | null } | null)?.created_at ?? null,
+  });
 }
 
 /**
@@ -183,6 +203,7 @@ async function enqueueApplicationWhatsAppOnly(
     customerName: input.customerName,
     serviceName: input.serviceName,
     applicationId: input.applicationId,
+    applicationNumber: await resolveApplicationReference(input),
     status: input.status,
     amount: input.amount,
     requiredDocuments: input.requiredDocuments,
@@ -336,6 +357,7 @@ async function sendApplicationWhatsAppDirect(
     customerName: input.customerName,
     serviceName: input.serviceName,
     applicationId: input.applicationId,
+    applicationNumber: await resolveApplicationReference(input),
     status: input.status,
     amount: input.amount,
     requiredDocuments: input.requiredDocuments,

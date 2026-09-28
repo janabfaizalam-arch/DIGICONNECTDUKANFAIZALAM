@@ -7,6 +7,7 @@ import { evaluateSafeConditions } from "@/lib/automation/events-core";
 import { createOpsAlert } from "@/lib/automation/alerts";
 import { buildQueueOutboxKeyFromAutomationEvent } from "@/lib/automation/outbox-key";
 import { rulesForEventType, type AutomationRuleDefinition } from "@/lib/automation/rules";
+import { applicationReference } from "@/lib/applications/reference";
 import { enqueueCommunication } from "@/lib/communications/enqueue";
 import {
   buildApplicationTemplateParams,
@@ -374,7 +375,7 @@ async function enqueueFromEvent(
   const { data: app } = await supabase
     .from("applications")
     .select(
-      "id, customer_id, customer_mobile, customer_mobile_normalized, customer_name, service_name, status, total_amount, amount",
+      "id, customer_id, customer_mobile, customer_mobile_normalized, customer_name, service_name, status, total_amount, amount, created_at",
     )
     .eq("id", applicationId)
     .maybeSingle();
@@ -408,6 +409,11 @@ async function enqueueFromEvent(
     customerName: String(app.customer_name || "Customer"),
     serviceName: String(app.service_name || "Service"),
     applicationId,
+    applicationNumber: applicationReference({
+      id: applicationId,
+      service_name: app.service_name ? String(app.service_name) : null,
+      created_at: app.created_at ? String(app.created_at) : null,
+    }),
     status: String(meta.status || app.status || ""),
     amount: app.total_amount ?? app.amount,
     notes: meta.notes ? String(meta.notes) : undefined,
