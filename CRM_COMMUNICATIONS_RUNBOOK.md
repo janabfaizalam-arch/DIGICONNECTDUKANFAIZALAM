@@ -27,7 +27,7 @@ All of the above are **server-only** (never `NEXT_PUBLIC_*` except unrelated UI 
 
 ## Template mapping
 
-Templates are defined once in `src/lib/whatsapp/template-registry.ts` (`application_update`, `login_otp`, `signup_otp`, `password_reset`); application events map to them in `src/lib/whatsapp/templates.ts`.  
+Templates are defined once in `src/lib/whatsapp/template-registry.ts` (`application_update` → Meta `application_status`/`hi`, `login_otp`, `signup_otp`, `password_reset`); application events map to them in `src/lib/whatsapp/templates.ts`.  
 The registry never claims a template is approved — `/admin/diagnostics/otp` and `GET /api/admin/whatsapp/templates` read the live status from Meta.  
 Browsers must not supply arbitrary template names or destination numbers on ops APIs.
 
@@ -245,7 +245,7 @@ Both go through `sendApplicationWhatsApp`, so they obey `CRM_NOTIFICATION_DELIVE
 AiSensy has been removed. Every outgoing WhatsApp — OTP, application updates, invoices, renewals, the outbox — goes through `src/lib/whatsapp/client.ts` (`sendWhatsAppTemplate`, `sendWhatsAppText`, `sendWhatsAppOtp`) to `POST graph.facebook.com/{version}/{META_WHATSAPP_PHONE_NUMBER_ID}/messages`; `src/lib/whatsapp/meta-cloud.ts` is the only file that talks to the Graph API. Server-side only.
 
 - **Templates** (`template-registry.ts`), create and get approved in WhatsApp Manager:
-  - `application_update` — **Utility**; body `{{1}}` customer, `{{2}}` service, `{{3}}` application no., `{{4}}` detail.
+  - Application updates — approved as **`application_status`**, language **Hindi (`hi`)**, **Utility**; body `{{1}}` customer, `{{2}}` service, `{{3}}` application reference (e.g. `PAN-260927-AB12`), `{{4}}` status detail. Registry key `application_update`.
   - `signup_otp`, `login_otp`, `password_reset` — **Authentication**, copy-code button; the code fills `{{1}}` and the button.
   - A different approved name/language → `WHATSAPP_TEMPLATE_<KEY>` / `WHATSAPP_TEMPLATE_<KEY>_LANGUAGE`.
 - **Free-form text** (`sendWhatsAppText`) is delivered only within 24 h of the customer's last message; otherwise `outside_service_window`.

@@ -61,7 +61,7 @@ describe("template contracts", () => {
       invoiceLink: link,
     });
     expect(params[3]).toBe(`Invoice INV-2026-0042 · Amount ₹199 · Download: ${link}`);
-    expect(getApplicationTemplateName("invoice_generated")).toBe("application_update");
+    expect(getApplicationTemplateName("invoice_generated")).toBe("application_status");
   });
 
   it("builds the renewal reminder line", () => {
@@ -77,8 +77,8 @@ describe("template contracts", () => {
     );
   });
 
-  it("uses application_update for every event unless one is overridden", () => {
-    expect(getApplicationTemplateName("payment_reminder")).toBe("application_update");
+  it("uses the approved application_status template for every event unless one is overridden", () => {
+    expect(getApplicationTemplateName("payment_reminder")).toBe("application_status");
     process.env.WHATSAPP_TEMPLATE_PAYMENT_REMINDER = "payment_reminder_v1";
     expect(getApplicationTemplateName("payment_reminder")).toBe("payment_reminder_v1");
     process.env.WHATSAPP_TEMPLATE_APPLICATION_UPDATE = "application_update_v2";
@@ -111,13 +111,15 @@ describe("template registry", () => {
       nameSource: "WHATSAPP_TEMPLATE_LOGIN_OTP",
     });
     expect(resolveTemplate("signup_otp").language).toBe("en_US");
+    // The application template was approved in Hindi; the global default does not override that.
+    expect(resolveTemplate("application_update")).toMatchObject({ name: "application_status", language: "hi" });
     expect(resolveTemplateLanguage("login_code")).toBe("hi");
     expect(resolveTemplateLanguage("something_else")).toBe("en_US");
   });
 
   it("never calls a template sendable unless Meta reports it APPROVED", () => {
     const report = compareWithMetaTemplates([
-      { name: "application_update", language: "en", status: "APPROVED", category: "UTILITY" },
+      { name: "application_status", language: "hi", status: "APPROVED", category: "UTILITY" },
       { name: "login_otp", language: "en", status: "PENDING", category: "AUTHENTICATION" },
       // Same name, other language — not the template we send.
       { name: "signup_otp", language: "en_US", status: "APPROVED", category: "AUTHENTICATION" },

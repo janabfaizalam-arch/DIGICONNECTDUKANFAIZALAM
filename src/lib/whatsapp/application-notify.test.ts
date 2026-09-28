@@ -134,6 +134,9 @@ describe("sendApplicationWhatsApp", () => {
     expect(arg?.destination).toBe("919876543210");
     expect(arg?.templateParams).toHaveLength(4);
     expect(arg?.dedupe).toBe(false);
+    // {{3}} is the customer-facing reference, never the raw application id.
+    expect(arg?.templateParams[2]).toMatch(/^[A-Z]{2,4}-\d{6}-[A-Z0-9]{4}$/);
+    expect(arg?.templateParams[2]).not.toBe("app-1");
   });
 
   it("marks failure on provider rejection", async () => {

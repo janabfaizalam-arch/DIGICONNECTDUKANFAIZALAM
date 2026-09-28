@@ -12,7 +12,7 @@
  * or language `en_US`) needs no code change:
  *   WHATSAPP_TEMPLATE_<KEY>            e.g. WHATSAPP_TEMPLATE_LOGIN_OTP=login_code
  *   WHATSAPP_TEMPLATE_<KEY>_LANGUAGE   e.g. WHATSAPP_TEMPLATE_LOGIN_OTP_LANGUAGE=en_US
- *   META_WHATSAPP_TEMPLATE_LANGUAGE    default language for all (default "en")
+ *   META_WHATSAPP_TEMPLATE_LANGUAGE    default language for templates without their own (default "en")
  */
 
 export const WHATSAPP_TEMPLATE_KEYS = ["application_update", "login_otp", "signup_otp", "password_reset"] as const;
@@ -21,6 +21,8 @@ export type WhatsAppTemplateKey = (typeof WHATSAPP_TEMPLATE_KEYS)[number];
 export type WhatsAppTemplateDefinition = {
   key: WhatsAppTemplateKey;
   defaultName: string;
+  /** Language the template was approved in; falls back to META_WHATSAPP_TEMPLATE_LANGUAGE, then "en". */
+  defaultLanguage?: string;
   category: "UTILITY" | "AUTHENTICATION";
   /** Number of {{n}} variables in the body, in order. */
   bodyParams: string[];
@@ -33,11 +35,14 @@ export type WhatsAppTemplateDefinition = {
 export const WHATSAPP_TEMPLATES: Record<WhatsAppTemplateKey, WhatsAppTemplateDefinition> = {
   application_update: {
     key: "application_update",
-    defaultName: "application_update",
+    // Approved in WhatsApp Manager as `application_status`, Hindi, Utility.
+    defaultName: "application_status",
+    defaultLanguage: "hi",
     category: "UTILITY",
-    bodyParams: ["customerName", "serviceName", "applicationNumber", "detail"],
+    bodyParams: ["customerName", "serviceName", "applicationReference", "detail"],
     otpButton: false,
-    suggestedBody: "Namaste {{1}}, aapki {{2}} application ({{3}}) ka update: {{4}} — DigiConnect Dukan",
+    suggestedBody:
+      "Hello {{1}}, DigiConnect Dukan mein aapki {{2}} application ke sambandh mein important update hai. Aapki application reference number {{3}} ka current status: {{4}}. …",
   },
   login_otp: {
     key: "login_otp",
@@ -81,7 +86,10 @@ export function resolveTemplate(key: WhatsAppTemplateKey, env: NodeJS.ProcessEnv
   const definition = WHATSAPP_TEMPLATES[key];
   const nameEnv = env[envName(key)]?.trim();
   const language =
-    env[`${envName(key)}_LANGUAGE`]?.trim() || env.META_WHATSAPP_TEMPLATE_LANGUAGE?.trim() || DEFAULT_TEMPLATE_LANGUAGE;
+    env[`${envName(key)}_LANGUAGE`]?.trim() ||
+    definition.defaultLanguage ||
+    env.META_WHATSAPP_TEMPLATE_LANGUAGE?.trim() ||
+    DEFAULT_TEMPLATE_LANGUAGE;
   return {
     key,
     name: nameEnv || definition.defaultName,
