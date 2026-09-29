@@ -9,11 +9,10 @@ import {
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   describeOtpPayloadContract,
-  getWhatsappProvider,
-  resolveOtpCampaign,
-  type AisensyOtpPayloadContract,
-} from "@/lib/whatsapp/aisensy";
-import { loadMetaConfig } from "@/lib/whatsapp/meta-cloud";
+  isWhatsAppConfigured,
+  resolveOtpTemplate,
+  type OtpPayloadContract,
+} from "@/lib/whatsapp/client";
 
 const ATTEMPT_LIMIT = 25;
 
@@ -22,24 +21,24 @@ export type OtpAttemptRow = {
   purpose: string;
   phoneMasked: string;
   createdAt: string | null;
-  campaign: string | null;
+  template: string | null;
   submittedMessageId: string | null;
   classification: OtpAttemptClassification;
 };
 
 export type OtpDiagnostics = {
   config: {
-    apiKeyConfigured: boolean;
-    apiUrl: string;
-    signupCampaign: string | null;
-    signupCampaignSource: string | null;
-    signupCampaignConfigured: boolean;
-    loginCampaignConfigured: boolean;
-    resetCampaignConfigured: boolean;
+    accessTokenConfigured: boolean;
+    phoneNumberId: string | null;
+    signupTemplate: string | null;
+    signupTemplateLanguage: string | null;
+    signupTemplateSource: string | null;
+    signupTemplateConfigured: boolean;
+    loginTemplateConfigured: boolean;
+    resetTemplateConfigured: boolean;
     webhookSecretConfigured: boolean;
-    messageStatusUrlConfigured: boolean;
     environment: string;
-    payloadContract: AisensyOtpPayloadContract;
+    payloadContract: OtpPayloadContract;
   };
   attempts: OtpAttemptRow[];
   summary: OtpAttemptSummary;
@@ -67,34 +66,23 @@ function metaString(metadata: unknown, key: string): string | null {
  * Never returns OTP codes or hashes — only delivery bookkeeping.
  */
 export async function loadOtpDiagnostics(): Promise<OtpDiagnostics> {
-  const signup = resolveOtpCampaign("customer_signup");
-  const login = resolveOtpCampaign("login");
-  const reset = resolveOtpCampaign("forgot_pin");
+  const signup = resolveOtpTemplate("customer_signup");
+  const login = resolveOtpTemplate("login");
+  const reset = resolveOtpTemplate("forgot_pin");
 
-  // WHATSAPP_PROVIDER=meta sends through Meta's Cloud API: its token and app secret stand in for AiSensy's.
-  const onMeta = getWhatsappProvider() === "meta";
-  const apiKeyConfigured = onMeta
-    ? loadMetaConfig().ok
-    : Boolean(process.env.AISENSY_API_KEY?.trim() || process.env.AISENSY_PROJECT_API_KEY?.trim());
-  const webhookSecretConfigured = Boolean(
-    (onMeta ? process.env.META_APP_SECRET : process.env.AISENSY_WEBHOOK_SECRET)?.trim(),
-  );
+  const accessTokenConfigured = isWhatsAppConfigured();
+  const webhookSecretConfigured = Boolean(process.env.META_APP_SECRET?.trim());
 
   const config: OtpDiagnostics["config"] = {
-    apiKeyConfigured,
-    apiUrl: (
-      process.env.AISENSY_API_URL?.trim() ||
-      process.env.AISENSY_API_BASE_URL?.trim() ||
-      process.env.AISENSY_BASE_URL?.trim() ||
-      "https://backend.aisensy.com/campaign/t1/api/v2"
-    ).replace(/\/$/, ""),
-    signupCampaign: signup.ok ? signup.campaignName : null,
-    signupCampaignSource: signup.ok ? signup.source : null,
-    signupCampaignConfigured: signup.ok,
-    loginCampaignConfigured: login.ok,
-    resetCampaignConfigured: reset.ok,
+    accessTokenConfigured,
+    phoneNumberId: process.env.META_WHATSAPP_PHONE_NUMBER_ID?.trim() || null,
+    signupTemplate: signup.ok ? signup.templateName : null,
+    signupTemplateLanguage: signup.ok ? signup.language : null,
+    signupTemplateSource: signup.ok ? signup.source : null,
+    signupTemplateConfigured: signup.ok,
+    loginTemplateConfigured: login.ok,
+    resetTemplateConfigured: reset.ok,
     webhookSecretConfigured,
-    messageStatusUrlConfigured: Boolean(process.env.AISENSY_MESSAGE_STATUS_URL?.trim()),
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
     payloadContract: describeOtpPayloadContract(),
   };
@@ -107,8 +95,8 @@ export async function loadOtpDiagnostics(): Promise<OtpDiagnostics> {
       attempts: [],
       summary,
       health: assessOtpHealth({
-        apiKeyConfigured,
-        signupCampaignConfigured: signup.ok,
+        accessTokenConfigured,
+        signupTemplateConfigured: signup.ok,
         webhookSecretConfigured,
         summary,
       }),
@@ -129,8 +117,8 @@ export async function loadOtpDiagnostics(): Promise<OtpDiagnostics> {
       attempts: [],
       summary,
       health: assessOtpHealth({
-        apiKeyConfigured,
-        signupCampaignConfigured: signup.ok,
+        accessTokenConfigured,
+        signupTemplateConfigured: signup.ok,
         webhookSecretConfigured,
         summary,
       }),
@@ -143,13 +131,14 @@ export async function loadOtpDiagnostics(): Promise<OtpDiagnostics> {
     purpose: String(row.purpose ?? "unknown"),
     phoneMasked: maskLocal(row.phone),
     createdAt: (row.created_at as string | null) ?? null,
-    campaign: metaString(row.metadata, "campaign"),
+    // `campaign` is how rows written before the Meta switch named it.
+    template: metaString(row.metadata, "template") ?? metaString(row.metadata, "campaign"),
     submittedMessageId: metaString(row.metadata, "submitted_message_id"),
     classification: classifyOtpAttempt(row.metadata),
   }));
 
   // Health is judged on signup only — a healthy reset flow must not mask a
-  // broken signup campaign, since they can be different AiSensy campaigns.
+  // broken signup template, since they are different Meta templates.
   const signupAttempts = attempts.filter((attempt) => attempt.purpose === "customer_signup");
   const summary = summariseOtpAttempts(signupAttempts);
 
@@ -158,8 +147,8 @@ export async function loadOtpDiagnostics(): Promise<OtpDiagnostics> {
     attempts,
     summary,
     health: assessOtpHealth({
-      apiKeyConfigured,
-      signupCampaignConfigured: signup.ok,
+      accessTokenConfigured,
+      signupTemplateConfigured: signup.ok,
       webhookSecretConfigured,
       summary,
     }),

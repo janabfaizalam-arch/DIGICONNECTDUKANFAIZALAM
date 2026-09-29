@@ -1,15 +1,15 @@
 import crypto from "crypto";
 
 import {
-  AISENSY_USER_FACING_SEND_ERROR,
-  sendAisensyOtp,
-  type AisensyOtpPurpose,
-} from "@/lib/whatsapp/aisensy";
+  WHATSAPP_USER_FACING_SEND_ERROR,
+  sendWhatsAppOtp,
+  type WhatsAppOtpPurpose,
+} from "@/lib/whatsapp/client";
 
 /** Legacy purpose labels used by older customer-auth routes. */
 export type WhatsappTemplatePurpose = "login" | "signup" | "password_reset";
 
-function mapLegacyPurpose(purpose: WhatsappTemplatePurpose): AisensyOtpPurpose {
+function mapLegacyPurpose(purpose: WhatsappTemplatePurpose): WhatsAppOtpPurpose {
   if (purpose === "signup") return "customer_signup";
   if (purpose === "login") return "login";
   return "password_reset";
@@ -29,8 +29,7 @@ export function verifyOTPHash(otp: string, hashedOTP: string): boolean {
 
 /**
  * Legacy adapter for older customer-auth routes.
- * Delivery only via AiSensy; verification remains server-side.
- * Campaign is selected from purpose via getCampaignName().
+ * Delivery via Meta WhatsApp (Authentication template for the purpose); verification remains server-side.
  */
 export async function sendWhatsappOTP(
   mobile: string,
@@ -38,7 +37,7 @@ export async function sendWhatsappOTP(
   purpose: WhatsappTemplatePurpose,
 ): Promise<{ success: boolean; error?: string; code?: string; requestId?: string }> {
   const mapped = mapLegacyPurpose(purpose);
-  const result = await sendAisensyOtp({
+  const result = await sendWhatsAppOtp({
     phone: mobile,
     otp,
     purpose: mapped,
@@ -49,13 +48,13 @@ export async function sendWhatsappOTP(
       purpose,
       mapped,
       code: result.code,
-      campaign: result.campaignName,
+      template: result.templateName,
       requestId: result.requestId,
       providerDetail: result.providerDetail,
     });
     return {
       success: false,
-      error: AISENSY_USER_FACING_SEND_ERROR,
+      error: WHATSAPP_USER_FACING_SEND_ERROR,
       code: result.code,
       requestId: result.requestId,
     };

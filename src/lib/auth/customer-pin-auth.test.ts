@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getCampaignName } from "@/lib/whatsapp/aisensy";
+import { resolveOtpTemplate } from "@/lib/whatsapp/client";
 import { hashPin, verifyPin } from "@/lib/auth-v2/password";
 import { isValidPinFormat } from "@/lib/auth/pin";
 import { resolveCustomerMatches } from "@/lib/auth/customer-lookup";
@@ -25,7 +25,8 @@ describe("forgot / create PIN campaign + recovery contract", () => {
   });
 
   it("forgot_pin purpose maps to password_reset campaign", () => {
-    expect(getCampaignName("forgot_pin")).toBe("password_reset");
+    const reset = resolveOtpTemplate("forgot_pin");
+    expect(reset.ok && reset.templateName).toBe("password_reset");
   });
 
   it("simulates OTP verification updating customers.hashed_pin for legacy row", async () => {

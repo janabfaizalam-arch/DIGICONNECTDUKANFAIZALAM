@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { loadOtpDiagnostics } from "@/lib/admin/otp-diagnostics-data";
 import { safeDate } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { loadTemplateStatusReport } from "@/lib/whatsapp/template-status";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,10 @@ export default async function AdminOtpDiagnosticsPage() {
   if (!user) redirect("/login");
   if (!isAdminRole(role)) redirect("/dashboard");
 
-  const { config, attempts, summary, health, loadError } = await loadOtpDiagnostics();
+  const [{ config, attempts, summary, health, loadError }, templateReport] = await Promise.all([
+    loadOtpDiagnostics(),
+    loadTemplateStatusReport(),
+  ]);
   const contract = config.payloadContract;
 
   return (
@@ -47,7 +51,7 @@ export default async function AdminOtpDiagnosticsPage() {
       <AdminPageHeader
         eyebrow="Communications"
         title="Signup OTP delivery"
-        description="Why customer signup OTPs are or aren't reaching WhatsApp. AiSensy accepting a send is not the same as WhatsApp delivering it — this screen keeps the two apart."
+        description="Why customer signup OTPs are or aren't reaching WhatsApp. Meta accepting a send is not the same as WhatsApp delivering it — this screen keeps the two apart."
       />
 
       <Card className={`rounded-2xl border p-5 shadow-sm ${SEVERITY_CLASS[health.severity] ?? SEVERITY_CLASS.idle}`}>
@@ -93,21 +97,25 @@ export default async function AdminOtpDiagnosticsPage() {
         <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Configuration</h2>
         <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-            <dt className="text-slate-600">AiSensy API key</dt>
-            <dd><YesNo value={config.apiKeyConfigured} /></dd>
+            <dt className="text-slate-600">Meta access token + phone number ID</dt>
+            <dd><YesNo value={config.accessTokenConfigured} /></dd>
           </div>
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-            <dt className="text-slate-600">Signup campaign</dt>
+            <dt className="text-slate-600">Signup template</dt>
             <dd className="font-mono text-xs font-bold text-slate-900">
-              {config.signupCampaign ?? <span className="text-rose-700">Missing</span>}
+              {config.signupTemplate ? (
+                `${config.signupTemplate} (${config.signupTemplateLanguage})`
+              ) : (
+                <span className="text-rose-700">Missing</span>
+              )}
             </dd>
           </div>
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-            <dt className="text-slate-600">Campaign read from</dt>
-            <dd className="font-mono text-xs text-slate-600">{config.signupCampaignSource ?? "—"}</dd>
+            <dt className="text-slate-600">Template name from</dt>
+            <dd className="font-mono text-xs text-slate-600">{config.signupTemplateSource ?? "—"}</dd>
           </div>
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-            <dt className="text-slate-600">Delivery webhook secret</dt>
+            <dt className="text-slate-600">META_APP_SECRET (webhook signatures)</dt>
             <dd>
               <YesNo
                 value={config.webhookSecretConfigured}
@@ -118,8 +126,7 @@ export default async function AdminOtpDiagnosticsPage() {
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
             <dt className="text-slate-600">Template params sent</dt>
             <dd className="font-mono text-xs font-bold text-slate-900">
-              {contract.templateParamCount}
-              {contract.includesExpiryParam ? " (OTP + expiry)" : " (OTP only)"}
+              {contract.templateParamCount} (OTP only)
             </dd>
           </div>
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
@@ -127,8 +134,8 @@ export default async function AdminOtpDiagnosticsPage() {
             <dd className="font-mono text-xs font-bold text-slate-900">{contract.buttonMode}</dd>
           </div>
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-            <dt className="text-slate-600">Destination format</dt>
-            <dd className="font-mono text-xs font-bold text-slate-900">{contract.destinationFormat}</dd>
+            <dt className="text-slate-600">Phone number ID</dt>
+            <dd className="font-mono text-xs font-bold text-slate-900">{config.phoneNumberId ?? "—"}</dd>
           </div>
           <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
             <dt className="text-slate-600">Environment</dt>
@@ -136,10 +143,37 @@ export default async function AdminOtpDiagnosticsPage() {
           </div>
         </dl>
         <p className="mt-4 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-          These must match your AiSensy campaign&apos;s <span className="font-semibold">Test Campaign</span> cURL
-          exactly. A template that expects one parameter but receives two is accepted by AiSensy and then dropped
-          by WhatsApp — which looks identical to &ldquo;OTP nahi aaya&rdquo;.
+          OTP templates must be Meta <span className="font-semibold">Authentication</span> templates with a
+          copy-code button: the code fills {"{{1}}"} and the button. Name and language must match WhatsApp Manager
+          exactly — <span className="font-mono">en</span> and <span className="font-mono">en_US</span> are different
+          templates to Meta.
         </p>
+      </Card>
+
+      <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Meta templates — live status</h2>
+        {templateReport.ok ? (
+          <ul className="mt-4 divide-y divide-slate-100 text-sm">
+            {templateReport.templates.map((template) => (
+              <li key={template.key} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="font-mono text-xs font-bold text-slate-900">
+                  {template.name} <span className="text-slate-500">({template.language}, {template.category})</span>
+                </span>
+                <span
+                  className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                    template.sendable ? TONE_CLASS.good : template.status === "PENDING" ? TONE_CLASS.warn : TONE_CLASS.bad
+                  }`}
+                >
+                  {template.status === "MISSING" ? "Not created in Meta" : template.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-slate-600">
+            Could not read templates from Meta: {templateReport.error} Set META_WHATSAPP_WABA_ID to see live status.
+          </p>
+        )}
       </Card>
 
       <OtpTestSendPanel webhookConfigured={config.webhookSecretConfigured} />
@@ -159,7 +193,7 @@ export default async function AdminOtpDiagnosticsPage() {
                     <p className="font-mono text-sm font-bold text-slate-900">{attempt.phoneMasked}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {attempt.purpose} · {safeDate(attempt.createdAt)}
-                      {attempt.campaign ? ` · ${attempt.campaign}` : ""}
+                      {attempt.template ? ` · ${attempt.template}` : ""}
                     </p>
                   </div>
                   <span
@@ -175,7 +209,7 @@ export default async function AdminOtpDiagnosticsPage() {
                 )}
                 {attempt.submittedMessageId && (
                   <p className="mt-1.5 break-all font-mono text-[11px] text-slate-400">
-                    AiSensy id: {attempt.submittedMessageId}
+                    WhatsApp message id: {attempt.submittedMessageId}
                   </p>
                 )}
               </li>

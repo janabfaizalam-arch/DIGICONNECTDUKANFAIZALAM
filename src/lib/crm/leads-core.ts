@@ -228,7 +228,8 @@ export function normalizeInboundLeadSource(value: string | null | undefined): Le
     .replace(/[\s-]+/g, "_");
   if (isLeadSource(raw)) return raw;
   if (raw === "web" || raw === "site" || raw === "homepage") return "website";
-  if (raw === "wa" || raw === "aisensy") return "whatsapp";
+  // "aisensy" is how rows from the former WhatsApp provider were labelled.
+  if (raw === "wa" || raw === "aisensy" || raw === "meta") return "whatsapp";
   if (raw === "ap" || raw === "partner" || raw === "agent" || raw === "agency") return "agency_partner";
   if (raw === "counter" || raw === "offline" || raw === "walkin") return "walk_in";
   if (raw === "sheet" || raw === "sheets" || raw === "google_sheets") return "manual";

@@ -1,9 +1,9 @@
 import { generateOtp, hashOtp, verifyOtpHash } from "@/lib/auth/pin";
 import {
-  AISENSY_USER_FACING_SEND_ERROR,
-  sendAisensyOtp,
-  type AisensyOtpPurpose,
-} from "@/lib/whatsapp/aisensy";
+  WHATSAPP_USER_FACING_SEND_ERROR,
+  sendWhatsAppOtp,
+  type WhatsAppOtpPurpose,
+} from "@/lib/whatsapp/client";
 
 export type OtpPurpose = "customer_signup" | "forgot_pin" | "change_phone" | "security_verification";
 
@@ -13,7 +13,7 @@ export type CustomerOtpSendResult =
   | {
       success: true;
       provider: string;
-      campaignName?: string;
+      templateName?: string;
       requestId?: string;
       providerMessageId?: string | null;
     }
@@ -21,7 +21,7 @@ export type CustomerOtpSendResult =
       success: false;
       error: string;
       provider: string;
-      campaignName?: string;
+      templateName?: string;
       code?: string;
       requestId?: string;
       httpStatus?: number | null;
@@ -31,15 +31,15 @@ export type CustomerOtpSendResult =
     };
 
 /**
- * Deliver customer auth OTP via the AiSensy campaign selected for `purpose`.
+ * Deliver customer auth OTP with the Meta Authentication template for `purpose`.
  * Verification remains server-side in auth_otp_requests.
  */
 export async function sendCustomerWhatsappOtp(
   phone: string,
   otp: string,
-  purpose: OtpPurpose | AisensyOtpPurpose,
+  purpose: OtpPurpose | WhatsAppOtpPurpose,
 ): Promise<CustomerOtpSendResult> {
-  const result = await sendAisensyOtp({
+  const result = await sendWhatsAppOtp({
     phone,
     otp,
     purpose,
@@ -49,9 +49,9 @@ export async function sendCustomerWhatsappOtp(
   if (!result.ok) {
     console.error("[whatsapp-otp] send_failed", {
       purpose,
-      provider: "aisensy",
+      provider: result.provider,
       code: result.code,
-      campaign: result.campaignName,
+      template: result.templateName,
       requestId: result.requestId,
       submitted_message_id: result.providerMessageId,
       httpStatus: result.httpStatus,
@@ -59,9 +59,9 @@ export async function sendCustomerWhatsappOtp(
     });
     return {
       success: false,
-      error: result.code === "invalid_phone" ? result.error : AISENSY_USER_FACING_SEND_ERROR,
-      provider: "aisensy",
-      campaignName: result.campaignName,
+      error: result.code === "invalid_phone" ? result.error : WHATSAPP_USER_FACING_SEND_ERROR,
+      provider: result.provider,
+      templateName: result.templateName,
       code: result.code,
       requestId: result.requestId,
       httpStatus: result.httpStatus,
@@ -72,16 +72,16 @@ export async function sendCustomerWhatsappOtp(
 
   console.info("[whatsapp-otp] send_accepted", {
     purpose,
-    provider: "aisensy",
-    campaign: result.campaignName,
+    provider: result.provider,
+    template: result.templateName,
     requestId: result.requestId,
     submitted_message_id: result.providerMessageId,
   });
 
   return {
     success: true,
-    provider: "aisensy",
-    campaignName: result.campaignName,
+    provider: result.provider,
+    templateName: result.templateName,
     requestId: result.requestId,
     providerMessageId: result.providerMessageId,
   };

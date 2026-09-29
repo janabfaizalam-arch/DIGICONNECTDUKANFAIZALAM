@@ -10,7 +10,7 @@ import {
   type AdminWhatsAppAction,
   type ApplicationWhatsAppEvent,
 } from "@/lib/whatsapp/types";
-import { normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import { normalizeWhatsAppDestination } from "@/lib/whatsapp/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -158,7 +158,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const mobile = String(application.customer_mobile ?? details.mobile ?? formData.mobile ?? "").trim();
   const customerName = String(details.name ?? formData.name ?? "Customer").trim() || "Customer";
 
-  const phone = normalizeAisensyDestination(mobile);
+  const phone = normalizeWhatsAppDestination(mobile);
   if (!phone.ok) {
     return NextResponse.json(
       { message: phone.error, code: "invalid_mobile", whatsappOk: false },

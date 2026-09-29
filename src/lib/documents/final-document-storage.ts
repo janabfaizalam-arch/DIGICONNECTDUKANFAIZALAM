@@ -16,9 +16,9 @@ export const ADMIN_FINAL_SIGNED_URL_TTL_SECONDS = Number(
   process.env.ADMIN_FINAL_DOCUMENT_URL_TTL_SECONDS ?? 600, // 10 minutes
 );
 
-/** AiSensy must fetch media after send — keep enough headroom. */
+/** Meta fetches the document after the send — keep enough headroom. */
 export const WHATSAPP_FINAL_SIGNED_URL_TTL_SECONDS = Number(
-  process.env.AISENSY_FINAL_DOCUMENT_URL_TTL_SECONDS ?? 900, // 15 minutes
+  process.env.WHATSAPP_FINAL_DOCUMENT_URL_TTL_SECONDS ?? 900, // 15 minutes
 );
 
 export function sanitizeFinalDocumentFileName(name: string) {

@@ -124,7 +124,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         message: wa.ok
           ? "Final document resent on WhatsApp."
           : "code" in wa && wa.code === "configuration_required"
-            ? "WhatsApp not configured — delivery queued. Configure AiSensy and retry."
+            ? "WhatsApp not configured — delivery queued. Configure Meta WhatsApp and retry."
             : "WhatsApp delivery failed. You can retry.",
         whatsappOk: wa.ok,
         error: wa.ok ? undefined : "error" in wa ? wa.error : undefined,
@@ -379,7 +379,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         ? "Completed and sent on WhatsApp."
         : completeAndSend
           ? whatsappError?.includes("not configured") || whatsappError?.includes("queued")
-            ? "Application completed. WhatsApp queued — configure AiSensy and retry."
+            ? "Application completed. WhatsApp queued — configure Meta WhatsApp and retry."
             : "Application completed. WhatsApp delivery failed — retry available."
           : "Final document uploaded.",
       documentId,

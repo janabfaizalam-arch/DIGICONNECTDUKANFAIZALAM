@@ -6,7 +6,7 @@ import {
   sendApplicationWhatsApp,
   type SendApplicationWhatsAppResult,
 } from "@/lib/whatsapp/application-notify";
-import { normalizeAisensyDestination } from "@/lib/whatsapp/aisensy";
+import { normalizeWhatsAppDestination } from "@/lib/whatsapp/client";
 
 export type SendInvoiceWhatsAppResult =
   | SendApplicationWhatsAppResult
@@ -16,7 +16,7 @@ function firstValidMobile(candidates: unknown[]): string | null {
   for (const candidate of candidates) {
     const value = String(candidate ?? "").trim();
     if (!value || /^0+$/.test(value.replace(/\D/g, ""))) continue;
-    if (normalizeAisensyDestination(value).ok) return value;
+    if (normalizeWhatsAppDestination(value).ok) return value;
   }
   return null;
 }

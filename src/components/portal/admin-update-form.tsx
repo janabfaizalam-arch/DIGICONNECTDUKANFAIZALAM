@@ -197,7 +197,7 @@ export function AdminUpdateForm({
         if (!response.ok) throw new Error(result.message || `${label} failed.`);
         if (result.whatsappOk) success(result.message || `${label} sent.`);
         else if (result.upgradeRequired) toastError(result.message || "Database upgrade required.");
-        else if (result.queued) toastError(result.message || "WhatsApp queued — configure AiSensy and retry.");
+        else if (result.queued) toastError(result.message || "WhatsApp queued — configure Meta WhatsApp and retry.");
         else toastError(result.message || `${label} failed.`);
         setWhatsappNote("");
         setCustomMessage("");

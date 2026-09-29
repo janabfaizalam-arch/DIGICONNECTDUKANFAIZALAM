@@ -421,7 +421,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
         />
       </div>
       <p className="mt-3 text-[11px] text-slate-500">
-        Delivered/read tracking requires an AiSensy webhook (not configured). Current statuses come from send API responses: queued / sent / failed / configuration required.
+        Delivered / read come from the Meta WhatsApp webhook; until it reports, statuses come from the send API response: queued / sent / failed / configuration required.
       </p>
       <div className="mt-4 space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">WhatsApp log</h3>

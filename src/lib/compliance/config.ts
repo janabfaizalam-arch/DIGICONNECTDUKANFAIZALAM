@@ -192,7 +192,7 @@ export const processors: ProcessorInfo[] = [
   { name: "Supabase", purpose: "Database, authentication and document storage", data: "Account, application, payment-record and uploaded-document data" },
   { name: "Vercel", purpose: "Website hosting and delivery", data: "Request data such as IP address, device/browser information, approximate location" },
   { name: "Razorpay", purpose: "Online payment processing", data: "Payment details you enter at checkout, order amount, contact details" },
-  { name: "AiSensy (WhatsApp Business messaging)", purpose: "OTP and application-status messages on WhatsApp", data: "Mobile number, name, message content about your application" },
+  { name: "Meta Platforms (WhatsApp Business Cloud API)", purpose: "OTP and application-status messages on WhatsApp", data: "Mobile number, name, message content about your application" },
   { name: "Google (Workspace / Sheets)", purpose: "Internal office CRM records", data: "Lead and application details handled by our team" },
   { name: "Google (Gemini API)", purpose: "Optional AI photo editing, only when you use that tool", data: "The photo you upload for editing" },
   { name: "Credit bureau data provider (via Unifers)", purpose: "Credit report service, only when you request it", data: "Name, mobile, PAN, date of birth and consent for the credit check" },

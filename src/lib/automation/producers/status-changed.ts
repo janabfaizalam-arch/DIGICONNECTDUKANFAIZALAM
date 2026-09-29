@@ -135,7 +135,7 @@ export async function emitApplicationStatusChangedFromHistory(input: {
         });
       }
     } else if (mode === "queue") {
-      // Rules enqueue from the pending event — process inline; never AiSensy here.
+      // Rules enqueue from the pending event — process inline; never the WhatsApp API here.
       await processAutomationEvents({ batchSize: 5, timeBudgetMs: 8_000 });
       customerNotified = true;
     }
