@@ -10,7 +10,6 @@ import {
   ReceiptText,
   RefreshCw,
   AlertTriangle,
-  Upload,
 } from "lucide-react";
 
 import { isApplicationStatus, type ApplicationStatus } from "@/lib/application-status";
@@ -71,6 +70,8 @@ export function AdminUpdateForm({
   const [activityNote, setActivityNote] = useState("");
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [finalFile, setFinalFile] = useState<File | null>(null);
+  /** Bumped to remount the file input, which nothing else can clear. */
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [whatsappNote, setWhatsappNote] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -96,8 +97,10 @@ export function AdminUpdateForm({
   const isCompleted = String(currentStatus).toLowerCase() === "completed";
   // Saving this would be refused by the status machine, so say so on the panel
   // rather than letting the admin find out from a toast.
+  // A chosen file satisfies the gate in the same request, so the warning is
+  // about having neither one on hand — not about what is already stored.
   const needsFinalDocument =
-    editable && COMPLETION_STATUSES.includes(status) && !hasFinalDocument;
+    editable && COMPLETION_STATUSES.includes(status) && !hasFinalDocument && !finalFile;
   const isCancelled = ["cancelled", "canceled", "rejected", "failed"].includes(
     String(currentStatus).toLowerCase(),
   );
@@ -106,8 +109,8 @@ export function AdminUpdateForm({
     const statusChanged = editable && status !== normalizedInitialStatus;
     const assignedChanged = editable && assigned !== initialAssigned;
     const notesChanged = Boolean(internalNotes.trim() || activityNote.trim());
-    return statusChanged || assignedChanged || notesChanged;
-  }, [editable, status, normalizedInitialStatus, assigned, initialAssigned, internalNotes, activityNote]);
+    return statusChanged || assignedChanged || notesChanged || Boolean(finalFile);
+  }, [editable, status, normalizedInitialStatus, assigned, initialAssigned, internalNotes, activityNote, finalFile]);
 
   const smartAction = resolveSmartNextAction({
     status: currentStatus,
@@ -170,6 +173,8 @@ export function AdminUpdateForm({
         success(result.message || "Application updated.");
         setInternalNotes("");
         setActivityNote("");
+        setFinalFile(null);
+        setFileInputKey((key) => key + 1);
         router.refresh();
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Update failed.");
@@ -236,47 +241,6 @@ export function AdminUpdateForm({
         router.refresh();
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Retry failed.");
-      }
-    });
-  }
-
-  /**
-   * Attach the final document without completing or messaging anyone.
-   *
-   * Completing an application needs a final document on file, but the only
-   * upload control used to live inside the "Complete & Send on WhatsApp"
-   * dialog. So an admin who set the status to Completed and pressed Save was
-   * told to upload a final document with nothing on the panel to upload it
-   * with — and, because that dialog also requires a valid customer mobile, an
-   * application without one could never be completed at all. The endpoint
-   * already supports upload-only through completeAndSend=false; this exposes
-   * it, and the Save Changes path then passes the gate.
-   */
-  function uploadFinalDocumentOnly() {
-    if (isPending) return;
-    if (!finalFile) {
-      toastError("Choose a final document to upload.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.set("completeAndSend", "false");
-    formData.set("title", "Final completed document");
-    formData.set("file", finalFile);
-
-    startTransition(async () => {
-      try {
-        const response = await fetch(`/api/admin/applications/${applicationId}/final-document`, {
-          method: "POST",
-          body: formData,
-        });
-        const result = (await response.json()) as { message?: string };
-        if (!response.ok) throw new Error(result.message || "Upload failed.");
-        success("Final document uploaded. You can mark this completed now.");
-        setFinalFile(null);
-        router.refresh();
-      } catch (error) {
-        toastError(error instanceof Error ? error.message : "Upload failed.");
       }
     });
   }
@@ -435,10 +399,49 @@ export function AdminUpdateForm({
             onChange={(event) => setActivityNote(event.target.value)}
           />
 
+          {/*
+            Named `finalDocument` because PATCH /api/admin/applications/[id]
+            already reads that field, uploads it, and counts it toward the
+            completion gate in the same request. So choosing a file here and
+            pressing Save Changes completes the application in one step; the
+            file simply never had an input to arrive in.
+          */}
+          <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label
+                htmlFor="final-document-upload"
+                className="text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+              >
+                Final document
+              </label>
+              {hasFinalDocument ? (
+                <span className="text-[10px] font-bold text-emerald-700">On file</span>
+              ) : (
+                <span className="text-[10px] font-bold text-amber-700">Not uploaded</span>
+              )}
+            </div>
+
+            <Input
+              key={fileInputKey}
+              id="final-document-upload"
+              name="finalDocument"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              onChange={(event) => setFinalFile(event.target.files?.[0] ?? null)}
+              className="h-9 text-xs"
+            />
+
+            <p className="text-[10px] leading-relaxed text-slate-500">
+              {finalFile
+                ? `${finalFile.name} will be attached when you save.`
+                : "Attached on Save Changes. The customer is not messaged — use Complete & Send on WhatsApp to deliver it."}
+            </p>
+          </div>
+
           {needsFinalDocument ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">
-              This application has no final document yet. Upload one below before saving
-              it as {status.replace(/_/g, " ")}.
+              This application has no final document yet. Choose one above, or saving it
+              as {status.replace(/_/g, " ")} will be refused.
             </p>
           ) : null}
 
@@ -452,48 +455,6 @@ export function AdminUpdateForm({
           </FormSubmitButton>
         </fieldset>
       </form>
-
-      {editable ? (
-        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <label
-              htmlFor="final-document-upload"
-              className="text-[11px] font-semibold uppercase tracking-wide text-slate-500"
-            >
-              Final document
-            </label>
-            {hasFinalDocument ? (
-              <span className="text-[10px] font-bold text-emerald-700">On file</span>
-            ) : (
-              <span className="text-[10px] font-bold text-amber-700">Not uploaded</span>
-            )}
-          </div>
-
-          <Input
-            id="final-document-upload"
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.webp"
-            disabled={isPending}
-            onChange={(event) => setFinalFile(event.target.files?.[0] ?? null)}
-            className="h-9 text-xs"
-          />
-
-          <button
-            type="button"
-            disabled={isPending || !finalFile}
-            onClick={uploadFinalDocumentOnly}
-            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            {hasFinalDocument ? "Replace final document" : "Upload final document"}
-          </button>
-
-          <p className="text-[10px] leading-relaxed text-slate-500">
-            Uploads only — the customer is not messaged and the status is unchanged. Use
-            Complete &amp; Send on WhatsApp to deliver it.
-          </p>
-        </div>
-      ) : null}
 
       <div className="grid gap-1.5">
         <Textarea
