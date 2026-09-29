@@ -225,6 +225,19 @@ insert into storage.objects (bucket_id, name) values
       expect(
         as(customerA, "insert into public.privacy_requests (reference, request_type, requester_name, requester_mobile) values ('PR-X', 'access', 'A', '9876543210')").ok,
       ).toBe(false);
+      // Admins too: every read goes through the server route, which checks
+      // hasAdminAccess and then uses the service role.
+      expect(as(admin, "select count(*) from public.privacy_requests")).toMatchObject({ ok: false });
+    });
+    it("are readable and updatable by the service role the admin screens use", () => {
+      const out = psql(
+        dbUrl(dbName),
+        `begin; set local role service_role;
+         update public.privacy_requests set status = 'in_review' where reference = 'PR-TESTTEST';
+         select count(*) from public.privacy_requests where reference = 'PR-TESTTEST' and status = 'in_review';
+         rollback;`,
+      );
+      expect(out.trim().split("\n").pop()).toBe("1");
     });
     it("reject values outside the allowed set", () => {
       expect(() =>

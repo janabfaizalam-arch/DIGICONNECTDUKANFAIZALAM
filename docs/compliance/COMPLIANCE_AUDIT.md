@@ -112,7 +112,7 @@ reproduce production — production may hold policies or columns the files do no
 
 ## API route audit
 
-All 234 routes inventoried by `scripts/security/api-inventory.mjs` → `API_ROUTE_INVENTORY.md`
+All routes (240 as of 29 September 2026, after the WhatsApp/CRM work in #105, #107 and #108) inventoried by `scripts/security/api-inventory.mjs` → `API_ROUTE_INVENTORY.md`
 (authentication, authorisation, validation, rate limit, service role, flags). Every
 `review` row was read by hand: 0 remain; 11 are deliberate public surfaces with recorded
 reasons; `check` rows are admin-only error echo, logout endpoints, or admin routes that
@@ -180,3 +180,22 @@ select id, email, role from public.profiles where role in ('admin','super_admin'
 - Migration drift: production may differ from the replayed history (see above).
 - Admin-only routes still return raw DB error text.
 - Existing `service_clicks_log` rows contain IP addresses.
+
+## Final verification (29 September 2026, PR #106 merged with main at #108)
+
+- Re-read by hand the routes added since #99: `/api/webhooks/meta-whatsapp` (GET verify
+  token compared in constant time; POST requires a valid `X-Hub-Signature-256` over the raw
+  body, size-capped, rate-limited, idempotent on wamid, no bodies logged),
+  `/api/invoices/[id]/pdf` (owner, admin, or an HMAC-signed 30-day link token; one 404 for
+  every failure), admin renewals / WhatsApp / OTP-diagnostic routes (admin session,
+  rate-limited where they send messages), `/api/cron/renewal-reminders` (`CRON_SECRET`).
+  `/api/webhooks/aisensy` no longer exists.
+- Privacy-request admin screen and API now use `hasAdminAccess` (demoted admins refused even
+  when their token still says admin), like the credit-report and print-job admin paths.
+- `privacy_requests` has RLS enabled and **no policies by design**: anon, customers and
+  admins' own browser sessions are all refused at the database (tested); admin screens read
+  it on the server with the service role after `hasAdminAccess`. An admin SELECT policy
+  would only widen this.
+- Payment, upload, session and CSP/image code unchanged since #99; OTP changes only swap the
+  provider (hashing, expiry and rate limits unchanged). No new secrets in history (one
+  match is a test fixture token).
