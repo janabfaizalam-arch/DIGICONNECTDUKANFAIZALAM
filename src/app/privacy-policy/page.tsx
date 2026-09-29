@@ -67,6 +67,12 @@ const collected: { source: string; data: string; purpose: string; required: stri
     required: "Optional — only when you use the tool",
   },
   {
+    source: "Privacy requests",
+    data: "Request type, name, registered mobile, optional details, and your account id if you were signed in",
+    purpose: "Record, verify and respond to your privacy request",
+    required: "Name, mobile and request type are required; details are optional",
+  },
+  {
     source: "Automatically, when you use the site",
     data: "IP address and device/browser details (in server logs and for security and rate limiting), pages visited, approximate city/region from our hosting provider",
     purpose: "Operate and secure the site, prevent abuse, count visits",

@@ -215,5 +215,6 @@ export const retention = [
   { data: "Enquiries / leads", period: "Until the enquiry is closed plus a reasonable follow-up period." },
   { data: "Smart Print files", period: "Removed automatically by a scheduled clean-up job after the print job is complete." },
   { data: "OTP records", period: "OTPs are stored only as one-way hashes and expire within minutes." },
+  { data: "Privacy requests", period: "Kept as a record of how each request was handled; period to be confirmed (TODO(legal))." },
   { data: "Website visit statistics", period: "Stored without IP addresses; kept in aggregate for reporting." },
 ];

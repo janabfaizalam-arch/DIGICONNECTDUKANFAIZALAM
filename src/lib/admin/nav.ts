@@ -174,6 +174,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         hidden: "Documents arrive on the application itself; there is no separate queue to work.",
       },
       {
+        href: "/admin/privacy-requests",
+        label: "Privacy Requests",
+        description: "Data access, correction and deletion requests, and privacy complaints",
+        icon: ShieldCheck,
+      },
+      {
         href: "/admin/tickets",
         label: "Support Tickets",
         description: "Questions and complaints raised from the portal",
