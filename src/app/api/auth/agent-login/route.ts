@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 import { getAgentAccessStatus } from "@/lib/auth";
 import { PORTAL_CONTEXT_COOKIE, partnerAccessPublicMessage } from "@/lib/auth/memberships";
+import {
+  resolvePartnerContactEmailToAuthEmail,
+  type PartnerLookupClient,
+} from "@/lib/auth/partner-login-identifier";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
@@ -28,11 +32,23 @@ function isValidEmail(value: string) {
  * (e.g. admin promotion overwrite) cannot sign into the wrong Auth user.
  */
 async function resolveAgentEmail(identifier: string) {
-  if (isValidEmail(identifier)) {
-    return identifier.toLowerCase();
-  }
-
   const supabaseAdmin = getSupabaseAdmin();
+
+  if (isValidEmail(identifier)) {
+    const typedEmail = identifier.toLowerCase();
+    if (!supabaseAdmin) return typedEmail;
+
+    // A partner's Auth user usually sits at <username>@agency.rnos.internal,
+    // not at the address they know themselves by. Partners whose Auth user
+    // really is at this address still sign in with it: the lookup only
+    // redirects the ones provisioned behind an internal address, and falls
+    // back to what was typed when it resolves nothing.
+    const authEmail = await resolvePartnerContactEmailToAuthEmail(
+      supabaseAdmin as unknown as PartnerLookupClient,
+      typedEmail,
+    );
+    return authEmail ?? typedEmail;
+  }
 
   if (!supabaseAdmin) {
     console.error("[agent-login] Missing Supabase service role configuration for username lookup.");

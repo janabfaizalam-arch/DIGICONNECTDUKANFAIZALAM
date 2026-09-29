@@ -28,11 +28,21 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const code = searchParams.get("code");
+    const rawCode = searchParams.get("code");
 
-    if (!code) {
+    if (!rawCode) {
       return NextResponse.json({ error: "Payment code is required." }, { status: 400 });
     }
+
+    /*
+      Every code is minted uppercase (`APL-` + A-Z0-9), and the lookup below is
+      a case-sensitive exact match, so a customer whose link reached them
+      lower-cased — a chat client that normalises URLs, an address bar that
+      helpfully lowercases, a code read out and typed back in — was told the
+      link does not exist. Folding the case here costs nothing and cannot widen
+      the match, because uppercasing an uppercase code is a no-op.
+    */
+    const code = rawCode.trim().toUpperCase();
 
     const supabase = getSupabaseAdmin();
     if (!supabase) {

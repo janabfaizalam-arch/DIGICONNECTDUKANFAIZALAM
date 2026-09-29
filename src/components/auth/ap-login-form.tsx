@@ -143,8 +143,10 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
           void submit();
         }}
       >
+        {/* Any of the three resolves to the same account, so partners who only
+            remember one of them are not locked out. */}
         <TextField
-          label="Username"
+          label="Username, mobile or email"
           icon={<UserRound className="h-4 w-4" />}
           value={username}
           disabled={loading}
