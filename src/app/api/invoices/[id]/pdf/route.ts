@@ -24,7 +24,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ message: "Service unavailable." }, { status: 503 });
 
-  const token = new URL(request.url).searchParams.get("t");
+  const url = new URL(request.url);
+  const token = url.searchParams.get("t");
   let allowed = verifyInvoiceLinkToken(id, token);
 
   const { data } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
@@ -46,7 +47,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      // `download=1` (the button on /i/[id]) saves the file — in-app browsers show inline PDFs as blank pages.
+      "Content-Disposition": `${url.searchParams.get("download") === "1" ? "attachment" : "inline"}; filename="${filename}"`,
       "Cache-Control": "private, no-store",
       "X-Robots-Tag": "noindex",
     },

@@ -93,6 +93,25 @@ export async function triggerWhatsAppNotification(
       return { success: false, reason: "mobile_number_missing" };
     }
 
+    // A paid purchase already sent one invoice message ("submitted, paid,
+    // here is your invoice"). The separate submitted / payment-received
+    // messages for the same application would just repeat it.
+    if (mapped === "application_submitted" || mapped === "payment_success") {
+      const { data: invoiceMessages } = await supabase
+        .from("whatsapp_messages")
+        .select("status")
+        .eq("application_id", applicationId)
+        .eq("event_type", "invoice_generated")
+        .limit(5);
+      const covered = (invoiceMessages ?? []).some(
+        (row) => !["failed", "cancelled", "suppressed", "configuration_required"].includes(String(row.status)),
+      );
+      if (covered) {
+        console.info("[whatsapp-automation] skip_covered_by_invoice", { event, applicationId });
+        return { success: true, skipped: "covered_by_invoice" as const };
+      }
+    }
+
     const notes = [
       options.notes,
       options.paymentId ? `Payment ID: ${options.paymentId}` : null,
