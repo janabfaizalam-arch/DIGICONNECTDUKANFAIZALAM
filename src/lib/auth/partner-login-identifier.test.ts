@@ -22,13 +22,16 @@ function fakeClient(tables: {
       return {
         select() {
           return {
-            eq(column: string, value: string) {
+            ilike(column: string, pattern: string) {
+              // Stand-in for SQL ILIKE: case-insensitive, with \_ and \%
+              // escaped back to literals before comparing.
+              const literal = pattern.replace(/\\([\\%_])/g, "$1").toLowerCase();
               const match = (rows: Record<string, unknown>[]) =>
-                rows.filter((row) => String(row[column] ?? "") === value);
+                rows.filter((row) => String(row[column] ?? "").toLowerCase() === literal);
 
               return {
                 in(roleColumn: string, roles: string[]) {
-                  calls.push({ table, column, value, roles });
+                  calls.push({ table, column, value: pattern, roles });
                   return {
                     async limit(count: number) {
                       const rows = match(tables.profiles ?? []).filter((row) =>
@@ -39,7 +42,7 @@ function fakeClient(tables: {
                   };
                 },
                 async limit(count: number) {
-                  calls.push({ table, column, value });
+                  calls.push({ table, column, value: pattern });
                   const source =
                     table === "profiles" ? tables.profiles ?? [] : tables.agency_partners ?? [];
                   return { data: match(source).slice(0, count) };
@@ -111,6 +114,36 @@ describe("resolvePartnerContactEmailToAuthEmail", () => {
     await expect(
       resolvePartnerContactEmailToAuthEmail(client, "  AYAZ@Gmail.COM  "),
     ).resolves.toBe("ayaz@agency.rnos.internal");
+  });
+
+  it("matches an address the admin stored with different casing", async () => {
+    // /api/admin/agency-partners/create wrote body.email verbatim for a long
+    // time, so live rows carry whatever casing was typed into the form.
+    const { client } = fakeClient({
+      profiles: [
+        { id: "user-4", email: "SaloniChristy29@Gmail.com", role: "agency_partner" },
+      ],
+      authUsers: { "user-4": "saloni@agency.rnos.internal" },
+    });
+
+    await expect(
+      resolvePartnerContactEmailToAuthEmail(client, "salonichristy29@gmail.com"),
+    ).resolves.toBe("saloni@agency.rnos.internal");
+  });
+
+  it("escapes LIKE wildcards so an underscore stays a literal", async () => {
+    const { client, calls } = fakeClient({
+      profiles: [{ id: "user-6", email: "first_last@gmail.com", role: "agency_partner" }],
+      authUsers: { "user-6": "firstlast@agency.rnos.internal" },
+    });
+
+    await expect(
+      resolvePartnerContactEmailToAuthEmail(client, "first_last@gmail.com"),
+    ).resolves.toBe("firstlast@agency.rnos.internal");
+
+    // The pattern sent to the database escapes it rather than leaving it as
+    // the single-character wildcard, which would also match firstXlast@…
+    expect(calls[0]?.value).toBe("first\\_last@gmail.com");
   });
 
   it("only searches partner roles, so a customer's address resolves to nothing", async () => {

@@ -31,6 +31,10 @@ export async function POST(request: Request) {
   try {
     const body = schema.parse(await request.json());
     const username = body.username.trim().toLowerCase();
+    // Stored verbatim, this is what login has to match a partner on. Casing an
+    // admin happened to type is not part of the address, so fold it here
+    // rather than leaving every lookup to work around it.
+    const contactEmail = String(body.email ?? "").trim().toLowerCase();
     const partnerType = normalizePartnerType(body.partnerType ?? "business_partner");
     if (!partnerType) {
       return NextResponse.json(
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
       id: userId,
       role: "agency_partner",
       full_name: body.fullName,
-      email: body.email || email,
+      email: contactEmail || email,
       phone: mobile,
       mobile,
       username,
@@ -101,7 +105,7 @@ export async function POST(request: Request) {
         contact_name: body.fullName,
         partner_type: partnerType,
         mobile,
-        email: body.email || "",
+        email: contactEmail || "",
         status: partnerStatus,
         commission_rate: body.commissionType === "percentage" ? body.commissionValue : 0,
         must_change_password: true,
