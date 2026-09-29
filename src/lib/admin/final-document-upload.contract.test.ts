@@ -17,10 +17,16 @@ const readSrc = (rel: string) => readFileSync(join(root, rel), "utf8");
  * Send on WhatsApp" dialog, behind a button that is itself disabled without a
  * valid customer mobile. An application whose customer had no usable number
  * could therefore never be completed by any route at all.
+ *
+ * The first attempt at this added a separate upload button beside the form,
+ * which worked but left completing an application a two-step job that an
+ * admin had to know about. PATCH /api/admin/applications/[id] had accepted a
+ * `finalDocument` file all along — uploading it and counting it toward the
+ * gate in the same request — so the file now rides Save Changes itself.
  */
-describe("final document can be uploaded without completing or messaging", () => {
+describe("final document can be attached from the Save Changes panel", () => {
   const form = readSrc("src/components/portal/admin-update-form.tsx");
-  const route = readSrc("src/app/api/admin/applications/[id]/final-document/route.ts");
+  const route = readSrc("src/app/api/admin/applications/[id]/route.ts");
   const machine = readSrc("src/lib/applications/status-machine.ts");
 
   it("still gates completion on a final document", () => {
@@ -28,34 +34,42 @@ describe("final document can be uploaded without completing or messaging", () =>
     expect(machine).toContain("Upload a final document before marking completed.");
   });
 
-  it("offers an upload control outside the Complete & Send dialog", () => {
-    expect(form).toContain("uploadFinalDocumentOnly");
+  it("offers a file input outside the Complete & Send dialog", () => {
     expect(form).toContain('id="final-document-upload"');
-    expect(form).toMatch(/Upload final document|Replace final document/);
+    expect(form).toContain("Final document");
   });
 
-  it("uploads without completing the application or messaging the customer", () => {
-    expect(form).toMatch(/uploadFinalDocumentOnly[\s\S]{0,600}completeAndSend", "false"/);
+  it("names the input what the Save Changes endpoint reads", () => {
+    // The whole fix: PATCH already looked for this field.
+    expect(form).toContain('name="finalDocument"');
+    expect(route).toContain('formData.get("finalDocument")');
+  });
+
+  it("counts a file being uploaded toward the completion gate", () => {
+    expect(route).toContain("const uploadingFinal = finalDocument instanceof File && finalDocument.size > 0");
+    expect(route).toMatch(/hasFinalDocument = Boolean\(\s*uploadingFinal/);
+  });
+
+  it("enables Save Changes when only a file was chosen", () => {
+    // Without this the one-step flow is unreachable: nothing else is dirty.
+    expect(form).toMatch(/notesChanged \|\| Boolean\(finalFile\)/);
   });
 
   it("does not require a customer mobile to attach the document", () => {
-    // hasValidMobile guards the WhatsApp actions; it must not guard the upload.
-    const uploadFn = form.slice(
-      form.indexOf("function uploadFinalDocumentOnly"),
-      form.indexOf("function completeAndSend"),
-    );
-    expect(uploadFn.length).toBeGreaterThan(0);
-    expect(uploadFn).not.toContain("hasValidMobile");
+    // hasValidMobile guards the WhatsApp actions; it must not guard the form.
+    const formEl = form.slice(form.indexOf("<form onSubmit"), form.indexOf("</form>"));
+    expect(formEl.length).toBeGreaterThan(0);
+    expect(formEl).not.toContain("hasValidMobile");
   });
 
-  it("is served by an endpoint that honours completeAndSend=false", () => {
-    expect(route).toContain('String(formData.get("completeAndSend") ?? "true")');
-    // Status only moves to completed when the caller asked for it.
-    expect(route).toContain('if (completeAndSend) appUpdates.status = "completed"');
-  });
-
-  it("warns on the panel before the save is refused", () => {
+  it("warns only while neither a stored document nor a chosen file exists", () => {
     expect(form).toContain("needsFinalDocument");
-    expect(form).toContain("COMPLETION_STATUSES.includes(status)");
+    expect(form).toMatch(/COMPLETION_STATUSES\.includes\(status\)[\s\S]{0,80}!finalFile/);
+  });
+
+  it("clears the chosen file once it has been saved", () => {
+    // A file input cannot be cleared by state alone, hence the remount key.
+    expect(form).toContain("setFileInputKey");
+    expect(form).toContain("key={fileInputKey}");
   });
 });
