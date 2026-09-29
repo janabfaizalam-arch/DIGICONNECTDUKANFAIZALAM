@@ -12,12 +12,20 @@
  * This resolves the contact address back to the Auth user so either one works.
  * It widens the lookup only: Supabase still checks the password against that
  * Auth user, so nothing here authorises anybody.
+ *
+ * The stored address is matched case-insensitively. `/api/admin/agency-partners/create`
+ * writes `body.email` verbatim — no trim, no case fold — so a partner entered
+ * as "Saloni@Gmail.com" sits in the table exactly like that, and an equality
+ * match on the lower-cased address the partner types finds nothing.
  */
 
 export type PartnerLookupClient = {
   from: (table: string) => {
     select: (columns: string) => {
-      eq: (column: string, value: string) => {
+      ilike: (
+        column: string,
+        pattern: string,
+      ) => {
         in: (
           column: string,
           values: string[],
@@ -35,8 +43,25 @@ export type PartnerLookupClient = {
   };
 };
 
+/** Enough rows to notice an ambiguous address without reading the table. */
+const CANDIDATE_LIMIT = 10;
+
 export function isValidLoginEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+/**
+ * `_` and `%` are LIKE wildcards and both are legal in a local-part, so an
+ * address containing one would otherwise match addresses that are not it.
+ * Escaping them keeps `ilike` to a plain case-insensitive comparison; the
+ * exact check below is what the result is actually decided on either way.
+ */
+function likePattern(email: string) {
+  return email.replace(/([\\%_])/g, "\\$1");
+}
+
+function matchesExactly(row: Record<string, unknown>, email: string) {
+  return String(row?.email ?? "").trim().toLowerCase() === email;
 }
 
 /**
@@ -53,16 +78,18 @@ export async function resolvePartnerContactEmailToAuthEmail(
   const email = contactEmail.trim().toLowerCase();
   if (!isValidLoginEmail(email)) return null;
 
+  const pattern = likePattern(email);
   const userIds = new Set<string>();
 
   const { data: profileRows } = await client
     .from("profiles")
-    .select("id")
-    .eq("email", email)
+    .select("id, email")
+    .ilike("email", pattern)
     .in("role", ["agent", "agency_partner"])
-    .limit(2);
+    .limit(CANDIDATE_LIMIT);
 
   for (const row of profileRows ?? []) {
+    if (!matchesExactly(row, email)) continue;
     const id = String(row?.id ?? "").trim();
     if (id) userIds.add(id);
   }
@@ -71,11 +98,12 @@ export async function resolvePartnerContactEmailToAuthEmail(
   // their profile row can carry the internal address instead.
   const { data: partnerRows } = await client
     .from("agency_partners")
-    .select("user_id")
-    .eq("email", email)
-    .limit(2);
+    .select("user_id, email")
+    .ilike("email", pattern)
+    .limit(CANDIDATE_LIMIT);
 
   for (const row of partnerRows ?? []) {
+    if (!matchesExactly(row, email)) continue;
     const id = String(row?.user_id ?? "").trim();
     if (id) userIds.add(id);
   }
