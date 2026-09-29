@@ -118,19 +118,21 @@ export function buildApplicationTemplateParams(
       );
       break;
     case "invoice_generated":
-      // The invoice link is the point of this message, so it is never truncated away.
+      // Sent once per paid purchase and stands in for the "submitted" and
+      // "payment received" messages, so it says all three. The invoice link
+      // is the point of it and is never truncated away.
       detail = [
         truncate(
           [
-            ctx.invoiceNumber ? `Invoice ${ctx.invoiceNumber}` : "Your invoice is ready",
-            amount ? `Amount ${amount}` : null,
+            amount ? `Application submit ho gayi, payment ${amount} mil gaya` : "Application submit ho gayi",
+            ctx.invoiceNumber ? `Invoice ${ctx.invoiceNumber}` : null,
             ctx.notes || null,
           ]
             .filter(Boolean)
             .join(" · "),
           140,
         ),
-        ctx.invoiceLink?.trim() ? `Download: ${ctx.invoiceLink.trim()}` : null,
+        ctx.invoiceLink?.trim() ? `Invoice dekhein: ${ctx.invoiceLink.trim()}` : null,
       ]
         .filter(Boolean)
         .join(" · ");

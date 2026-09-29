@@ -51,7 +51,7 @@ describe("template contracts", () => {
   });
 
   it("carries the invoice number, amount and full download link", () => {
-    const link = `https://www.rnos.in/api/invoices/abc/pdf?t=1790000000.${"s".repeat(43)}`;
+    const link = `https://www.rnos.in/i/abc?t=1790000000.${"s".repeat(43)}`;
     const params = buildApplicationTemplateParams("invoice_generated", {
       customerName: "Riya",
       serviceName: "PAN Card",
@@ -60,7 +60,9 @@ describe("template contracts", () => {
       invoiceNumber: "INV-2026-0042",
       invoiceLink: link,
     });
-    expect(params[3]).toBe(`Invoice INV-2026-0042 · Amount ₹199 · Download: ${link}`);
+    expect(params[3]).toBe(
+      `Application submit ho gayi, payment ₹199 mil gaya · Invoice INV-2026-0042 · Invoice dekhein: ${link}`,
+    );
     expect(getApplicationTemplateName("invoice_generated")).toBe("application_status");
   });
 

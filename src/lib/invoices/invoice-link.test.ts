@@ -37,7 +37,7 @@ describe("invoice WhatsApp link", () => {
 
   it("links the PDF when it can sign, the login page when it cannot", () => {
     expect(getInvoiceShareUrl(id, { env, now })).toMatch(
-      new RegExp(`^https://www\\.rnos\\.in/api/invoices/${id}/pdf\\?t=\\d+\\.`),
+      new RegExp(`^https://www\\.rnos\\.in/i/${id}\\?t=\\d+\\.`),
     );
     const noSecret = { NEXT_PUBLIC_SITE_URL: "https://www.rnos.in" } as unknown as NodeJS.ProcessEnv;
     expect(getInvoiceShareUrl(id, { env: noSecret, now })).toBe(`https://www.rnos.in/invoice/${id}`);

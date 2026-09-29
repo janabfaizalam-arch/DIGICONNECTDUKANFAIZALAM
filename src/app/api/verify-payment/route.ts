@@ -385,15 +385,6 @@ export async function POST(request: Request) {
     await scheduleCrmSyncMany(applicationIds, "payment_updated");
 
     try {
-      await triggerWhatsAppNotification("payment_success", primaryApplication.id, {
-        paymentId: paymentId
-      });
-      await scheduleCrmSync(primaryApplication.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
-    } catch (waError) {
-      console.error("WhatsApp trigger error for payment verification:", waError);
-    }
-
-    try {
       // Auto-create invoice from the application's own customer snapshot
       // (these columns are part of the select above — do not fall back to
       // placeholders while real values exist on the row).
@@ -416,6 +407,18 @@ export async function POST(request: Request) {
       });
     } catch (invoiceErr) {
       console.error("[razorpay/verify-payment] Invoice creation failed:", invoiceErr);
+    }
+
+    // After the invoice: its WhatsApp message already says "paid, here is
+    // your invoice", and triggerWhatsAppNotification skips payment_success
+    // when that message went out. Sends payment_success only if it did not.
+    try {
+      await triggerWhatsAppNotification("payment_success", primaryApplication.id, {
+        paymentId: paymentId
+      });
+      await scheduleCrmSync(primaryApplication.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
+    } catch (waError) {
+      console.error("WhatsApp trigger error for payment verification:", waError);
     }
 
     } else {

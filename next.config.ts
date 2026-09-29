@@ -123,7 +123,9 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   // Keep native Argon2 out of the bundler graph for App Router server code.
-  serverExternalPackages: ["argon2"],
+  // pdfkit reads its font metrics (Helvetica.afm …) from its own folder at
+  // runtime; bundled, those paths break and every PDF route fails.
+  serverExternalPackages: ["argon2", "pdfkit"],
   images: {
     // An explicit list, never "**" — see src/lib/security/image-hosts.ts.
     remotePatterns: remoteImagePatterns(),

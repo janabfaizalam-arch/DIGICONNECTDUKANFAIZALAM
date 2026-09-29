@@ -4,9 +4,10 @@ import { createHmac, timingSafeEqual } from "crypto";
  * The invoice link a customer gets on WhatsApp.
  *
  * `/invoice/[id]` needs a login, and a customer who bought over the counter
- * may never have set a password. So the WhatsApp link points at the PDF with
- * a signed token instead: it opens without a login, only for that invoice,
- * and stops working after `INVOICE_LINK_TTL_DAYS`.
+ * may never have set a password. So the WhatsApp link points at the public
+ * invoice page (/i/[id], with a PDF download) carrying a signed token
+ * instead: it opens without a login, only for that invoice, and stops
+ * working after `INVOICE_LINK_TTL_DAYS`.
  *
  * Signed with AUTH_HMAC_SECRET under its own label, so a token minted here
  * can never be replayed as anything else that secret signs. Without the
@@ -57,7 +58,11 @@ function siteUrl(env: NodeJS.ProcessEnv = process.env): string {
   return (env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in").replace(/\/$/, "");
 }
 
-/** Public PDF link when a token can be minted, otherwise the login-gated invoice page. */
+/**
+ * Link for WhatsApp: the public invoice page (/i/{id}) when a token can be
+ * minted — an HTML page, because WhatsApp's in-app browser shows a PDF as a
+ * blank page — otherwise the login-gated invoice page.
+ */
 export function getInvoiceShareUrl(
   invoiceId: string,
   options: { now?: number; env?: NodeJS.ProcessEnv } = {},
@@ -65,5 +70,5 @@ export function getInvoiceShareUrl(
   const token = createInvoiceLinkToken(invoiceId, options);
   const base = siteUrl(options.env);
   if (!token) return `${base}/invoice/${invoiceId}`;
-  return `${base}/api/invoices/${invoiceId}/pdf?t=${encodeURIComponent(token)}`;
+  return `${base}/i/${invoiceId}?t=${encodeURIComponent(token)}`;
 }
