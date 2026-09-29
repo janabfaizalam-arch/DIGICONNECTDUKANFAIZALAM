@@ -6,7 +6,7 @@ import { PrivacyRequestActions } from "@/components/admin/privacy-request-action
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { safeDate } from "@/lib/admin-format";
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import {
   PRIVACY_REQUEST_STATUS_LABELS,
   PRIVACY_REQUEST_TYPE_LABELS,
@@ -58,9 +58,8 @@ function ageInDays(createdAt: string) {
 
 export default async function AdminPrivacyRequestsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const user = await getCurrentUser();
-  const role = await getCurrentUserRole(user);
   if (!user) redirect("/admin/login");
-  if (!isAdminRole(role)) redirect("/admin");
+  if (!(await hasAdminAccess(user))) redirect("/admin");
 
   const { status } = await searchParams;
   const active = FILTERS.some((f) => f.value === status) ? (status as (typeof FILTERS)[number]["value"]) : "open";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
+import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import {
   canTransitionPrivacyRequest,
   completionBlocker,
@@ -31,8 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!rate.ok) return rateLimitResponse(rate.retryAfter);
 
   const user = await getCurrentUser();
-  const role = await getCurrentUserRole(user);
-  if (!user || !isAdminRole(role)) return jsonError("Admin access required.", 403);
+  if (!user || !(await hasAdminAccess(user))) return jsonError("Admin access required.", 403);
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return jsonError("Request not found.", 404);

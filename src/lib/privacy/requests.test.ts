@@ -129,6 +129,13 @@ describe("PATCH /api/admin/privacy-requests/[id]", () => {
     expect((await patch({ status: "completed" })).status).toBe(403);
   });
 
+  it("refuses a demoted admin even when their token still says admin", async () => {
+    seed();
+    sessionUser = { id: ADMIN, email: "dgcntdkn@gmail.com", app_metadata: { role: "admin" }, user_metadata: {} } as User;
+    expect((await patch({ verificationStatus: "verified" })).status).toBe(403);
+    expect(db.tables.privacy_requests[0].verification_status).toBe("unverified");
+  });
+
   it("refuses to complete a request whose requester has not been verified", async () => {
     seed();
     as(ADMIN);
