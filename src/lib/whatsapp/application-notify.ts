@@ -431,7 +431,16 @@ async function sendApplicationWhatsAppDirect(
         queued: true,
       };
     }
-    console.error("[whatsapp-app] log_upsert_failed", { code: "log_upsert_failed", correlationId: requestId });
+    // The message is still sent, but without an outbox row it is invisible in
+    // /admin/communications and its idempotency is lost — so say exactly why.
+    // Postgres error codes/messages carry no message content or numbers.
+    console.error("[whatsapp-app] log_upsert_failed", {
+      code: "log_upsert_failed",
+      dbCode: upsertError.code ?? null,
+      dbMessage: String(upsertError.message ?? "").slice(0, 200),
+      eventType: input.eventType,
+      correlationId: requestId,
+    });
   }
 
   const messageId = row?.id ?? existing?.id ?? null;
