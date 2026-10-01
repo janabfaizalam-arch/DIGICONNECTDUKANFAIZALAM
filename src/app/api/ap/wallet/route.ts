@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { dispatchPayout } from "@/lib/payouts/dispatch";
 import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getAgencyPartnerByUserId, getAPWalletBalance } from "@/lib/ap-data";
@@ -90,10 +91,28 @@ export async function POST(request: Request) {
       return jsonError(debitResult.error || "Failed to initiate payout request due to insufficient balance.", 400);
     }
 
+    /*
+      The wallet is already debited and the payout row exists, so the partner's
+      request is safe whatever happens next. Sending it to RazorpayX is the
+      part that can fail, and a failure here must not fail the request: the
+      payout simply stays in the admin queue to be sent by hand, exactly as it
+      did before automatic payouts existed.
+    */
+    const dispatch = await dispatchPayout({
+      payoutId: String(debitResult.payoutId),
+      agencyPartnerId: ap.id,
+      amount,
+    });
+
+    const automatic = dispatch.ok && dispatch.dispatched;
+
     return NextResponse.json({
-      message: "Payout request submitted successfully.",
+      message: automatic
+        ? "Payout request submitted. Bank transfer start ho gaya hai."
+        : "Payout request submitted successfully.",
       payoutId: debitResult.payoutId,
       balance: debitResult.newBalance,
+      automatic,
     });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Error requesting payout.", 500);
