@@ -16,6 +16,19 @@ import type {
   APWalletEntry,
   PartnerAnnouncement,
 } from "@/lib/ap-types";
+import {
+  buildPartnerRollups,
+  rollupFor,
+  type PartnerApplicationRow,
+  type PartnerCommissionRow,
+} from "@/lib/ap/partner-rollups";
+
+/** The chainable shape `readAllRows` needs; the client's own generics do not
+ *  survive being passed through a refine callback. */
+type PostgrestFilterBuilder = {
+  not: (column: string, operator: string, value: unknown) => PostgrestFilterBuilder;
+  range: (from: number, to: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+};
 
 function safeNumber(value: unknown, fallback = 0) {
   const n = Number(value);
@@ -64,48 +77,89 @@ export async function getAgencyPartnerById(apId: string): Promise<AgencyPartner 
 
 // ── List all APs (admin) ───────────────────────────────────────────────────
 
+/**
+ * Read every row of a table in pages.
+ *
+ * PostgREST caps an unbounded select at `db.max_rows` (1000 by default) and
+ * returns the truncated set without an error. The partner rollups below are
+ * counts over whole tables, so a silent truncation does not degrade them — it
+ * makes them wrong, which is how the list came to understate totals for any
+ * instance past a thousand applications.
+ *
+ * `maxRows` is a stop so a runaway table cannot exhaust memory; reaching it is
+ * logged rather than thrown, because a partner list with slightly stale counts
+ * is better than an admin screen that will not load.
+ */
+async function readAllRows<T>(
+  table: string,
+  columns: string,
+  refine: (query: PostgrestFilterBuilder) => PostgrestFilterBuilder = (query) => query,
+  { pageSize = 1000, maxRows = 100_000 }: { pageSize?: number; maxRows?: number } = {},
+): Promise<T[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const rows: T[] = [];
+
+  for (let from = 0; from < maxRows; from += pageSize) {
+    const { data, error } = await refine(
+      supabase.from(table).select(columns) as unknown as PostgrestFilterBuilder,
+    ).range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`[ap-data] ${table} page read failed`, { from, error: error.message });
+      break;
+    }
+
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+
+    // A short page is the last page.
+    if (page.length < pageSize) return rows;
+  }
+
+  console.warn(`[ap-data] ${table} hit the ${maxRows} row ceiling; rollups may be partial.`);
+  return rows;
+}
+
 export async function getAdminAgencyPartnerList(): Promise<APListItem[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
-  const [partnersResult, appsResult, commissionsResult] = await Promise.all([
+  const [partnersResult, applications, commissions] = await Promise.all([
     supabase
       .from("agency_partners")
       .select("*, agency_partner_tiers(*)")
       .order("created_at", { ascending: false }),
-    supabase
-      .from("applications")
-      .select("id, agency_partner_id, status")
-      .not("agency_partner_id", "is", null),
-    supabase
-      .from("ap_commissions")
-      .select("agency_partner_id, calculated_amount, status"),
+    readAllRows<PartnerApplicationRow>(
+      "applications",
+      "id, agency_partner_id, status",
+      (query) => query.not("agency_partner_id", "is", null),
+    ),
+    readAllRows<PartnerCommissionRow>(
+      "ap_commissions",
+      "agency_partner_id, calculated_amount, status",
+    ),
   ]);
 
   if (partnersResult.error) return [];
 
-  const apps = (appsResult.data ?? []) as { id: string; agency_partner_id: string; status: string }[];
-  const commissions = (commissionsResult.data ?? []) as { agency_partner_id: string; calculated_amount: number; status: string }[];
+  // One pass over each table instead of one pass per partner.
+  const rollups = buildPartnerRollups(applications, commissions);
 
   return ((partnersResult.data ?? []) as Record<string, unknown>[]).map((row) => {
     const apId = String(row.id);
-    const partnerApps = apps.filter((a) => a.agency_partner_id === apId);
-    const partnerCommissions = commissions.filter((c) => c.agency_partner_id === apId);
-
+    const rollup = rollupFor(rollups, apId);
     const tier = row.agency_partner_tiers as AgencyPartner["tier"] ?? null;
 
     return {
       ...row,
       tier,
-      totalApplications: partnerApps.length,
-      pendingApplications: partnerApps.filter((a) => !["completed", "rejected", "cancelled"].includes(a.status)).length,
-      completedApplications: partnerApps.filter((a) => a.status === "completed").length,
-      pendingCommission: partnerCommissions
-        .filter((c) => ["pending", "earned", "approved"].includes(c.status))
-        .reduce((t, c) => t + safeNumber(c.calculated_amount), 0),
-      totalPaidCommission: partnerCommissions
-        .filter((c) => c.status === "paid")
-        .reduce((t, c) => t + safeNumber(c.calculated_amount), 0),
+      totalApplications: rollup.totalApplications,
+      pendingApplications: rollup.pendingApplications,
+      completedApplications: rollup.completedApplications,
+      pendingCommission: rollup.pendingCommission,
+      totalPaidCommission: rollup.totalPaidCommission,
       customerCount: 0, // calculated separately if needed
     } as unknown as APListItem;
   });
