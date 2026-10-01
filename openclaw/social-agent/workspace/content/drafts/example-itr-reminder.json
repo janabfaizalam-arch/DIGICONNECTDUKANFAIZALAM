@@ -1,0 +1,14 @@
+{
+  "id": "example-itr-reminder",
+  "path": "/services/itr-filing",
+  "campaign": "example-itr-reminder",
+  "title": "ITR filing help at DigiConnect Dukan",
+  "description": "Documents you need and common mistakes to avoid when filing your Income Tax Return.",
+  "hashtags": ["ITR", "IncomeTax", "DigiConnectDukan", "TaxFiling"],
+  "posts": {
+    "facebook": "ITR file karna hai par documents ka confusion hai? 🤔\n\nYe 4 cheezein ready rakhiye:\n1. PAN aur Aadhaar (linked)\n2. Form 16 / salary slips\n3. Bank statement\n4. Investment proofs (80C, 80D)\n\nSabse common galti: bank account pre-validate na karna — refund atak jaata hai.\n\nHum aapka ITR sahi tarike se file karne mein madad karte hain. Details website par 👇",
+    "instagram": "ITR documents checklist ✅\n\n• PAN + Aadhaar (linked)\n• Form 16\n• Bank statement\n• Investment proofs\n\nRefund chahiye? Bank account pre-validate zaroor karein.\n\nMadad chahiye? Link bio mein / website par jaayein.",
+    "x": "ITR ke liye 4 documents: PAN-Aadhaar, Form 16, bank statement, investment proofs. Bank account pre-validate karna mat bhooliye!",
+    "telegram": "📋 ITR checklist: PAN-Aadhaar (linked), Form 16, bank statement, investment proofs. Refund ke liye bank account pre-validate zaroor karein."
+  }
+}
