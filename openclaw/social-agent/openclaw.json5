@@ -1,0 +1,44 @@
+// OpenClaw config for the DigiConnect Dukan social media agent ("Dukan Dost").
+//
+// Merge these keys into ~/.openclaw/openclaw.json on the host (Agent37 instance).
+// No secrets live here: every ${VAR} is read from the environment
+// (~/.openclaw/.env or the host's env settings). See env.example.
+{
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspace",
+      // The workspace files are provided by this repo; don't seed defaults over them.
+      skipBootstrap: true,
+      userTimezone: "Asia/Kolkata",
+
+      // Keep the agent focused on its job.
+      skills: ["social-publish", "social-writer", "engagement-inbox", "content-calendar"],
+
+      // Posters. Reuses the website's Gemini key.
+      imageGenerationModel: {
+        primary: "google/gemini-3.1-flash-image-preview",
+        timeoutMs: 180000,
+      },
+
+      heartbeat: {
+        every: "2h",
+        target: "last",
+        lightContext: true,
+        activeHours: { start: "08:00", end: "21:00" },
+      },
+    },
+  },
+
+  // The owner's private chat with the agent. Use a NEW bot from @BotFather for this,
+  // not the bot that posts to the public channel.
+  channels: {
+    telegram: {
+      enabled: true,
+      botToken: "${DUKAN_DOST_TELEGRAM_TOKEN}",
+      // Only the owner may talk to the agent. Numeric Telegram user id.
+      dmPolicy: "allowlist",
+      allowFrom: ["${OWNER_TELEGRAM_ID}"],
+      groups: { "*": { requireMention: true } },
+    },
+  },
+}
