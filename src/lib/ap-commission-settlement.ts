@@ -43,6 +43,8 @@ export type SettlementResult =
       commissionId?: string;
       /** False when the wallet already held this credit — a repeat completion. */
       walletChanged: boolean;
+      /** True when the amount was over the limit and is waiting for approval. */
+      heldForApproval?: boolean;
     }
   | { ok: false; error: string };
 
@@ -59,6 +61,32 @@ type ApplicationRow = {
 
 const APPLICATION_COLUMNS =
   "id, agency_partner_id, service_id, agent_service_id, service_slug, service_name, amount, agent_payout_snapshot";
+
+/**
+ * The most a completion will pay into a wallet without an admin looking at it.
+ *
+ * Auto-crediting on completion is what makes the partner panel feel immediate,
+ * and for the ordinary ₹30-₹300 commission that is plainly right. A commission
+ * far above that is nearly always a misconfigured rule or a percentage applied
+ * to the wrong amount, and by the time anybody notices the partner may have
+ * withdrawn it. So the small ones go straight through and the large ones wait:
+ * the commission is recorded as `pending` and shows up in
+ * `/admin/ap-commissions` to be approved by hand, which is the same screen and
+ * the same button as before.
+ *
+ * Raise it with `AP_AUTO_CREDIT_MAX`. Zero means hold everything for approval;
+ * a negative or unparseable value falls back to the default rather than
+ * disabling the guard, because a typo should not quietly open the gate.
+ */
+const DEFAULT_AUTO_CREDIT_MAX = 2000;
+
+export function autoCreditLimit(source: NodeJS.ProcessEnv = process.env): number {
+  const raw = (source.AP_AUTO_CREDIT_MAX ?? "").trim();
+  if (!raw) return DEFAULT_AUTO_CREDIT_MAX;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_AUTO_CREDIT_MAX;
+  return parsed;
+}
 
 function safeNumber(value: unknown, fallback = 0): number {
   const n = Number(value);
@@ -238,6 +266,21 @@ export async function settleCommissionForCompletedApplication(params: {
     .eq("application_id", params.applicationId)
     .maybeSingle();
 
+  /* Over the limit: record it, but leave the money where it is. The row still
+     appears in the partner's panel and in /admin/ap-commissions, so nothing is
+     lost -- it is one approval away instead of already spent. */
+  const limit = autoCreditLimit();
+  const heldForApproval = resolved.amount > limit;
+
+  if (heldForApproval) {
+    console.info("[ap-settlement] held_for_approval", {
+      applicationId: params.applicationId,
+      agencyPartnerId: partnerId,
+      amount: resolved.amount,
+      limit,
+    });
+  }
+
   let commissionId = existing?.id ? String(existing.id) : null;
 
   if (!commissionId) {
@@ -255,9 +298,9 @@ export async function settleCommissionForCompletedApplication(params: {
         commission_rate: resolved.commissionRate,
         calculated_amount: resolved.amount,
         rule_snapshot: resolved.ruleSnapshot,
-        status: "approved",
-        approved_by: params.actorId,
-        approved_at: new Date().toISOString(),
+        status: heldForApproval ? "pending" : "approved",
+        approved_by: heldForApproval ? null : params.actorId,
+        approved_at: heldForApproval ? null : new Date().toISOString(),
       })
       .select("id")
       .maybeSingle();
@@ -276,9 +319,11 @@ export async function settleCommissionForCompletedApplication(params: {
         await logCommissionStatusChange(
           commissionId,
           null,
-          "approved",
+          heldForApproval ? "pending" : "approved",
           params.actorId,
-          "Auto-approved on application completion",
+          heldForApproval
+            ? `Held for approval on completion — ₹${resolved.amount} is over the ₹${limit} auto-credit limit`
+            : "Auto-approved on application completion",
         );
       } catch (auditError) {
         console.error("[ap-settlement] audit_log_failed", auditError);
@@ -296,6 +341,22 @@ export async function settleCommissionForCompletedApplication(params: {
 
   if (!commissionId) {
     return { ok: false, error: "Commission could not be recorded." };
+  }
+
+  if (heldForApproval) {
+    /* Deliberately before `creditCommission`: the whole point of the limit is
+       that this amount does not reach the wallet until somebody approves it.
+       Approving it later goes through the ordinary admin route, which credits
+       the wallet keyed on this same commission id. */
+    return {
+      ok: true,
+      settled: false,
+      amount: resolved.amount,
+      source: resolved.source,
+      commissionId,
+      walletChanged: false,
+      heldForApproval: true,
+    };
   }
 
   // Credit before marking approved, so a wallet failure leaves the commission

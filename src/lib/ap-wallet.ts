@@ -361,7 +361,30 @@ export async function reverseEntry(params: {
   originalEntryId: string;
   description: string;
   createdBy: string;
-}): Promise<WalletResult> {
+}): Promise<WalletResult & { deduped?: boolean }> {
+  /*
+    Idempotent per reversed entry, for the same reason `creditCommission` is.
+
+    This one is the refund path for a rejected or failed payout, and it used to
+    append unconditionally. That mattered because rejecting a payout wrote the
+    status `rejected`, which the `ap_payouts` check constraint did not allow:
+    the refund landed, the status update then failed, and the payout stayed at
+    `requested` so the admin pressed reject again -- crediting the partner a
+    second, third and fourth time for one withdrawal. The constraint is fixed
+    in 20261001090000, and this makes the retry harmless whatever else goes
+    wrong after the money moves.
+  */
+  const existing = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "reversal",
+    params.originalEntryId,
+    "reversal",
+  );
+
+  if (existing) {
+    return { ok: true, entryId: existing.id, deduped: true };
+  }
+
   return appendLedgerEntry({
     agencyPartnerId: params.agencyPartnerId,
     entryType: "reversal",
