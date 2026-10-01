@@ -27,6 +27,10 @@ describe("partner commissions admin nav", () => {
 
 describe("partner commissions page", () => {
   const page = readSrc("src/app/admin/ap-commissions/page.tsx");
+  // The table moved into its own client component when this screen adopted
+  // AdminDataTable: column definitions carry render functions, which cannot
+  // cross the server boundary. The row markup assertions follow it there.
+  const table = readSrc("src/app/admin/ap-commissions/ap-commissions-table.tsx");
   const actions = readSrc("src/components/admin/ap-commission-actions.tsx");
   const data = readSrc("src/lib/admin/ap-commissions-data.ts");
 
@@ -57,7 +61,10 @@ describe("partner commissions page", () => {
     // assumed settled from its status alone.
     expect(data).toContain("creditedToWallet");
     expect(data).toContain('eq("entry_type", "commission_credit")');
-    expect(page).toContain("Not in wallet");
+    expect(table).toContain("Not in wallet");
+    // The warning is for a commission the ledger has not credited, so it must
+    // stay gated on creditedToWallet rather than on the status.
+    expect(table).toContain("row.creditedToWallet");
   });
 
   it("summarises pending, approved and paid money", () => {
