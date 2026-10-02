@@ -268,14 +268,64 @@ export function toApplicationRow(
 }
 
 /**
+ * The character classes Supabase is configured to require.
+ *
+ * Each ambiguous character is left out on purpose: the admin reads this down
+ * a phone line, and `I`/`l`/`1` and `O`/`0` are the pairs that get written
+ * down wrong. The symbols are the ones with an unmistakable spoken name.
+ */
+const PASSWORD_CLASSES = [
+  "abcdefghijkmnopqrstuvwxyz",
+  "ABCDEFGHJKLMNPQRSTUVWXYZ",
+  "23456789",
+  "!@#$%*+=?",
+] as const;
+
+const PASSWORD_LENGTH = 12;
+
+/** An index into `max` with no modulo bias. */
+function randomIndex(max: number): number {
+  // 256 % max of the byte values would otherwise map to a low index twice.
+  const limit = Math.floor(256 / max) * max;
+  const byte = new Uint8Array(1);
+  for (;;) {
+    crypto.getRandomValues(byte);
+    if (byte[0] < limit) return byte[0] % max;
+  }
+}
+
+/**
  * A temporary password for a newly approved partner.
  *
  * Shown to the reviewing admin once so they can pass it on, and never stored
  * by us — Supabase owns the credential from the moment it is set.
+ *
+ * One character is taken from every class before the rest are filled in, and
+ * that is the whole point rather than a nicety. This drew from a single
+ * alphabet with no symbols in it, so a Supabase project configured to require
+ * one rejected every password it made and no partner application could be
+ * approved at all — the admin only saw "Partner credentials could not be
+ * registered."
+ *
+ * Adding symbols to that alphabet would not have been enough. Digits were
+ * eight characters in fifty-six, so about one draw in six contained no digit,
+ * and roughly one approval in six would have gone on failing for a reason
+ * nobody would have reproduced on the first try.
  */
 export function generateTemporaryPassword(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+  const pool = PASSWORD_CLASSES.join("");
+  const characters = PASSWORD_CLASSES.map((set) => set[randomIndex(set.length)]);
+
+  while (characters.length < PASSWORD_LENGTH) {
+    characters.push(pool[randomIndex(pool.length)]);
+  }
+
+  // Shuffle, or the first four characters would always be one per class in a
+  // fixed order, which is a quarter of the password given away.
+  for (let i = characters.length - 1; i > 0; i -= 1) {
+    const j = randomIndex(i + 1);
+    [characters[i], characters[j]] = [characters[j], characters[i]];
+  }
+
+  return characters.join("");
 }
