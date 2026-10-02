@@ -44,6 +44,20 @@ definitions (`primary` columns become the heading, the rest labelled rows), so
 pages no longer maintain a second layout. `renderMobileCard` remains for the
 screen where the generated card reads worse.
 
+On desktop the table collapses rather than clips. The admin content area is
+narrower than the viewport — AdminShell's sidebar takes 280px — so tables that
+declare more column width than that are `table-fixed` and obey it, pushing
+Actions behind a horizontal scrollbar. `splitColumnsByWidth` sums the declared
+widths against the measured area and moves columns into an expandable per-row
+details panel until they fit. Nothing is dropped: every value stays reachable
+at every width.
+
+The decision is width-driven on purpose. Having each page declare a `hideBelow`
+pixel threshold only moves the guess — the commissions table's always-on
+columns alone declared 740px against the 652px it gets at a 1024px viewport, so
+no threshold could have saved it. `hideBelow` is kept as a readability floor
+and as the order in which columns give way; the fitting is arithmetic.
+
 **A7 — Partner list performance,** and a correctness bug found alongside it
 (section 4).
 
@@ -63,7 +77,7 @@ in this phase.
 | `src/components/admin/primitives/states.tsx` | `TableLoadingState`, `LoadingState`, `ErrorState`, `NoResultsState` |
 | `src/components/admin/primitives/controls.tsx` | `SearchInput`, `FilterSelect`, `FilterBar`, `ActionMenu`, `ConfirmDialog`, `useQueryParam(s)` |
 | `src/components/admin/primitives/admin-data-table.tsx` | `AdminDataTable` |
-| `src/lib/admin/table-paging.ts` | `resolvePageWindow`, `csvField`, `toCsv` |
+| `src/lib/admin/table-paging.ts` | `resolvePageWindow`, `csvField`, `toCsv`, `splitColumnsByWidth`, `parseWidthPx` |
 | `src/lib/ap/partner-rollups.ts` | `buildPartnerRollups`, `rollupFor` |
 
 ### Primitives from the brief that were **not** built
@@ -137,12 +151,12 @@ is not observable.
 
 ## 5. Tests
 
-**+30 tests, 0 removed, 0 weakened.**
+**+46 tests, 0 removed, 0 weakened.**
 
 | Suite | Tests | Covers |
 |---|---|---|
 | `src/lib/ap/partner-rollups.test.ts` | 12 | Every counting rule the original expressed, null/blank partner keys, NaN amounts, and a 20,000-row linearity check |
-| `src/lib/admin/table-paging.test.ts` | 18 | Page clamping (past-the-end, zero, negative, fractional, non-numeric), slice bounds reassembling the dataset exactly once, CSV quoting of commas, quotes, newlines and leading zeros, BOM |
+| `src/lib/admin/table-paging.test.ts` | 34 | Page clamping (past-the-end, zero, negative, fractional, non-numeric), slice bounds reassembling the dataset exactly once, CSV quoting of commas, quotes, newlines and leading zeros, BOM, and the responsive column split: that the kept columns always fit the area, that no column is lost from both lists, that a wider area never shows less, and that Actions survives every width |
 
 The vitest environment is `node` with no DOM, so React components cannot be
 rendered. The parts of `AdminDataTable` that carry real bug risk — paging
@@ -163,7 +177,7 @@ on the status.
 |---|---|
 | `tsc --noEmit` | clean |
 | `next lint` | clean on every changed file (2 pre-existing warnings remain in unrelated files) |
-| `vitest run` | **1,894 passed**, 22 skipped, 0 failed |
+| `vitest run` | **1,910 passed**, 22 skipped, 0 failed |
 | `next build` | compiled successfully |
 
 Token output was verified in the built CSS rather than assumed:
@@ -209,23 +223,7 @@ needs a different token.
 
 ---
 
-## 9. Security items pending
-
-- **Live Supabase RLS verification is pending** because database access is
-  unavailable from the current environment. 12 of 126 migrations enable RLS and
-  11 create policies, but tables may have been secured through the Supabase
-  dashboard, which migration files cannot show. **RLS is not marked verified.**
-- **Authorization idioms remain three.** Unifying them is Phase C, as the brief
-  directs. No route's guard was changed in this phase.
-- No authorization regression: no route handler, guard or capability check was
-  touched. The only server-side change is `getAdminAgencyPartnerList`'s read
-  strategy.
-- One genuine hardening landed as a side effect: the partner table no longer
-  ships Aadhaar, PAN and bank details into the client payload.
-
----
-
-## 10. Recommended Phase B
+## 9. Recommended Phase B
 
 1. **Migrate the remaining 25 tables, one PR each**, highest traffic first:
    Applications → Customers → Leads → Payments. Applications already has
@@ -242,10 +240,51 @@ needs a different token.
 
 ---
 
-## Not verified
+## 10. Visual QA — what was and was not verified
 
-Visual QA (A10) was **not** performed at 1440px, 1280px, tablet and mobile.
-Egress is blocked from this environment, so the preview deployment could not be
-opened. The layouts are built on the shared primitives and the build is clean,
-but **no rendered page was looked at**. This needs a human pass on the preview
-before merge.
+**Verified: local rendered QA.** The built production bundle (`next build` +
+`next start`) was driven with Chromium through Playwright, rendering the real
+`AdminShell`, the real page components and the built CSS — not a mock and not a
+static reading of the source. Measured at **1440, 1280, 1024, 834, 768, 390 and
+375px**:
+
+| | 1440 | 1280 | 1024 | 834 / 768 / 390 / 375 |
+|---|---|---|---|---|
+| Sidebar | 280 | 280 | 280 | 0 |
+| Partner table area | 1068 | 908 | 652 | card layout |
+| Table overflows its area | no | no | no | n/a |
+| Any cell clipped | no | no | no | no |
+| Page scrolls horizontally | no | no | no | no |
+| Text under 10px | none | none | none | none |
+
+Both tables on the screen were measured, not just the first. Expanding a row
+was then checked at 1440, 1280 and 1024: every column is reachable either in
+the table or in the details panel — **nothing missing at any width** — and the
+sticky Actions cell is inside the scroll container in every case.
+
+**The 1280px arithmetic**, which is the case that prompted this: viewport 1280
+− sidebar 280 = 1000 content, − page padding = 952 card, − card padding = 908
+table area. The partner table declared 1176px of columns against that 908, so
+it clipped. It now keeps 908px of columns and moves Email, Tier & type and
+Applications into the details panel.
+
+**Not verified: Vercel.** Egress from this environment blocks both `rnos.in`
+and `*.vercel.app`, so **no deployed page was opened**. What can be said about
+Vercel is limited to build and check status. This is not a claim of visual QA
+on the preview deployment.
+
+---
+
+## 11. Security items pending
+
+- **Live Supabase RLS verification is pending** because database access is
+  unavailable from the current environment. 12 of 126 migrations enable RLS and
+  11 create policies, but tables may have been secured through the Supabase
+  dashboard, which migration files cannot show. **RLS is not marked verified.**
+- **Authorization idioms remain three.** Unifying them is Phase C, as the brief
+  directs. No route's guard was changed in this phase.
+- No authorization regression: no route handler, guard or capability check was
+  touched. The only server-side change is `getAdminAgencyPartnerList`'s read
+  strategy.
+- One genuine hardening landed as a side effect: the partner table no longer
+  ships Aadhaar, PAN and bank details into the client payload.
