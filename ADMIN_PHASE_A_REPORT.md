@@ -209,17 +209,27 @@ needs a different token.
 ## 8. Remaining tables
 
 **25 admin files still hand-roll a table** (excluding the shared component).
+Counted as files under `src/app/admin` or `src/components/admin` rendering
+either a raw `<table>` or the `ui/table` wrapper — the wrapper matters, since
+`admin/commissions` uses it and a `<table` grep alone misses it.
 
-**Four still pair a table with a hand-written mobile card layout:**
-`admin/commissions`, `admin/ap-commissions`'s sibling ledger,
-`components/admin/lead-operations-workspace.tsx`,
-`components/admin/admin-leads-list.tsx`.
+**Three still pair a table with a hand-written mobile card layout:**
+`src/app/admin/commissions/page.tsx`,
+`src/components/admin/lead-operations-workspace.tsx`,
+`src/components/admin/admin-leads-list.tsx`.
 
-> **Correction to the audit.** `ADMIN_2026_AUDIT_AND_PLAN.md` said six files
-> carried a duplicated mobile layout. That count came from a naive `lg:hidden`
-> grep that also matched `admin-shell.tsx`'s responsive navigation, which is
-> not a table layout at all. The real figure was five; two are now migrated,
-> leaving four (one is a different file than the original list implied).
+> **Two corrections.** `ADMIN_2026_AUDIT_AND_PLAN.md` said six files carried a
+> duplicated mobile layout; that came from a naive `lg:hidden` grep that also
+> matched `admin-shell.tsx`'s responsive navigation, which is not a table
+> layout at all. An earlier draft of this report then said four remained and
+> named `admin/ap-commissions`'s sibling ledger among them — that file is
+> `src/components/ap/commissions-ledger-client.tsx`, which belongs to the **AP
+> partner panel**, not the admin panel, and is out of this phase's scope. The
+> admin figure is **three**.
+
+The AP partner panel carries a further **7** hand-rolled tables, **5** of them
+with a duplicated mobile layout. They are noted here only so the number is not
+later mistaken for admin work; the brief scopes Phase B to the admin panel.
 
 ---
 
