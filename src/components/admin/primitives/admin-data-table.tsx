@@ -32,17 +32,23 @@
  */
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Columns3, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ChevronsUpDown, Columns3, Download } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { resolvePageWindow, toCsv } from "@/lib/admin/table-paging";
+import { resolvePageWindow, splitColumnsByWidth, toCsv } from "@/lib/admin/table-paging";
+
+/** The expander cell is `w-9`, the selection cell `w-10`. */
+const EXPANDER_COLUMN_PX = 36;
+const SELECT_COLUMN_PX = 40;
 import { DisclosureChevron, useQueryParam, useQueryParams } from "./controls";
 import { ErrorState, NoResultsState, TableLoadingState } from "./states";
 
@@ -75,6 +81,23 @@ export type AdminColumn<Row> = {
    * wrap is always worse than the column being a little wider.
    */
   nowrap?: boolean;
+  /**
+   * Drop this column out of the table when the table's own area is narrower
+   * than this many pixels, and show its value in the row's details panel
+   * instead.
+   *
+   * Measured against the table container, not the viewport, because the admin
+   * sidebar takes 280px: a 1440px window leaves roughly 1068px here, and a
+   * 1280px window roughly 908px. Sizing against the viewport would promise
+   * space the table does not have.
+   *
+   * Nothing is lost when a column drops — every hidden value appears in the
+   * expander, which is the difference between a responsive table and one that
+   * quietly stops showing data.
+   */
+  hideBelow?: number;
+  /** Pinned to the right edge so it stays reachable while the table scrolls. */
+  sticky?: boolean;
   /** Plain value for CSV. Without it the column is skipped on export, because
    *  a React node has no sensible text form. */
   exportValue?: (row: Row) => string | number | null | undefined;
@@ -148,6 +171,15 @@ export function AdminDataTable<Row>({
   const headingId = useId();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  /**
+   * The table's own width, watched rather than read once: the sidebar
+   * collapses, the window resizes, and a column set chosen at first paint
+   * would be wrong immediately afterwards. 0 until measured, which renders the
+   * widest set first and settles on the first observer callback.
+   */
+  const [areaWidth, setAreaWidth] = useState(0);
+  const areaRef = useRef<HTMLDivElement | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [columnsOpen, setColumnsOpen] = useState(false);
 
@@ -188,10 +220,43 @@ export function AdminDataTable<Row>({
     });
   }, [rows, getRowId]);
 
-  const visibleColumns = useMemo(
+  // Which columns are drawn, and which move to the row's details panel.
+  // The rule lives in table-paging so it can be tested without a DOM.
+  //
+  // The expander and selection cells carry no column definition but take real
+  // space, so they are reserved here. The expander is reserved unconditionally:
+  // whether it appears depends on whether anything collapsed, and leaving it
+  // out of the sum lets the table choose a layout that its own expander then
+  // overflows.
+  const controlsWidth = EXPANDER_COLUMN_PX + (selectable ? SELECT_COLUMN_PX : 0);
+
+  const { visible: visibleColumns, collapsed: collapsedColumns } = useMemo(
+    () => splitColumnsByWidth(columns, hidden, areaWidth, controlsWidth),
+    [columns, hidden, areaWidth, controlsWidth],
+  );
+
+  // The mobile card lists everything the admin chose, since it has the room.
+  const chosenColumns = useMemo(
     () => columns.filter((column) => column.priority === "primary" || !hidden.has(column.id)),
     [columns, hidden],
   );
+
+  const expandable = collapsedColumns.length > 0;
+
+  useEffect(() => {
+    const node = areaRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      setAreaWidth(Math.round(entry.contentRect.width));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // A row cannot stay open on a width where it has nothing extra to show.
+  useEffect(() => {
+    if (!expandable) setExpanded(new Set());
+  }, [expandable]);
 
   const selectedRows = useMemo(
     () => rows.filter((row) => selected.has(getRowId(row))),
@@ -344,7 +409,7 @@ export function AdminDataTable<Row>({
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden touch-pan-y overflow-x-auto lg:block">
+            <div ref={areaRef} className="hidden touch-pan-y overflow-x-auto lg:block">
               {/*
                   table-fixed so the column widths below are obeyed rather than
                   treated as hints. With the browser's automatic layout a single
@@ -356,6 +421,12 @@ export function AdminDataTable<Row>({
                 {caption ? <caption className="sr-only">{caption}</caption> : null}
                 <thead>
                   <tr className="border-b border-ds-border bg-ds-surface-sunken">
+                    {expandable ? (
+                      <th scope="col" className="w-9 px-2 py-2.5">
+                        <span className="sr-only">Expand row</span>
+                      </th>
+                    ) : null}
+
                     {selectable ? (
                       <th scope="col" className="w-10 px-3 py-2.5">
                         <input
@@ -383,9 +454,12 @@ export function AdminDataTable<Row>({
                           }
                           style={column.width ? { width: column.width } : undefined}
                           className={cn(
-                            "px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-ds-text-muted",
+                            "bg-ds-surface-sunken px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-ds-text-muted",
                             column.align === "right" && "text-right",
                             column.nowrap && "whitespace-nowrap",
+                            // Pinned so the row's controls stay reachable while
+                            // the rest of the table scrolls under them.
+                            column.sticky && "sticky right-0 z-10 shadow-[-8px_0_8px_-8px_rgba(16,33,61,0.12)]",
                           )}
                         >
                           {column.sortable ? (
@@ -420,16 +494,42 @@ export function AdminDataTable<Row>({
                 <tbody>
                   {rows.map((row) => {
                     const id = getRowId(row);
+                    const open = expanded.has(id);
                     return (
+                      <Fragment key={id}>
                       <tr
-                        key={id}
                         onClick={onRowClick ? () => onRowClick(row) : undefined}
                         className={cn(
-                          "border-b border-ds-border last:border-0",
+                          "border-b border-ds-border",
                           selected.has(id) ? "bg-ds-primary-soft" : "hover:bg-ds-surface-sunken",
                           onRowClick && "cursor-pointer",
+                          open && "border-b-0",
                         )}
                       >
+                        {expandable ? (
+                          <td className="px-2 py-3" onClick={(event) => event.stopPropagation()}>
+                            <button
+                              type="button"
+                              aria-expanded={open}
+                              aria-label={open ? "Hide further details" : "Show further details"}
+                              onClick={() =>
+                                setExpanded((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(id)) next.delete(id);
+                                  else next.add(id);
+                                  return next;
+                                })
+                              }
+                              className="flex h-6 w-6 items-center justify-center rounded-ds-sm text-ds-text-muted hover:bg-ds-surface-sunken hover:text-ds-text-primary focus:outline-none focus:ring-2 focus:ring-ds-focus/30"
+                            >
+                              <ChevronRight
+                                className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-90")}
+                                aria-hidden="true"
+                              />
+                            </button>
+                          </td>
+                        ) : null}
+
                         {selectable ? (
                           <td className="px-3 py-3" onClick={(event) => event.stopPropagation()}>
                             <input
@@ -455,6 +555,11 @@ export function AdminDataTable<Row>({
                               "px-3 py-3 text-[13px] text-ds-text-secondary",
                               column.align === "right" && "text-right",
                               column.nowrap && "whitespace-nowrap",
+                              column.sticky &&
+                                cn(
+                                  "sticky right-0 z-10 shadow-[-8px_0_8px_-8px_rgba(16,33,61,0.12)]",
+                                  selected.has(id) ? "bg-ds-primary-soft" : "bg-ds-surface",
+                                ),
                               column.className,
                             )}
                           >
@@ -462,6 +567,34 @@ export function AdminDataTable<Row>({
                           </td>
                         ))}
                       </tr>
+
+                      {/*
+                        Everything the current width could not fit. Rendered
+                        only when opened, so a table of fifty rows does not
+                        also render fifty hidden panels.
+                      */}
+                      {expandable && open ? (
+                        <tr className="border-b border-ds-border bg-ds-surface-sunken">
+                          <td
+                            colSpan={visibleColumns.length + (selectable ? 1 : 0) + 1}
+                            className="px-4 py-3"
+                          >
+                            <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                              {collapsedColumns.map((column) => (
+                                <div key={column.id} className="min-w-0">
+                                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-ds-text-muted">
+                                    {column.header}
+                                  </dt>
+                                  <dd className="mt-0.5 text-[13px] text-ds-text-secondary">
+                                    {column.cell(row)}
+                                  </dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </td>
+                        </tr>
+                      ) : null}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -477,8 +610,10 @@ export function AdminDataTable<Row>({
                 const id = getRowId(row);
                 if (renderMobileCard) return <div key={id}>{renderMobileCard(row)}</div>;
 
-                const primary = visibleColumns.filter((column) => column.priority === "primary");
-                const rest = visibleColumns.filter((column) => column.priority !== "primary");
+                // The card lists every column the admin chose; hideBelow is a
+                // table-layout concern and does not apply here.
+                const primary = chosenColumns.filter((column) => column.priority === "primary");
+                const rest = chosenColumns.filter((column) => column.priority !== "primary");
 
                 return (
                   <div

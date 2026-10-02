@@ -42,11 +42,13 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
     id: "partner",
     header: "Partner",
     priority: "primary",
-    width: "14rem",
+    width: "11rem",
     exportValue: (row) => row.partnerName,
     cell: (row) => (
       <div className="min-w-0">
-        <span className="font-bold text-ds-text-primary">{row.partnerName}</span>
+        <span className="block truncate font-bold text-ds-text-primary" title={row.partnerName}>
+          {row.partnerName}
+        </span>
         {row.partnerCode ? (
           <span className="mt-0.5 block font-mono text-xs font-semibold text-ds-text-muted">
             {row.partnerCode}
@@ -58,7 +60,8 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "service",
     header: "Service",
-    width: "12rem",
+    hideBelow: 620,
+    width: "10rem",
     exportValue: (row) => row.serviceName ?? "",
     cell: (row) => (
       <span className="block truncate font-medium text-ds-text-secondary" title={row.serviceName ?? undefined}>
@@ -69,8 +72,9 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "sale",
     header: "Sale",
+    hideBelow: 680,
     align: "right",
-    width: "8rem",
+    width: "7rem",
     nowrap: true,
     exportValue: (row) => row.saleAmount,
     cell: (row) => <span className="font-mono text-ds-text-secondary">{safeCurrency(row.saleAmount)}</span>,
@@ -79,7 +83,7 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
     id: "amount",
     header: "Commission",
     align: "right",
-    width: "9rem",
+    width: "7.5rem",
     nowrap: true,
     exportValue: (row) => row.amount,
     cell: (row) => (
@@ -89,7 +93,7 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "status",
     header: "Status",
-    width: "9rem",
+    width: "7rem",
     exportValue: (row) => row.status,
     cell: (row) => (
       <div>
@@ -115,7 +119,8 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "earned",
     header: "Earned",
-    width: "8rem",
+    hideBelow: 740,
+    width: "7rem",
     nowrap: true,
     exportValue: (row) => row.createdAt,
     cell: (row) => <span className="font-mono text-xs text-ds-text-muted">{safeDate(row.createdAt)}</span>,
@@ -123,7 +128,8 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "actions",
     header: "Actions",
-    width: "12rem",
+    sticky: true,
+    width: "9.5rem",
     nowrap: true,
     cell: (row) => (
       <ApCommissionActions

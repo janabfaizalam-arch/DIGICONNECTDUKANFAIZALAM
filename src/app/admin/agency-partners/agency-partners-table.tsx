@@ -93,6 +93,7 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "mobile",
     header: "Mobile",
+    hideBelow: 600,
     width: "6.5rem",
     nowrap: true,
     exportValue: (row) => row.mobile,
@@ -101,6 +102,7 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "email",
     header: "Email",
+    hideBelow: 760,
     width: "8rem",
     exportValue: (row) => row.email,
     cell: (row) => (
@@ -112,6 +114,7 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "code",
     header: "Partner code",
+    hideBelow: 520,
     sortable: true,
     width: "10rem",
     nowrap: true,
@@ -123,6 +126,7 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "tier",
     header: "Tier & type",
+    hideBelow: 700,
     width: "7rem",
     exportValue: (row) => `${row.tierName ?? "AP Starter"} / ${partnerTypeDisplayLabel(row.partnerType)}`,
     cell: (row) => (
@@ -137,6 +141,7 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "applications",
     header: "Applications",
+    hideBelow: 640,
     sortable: true,
     width: "6rem",
     exportValue: (row) => row.totalApplications,
@@ -159,16 +164,20 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "kyc",
     header: "KYC",
+    hideBelow: 560,
     width: "5.5rem",
     exportValue: (row) => row.kycStatus,
     cell: (row) => <StatusPill value={row.kycStatus} kind="kyc" />,
   },
   {
     id: "settlement",
-    header: "Pending settlement",
+    // "Pending settlement" does not fit the column at any desktop width and was
+    // rendering as "Pending settleme". The stat card above already reads
+    // "Awaiting settlement", so the shorter header is not ambiguous here.
+    header: "Settlement",
     align: "right",
     sortable: true,
-    width: "6.5rem",
+    width: "7rem",
     nowrap: true,
     exportValue: (row) => row.pendingCommission,
     cell: (row) => <span className="font-bold">{safeCurrency(row.pendingCommission)}</span>,
@@ -176,8 +185,11 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "actions",
     header: "Actions",
+    sticky: true,
     align: "right",
-    width: "8rem",
+    // Wide enough for the View/Verify button, which is nowrap and was being
+    // clipped by two pixels at 1280px.
+    width: "8.5rem",
     nowrap: true,
     cell: (row) => (
       <Link
