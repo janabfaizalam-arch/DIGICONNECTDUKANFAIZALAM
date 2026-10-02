@@ -3,8 +3,7 @@
  * Financial totals: prefer service_role RPCs; fallback to paginated sums (never .limit(10000)).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase filter builders are chained dynamically */
-
+import { getPaymentTotals } from "@/lib/admin/payment-totals";
 import { formatDelta, formatInr, formatIstDayLabel, istParts, istMidnightUtcIso, type AdminDateRange } from "@/lib/admin/date-range";
 import { resolveCrmNotificationDeliveryModeDetailed } from "@/lib/automation/delivery-mode";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -158,54 +157,21 @@ async function sumPaginated(
   return total;
 }
 
+/**
+ * Delegates to the shared implementation.
+ *
+ * The RPC call and its paginated fallback used to live here, which left
+ * `/admin/payments` free to grow a second, wrong version of the same figures.
+ * One implementation now backs both.
+ */
 async function paymentTotals(fromIso: string | null, toIso: string | null) {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return { verifiedSum: 0, pendingCount: 0, failedCount: 0, verifiedCount: 0 };
-
-  const { data, error } = await supabase.rpc("admin_dashboard_payment_totals", {
-    p_from: fromIso,
-    p_to: toIso,
-  });
-
-  if (!error && data) {
-    const row = data as Record<string, unknown>;
-    return {
-      verifiedSum: Number(row.verified_sum_rupees ?? 0),
-      pendingCount: Number(row.pending_count ?? 0),
-      failedCount: Number(row.failed_count ?? 0),
-      verifiedCount: Number(row.verified_count ?? 0),
-    };
-  }
-
-  if (error) console.warn("[admin-dashboard] payment RPC unavailable; paginated fallback", error.message);
-
-  const applyRange = (q: any) => {
-    let next = q;
-    if (fromIso) next = next.gte("created_at", fromIso);
-    if (toIso) next = next.lt("created_at", toIso);
-    return next;
+  const totals = await getPaymentTotals({ fromIso, toIso });
+  return {
+    verifiedSum: totals.verifiedSum,
+    pendingCount: totals.pendingCount,
+    failedCount: totals.failedCount,
+    verifiedCount: totals.verifiedCount,
   };
-
-  const verifiedSum = await sumPaginated(
-    (from, to) => applyRange(supabase.from("payments").select("real_payment_amount, amount, status").in("status", ["verified", "paid"]).range(from, to)),
-    (row) => Number(row.real_payment_amount ?? row.amount ?? 0),
-    "payments.verified",
-  );
-
-  const pendingCount = await headCount(
-    applyRange(supabase.from("payments").select("id", { count: "exact", head: true }).in("status", ["pending", "unpaid"])),
-    "payments.pending",
-  );
-  const failedCount = await headCount(
-    applyRange(supabase.from("payments").select("id", { count: "exact", head: true }).in("status", ["failed", "cancelled", "canceled"])),
-    "payments.failed",
-  );
-  const verifiedCount = await headCount(
-    applyRange(supabase.from("payments").select("id", { count: "exact", head: true }).in("status", ["verified", "paid"])),
-    "payments.verifiedCount",
-  );
-
-  return { verifiedSum, pendingCount, failedCount, verifiedCount };
 }
 
 async function walletLiability() {
