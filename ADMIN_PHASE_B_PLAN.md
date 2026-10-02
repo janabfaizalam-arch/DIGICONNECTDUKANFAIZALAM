@@ -115,15 +115,46 @@ Chosen for business impact and for being small enough to review properly:
 
 ### Methodology, so the number is auditable
 
-A statement chain is counted as unbounded when it runs `.from(table).select(…)`
-with **no** `.range()`, `.limit()`, `.single()`, `.maybeSingle()`, `count:` or
-`head: true` anywhere in the same chain, across `src/lib`, `src/app/api` and
-`src/app/admin`, excluding tests.
+The count comes from `scripts/admin-inventory.mjs` rather than from an ad-hoc
+grep, so it can be re-run and the "X fixed" claims can be checked.
 
-**That gives 149 unbounded list reads, not ~38.** The earlier "~38" in the
-Phase A report came from a narrower scan and was an undercount; I am correcting
-it rather than repeating it. Of those 149, **65 read tables that carry money or
-drive counts**, which is where the plan concentrates.
+A query is counted as unbounded when it runs `.from(table).select(…)` with
+**none** of `.range()`, `.limit()`, `.single()`, `.maybeSingle()`, `count:` or
+`head: true` applied to it, across `src/lib`, `src/app/api` and `src/app/admin`,
+excluding tests.
+
+**The number is 212.**
+
+> **Correction.** This section first said 149, and the Phase A report before it
+> said ~38. Both were undercounts, and the reason is worth recording because it
+> is the same class of mistake the plan is about.
+>
+> The ad-hoc scan treated a query as ending at the next `;`. Several queries
+> inside one `Promise.all([...])` share a single terminating `;`, so they were
+> merged into one chain — and a `.limit()` on any one of them then marked the
+> whole group bounded. `/admin/wallet` and `/admin/dashboard` both build their
+> reads that way, which is exactly where the money figures live. A second,
+> smaller blind spot flagged a query built in one function and `.range()`-ed at
+> the call site as unbounded.
+>
+> | Figure | Source | Status |
+> |---|---|---|
+> | ~38 | Phase A report | undercount |
+> | 149 | first draft of this plan | undercount (`Promise.all` masking) |
+> | **212** | `scripts/admin-inventory.mjs` | the measured number |
+
+Of those 212, **40 read tables that carry money** and **71 drive a count shown
+in the admin UI**. That is where the plan concentrates.
+
+### A second defect class the count does not capture
+
+An unbounded read is one way to get a wrong total. The other is a **correctly
+bounded** read used as one: `/admin/payments` computed "Verified Amount" from
+`.limit(300)`, and `/admin/wallet` computed "Total Cashback Issued" from
+`.limit(200)`. Those queries are not unbounded and never appear in the 212 — the
+figures were simply never totals. Both render a plausible number and raise
+nothing, so the sweep has to look for mislabelled aggregates as well as
+unbounded reads.
 
 ### Correctness-critical — can silently produce wrong numbers
 
