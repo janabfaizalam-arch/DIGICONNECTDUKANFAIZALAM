@@ -42,6 +42,7 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
     id: "partner",
     header: "Partner",
     priority: "primary",
+    width: "14rem",
     exportValue: (row) => row.partnerName,
     cell: (row) => (
       <div className="min-w-0">
@@ -57,15 +58,20 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "service",
     header: "Service",
+    width: "12rem",
     exportValue: (row) => row.serviceName ?? "",
     cell: (row) => (
-      <span className="font-medium text-ds-text-secondary">{row.serviceName ?? "Not available"}</span>
+      <span className="block truncate font-medium text-ds-text-secondary" title={row.serviceName ?? undefined}>
+        {row.serviceName ?? "Not available"}
+      </span>
     ),
   },
   {
     id: "sale",
     header: "Sale",
     align: "right",
+    width: "8rem",
+    nowrap: true,
     exportValue: (row) => row.saleAmount,
     cell: (row) => <span className="font-mono text-ds-text-secondary">{safeCurrency(row.saleAmount)}</span>,
   },
@@ -73,6 +79,8 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
     id: "amount",
     header: "Commission",
     align: "right",
+    width: "9rem",
+    nowrap: true,
     exportValue: (row) => row.amount,
     cell: (row) => (
       <span className="font-mono font-bold text-ds-text-primary">{safeCurrency(row.amount)}</span>
@@ -81,6 +89,7 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "status",
     header: "Status",
+    width: "9rem",
     exportValue: (row) => row.status,
     cell: (row) => (
       <div>
@@ -106,12 +115,16 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
   {
     id: "earned",
     header: "Earned",
+    width: "8rem",
+    nowrap: true,
     exportValue: (row) => row.createdAt,
     cell: (row) => <span className="font-mono text-xs text-ds-text-muted">{safeDate(row.createdAt)}</span>,
   },
   {
     id: "actions",
     header: "Actions",
+    width: "12rem",
+    nowrap: true,
     cell: (row) => (
       <ApCommissionActions
         commissionId={row.id}

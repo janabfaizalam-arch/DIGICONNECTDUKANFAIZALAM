@@ -61,6 +61,20 @@ export type AdminColumn<Row> = {
    */
   priority?: "primary" | "secondary";
   align?: "left" | "right";
+  /**
+   * A CSS width for the column, e.g. "12rem".
+   *
+   * Without one the browser distributes space by content, which lets a long
+   * email claim half the table and squeezes a partner code into three wrapped
+   * lines. Widths are hints — the table still scrolls if the sum exceeds the
+   * viewport — but they stop one long cell from deforming every other column.
+   */
+  width?: string;
+  /**
+   * Keep the cell on one line. For codes, amounts, dates and counts, where a
+   * wrap is always worse than the column being a little wider.
+   */
+  nowrap?: boolean;
   /** Plain value for CSV. Without it the column is skipped on export, because
    *  a React node has no sensible text form. */
   exportValue?: (row: Row) => string | number | null | undefined;
@@ -331,7 +345,14 @@ export function AdminDataTable<Row>({
           <>
             {/* Desktop table */}
             <div className="hidden touch-pan-y overflow-x-auto lg:block">
-              <table className="w-full border-collapse text-left">
+              {/*
+                  table-fixed so the column widths below are obeyed rather than
+                  treated as hints. With the browser's automatic layout a single
+                  long email claims whatever space it wants and squeezes a
+                  partner code into three wrapped lines, which is what this
+                  table did before the widths were added.
+                */}
+              <table className="w-full table-fixed border-collapse text-left">
                 {caption ? <caption className="sr-only">{caption}</caption> : null}
                 <thead>
                   <tr className="border-b border-ds-border bg-ds-surface-sunken">
@@ -360,9 +381,11 @@ export function AdminDataTable<Row>({
                           aria-sort={
                             active ? (sortDirection === "asc" ? "ascending" : "descending") : "none"
                           }
+                          style={column.width ? { width: column.width } : undefined}
                           className={cn(
                             "px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-ds-text-muted",
                             column.align === "right" && "text-right",
+                            column.nowrap && "whitespace-nowrap",
                           )}
                         >
                           {column.sortable ? (
@@ -427,9 +450,11 @@ export function AdminDataTable<Row>({
                         {visibleColumns.map((column) => (
                           <td
                             key={column.id}
+                            style={column.width ? { width: column.width } : undefined}
                             className={cn(
                               "px-3 py-3 text-[13px] text-ds-text-secondary",
                               column.align === "right" && "text-right",
+                              column.nowrap && "whitespace-nowrap",
                               column.className,
                             )}
                           >

@@ -74,13 +74,18 @@ const columns: AdminColumn<PartnerTableRow>[] = [
     id: "partner",
     header: "Partner details",
     priority: "primary",
+    width: "10.5rem",
     sortable: true,
     exportValue: (row) => row.fullName,
     cell: (row) => (
       <div className="min-w-0">
-        <div className="font-bold text-ds-text-primary">{row.fullName}</div>
+        <div className="truncate font-bold text-ds-text-primary" title={row.fullName}>
+          {row.fullName}
+        </div>
         {row.businessName ? (
-          <div className="truncate text-xs text-ds-text-muted">{row.businessName}</div>
+          <div className="truncate text-xs text-ds-text-muted" title={row.businessName}>
+            {row.businessName}
+          </div>
         ) : null}
       </div>
     ),
@@ -88,19 +93,28 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "mobile",
     header: "Mobile",
+    width: "6.5rem",
+    nowrap: true,
     exportValue: (row) => row.mobile,
     cell: (row) => <span className="font-mono text-xs">{row.mobile || "—"}</span>,
   },
   {
     id: "email",
     header: "Email",
+    width: "8rem",
     exportValue: (row) => row.email,
-    cell: (row) => <span className="text-xs">{row.email || "—"}</span>,
+    cell: (row) => (
+      <span className="block truncate text-xs" title={row.email ?? undefined}>
+        {row.email || "—"}
+      </span>
+    ),
   },
   {
     id: "code",
     header: "Partner code",
     sortable: true,
+    width: "10rem",
+    nowrap: true,
     exportValue: (row) => row.partnerCode,
     cell: (row) => (
       <span className="font-mono text-xs font-semibold text-ds-primary">{row.partnerCode || "—"}</span>
@@ -109,6 +123,7 @@ const columns: AdminColumn<PartnerTableRow>[] = [
   {
     id: "tier",
     header: "Tier & type",
+    width: "7rem",
     exportValue: (row) => `${row.tierName ?? "AP Starter"} / ${partnerTypeDisplayLabel(row.partnerType)}`,
     cell: (row) => (
       <div className="text-xs font-semibold">
@@ -123,22 +138,28 @@ const columns: AdminColumn<PartnerTableRow>[] = [
     id: "applications",
     header: "Applications",
     sortable: true,
+    width: "6rem",
     exportValue: (row) => row.totalApplications,
     cell: (row) => (
-      <span className="text-xs">
-        {row.totalApplications} total ({row.pendingApplications} pending)
-      </span>
+      <div className="text-xs">
+        <span className="font-semibold text-ds-text-primary">{row.totalApplications}</span>
+        <span className="block text-[10px] text-ds-text-muted">
+          {row.pendingApplications} pending
+        </span>
+      </div>
     ),
   },
   {
     id: "status",
     header: "Status",
+    width: "5.5rem",
     exportValue: (row) => row.status,
     cell: (row) => <StatusPill value={row.status} kind="status" />,
   },
   {
     id: "kyc",
     header: "KYC",
+    width: "5.5rem",
     exportValue: (row) => row.kycStatus,
     cell: (row) => <StatusPill value={row.kycStatus} kind="kyc" />,
   },
@@ -147,6 +168,8 @@ const columns: AdminColumn<PartnerTableRow>[] = [
     header: "Pending settlement",
     align: "right",
     sortable: true,
+    width: "6.5rem",
+    nowrap: true,
     exportValue: (row) => row.pendingCommission,
     cell: (row) => <span className="font-bold">{safeCurrency(row.pendingCommission)}</span>,
   },
@@ -154,6 +177,8 @@ const columns: AdminColumn<PartnerTableRow>[] = [
     id: "actions",
     header: "Actions",
     align: "right",
+    width: "8rem",
+    nowrap: true,
     cell: (row) => (
       <Link
         href={adminAgencyPartnerDetailPath(row.id)}
