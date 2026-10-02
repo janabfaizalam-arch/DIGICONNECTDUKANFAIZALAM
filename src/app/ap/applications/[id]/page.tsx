@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Score } from "@/components/ap/score-visibility";
 import { ArrowLeft, FileText, MessageCircle, ReceiptText, User, Phone, Wallet } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -366,7 +367,10 @@ export default async function APApplicationDetailPage({
           </Card>
 
           <div className="space-y-4">
-            {/* Score Widget */}
+            {/* Score Widget. Gone entirely while the switch is off: this page
+                is opened in front of the customer to show them where their
+                application has reached. */}
+            <Score>
             <Card className="border border-slate-200/50 bg-white/70 p-5 rounded-3xl backdrop-blur-xl text-center space-y-2 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Partner Score
@@ -388,6 +392,7 @@ export default async function APApplicationDetailPage({
                 {apCommission?.status ?? "pending"}
               </span>
             </Card>
+            </Score>
 
             {/* Invoice Button */}
             {application.invoices?.[0] ? (

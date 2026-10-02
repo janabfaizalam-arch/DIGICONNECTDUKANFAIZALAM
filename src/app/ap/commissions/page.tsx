@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2, HandCoins, Hourglass, RotateCcw } from "lucide-react";
+import { ScoreGate } from "@/components/ap/score-visibility";
 
 import { CommissionsLedgerClient } from "@/components/ap/commissions-ledger-client";
 import { MetricCard, PageHeader } from "@/components/ap/ui";
@@ -27,11 +28,14 @@ export default async function APCommissionsPage() {
       <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <PageHeader
           eyebrow="Finance"
-          title="Commissions"
-          description="Earnings ledger for eligible applications. Totals are computed from your complete commission history."
+          title="Score"
+          description="Score ledger for eligible applications. Totals are computed from your complete Score history."
         />
 
-        <section aria-label="Commission metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {/* Every figure below is the partner's own cut, so the switch gates
+            the page rather than individual rows. */}
+        <ScoreGate>
+        <section aria-label="Score metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Total earned" value={formatINR(summary.totalEarned)} icon={<HandCoins className="h-4 w-4" />} />
           <MetricCard label="Pending" value={formatINR(summary.pending)} icon={<Hourglass className="h-4 w-4" />} hint="Pending + earned" />
           <MetricCard label="Approved" value={formatINR(summary.approved)} icon={<CheckCircle2 className="h-4 w-4" />} />
@@ -45,6 +49,7 @@ export default async function APCommissionsPage() {
         </section>
 
         <CommissionsLedgerClient commissions={commissions} />
+        </ScoreGate>
       </div>
     </main>
   );

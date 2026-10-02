@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Score, ScoreToggle, useScoreVisibility } from "@/components/ap/score-visibility";
 import Link from "next/link";
 import Image from "@/components/ui/safe-image";
 import { Search, Star, ArrowRight, FileText, Sparkles, Layers, History, Copy, MessageSquare, QrCode, X, Download, Loader2, AlertCircle } from "lucide-react";
@@ -22,9 +23,9 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
   
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const { visible: scoreVisible } = useScoreVisibility();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentSlugs, setRecentSlugs] = useState<string[]>([]);
-  const [showScore, setShowScore] = useState(false);
 
   // Sharing states
   const [sharingService, setSharingService] = useState<{ slug: string; title: string; price: number } | null>(null);
@@ -270,10 +271,6 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
       const storedRecents = JSON.parse(localStorage.getItem("digipartner_recently_used") || "[]");
       setRecentSlugs(storedRecents);
 
-      const storedShowScore = localStorage.getItem("digipartner_show_score");
-      if (storedShowScore !== null) {
-        setShowScore(storedShowScore === "true");
-      }
     } catch (err) {
       console.warn("Could not load stored services state", err);
     }
@@ -293,12 +290,6 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
     const updated = [slug, ...recentSlugs.filter((s) => s !== slug)].slice(0, 5);
     setRecentSlugs(updated);
     localStorage.setItem("digipartner_recently_used", JSON.stringify(updated));
-  };
-
-  const handleToggleScore = () => {
-    const next = !showScore;
-    setShowScore(next);
-    localStorage.setItem("digipartner_show_score", String(next));
   };
 
   // Categorized & filtered services
@@ -362,17 +353,7 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
           </p>
         </div>
         <div className="flex shrink-0 items-center">
-          <button
-            onClick={handleToggleScore}
-            className={cn(
-              "flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition shadow-sm",
-              showScore
-                ? "bg-emerald-600 border-transparent text-white hover:bg-emerald-700"
-                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-            )}
-          >
-            {showScore ? "Hide Score" : "Show Score"}
-          </button>
+          <ScoreToggle className="h-10 px-4" />
         </div>
       </div>
 
@@ -481,20 +462,23 @@ export function PartnerServicesClient({ initialServices, partnerName, businessNa
                     {srv.description || "Guides customers through eligibility check and documentation collection."}
                   </p>
 
-                  {/* Pricing and Commission Details */}
-                  <div className="grid grid-cols-3 gap-2.5 rounded-xl bg-white/50 p-3.5 border border-slate-200/50">
+                  {/* Price, Score and turnaround. The Score column closes up
+                      when the switch is off rather than leaving a gap. */}
+                  <div className={cn("grid gap-2.5 rounded-xl bg-white/50 p-3.5 border border-slate-200/50", scoreVisible ? "grid-cols-3" : "grid-cols-2")}>
                     <div>
                       <p className="text-[9px] font-bold uppercase text-slate-400">Price</p>
                       <p className="mt-0.5 text-sm font-black text-slate-900">
                         {formatCurrency(srv.customer_fee)}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-bold uppercase text-emerald-600">Score</p>
-                      <p className="mt-0.5 text-sm font-black text-emerald-600">
-                        {showScore ? payoutAmount : "••••"}
-                      </p>
-                    </div>
+                    <Score>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase text-emerald-600">Score</p>
+                        <p className="mt-0.5 text-sm font-black text-emerald-600">
+                          {payoutAmount}
+                        </p>
+                      </div>
+                    </Score>
                     <div>
                       <p className="text-[9px] font-bold uppercase text-indigo-600">TAT</p>
                       <p className="mt-0.5 text-sm font-extrabold text-indigo-600 truncate">

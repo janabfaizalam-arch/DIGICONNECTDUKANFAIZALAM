@@ -16,7 +16,7 @@ const CATEGORIES = [
   { id: "application", label: "Application", topic: "DC Partner application status or filing help" },
   { id: "payment", label: "Payment", topic: "DC Partner customer payment issue" },
   { id: "wallet", label: "Wallet", topic: "DC Partner wallet balance or ledger question" },
-  { id: "commission", label: "Commission", topic: "DC Partner commission or settlement question" },
+  { id: "commission", label: "Score", topic: "DC Partner Score or settlement question" },
   { id: "technical", label: "Technical Issue", topic: "DC Partner technical issue on the portal" },
 ] as const;
 
@@ -27,7 +27,7 @@ const FAQS = [
   },
   {
     q: "When do commissions appear?",
-    a: "Eligible completed filings credit commissions per configured rules. Check Commissions for status: pending, approved or paid.",
+    a: "Eligible completed filings credit your Score per configured rules. Check Score for status: pending, approved or paid.",
   },
   {
     q: "How do payouts work?",

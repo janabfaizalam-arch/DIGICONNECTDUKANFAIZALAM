@@ -20,7 +20,7 @@ const GUIDES = [
   { id: "customers", title: "Customer Creation", minutes: 3, difficulty: "Beginner", body: "Create or select a customer before filing. Keep mobile numbers accurate for OTP and updates." },
   { id: "workflow", title: "Service Application Workflow", minutes: 6, difficulty: "Intermediate", body: "Use Apply New Service, fill required fields, submit, then track status tabs on Applications." },
   { id: "documents", title: "Document Upload Process", minutes: 5, difficulty: "Intermediate", body: "When status asks for documents, open the application and upload clear scans. Never share KYC of other customers." },
-  { id: "wallet", title: "Wallet and Commission", minutes: 5, difficulty: "Intermediate", body: "Eligible filings credit commissions. Wallet balance is ledger-based. Request payouts of ₹500+ from Wallet or Payouts." },
+  { id: "wallet", title: "Wallet and Score", minutes: 5, difficulty: "Intermediate", body: "Eligible filings credit your Score. Wallet balance is ledger-based. Request payouts of ₹500+ from Wallet or Payouts." },
   { id: "status", title: "Application Status Guide", minutes: 4, difficulty: "Beginner", body: "Draft → Submitted → Documents/Payment → In Process → Completed/Rejected. Follow the next-action cue on each row." },
   { id: "kyc", title: "KYC and Account Safety", minutes: 4, difficulty: "Beginner", body: "Keep KYC approved and active. Do not share passwords. Use Change Password if credentials were onboarded for you." },
   { id: "support", title: "Support and Escalation", minutes: 3, difficulty: "Beginner", body: "Use Support for FAQs and WhatsApp desk categories. Escalate login, KYC, payment or wallet issues with your partner code." },

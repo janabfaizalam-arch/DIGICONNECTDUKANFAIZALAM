@@ -187,7 +187,7 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
       },
       {
         href: "/ap/commissions",
-        label: "Commissions",
+        label: "Score",
         description: "What each completed service earned you",
         icon: Coins,
       },

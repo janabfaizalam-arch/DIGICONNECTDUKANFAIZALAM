@@ -76,7 +76,7 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
   {
     id: "notif-5",
-    title: "Wallet Credit: Commission Earned",
+    title: "Wallet Credit: Score Earned",
     description: "Rs. 450 commission has been instantly credited to your wallet ledger for Yuva Scheme submission.",
     category: "Wallet & Payouts",
     type: "success",
