@@ -27,6 +27,7 @@ import { FormSubmitButton } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trackApplicationSubmit } from "@/lib/google-analytics";
+import { Score, useScoreVisibility } from "@/components/ap/score-visibility";
 import { payoutForAgentService, type AgentService } from "@/lib/agent-services";
 import { formatCurrency } from "@/lib/portal-data";
 import type { Customer } from "@/lib/portal-types";
@@ -180,6 +181,7 @@ export function APApplicationForm({
   // Calculations Breakout
   const finalCustomerFee = selectedVariant ? Number(selectedVariant.price) : Number(selectedService?.customer_fee ?? 0);
   const finalScore = selectedVariant ? Number(selectedVariant.score) : Number(selectedPayout);
+  const { visible: scoreVisible } = useScoreVisibility();
   const calculatedGST = Math.round(finalCustomerFee * 0.18);
   const grossTotal = finalCustomerFee + calculatedGST;
   const payableAmountPaise = Math.round(finalCustomerFee * 100);
@@ -744,9 +746,11 @@ export function APApplicationForm({
                   <IndianRupee className="w-3 h-3" />
                   {formatCurrency(service.customer_fee)}
                 </span>
-                <span className="flex items-center gap-1 text-emerald-600 font-semibold">
-                  Score: {payout}
-                </span>
+                <Score>
+                  <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                    Score: {payout}
+                  </span>
+                </Score>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {service.processing_time || "1-3 Days"}
@@ -1407,7 +1411,9 @@ export function APApplicationForm({
                           </p>
                           <div className="flex gap-3 text-xs mt-1 text-slate-600 font-medium">
                             <span>Price: {formatCurrency(v.price)}</span>
-                            <span className="text-emerald-600 font-semibold">Score: {v.score}</span>
+                            <Score>
+                              <span className="text-emerald-600 font-semibold">Score: {v.score}</span>
+                            </Score>
                             <span>TAT: {v.processing_time}</span>
                           </div>
                           {!isAvailable && (
@@ -1436,15 +1442,19 @@ export function APApplicationForm({
             {selectedService && (
               <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 space-y-2">
                 <p className="text-sm font-semibold text-blue-800">Selected: {selectedService.title}{selectedVariant ? ` - ${selectedVariant.name}` : ""}</p>
-                <div className="grid grid-cols-3 gap-2 text-center">
+                {/* Two columns when Score is off, so the row closes up instead
+                    of leaving a gap where the figure was. */}
+                <div className={cn("grid gap-2 text-center", scoreVisible ? "grid-cols-3" : "grid-cols-2")}>
                   <div className="bg-white/80 rounded-lg py-2">
                     <p className="text-xs text-slate-500 font-semibold">Price</p>
                     <p className="text-sm font-black text-slate-900">{formatCurrency(finalCustomerFee)}</p>
                   </div>
-                  <div className="bg-white/80 rounded-lg py-2">
-                    <p className="text-xs text-emerald-600 font-semibold">Score</p>
-                    <p className="text-sm font-black text-emerald-600">{finalScore}</p>
-                  </div>
+                  <Score>
+                    <div className="bg-white/80 rounded-lg py-2">
+                      <p className="text-xs text-emerald-600 font-semibold">Score</p>
+                      <p className="text-sm font-black text-emerald-600">{finalScore}</p>
+                    </div>
+                  </Score>
                   <div className="bg-white/80 rounded-lg py-2">
                     <p className="text-xs text-slate-500 font-semibold">Time</p>
                     <p className="text-sm font-bold text-slate-800">{selectedVariant ? selectedVariant.processing_time : (selectedService.processing_time || "1-3 Days")}</p>
@@ -1645,11 +1655,15 @@ export function APApplicationForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-emerald-600 font-medium">Your Score</p>
-                  <p className="text-base font-extrabold text-emerald-700 mt-0.5">{finalScore}</p>
-                </div>
+              {/*
+                Score is deliberately absent from this card and from the
+                receipt below, switch or no switch. This is the screen the
+                partner turns towards the customer while they pay, and "Your
+                Score ₹120" beside "Total Payable ₹600" is the customer
+                reading the partner's cut off the glass. The partner sees it
+                on the service card and on their own dashboard instead.
+              */}
+              <div className="pt-2">
                 <div className="bg-slate-50 rounded-xl p-3 text-center">
                   <p className="text-xs text-slate-500 font-medium">Expected Delivery</p>
                   <p className="text-base font-bold text-slate-800 mt-0.5">{selectedVariant ? selectedVariant.processing_time : (selectedService?.processing_time || "1-3 Days")}</p>
@@ -1729,10 +1743,6 @@ export function APApplicationForm({
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
                   <span className="text-slate-500">Processing Time</span>
                   <span className="font-semibold text-slate-800">{selectedVariant ? selectedVariant.processing_time : (selectedService?.processing_time || "1-3 Days")}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-emerald-600 font-semibold">Your Score</span>
-                  <span className="font-bold text-emerald-600">{finalScore}</span>
                 </div>
               </div>
             </div>

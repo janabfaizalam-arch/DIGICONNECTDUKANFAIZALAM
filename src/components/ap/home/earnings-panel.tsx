@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { formatINR } from "@/lib/ap/format";
 import type { PartnerCollectionCommission } from "@/lib/ap/home-types";
+import { ScoreToggle, useScoreVisibility } from "@/components/ap/score-visibility";
 import { cn } from "@/lib/utils";
 
 type EarningsPanelProps = {
@@ -24,28 +25,40 @@ type EarningsPanelProps = {
 export function EarningsPanel({ data, showTeamToggle = false, className }: EarningsPanelProps) {
   const [scope, setScope] = useState<"mine" | "team">("mine");
   const isTeam = showTeamToggle && scope === "team";
+  const { visible: scoreVisible } = useScoreVisibility();
 
-  const figures = isTeam
+  /*
+    Two different things sit in this panel and only one of them is the
+    partner's own cut. What they collected from customers is the customer's
+    own money and stays on screen; the Score figures are marked and drop out
+    entirely while the switch is off.
+  */
+  const allFigures = isTeam
     ? [
-        { label: "Team today", value: formatINR(data.teamCollectedToday ?? 0), rail: "var(--dcp-good)" },
-        { label: "Team this month", value: formatINR(data.teamMonthCollection ?? 0), rail: "var(--dcp-brand)" },
-        { label: "Team commission", value: formatINR(data.teamCommissionEarned ?? 0), rail: "var(--dcp-accent)" },
-        { label: "Team pending", value: formatINR(data.teamCommissionPending ?? 0), rail: "var(--dcp-warn)" },
+        { label: "Team today", value: formatINR(data.teamCollectedToday ?? 0), rail: "var(--dcp-good)", score: false },
+        { label: "Team this month", value: formatINR(data.teamMonthCollection ?? 0), rail: "var(--dcp-brand)", score: false },
+        { label: "Team score", value: formatINR(data.teamCommissionEarned ?? 0), rail: "var(--dcp-accent)", score: true },
+        { label: "Team score pending", value: formatINR(data.teamCommissionPending ?? 0), rail: "var(--dcp-warn)", score: true },
       ]
     : [
-        { label: "This month", value: formatINR(data.monthCollection), rail: "var(--dcp-brand)" },
-        { label: "Still to collect", value: formatINR(data.pendingCollection), rail: "var(--dcp-warn)" },
-        { label: "Commission pending", value: formatINR(data.commissionPending), rail: "var(--dcp-accent)" },
-        { label: "Commission earned", value: formatINR(data.commissionEarned), rail: "var(--dcp-good)" },
+        { label: "This month", value: formatINR(data.monthCollection), rail: "var(--dcp-brand)", score: false },
+        { label: "Still to collect", value: formatINR(data.pendingCollection), rail: "var(--dcp-warn)", score: false },
+        { label: "Score pending", value: formatINR(data.commissionPending), rail: "var(--dcp-accent)", score: true },
+        { label: "Score earned", value: formatINR(data.commissionEarned), rail: "var(--dcp-good)", score: true },
       ];
 
+  const figures = allFigures.filter((figure) => scoreVisible || !figure.score);
+
   return (
-    <section aria-label="Earnings" className={cn("space-y-2", className)}>
+    <section aria-label="Score" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="dcp-h2">Earnings</h2>
+        <h2 className="dcp-h2">Score</h2>
+
+        <div className="flex flex-wrap items-center gap-2">
+        <ScoreToggle />
 
         {showTeamToggle ? (
-          <div className="inline-flex rounded-[11px] border border-[var(--dcp-line)] bg-[var(--dcp-surface)] p-0.5 shadow-[var(--dcp-e1)]" role="group" aria-label="Earnings scope">
+          <div className="inline-flex rounded-[11px] border border-[var(--dcp-line)] bg-[var(--dcp-surface)] p-0.5 shadow-[var(--dcp-e1)]" role="group" aria-label="Score scope">
             {(
               [
                 { key: "mine", label: "Mine" },
@@ -69,12 +82,13 @@ export function EarningsPanel({ data, showTeamToggle = false, className }: Earni
             ))}
           </div>
         ) : null}
+        </div>
       </div>
 
       <div className="dcp-card p-3.5">
         {!data.hasCommissionScheme && !isTeam ? (
           <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">
-            No commission plan is set on your account yet, so commission figures stay at zero.
+            No score plan is set on your account yet, so your Score stays at zero.
           </p>
         ) : null}
 

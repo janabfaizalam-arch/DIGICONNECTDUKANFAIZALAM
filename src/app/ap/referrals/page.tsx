@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Score } from "@/components/ap/score-visibility";
 import Image from "@/components/ui/safe-image";
 import {
   MousePointerClick,
@@ -243,14 +244,16 @@ export default function PartnerReferralAnalyticsPage() {
             <p className="text-[10px] text-slate-400 mt-1 font-medium">{stats.payments} Paid & Verified ({stats.conversionRate}% rate)</p>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm">
-            <div className="flex justify-between items-start">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Earnings</span>
-              <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><DollarSign className="h-4 w-4" /></span>
+          <Score>
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm">
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Score</span>
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><DollarSign className="h-4 w-4" /></span>
+              </div>
+              <p className="mt-4 text-2xl font-black text-slate-950">{formatCurrency(stats.commissionEarned)}</p>
+              <p className="text-[10px] text-slate-400 mt-1 font-medium">{formatCurrency(stats.pendingCommission)} Reserved / Pending</p>
             </div>
-            <p className="mt-4 text-2xl font-black text-slate-950">{formatCurrency(stats.commissionEarned)}</p>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium">{formatCurrency(stats.pendingCommission)} Reserved / Pending</p>
-          </div>
+          </Score>
         </div>
       )}
 

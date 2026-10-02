@@ -61,7 +61,7 @@ export function CommissionsLedgerClient({ commissions }: Props) {
   return (
     <section aria-labelledby="commission-ledger-heading" className="space-y-3">
       <h2 id="commission-ledger-heading" className="text-sm font-extrabold text-slate-900">
-        Commission ledger
+        Score ledger
       </h2>
 
       <GlassPanel padding="md" className="grid gap-2 sm:grid-cols-3">
@@ -103,7 +103,7 @@ export function CommissionsLedgerClient({ commissions }: Props) {
         <>
           <GlassPanel padding="none" className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[800px] text-left text-sm">
-              <caption className="sr-only">Commission earnings ledger</caption>
+              <caption className="sr-only">Score ledger</caption>
               <thead className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Customer</th>

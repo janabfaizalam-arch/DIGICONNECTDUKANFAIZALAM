@@ -1,5 +1,6 @@
 import { ApContentShell } from "@/components/ap/ap-content-shell";
 import { APPanelNav } from "@/components/ap/ap-panel-nav";
+import { ScoreVisibilityProvider } from "@/components/ap/score-visibility";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { canManagePartnerTeam } from "@/lib/ap/partner-type";
 import { getCurrentUser } from "@/lib/auth";
@@ -22,6 +23,9 @@ export default async function APLayout({ children }: { children: React.ReactNode
     // inside gets the tinted surface ladder, IBM Plex Sans and the focus ring;
     // nothing outside the panel is touched.
     <div data-dcp data-dcp-page className="min-h-screen">
+      {/* Score is off everywhere until the partner switches it on, so the
+          switch lives above every screen rather than on one of them. */}
+      <ScoreVisibilityProvider>
       <APPanelNav canManageTeam={canManageTeam} />
       {/*
         One nav, not two. The panel used to carry a permanently open sidebar on
@@ -33,6 +37,7 @@ export default async function APLayout({ children }: { children: React.ReactNode
       <div className="mx-auto flex w-full max-w-[1800px]">
         <ApContentShell>{children}</ApContentShell>
       </div>
+      </ScoreVisibilityProvider>
     </div>
   );
 }

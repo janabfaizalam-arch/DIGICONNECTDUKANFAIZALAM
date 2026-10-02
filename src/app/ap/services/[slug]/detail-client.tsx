@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Score } from "@/components/ap/score-visibility";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, ChevronUp, FileText, CheckCircle, Clock, Info, ShieldAlert, BadgeHelp, HelpCircle, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/portal-data";
@@ -12,7 +13,6 @@ interface ServiceDetailClientProps {
 }
 
 export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
-  const [showScore, setShowScore] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     documents: true,
     processing: true,
@@ -25,10 +25,6 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
 
   useEffect(() => {
     try {
-      const storedShowScore = localStorage.getItem("digipartner_show_score");
-      if (storedShowScore !== null) {
-        setShowScore(storedShowScore === "true");
-      }
     } catch (e) {
       console.warn(e);
     }
@@ -70,12 +66,14 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
                 {formatCurrency(service.customer_fee)}
               </p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase text-emerald-600">Partner Score</p>
-              <p className="mt-1 text-lg font-black text-emerald-600">
-                {showScore ? payoutAmount : "••••"}
-              </p>
-            </div>
+            <Score>
+              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                <p className="text-[10px] font-bold uppercase text-emerald-600">Partner Score</p>
+                <p className="mt-1 text-lg font-black text-emerald-600">
+                  {payoutAmount}
+                </p>
+              </div>
+            </Score>
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
               <p className="text-[10px] font-bold uppercase text-indigo-700">Processing Time</p>
               <p className="mt-1 text-lg font-extrabold text-indigo-600 truncate">
@@ -111,7 +109,9 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
                     </div>
                     <div>
                       <p className="font-bold text-emerald-700 text-[9px] uppercase">Score</p>
-                      <p className="font-black text-emerald-700 text-[13px]">{showScore ? v.score : "••••"}</p>
+                      <Score>
+                        <p className="font-black text-emerald-700 text-[13px]">{v.score}</p>
+                      </Score>
                     </div>
                     <div>
                       <p className="font-bold text-indigo-600 text-[9px] uppercase">TAT</p>
