@@ -54,6 +54,72 @@ export type ProvisionPartnerResult =
   | { ok: true; partnerId: string; userId: string; partnerCode: string; username: string }
   | { ok: false; error: string; status: number };
 
+/**
+ * Whether Supabase refused because the login address is already taken.
+ *
+ * The code is the reliable signal; the messages are matched too because older
+ * GoTrue versions only sent a sentence.
+ */
+export function isEmailTakenError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "email_exists" || error.code === "user_already_exists") return true;
+  return /already (been )?regist|email.*(already|exists)|duplicate key/i.test(error.message ?? "");
+}
+
+/**
+ * What an admin should be told when the auth user cannot be made.
+ *
+ * Every failure here used to collapse into "Partner credentials could not be
+ * registered." -- true, unactionable, and identical whether the password was
+ * rejected, the address was taken or Supabase was down. The real reason is in
+ * the server log, which is not where somebody standing in front of the approve
+ * button is looking. Known causes get a sentence that says what to do; an
+ * unknown one carries Supabase's own words rather than hiding them, because a
+ * message nobody can act on is worse than a slightly technical one.
+ */
+export function describeAuthCreateFailure(error: { code?: string; message?: string } | null): string {
+  const message = (error?.message ?? "").trim();
+
+  if (/password/i.test(message)) {
+    return `Temporary password Supabase ne reject kar diya: ${message}`;
+  }
+  if (/rate|too many/i.test(message)) {
+    return "Supabase ne abhi bahut requests bata kar rok diya. Ek minute baad dobara try kijiye.";
+  }
+  if (!message) {
+    return "Partner credentials could not be registered (Supabase ne koi wajah nahi batayi).";
+  }
+  return `Partner credentials could not be registered: ${message}`;
+}
+
+/**
+ * The auth user holding a login address, if there is one.
+ *
+ * `listUsers` has no email filter, so this pages -- which is why it is only
+ * called after a create has already failed on a collision, never on the happy
+ * path. The bound mirrors `findAuthUserByEmailOrMobile`.
+ */
+async function findAuthUserByEmail(
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  email: string,
+): Promise<{ id: string } | null> {
+  const target = email.trim().toLowerCase();
+
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) {
+      console.error("[provision-partner] auth_list_failed", { error: error.message });
+      return null;
+    }
+
+    const match = data.users.find((user) => (user.email ?? "").trim().toLowerCase() === target);
+    if (match) return { id: match.id };
+    if (data.users.length < 1000) return null;
+  }
+
+  return null;
+}
+
 export async function provisionPartnerAccount(
   input: ProvisionPartnerInput,
 ): Promise<ProvisionPartnerResult> {
@@ -119,20 +185,85 @@ export async function provisionPartnerAccount(
     .eq("slug", "ap-starter")
     .maybeSingle();
 
-  const { data: created, error: createError } = await supabase.auth.admin.createUser({
-    email: loginEmail,
+  const authPayload = {
     password: input.password,
     email_confirm: true,
     user_metadata: { full_name: input.fullName, username, role: "agency_partner" },
     app_metadata: { role: "agency_partner" },
+  };
+
+  const { data: created, error: createError } = await supabase.auth.admin.createUser({
+    email: loginEmail,
+    ...authPayload,
   });
 
-  if (createError || !created?.user) {
-    console.error("[provision-partner] auth_create_failed", { error: createError?.message });
-    return { ok: false, error: "Partner credentials could not be registered.", status: 500 };
-  }
+  let userId = created?.user?.id ?? "";
+  /* Only an auth user this call brought into existence may be deleted on
+     rollback. Deleting one that was already there would take a partner's login
+     away because our own table write failed. */
+  let createdAuthUser = Boolean(userId);
 
-  const userId = created.user.id;
+  if (!userId) {
+    /*
+      A login address already taken is the one failure worth recovering from,
+      and it is the one that had the admin stuck.
+
+      `freeUsername` only looks at `agency_partners` and `profiles`, so an auth
+      user left behind by an earlier attempt -- provisioned, then rolled back
+      with a delete that did not land -- is invisible to it. Every retry then
+      failed on the same collision, with a message that named none of this, and
+      the application could never be approved.
+
+      So: find the holder. With no partner behind it, it is that leftover and
+      is adopted -- same id, new password, right metadata -- which also gives
+      the partner their mobile number as their username rather than a suffixed
+      one. With a partner behind it, this mobile really is somebody already,
+      and that is a different sentence entirely.
+    */
+    if (!isEmailTakenError(createError)) {
+      console.error("[provision-partner] auth_create_failed", {
+        code: createError?.code,
+        error: createError?.message,
+      });
+      return { ok: false, error: describeAuthCreateFailure(createError), status: 500 };
+    }
+
+    const holder = await findAuthUserByEmail(supabase, loginEmail);
+
+    if (!holder) {
+      console.error("[provision-partner] auth_create_collision_unresolved", { username });
+      return {
+        ok: false,
+        error: `Login ID "${username}" pehle se kisi aur ke paas hai, aur wo account mil nahi raha. Doosra username dijiye.`,
+        status: 409,
+      };
+    }
+
+    const { data: livePartner } = await supabase
+      .from("agency_partners")
+      .select("id, partner_code")
+      .eq("user_id", holder.id)
+      .maybeSingle();
+
+    if (livePartner) {
+      return {
+        ok: false,
+        error: `Is mobile number se ek partner pehle se bana hua hai (${String(livePartner.partner_code ?? "")}). Usi account ka password reset kijiye.`,
+        status: 409,
+      };
+    }
+
+    const { error: adoptError } = await supabase.auth.admin.updateUserById(holder.id, authPayload);
+
+    if (adoptError) {
+      console.error("[provision-partner] auth_adopt_failed", { error: adoptError.message });
+      return { ok: false, error: describeAuthCreateFailure(adoptError), status: 500 };
+    }
+
+    console.warn("[provision-partner] adopted_orphan_auth_user", { username, userId: holder.id });
+    userId = holder.id;
+    createdAuthUser = false;
+  }
 
   const shared = {
     full_name: input.fullName,
@@ -214,9 +345,17 @@ export async function provisionPartnerAccount(
       user: userRes.error?.message,
     });
     // Leave nothing half-provisioned: an auth user with no partner row can log
-    // in and land nowhere.
-    await supabase.auth.admin.deleteUser(userId);
-    return { ok: false, error: "Partner account could not be created.", status: 500 };
+    // in and land nowhere. Only the one this call made, though -- an adopted
+    // user was already there, and deleting it would turn a failed write into a
+    // deleted login.
+    if (createdAuthUser) await supabase.auth.admin.deleteUser(userId);
+
+    const reason = partnerError?.message || profileRes.error?.message || userRes.error?.message || "";
+    return {
+      ok: false,
+      error: reason ? `Partner account could not be created: ${reason}` : "Partner account could not be created.",
+      status: 500,
+    };
   }
 
   return { ok: true, partnerId: String(partnerRow.id), userId, partnerCode, username };

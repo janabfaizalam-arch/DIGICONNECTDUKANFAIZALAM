@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { DIGI_PARTNER_TYPE_VALUES, normalizePartnerType } from "@/lib/ap/partner-type";
+import { describeAuthCreateFailure, isEmailTakenError } from "@/lib/ap/provision-partner";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -140,7 +141,17 @@ export async function POST(request: Request) {
 
     if (createError || !created.user) {
       console.error("[admin-ap] Auth creation failed:", createError?.message);
-      return jsonError("Partner credentials could not be registered.", 500);
+      // Same sentence, same dead end as the approval screen had: an admin was
+      // told the credentials could not be registered and nothing else. This
+      // route still does not adopt a leftover auth user the way
+      // `provisionPartnerAccount` now does, but it at least says which wall it
+      // hit -- and for a taken address it names the one thing to check.
+      return jsonError(
+        isEmailTakenError(createError)
+          ? `Is email (${email}) par ek account pehle se hai. Doosra email dijiye, ya us partner ka password reset kijiye.`
+          : describeAuthCreateFailure(createError),
+        isEmailTakenError(createError) ? 409 : 500,
+      );
     }
 
     // Prepare sync models
