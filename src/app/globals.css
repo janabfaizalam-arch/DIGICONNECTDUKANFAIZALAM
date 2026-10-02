@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* The authoritative admin semantic layer. Built on the brand primitives
+   defined below, and the only place admin colour is decided. */
+@import "./admin-design-tokens.css";
 
 @theme {
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;

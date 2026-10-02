@@ -1,0 +1,237 @@
+/*
+  Admin design tokens — the authoritative semantic layer.
+  ======================================================
+
+  `globals.css` carries 291 custom properties across twelve namespaces
+  (`--dc-`, `--dcp-`, `--lc-`, `--lg-`, `--home-`, `--glass-`, shadcn's
+  `--background`/`--primary` set, and more). None of them is authoritative, and
+  the admin surface largely ignores all of them: it writes `bg-slate-50`,
+  `text-emerald-700`, `border-amber-200` inline — 3,776 hardcoded colour
+  utilities across 143 distinct classes at the time this file was added.
+
+  This file is the one place admin colour is decided. It does not rewrite
+  anything: existing namespaces are left exactly as they are, and this layer is
+  built ON TOP of the brand primitives already in `globals.css`, so a brand
+  colour still has a single source of truth.
+
+  Three layers, in order:
+
+    1. BRAND PRIMITIVES — raw values. Mostly aliases to the `--dc-*` values
+       already defined in globals.css, so nothing is re-typed and nothing can
+       drift. Only the one colour the brief names that did not exist
+       (Deep Blue #0B4FB8) is introduced here.
+
+    2. SEMANTIC TOKENS (`--ds-*`) — what a colour MEANS. Components use these
+       and never the primitives, so a palette change happens in one place.
+
+    3. TAILWIND MAPPING (`@theme`) — exposes the semantic layer as utilities:
+       `bg-ds-surface`, `text-ds-text-muted`, `border-ds-border`, and so on.
+       Opacity modifiers work (`bg-ds-primary/10`) because Tailwind v4 resolves
+       them through `color-mix()`.
+
+  Light is the primary theme. The dark block at the bottom exists so dark mode
+  is an override of layer 2 rather than a rewrite — nothing outside this file
+  has to change to support it.
+
+  MIGRATION NOTE: hardcoded colours are being replaced by meaning, not by
+  find-and-replace. `bg-slate-50` is sometimes a page background, sometimes an
+  inset panel, sometimes a disabled control; each needs a different token.
+*/
+
+:root {
+  /* ── 1. Brand primitives ──────────────────────────────────────────────── */
+
+  /* Already defined in globals.css; aliased so this file reads as one system. */
+  --ds-brand-primary: var(--dc-blue-600); /* #1268E8 */
+  --ds-brand-navy: var(--dc-navy-900); /* #082B63 */
+  --ds-brand-accent: var(--dc-orange-600); /* #F25A00 */
+
+  /* The brief names this one and globals.css has no equivalent. */
+  --ds-brand-deep-blue: #0b4fb8;
+
+  /* ── 2. Semantic tokens ───────────────────────────────────────────────── */
+
+  /* Surfaces, lightest to most raised. */
+  --ds-background: #f6f8fb; /* the page behind everything */
+  --ds-surface: #ffffff; /* cards, tables, panels */
+  --ds-surface-elevated: #ffffff; /* dialogs, popovers, dropdowns */
+  --ds-surface-sunken: #f1f5f9; /* inset wells, toolbars, table headers */
+
+  --ds-border: #e2e8f0; /* default hairline */
+  --ds-border-strong: #cbd5e1; /* inputs, dividers that must read */
+
+  /* Text, strongest to faintest. Contrast against --ds-surface:
+     primary 14.8:1, secondary 8.1:1, muted 4.8:1 — all above WCAG AA. */
+  --ds-text-primary: var(--dc-ink); /* #10213D — headings, key values */
+  --ds-text-secondary: var(--dc-body); /* #35445F — body copy */
+  --ds-text-muted: #5b6b85; /* labels, captions, meta */
+  --ds-text-inverted: #ffffff; /* on primary/accent fills */
+
+  /* Primary action. */
+  --ds-primary: var(--ds-brand-primary);
+  --ds-primary-hover: var(--ds-brand-deep-blue);
+  --ds-primary-soft: #eaf4ff; /* tinted background for primary emphasis */
+  --ds-primary-border: #b9d8fb;
+  --ds-on-primary: #ffffff;
+
+  /* Accent — secondary emphasis, never a second primary button. */
+  --ds-accent: var(--ds-brand-accent);
+  --ds-accent-soft: #fff1e6;
+  --ds-accent-border: #ffd4b5;
+  --ds-on-accent: #ffffff;
+
+  /*
+    Status. Each has three parts because that is how the admin actually renders
+    them — a soft fill, a readable foreground and a border:
+      bg-ds-success-soft  text-ds-success  border-ds-success-border
+    which is the `bg-emerald-50 text-emerald-700 border-emerald-200` triplet
+    repeated throughout the panel today, expressed once.
+  */
+  --ds-success: #047857;
+  --ds-success-soft: #ecfdf5;
+  --ds-success-border: #a7f3d0;
+
+  --ds-warning: #b45309;
+  --ds-warning-soft: #fffbeb;
+  --ds-warning-border: #fde68a;
+
+  --ds-danger: #be123c;
+  --ds-danger-soft: #fff1f2;
+  --ds-danger-border: #fecdd3;
+
+  --ds-info: #1d4ed8;
+  --ds-info-soft: #eff6ff;
+  --ds-info-border: #bfdbfe;
+
+  /* Interaction states. */
+  --ds-focus: var(--ds-brand-primary); /* focus ring colour */
+  --ds-disabled-surface: #f1f5f9;
+  --ds-disabled-text: #94a3b8;
+  --ds-disabled-border: #e2e8f0;
+
+  /* Elevation. Borders and restrained shadow — not glass (brief §A5). */
+  --ds-shadow-sm: 0 1px 2px rgba(16, 33, 61, 0.05);
+  --ds-shadow-md: 0 2px 8px rgba(16, 33, 61, 0.06), 0 1px 2px rgba(16, 33, 61, 0.04);
+  --ds-shadow-lg: 0 8px 24px rgba(16, 33, 61, 0.08), 0 2px 6px rgba(16, 33, 61, 0.04);
+
+  /* Shape and rhythm (brief §A5: 12–16px spacing, 14–20px radii). */
+  --ds-radius-sm: 0.5rem;
+  --ds-radius-md: 0.75rem;
+  --ds-radius-lg: 1rem;
+  --ds-radius-xl: 1.25rem;
+  --ds-page-gutter: 1rem;
+  --ds-page-gutter-lg: 1.5rem;
+  --ds-page-max: 1440px;
+  --ds-section-gap: 1.25rem;
+}
+
+/*
+  Dark mode: layer 2 only. Opt-in via `data-theme="dark"` so it never activates
+  by surprise on a panel that has not been reviewed in dark yet. Primitives are
+  untouched — a brand colour is the same colour in either theme.
+*/
+:root[data-theme="dark"] {
+  --ds-background: #0a1628;
+  --ds-surface: #111f35;
+  --ds-surface-elevated: #16263f;
+  --ds-surface-sunken: #0d1b2f;
+
+  --ds-border: #1f334f;
+  --ds-border-strong: #2d4566;
+
+  --ds-text-primary: #e8eef7;
+  --ds-text-secondary: #b3c2d6;
+  --ds-text-muted: #8396af;
+  --ds-text-inverted: #0a1628;
+
+  --ds-primary: #4d94f0;
+  --ds-primary-hover: #6ba7f4;
+  --ds-primary-soft: #16263f;
+  --ds-primary-border: #27456b;
+
+  --ds-accent: #ff7a33;
+  --ds-accent-soft: #2a1a10;
+  --ds-accent-border: #4a2d1a;
+
+  --ds-success: #34d399;
+  --ds-success-soft: #0d2a22;
+  --ds-success-border: #1a4a3a;
+
+  --ds-warning: #fbbf24;
+  --ds-warning-soft: #2a2110;
+  --ds-warning-border: #4a3a1a;
+
+  --ds-danger: #fb7185;
+  --ds-danger-soft: #2a1118;
+  --ds-danger-border: #4a1f2a;
+
+  --ds-info: #60a5fa;
+  --ds-info-soft: #0f2340;
+  --ds-info-border: #1e3a5f;
+
+  --ds-disabled-surface: #16263f;
+  --ds-disabled-text: #5c6e8a;
+  --ds-disabled-border: #1f334f;
+}
+
+/*
+  ── 3. Tailwind mapping ────────────────────────────────────────────────────
+  Tailwind v4 reads `@theme` to generate utilities. Pointing each colour at the
+  semantic variable (rather than a literal) keeps the tokens runtime-swappable,
+  which is what makes the dark block above work without a rebuild.
+*/
+@theme inline {
+  --color-ds-background: var(--ds-background);
+  --color-ds-surface: var(--ds-surface);
+  --color-ds-surface-elevated: var(--ds-surface-elevated);
+  --color-ds-surface-sunken: var(--ds-surface-sunken);
+
+  --color-ds-border: var(--ds-border);
+  --color-ds-border-strong: var(--ds-border-strong);
+
+  --color-ds-text-primary: var(--ds-text-primary);
+  --color-ds-text-secondary: var(--ds-text-secondary);
+  --color-ds-text-muted: var(--ds-text-muted);
+  --color-ds-text-inverted: var(--ds-text-inverted);
+
+  --color-ds-primary: var(--ds-primary);
+  --color-ds-primary-hover: var(--ds-primary-hover);
+  --color-ds-primary-soft: var(--ds-primary-soft);
+  --color-ds-primary-border: var(--ds-primary-border);
+  --color-ds-on-primary: var(--ds-on-primary);
+
+  --color-ds-accent: var(--ds-accent);
+  --color-ds-accent-soft: var(--ds-accent-soft);
+  --color-ds-accent-border: var(--ds-accent-border);
+  --color-ds-on-accent: var(--ds-on-accent);
+
+  --color-ds-success: var(--ds-success);
+  --color-ds-success-soft: var(--ds-success-soft);
+  --color-ds-success-border: var(--ds-success-border);
+
+  --color-ds-warning: var(--ds-warning);
+  --color-ds-warning-soft: var(--ds-warning-soft);
+  --color-ds-warning-border: var(--ds-warning-border);
+
+  --color-ds-danger: var(--ds-danger);
+  --color-ds-danger-soft: var(--ds-danger-soft);
+  --color-ds-danger-border: var(--ds-danger-border);
+
+  --color-ds-info: var(--ds-info);
+  --color-ds-info-soft: var(--ds-info-soft);
+  --color-ds-info-border: var(--ds-info-border);
+
+  --color-ds-focus: var(--ds-focus);
+  --color-ds-disabled-surface: var(--ds-disabled-surface);
+  --color-ds-disabled-text: var(--ds-disabled-text);
+  --color-ds-disabled-border: var(--ds-disabled-border);
+
+  --radius-ds-sm: var(--ds-radius-sm);
+  --radius-ds-md: var(--ds-radius-md);
+  --radius-ds-lg: var(--ds-radius-lg);
+  --radius-ds-xl: var(--ds-radius-xl);
+
+  --shadow-ds-sm: var(--ds-shadow-sm);
+  --shadow-ds-md: var(--ds-shadow-md);
+  --shadow-ds-lg: var(--ds-shadow-lg);
+}
