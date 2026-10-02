@@ -42,6 +42,23 @@ export const VERIFIED_STATUSES = ["verified", "paid"] as const;
 export const PENDING_STATUSES = ["pending", "unpaid"] as const;
 export const FAILED_STATUSES = ["failed", "cancelled", "canceled"] as const;
 
+/**
+ * The RPC's `jsonb` row, as `PaymentTotals`.
+ *
+ * Separated out so it can be tested without a database. PostgreSQL returns
+ * `numeric` and `bigint` as JSON strings, so every field goes through
+ * `toAmount` rather than being trusted as a number — `Number("1234.56")` is
+ * fine but `row.verified_sum_rupees + 0` would concatenate.
+ */
+export function mapPaymentTotalsRow(row: Record<string, unknown>): PaymentTotals {
+  return {
+    verifiedSum: toAmount(row.verified_sum_rupees),
+    verifiedCount: toAmount(row.verified_count),
+    pendingCount: toAmount(row.pending_count),
+    failedCount: toAmount(row.failed_count),
+  };
+}
+
 type Range = { fromIso?: string | null; toIso?: string | null };
 
 /**
@@ -61,13 +78,7 @@ export async function getPaymentTotals({ fromIso = null, toIso = null }: Range =
   });
 
   if (!error && data) {
-    const row = data as Record<string, unknown>;
-    return {
-      verifiedSum: toAmount(row.verified_sum_rupees),
-      verifiedCount: toAmount(row.verified_count),
-      pendingCount: toAmount(row.pending_count),
-      failedCount: toAmount(row.failed_count),
-    };
+    return mapPaymentTotalsRow(data as Record<string, unknown>);
   }
 
   if (error) {
