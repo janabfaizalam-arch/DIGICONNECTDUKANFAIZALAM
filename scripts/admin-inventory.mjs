@@ -39,7 +39,21 @@ const sourceFiles = (roots, extensions) =>
     .filter((file) => extensions.some((ext) => file.endsWith(ext)))
     .filter((file) => !/\.(test|spec)\.[tj]sx?$/.test(file));
 
-const read = (file) => readFileSync(file, "utf8");
+/**
+ * File contents with comments blanked out.
+ *
+ * Doc comments in this repository quote the query shapes they are warning
+ * about — `payment-link-relations.ts` documents the embed trap by showing
+ * `.from("payment_links")` — and counting those as live queries inflates the
+ * inventory. Comment bodies are replaced space-for-space rather than removed,
+ * so byte offsets and line numbers still point at the real source.
+ */
+const read = (file) => {
+  const text = readFileSync(file, "utf8");
+  return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) =>
+    match.replace(/[^\n]/g, " "),
+  );
+};
 const lineOf = (text, index) => text.slice(0, index).split("\n").length;
 
 /**
