@@ -1,5 +1,13 @@
 import { reverseEntry } from "@/lib/ap-wallet";
 import { checkTransition, refundsWallet, type PayoutStatus } from "@/lib/ap-payout-transitions";
+import {
+  EMPTY_PAYOUT_SUMMARY,
+  SUMMARISED_PAYOUT_STATUSES,
+  summarisePayouts,
+  type PayoutSummary,
+  type PayoutSummaryRow,
+} from "@/lib/ap/payout-summary";
+import { readPages } from "@/lib/supabase/paged-read";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type AdminPayoutRow = {
@@ -22,9 +30,15 @@ const SELECT =
 /** Payout requests for the admin queue, newest first. */
 export async function listPayoutsForAdmin(status?: string): Promise<{
   rows: AdminPayoutRow[];
-  summary: { requested: number; requestedAmount: number; processing: number; paidAmount: number };
+  summary: PayoutSummary;
+  /**
+   * False when the summary could not be read in full. The figures are money,
+   * so a caller that cares can say "unavailable" rather than show a number
+   * that is quietly too small.
+   */
+  summaryComplete: boolean;
 }> {
-  const empty = { rows: [], summary: { requested: 0, requestedAmount: 0, processing: 0, paidAmount: 0 } };
+  const empty = { rows: [], summary: { ...EMPTY_PAYOUT_SUMMARY }, summaryComplete: false };
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return empty;
@@ -55,21 +69,28 @@ export async function listPayoutsForAdmin(status?: string): Promise<{
     }
   }
 
-  // Totals are computed over every payout, not the filtered view — a queue
-  // that only counts what is on screen is misleading.
-  const { data: allRows } = await supabase.from("ap_payouts").select("amount, status");
-  const summary = { requested: 0, requestedAmount: 0, processing: 0, paidAmount: 0 };
-  for (const row of allRows ?? []) {
-    const amount = Number(row.amount) || 0;
-    if (row.status === "requested") {
-      summary.requested += 1;
-      summary.requestedAmount += amount;
-    } else if (row.status === "processing") {
-      summary.processing += 1;
-    } else if (row.status === "paid") {
-      summary.paidAmount += amount;
-    }
-  }
+  // Totals are computed over every payout, not the filtered view — a queue that
+  // only counts what is on screen is misleading.
+  //
+  // This used to be a single unbounded `select("amount, status")`, which
+  // PostgREST truncates at `db.max_rows` (1000 by default) and returns without
+  // an error. The comment above has always claimed "every payout"; past a
+  // thousand of them it was not true, and `requestedAmount` and `paidAmount`
+  // were understated with nothing to show for it. Paging makes the claim hold.
+  //
+  // Narrowed to the three statuses the summary actually reads, so `rejected`
+  // payouts — which belong in neither total — are not transferred at all.
+  const { rows: summaryRows, complete: summaryComplete } = await readPages<PayoutSummaryRow>(
+    (from, to) =>
+      supabase
+        .from("ap_payouts")
+        .select("amount, status")
+        .in("status", [...SUMMARISED_PAYOUT_STATUSES])
+        .range(from, to),
+    { label: "ap_payouts.summary" },
+  );
+
+  const summary = summarisePayouts(summaryRows);
 
   return {
     rows: rows.map((row) => {
@@ -89,6 +110,7 @@ export async function listPayoutsForAdmin(status?: string): Promise<{
       };
     }),
     summary,
+    summaryComplete,
   };
 }
 

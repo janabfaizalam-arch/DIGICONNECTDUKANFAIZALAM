@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
+import { getWalletTotals } from "@/lib/admin/wallet-totals";
 import { AdminWalletAdjustmentForm, AdminWalletStatusForm } from "@/components/admin/admin-wallet-adjustment-form";
 import { Card } from "@/components/ui/card";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
@@ -10,6 +11,22 @@ import type { RewardTransaction } from "@/lib/wallet";
 import { getRewardDirection } from "@/lib/wallet";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Window sizes for the lists on this page. The stat cards are whole-table
+ * aggregates from `getWalletTotals()` and must not be derived from these.
+ */
+const RECENT_TRANSACTION_LIMIT = 200;
+const RECENT_REFERRAL_LIMIT = 100;
+const TOP_WALLET_LIMIT = 100;
+/**
+ * The repeat-customer and wallet-conversion percentages below are still
+ * computed over this sample rather than the whole applications table, so they
+ * are approximations once an instance passes it. Correcting them needs a
+ * grouped aggregate over every application; tracked as Phase B P0-B rather
+ * than widened into this change.
+ */
+const APPLICATION_SAMPLE_LIMIT = 2000;
 
 function formatDate(date: string) {
   return safeDate(date);
@@ -59,13 +76,18 @@ export default async function AdminWalletPage() {
 
   if (supabase) {
     try {
-      const [transactionResult, customerResult, applicationResult, walletResult, referralResult, referralRewardsResult] = await Promise.all([
-        supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(200),
+      const [transactionResult, customerResult, applicationResult, walletResult, referralResult, totals] = await Promise.all([
+        // These five feed lists on the page, so a bounded window is correct —
+        // the cards below no longer count them.
+        supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(RECENT_TRANSACTION_LIMIT),
         supabase.from("profiles").select("id, full_name, email, mobile").eq("role", "customer").order("full_name", { ascending: true }),
-        supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(2000),
-        supabase.from("reward_wallets").select("user_id, balance").order("balance", { ascending: false }),
-        supabase.from("referral_events").select("id, referrer_user_id, referred_user_id, referral_code, referrer_reward_status, referrer_signup_reward_status, created_at").order("created_at", { ascending: false }).limit(100),
-        supabase.from("wallet_transactions").select("amount").in("type", ["referrer_signup_bonus", "referrer_first_service_bonus"]).neq("status", "reversed"),
+        supabase.from("applications").select("user_id, wallet_used_amount, status").not("user_id", "is", null).limit(APPLICATION_SAMPLE_LIMIT),
+        // Highest balances first, so an explicit limit is the top-N this list
+        // shows rather than wherever PostgREST happened to cut the result off.
+        supabase.from("reward_wallets").select("user_id, balance").order("balance", { ascending: false }).limit(TOP_WALLET_LIMIT),
+        supabase.from("referral_events").select("id, referrer_user_id, referred_user_id, referral_code, referrer_reward_status, referrer_signup_reward_status, created_at").order("created_at", { ascending: false }).limit(RECENT_REFERRAL_LIMIT),
+        // Whole-table aggregates, read independently of the lists above.
+        getWalletTotals(),
       ]);
 
       if (transactionResult.error || customerResult.error || applicationResult.error) {
@@ -78,16 +100,14 @@ export default async function AdminWalletPage() {
       referralEvents = (referralResult.data ?? []) as ReferralEventRow[];
       const applicationData = applicationResult.data ?? [];
 
-      totalIssued = transactions
-        .filter((transaction) => getRewardDirection(transaction.type) === "credit" && transaction.type !== "expiry")
-        .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
-      totalRedeemed = transactions
-        .filter((transaction) => transaction.type === "redeem")
-        .reduce((total, transaction) => total + Number(transaction.amount ?? 0), 0);
-
-      totalReferrals = referralEvents.length;
-      totalReferralRewards = ((referralRewardsResult.data ?? []) as Array<{ amount: number | null }>)
-        .reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+      // Previously these four were folded out of `transactions` (the most
+      // recent 200) and `referralEvents` (the most recent 100), so each card
+      // stopped growing once the business passed that many rows. They are now
+      // whole-table figures.
+      totalIssued = totals.totalIssued;
+      totalRedeemed = totals.totalRedeemed;
+      totalReferrals = totals.totalReferrals;
+      totalReferralRewards = totals.totalReferralRewards;
 
       const userOrderCounts = new Map<string, number>();
       let walletOrders = 0;

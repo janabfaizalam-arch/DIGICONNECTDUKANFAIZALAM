@@ -2,11 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
+import { getPaymentTotals } from "@/lib/admin/payment-totals";
 import { safeCurrency, safeDateTime } from "@/lib/admin-format";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The ledger below is the most recent slice, not the whole table. The cards
+ * above are whole-table aggregates, so the two must not be derived from each
+ * other.
+ */
+const RECENT_PAYMENT_LIMIT = 300;
 
 type PaymentRow = {
   id: string;
@@ -23,10 +31,6 @@ type PaymentRow = {
   created_at: string;
 };
 
-function normalize(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
-}
-
 export default async function AdminPaymentsPage() {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
@@ -42,24 +46,29 @@ export default async function AdminPaymentsPage() {
       .from("payments")
       .select("id, application_id, user_id, amount, real_payment_amount, wallet_used_amount, status, razorpay_order_id, razorpay_payment_id, payment_method, paid_at, created_at")
       .order("created_at", { ascending: false })
-      .limit(300);
+      .limit(RECENT_PAYMENT_LIMIT);
 
     if (error) console.error("[admin-payments] Payment list failed", error);
     payments = (data ?? []) as PaymentRow[];
   }
 
-  const verified = payments.filter((payment) => ["verified", "paid"].includes(normalize(payment.status)));
-  const pending = payments.filter((payment) => ["pending", "unpaid"].includes(normalize(payment.status)));
-  const totalPaid = verified.reduce((total, payment) => total + Number(payment.real_payment_amount ?? payment.amount ?? 0), 0);
+  // The cards are totals over the whole ledger, so they come from the database
+  // aggregate rather than from `payments` above — that list is the most recent
+  // 300 rows, and counting it produced figures that stopped growing at 300 and
+  // were presented as "Verified Payments" and "Verified Amount".
+  //
+  // `admin_dashboard_payment_totals` is the same aggregate the dashboard uses,
+  // so the two screens can no longer disagree.
+  const totals = await getPaymentTotals();
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <AdminPageHeader eyebrow="Finance" title="Payments" description="Server-side payment ledger with Razorpay IDs, application links, and wallet split." />
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <AdminStatCard title="Verified Payments" value={verified.length} icon="receiptText" tone="green" />
-        <AdminStatCard title="Pending Payments" value={pending.length} icon="fileClock" tone="orange" />
-        <AdminStatCard title="Verified Amount" value={safeCurrency(totalPaid)} icon="indianRupee" tone="blue" />
+        <AdminStatCard title="Verified Payments" value={totals.verifiedCount} icon="receiptText" tone="green" />
+        <AdminStatCard title="Pending Payments" value={totals.pendingCount} icon="fileClock" tone="orange" />
+        <AdminStatCard title="Verified Amount" value={safeCurrency(totals.verifiedSum)} icon="indianRupee" tone="blue" />
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
