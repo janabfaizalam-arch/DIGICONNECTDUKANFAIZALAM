@@ -3,6 +3,7 @@
 // DigiConnect Dukan — AP Ecosystem
 // ============================================================================
 
+import { calculateWalletBalance } from "@/lib/ap-wallet";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type FraudCheckResult = {
@@ -175,25 +176,36 @@ export async function checkPayoutFraud(params: {
     });
   }
 
-  // Check if requested amount exceeds wallet balance significantly
-  const { data: walletEntries } = await supabase
-    .from("ap_wallet_ledger")
-    .select("amount, entry_type")
-    .eq("agency_partner_id", params.agencyPartnerId);
+  // Does the request exceed what the partner actually has?
+  //
+  // This used to re-implement the balance here, over a single unbounded read of
+  // ap_wallet_ledger. Three things were wrong with that, and this gates money
+  // leaving the business:
+  //
+  //   1. PostgREST truncates the read at db.max_rows, so an active partner's
+  //      balance was computed from a fraction of their ledger — and with no
+  //      `order by`, not even a predictable fraction. Too low blocks a
+  //      legitimate payout; too high lets through one that should be blocked.
+  //   2. The rules had drifted. An unrecognised entry_type was *added* to the
+  //      balance here, while the canonical rules ignore it.
+  //   3. A failed read produced an empty array, which looked exactly like a
+  //      zero balance.
+  //
+  // calculateWalletBalance is the single source of truth: paged, ordered, and
+  // explicit about failure.
+  const balanceResult = await calculateWalletBalance(params.agencyPartnerId);
 
-  const balance = (walletEntries ?? []).reduce((total, entry) => {
-    const e = entry as { amount: number; entry_type: string };
-    const creditTypes = ["commission_credit", "manual_credit", "bonus"];
-    const debitTypes = ["manual_debit", "payout_deduction", "penalty", "reversal"];
-    if (creditTypes.includes(e.entry_type)) return total + Number(e.amount);
-    if (debitTypes.includes(e.entry_type)) return total - Math.abs(Number(e.amount));
-    return total + Number(e.amount);
-  }, 0);
-
-  if (params.requestedAmount > balance) {
+  if (!balanceResult.ok) {
+    // Fail closed. An unverifiable balance must not read as "nothing is wrong"
+    // on the one check standing between a request and money being sent.
     warnings.push({
       type: "suspicious_payout",
-      message: `Payout amount (₹${params.requestedAmount}) exceeds wallet balance (₹${balance}).`,
+      message: "Wallet balance could not be verified — check the ledger before approving.",
+    });
+  } else if (params.requestedAmount > balanceResult.balance) {
+    warnings.push({
+      type: "suspicious_payout",
+      message: `Payout amount (₹${params.requestedAmount}) exceeds wallet balance (₹${balanceResult.balance}).`,
     });
   }
 
