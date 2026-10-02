@@ -115,6 +115,22 @@ const COUNTED = new Set([
  * own statement would flag it as unbounded, which would make this script report
  * the fix as a regression.
  */
+function isRangedNearby(text, chainEnd) {
+  // A query assigned to a variable and ranged a few lines later, possibly via
+  // an alias:
+  //
+  //   const query = supabase.from("commissions").select(SELECT);
+  //   const filtered = status ? query.eq("status", status) : query;
+  //   await filtered.order(...).range(from, to);
+  //
+  // Chasing the aliases properly would mean parsing the file. This looks ahead
+  // a short way instead, which is a heuristic: it can mask a genuinely
+  // unbounded read that happens to sit just above an unrelated `.range()`. The
+  // inventory is a guide for prioritising, not a proof that a site is safe —
+  // every site this script reports is read before it is acted on.
+  return /\.range\(/.test(text.slice(chainEnd, chainEnd + 800));
+}
+
 function isRangedBuilder(text, chainStart) {
   const before = text.slice(0, chainStart);
   const declaration = /(?:const|let|function)\s+([A-Za-z_$][\w$]*)\s*(?:=|\()[^;]*$/.exec(
@@ -137,6 +153,7 @@ function unboundedReads() {
       if (!chain.includes(".select(")) continue;
       if (BOUNDED.some((token) => chain.includes(token))) continue;
       if (isRangedBuilder(text, match.index)) continue;
+      if (isRangedNearby(text, match.index + chain.length)) continue;
       hits.push({
         file: relative(ROOT, file),
         line: lineOf(text, match.index),
