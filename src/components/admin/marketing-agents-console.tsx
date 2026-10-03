@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Play, RefreshCw, Send, XCircle } from "lucide-react";
 
 import { AdminEmptyState } from "@/components/admin/admin-shell";
+import { STATUS_TONE_CLASS, toneFrom, type StatusTone } from "@/lib/admin/status-tone";
 import { cn } from "@/lib/utils";
 
 type PlatformStatus = { platform: string; label: string; configured: boolean; missing: string[] };
@@ -33,13 +34,24 @@ type Overview = {
   tableMissing: boolean;
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: "bg-emerald-100 text-emerald-700",
-  partial: "bg-amber-100 text-amber-800",
-  failed: "bg-rose-100 text-rose-700",
-  running: "bg-sky-100 text-sky-700",
-  posted: "bg-emerald-100 text-emerald-700",
-  skipped: "bg-slate-100 text-slate-500",
+/**
+ * Run and per-platform state to meaning.
+ *
+ * A run that was only partly posted is a warning, not a failure — some
+ * platforms went out. `skipped` is neutral: nothing was attempted, so there is
+ * nothing to judge.
+ *
+ * The lookup goes through `toneFrom` so a status this console has not seen
+ * before renders as a neutral chip. Indexing the old map directly returned
+ * `undefined`, which put an unstyled word on the page.
+ */
+const STATUS_TONE: Record<string, StatusTone> = {
+  completed: "success",
+  posted: "success",
+  partial: "warning",
+  failed: "danger",
+  running: "info",
+  skipped: "neutral",
 };
 
 export function MarketingAgentsConsole() {
@@ -176,7 +188,14 @@ export function MarketingAgentsConsole() {
               ) : null}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold", STATUS_STYLES[run.status])}>{run.status}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-bold",
+                      STATUS_TONE_CLASS[toneFrom(STATUS_TONE, run.status)],
+                    )}
+                  >
+                    {run.status}
+                  </span>
                   <span className="text-[11px] font-bold uppercase text-slate-500">
                     {run.run_date} · {run.mode} · {run.trigger}
                     {run.status === "running" ? ` · ${run.stage}` : ""}
@@ -193,7 +212,10 @@ export function MarketingAgentsConsole() {
                       target="_blank"
                       rel="noreferrer"
                       title={r.error}
-                      className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold", STATUS_STYLES[r.status])}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold",
+                        STATUS_TONE_CLASS[toneFrom(STATUS_TONE, r.status)],
+                      )}
                     >
                       {r.platform} {r.postUrl ? <ExternalLink className="h-3 w-3" aria-hidden="true" /> : null}
                     </a>

@@ -1,3 +1,4 @@
+import { STATUS_TONE_CLASS, type StatusTone } from "@/lib/admin/status-tone";
 import { cn } from "@/lib/utils";
 
 function label(status: string) {
@@ -21,28 +22,28 @@ function label(status: string) {
 }
 
 /**
- * Status to meaning, then meaning to colour.
+ * Status to meaning.
  *
- * These were `bg-emerald-50 text-emerald-700 ring-emerald-100` and friends.
- * The colours are unchanged in intent — a completed application is still
- * green — but they now resolve through the semantic tokens, so the panel can
- * be re-themed (and read in dark mode) from one file instead of this one
- * plus the 143 other places that picked their own green.
+ * The application vocabulary does not fit the shared defaults word for word —
+ * `verified` means paid here, and anything containing "pending" is waiting —
+ * so this screen family keeps its own reading. What it no longer keeps is the
+ * colour: that resolves through `STATUS_TONE_CLASS`, so the panel has one green
+ * rather than this file's plus the 143 other places that picked their own.
  */
-function tone(status: string) {
+function tone(status: string): StatusTone {
   if (status === "completed" || status === "verified") {
-    return "bg-ds-success-soft text-ds-success ring-ds-success-border";
+    return "success";
   }
 
   if (status === "rejected" || status === "failed" || status === "payment_failed") {
-    return "bg-ds-danger-soft text-ds-danger ring-ds-danger-border";
+    return "danger";
   }
 
   if (status.includes("pending") || status === "new" || status === "in_process" || status === "in_progress") {
-    return "bg-ds-warning-soft text-ds-warning ring-ds-warning-border";
+    return "warning";
   }
 
-  return "bg-ds-info-soft text-ds-info ring-ds-info-border";
+  return "info";
 }
 
 export function AdminStatusBadge({ status }: { status?: string | null }) {
@@ -50,5 +51,5 @@ export function AdminStatusBadge({ status }: { status?: string | null }) {
     return <span className="text-sm text-ds-text-muted">-</span>;
   }
 
-  return <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1", tone(status))}>{label(status)}</span>;
+  return <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold", STATUS_TONE_CLASS[tone(status)])}>{label(status)}</span>;
 }

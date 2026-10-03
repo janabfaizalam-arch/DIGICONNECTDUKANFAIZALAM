@@ -117,7 +117,10 @@ describe("ledger column widths fit the admin content area", () => {
     "utf8",
   );
 
-  const columns = [...table.matchAll(/id:\s*"([a-z]+)",([\s\S]*?)cell:/g)].map(([, id, body]) => ({
+  // `\bid:` rather than `id:` — the file also contains a status map whose
+  // `paid: "info"` ends in the same three characters, and without the word
+  // boundary that reads as a seventh column called "info".
+  const columns = [...table.matchAll(/\bid:\s*"([a-z]+)",([\s\S]*?)cell:/g)].map(([, id, body]) => ({
     id,
     width: /width:\s*"([^"]+)"/.exec(body)?.[1],
     hideBelow: Number(/hideBelow:\s*(\d+)/.exec(body)?.[1] ?? 0) || undefined,

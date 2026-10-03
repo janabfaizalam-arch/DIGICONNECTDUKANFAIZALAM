@@ -7,6 +7,7 @@ import { ApPayoutActions } from "@/components/admin/ap-payout-actions";
 import { Card } from "@/components/ui/card";
 import { listPayoutsForAdmin } from "@/lib/ap-payouts";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
+import { STATUS_TONE_CLASS, toneFrom, type StatusTone } from "@/lib/admin/status-tone";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -19,11 +20,18 @@ const FILTERS = [
   { value: "all", label: "All" },
 ] as const;
 
-const STATUS_CLASS: Record<string, string> = {
-  requested: "bg-amber-50 text-amber-700 border-amber-100",
-  processing: "bg-blue-50 text-blue-700 border-blue-100",
-  paid: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  rejected: "bg-rose-50 text-rose-700 border-rose-100",
+/**
+ * Payout state to meaning.
+ *
+ * `paid` is success here, where the commission ledger calls it info: on this
+ * queue the money has reached the partner and the row is done, so green is the
+ * right end of the story.
+ */
+const STATUS_TONE: Record<string, StatusTone> = {
+  requested: "warning",
+  processing: "info",
+  paid: "success",
+  rejected: "danger",
 };
 
 function bankLine(snapshot: Record<string, unknown> | null): string | null {
@@ -105,8 +113,8 @@ export default async function AdminApPayoutsPage({
                       <span className="font-mono text-xs font-semibold text-slate-500">{row.partnerCode}</span>
                     ) : null}
                     <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize ${
-                        STATUS_CLASS[row.status] ?? STATUS_CLASS.requested
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${
+                        STATUS_TONE_CLASS[toneFrom(STATUS_TONE, row.status, "warning")]
                       }`}
                     >
                       {row.status}

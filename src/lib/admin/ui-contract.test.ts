@@ -234,3 +234,75 @@ describe("page headers", () => {
     expect(invoice).not.toContain("AdminPageHeader");
   });
 });
+
+describe("status colours", () => {
+  /** The screens converted to the shared tones in this batch. */
+  const converted = [
+    "src/app/admin/ap-payouts/page.tsx",
+    "src/app/admin/partner-applications/page.tsx",
+    "src/app/admin/commissions/commissions-table.tsx",
+    "src/app/admin/ap-commissions/ap-commissions-table.tsx",
+    "src/app/admin/agency-partners/agency-partners-table.tsx",
+    "src/app/admin/referrals/referral-manager.tsx",
+    "src/app/admin/wallet/page.tsx",
+    "src/components/admin/ap-payout-actions.tsx",
+    "src/components/admin/admin-insurance-quotations-manager.tsx",
+    "src/components/admin/marketing-agents-console.tsx",
+    "src/components/admin/admin-operations-crm.tsx",
+    "src/components/admin/admin-status-badge.tsx",
+  ];
+
+  it("resolves every converted screen's status colour through the one module", () => {
+    for (const relative of converted) {
+      expect(read(join(ROOT, relative)), relative).toContain("@/lib/admin/status-tone");
+    }
+  });
+
+  /**
+   * Source with comments blanked out, newlines kept so line numbers survive.
+   *
+   * Several of the converted files say in a doc comment what they *used* to
+   * hold — that history is worth keeping, and a contract that reads it would
+   * fail on an accurate comment.
+   */
+  const code = (path: string) =>
+    read(path).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) => match.replace(/[^\n]/g, " "));
+
+  it("leaves no screen holding its own status colour table", () => {
+    // These were the declaration names in the audit — `STATUS_CLASS`,
+    // `STATUS_STYLES`, `statusClasses` and two spellings of a colour map. A new
+    // one is how the panel goes back to a different green per screen.
+    const offenders = files.filter((file) =>
+      /\b(?:STATUS_CLASS|STATUS_STYLES|STATUS_COLORS|statusClasses|statusColors)\b/.test(code(file)),
+    );
+
+    expect(offenders.map((f) => f.replace(ROOT + "/", ""))).toEqual([]);
+  });
+
+  it("keeps the tone-to-colour mapping out of the screens entirely", () => {
+    // One soft tone in a file is a legitimate one-off — an error panel, a
+    // destructive menu item. Two or more different ones means the file is
+    // deciding status colour itself, which is the job this module took over.
+    const offenders = files
+      .map((file) => ({
+        file: file.replace(ROOT + "/", ""),
+        tones: new Set(
+          (code(file).match(/bg-ds-(?:success|warning|danger|info)-soft/g) ?? []).map((m) => m),
+        ),
+      }))
+      .filter((entry) => entry.tones.size > 1)
+      .map((entry) => `${entry.file}: ${[...entry.tones].join(", ")}`);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("carries no raw-palette status map in the converted screens", () => {
+    // A `pending: "bg-amber-50 …"` entry — the exact shape that was removed.
+    const rawEntry =
+      /^\s*\w+:\s*"[^"]*\bbg-(?:slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|neutral|stone)-\d/m;
+
+    const offenders = converted.filter((relative) => rawEntry.test(code(join(ROOT, relative))));
+
+    expect(offenders).toEqual([]);
+  });
+});

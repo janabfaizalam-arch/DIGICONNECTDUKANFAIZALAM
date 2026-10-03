@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPartnerApplications } from "@/lib/admin/partner-applications-data";
 import { safeDate } from "@/lib/admin-format";
+import { STATUS_TONE_TEXT, statusToneClass } from "@/lib/admin/status-tone";
 import { DIGI_PARTNER_TYPES } from "@/lib/ap/partner-type";
 import type { DigiPartnerType } from "@/lib/ap/partner-type";
 import { PARTNER_APPLICATION_STATUS_LABELS } from "@/lib/partner-applications";
@@ -23,13 +24,6 @@ const FILTERS = [
   { value: "rejected", label: "Rejected" },
   { value: "all", label: "All" },
 ] as const;
-
-const STATUS_CLASS: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-100",
-  under_review: "bg-blue-50 text-blue-700 border-blue-100",
-  approved: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  rejected: "bg-rose-50 text-rose-700 border-rose-100",
-};
 
 export default async function AdminPartnerApplicationsPage({
   searchParams,
@@ -47,11 +41,14 @@ export default async function AdminPartnerApplicationsPage({
 
   const { rows, summary } = await listPartnerApplications({ status: active });
 
+  // Each tile takes its colour from the same tone as the badge for that status
+  // in the table below. Rejected used to be the only one that did not: a slate
+  // count above a rose badge, so the summary disagreed with the rows.
   const tiles = [
-    { label: "Pending", value: summary.pending, tone: "text-amber-700" },
-    { label: "Under review", value: summary.underReview, tone: "text-blue-700" },
-    { label: "Approved", value: summary.approved, tone: "text-emerald-700" },
-    { label: "Rejected", value: summary.rejected, tone: "text-slate-600" },
+    { label: "Pending", value: summary.pending, tone: STATUS_TONE_TEXT.warning },
+    { label: "Under review", value: summary.underReview, tone: STATUS_TONE_TEXT.info },
+    { label: "Approved", value: summary.approved, tone: STATUS_TONE_TEXT.success },
+    { label: "Rejected", value: summary.rejected, tone: STATUS_TONE_TEXT.danger },
   ];
 
   return (
@@ -153,7 +150,7 @@ export default async function AdminPartnerApplicationsPage({
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${STATUS_CLASS[row.status] ?? STATUS_CLASS.pending}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${statusToneClass(row.status, "warning")}`}
                       >
                         {PARTNER_APPLICATION_STATUS_LABELS[row.status]}
                       </span>

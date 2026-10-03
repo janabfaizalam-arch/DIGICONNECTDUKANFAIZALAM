@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
+import { statusToneClass } from "@/lib/admin/status-tone";
 import { getWalletTotals } from "@/lib/admin/wallet-totals";
 import { AdminWalletAdjustmentForm, AdminWalletStatusForm } from "@/components/admin/admin-wallet-adjustment-form";
 import { Card } from "@/components/ui/card";
@@ -228,9 +229,15 @@ export default async function AdminWalletPage() {
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                            ref.referrer_reward_status === "credited" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                          }`}>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                              // Anything not yet credited reads as still
+                              // pending, except a reward that was rejected or
+                              // reversed — those now say so instead of sharing
+                              // amber with a reward that is simply waiting.
+                              statusToneClass(ref.referrer_reward_status, "warning")
+                            }`}
+                          >
                             {ref.referrer_reward_status}
                           </span>
                           <p className="mt-1 text-[10px] text-slate-400">{formatDate(ref.created_at)}</p>

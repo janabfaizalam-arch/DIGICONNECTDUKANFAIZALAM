@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useToast } from "@/components/providers/toast-provider";
+import { STATUS_TONE_INTERACTIVE, type StatusTone } from "@/lib/admin/status-tone";
 import {
   allowedTransitions,
   describeTransition,
@@ -27,11 +28,16 @@ const ICON: Record<PayoutStatus, typeof PlayCircle> = {
   rejected: XCircle,
 };
 
-const TONE: Record<PayoutStatus, string> = {
-  requested: "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-  processing: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
-  paid: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-  rejected: "border-rose-200 bg-white text-rose-700 hover:bg-rose-50",
+/**
+ * Each button carries the tone of the state it moves the payout *to*, so the
+ * colour of the control matches the badge the row will be wearing afterwards.
+ * Reopening is neutral — it undoes rather than decides.
+ */
+const TONE: Record<PayoutStatus, StatusTone> = {
+  requested: "neutral",
+  processing: "info",
+  paid: "success",
+  rejected: "danger",
 };
 
 export function ApPayoutActions({
@@ -49,12 +55,12 @@ export function ApPayoutActions({
   const [busy, setBusy] = useState<string | null>(null);
 
   if (!isPayoutStatus(status)) {
-    return <span className="text-xs font-semibold text-rose-600">Unknown status</span>;
+    return <span className="text-xs font-semibold text-ds-danger">Unknown status</span>;
   }
 
   const options = allowedTransitions(status);
   if (!options.length) {
-    return <span className="text-xs font-semibold text-slate-400">Final</span>;
+    return <span className="text-xs font-semibold text-ds-text-muted">Final</span>;
   }
 
   function run(to: PayoutStatus) {
@@ -109,7 +115,7 @@ export function ApPayoutActions({
             type="button"
             disabled={isPending}
             onClick={() => run(to)}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-bold transition disabled:opacity-50 ${TONE[to]}`}
+            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-bold transition disabled:opacity-50 ${STATUS_TONE_INTERACTIVE[TONE[to]]}`}
           >
             {isPending && busy === to ? (
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
