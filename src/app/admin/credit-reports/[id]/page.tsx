@@ -95,14 +95,14 @@ export default async function AdminReportDetailPage({ params }: AdminReportDetai
                   <span className="text-[10px] text-white/40 uppercase font-bold tracking-wider block mb-1">
                     Raw Response JSON
                   </span>
-                  <pre className="text-[9px] font-mono bg-black/60 p-3 rounded-lg overflow-x-auto text-emerald-400 border border-white/5 max-h-60">
+                  <pre className="text-[11px] font-mono bg-black/60 p-3 rounded-lg overflow-x-auto text-emerald-400 border border-white/5 max-h-60">
                     {JSON.stringify(report.response_json || { info: "No raw payload stored" }, null, 2)}
                   </pre>
                 </div>
 
                 {report.error_message && (
                   <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl space-y-1">
-                    <span className="text-[9px] font-bold uppercase tracking-wider block flex items-center gap-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider block flex items-center gap-1">
                       <ShieldAlert className="w-3.5 h-3.5" />
                       Failure Reason
                     </span>

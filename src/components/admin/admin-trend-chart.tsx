@@ -138,7 +138,7 @@ export function AdminTrendChart({ series }: { series: TrendSeries[] }) {
                   x={24}
                   y={tick.y + 3.5}
                   textAnchor="end"
-                  className="fill-[var(--dc-body)] text-[9px] font-bold"
+                  className="fill-[var(--dc-body)] text-[11px] font-bold"
                 >
                   {format(tick.value)}
                 </text>
@@ -191,7 +191,7 @@ export function AdminTrendChart({ series }: { series: TrendSeries[] }) {
                   x={geometry.points[0].x}
                   y={HEIGHT - 4}
                   textAnchor="start"
-                  className="fill-[var(--dc-body)] text-[9.5px] font-bold"
+                  className="fill-[var(--dc-body)] text-[11px] font-bold"
                 >
                   {geometry.points[0].label}
                 </text>
@@ -199,7 +199,7 @@ export function AdminTrendChart({ series }: { series: TrendSeries[] }) {
                   x={geometry.points[geometry.points.length - 1].x}
                   y={HEIGHT - 4}
                   textAnchor="end"
-                  className="fill-[var(--dc-body)] text-[9.5px] font-bold"
+                  className="fill-[var(--dc-body)] text-[11px] font-bold"
                 >
                   {geometry.points[geometry.points.length - 1].label}
                 </text>

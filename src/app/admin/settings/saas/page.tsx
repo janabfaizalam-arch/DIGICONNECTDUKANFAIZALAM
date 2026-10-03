@@ -289,10 +289,10 @@ export default function AdminSaaSBrandingPage() {
                         <div>
                           <span className="text-xs font-black text-slate-900">{dom}</span>
                           <div className="flex gap-2 mt-0.5">
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600">
+                            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
                               <Check className="h-2 w-2" /> DNS Linked
                             </span>
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600">
+                            <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600">
                               <ShieldCheck className="h-2.5 w-2.5" /> SSL Active
                             </span>
                           </div>
@@ -370,8 +370,8 @@ export default function AdminSaaSBrandingPage() {
                   <ShieldCheck className="h-3 w-3" />
                 </div>
                 <div>
-                  <span className="text-[9px] font-black text-slate-800 block">Security Hardening Configured</span>
-                  <span className="text-[8px] font-semibold text-slate-400">All submissions encrypted via SHA-256</span>
+                  <span className="text-[11px] font-black text-slate-800 block">Security Hardening Configured</span>
+                  <span className="text-[11px] font-semibold text-slate-400">All submissions encrypted via SHA-256</span>
                 </div>
               </div>
             </div>

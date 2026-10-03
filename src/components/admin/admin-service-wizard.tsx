@@ -471,39 +471,39 @@ export function AdminServiceWizard({ categories, service = null, onComplete }: A
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-2 border-b border-slate-200/60 pb-3">
                 <div>
-                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Name</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px]">Name</span>
                   <span className="font-extrabold text-slate-800 text-sm mt-0.5 block">{title}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Slug</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px]">Slug</span>
                   <span className="font-mono text-slate-700 mt-0.5 block">{slug}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 border-b border-slate-200/60 pb-3">
                 <div>
-                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Customer Fee</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px]">Customer Fee</span>
                   <span className="font-extrabold text-slate-800 mt-0.5 block">₹{customerFee}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Partner payout</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px]">Partner payout</span>
                   <span className="font-extrabold text-slate-800 mt-0.5 block">₹{agentPayout}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">SLA Duration</span>
+                  <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px]">SLA Duration</span>
                   <span className="font-extrabold text-slate-900 mt-0.5 block">{tatHours} Hours</span>
                 </div>
               </div>
 
               <div>
-                <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px]">Required Documents Checklist</span>
+                <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px]">Required Documents Checklist</span>
                 <p className="font-bold text-slate-800 mt-1">
                   {documents.length > 0 ? documents.join(", ") : "No documents requested."}
                 </p>
               </div>
 
               <div className="border-t border-slate-200/60 pt-3">
-                <span className="text-slate-500 font-bold block uppercase tracking-wider text-[9px] mb-2">Publishing Status</span>
+                <span className="text-slate-500 font-bold block uppercase tracking-wider text-[11px] mb-2">Publishing Status</span>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
                     <input

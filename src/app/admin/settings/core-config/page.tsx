@@ -217,7 +217,7 @@ export default function AdminCoreConfigurationPage() {
                             key={tag}
                             type="button"
                             onClick={() => insertTag(tag)}
-                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[9px] font-black py-1 px-1.5 rounded-md border border-indigo-100 transition"
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-black py-1 px-1.5 rounded-md border border-indigo-100 transition"
                           >
                             +{tag.replace(/[{}]/g, "")}
                           </button>
@@ -258,17 +258,17 @@ export default function AdminCoreConfigurationPage() {
                     </div>
                     <div>
                       <span className="text-[10px] font-black block leading-none">DigiConnect Alerts</span>
-                      <span className="text-[8px] font-semibold text-slate-400">Verified Business Account</span>
+                      <span className="text-[11px] font-semibold text-slate-400">Verified Business Account</span>
                     </div>
                   </div>
 
                   {/* Chat bubble using state formatting */}
                   <div className="bg-white rounded-2xl p-3 max-w-[85%] self-start shadow-xs relative border border-slate-100/50 mt-6 mb-auto text-[10px] leading-relaxed text-slate-800 font-semibold font-sans">
                     {getSimulatedPreview(templates[activeTemplateIdx].body)}
-                    <span className="block text-[8px] text-right text-slate-400 font-bold mt-1">11:58 AM</span>
+                    <span className="block text-[11px] text-right text-slate-400 font-bold mt-1">11:58 AM</span>
                   </div>
 
-                  <span className="text-[9px] font-black text-slate-400 text-center uppercase tracking-widest mt-auto">
+                  <span className="text-[11px] font-black text-slate-400 text-center uppercase tracking-widest mt-auto">
                     Simulated WhatsApp Alert
                   </span>
                 </div>
@@ -277,14 +277,14 @@ export default function AdminCoreConfigurationPage() {
                 <div className="border border-slate-200 rounded-3xl overflow-hidden bg-slate-50 shadow-sm p-4 relative aspect-video sm:aspect-square flex flex-col">
                   <div className="bg-white border rounded-2xl p-4 space-y-3 flex-1 flex flex-col">
                     <div className="border-b border-slate-100 pb-2 space-y-1">
-                      <span className="text-[9px] font-semibold text-slate-400 block">From: support@digiconnect.in</span>
+                      <span className="text-[11px] font-semibold text-slate-400 block">From: support@digiconnect.in</span>
                       <span className="text-[10px] font-black text-slate-900 block">Subject: {templates[activeTemplateIdx].name} Confirmation</span>
                     </div>
                     <div className="text-[10px] text-slate-700 leading-relaxed font-semibold flex-1 whitespace-pre-line py-2">
                       {getSimulatedPreview(templates[activeTemplateIdx].body)}
                     </div>
                     <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
-                      <span className="text-[8px] font-bold text-slate-400">DigiConnect Mail Gateway</span>
+                      <span className="text-[11px] font-bold text-slate-400">DigiConnect Mail Gateway</span>
                       <div className="h-2 w-2 rounded-full bg-indigo-600" />
                     </div>
                   </div>

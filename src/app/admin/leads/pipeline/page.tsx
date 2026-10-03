@@ -323,13 +323,13 @@ export default function AdminCRMPipeline() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h5 className="text-xs font-black text-slate-900">{lead.customer_name}</h5>
-                            <span className="inline-flex items-center gap-1 text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
                               Est. CLV: ₹{Number(lead.estimated_clv).toLocaleString("en-IN")}
                             </span>
                           </div>
 
                           <span
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                            className={`text-[11px] font-black px-1.5 py-0.5 rounded-md ${
                               lead.lead_score >= 80
                                 ? "bg-emerald-50 text-emerald-700"
                                 : lead.lead_score >= 50
@@ -347,7 +347,7 @@ export default function AdminCRMPipeline() {
                           </p>
                         )}
 
-                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-500 mt-1 border-t border-slate-50 pt-2">
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 mt-1 border-t border-slate-50 pt-2">
                           <Phone className="h-3 w-3" /> {lead.customer_mobile}
                         </div>
 
@@ -360,7 +360,7 @@ export default function AdminCRMPipeline() {
                                 const prevStage = STAGES[stagesIndex - 1].id;
                                 moveStage(lead.id, prevStage);
                               }}
-                              className="text-[9px] font-black text-slate-500 hover:text-slate-900 px-1 border border-slate-100 rounded-md hover:bg-slate-50"
+                              className="text-[11px] font-black text-slate-500 hover:text-slate-900 px-1 border border-slate-100 rounded-md hover:bg-slate-50"
                             >
                               ← Back
                             </button>
@@ -372,7 +372,7 @@ export default function AdminCRMPipeline() {
                                 const nextStage = STAGES[stagesIndex + 1].id;
                                 moveStage(lead.id, nextStage);
                               }}
-                              className="text-[9px] font-black text-indigo-700 hover:text-indigo-800 px-1 border border-slate-100 rounded-md hover:bg-slate-50 flex items-center gap-0.5"
+                              className="text-[11px] font-black text-indigo-700 hover:text-indigo-800 px-1 border border-slate-100 rounded-md hover:bg-slate-50 flex items-center gap-0.5"
                             >
                               Next <ArrowRight className="h-2 w-2" />
                             </button>

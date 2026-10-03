@@ -268,7 +268,7 @@ export function ReportsClient({
                       <TableCell className="text-xs text-slate-500">{a.district}</TableCell>
                       <TableCell>
                         <p className="font-bold text-xs text-slate-700">{a.partnerName}</p>
-                        <p className="font-mono text-[9px] text-slate-400">{a.partnerCode}</p>
+                        <p className="font-mono text-[11px] text-slate-400">{a.partnerCode}</p>
                       </TableCell>
                       <TableCell className="text-xs font-bold text-slate-800 text-right">{safeCurrency(a.amount)}</TableCell>
                       <TableCell><span className="text-[10px] font-bold uppercase">{a.paymentStatus}</span></TableCell>
@@ -294,7 +294,7 @@ export function ReportsClient({
                     <TableRow key={p.id} className="hover:bg-slate-50/50">
                       <TableCell>
                         <p className="font-bold text-slate-950 text-xs">{p.name}</p>
-                        <p className="font-mono text-[9px] text-indigo-600">{p.partnerCode}</p>
+                        <p className="font-mono text-[11px] text-indigo-600">{p.partnerCode}</p>
                       </TableCell>
                       <TableCell className="text-xs text-slate-500">{p.district}, {p.state}</TableCell>
                       <TableCell className="text-xs font-bold text-slate-800 text-right">{p.appCount}</TableCell>

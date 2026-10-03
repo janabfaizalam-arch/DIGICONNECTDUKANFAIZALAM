@@ -346,7 +346,7 @@ export function AdminServicePageBuilder({ service }: AdminServicePageBuilderProp
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-slate-900">{sec.title || "Custom Block"}</h4>
-                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-wider">{sec.section_type}</span>
+                    <span className="text-[11px] font-black text-indigo-600 uppercase tracking-wider">{sec.section_type}</span>
                   </div>
                 </div>
 

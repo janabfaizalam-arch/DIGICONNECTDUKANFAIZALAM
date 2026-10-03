@@ -257,7 +257,7 @@ export default function AdminTicketsPage() {
                         </span>
                         <span
                           className={cn(
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold",
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
                             t.priority === "Urgent"
                               ? "bg-rose-50 text-rose-700"
                               : t.priority === "High"
@@ -381,7 +381,7 @@ export default function AdminTicketsPage() {
                     >
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     </div>
-                    <span className="text-[9px] text-slate-400 font-semibold mt-1 font-mono px-1">
+                    <span className="text-[11px] text-slate-400 font-semibold mt-1 font-mono px-1">
                       {msg.senderName} · {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
