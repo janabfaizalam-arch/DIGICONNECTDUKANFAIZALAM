@@ -132,7 +132,7 @@ function AdminNav({
               >
                 <span
                   className={cn(
-                    "text-[10px] font-extrabold uppercase tracking-[0.15em]",
+                    "text-[11px] font-extrabold uppercase tracking-[0.13em]",
                     groupHasActive ? "text-[var(--dc-flame)]" : "text-[var(--dc-body)]",
                   )}
                 >
@@ -285,7 +285,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <span className="block text-[15px] font-extrabold leading-tight tracking-tight text-[var(--dc-ink)]">
         DigiConnect <span className="text-[var(--dc-flame)]">Dukan</span>
       </span>
-      <span className="block text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-[var(--dc-body)]">
+      <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-body)]">
         Admin Control
       </span>
     </Link>
@@ -489,7 +489,7 @@ export function AdminPageHeader({
     <div className="mb-5 flex flex-col gap-3 border-b border-[var(--dc-ink)]/8 pb-4 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:pb-5">
       <div className="min-w-0">
         {eyebrow ? (
-          <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--dc-flame)]">
+          <span className="inline-flex items-center text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-flame)]">
             {eyebrow}
           </span>
         ) : null}
@@ -523,7 +523,7 @@ export function AdminEmptyState({ title, description }: { title: string; descrip
 export function AdminUnderSetup({ title, description }: { title: string; description?: string }) {
   return (
     <div className="lg-card p-8 text-center">
-      <span className="inline-flex items-center rounded-full bg-[var(--dc-amber)]/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-flame)]">
+      <span className="inline-flex items-center rounded-full bg-[var(--dc-amber)]/15 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.13em] text-[var(--dc-flame)]">
         Under setup
       </span>
       <h2 className="mt-3 text-[1.15rem] font-extrabold text-[var(--dc-ink)]">{title}</h2>
@@ -558,7 +558,7 @@ export function AdminStatCard({
   return (
     <div className="lg-card lg-raise p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[var(--dc-body)]">{title}</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.13em] text-[var(--dc-body)]">{title}</p>
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.65rem] text-white"
           style={{ background: ramp[tone] ?? ramp.blue }}

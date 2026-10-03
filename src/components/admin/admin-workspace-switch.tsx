@@ -79,7 +79,7 @@ export function AdminWorkspaceSwitch({
           <CurrentIcon className="h-[18px] w-[18px]" aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-flame)]">
+          <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-flame)]">
             Workspace
           </span>
           <span className="block truncate text-[13.5px] font-extrabold leading-tight text-[var(--dc-ink)]">

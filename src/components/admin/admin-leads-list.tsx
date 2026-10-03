@@ -91,12 +91,12 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                         {crmEvents.length > 0 && (
                           <div className="flex flex-wrap gap-1 max-w-[150px]">
                             {Array.from(new Set(crmEvents)).slice(0, 3).map((ev, idx) => (
-                              <span key={idx} className="inline-block text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase font-bold">
+                              <span key={idx} className="inline-block text-[11px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase font-bold">
                                 {ev.replace(/_/g, " ")}
                               </span>
                             ))}
                             {new Set(crmEvents).size > 3 && (
-                              <span className="text-[8px] text-slate-400 font-bold">+{new Set(crmEvents).size - 3}</span>
+                              <span className="text-[11px] text-slate-400 font-bold">+{new Set(crmEvents).size - 3}</span>
                             )}
                           </div>
                         )}
@@ -154,7 +154,7 @@ export function AdminLeadsList({ leads }: { leads: Lead[] }) {
                   }
                 } catch {}
                 return (
-                  <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-bold">
                     Score: {crmScore}
                   </span>
                 );

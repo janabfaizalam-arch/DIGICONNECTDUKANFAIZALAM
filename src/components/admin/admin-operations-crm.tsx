@@ -473,7 +473,7 @@ export function AdminOperationsCRM({
                           <h4 className={`text-xs font-black transition-colors ${isActive ? "text-blue-600" : isPassed ? "text-slate-800" : "text-slate-400"}`}>
                             {stage.label}
                           </h4>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${stage.color}`}>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${stage.color}`}>
                             SLA: {stage.slaHours}h
                           </span>
                         </div>
@@ -538,7 +538,7 @@ export function AdminOperationsCRM({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                      <span className={`text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                         task.priority === "high" ? "bg-red-50 text-red-600" : task.priority === "medium" ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"
                       }`}>
                         {task.priority}
@@ -602,7 +602,7 @@ export function AdminOperationsCRM({
                   <div key={app.level} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                       <span className="font-extrabold text-xs text-slate-800">{app.level} Review</span>
-                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      <span className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-full ${
                         app.status === "approved" ? "bg-emerald-50 text-emerald-600" : app.status === "returned" ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"
                       }`}>
                         {app.status}
@@ -690,7 +690,7 @@ export function AdminOperationsCRM({
                       <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Customer Tags</p>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {crmMetadata.tags.map((tag) => (
-                          <span key={tag} className="text-[9px] font-extrabold uppercase bg-slate-900 text-white px-2 py-0.5 rounded-full">
+                          <span key={tag} className="text-[11px] font-extrabold uppercase bg-slate-900 text-white px-2 py-0.5 rounded-full">
                             {tag}
                           </span>
                         ))}
@@ -711,7 +711,7 @@ export function AdminOperationsCRM({
                           <p className="font-black text-slate-800">{t.subject}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5">Ticket ID: {t.id} • Created {t.created_at}</p>
                         </div>
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        <span className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-full ${
                           t.status === "resolved" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                         }`}>
                           {t.status}

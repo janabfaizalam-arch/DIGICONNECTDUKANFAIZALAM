@@ -239,7 +239,7 @@ export function AdminCommandPalette({
                 {query ? "Matching Services" : "Recent Services"}
               </span>
               {query && (
-                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                   {filteredServices.length} found
                 </span>
               )}
@@ -275,7 +275,7 @@ export function AdminCommandPalette({
                     </div>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wide ${
+                        className={`text-[11px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wide ${
                           isSelected
                             ? "bg-indigo-700/50 text-white"
                             : service.status === "published"

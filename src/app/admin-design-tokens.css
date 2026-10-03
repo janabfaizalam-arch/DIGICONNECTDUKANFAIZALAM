@@ -123,6 +123,57 @@
   --ds-page-gutter-lg: 1.5rem;
   --ds-page-max: 1440px;
   --ds-section-gap: 1.25rem;
+
+  /*
+    Control heights.
+
+    44px is the comfortable touch target; 36px is the dense desktop control and
+    40px the default. Fixing them here is what stops a page inventing `h-9` for
+    a button sitting beside an `h-11` input — the misalignment the audit found
+    across 270 hand-rolled buttons and 184 hand-rolled inputs.
+  */
+  --ds-control-sm: 2.25rem;  /* 36px — dense, desktop only */
+  --ds-control-md: 2.5rem;   /* 40px — default */
+  --ds-control-lg: 2.75rem;  /* 44px — touch target minimum */
+
+  /*
+    Motion.
+
+    Fast and short on purpose: an admin panel is used all day, and anything
+    slower than ~200ms starts to feel like latency rather than polish. The
+    reduced-motion block below collapses all of these to nothing.
+  */
+  --ds-motion-fast: 120ms;
+  --ds-motion-base: 180ms;
+  --ds-motion-slow: 240ms;
+  --ds-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Focus ring, as one value so every control gets the same one. */
+  --ds-focus-ring: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+}
+
+/*
+  Reduced motion.
+
+  The audit found no handling of this anywhere in the admin surface. For a
+  vestibular disorder an animation is not decoration, so this is not a nicety:
+  it removes the motion while leaving every other style intact.
+*/
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ds-motion-fast: 0ms;
+    --ds-motion-base: 0ms;
+    --ds-motion-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /*
@@ -234,4 +285,15 @@
   --shadow-ds-sm: var(--ds-shadow-sm);
   --shadow-ds-md: var(--ds-shadow-md);
   --shadow-ds-lg: var(--ds-shadow-lg);
+
+  /* Control heights, as `h-ds-control-md` and friends. */
+  --spacing-ds-control-sm: var(--ds-control-sm);
+  --spacing-ds-control-md: var(--ds-control-md);
+  --spacing-ds-control-lg: var(--ds-control-lg);
+
+  /* Durations, as `duration-ds-fast` and friends. */
+  --transition-duration-ds-fast: var(--ds-motion-fast);
+  --transition-duration-ds-base: var(--ds-motion-base);
+  --transition-duration-ds-slow: var(--ds-motion-slow);
+  --ease-ds: var(--ds-ease);
 }

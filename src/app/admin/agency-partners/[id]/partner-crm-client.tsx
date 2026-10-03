@@ -217,7 +217,7 @@ export function PartnerCrmClient({
                 {tab.label}
                 {tab.badge !== undefined && (
                   <span className={cn(
-                    "ml-1.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold",
+                    "ml-1.5 rounded-full px-1.5 py-0.2 text-[11px] font-bold",
                     active ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-500"
                   )}>
                     {tab.badge}
@@ -289,10 +289,10 @@ export function PartnerCrmClient({
                       <div>
                         <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">{doc.document_type.replace(/_/g, " ")}</p>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{doc.file_name}</p>
-                        <p className="text-[9px] text-slate-400 mt-1">Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}</p>
                         <div className="mt-2.5">
                           <span className={cn(
-                            "inline-flex rounded-full px-2.5 py-0.5 text-[9px] font-bold border capitalize",
+                            "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold border capitalize",
                             doc.status === "accepted"
                               ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                               : doc.status === "rejected"
@@ -341,7 +341,7 @@ export function PartnerCrmClient({
                       {/* Rejection input popover */}
                       {rejectingDocId === doc.id && (
                         <div className="mt-3 bg-white border rounded-xl p-3 space-y-2">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Rejection Reason</label>
+                          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Rejection Reason</label>
                           <Input
                             placeholder="Type reason for rejection..."
                             value={rejectionReason}
@@ -385,7 +385,7 @@ export function PartnerCrmClient({
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Ledger Balance</h4>
                     <p className="text-3xl font-bold tracking-tight text-slate-900 font-heading mt-2">{safeCurrency(balance)}</p>
                   </div>
-                  <p className="text-[9px] font-medium text-slate-400 mt-4">Sums all credits and debit ledger rows.</p>
+                  <p className="text-[11px] font-medium text-slate-400 mt-4">Sums all credits and debit ledger rows.</p>
                 </div>
 
                 {/* Adjustment form */}
@@ -497,7 +497,7 @@ export function PartnerCrmClient({
                           <TableCell className="text-xs font-bold text-emerald-600 text-right">{safeCurrency(comm.calculated_amount)}</TableCell>
                           <TableCell>
                             <span className={cn(
-                              "inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold border capitalize",
+                              "inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold border capitalize",
                               comm.status === "paid"
                                 ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                                 : "bg-blue-50 border-blue-200 text-blue-700"
@@ -541,7 +541,7 @@ export function PartnerCrmClient({
                       </div>
                       <div className="flex items-center gap-3">
                         <AdminStatusBadge status={app.status} />
-                        <p className="text-[9px] text-slate-400 font-mono">{new Date(app.created_at).toLocaleDateString()}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">{new Date(app.created_at).toLocaleDateString()}</p>
                       </div>
                     </Link>
                   ))
@@ -669,7 +669,7 @@ export function PartnerCrmClient({
           {/* Health indicator dial */}
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">DC Partner Health Score</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">DC Partner Health Score</p>
               <p className="text-2xl font-bold text-slate-900 mt-1 font-heading">{healthScore}%</p>
             </div>
             <div className="h-10 w-10 flex items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-blue-600 font-bold text-xs font-mono">
@@ -680,7 +680,7 @@ export function PartnerCrmClient({
           {/* System status updating */}
           <div className="space-y-3.5 pt-3 border-t border-slate-100">
             <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Ecosystem Status</label>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Ecosystem Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as APStatus)}
@@ -698,7 +698,7 @@ export function PartnerCrmClient({
             </div>
 
             <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">KYC Review Status</label>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">KYC Review Status</label>
               <select
                 value={kycStatus}
                 onChange={(e) => setKycStatus(e.target.value as APKycStatus)}
@@ -714,7 +714,7 @@ export function PartnerCrmClient({
             </div>
 
             <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Admin notes</label>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Admin notes</label>
               <textarea
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
@@ -755,7 +755,7 @@ export function PartnerCrmClient({
 function InfoTile({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
-      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
       <p className={cn("mt-1 break-words font-bold text-slate-950 text-xs", mono && "font-mono text-[11px]")}>{value}</p>
     </div>
   );

@@ -728,7 +728,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
             {/* Drawer Header */}
             <div className="border-b border-slate-200/60 p-5 flex items-start justify-between">
               <div>
-                <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-indigo-700">
+                <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-indigo-700">
                   {activeService.category?.name || "Services CMS"}
                 </span>
                 <h2 className="mt-1 text-base font-extrabold text-slate-900">{activeService.title}</h2>
@@ -799,7 +799,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                   <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
                     <div>
                       <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 block">Status</span>
-                      <span className="mt-1.5 inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-slate-700">
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-slate-700">
                         {activeService.status}
                       </span>
                     </div>
@@ -815,13 +815,13 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                     <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 block">SLA & System Configuration</span>
                     <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-800">
                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                        <span className="text-[9px] font-extrabold text-slate-400 block uppercase">Auto Assign</span>
+                        <span className="text-[11px] font-extrabold text-slate-400 block uppercase">Auto Assign</span>
                         <span className="mt-1 block">
                           {(activeService.metadata as ServiceMetadata | null | undefined)?.auto_assignment ? "Enabled" : "Disabled"}
                         </span>
                       </div>
                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                        <span className="text-[9px] font-extrabold text-slate-400 block uppercase">TAT SLA Goal</span>
+                        <span className="text-[11px] font-extrabold text-slate-400 block uppercase">TAT SLA Goal</span>
                         <span className="mt-1 block">
                           {(activeService.metadata as ServiceMetadata | null | undefined)?.tat_hours || 48} Hours
                         </span>
@@ -835,7 +835,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                         <User className="h-4.5 w-4.5 text-slate-500" />
                       </div>
                       <div>
-                        <span className="text-[9px] font-extrabold text-slate-400 block uppercase">Created By</span>
+                        <span className="text-[11px] font-extrabold text-slate-400 block uppercase">Created By</span>
                         <span className="text-xs font-bold text-slate-800 block mt-0.5">
                           {activeService.created_by_profile.full_name} ({activeService.created_by_profile.role})
                         </span>
@@ -876,14 +876,14 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-xl border border-slate-200/80 p-4">
-                      <span className="text-[9px] font-extrabold text-slate-500 uppercase block">Customer Price</span>
+                      <span className="text-[11px] font-extrabold text-slate-500 uppercase block">Customer Price</span>
                       <p className="mt-1 text-xl font-extrabold text-slate-900">
                         ₹{(activeService.metadata as ServiceMetadata | null | undefined)?.customer_fee || activeService.sale_price || 0}
                       </p>
                     </div>
 
                     <div className="rounded-xl border border-slate-200/80 p-4">
-                      <span className="text-[9px] font-extrabold text-slate-500 uppercase block">Partner Payout</span>
+                      <span className="text-[11px] font-extrabold text-slate-500 uppercase block">Partner Payout</span>
                       <p className="mt-1 text-xl font-extrabold text-emerald-600">
                         ₹{(activeService.metadata as ServiceMetadata | null | undefined)?.agent_payout || 0}
                       </p>
@@ -915,7 +915,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Recent Applications</span>
                     {analyticsData?.summary && (
-                      <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                      <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
                         Total {analyticsData.summary.totalApplications}
                       </span>
                     )}
@@ -938,13 +938,13 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                         >
                           <div className="flex flex-col">
                             <span>{app.customerName}</span>
-                            <span className="font-mono text-[9px] text-slate-400 mt-0.5">{app.customerMobile}</span>
+                            <span className="font-mono text-[11px] text-slate-400 mt-0.5">{app.customerMobile}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-slate-800">₹{app.amount}</span>
                             <span
                               className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide font-extrabold",
+                                "text-[11px] px-1.5 py-0.5 rounded uppercase tracking-wide font-extrabold",
                                 app.status === "completed"
                                   ? "bg-green-50 text-green-700"
                                   : app.status === "rejected"
@@ -967,14 +967,14 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                 <div className="space-y-5 animate-in fade-in-50 duration-150">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                      <span className="text-[9px] font-extrabold text-slate-400 uppercase">Gross Revenue</span>
+                      <span className="text-[11px] font-extrabold text-slate-400 uppercase">Gross Revenue</span>
                       <p className="mt-1 text-xl font-extrabold text-slate-900">
                         ₹{analyticsData?.summary?.totalRevenue || 0}
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                      <span className="text-[9px] font-extrabold text-slate-400 uppercase">Approval SLA Rate</span>
+                      <span className="text-[11px] font-extrabold text-slate-400 uppercase">Approval SLA Rate</span>
                       <p className="mt-1 text-xl font-extrabold text-indigo-600">
                         {analyticsData?.summary?.approvalRate || 100}%
                       </p>
@@ -1039,7 +1039,7 @@ export function AdminServicesList({ services: initialServices, categories }: Adm
                               <span className="text-indigo-600 font-extrabold capitalize">{log.action}</span>
                               <span className="text-slate-500 font-semibold"> by {actorName}</span>
                             </div>
-                            <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">{dateStr}</span>
+                            <span className="text-[11px] text-slate-400 font-semibold block mt-0.5">{dateStr}</span>
 
                             {log.changes && Object.keys(log.changes).length > 0 && (
                               <div className="mt-2 rounded-lg bg-slate-50 border border-slate-100 p-2 text-[10px] font-mono space-y-1">

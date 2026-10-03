@@ -183,7 +183,7 @@ function DailyBars({ points }: { points: DayPoint[] }) {
                 }}
                 title={`${dayLabel(point.day)}: ${nf(point.visitors)} people, ${nf(point.views)} pages`}
               />
-              <span className={`truncate text-[9.5px] font-semibold ${MUTED}`}>{dayLabel(point.day)}</span>
+              <span className={`truncate text-[11px] font-semibold ${MUTED}`}>{dayLabel(point.day)}</span>
             </div>
           );
         })}
