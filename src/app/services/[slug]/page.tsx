@@ -158,6 +158,11 @@ export default async function ServiceDetailRoute({ params, searchParams }: PageP
     redirect("/services/cibil-report-analysis-and-credit-health-consultation");
   }
 
+  // Passport has its own page; the alias the homepage links to goes there too.
+  if (slug === "passport-assistance") {
+    redirect("/services/passport");
+  }
+
   const categoryPage = await getPublicCategoryBySlug(slug);
 
   if (categoryPage) {
