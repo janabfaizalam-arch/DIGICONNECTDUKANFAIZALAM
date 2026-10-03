@@ -4,6 +4,7 @@
 // ============================================================
 
 import { notFound, redirect } from "next/navigation";
+import { AdminPageHeader } from "@/components/admin/admin-shell";
 import Link from "next/link";
 import { ChevronLeft, Database, ShieldAlert, FileText } from "lucide-react";
 import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
@@ -70,10 +71,11 @@ export default async function AdminReportDetailPage({ params }: AdminReportDetai
           </Link>
         </div>
 
-        <div className="border-b border-white/5 pb-4">
-          <h1 className="text-2xl font-bold tracking-tight">Admin Credit Report Audit</h1>
-          <p className="text-xs text-slate-400">Review bureau raw payloads and customer detail parameters</p>
-        </div>
+        <AdminPageHeader
+          eyebrow="Credit"
+          title="Admin Credit Report Audit"
+          description="Review bureau raw payloads and customer detail parameters."
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Detailed viewer (Column 1 & 2) */}

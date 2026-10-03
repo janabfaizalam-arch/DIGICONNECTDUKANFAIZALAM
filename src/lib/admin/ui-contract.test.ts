@@ -191,3 +191,46 @@ describe("page containers", () => {
     expect(layout).toContain('width = "wide"');
   });
 });
+
+describe("page headers", () => {
+  it("offers one back affordance instead of fifteen", () => {
+    // 15 pages hand-rolled their own, each with its own icon spacing and hit
+    // area, so a detail screen in one corner of the panel looked nothing like
+    // a detail screen in another.
+    const shell = read(join(ROOT, "src/components/admin/admin-shell.tsx"));
+
+    expect(shell).toContain("backHref");
+    expect(shell).toContain('backLabel = "Back"');
+    expect(shell).toContain("focus-visible:ring-ds-focus");
+  });
+
+  it("keeps the converted pages on the shared header", () => {
+    // These nine wrote their own <h1> in seven different type treatments —
+    // text-xl through text-3xl, font-bold through font-black, and three
+    // different greys.
+    const converted = [
+      "src/app/admin/coupons/page.tsx",
+      "src/app/admin/credit-reports/page.tsx",
+      "src/app/admin/credit-reports/[id]/page.tsx",
+      "src/app/admin/labour-schemes/page.tsx",
+      "src/app/admin/leads/pipeline/page.tsx",
+    ];
+
+    for (const relative of converted) {
+      const source = read(join(ROOT, relative));
+      expect(source, relative).toContain("AdminPageHeader");
+      // And no longer carry a hand-rolled page title.
+      expect(source, relative).not.toMatch(/<h1[^>]*className="[^"]*text-(?:xl|2xl|3xl)/);
+    }
+  });
+
+  it("leaves the invoice letterhead alone", () => {
+    // offline-invoices/[id] has an <h1> reading "DigiConnect Dukan" beside a
+    // logo: that is a printed document's letterhead, not a page header, and
+    // converting it would be wrong.
+    const invoice = read(join(ROOT, "src/app/admin/offline-invoices/[id]/page.tsx"));
+
+    expect(invoice).toContain("DigiConnect Dukan");
+    expect(invoice).not.toContain("AdminPageHeader");
+  });
+});

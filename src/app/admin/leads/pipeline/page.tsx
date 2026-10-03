@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { AdminPageHeader } from "@/components/admin/admin-shell";
+import { AdminButton } from "@/components/admin/primitives/controls-ui";
 import { PageContainer } from "@/components/admin/primitives/layout";
 import { Plus, Phone, Award, TrendingUp, RefreshCw, LayoutGrid, ArrowRight, Save } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
@@ -136,25 +138,17 @@ export default function AdminCRMPipeline() {
 
   return (
     <PageContainer width="form" className="px-4 py-8 space-y-6">
-      {/* Header info */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
-        <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight font-heading flex items-center gap-2">
-            CRM Sales & Lead Pipeline
-          </h1>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">
-            Monitor incoming citizen leads, opportunities value, and schedule automatic reminders.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-1.5 text-xs font-black text-white hover:bg-blue-700 shadow-md shadow-blue-900/10 transition"
-        >
-          <Plus className="h-4 w-4" />
-          Add Lead Profile
-        </button>
-      </div>
+      <AdminPageHeader
+        eyebrow="Leads & Sales"
+        title="CRM Sales & Lead Pipeline"
+        description="Monitor incoming citizen leads, opportunities value, and schedule automatic reminders."
+        action={
+          <AdminButton variant="primary" onClick={() => setShowAddForm(!showAddForm)}>
+            <Plus className="h-4 w-4" />
+            Add Lead Profile
+          </AdminButton>
+        }
+      />
 
       {/* KPI Stats cards */}
       <div className="grid gap-4 sm:grid-cols-3">

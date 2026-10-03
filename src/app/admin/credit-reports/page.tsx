@@ -4,6 +4,7 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
+import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { getCurrentUser, hasAdminAccess } from "@/lib/auth";
 import { getAdminCreditAnalytics } from "@/lib/credit/client";
 import { CreditAdminDashboard } from "@/components/credit/credit-admin-dashboard";
@@ -28,10 +29,11 @@ export default async function AdminCreditDashboardPage() {
       <div className="absolute top-0 left-1/4 w-[600px] h-[300px] bg-gradient-to-b from-blue-600/5 to-transparent blur-[120px] pointer-events-none" />
 
       <div className="max-w-6xl mx-auto space-y-6 relative">
-        <div className="border-b border-white/5 pb-4">
-          <h1 className="text-3xl font-bold tracking-tight">Credit Module Admin Panel</h1>
-          <p className="text-xs text-slate-400">Monitor credit check transactions, revenues, failed queries, and raw API audit logs</p>
-        </div>
+        <AdminPageHeader
+          eyebrow="Credit"
+          title="Credit Module Admin Panel"
+          description="Monitor credit check transactions, revenues, failed queries, and raw API audit logs."
+        />
 
         {/* Render interactive client dashboard component */}
         <CreditAdminDashboard initialAnalytics={analytics} />
