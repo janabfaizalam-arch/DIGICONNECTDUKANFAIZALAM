@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { ShieldCheck } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
@@ -18,7 +19,7 @@ export default async function AdminInsuranceQuotationsPage() {
   const quotations = await getAdminInsuranceQuotations();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Insurance Desk"
         title="Insurance Quotations"
@@ -31,6 +32,6 @@ export default async function AdminInsuranceQuotationsPage() {
         }
       />
       <AdminInsuranceQuotationsManager initialQuotations={quotations} />
-    </div>
+    </PageContainer>
   );
 }

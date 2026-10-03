@@ -121,7 +121,16 @@
   --ds-radius-xl: 1.25rem;
   --ds-page-gutter: 1rem;
   --ds-page-gutter-lg: 1.5rem;
-  --ds-page-max: 1440px;
+  /*
+    Two page widths, because the panel genuinely has two kinds of page.
+
+    80rem matches `max-w-7xl`, which 26 list and table pages already use, and
+    64rem matches `max-w-5xl`, which 15 form, settings and editor pages use. A
+    single width would either cramp the tables or stretch a one-column form
+    across a 1440px monitor, so the existing split is kept and simply named.
+  */
+  --ds-page-max: 80rem;      /* 1280px — lists, tables, dashboards */
+  --ds-page-max-form: 64rem; /* 1024px — forms, settings, editors */
   --ds-section-gap: 1.25rem;
 
   /*

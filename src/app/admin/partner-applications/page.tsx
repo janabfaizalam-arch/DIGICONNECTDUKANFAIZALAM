@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
@@ -54,7 +55,7 @@ export default async function AdminPartnerApplicationsPage({
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Team & Partners"
         title="Partner Applications"
@@ -192,6 +193,6 @@ export default async function AdminPartnerApplicationsPage({
         </Link>
         .
       </p>
-    </div>
+    </PageContainer>
   );
 }

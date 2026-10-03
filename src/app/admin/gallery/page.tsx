@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminGalleryManager } from "@/components/admin-gallery-manager";
@@ -22,13 +23,13 @@ export default async function AdminGalleryPage() {
   const images = await getAllGalleryImages();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Gallery"
         title="Gallery Management"
         description="Upload, review, and delete homepage gallery photos. Published images automatically appear on the public homepage."
       />
       <AdminGalleryManager initialImages={images} />
-    </div>
+    </PageContainer>
   );
 }

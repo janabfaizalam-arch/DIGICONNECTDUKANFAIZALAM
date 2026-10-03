@@ -1,4 +1,5 @@
 import Image from "@/components/ui/safe-image";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { notFound, redirect } from "next/navigation";
 
 import { OfflineInvoicePrintActions } from "@/components/admin/offline-invoice-actions";
@@ -44,7 +45,7 @@ export default async function OfflineInvoiceDetailPage({ params }: { params: Pro
   const taxAmount = (taxable * Number(invoice.tax_percent)) / 100;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
+    <PageContainer width="form" className="space-y-4">
       <OfflineInvoicePrintActions invoiceId={invoice.id} />
       <article className="invoice-print rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-10">
         <header className="flex flex-col gap-6 border-b border-slate-200 pb-6 md:flex-row md:items-start md:justify-between">
@@ -132,6 +133,6 @@ export default async function OfflineInvoiceDetailPage({ params }: { params: Pro
           </div>
         </section>
       </article>
-    </div>
+    </PageContainer>
   );
 }

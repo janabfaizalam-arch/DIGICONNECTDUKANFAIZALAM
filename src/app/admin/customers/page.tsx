@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { CalendarDays, Phone, UserPlus, UsersRound, type LucideIcon } from "lucide-react";
 
@@ -63,7 +64,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   const result = await getAdminCustomers({ filter: params?.filter });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Users"
         title="Registered Users"
@@ -104,6 +105,6 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
       </section>
 
       <AdminCustomerManager customers={result.rows} initialFilter={result.filter} />
-    </div>
+    </PageContainer>
   );
 }

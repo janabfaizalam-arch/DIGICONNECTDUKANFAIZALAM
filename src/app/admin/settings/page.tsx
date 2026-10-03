@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import {
   ListChecks,
@@ -97,7 +98,7 @@ export default async function AdminSettingsPage() {
   if (!isAdminRole(role)) redirect("/dashboard");
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader
         eyebrow="System Configuration"
         title="Admin Settings Console"
@@ -182,6 +183,6 @@ export default async function AdminSettingsPage() {
           </div>
         </div>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

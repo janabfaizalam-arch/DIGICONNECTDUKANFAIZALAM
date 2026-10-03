@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, MessageSquare, Mail, Sparkles, Sliders, Settings, Code, Plus, Trash2, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
@@ -94,7 +95,7 @@ export default function AdminCoreConfigurationPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+    <PageContainer width="form" className="px-4 py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
         <div className="space-y-1">
@@ -368,6 +369,6 @@ export default function AdminCoreConfigurationPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

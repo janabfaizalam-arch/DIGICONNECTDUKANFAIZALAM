@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { attachPaymentLinkRelations } from "@/lib/payments/payment-link-relations";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -66,7 +67,7 @@ export default async function AdminReferralsPage() {
     .order("full_name", { ascending: true });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Referrals & Payments"
         title="Referral & Payment Links Control Center"
@@ -81,6 +82,6 @@ export default async function AdminReferralsPage() {
         partners={partners || []}
         customers={customers || []}
       />
-    </div>
+    </PageContainer>
   );
 }

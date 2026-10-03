@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { Plus, Search, Tag, Ticket, ToggleLeft, ToggleRight, X, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Input } from "@/components/ui/input";
@@ -136,7 +137,7 @@ export default function AdminCouponsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Finance & Systems</p>
@@ -448,6 +449,6 @@ export default function AdminCouponsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -25,7 +26,7 @@ export default async function OfflineInvoicesPage({
   const invoices = await getOfflineInvoices({ query: q, status });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Offline Invoices"
         title="Invoice History"
@@ -96,6 +97,6 @@ export default async function OfflineInvoicesPage({
       ) : (
         <AdminEmptyState title="No offline invoices found" description="Create the first walk-in customer invoice or adjust your search filters." />
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
@@ -20,7 +21,7 @@ export default async function AdminCrmSyncPage() {
   const [jobs, summary] = await Promise.all([listCrmSyncJobs(150), getCrmSyncSummary()]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="CRM / Content"
         title="CRM Sync Logs"
@@ -37,6 +38,6 @@ export default async function AdminCrmSyncPage() {
       />
 
       <CrmSyncLogsClient jobs={jobs} summary={summary} configured={isGoogleSheetsConfigured()} />
-    </div>
+    </PageContainer>
   );
 }

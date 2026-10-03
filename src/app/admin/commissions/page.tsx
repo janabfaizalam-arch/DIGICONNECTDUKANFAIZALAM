@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
-import { AdminCard } from "@/components/admin/primitives/layout";
+import { AdminCard, PageContainer } from "@/components/admin/primitives/layout";
 import { countAdminCommissions, listAdminCommissions } from "@/lib/admin/commissions-data";
 import { resolvePageWindow } from "@/lib/admin/table-paging";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -47,7 +47,7 @@ export default async function AdminCommissionsPage({
   const rows = await listAdminCommissions({ from, to, status: activeFilter });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Finance"
         title="Agent Commission Ledger"
@@ -81,6 +81,6 @@ export default async function AdminCommissionsPage({
           activeFilter={activeFilter}
         />
       </AdminCard>
-    </div>
+    </PageContainer>
   );
 }

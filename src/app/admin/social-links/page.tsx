@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { SocialLinksManager } from "@/components/admin/social-links-manager";
@@ -20,7 +21,7 @@ export default async function AdminSocialLinksPage() {
   const { rows, tableMissing } = await listSocialLinksForAdmin();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader
         eyebrow="Homepage"
         title="Social Links"
@@ -31,6 +32,6 @@ export default async function AdminSocialLinksPage() {
         tableMissing={tableMissing}
         setupHint={tableMissing ? MISSING_TABLE : null}
       />
-    </div>
+    </PageContainer>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 
@@ -32,7 +33,7 @@ export default async function AdminCommissionRulesPage() {
   const { rows, options, hasGlobalFallback, activeCount } = await listCommissionRules();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Finance"
         title="Commission Rules"
@@ -162,6 +163,6 @@ export default async function AdminCommissionRulesPage() {
         </Link>
         .
       </p>
-    </div>
+    </PageContainer>
   );
 }

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { LeadOperationsWorkspace } from "@/components/admin/lead-operations-workspace";
@@ -55,7 +56,7 @@ export default async function AdminLeadsPage({
   if (!result.ok) redirect("/admin");
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Leads"
         title="Lead operations"
@@ -79,6 +80,6 @@ export default async function AdminLeadsPage({
           followUp,
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

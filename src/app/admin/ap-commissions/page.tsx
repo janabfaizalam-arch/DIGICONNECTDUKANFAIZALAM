@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
-import { AdminCard } from "@/components/admin/primitives/layout";
+import { AdminCard, PageContainer } from "@/components/admin/primitives/layout";
 import { resolvePageWindow } from "@/lib/admin/table-paging";
 import { listAdminApCommissions } from "@/lib/admin/ap-commissions-data";
 import { safeCurrency } from "@/lib/admin-format";
@@ -54,7 +54,7 @@ export default async function AdminApCommissionsPage({
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Finance"
         title="Partner Commissions"
@@ -98,6 +98,6 @@ export default async function AdminApCommissionsPage({
           activeFilter={activeFilter}
         />
       </AdminCard>
-    </div>
+    </PageContainer>
   );
 }

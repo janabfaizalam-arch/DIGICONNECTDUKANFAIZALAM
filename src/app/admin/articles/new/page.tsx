@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminArticleForm } from "@/components/admin/admin-article-form";
@@ -11,9 +12,9 @@ export default async function NewArticlePage() {
   if (!isAdminRole(role)) redirect("/dashboard");
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader eyebrow="Articles" title="New Article" description="Write and publish a new SEO blog article." />
       <AdminArticleForm />
-    </div>
+    </PageContainer>
   );
 }

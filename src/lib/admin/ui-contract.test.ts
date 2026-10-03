@@ -155,3 +155,39 @@ describe("control primitives", () => {
     expect(controls.match(palette) ?? []).toEqual([]);
   });
 });
+
+describe("page containers", () => {
+  const pages = files.filter((file) => file.endsWith("/page.tsx") && file.includes("/app/admin/"));
+
+  it("found the admin pages", () => {
+    expect(pages.length).toBeGreaterThan(70);
+  });
+
+  it("no page hand-rolls the container widths PageContainer owns", () => {
+    // 26 pages wrote `mx-auto max-w-7xl` and 15 wrote `mx-auto max-w-5xl`, each
+    // repeating a decision that belongs in one place. A page that needs a
+    // genuinely different width can still say so — this only pins the two the
+    // primitive now owns.
+    const offenders = pages.filter((file) =>
+      /className="mx-auto (?:w-full )?max-w-(?:7xl|5xl)/.test(read(file)),
+    );
+
+    expect(offenders.map((f) => f.replace(ROOT + "/", ""))).toEqual([]);
+  });
+
+  it("keeps the two page widths distinct", () => {
+    const tokens = read(join(ROOT, "src/app/admin-design-tokens.css"));
+
+    // Collapsing these to one width would either cramp the tables or stretch a
+    // one-column form across a 1280px monitor.
+    expect(tokens).toMatch(/--ds-page-max:\s*80rem/);
+    expect(tokens).toMatch(/--ds-page-max-form:\s*64rem/);
+  });
+
+  it("offers both widths through the primitive", () => {
+    const layout = read(join(ROOT, "src/components/admin/primitives/layout.tsx"));
+
+    expect(layout).toContain("--ds-page-max-form");
+    expect(layout).toContain('width = "wide"');
+  });
+});

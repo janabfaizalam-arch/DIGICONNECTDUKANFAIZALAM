@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminServiceWizard } from "@/components/admin/admin-service-wizard";
@@ -22,10 +23,10 @@ export default async function NewServicePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader eyebrow="Services CMS" title="Create New Service" description="Follow the steps to configure and publish a premium service page." />
       <AdminServiceWizard categories={categories} />
-    </div>
+    </PageContainer>
   );
 }
 

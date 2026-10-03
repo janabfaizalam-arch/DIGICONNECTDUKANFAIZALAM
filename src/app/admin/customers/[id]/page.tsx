@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
@@ -88,7 +89,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
 
   if (!customer) {
     return (
-      <div className="mx-auto max-w-7xl space-y-6">
+      <PageContainer className="space-y-6">
         <Link href="/admin/customers" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700">
           <ArrowLeft className="h-4 w-4" />
           Back to customers
@@ -96,7 +97,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
         <AdminPageHeader eyebrow="Customer" title="Customer unavailable" description="This customer record could not be loaded. Other admin sections remain available." />
         <AdminCustomerIdentityPanel health={identityHealth} mobile={authProfile?.phone || null} />
         <AdminEmptyState title="No customer data" description="The customer may have been removed, or an optional database table may be unavailable." />
-      </div>
+      </PageContainer>
     );
   }
 
@@ -108,7 +109,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
     "Customer";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <Link href="/admin/customers" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700">
         <ArrowLeft className="h-4 w-4" />
         Back to customers
@@ -175,6 +176,6 @@ export default async function AdminCustomerDetailPage({ params }: { params: Prom
           )}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

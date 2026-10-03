@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -26,7 +27,7 @@ export default async function AdminServicesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Services CMS"
         title="Services"
@@ -35,6 +36,6 @@ export default async function AdminServicesPage() {
       />
       <AdminServicesList services={services} categories={categories} />
       <AdminServiceCategoriesManager categories={categories} />
-    </div>
+    </PageContainer>
   );
 }

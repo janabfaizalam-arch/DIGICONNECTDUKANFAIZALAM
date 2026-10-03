@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminHomepageNoticesManager } from "@/components/admin-homepage-notices-manager";
@@ -22,13 +23,13 @@ export default async function AdminHomepageNoticesPage() {
   const notices = await getAllHomepageNotices();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Homepage"
         title="Homepage Notices"
         description="Manage the offer announcement bar. Note: the bar is not currently displayed on the site — it was removed from the header to keep the top of a phone screen clear. Notices saved here are kept and will appear again if the bar is re-enabled."
       />
       <AdminHomepageNoticesManager initialNotices={notices} />
-    </div>
+    </PageContainer>
   );
 }
