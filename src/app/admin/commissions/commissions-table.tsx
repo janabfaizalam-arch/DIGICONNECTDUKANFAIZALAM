@@ -18,6 +18,7 @@ import { NoResultsState } from "@/components/admin/primitives/states";
 import { CommissionActions } from "@/components/portal/commission-actions";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
 import type { AdminCommissionRow } from "@/lib/admin/commissions-data";
+import { STATUS_TONE_CLASS, toneFrom, type StatusTone } from "@/lib/admin/status-tone";
 
 /**
  * Commission state to meaning.
@@ -26,15 +27,15 @@ import type { AdminCommissionRow } from "@/lib/admin/commissions-data";
  * `rejected` the same amber as `pending` — a settled-and-void commission read
  * as merely waiting. Each state now carries its own meaning, on tokens.
  */
-const STATUS_TONE: Record<string, string> = {
-  pending: "bg-ds-warning-soft text-ds-warning border-ds-warning-border",
-  hold: "bg-ds-warning-soft text-ds-warning border-ds-warning-border",
-  approved: "bg-ds-success-soft text-ds-success border-ds-success-border",
+const STATUS_TONE: Record<string, StatusTone> = {
+  pending: "warning",
+  hold: "warning",
+  approved: "success",
   // Approved money sits in the wallet; paid money has left. Different events,
   // so they do not share a colour.
-  paid: "bg-ds-info-soft text-ds-info border-ds-info-border",
-  cancelled: "bg-ds-surface-sunken text-ds-text-muted border-ds-border",
-  rejected: "bg-ds-danger-soft text-ds-danger border-ds-danger-border",
+  paid: "info",
+  cancelled: "neutral",
+  rejected: "danger",
 };
 
 const columns: AdminColumn<AdminCommissionRow>[] = [
@@ -93,8 +94,8 @@ const columns: AdminColumn<AdminCommissionRow>[] = [
     exportValue: (row) => row.status,
     cell: (row) => (
       <span
-        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize ${
-          STATUS_TONE[row.status] ?? STATUS_TONE.pending
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${
+          STATUS_TONE_CLASS[toneFrom(STATUS_TONE, row.status, "warning")]
         }`}
       >
         {row.status}

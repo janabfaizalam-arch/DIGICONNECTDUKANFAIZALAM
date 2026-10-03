@@ -10,6 +10,7 @@ import {
   Loader2 
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
+import { STATUS_TONE_CLASS, toneFrom, type StatusTone } from "@/lib/admin/status-tone";
 
 type ReferralRow = {
   id: string;
@@ -67,6 +68,31 @@ type AuditLogRow = {
   profiles?: {
     full_name: string;
   } | null;
+};
+
+/**
+ * Payment-link state to meaning.
+ *
+ * A link the admin cancelled is neutral, not a failure — nothing went wrong,
+ * the link was simply withdrawn. A link that *failed* is a different matter and
+ * now says so: the previous ternary had no branch for it, so a failed link fell
+ * through to the same blue as one still waiting to be paid.
+ */
+const LINK_TONE: Record<string, StatusTone> = {
+  paid: "success",
+  pending: "info",
+  expired: "warning",
+  cancelled: "neutral",
+  failed: "danger",
+};
+
+/** Referral commission state to meaning. */
+const COMMISSION_TONE: Record<string, StatusTone> = {
+  earned: "success",
+  approved: "success",
+  paid: "success",
+  pending: "info",
+  reserved: "info",
 };
 
 interface AdminReferralManagerProps {
@@ -381,12 +407,11 @@ export function AdminReferralManager({
                           {new Date(link.expires_at).toLocaleString()}
                         </td>
                         <td className="py-4 px-6 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            displayStatus === "paid" ? "bg-green-50 text-green-700 border-green-200" :
-                            displayStatus === "cancelled" ? "bg-slate-50 text-slate-500 border-slate-200" :
-                            displayStatus === "expired" ? "bg-amber-50 text-amber-600 border-amber-200" :
-                            "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              STATUS_TONE_CLASS[toneFrom(LINK_TONE, displayStatus, "info")]
+                            }`}
+                          >
                             {displayStatus.toUpperCase()}
                           </span>
                         </td>
@@ -446,11 +471,11 @@ export function AdminReferralManager({
                         {new Date(comm.created_at).toLocaleDateString()}
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                          ["earned", "approved", "paid"].includes(comm.status) ? "bg-green-50 text-green-700 border-green-200" :
-                          ["pending", "reserved"].includes(comm.status) ? "bg-blue-50 text-blue-700 border-blue-200" :
-                          "bg-slate-50 text-slate-500 border-slate-200"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            STATUS_TONE_CLASS[toneFrom(COMMISSION_TONE, comm.status)]
+                          }`}
+                        >
                           {comm.status.toUpperCase()}
                         </span>
                       </td>

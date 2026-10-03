@@ -26,6 +26,7 @@ import {
   type InsuranceQuotationStatus,
   vehicleTypes,
 } from "@/lib/insurance-quotations";
+import { STATUS_TONE_CLASS, type StatusTone } from "@/lib/admin/status-tone";
 import { cn } from "@/lib/utils";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
@@ -43,12 +44,19 @@ const statusLabels: Record<InsuranceQuotationStatus, string> = {
   expired: "Expired",
 };
 
-const statusClasses: Record<InsuranceQuotationStatus, string> = {
-  draft: "bg-slate-100 text-slate-700 ring-slate-200",
-  sent: "bg-blue-50 text-blue-700 ring-blue-100",
-  accepted: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  rejected: "bg-red-50 text-red-700 ring-red-100",
-  expired: "bg-orange-50 text-orange-700 ring-orange-100",
+/**
+ * Quotation state to meaning.
+ *
+ * A draft is neutral rather than a warning: nobody is waiting on it, it simply
+ * has not been sent yet. An expired one is a warning, because it is a quotation
+ * that needs re-issuing.
+ */
+const STATUS_TONE: Record<InsuranceQuotationStatus, StatusTone> = {
+  draft: "neutral",
+  sent: "info",
+  accepted: "success",
+  rejected: "danger",
+  expired: "warning",
 };
 
 function getMessage(data: ApiResponse, fallback: string) {
@@ -96,7 +104,7 @@ function NativeSelect({
 
 function StatusBadge({ status }: { status: InsuranceQuotationStatus }) {
   return (
-    <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-extrabold ring-1", statusClasses[status])}>
+    <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-extrabold", STATUS_TONE_CLASS[STATUS_TONE[status]])}>
       {statusLabels[status]}
     </span>
   );

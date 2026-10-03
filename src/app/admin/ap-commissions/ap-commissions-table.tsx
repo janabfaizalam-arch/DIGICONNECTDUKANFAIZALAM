@@ -18,6 +18,7 @@ import { NoResultsState } from "@/components/admin/primitives/states";
 import { ApCommissionActions } from "@/components/admin/ap-commission-actions";
 import { safeCurrency, safeDate } from "@/lib/admin-format";
 import type { AdminApCommissionRow } from "@/lib/admin/ap-commissions-data";
+import { STATUS_TONE_CLASS, toneFrom, type StatusTone } from "@/lib/admin/status-tone";
 
 /**
  * Commission state to meaning.
@@ -27,14 +28,14 @@ import type { AdminApCommissionRow } from "@/lib/admin/ap-commissions-data";
  * wallet, paid money has left — they are different events and the panel
  * should not show both in green.
  */
-const STATUS_TONE: Record<string, string> = {
-  pending: "bg-ds-warning-soft text-ds-warning border-ds-warning-border",
-  earned: "bg-ds-warning-soft text-ds-warning border-ds-warning-border",
-  approved: "bg-ds-success-soft text-ds-success border-ds-success-border",
-  paid: "bg-ds-info-soft text-ds-info border-ds-info-border",
-  cancelled: "bg-ds-surface-sunken text-ds-text-muted border-ds-border",
-  reversed: "bg-ds-danger-soft text-ds-danger border-ds-danger-border",
-  adjusted: "bg-ds-surface-sunken text-ds-text-muted border-ds-border",
+const STATUS_TONE: Record<string, StatusTone> = {
+  pending: "warning",
+  earned: "warning",
+  approved: "success",
+  paid: "info",
+  cancelled: "neutral",
+  reversed: "danger",
+  adjusted: "neutral",
 };
 
 const columns: AdminColumn<AdminApCommissionRow>[] = [
@@ -98,8 +99,8 @@ const columns: AdminColumn<AdminApCommissionRow>[] = [
     cell: (row) => (
       <div>
         <span
-          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize ${
-            STATUS_TONE[row.status] ?? STATUS_TONE.pending
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${
+            STATUS_TONE_CLASS[toneFrom(STATUS_TONE, row.status, "warning")]
           }`}
         >
           {row.status}

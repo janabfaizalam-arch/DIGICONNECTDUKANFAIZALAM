@@ -18,6 +18,7 @@ import { Eye } from "lucide-react";
 
 import { AdminDataTable, type AdminColumn } from "@/components/admin/primitives/admin-data-table";
 import { NoResultsState } from "@/components/admin/primitives/states";
+import { STATUS_TONE_CLASS, type StatusTone } from "@/lib/admin/status-tone";
 import { adminAgencyPartnerDetailPath } from "@/lib/admin/agency-partner-routes";
 import { safeCurrency } from "@/lib/admin-format";
 import { partnerTypeDisplayLabel } from "@/lib/ap/partner-type";
@@ -54,15 +55,11 @@ function StatusPill({ value, kind }: { value: string | null; kind: "status" | "k
       ? normalized === "suspended" || normalized === "blacklisted"
       : normalized === "rejected";
 
-  const tone = positive
-    ? "bg-ds-success-soft border-ds-success-border text-ds-success"
-    : negative
-      ? "bg-ds-danger-soft border-ds-danger-border text-ds-danger"
-      : "bg-ds-warning-soft border-ds-warning-border text-ds-warning";
+  const tone: StatusTone = positive ? "success" : negative ? "danger" : "warning";
 
   return (
     <span
-      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize ${tone}`}
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold capitalize ${STATUS_TONE_CLASS[tone]}`}
     >
       {value || "—"}
     </span>

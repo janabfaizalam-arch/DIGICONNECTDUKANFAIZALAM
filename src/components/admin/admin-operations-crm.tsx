@@ -7,6 +7,7 @@ import {
   Send, User, Trash2, Pin, CheckSquare, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
+import { STATUS_TONE_CLASS, statusToneClass, toneFrom, type StatusTone } from "@/lib/admin/status-tone";
 
 // 10 Configurable Workflow Stages
 const WORKFLOW_STAGES = [
@@ -38,6 +39,36 @@ interface ApprovalLevel {
   remarks: string;
   timestamp: string;
 }
+
+/**
+ * Approval state to meaning.
+ *
+ * `rejected` used to share the same slate as `pending`, so a level that had
+ * refused the report looked exactly like one that had not looked at it yet.
+ * `pending` stays neutral on purpose: on a hierarchy panel most levels are
+ * simply not reached yet, and amber on every unreached level would read as a
+ * backlog rather than as a queue working in order.
+ */
+/**
+ * Priority to meaning.
+ *
+ * Priority is a different axis from status — it says how soon, not how it went —
+ * but it reads on the same five tones, so it uses them rather than a third set
+ * of reds and ambers.
+ */
+const PRIORITY_TONE: Record<string, StatusTone> = {
+  high: "danger",
+  medium: "warning",
+  low: "neutral",
+};
+
+const APPROVAL_TONE: Record<string, StatusTone> = {
+  approved: "success",
+  returned: "warning",
+  rejected: "danger",
+  pending: "neutral",
+};
+
 
 interface InternalNote {
   id: string;
@@ -538,9 +569,11 @@ export function AdminOperationsCRM({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                        task.priority === "high" ? "bg-red-50 text-red-600" : task.priority === "medium" ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"
-                      }`}>
+                      <span
+                        className={`text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                          STATUS_TONE_CLASS[toneFrom(PRIORITY_TONE, task.priority)]
+                        }`}
+                      >
                         {task.priority}
                       </span>
                       <button
@@ -602,9 +635,11 @@ export function AdminOperationsCRM({
                   <div key={app.level} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                       <span className="font-extrabold text-xs text-slate-800">{app.level} Review</span>
-                      <span className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        app.status === "approved" ? "bg-emerald-50 text-emerald-600" : app.status === "returned" ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"
-                      }`}>
+                      <span
+                        className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          STATUS_TONE_CLASS[toneFrom(APPROVAL_TONE, app.status)]
+                        }`}
+                      >
                         {app.status}
                       </span>
                     </div>
@@ -711,9 +746,11 @@ export function AdminOperationsCRM({
                           <p className="font-black text-slate-800">{t.subject}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5">Ticket ID: {t.id} • Created {t.created_at}</p>
                         </div>
-                        <span className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          t.status === "resolved" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                        }`}>
+                        <span
+                          className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            statusToneClass(t.status, "warning")
+                          }`}
+                        >
                           {t.status}
                         </span>
                       </div>
