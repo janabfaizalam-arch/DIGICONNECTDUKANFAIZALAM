@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowLeft,
   BadgePercent,
   ChevronDown,
   ChevronLeft,
@@ -479,15 +480,35 @@ export function AdminPageHeader({
   title,
   description,
   action,
+  backHref,
+  backLabel = "Back",
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   action?: React.ReactNode;
+  /**
+   * Where "up" goes from here.
+   *
+   * Fifteen pages hand-rolled their own back affordance, each with its own
+   * icon spacing and hit area, so a detail screen in one corner of the panel
+   * looked nothing like a detail screen in another.
+   */
+  backHref?: string;
+  backLabel?: string;
 }) {
   return (
     <div className="mb-5 flex flex-col gap-3 border-b border-[var(--dc-ink)]/8 pb-4 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:pb-5">
       <div className="min-w-0">
+        {backHref ? (
+          <Link
+            href={backHref}
+            className="mb-1.5 inline-flex h-8 items-center gap-1.5 rounded-ds-sm -ml-1.5 px-1.5 text-[11px] font-bold text-ds-text-muted transition-colors duration-ds-fast hover:text-ds-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus/40"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            {backLabel}
+          </Link>
+        ) : null}
         {eyebrow ? (
           <span className="inline-flex items-center text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--dc-flame)]">
             {eyebrow}

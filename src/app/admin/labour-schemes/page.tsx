@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AdminPageHeader } from "@/components/admin/admin-shell";
 
 import { LabourSchemeManager } from "@/components/admin/labour-scheme-manager";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -30,13 +31,11 @@ export default async function Page() {
 
   return (
     <div className="mx-auto max-w-[1100px] pb-10">
-      <header className="mb-4">
-        <h1 className="text-[1.6rem] font-extrabold tracking-tight text-[var(--dc-ink)]">Labour Card schemes</h1>
-        <p className="mt-1 text-[13px] font-medium leading-snug text-[var(--dc-body)]">
-          Sarkari rakam aur shartein badalti rehti hain. Yahan har scheme ke saath likha hai ki wo aakhri baar
-          kab check hui thi — 90 din se purani ho to dobara dekh lijiye.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Services"
+        title="Labour Card schemes"
+        description="Sarkari rakam aur shartein badalti rehti hain. Yahan har scheme ke saath likha hai ki wo aakhri baar kab check hui thi — 90 din se purani ho to dobara dekh lijiye."
+      />
       <LabourSchemeManager schemes={rows} readOnly={source === "seed"} />
     </div>
   );

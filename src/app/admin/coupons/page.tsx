@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { PageContainer } from "@/components/admin/primitives/layout";
 import { Plus, Search, Tag, Ticket, ToggleLeft, ToggleRight, X, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
@@ -138,15 +139,11 @@ export default function AdminCouponsPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-orange-600">Finance & Systems</p>
-          <h1 className="mt-2 text-3xl font-bold leading-tight text-slate-950 md:text-4xl">Coupon Management</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-            Create and manage promotional discount coupons for services, with usage limits, expiry, and service scope controls.
-          </p>
-        </div>
-        <div className="shrink-0">
+      <AdminPageHeader
+        eyebrow="Finance & Systems"
+        title="Coupon Management"
+        description="Create and manage promotional discount coupons for services, with usage limits, expiry, and service scope controls."
+        action={
           <button
             onClick={() => setShowModal(true)}
             className="inline-flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-md shadow-blue-600/10 transition hover:bg-blue-700"
@@ -154,8 +151,8 @@ export default function AdminCouponsPage() {
             <Plus className="h-4 w-4" />
             Create Coupon
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Stats row */}
       <section className="grid gap-3 sm:grid-cols-3">
