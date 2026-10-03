@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
@@ -53,7 +54,7 @@ export default async function AdminDocumentsPage() {
   const finalDocs = documents.filter((document) => document.is_final || normalize(document.document_type) === "final_document");
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader eyebrow="Operations" title="Documents" description="Application uploads and final documents. Missing relations are shown as not available, never hidden." />
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -105,6 +106,6 @@ export default async function AdminDocumentsPage() {
           {!documents.length ? <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">No documents found.</p> : null}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

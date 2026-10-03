@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -43,7 +44,7 @@ export default async function CscOlympiadAdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader
         eyebrow="CSC Olympiad CMS"
         title="CSC Olympiad Page Settings"
@@ -54,6 +55,6 @@ export default async function CscOlympiadAdminPage() {
         categoryId={dbServiceRow.category_id ?? ""}
         currentConfig={dbConfig}
       />
-    </div>
+    </PageContainer>
   );
 }

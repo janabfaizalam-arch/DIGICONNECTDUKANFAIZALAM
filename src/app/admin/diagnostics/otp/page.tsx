@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { OtpTestSendPanel } from "@/components/admin/otp-test-send-panel";
@@ -47,7 +48,7 @@ export default async function AdminOtpDiagnosticsPage() {
   const contract = config.payloadContract;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader
         eyebrow="Communications"
         title="Signup OTP delivery"
@@ -221,6 +222,6 @@ export default async function AdminOtpDiagnosticsPage() {
           </div>
         )}
       </Card>
-    </div>
+    </PageContainer>
   );
 }

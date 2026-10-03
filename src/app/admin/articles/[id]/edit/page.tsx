@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminArticleForm } from "@/components/admin/admin-article-form";
@@ -16,9 +17,9 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
   if (!article) notFound();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader eyebrow="Articles" title="Edit Article" description="Update content, SEO metadata, and publishing status." />
       <AdminArticleForm article={article} />
-    </div>
+    </PageContainer>
   );
 }

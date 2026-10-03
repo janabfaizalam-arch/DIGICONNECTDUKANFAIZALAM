@@ -16,19 +16,36 @@ import { cn } from "@/lib/utils";
 /**
  * The outermost wrapper of an admin page: one max width, one gutter.
  *
- * Capped at --ds-page-max rather than running edge to edge, because a data
- * table stretched across an ultrawide monitor is unreadable — the eye loses
- * the row between the first column and the last.
+ * Capped rather than running edge to edge, because a data table stretched
+ * across an ultrawide monitor is unreadable — the eye loses the row between
+ * the first column and the last. Twenty-five pages had no cap at all.
+ *
+ * Two widths, because the panel has two kinds of page and flattening them
+ * would be a regression either way:
+ *
+ *   `wide` (1280px) — lists, tables, dashboards. What 26 pages already use.
+ *   `form` (1024px) — forms, settings, editors, a single column of fields.
+ *                     What 15 pages already use. Stretching a one-column form
+ *                     to 1280px puts the label and its input a monitor apart.
  */
+export type PageWidth = "wide" | "form";
+
+const PAGE_WIDTH: Record<PageWidth, string> = {
+  wide: "max-w-[var(--ds-page-max)]",
+  form: "max-w-[var(--ds-page-max-form)]",
+};
+
 export function PageContainer({
+  width = "wide",
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: HTMLAttributes<HTMLDivElement> & { width?: PageWidth }) {
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[var(--ds-page-max)] px-[var(--ds-page-gutter)] lg:px-[var(--ds-page-gutter-lg)]",
+        "mx-auto w-full px-[var(--ds-page-gutter)] lg:px-[var(--ds-page-gutter-lg)]",
+        PAGE_WIDTH[width],
         className,
       )}
       {...props}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader, AdminStatCard, AdminUnderSetup } from "@/components/admin/admin-shell";
 import { getWalletTotals } from "@/lib/admin/wallet-totals";
@@ -143,7 +144,7 @@ export default async function AdminWalletPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="DigiWallet"
         title="Wallet & Rewards"
@@ -286,6 +287,6 @@ export default async function AdminWalletPage() {
           </div>
         </Card>
       </section> : null}
-    </div>
+    </PageContainer>
   );
 }

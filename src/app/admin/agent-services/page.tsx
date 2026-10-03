@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminAgentServicesManager } from "@/components/admin/admin-agent-services-manager";
@@ -21,13 +22,13 @@ export default async function AdminAgentServicesPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="DC Partners"
         title="Partner Services"
         description="Create and price the services DC Partners sell. Set the customer fee and what the partner earns, write the description, eligibility and documents — or draft them with AI and edit before saving."
       />
       <AdminAgentServicesManager services={agentServices} sourceServices={sourceServices} agents={agents} />
-    </div>
+    </PageContainer>
   );
 }

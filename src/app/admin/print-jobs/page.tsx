@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
@@ -17,11 +18,11 @@ export default async function AdminPrintJobsPage() {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
     return (
-      <div className="mx-auto max-w-7xl p-5">
+      <PageContainer className="p-5">
         <p className="rounded-2xl bg-red-50 p-5 text-sm text-red-600 font-semibold">
           Database configuration is missing. Please contact support.
         </p>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -102,7 +103,7 @@ export default async function AdminPrintJobsPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Admin"
         title="Print Operations Center"
@@ -110,6 +111,6 @@ export default async function AdminPrintJobsPage() {
       />
 
       <PrintJobsList initialJobs={formattedJobs} />
-    </div>
+    </PageContainer>
   );
 }

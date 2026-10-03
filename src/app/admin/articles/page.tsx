@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -18,7 +19,7 @@ export default async function AdminArticlesPage() {
   const articles = await getAdminArticles();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Articles"
         title="Blog Articles"
@@ -26,6 +27,6 @@ export default async function AdminArticlesPage() {
         action={<Link href="/admin/articles/new" className="inline-flex h-11 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-bold text-white"><Plus className="h-4 w-4" />New Article</Link>}
       />
       {articles.length ? <AdminArticlesList articles={articles} /> : <AdminEmptyState title="No articles yet" description="Create your first blog article for DigiConnect Dukan." />}
-    </div>
+    </PageContainer>
   );
 }

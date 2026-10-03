@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminAboutPageImagesManager } from "@/components/admin-about-page-images-manager";
 import { AdminPageHeader } from "@/components/admin/admin-shell";
@@ -17,13 +18,13 @@ export default async function AdminAboutPageImagesPage() {
   const images = await getAllAboutPageImages();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="About Page"
         title="About Page Images"
         description="Upload, sort, activate, replace, and delete the images shown on the public About page."
       />
       <AdminAboutPageImagesManager initialImages={images} />
-    </div>
+    </PageContainer>
   );
 }

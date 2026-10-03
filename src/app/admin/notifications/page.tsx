@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { useEffect, useState } from "react";
 import {
   CheckCheck,
@@ -108,7 +109,7 @@ export default function AdminNotificationsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader
         eyebrow="System Events"
         title="Admin Notifications Hub"
@@ -228,6 +229,6 @@ export default function AdminNotificationsPage() {
           <AdminEmptyState title="All caught up" description="No system alarms match the selected filter." />
         )}
       </Card>
-    </div>
+    </PageContainer>
   );
 }

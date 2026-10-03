@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Download, FileText, ReceiptText } from "lucide-react";
 
@@ -464,7 +465,7 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
   );
 
   return (
-    <div className="mx-auto max-w-7xl pb-24 lg:pb-6">
+    <PageContainer className="pb-24 lg:pb-6">
       <Link href="/admin/applications" className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900">
         <ArrowLeft className="h-3.5 w-3.5" />
         Applications
@@ -569,6 +570,6 @@ export default async function AdminApplicationDetailPage({ params }: { params: P
           <RenewalReminderCard applicationId={application.id} />
         </aside>
       </div>
-    </div>
+    </PageContainer>
   );
 }

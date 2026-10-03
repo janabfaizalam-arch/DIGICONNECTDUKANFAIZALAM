@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 
@@ -35,7 +36,7 @@ export default async function AdminPaymentReconciliationPage() {
   const range = defaultRange();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Finance"
         title="Razorpay Payment Reconciliation"
@@ -89,6 +90,6 @@ export default async function AdminPaymentReconciliationPage() {
           )}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

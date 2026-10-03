@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
 import { AdminEngineConfigTabs } from "@/components/admin/admin-engine-config-tabs";
@@ -38,7 +39,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
   const initialWorkflows = serviceConfig?.workflows || [];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <PageContainer width="form" className="space-y-6">
       <AdminPageHeader eyebrow="Services CMS" title="Edit Service" description="Configure page content, form fields, transitions and SLAs." />
       <AdminEngineConfigTabs
         service={service}
@@ -46,6 +47,6 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
         initialFields={initialFields}
         initialWorkflows={initialWorkflows}
       />
-    </div>
+    </PageContainer>
   );
 }

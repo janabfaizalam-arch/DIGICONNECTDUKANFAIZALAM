@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader, AdminStatCard } from "@/components/admin/admin-shell";
@@ -62,7 +63,7 @@ export default async function AdminPaymentsPage() {
   const totals = await getPaymentTotals();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader eyebrow="Finance" title="Payments" description="Server-side payment ledger with Razorpay IDs, application links, and wallet split." />
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -110,6 +111,6 @@ export default async function AdminPaymentsPage() {
           {!payments.length ? <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">No payments found.</p> : null}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

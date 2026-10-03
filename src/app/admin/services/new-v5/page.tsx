@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowLeft, Save, Sparkles } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
@@ -183,7 +184,7 @@ export default function AdminNewServiceV5() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+    <PageContainer width="form" className="px-4 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3">
@@ -577,6 +578,6 @@ export default function AdminNewServiceV5() {
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

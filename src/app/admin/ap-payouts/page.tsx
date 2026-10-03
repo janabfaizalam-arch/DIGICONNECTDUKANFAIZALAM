@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { redirect } from "next/navigation";
 
 import { AdminPageHeader } from "@/components/admin/admin-shell";
@@ -55,7 +56,7 @@ export default async function AdminApPayoutsPage({
   const { rows, summary } = await listPayoutsForAdmin(active);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Finance"
         title="Partner Payouts"
@@ -133,6 +134,6 @@ export default async function AdminApPayoutsPage({
           </div>
         )}
       </Card>
-    </div>
+    </PageContainer>
   );
 }

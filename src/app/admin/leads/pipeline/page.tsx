@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { PageContainer } from "@/components/admin/primitives/layout";
 import { Plus, Phone, Award, TrendingUp, RefreshCw, LayoutGrid, ArrowRight, Save } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -134,7 +135,7 @@ export default function AdminCRMPipeline() {
   const pipelineValue = leads.reduce((sum, l) => sum + Number(l.estimated_clv || 0), 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+    <PageContainer width="form" className="px-4 py-8 space-y-6">
       {/* Header info */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
         <div>
@@ -387,6 +388,6 @@ export default function AdminCRMPipeline() {
           })}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

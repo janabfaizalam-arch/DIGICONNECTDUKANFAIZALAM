@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageContainer } from "@/components/admin/primitives/layout";
 
 import { AdminHomepageOfferStripManager } from "@/components/admin-homepage-offer-strip-manager";
 import { AdminPageHeader } from "@/components/admin/admin-shell";
@@ -17,13 +18,13 @@ export default async function AdminHomepageOfferStripPage() {
   const [banners, setting] = await Promise.all([getAllHomepageOfferBanners(), getHomepageOfferStripSetting()]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <PageContainer className="space-y-6">
       <AdminPageHeader
         eyebrow="Homepage"
         title="Homepage Offer Strip"
         description="Manage the slim banner slider below the homepage service icons and edit its public title."
       />
       <AdminHomepageOfferStripManager initialBanners={banners} initialSetting={setting} />
-    </div>
+    </PageContainer>
   );
 }
