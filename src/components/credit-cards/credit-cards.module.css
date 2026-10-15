@@ -1,0 +1,370 @@
+/*
+  /credit-cards — the card lounge.
+
+  A dark, gold-edged page: the brand blue and orange stay, with a champagne
+  gold for the "premium" accents. Utilities do the layout; this file holds the
+  palette, the glass and card surfaces, the custom cursor, and the keyframes.
+  Every animation moves transform or opacity only, and all of it stops under
+  prefers-reduced-motion at the bottom.
+*/
+
+.page {
+  --cc-night: #040915;
+  --cc-navy: #071a3d;
+  --cc-blue: #1268e8;
+  --cc-orange: #ff7b00;
+  --cc-gold: #e9c47c;
+  --cc-gold-deep: #b98a3c;
+  --cc-ink: #eef3ff;
+  --cc-muted: #9fb0cf;
+  --cc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  position: relative;
+  background: var(--cc-night);
+  color: var(--cc-ink);
+  overflow-x: clip;
+}
+
+/* The native pointer is hidden only while the custom one is running. */
+.cursorOn,
+.cursorOn a,
+.cursorOn button {
+  cursor: none;
+}
+
+/* ── Type ─────────────────────────────────────────────────────────────── */
+
+.display {
+  font-family: var(--font-heading), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.serif {
+  font-family: var(--font-display), Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cc-gold);
+}
+
+.goldInk {
+  background: linear-gradient(100deg, #fff4dc 0%, var(--cc-gold) 40%, #fff0c9 55%, var(--cc-gold-deep) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+.brandInk {
+  background: linear-gradient(100deg, #6aa8ff 0%, #ffffff 45%, #ffb36b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Surfaces ─────────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(600px circle at var(--mx, 70%) var(--my, 30%), rgba(18, 104, 232, 0.28), transparent 60%),
+    radial-gradient(900px circle at 85% 110%, rgba(255, 123, 0, 0.2), transparent 60%),
+    radial-gradient(1000px circle at 0% 0%, rgba(18, 104, 232, 0.25), transparent 55%),
+    var(--cc-night);
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at 60% 40%, #000 20%, transparent 75%);
+}
+
+.glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.goldBorder {
+  position: relative;
+}
+
+.goldBorder::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, rgba(233, 196, 124, 0.7), rgba(255, 255, 255, 0.06) 40%, rgba(255, 123, 0, 0.5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.btnGold {
+  background: linear-gradient(120deg, #fff1cf, var(--cc-gold) 45%, var(--cc-gold-deep));
+  color: #1b1204;
+  box-shadow: 0 14px 40px rgba(233, 196, 124, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: transform 0.35s var(--cc-ease), box-shadow 0.35s var(--cc-ease);
+}
+
+.btnGold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px rgba(233, 196, 124, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.btnGhost {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.3s var(--cc-ease), border-color 0.3s var(--cc-ease);
+}
+
+.btnGhost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(233, 196, 124, 0.6);
+}
+
+/* ── The card itself ──────────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1.586 / 1;
+  border-radius: 18px;
+  overflow: hidden;
+  color: #fff;
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  transform-style: preserve-3d;
+}
+
+/* A moving holographic band across the face. */
+.sheen {
+  position: absolute;
+  inset: -40%;
+  z-index: 1;
+  background: linear-gradient(
+    115deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 220, 160, 0.12) 54%,
+    transparent 60%
+  );
+  animation: sheen 5.5s var(--cc-ease) infinite;
+  pointer-events: none;
+}
+
+/* The glare that follows the pointer on a tilted card. */
+.glare {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(420px circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.28), transparent 45%);
+  opacity: var(--go, 0);
+  transition: opacity 0.4s var(--cc-ease);
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+.chip {
+  background: linear-gradient(135deg, #fff6d0, #d4a548 45%, #fff0a8 70%, #b8862e);
+  box-shadow: inset 0 0 0 1px rgba(80, 50, 0, 0.25);
+}
+
+.tile {
+  transition: border-color 0.4s var(--cc-ease), box-shadow 0.4s var(--cc-ease);
+}
+
+.tile:hover {
+  border-color: rgba(233, 196, 124, 0.45);
+  box-shadow: 0 30px 80px -30px rgba(233, 196, 124, 0.35);
+}
+
+/* ── Hero stage ───────────────────────────────────────────────────────── */
+
+.orbit {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(233, 196, 124, 0.35);
+  animation: spin 40s linear infinite;
+}
+
+.orbit::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cc-gold);
+  box-shadow: 0 0 18px var(--cc-gold);
+}
+
+.halo {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 123, 0, 0.35), rgba(18, 104, 232, 0.2) 45%, transparent 70%);
+  filter: blur(10px);
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.floatSlow {
+  animation: float 8s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+/* ── Marquee ──────────────────────────────────────────────────────────── */
+
+.marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+.marqueeTrack {
+  display: flex;
+  width: max-content;
+  animation: marquee 38s linear infinite;
+}
+
+/* ── Phone mockup ─────────────────────────────────────────────────────── */
+
+.phone {
+  border-radius: 44px;
+  padding: 12px;
+  background: linear-gradient(160deg, #2a3142, #0b0f18 40%, #1d2433);
+  box-shadow:
+    0 60px 120px -40px rgba(18, 104, 232, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.phone video,
+.phone img {
+  border-radius: 34px;
+}
+
+/* ── Custom cursor ────────────────────────────────────────────────────── */
+
+.cursorDot,
+.cursorRing {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  pointer-events: none;
+  border-radius: 999px;
+  will-change: transform;
+}
+
+.cursorDot {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: var(--cc-gold);
+  box-shadow: 0 0 12px rgba(233, 196, 124, 0.9);
+}
+
+.cursorRing {
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 1.5px solid rgba(233, 196, 124, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #1b1204;
+  transition:
+    width 0.35s var(--cc-ease),
+    height 0.35s var(--cc-ease),
+    margin 0.35s var(--cc-ease),
+    background 0.35s var(--cc-ease),
+    border-color 0.35s var(--cc-ease);
+}
+
+.cursorRingActive {
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  background: rgba(233, 196, 124, 0.92);
+  border-color: transparent;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Keyframes ────────────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+@keyframes sheen {
+  0% {
+    transform: translateX(-60%);
+  }
+  60%,
+  100% {
+    transform: translateX(60%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goldInk,
+  .sheen,
+  .orbit,
+  .float,
+  .floatSlow,
+  .marqueeTrack {
+    animation: none;
+  }
+}

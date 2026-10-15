@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>DigiConnect Dukan Intro</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #071f4d; }
+  body { font-family: "Inter", "Inter Display", sans-serif; color: #fff; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: radial-gradient(circle at 30% 30%, #0a3a8c 0%, #071f4d 55%, #040f29 100%); }
+  .layer { position: absolute; inset: 0; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(80px); }
+  .grid-bg { position: absolute; inset: -400px;
+    background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 80px 80px; }
+  .plate { background: #fff; border-radius: 36px; padding: 48px 72px;
+    box-shadow: 0 40px 120px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.4); }
+  .plate img { display: block; width: 900px; }
+  .h1 { font-family: "Inter Display", "Inter", sans-serif; font-weight: 800; letter-spacing: -2px; }
+  .orange { color: #ff7b00; }
+  .blue { color: #4f9bff; }
+  .pill { display: inline-block; padding: 14px 32px; border-radius: 999px; font-weight: 700; font-size: 30px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); }
+  .card { position: absolute; width: 400px; border-radius: 28px; overflow: hidden; background: #fff;
+    box-shadow: 0 30px 80px rgba(0,0,0,.4); }
+  .card img { display: block; width: 100%; height: 250px; object-fit: cover; }
+  .card .lbl { padding: 20px 26px; color: #0f172a; font-weight: 800; font-size: 30px;
+    display: flex; align-items: center; gap: 14px; }
+  .card .dot { width: 14px; height: 14px; border-radius: 50%; background: #ff7b00; flex: none; }
+  .feat { display: flex; align-items: center; gap: 28px; font-size: 52px; font-weight: 800; }
+  .feat .ico { width: 96px; height: 96px; border-radius: 26px; display: flex; align-items: center; justify-content: center;
+    font-size: 52px; background: linear-gradient(135deg, #0056d2, #ff7b00); }
+  .bar { position: absolute; left: 0; bottom: 0; height: 10px; background: linear-gradient(90deg, #0056d2, #ff7b00); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="grid-bg" id="grid"></div>
+  <div class="orb" id="orbA" style="width:700px;height:700px;background:#0056d2;opacity:.55"></div>
+  <div class="orb" id="orbB" style="width:600px;height:600px;background:#ff7b00;opacity:.35"></div>
+
+  <!-- Scene 1: logo reveal -->
+  <div class="layer center" id="s1">
+    <div class="plate" id="s1plate"><img src="../../public/logo-navbar.png" alt="" /></div>
+    <div class="h1 orange" id="s1sub" style="margin-top:56px;font-size:64px;text-transform:uppercase;">Dukan</div>
+  </div>
+
+  <!-- Scene 2: tagline -->
+  <div class="layer center" id="s2">
+    <div class="h1" id="s2a" style="font-size:110px;">Aapki Digital Seva</div>
+    <div class="h1 orange" id="s2b" style="font-size:110px;">Ek Hi Jagah.</div>
+    <div id="s2c" style="margin-top:44px;font-size:40px;font-weight:500;opacity:.85;">Tax · Insurance · Finance · Gov ID Services — across India</div>
+  </div>
+
+  <!-- Scene 3: services -->
+  <div class="layer" id="s3">
+    <div class="h1" id="s3t" style="position:absolute;top:70px;width:100%;text-align:center;font-size:72px;">
+      Hamari <span class="orange">Services</span>
+    </div>
+    <div id="cards"></div>
+  </div>
+
+  <!-- Scene 4: why us -->
+  <div class="layer" id="s4">
+    <img id="s4img" src="../../public/images/homepage/hero-assistance-desktop.webp" alt=""
+      style="position:absolute;right:0;top:0;height:1080px;width:1100px;object-fit:cover;object-position:60% 50%;" />
+    <div id="s4shade" style="position:absolute;inset:0;background:linear-gradient(90deg,#071f4d 38%,rgba(7,31,77,.85) 52%,rgba(7,31,77,0) 80%);"></div>
+    <div style="position:absolute;left:140px;top:200px;">
+      <div class="h1" id="s4t" style="font-size:80px;margin-bottom:70px;">Kyun <span class="orange">DigiConnect?</span></div>
+      <div class="feat" id="f0" style="margin-bottom:44px;"><div class="ico">⚡</div>Fast &amp; Easy Online Apply</div>
+      <div class="feat" id="f1" style="margin-bottom:44px;"><div class="ico">🔒</div>Safe &amp; Secure Documents</div>
+      <div class="feat" id="f2" style="margin-bottom:44px;"><div class="ico">📍</div>Live Application Tracking</div>
+      <div class="feat" id="f3"><div class="ico">🤝</div>Expert Help, Pan-India</div>
+    </div>
+  </div>
+
+  <!-- Scene 5: CTA -->
+  <div class="layer center" id="s5">
+    <div class="plate" id="s5plate" style="padding:36px 60px;"><img src="../../public/logo-navbar.png" alt="" style="width:760px;" /></div>
+    <div class="h1" id="s5t" style="margin-top:60px;font-size:76px;">Aaj hi <span class="orange">apply</span> karein!</div>
+    <div id="s5row" style="margin-top:48px;display:flex;gap:28px;">
+      <span class="pill">🌐 digiconnectdukan.com</span>
+      <span class="pill">📞 +91 70075 95931</span>
+    </div>
+    <div id="s5p" style="margin-top:60px;font-size:28px;opacity:.7;letter-spacing:3px;text-transform:uppercase;">Powered by RNoS India Pvt Ltd</div>
+  </div>
+
+  <div class="bar" id="bar"></div>
+</div>
+
+<script>
+  const DURATION = 24;
+  const services = [
+    ["GST Registration", "services/gst-registration.webp"],
+    ["ITR Filing", "services/itr-filing.webp"],
+    ["Insurance", "categories/insurance.webp"],
+    ["Passport Seva", "services/passport-service.webp"],
+    ["CIBIL Report", "services/cibil-report.webp"],
+    ["Banking & Loans", "categories/banking-finance.webp"],
+    ["Bill Payments", "services/bill-payments.webp"],
+    ["Gov ID & PVC Cards", "categories/cards-pvc.webp"],
+  ];
+  const cardsEl = document.getElementById("cards");
+  services.forEach(([name, src], i) => {
+    const c = document.createElement("div");
+    c.className = "card"; c.id = "c" + i;
+    c.innerHTML = `<img src="../../public/images/homepage/${src}" alt=""><div class="lbl"><span class="dot"></span>${name}</div>`;
+    const col = i % 4, row = Math.floor(i / 4);
+    c.style.left = (120 + col * 440) + "px";
+    c.style.top = (230 + row * 400) + "px";
+    cardsEl.appendChild(c);
+  });
+
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const prog = (t, s, d) => clamp((t - s) / d);
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+  const easeInOut = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  const backOut = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  const $ = (id) => document.getElementById(id);
+  // scene visibility: fade in over 0.5s at start, fade out over 0.5s at end
+  const sceneAlpha = (t, s, e) => Math.min(prog(t, s, .5), 1 - prog(t, e - .5, .5));
+  const set = (el, o, tf) => { el.style.opacity = o; el.style.transform = tf || "none"; };
+
+  window.render = function (t) {
+    // background motion
+    $("grid").style.transform = `translate(${-t * 12}px, ${-t * 6}px)`;
+    $("orbA").style.transform = `translate(${200 + Math.sin(t * .4) * 220}px, ${100 + Math.cos(t * .3) * 160}px)`;
+    $("orbB").style.transform = `translate(${1200 + Math.cos(t * .35) * 240}px, ${500 + Math.sin(t * .45) * 180}px)`;
+
+    // Scene 1 (0 - 4.2)
+    const a1 = sceneAlpha(t, 0, 4.2);
+    $("s1").style.opacity = a1;
+    const p1 = backOut(prog(t, .3, 1.1));
+    set($("s1plate"), prog(t, .3, .6), `scale(${.6 + .4 * p1}) rotate(${(1 - p1) * -4}deg)`);
+    const p1b = easeOut(prog(t, 1.4, .8));
+    set($("s1sub"), p1b, `translateY(${(1 - p1b) * 40}px)`);
+    $("s1sub").style.letterSpacing = (60 - 42 * p1b) + "px";
+
+    // Scene 2 (4.0 - 8.4)
+    $("s2").style.opacity = sceneAlpha(t, 4.0, 8.4);
+    const p2a = easeOut(prog(t, 4.2, .8)), p2b = easeOut(prog(t, 4.7, .8)), p2c = easeOut(prog(t, 5.4, .8));
+    set($("s2a"), p2a, `translateX(${(1 - p2a) * -120}px)`);
+    set($("s2b"), p2b, `translateX(${(1 - p2b) * 120}px)`);
+    set($("s2c"), p2c, `translateY(${(1 - p2c) * 30}px)`);
+
+    // Scene 3 (8.2 - 14.6)
+    $("s3").style.opacity = sceneAlpha(t, 8.2, 14.6);
+    const p3t = easeOut(prog(t, 8.3, .7));
+    set($("s3t"), p3t, `translateY(${(1 - p3t) * -40}px)`);
+    services.forEach((_, i) => {
+      const p = backOut(prog(t, 8.7 + i * .22, .7));
+      const float = Math.sin(t * 1.2 + i) * 6;
+      set($("c" + i), clamp(prog(t, 8.7 + i * .22, .35)), `translateY(${(1 - p) * 160 + float}px) scale(${.85 + .15 * p})`);
+    });
+
+    // Scene 4 (14.4 - 19.6)
+    $("s4").style.opacity = sceneAlpha(t, 14.4, 19.6);
+    $("s4img").style.transform = `scale(${1.12 - .08 * prog(t, 14.4, 5.2)})`;
+    const p4t = easeOut(prog(t, 14.6, .7));
+    set($("s4t"), p4t, `translateX(${(1 - p4t) * -80}px)`);
+    for (let i = 0; i < 4; i++) {
+      const p = easeOut(prog(t, 15.1 + i * .4, .6));
+      set($("f" + i), p, `translateX(${(1 - p) * -100}px)`);
+    }
+
+    // Scene 5 (19.4 - end)
+    $("s5").style.opacity = Math.min(prog(t, 19.4, .5), 1 - prog(t, DURATION - .6, .6));
+    const p5 = backOut(prog(t, 19.6, .9));
+    set($("s5plate"), prog(t, 19.6, .4), `scale(${.7 + .3 * p5})`);
+    const p5t = easeOut(prog(t, 20.2, .7)), p5r = easeOut(prog(t, 20.7, .7)), p5p = easeOut(prog(t, 21.3, .7));
+    set($("s5t"), p5t, `translateY(${(1 - p5t) * 40}px)`);
+    set($("s5row"), p5r, `translateY(${(1 - p5r) * 40}px)`);
+    set($("s5p"), p5p * .7);
+
+    $("bar").style.width = (t / DURATION * 100) + "%";
+  };
+
+  window.ready = Promise.all([...document.images].map((im) => im.decode().catch(() => {})))
+    .then(() => document.fonts.ready);
+  render(0);
+</script>
+</body>
+</html>

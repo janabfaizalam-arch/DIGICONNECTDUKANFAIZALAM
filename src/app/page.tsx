@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { HomepageHero, HomepageTrustChips } from "@/components/homepage/homepage-hero";
 import { QuickActions } from "@/components/homepage/quick-actions";
 import { TrendingNow } from "@/components/homepage/trending-now";
+import { CreditCardSpotlight } from "@/components/homepage/credit-card-spotlight";
 import { QuickServiceGrid } from "@/components/homepage/quick-service-grid";
 import { FeaturedServices } from "@/components/homepage/featured-services";
 import { HowItWorks } from "@/components/homepage/how-it-works";
@@ -140,6 +141,7 @@ export default async function Home({
     trust_chips: <HomepageTrustChips />,
     reels: <ReelsRail reels={reels} />,
     trending: <TrendingNow />,
+    credit_cards: <CreditCardSpotlight />,
     quick_services: <QuickServiceGrid />,
     featured_services: <FeaturedServices />,
     how_it_works: <HowItWorks />,

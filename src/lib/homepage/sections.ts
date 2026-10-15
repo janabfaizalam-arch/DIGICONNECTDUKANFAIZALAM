@@ -23,6 +23,7 @@ export type HomepageSectionId =
   | "trust_chips"
   | "reels"
   | "trending"
+  | "credit_cards"
   | "quick_services"
   | "featured_services"
   | "how_it_works"
@@ -95,6 +96,12 @@ export const HOMEPAGE_SECTIONS: HomepageSectionSpec[] = [
     label: "Trending now",
     blurb: "The services people are asking for most",
     editHref: "/admin/services",
+  },
+  {
+    id: "credit_cards",
+    label: "Premium credit cards",
+    blurb: "The dark card-lounge banner with fanned cards, linking to /credit-cards",
+    editHref: null,
   },
   {
     id: "quick_services",
