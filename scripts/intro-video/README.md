@@ -1,17 +1,21 @@
-# Intro video
+# Intro videos
 
-24-second 1080p brand intro for DigiConnect Dukan, output at `public/videos/digiconnect-intro.mp4`.
+| Video | Size | Source | Render |
+|---|---|---|---|
+| `public/videos/digiconnect-intro-reel.mp4` | 1080×1920 (9:16 reel), 34.5s, Hinglish voiceover + captions | `reel.html` | `node scripts/intro-video/render-reel.mjs` |
+| `public/videos/digiconnect-intro.mp4` | 1920×1080 (16:9), 24s, music only | `scene.html` | `node scripts/intro-video/render.mjs` |
 
-- `scene.html` — the animation (logo reveal → tagline → services → why us → CTA), driven by `window.render(t)`.
-- `render.mjs` — captures each frame in headless Chromium (Playwright) and encodes with ffmpeg, adding a soft synth pad.
+Each page is an animation driven by `window.render(t)`. The render scripts capture every frame in headless
+Chromium (Playwright) and encode with ffmpeg. Requires `ffmpeg` and Playwright's Chromium.
 
-```bash
-node scripts/intro-video/render.mjs            # writes public/videos/digiconnect-intro.mp4
-```
+## Voiceover
 
-Edit text, timings or services in `scene.html`, then re-run. Requires `ffmpeg` and Playwright's Chromium.
+`voiceover/line1.wav` … `line5.wav` are generated offline by `voiceover.py` with the Piper Hindi voice
+`hi_IN-pratham-medium` (setup steps are in the script's docstring). To change what is said, edit `LINES` in
+`voiceover.py`, regenerate, then adjust the scene windows in `reel.html` (`S`, `cardAt`, `featAt`, captions)
+and `VOICE_AT` in `render-reel.mjs` so each line still fits its scene.
 
-Embed on a page:
+## Embed on a page
 
 ```html
 <video src="/videos/digiconnect-intro.mp4" autoplay muted loop playsinline></video>

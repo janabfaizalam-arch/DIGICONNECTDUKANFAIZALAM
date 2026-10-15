@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>DigiConnect Dukan Reel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #071f4d; }
+  body { font-family: "Inter", "Inter Display", sans-serif; color: #fff; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+    background: radial-gradient(circle at 30% 25%, #0a3a8c 0%, #071f4d 55%, #040f29 100%); }
+  .layer { position: absolute; inset: 0; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(90px); }
+  .grid-bg { position: absolute; inset: -500px;
+    background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 72px 72px; }
+  .plate { background: #fff; border-radius: 32px; padding: 40px 48px;
+    box-shadow: 0 40px 120px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.4); }
+  .plate img { display: block; width: 820px; }
+  .h1 { font-family: "Inter Display", "Inter", sans-serif; font-weight: 800; letter-spacing: -2px; line-height: 1.05; }
+  .orange { color: #ff7b00; }
+  .pill { display: inline-block; padding: 18px 36px; border-radius: 999px; font-weight: 700; font-size: 40px;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); }
+  .card { position: absolute; width: 470px; border-radius: 26px; overflow: hidden; background: #fff;
+    box-shadow: 0 26px 70px rgba(0,0,0,.4); }
+  .card img { display: block; width: 100%; height: 190px; object-fit: cover; }
+  .card .lbl { padding: 16px 22px; color: #0f172a; font-weight: 800; font-size: 32px;
+    display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+  .card .dot { width: 14px; height: 14px; border-radius: 50%; background: #ff7b00; flex: none; }
+  .feat { display: flex; align-items: center; gap: 28px; font-size: 50px; font-weight: 800; text-align: left; }
+  .feat .ico { width: 104px; height: 104px; border-radius: 28px; display: flex; align-items: center; justify-content: center;
+    font-size: 54px; background: linear-gradient(135deg, #0056d2, #ff7b00); flex: none; }
+  #cap { position: absolute; left: 70px; right: 70px; top: 1500px; display: flex; justify-content: center; }
+  #cap span { background: rgba(4,15,41,.82); border: 2px solid rgba(255,123,0,.65); border-radius: 22px;
+    padding: 18px 30px; font-size: 40px; font-weight: 700; line-height: 1.3; text-align: center; }
+  .bar { position: absolute; left: 0; top: 0; height: 10px; background: linear-gradient(90deg, #0056d2, #ff7b00); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="grid-bg" id="grid"></div>
+  <div class="orb" id="orbA" style="width:760px;height:760px;background:#0056d2;opacity:.55"></div>
+  <div class="orb" id="orbB" style="width:640px;height:640px;background:#ff7b00;opacity:.35"></div>
+
+  <!-- Scene 1: logo reveal -->
+  <div class="layer center" id="s1" style="padding-bottom:260px;">
+    <div class="h1" id="s1hi" style="font-size:96px;margin-bottom:80px;">Namaste! 🙏</div>
+    <div class="plate" id="s1plate"><img src="../../public/logo-navbar.png" alt="" /></div>
+    <div class="h1 orange" id="s1sub" style="margin-top:60px;font-size:84px;text-transform:uppercase;">Dukan</div>
+  </div>
+
+  <!-- Scene 2: tagline -->
+  <div class="layer center" id="s2" style="padding:0 70px 260px;">
+    <div class="h1" id="s2a" style="font-size:118px;">Aapki Har<br/>Digital Seva</div>
+    <div class="h1 orange" id="s2b" style="font-size:118px;margin-top:20px;">Ab Ek Hi<br/>Jagah.</div>
+    <div id="s2c" style="margin-top:56px;font-size:42px;font-weight:600;opacity:.88;line-height:1.4;">Tax · Insurance · Finance<br/>Gov ID Services — across India</div>
+  </div>
+
+  <!-- Scene 3: services -->
+  <div class="layer" id="s3">
+    <div class="h1" id="s3t" style="position:absolute;top:170px;width:100%;text-align:center;font-size:90px;">
+      Hamari <span class="orange">Services</span>
+    </div>
+    <div id="cards"></div>
+  </div>
+
+  <!-- Scene 4: why us -->
+  <div class="layer" id="s4">
+    <img id="s4img" src="../../public/images/homepage/hero-assistance-mobile.webp" alt=""
+      style="position:absolute;left:0;top:0;width:1080px;height:820px;object-fit:cover;object-position:50% 30%;" />
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,31,77,.1) 0px,rgba(7,31,77,.4) 520px,#071f4d 800px);"></div>
+    <div style="position:absolute;left:80px;right:60px;top:700px;">
+      <div class="h1" id="s4t" style="font-size:88px;margin-bottom:56px;">Kyun <span class="orange">DigiConnect?</span></div>
+      <div class="feat" id="f0" style="margin-bottom:36px;"><div class="ico">⚡</div>Fast &amp; Easy Apply</div>
+      <div class="feat" id="f1" style="margin-bottom:36px;"><div class="ico">🔒</div>Documents 100% Safe</div>
+      <div class="feat" id="f2" style="margin-bottom:36px;"><div class="ico">📍</div>Live Tracking</div>
+      <div class="feat" id="f3"><div class="ico">🤝</div>Expert Help, Pan-India</div>
+    </div>
+  </div>
+
+  <!-- Scene 5: CTA -->
+  <div class="layer center" id="s5" style="padding-bottom:300px;">
+    <div class="plate" id="s5plate" style="padding:34px 44px;"><img src="../../public/logo-navbar.png" alt="" style="width:800px;" /></div>
+    <div class="h1" id="s5t" style="margin-top:80px;font-size:100px;">Aaj hi <span class="orange">apply</span><br/>karein!</div>
+    <div id="s5row" style="margin-top:64px;display:flex;flex-direction:column;align-items:center;gap:28px;">
+      <span class="pill">🌐 digiconnectdukan.com</span>
+      <span class="pill">📞 +91 70075 95931</span>
+    </div>
+    <div id="s5p" style="margin-top:70px;font-size:30px;letter-spacing:4px;text-transform:uppercase;">Powered by RNoS India Pvt Ltd</div>
+  </div>
+
+  <div id="cap"><span id="capText"></span></div>
+  <div class="bar" id="bar"></div>
+</div>
+
+<script>
+  // Scene windows (seconds). Each voiceover line starts 0.4s after its scene starts (see render-reel.mjs).
+  const S = { s1: [0, 4.0], s2: [4.0, 7.4], s3: [7.4, 17.6], s4: [17.6, 24.3], s5: [24.3, 34.5] };
+  const DURATION = 34.5;
+  const captions = [
+    [S.s1, "Namaste! Swagat hai DigiConnect Dukan mein."],
+    [S.s2, "Aapki har digital seva, ab ek hi jagah."],
+    [S.s3, "GST, ITR, Insurance, Passport, CIBIL, Banking, Bill Payment aur PVC Cards — sab kuch online!"],
+    [S.s4, "Fast apply, safe documents, live tracking aur poore India mein expert help."],
+    [S.s5, "Visit karein digiconnectdukan.com ya call karein 70075 95931"],
+  ];
+  const services = [
+    ["GST Registration", "services/gst-registration.webp"],
+    ["ITR Filing", "services/itr-filing.webp"],
+    ["Insurance", "categories/insurance.webp"],
+    ["Passport Seva", "services/passport-service.webp"],
+    ["CIBIL Report", "services/cibil-report.webp"],
+    ["Banking & Loans", "categories/banking-finance.webp"],
+    ["Bill Payments", "services/bill-payments.webp"],
+    ["PVC Cards", "categories/cards-pvc.webp"],
+  ];
+  // When each service name is spoken in the voiceover (approx, seconds from video start).
+  const cardAt = [7.9, 9.0, 10.1, 10.9, 11.8, 12.9, 14.0, 15.0];
+  const cardsEl = document.getElementById("cards");
+  services.forEach(([name, src], i) => {
+    const c = document.createElement("div");
+    c.className = "card"; c.id = "c" + i;
+    c.innerHTML = `<img src="../../public/images/homepage/${src}" alt=""><div class="lbl"><span class="dot"></span>${name}</div>`;
+    const col = i % 2, row = Math.floor(i / 2);
+    c.style.left = (55 + col * 500) + "px";
+    c.style.top = (330 + row * 290) + "px";
+    cardsEl.appendChild(c);
+  });
+
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const prog = (t, s, d) => clamp((t - s) / d);
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+  const backOut = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  const $ = (id) => document.getElementById(id);
+  const sceneAlpha = (t, [s, e]) => Math.min(s === 0 ? 1 : prog(t, s, .4), e >= DURATION ? 1 - prog(t, DURATION - .6, .6) : 1 - prog(t, e - .4, .4));
+  const set = (el, o, tf) => { el.style.opacity = o; el.style.transform = tf || "none"; };
+
+  window.render = function (t) {
+    $("grid").style.transform = `translate(${-t * 10}px, ${-t * 8}px)`;
+    $("orbA").style.transform = `translate(${-100 + Math.sin(t * .4) * 200}px, ${200 + Math.cos(t * .3) * 260}px)`;
+    $("orbB").style.transform = `translate(${500 + Math.cos(t * .35) * 200}px, ${1100 + Math.sin(t * .45) * 300}px)`;
+
+    // Scene 1
+    $("s1").style.opacity = sceneAlpha(t, S.s1);
+    const p1h = easeOut(prog(t, .2, .7));
+    set($("s1hi"), p1h, `translateY(${(1 - p1h) * -40}px)`);
+    const p1 = backOut(prog(t, .5, 1.0));
+    set($("s1plate"), prog(t, .5, .5), `scale(${.6 + .4 * p1}) rotate(${(1 - p1) * -4}deg)`);
+    const p1b = easeOut(prog(t, 1.5, .8));
+    set($("s1sub"), p1b, `translateY(${(1 - p1b) * 40}px)`);
+    $("s1sub").style.letterSpacing = (60 - 40 * p1b) + "px";
+
+    // Scene 2
+    $("s2").style.opacity = sceneAlpha(t, S.s2);
+    const p2a = easeOut(prog(t, 4.1, .7)), p2b = easeOut(prog(t, 5.3, .7)), p2c = easeOut(prog(t, 5.9, .7));
+    set($("s2a"), p2a, `translateX(${(1 - p2a) * -120}px)`);
+    set($("s2b"), p2b, `translateX(${(1 - p2b) * 120}px)`);
+    set($("s2c"), p2c, `translateY(${(1 - p2c) * 30}px)`);
+
+    // Scene 3
+    $("s3").style.opacity = sceneAlpha(t, S.s3);
+    const p3t = easeOut(prog(t, 7.5, .6));
+    set($("s3t"), p3t, `translateY(${(1 - p3t) * -40}px)`);
+    services.forEach((_, i) => {
+      const p = backOut(prog(t, cardAt[i] - .2, .6));
+      const float = Math.sin(t * 1.2 + i) * 5;
+      set($("c" + i), clamp(prog(t, cardAt[i] - .2, .3)), `translateY(${(1 - p) * 140 + float}px) scale(${.85 + .15 * p})`);
+    });
+
+    // Scene 4
+    $("s4").style.opacity = sceneAlpha(t, S.s4);
+    $("s4img").style.transform = `scale(${1.12 - .1 * prog(t, S.s4[0], 6.7)})`;
+    const p4t = easeOut(prog(t, 17.7, .6));
+    set($("s4t"), p4t, `translateX(${(1 - p4t) * -80}px)`);
+    const featAt = [18.0, 19.6, 21.3, 22.4];
+    for (let i = 0; i < 4; i++) {
+      const p = easeOut(prog(t, featAt[i], .55));
+      set($("f" + i), p, `translateX(${(1 - p) * -100}px)`);
+    }
+
+    // Scene 5
+    $("s5").style.opacity = sceneAlpha(t, S.s5);
+    const p5 = backOut(prog(t, 24.4, .9));
+    set($("s5plate"), prog(t, 24.4, .4), `scale(${.7 + .3 * p5})`);
+    const p5t = easeOut(prog(t, 25.0, .7)), p5r = easeOut(prog(t, 27.2, .7)), p5p = easeOut(prog(t, 29.5, .7));
+    set($("s5t"), p5t, `translateY(${(1 - p5t) * 40}px)`);
+    set($("s5row"), p5r, `translateY(${(1 - p5r) * 40}px)`);
+    set($("s5p"), p5p * .7);
+
+    // Captions
+    const cap = captions.find(([[s, e]]) => t >= s && t < e);
+    $("capText").textContent = cap ? cap[1] : "";
+    const ca = cap ? Math.min(prog(t, cap[0][0] + .3, .3), 1 - prog(t, cap[0][1] - .35, .3)) : 0;
+    set($("cap"), ca, `translateY(${(1 - ca) * 20}px)`);
+
+    $("bar").style.width = (t / DURATION * 100) + "%";
+  };
+
+  window.ready = Promise.all([...document.images].map((im) => im.decode().catch(() => {})))
+    .then(() => document.fonts.ready);
+  render(0);
+</script>
+</body>
+</html>
