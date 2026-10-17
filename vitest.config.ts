@@ -12,7 +12,7 @@ export default defineConfig({
       whose job to print and when to give up are exactly the kind that must
       not rot, so they are tested alongside everything else.
     */
-    include: ["src/**/*.test.ts", "print-station/**/*.test.mjs"],
+    include: ["src/**/*.test.ts", "print-station/**/*.test.mjs", "openclaw/**/*.test.mjs"],
   },
   resolve: {
     alias: {
