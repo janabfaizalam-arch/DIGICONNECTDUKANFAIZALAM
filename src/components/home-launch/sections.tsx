@@ -1,12 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpen, ExternalLink, FileSearch, LifeBuoy, ListChecks, Lock, MessageCircle, ReceiptText, Route, Scale } from "lucide-react";
 
 import SafeImage from "@/components/ui/safe-image";
-import { BlueprintStack, ModuleArt, type BlueprintLayer } from "@/components/home-launch/art";
+import { BlueprintStack, ModuleArt, StructureGlyph, type BlueprintLayer } from "@/components/home-launch/art";
 import { DirectoryAction } from "@/components/home-launch/directory-action";
 import { AVAILABILITY_LABEL, priceText } from "@/components/home-launch/format";
-import { HeroStage } from "@/components/home-launch/interactive";
+import { HeroStage, LoopVideo } from "@/components/home-launch/interactive";
 import { CostLedger } from "@/components/home-launch/sections-client";
 import { business, legalLinks } from "@/lib/compliance/config";
 import type { GuideCard } from "@/lib/homepage/launch-data";
@@ -177,112 +178,143 @@ export function Hero() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Directory
+   What we can register for you
    ───────────────────────────────────────────────────────────────────────── */
 
-const DIRECTORY_EXTRAS: ModuleId[] = ["dsc", "startup-india", "annual-compliance", "msme"];
+/** Photography for the registration cards. Existing site assets; nothing here is a screenshot of a real record. */
+const MODULE_PHOTOS: Partial<Record<ModuleId, { src: string; alt: string; position?: string }>> = {
+  gst: { src: "/images/homepage/services/gst-registration.webp", alt: "Laptop and tablet on a desk showing business charts" },
+  msme: { src: "/images/homepage/services/msme-registration.webp", alt: "Laptop with a registration form beside a stack of documents" },
+  dsc: { src: "/images/homepage/illustrations/trust-secure.webp", alt: "A shield, a padlock and a document folder — secure digital signing" },
+  "startup-india": { src: "/images/homepage/categories/business.webp", alt: "Founders talking outside modern office buildings", position: "75% center" },
+  "annual-compliance": { src: "/images/homepage/illustrations/tracking-timeline.webp", alt: "A checklist clipboard beside a timeline of milestones" },
+  "current-account": { src: "/images/homepage/categories/banking-finance.webp", alt: "A bank safe beside stacks of coins", position: "80% center" },
+};
+
+const REGISTRATION_CARDS: ModuleId[] = ["gst", "msme", "dsc", "startup-india", "annual-compliance", "current-account"];
+
+function StatusPill({ entry }: { entry: ResolvedModule }) {
+  const tone = entry.availability === "checkout" ? "checkout" : entry.availability === "listed" ? "optional" : "enquiry";
+  return <span className={`rl-tag rl-tag--${tone}`}>{AVAILABILITY_LABEL[entry.availability]}</span>;
+}
 
 export function ServiceDirectory({ resolved }: { resolved: Resolved }) {
-  const foundations = STRUCTURES.map((structure) => ({ structure, mod: moduleById(structure.foundationModule)!, entry: resolved[structure.foundationModule] }));
-  const listedFoundations = foundations.filter(({ entry }) => entry.availability !== "enquiry");
-  const askFoundations = foundations.filter(({ entry }) => entry.availability === "enquiry");
-  const extras = DIRECTORY_EXTRAS.map((id) => ({ mod: moduleById(id)!, entry: resolved[id] })).filter(({ entry }) => entry.availability !== "enquiry");
-
+  const whatsapp = buildWhatsAppUrl("Hi, I want to start a company. Which structure and registrations do I need?");
   return (
-    <div className="rl-directory">
-      {listedFoundations.map(({ structure, mod, entry }, index) => (
-        <article key={mod.id} className="rl-svc" data-reveal style={{ "--rl-delay": `${index * 60}ms` } as CSSProperties}>
-          <div className="rl-svc__art">
-            <ModuleArt group="foundation" seed={index} structure={structure.id} />
+    <div className="rl-offer">
+      {/* 1 — Register the company itself */}
+      <div className="rl-offer__feature" data-reveal>
+        <div className="rl-offer__film">
+          <LoopVideo src="/videos/homepage/company-blueprint.mp4" poster="/videos/homepage/company-blueprint-poster.webp" />
+          <div className="rl-offer__film-copy">
+            <span className="rl-eyebrow">Step 1 · The entity</span>
+            <h3>Register your company</h3>
+            <p>Pick one of five structures. We prepare the documents, file with the authority and follow up until the certificate is issued.</p>
           </div>
-          <div className="rl-svc__body">
-            <span className={`rl-tag rl-tag--${entry.availability === "checkout" ? "checkout" : "optional"}`} style={{ alignSelf: "flex-start" }}>
-              {AVAILABILITY_LABEL[entry.availability]}
-            </span>
-            <h3>{mod.label}</h3>
-            <p>{mod.summary}</p>
-            <dl>
-              <dt>For</dt>
-              <dd>{structure.suits[0]}</dd>
-              <dt>Eligibility</dt>
-              <dd>{structure.ownership}</dd>
-              <dt>Service fee</dt>
-              <dd className="rl-price">{priceText(entry) ?? "Quoted on request"}</dd>
-              {entry.timeline ? (
-                <>
-                  <dt>Usually</dt>
-                  <dd>{entry.timeline}, after documents are complete</dd>
-                </>
-              ) : null}
-            </dl>
-            <p className="rl-fine">{mod.governmentFee}</p>
-            <div className="rl-svc__foot">
-              <DirectoryAction mod={mod.id} structure={structure.id} label="Build with this" />
-              {entry.href ? (
-                <a className="rl-btn rl-btn--ghost rl-btn--sm" href={entry.href}>
-                  Service details
-                </a>
-              ) : null}
-            </div>
-          </div>
-        </article>
-      ))}
+        </div>
+        <div className="rl-offer__list">
+          <p className="rl-offer__list-head">
+            <span>Structure</span>
+            <span>Today</span>
+          </p>
+          <ul>
+            {STRUCTURES.map((structure) => {
+              const entry = resolved[structure.foundationModule];
+              const price = priceText(entry);
+              return (
+                <li key={structure.id}>
+                  <span className="rl-offer__glyph" aria-hidden="true">
+                    <StructureGlyph id={structure.id} size={34} />
+                  </span>
+                  <span className="rl-offer__name">
+                    <strong>{structure.name}</strong>
+                    <span>{structure.tagline}</span>
+                  </span>
+                  <span className="rl-offer__status">
+                    <StatusPill entry={entry} />
+                    <span className="rl-price">{price ?? "We quote first"}</span>
+                  </span>
+                  <DirectoryAction mod={structure.foundationModule} structure={structure.id} label={entry.availability === "checkout" ? "Start" : "Ask"} />
+                </li>
+              );
+            })}
+          </ul>
+          <p className="rl-fine" style={{ margin: "14px 0 0" }}>
+            Not sure which fits? <a className="rl-link" href="#compare">Compare all five</a>. Government fees and stamp duty are separate and depend on capital and state.
+          </p>
+        </div>
+      </div>
 
-      {extras.map(({ mod, entry }, index) => (
-        <article key={mod.id} className="rl-svc" data-reveal style={{ "--rl-delay": `${(index + listedFoundations.length) * 60}ms` } as CSSProperties}>
-          <div className="rl-svc__art">
-            <ModuleArt group={mod.group} seed={index + 3} />
-          </div>
-          <div className="rl-svc__body">
-            <span className={`rl-tag rl-tag--${entry.availability === "checkout" ? "checkout" : "optional"}`} style={{ alignSelf: "flex-start" }}>
-              {AVAILABILITY_LABEL[entry.availability]}
-            </span>
-            <h3>{mod.label}</h3>
-            <p>{mod.summary}</p>
-            <dl>
-              <dt>When</dt>
-              <dd>{mod.condition ?? "Optional"}</dd>
-              <dt>Service fee</dt>
-              <dd className="rl-price">{priceText(entry) ?? "Quoted on request"}</dd>
-              {entry.timeline ? (
-                <>
-                  <dt>Usually</dt>
-                  <dd>{entry.timeline}</dd>
-                </>
-              ) : null}
-            </dl>
-            <div className="rl-svc__foot">
-              <DirectoryAction mod={mod.id} label="Add to setup" />
-              {entry.href ? (
-                <a className="rl-btn rl-btn--ghost rl-btn--sm" href={entry.href}>
-                  Service details
-                </a>
-              ) : null}
-            </div>
-          </div>
-        </article>
-      ))}
+      {/* 2 — Registrations a new business usually adds */}
+      <div className="rl-offer__subhead" data-reveal>
+        <span className="rl-eyebrow">Step 2 · Registrations you can add</span>
+        <p className="rl-fine">Buy one on its own, or add it to your company setup.</p>
+      </div>
+      <ul className="rl-photo-cards">
+        {REGISTRATION_CARDS.map((id, index) => {
+          const mod = moduleById(id)!;
+          const entry = resolved[id];
+          const photo = MODULE_PHOTOS[id];
+          const price = priceText(entry);
+          return (
+            <li key={id} data-reveal style={{ "--rl-delay": `${(index % 3) * 70}ms` } as CSSProperties}>
+              <article className="rl-photo-card">
+                <div className="rl-photo-card__media">
+                  {photo ? (
+                    <Image src={photo.src} alt={photo.alt} fill sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 400px" style={{ objectFit: "cover", objectPosition: photo.position ?? "center" }} />
+                  ) : (
+                    <ModuleArt group={mod.group} seed={index} />
+                  )}
+                  <span className="rl-photo-card__pill">
+                    <StatusPill entry={entry} />
+                  </span>
+                  <span className="rl-photo-card__price">{price ? <strong className="rl-price">{price}</strong> : <span>Quote on request</span>}</span>
+                </div>
+                <div className="rl-photo-card__body">
+                  <span className={`rl-tag rl-tag--${mod.nature}`} style={{ alignSelf: "flex-start" }}>
+                    {mod.nature === "conditional" ? "Needed in some cases" : mod.nature === "recurring" ? "Every year" : "Optional"}
+                  </span>
+                  <h3>{mod.label}</h3>
+                  <p>{mod.summary}</p>
+                  {mod.condition ? <p className="rl-photo-card__when">{mod.condition}</p> : null}
+                  <div className="rl-photo-card__foot">
+                    {entry.timeline ? <span className="rl-fine">Usually {entry.timeline}</span> : <span className="rl-fine">{mod.governmentFee}</span>}
+                    <span style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                      {entry.href ? (
+                        <Link className="rl-btn rl-btn--ghost rl-btn--sm" href={entry.href} aria-label={`${mod.label} details`}>
+                          Details
+                        </Link>
+                      ) : null}
+                      <DirectoryAction mod={id} label="Add" />
+                    </span>
+                  </div>
+                </div>
+              </article>
+            </li>
+          );
+        })}
+      </ul>
 
-      {askFoundations.length ? (
-        <article className="rl-svc" data-reveal style={{ background: "var(--rl-night-2)", color: "#fff", borderColor: "transparent" }}>
-          <div className="rl-svc__body" style={{ justifyContent: "center" }}>
-            <span className="rl-tag rl-tag--enquiry" style={{ alignSelf: "flex-start", color: "#c7d6f3", borderColor: "rgba(199,214,243,0.4)" }}>
-              Quote on request
-            </span>
-            <h3>{askFoundations.map(({ structure }) => structure.short).join(", ")}</h3>
-            <p style={{ color: "var(--rl-night-text)" }}>
-              Not available for online checkout yet. Tell us about your business in the builder and our team will confirm what we can take on, the scope and
-              the cost before anything starts.
-            </p>
-            <div className="rl-svc__foot">
-              <a href="#builder" className="rl-btn rl-btn--launch rl-btn--sm">
-                Ask in the builder
-                <ArrowRight className="rl-arrow" aria-hidden="true" />
-              </a>
-            </div>
+      {/* 3 — A person to talk to */}
+      <aside className="rl-talk" data-reveal aria-label="Talk to our team">
+        <div className="rl-talk__photo">
+          <Image src="/images/homepage/hero-assistance-desktop.webp" alt="An RNOS advisor helping a customer at a desk" fill sizes="(max-width: 900px) 100vw, 560px" style={{ objectFit: "cover", objectPosition: "center 30%" }} />
+        </div>
+        <div className="rl-talk__copy">
+          <span className="rl-eyebrow">Not sure where to start?</span>
+          <h3>Tell us about your business. We&apos;ll tell you what it needs.</h3>
+          <p>Two minutes on WhatsApp or a call during support hours ({business.supportHours}). No obligation.</p>
+          <div className="rl-hero__ctas" style={{ marginTop: 18 }}>
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="rl-btn rl-btn--launch">
+              <MessageCircle aria-hidden="true" />
+              WhatsApp us
+            </a>
+            <a href={`tel:+91${business.phone}`} className="rl-btn rl-btn--ghost">
+              Call +91 {business.phone}
+            </a>
           </div>
-        </article>
-      ) : null}
+        </div>
+      </aside>
     </div>
   );
 }
