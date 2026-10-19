@@ -249,14 +249,9 @@ export function HomeNav({
     <>
       <nav ref={navRef} className="rl-nav" data-solid={solid || openMenu !== null ? "true" : "false"} aria-label="Main">
         <div className="rl-wrap rl-nav__bar">
-          <Link href="/" className="rl-nav__logo" aria-label="RNOS DigiConnect Dukan, home">
-            <span className="rl-nav__logo-plate">
-              <Image src="/logo-navbar.png" alt="" width={112} height={32} priority style={{ height: 30, width: "auto" }} />
-            </span>
-            <span className="rl-nav__logo-text">
-              RNOS
-              <small>Business launch</small>
-            </span>
+          {/* The brand mark exactly as supplied: the transparent PNG, no plate, no extra wordmark. */}
+          <Link href="/" className="rl-nav__logo" aria-label="DigiConnect Dukan by RNOS, home">
+            <Image src="/logo-navbar.png" alt="" width={1024} height={171} priority className="rl-nav__logo-img" />
           </Link>
 
           <ul className="rl-nav__menu">
