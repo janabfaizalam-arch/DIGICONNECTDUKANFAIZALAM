@@ -1,83 +1,71 @@
 import type { Metadata } from "next";
+import { IBM_Plex_Mono } from "next/font/google";
 
-import { HomepageHero, HomepageTrustChips } from "@/components/homepage/homepage-hero";
-import { QuickActions } from "@/components/homepage/quick-actions";
-import { TrendingNow } from "@/components/homepage/trending-now";
-import { CreditCardSpotlight } from "@/components/homepage/credit-card-spotlight";
-import { QuickServiceGrid } from "@/components/homepage/quick-service-grid";
-import { FeaturedServices } from "@/components/homepage/featured-services";
-import { HowItWorks } from "@/components/homepage/how-it-works";
-import { ApplicationTrackingCta } from "@/components/homepage/application-tracking-cta";
-import { RecentSuccessStories } from "@/components/homepage/recent-success-stories";
-import { RewardCenter } from "@/components/homepage/reward-center";
-import { TrustStrip } from "@/components/homepage/trust-strip";
-import { GoogleReviews } from "@/components/homepage/google-reviews";
-import { VideoTestimonials } from "@/components/homepage/video-testimonials";
-import { ReelsRail } from "@/components/homepage/reels-rail";
-import { GovernmentSchemesHub } from "@/components/homepage/government-schemes-hub";
-import { KnowledgeCenter } from "@/components/homepage/knowledge-center";
-import { FaqAccordion } from "@/components/homepage/faq-accordion";
-import { BecomeDigiPartner } from "@/components/homepage/become-digi-partner";
-import { SupportCenter } from "@/components/homepage/support-center";
-import { AboutRnos } from "@/components/homepage/about-rnos";
-
-import { MotionRoot, Reveal } from "@/components/homepage/motion";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { HomepagePreviewBridge } from "@/components/homepage/preview-bridge";
-import { getHomepageLayout } from "@/lib/homepage/layout-data";
-import type { HomepageSectionId } from "@/lib/homepage/sections";
-import { buildFaqJsonLd, getHomepageFaqs } from "@/lib/homepage/faqs";
-import { buildReelsJsonLd, getHomepageReels } from "@/lib/homepage/reels";
-import { getCachedFooterSocialLinks, getCachedHomepageFaqs, getCachedHomepageReels, getCachedHomepageSlides, getCachedHomepageTestimonials, getCachedPublicServices } from "@/lib/homepage/cached";
+import { HomeNav } from "@/components/home-launch/home-nav";
+import { RevealController } from "@/components/home-launch/interactive";
+import { LaunchBuilder } from "@/components/home-launch/launch-builder";
+import { StructureExplorer } from "@/components/home-launch/structure-explorer";
+import {
+  AddonsCatalog,
+  DocumentCenter,
+  JourneyStory,
+  LaunchFaq,
+  MobileDock,
+  PackageComparison,
+  StructureComparison,
+  UseCases,
+} from "@/components/home-launch/sections-client";
+import { CostTransparency, Finale, Guides, Hero, SectionHead, ServiceDirectory, TrustSection } from "@/components/home-launch/sections";
+import { getCachedFooterSocialLinks } from "@/lib/homepage/cached";
+import { LAUNCH_FAQS } from "@/lib/homepage/launch-catalog";
+import { getLaunchHomepageData } from "@/lib/homepage/launch-data";
+import "@/components/home-launch/home-launch.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
 
+/** Technical labels on the blueprint and the data. Loaded by this page only. */
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  display: "swap",
+  variable: "--font-rl-mono",
+});
+
+const description =
+  "Start your company in India with RNOS. Compare Private Limited, LLP, OPC, partnership and proprietorship, build your setup with GST, Udyam, trademark and more, and see itemised service fees before you apply.";
+
 export const metadata: Metadata = {
-  title: "DigiConnect Dukan | Digital Assistance by RNOS India Pvt Ltd",
-  description:
-    "DigiConnect Dukan by RNOS India Private Limited — private digital assistance for GST, ITR, passport, driving licence, vehicle insurance, PVC cards, and selected government scheme filings. Secure payments, wallet rewards, and application tracking.",
+  title: "Company Registration & Business Launch in India | RNOS – DigiConnect Dukan",
+  description,
   keywords: [
-    "DigiConnect Dukan",
+    "company registration India",
+    "private limited company registration",
+    "LLP registration",
+    "OPC registration",
+    "business structure comparison",
+    "GST registration",
+    "Udyam MSME registration",
     "RNOS India Pvt Ltd",
-    "GST registration assistance",
-    "ITR filing support",
-    "Passport application help",
-    "Driving licence online support",
-    "PVC smart card printing",
-    "Vehicle insurance assistance",
-    "Government scheme documentation support",
-    "Digital wallet rewards India",
+    "DigiConnect Dukan",
   ],
-  alternates: {
-    canonical: "/",
-  },
+  alternates: { canonical: "/" },
   openGraph: {
-    title: "DigiConnect Dukan | Digital Assistance by RNOS India Pvt Ltd",
-    description:
-      "Private digital assistance for tax, business, identity, insurance, and selected government scheme filings across India.",
+    title: "Your Business Begins Here | RNOS company registration",
+    description,
     type: "website",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "DigiConnect Dukan | RNOS India Pvt Ltd",
-    description:
-      "Private digital assistance for GST, ITR, passport, insurance, PVC cards, and more — with secure payments and tracking.",
+    title: "Your Business Begins Here | RNOS",
+    description: "Compare business structures, build your company setup and see itemised costs before you apply.",
   },
 };
 
 export const dynamic = "force-dynamic";
-
-/**
- * The bands that render without a scroll reveal.
- *
- * These sit within the first screen or two on a phone, where fading in on
- * first paint is something the visitor waits for rather than a flourish. They
- * are named by id, so moving one further down the page in the editor keeps
- * this correct — the set is about position on screen, not about the band.
- */
-const EAGER_BANDS = new Set<HomepageSectionId>(["quick_actions", "trust_chips", "reels", "trending"]);
 
 export default async function Home({
   searchParams,
@@ -85,125 +73,274 @@ export default async function Home({
   searchParams?: Promise<{ preview?: string }>;
 }) {
   const isPreview = Boolean((await searchParams)?.preview);
-  const [publicServices, slides, faqs, testimonials, reels, socialLinks, layout] = await Promise.all([
-    getCachedPublicServices(),
-    getCachedHomepageSlides(),
-    getCachedHomepageFaqs(),
-    getCachedHomepageTestimonials(),
-    getCachedHomepageReels(),
-    getCachedFooterSocialLinks(),
-    getHomepageLayout(),
-  ]);
-
-  // The hero uses the first few; the loader caches the whole short list.
-  const heroSlides = slides.slice(0, 5);
-
-  const searchCatalog = publicServices.map((s) => ({
-    slug: s.slug,
-    title: s.title,
-    shortDescription: s.shortDescription,
-    priceLabel: s.priceLabel,
-    category: s.category,
-    amount: s.amount,
-  }));
+  const [{ catalogue, resolved, guides }, socialLinks] = await Promise.all([getLaunchHomepageData(), getCachedFooterSocialLinks()]);
 
   /*
     The Organization entity is published once, site-wide, from the root
-    layout. A second copy here named the company differently and made the two
-    contradict each other.
+    layout. Only what this page visibly shows is described here: the site and
+    the questions answered on it. No ratings and no offers — none exist that
+    could honestly be marked up.
   */
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "DigiConnect Dukan",
+    name: "DigiConnect Dukan by RNOS India",
     url: siteUrl,
   };
-
-  // Null until real content exists — an empty FAQPage is worse than none.
-  const faqJsonLd = buildFaqJsonLd(faqs);
-  /*
-    No AggregateRating. Ratings collected on our own site and attached to our
-    own Organization are "self-serving reviews" under Google's review-snippet
-    rules — ineligible, and liable to be read as manipulative. Testimonials are
-    still shown on the page itself, where a reader can see what they are.
-  */
-  // Reels have no per-row publish date, so the page render date stands in.
-  const reelsJsonLd = buildReelsJsonLd(reels, new Date().toISOString());
-
-  /*
-    Every band the homepage can draw, keyed by the id the arrangement stores.
-
-    A map rather than a switch so the render is a lookup: what is on the page
-    and in what order is data, and this is only what each id means.
-  */
-  const HOMEPAGE_BANDS: Partial<Record<HomepageSectionId, React.ReactNode>> = {
-    quick_actions: <QuickActions />,
-    trust_chips: <HomepageTrustChips />,
-    reels: <ReelsRail reels={reels} />,
-    trending: <TrendingNow />,
-    credit_cards: <CreditCardSpotlight />,
-    quick_services: <QuickServiceGrid />,
-    featured_services: <FeaturedServices />,
-    how_it_works: <HowItWorks />,
-    trust_strip: <TrustStrip />,
-    track_application: <ApplicationTrackingCta />,
-    rewards: <RewardCenter />,
-    success_stories: <RecentSuccessStories />,
-    google_reviews: <GoogleReviews />,
-    video_testimonials: <VideoTestimonials testimonials={testimonials} />,
-    schemes: <GovernmentSchemesHub />,
-    knowledge: <KnowledgeCenter />,
-    faq: <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />,
-    become_partner: <BecomeDigiPartner />,
-    support: <SupportCenter />,
-    about: <AboutRnos />,
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: LAUNCH_FAQS.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
   };
+
+  const searchCatalog = catalogue.map(({ title, slug, priceLabel }) => ({ title, slug, priceLabel }));
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
-      {faqJsonLd ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      ) : null}
-      {reelsJsonLd ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(reelsJsonLd) }} />
-      ) : null}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
-      <MotionRoot>
-        <main id="main-content" className="homepage-mobile-shell home-option3 bg-[var(--dc-sky-soft)] md:pb-10">
-          {/* Above the fold — no scroll reveal here. A section that fades in on
-              first paint is a section the user waits for. */}
-          {/*
-            The page, in the order the shop saved.
+      <div className={`rl ${plexMono.variable}`}>
+        <HomeNav resolved={resolved} catalogue={searchCatalog} />
 
-            These were twenty-two components written out in a fixed order, so
-            changing what appeared — or what came first — was a code edit and a
-            deploy. The arrangement lives in `homepage_sections` now and this
-            renders whatever it says, skipping the bands switched off.
-
-            The hero is outside the map: it is above the fold and pinned, and a
-            reveal on first paint is a section the visitor waits for.
-          */}
+        <main id="main-content" className="rl-main">
           <div data-band="hero">
-            <HomepageHero catalog={searchCatalog} slides={heroSlides} />
+            <Hero />
           </div>
 
-          {layout
-            .filter((section) => section.enabled && section.id !== "hero")
-            .map(({ id }) => {
-              const band = HOMEPAGE_BANDS[id];
-              if (!band) return null;
-              // The first bands are on screen immediately; revealing them
-              // costs a paint rather than saving one.
-              // Tagged so the Homepage Studio can scroll its preview here.
-              return (
-                <div key={id} data-band={id}>
-                  {EAGER_BANDS.has(id) ? band : <Reveal>{band}</Reveal>}
-                </div>
-              );
-            })}
+          <section id="structures" data-band="structures" className="rl-section" aria-labelledby="structures-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="structures-title"
+                index="03"
+                eyebrow="Business structures"
+                title={
+                  <>
+                    Five ways to <em>own</em> a business.
+                  </>
+                }
+                lede="Each structure answers three questions differently: who owns it, who is liable for its debts, and how much paperwork it takes to keep. Pick one to see how it works."
+              />
+              <StructureExplorer resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="builder" data-band="builder" className="rl-section rl-section--night" aria-labelledby="builder-title">
+            <div className="rl-grid-bg" aria-hidden="true" style={{ opacity: 0.6 }} />
+            <div className="rl-wrap" style={{ position: "relative" }}>
+              <SectionHead
+                id="builder-title"
+                index="04"
+                eyebrow="Business launch builder"
+                title={
+                  <>
+                    Build <em>your</em> company, service by service.
+                  </>
+                }
+                lede="Tell us what you're starting, choose a structure and add only what you need. Every price comes from our live catalogue, and anything we can't sell online yet is marked as quoted on request."
+              />
+              <LaunchBuilder resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="services" data-band="services" className="rl-section rl-section--paper" aria-labelledby="services-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="services-title"
+                index="05"
+                eyebrow="Registration services"
+                title={
+                  <>
+                    Company registration, <em>itemised.</em>
+                  </>
+                }
+                lede="Incorporation and the services that sit closest to it. Each card shows its service fee, what decides the government fee, and how long we usually take once documents are complete."
+              />
+              <ServiceDirectory resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="packages" data-band="packages" className="rl-section" aria-labelledby="packages-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="packages-title"
+                index="06"
+                eyebrow="Registration packages"
+                title={
+                  <>
+                    Start from a package. <em>Change anything.</em>
+                  </>
+                }
+                lede="Four starting points for the builder. Each is priced item by item from the catalogue, so you can see exactly what is in it and remove what you don't need."
+              />
+              <PackageComparison resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="journey" data-band="journey" className="rl-section rl-section--night" aria-labelledby="journey-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="journey-title"
+                index="07"
+                eyebrow="The complete journey"
+                title={
+                  <>
+                    From idea to <em>incorporated</em> — and beyond.
+                  </>
+                }
+                lede="Ten stages, labelled honestly: what happens before you file, what incorporation itself covers, what follows it, what is optional and what recurs every year."
+              />
+              <JourneyStory />
+            </div>
+          </section>
+
+          <section id="addons" data-band="addons" className="rl-section rl-section--ivory2" aria-labelledby="addons-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="addons-title"
+                index="08"
+                eyebrow="Registrations, licences & add-ons"
+                title={
+                  <>
+                    Add one service. <em>Or several.</em>
+                  </>
+                }
+                lede="You don't need a package to buy a single registration. Each service says when the law requires it — not every business needs every licence."
+              />
+              <AddonsCatalog resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="documents" data-band="documents" className="rl-section" aria-labelledby="documents-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="documents-title"
+                index="09"
+                eyebrow="Document readiness"
+                title={
+                  <>
+                    Know what to <em>keep ready.</em>
+                  </>
+                }
+                lede="Tick off what you already have. Required, conditional and prepared-for-you documents are listed separately, so you can see what is actually missing."
+              />
+              <DocumentCenter />
+            </div>
+          </section>
+
+          <section id="costs" data-band="costs" className="rl-section rl-section--paper" aria-labelledby="costs-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="costs-title"
+                index="10"
+                eyebrow="Cost transparency"
+                title={
+                  <>
+                    Every rupee, <em>by who it goes to.</em>
+                  </>
+                }
+                lede="Company registration costs are made of different charges paid to different people. Here is what each one is, so a quote never surprises you."
+              />
+              <CostTransparency resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="compare" data-band="compare" className="rl-section" aria-labelledby="compare-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="compare-title"
+                index="11"
+                eyebrow="Structure comparison"
+                title={
+                  <>
+                    Side by side, <em>in full.</em>
+                  </>
+                }
+                lede="Ownership, liability, governance, fundraising, compliance, tax and continuity for all five structures. Filter to the questions you care about."
+              />
+              <StructureComparison />
+            </div>
+          </section>
+
+          <section id="trust" data-band="trust" className="rl-section rl-section--ivory2" aria-labelledby="trust-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="trust-title"
+                index="12"
+                eyebrow="Trust & transparency"
+                title={
+                  <>
+                    Clear about who we are — <em>and who we aren&apos;t.</em>
+                  </>
+                }
+                lede="No invented numbers, no borrowed badges. Just the company behind the service, how your money and documents are handled, and where to reach us."
+              />
+              <TrustSection />
+            </div>
+          </section>
+
+          <section id="scenarios" data-band="scenarios" className="rl-section" aria-labelledby="scenarios-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="scenarios-title"
+                index="13"
+                eyebrow="Business use cases"
+                title={
+                  <>
+                    Founders like <em>you</em> might start here.
+                  </>
+                }
+                lede="Illustrative situations, not customer stories — each shows a structure worth considering and the services that are often relevant. Open any of them in the builder and adjust."
+              />
+              <UseCases resolved={resolved} />
+            </div>
+          </section>
+
+          <section id="guides" data-band="guides" className="rl-section rl-section--paper" aria-labelledby="guides-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="guides-title"
+                index="14"
+                eyebrow="Knowledge center"
+                title={
+                  <>
+                    Read before you <em>register.</em>
+                  </>
+                }
+                lede="Published guides from our blog, and the explainers built into this page."
+              />
+              <Guides guides={guides} />
+            </div>
+          </section>
+
+          <section id="faq" data-band="faq" className="rl-section" aria-labelledby="faq-title">
+            <div className="rl-wrap">
+              <SectionHead
+                id="faq-title"
+                index="15"
+                eyebrow="Questions"
+                title={
+                  <>
+                    Asked <em>before</em> almost every registration.
+                  </>
+                }
+              />
+              <LaunchFaq />
+            </div>
+          </section>
+
+          <div data-band="start">
+            <Finale catalogue={catalogue} />
+          </div>
         </main>
-      </MotionRoot>
+
+        <MobileDock resolved={resolved} />
+        <RevealController />
+      </div>
 
       {isPreview ? <HomepagePreviewBridge /> : null}
 

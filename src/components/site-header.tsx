@@ -528,6 +528,11 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
       not finished. The page carries the shop's own name and nothing else.
     */
     pathname.startsWith("/p/") ||
+    /*
+      The homepage draws its own navigation: transparent over the hero, with
+      the registration mega menu. Every other route keeps this header.
+    */
+    pathname === "/" ||
     isAuthRoute
   ) {
     return null;
