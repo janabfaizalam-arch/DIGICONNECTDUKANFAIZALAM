@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
+import { MarketingFooter } from "@/components/marketing-footer";
 import { HomepagePreviewBridge } from "@/components/homepage/preview-bridge";
-import { HomeFooter } from "@/components/home-launch/home-footer";
 import { HomeNav } from "@/components/home-launch/home-nav";
 import { RevealController } from "@/components/home-launch/interactive";
 import { LaunchBuilder } from "@/components/home-launch/launch-builder";
@@ -20,7 +20,6 @@ import {
 } from "@/components/home-launch/sections-client";
 import { CostTransparency, Finale, Guides, Hero, SectionHead, ServiceDirectory, TrustSection } from "@/components/home-launch/sections";
 import { getCachedFooterSocialLinks } from "@/lib/homepage/cached";
-import { getEnabledSocialLinks } from "@/lib/social-links";
 import { LAUNCH_FAQS } from "@/lib/homepage/launch-catalog";
 import { getLaunchHomepageData } from "@/lib/homepage/launch-data";
 import "@/components/home-launch/home-launch.css";
@@ -153,13 +152,13 @@ export default async function Home({
               <SectionHead
                 id="services-title"
                 index="05"
-                eyebrow="What we do for you"
+                eyebrow="Registration services"
                 title={
                   <>
-                    Everything we can <em>register</em> for you.
+                    Company registration, <em>itemised.</em>
                   </>
                 }
-                lede="First the company itself, then the registrations most new businesses add. Each one shows today's status: buy online and pay at checkout, or ask and we quote before any work starts."
+                lede="Incorporation and the services that sit closest to it. Each card shows its service fee, what decides the government fee, and how long we usually take once documents are complete."
               />
               <ServiceDirectory resolved={resolved} />
             </div>
@@ -345,7 +344,7 @@ export default async function Home({
 
       {isPreview ? <HomepagePreviewBridge /> : null}
 
-      <HomeFooter resolved={resolved} socialLinks={socialLinks.length ? socialLinks : getEnabledSocialLinks()} />
+      <MarketingFooter variant="homepage" socialLinks={socialLinks} />
       <HomepageContactActions />
     </>
   );

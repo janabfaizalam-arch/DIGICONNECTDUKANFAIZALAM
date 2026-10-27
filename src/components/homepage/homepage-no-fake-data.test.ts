@@ -55,7 +55,6 @@ describe("homepage no-fake-data contracts", () => {
       "src/components/home-launch/launch-builder.tsx",
       "src/components/home-launch/structure-explorer.tsx",
       "src/components/home-launch/home-nav.tsx",
-      "src/components/home-launch/home-footer.tsx",
     ];
     for (const file of files) {
       expect(read(file), file).not.toMatch(/₹\s?\d|Rs\.?\s?\d/);
