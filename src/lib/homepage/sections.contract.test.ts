@@ -18,27 +18,27 @@ const bridge = readCode("src/components/homepage/preview-bridge.tsx");
    ───────────────────────────────────────────────────────────────────────── */
 
 /**
- * The company-launch homepage is one story told in a fixed order — idea,
- * structure, builder, packages, journey, compliance — so it no longer reads
- * the band arrangement saved in the Homepage Studio. The studio, its API and
- * its registry are unchanged (the tests below still hold them to account);
- * the page keeps the hooks the studio's preview relies on.
+ * The homepage was twenty-two components written out in a fixed order, so
+ * changing what appeared — or what came first — was a code edit and a deploy.
  */
-describe("the company-launch homepage", () => {
-  it("tags each section so the studio preview can still scroll to it", () => {
-    expect(page).toContain('data-band="hero"');
-    for (const id of ["structures", "builder", "packages", "faq"]) {
-      expect(page).toContain(`data-band="${id}"`);
+describe("the homepage renders the order the shop saved", () => {
+  it("maps the saved layout instead of listing components", () => {
+    expect(page).toContain("layout");
+    expect(page).toContain("HOMEPAGE_BANDS");
+    expect(page).toMatch(/\.filter\(\(section\) => section\.enabled/);
+  });
+
+  it("has a band for every section the editor can offer", () => {
+    const map = page.slice(page.indexOf("const HOMEPAGE_BANDS"), page.indexOf("return (\n    <>"));
+    for (const section of HOMEPAGE_SECTIONS) {
+      if (section.id === "hero") continue; // Rendered outside the map, pinned.
+      expect(map, `no band renders "${section.id}"`).toContain(`${section.id}:`);
     }
   });
 
-  it("anchors every in-page destination the navigation links to", () => {
-    const nav = readCode("src/components/home-launch/home-nav.tsx");
-    const anchors = [...new Set([...nav.matchAll(/href[:=]\s*"#([a-z-]+)"/g)].map((match) => match[1]))];
-    expect(anchors.length).toBeGreaterThan(5);
-    for (const anchor of anchors) {
-      expect(page, `#${anchor} has no section`).toContain(`id="${anchor}"`);
-    }
+  it("tags each band so the studio can scroll its preview to it", () => {
+    expect(page).toContain('data-band={id}');
+    expect(page).toContain('data-band="hero"');
   });
 });
 
