@@ -19,7 +19,7 @@ export function BalanceSheetDelete({ id, name }: { id: string; name: string }) {
     const response = await fetch(`/api/admin/balance-sheets/${id}`, { method: "DELETE" }).catch(() => null);
     setBusy(false);
     if (!response?.ok) {
-      setError("Could not delete. Please try again.");
+      setError("Delete nahi ho paya. Dobara koshish karein.");
       setOpen(false);
       return;
     }

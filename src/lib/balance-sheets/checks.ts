@@ -145,45 +145,45 @@ type Report = (key: FieldKey, message: string) => void;
 function checkDetails({ details, showRequired, touched }: CheckInput, error: Report) {
   const shown = (key: DetailKey) => showRequired || touched.has(key);
 
-  if (showRequired && details.businessName.trim().length < 2) error("businessName", "Enter the business or firm name. It is printed on every page.");
-  if (showRequired && details.ownerName.trim().length < 2) error("ownerName", "Enter the proprietor's or partners' name. It goes in the signature block.");
+  if (showRequired && details.businessName.trim().length < 2) error("businessName", "Business ya firm ka naam bharein. Ye har page par chhapta hai.");
+  if (showRequired && details.ownerName.trim().length < 2) error("ownerName", "Proprietor ya partners ka naam bharein. Ye signature wale box mein jaata hai.");
 
   const pan = details.pan.trim().toUpperCase();
   if (pan && shown("pan") && !PAN_RE.test(pan)) {
-    error("pan", "PAN is 10 characters: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F).");
+    error("pan", "PAN 10 character ka hota hai: 5 letter, 4 number, 1 letter (jaise ABCDE1234F).");
   }
 
   const gstin = details.gstin.trim().toUpperCase();
   if (gstin && shown("gstin")) {
     if (!GSTIN_RE.test(gstin)) {
-      error("gstin", "GSTIN is 15 characters: 2-digit state code, the 10-character PAN, then 3 more (e.g. 09ABCDE1234F1Z5).");
+      error("gstin", "GSTIN 15 character ka hota hai: 2 number state code, 10 character PAN, phir 3 aur (jaise 09ABCDE1234F1Z5).");
     } else if (PAN_RE.test(pan) && gstin.slice(2, 12) !== pan) {
-      error("gstin", `This GSTIN belongs to PAN ${gstin.slice(2, 12)}, not ${pan}. Characters 3 to 12 of a GSTIN are the PAN.`);
+      error("gstin", `Ye GSTIN PAN ${gstin.slice(2, 12)} ka hai, ${pan} ka nahi. GSTIN ke 3rd se 12th character PAN hote hain.`);
     }
   }
 
   const mobile = details.mobile.trim();
   if (mobile && shown("mobile") && !/^[6-9][0-9]{9}$/.test(mobile)) {
-    error("mobile", mobile.length !== 10 ? `Mobile number has ${mobile.length} digits; it needs 10.` : "An Indian mobile number starts with 6, 7, 8 or 9.");
+    error("mobile", mobile.length !== 10 ? `Mobile number mein ${mobile.length} digit hain, 10 chahiye.` : "Indian mobile number 6, 7, 8 ya 9 se shuru hota hai.");
   }
 
   const pincode = details.pincode.trim();
   if (pincode && shown("pincode") && !/^[1-9][0-9]{5}$/.test(pincode)) {
-    error("pincode", pincode.length !== 6 ? `Pincode has ${pincode.length} digits; it needs 6.` : "A pincode cannot start with 0.");
+    error("pincode", pincode.length !== 6 ? `Pincode mein ${pincode.length} digit hain, 6 chahiye.` : "Pincode 0 se shuru nahi hota.");
   }
 
   const email = details.email.trim();
   if (email && shown("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-    error("email", "This does not look like an email address (e.g. name@example.com).");
+    error("email", "Ye sahi email address nahi lag raha (jaise name@example.com).");
   }
 
   if (details.loanAmount.trim() && !isValidNumberText(details.loanAmount)) {
-    error("loanAmount", "Not a valid amount. Type digits only, e.g. 500000 or 5,00,000.");
+    error("loanAmount", "Ye sahi amount nahi hai. Sirf number likhein, jaise 500000 ya 5,00,000.");
   }
 }
 
 function checkNumberFormat({ hasActual, actualText, projectionText }: CheckInput, error: Report) {
-  const message = "Not a valid number. Type digits only, e.g. 250000 or 2,50,000.";
+  const message = "Ye sahi number nahi hai. Sirf number likhein, jaise 250000 ya 2,50,000.";
   if (hasActual) {
     for (const [key, text] of Object.entries(actualText)) {
       if (!isValidNumberText(text)) error(`actual.${key as keyof ActualFigures}`, message);
@@ -203,42 +203,42 @@ function checkActual({ actualText, statements }: CheckInput, error: Report, warn
   // ── Trading and P&L ──
   const expenses = a.purchases + a.directExpenses + a.salaries + a.rent + a.adminExpenses + a.otherExpenses;
   if (a.sales <= 0 && expenses > 0) {
-    error("actual.sales", "Sales are blank but purchases and expenses are filled in. Enter the year's turnover from the ITR or books.");
+    error("actual.sales", "Sales khaali hai par purchases aur kharche bhare hain. ITR ya books se saal ka turnover bharein.");
   }
 
   const available = a.openingStock + a.purchases + a.directExpenses;
   if (a.closingStock > available + TALLY_TOLERANCE) {
     error(
       "actual.closingStock",
-      `Closing stock (${rs(a.closingStock)}) is more than all the stock the business had: opening stock + purchases + direct expenses = ${rs(available)}. Check closing stock or purchases.`,
+      `Closing stock (${rs(a.closingStock)}) business ke poore maal se zyada hai: opening stock + purchases + direct expenses = ${rs(available)}. Closing stock ya purchases check karein.`,
     );
   } else if (a.sales > 0 && pl.grossProfit < 0) {
     warn(
       "actual.purchases",
-      `Cost of sales (${rs(pl.costOfSales)}) is more than sales (${rs(a.sales)}), a gross loss of ${rs(-pl.grossProfit)}. Check purchases and closing stock.`,
+      `Cost of sales (${rs(pl.costOfSales)}) sales (${rs(a.sales)}) se zyada hai, yaani ${rs(-pl.grossProfit)} ka gross loss. Purchases aur closing stock check karein.`,
     );
   } else if (a.sales > 0 && pl.grossProfit / a.sales > 0.6 && a.purchases > 0) {
-    warn("actual.purchases", `Gross profit is ${Math.round((pl.grossProfit / a.sales) * 100)}% of sales, which is unusually high for trading. Check purchases and closing stock.`);
+    warn("actual.purchases", `Gross profit sales ka ${Math.round((pl.grossProfit / a.sales) * 100)}% hai, jo trading ke liye bahut zyada hai. Purchases aur closing stock check karein.`);
   }
 
   if (a.tax > 0) {
     const pbt = pl.profitBeforeTax;
-    if (pbt <= 0) error("actual.tax", `Income tax is entered but there is no profit before tax (${rs(pbt)}). Tax cannot be paid on a loss.`);
-    else if (a.tax > pbt) error("actual.tax", `Income tax (${rs(a.tax)}) is more than the profit before tax (${rs(pbt)}).`);
+    if (pbt <= 0) error("actual.tax", `Income tax bhara hai par profit before tax nahi hai (${rs(pbt)}). Ghaate par tax nahi lagta.`);
+    else if (a.tax > pbt) error("actual.tax", `Income tax (${rs(a.tax)}) profit before tax (${rs(pbt)}) se zyada hai.`);
   }
 
   if (a.interest > 0 && a.termLoan + a.unsecuredLoans <= 0) {
-    warn("actual.interest", "Interest is shown but no loan is outstanding in the balance sheet. Add the loan, or check this figure.");
+    warn("actual.interest", "Byaaj bhara hai par balance sheet mein koi loan baaki nahi hai. Loan bharein, ya ye figure check karein.");
   } else if (a.termLoan > 0 && a.interest <= 0) {
-    warn("actual.interest", `A term loan of ${rs(a.termLoan)} is outstanding but no interest is shown for the year.`);
+    warn("actual.interest", `${rs(a.termLoan)} ka term loan baaki hai par saal ka koi byaaj nahi bhara.`);
   }
 
   if (a.depreciation > 0 && a.fixedAssets <= 0) {
-    warn("actual.depreciation", "Depreciation is claimed but fixed assets are nil. Enter the net block, or remove the depreciation.");
+    warn("actual.depreciation", "Depreciation liya hai par fixed assets zero hain. Net block bharein, ya depreciation hata dein.");
   } else if (a.depreciation > 0 && a.depreciation / (a.fixedAssets + a.depreciation) > 0.4) {
     warn(
       "actual.depreciation",
-      `Depreciation is ${Math.round((a.depreciation / (a.fixedAssets + a.depreciation)) * 100)}% of the opening block. Income-tax rates are 10 to 40%; check the figure.`,
+      `Depreciation opening block ka ${Math.round((a.depreciation / (a.fixedAssets + a.depreciation)) * 100)}% hai. Income tax ke rate 10 se 40% hote hain; figure check karein.`,
     );
   }
 
@@ -246,37 +246,37 @@ function checkActual({ actualText, statements }: CheckInput, error: Report, warn
   if (bs.closingCapital < 0) {
     error(
       "actual.drawings",
-      `Drawings take the closing capital below zero (${rs(bs.closingCapital)}). Opening capital + capital introduced + profit is only ${rs(bs.closingCapital + a.drawings)}.`,
+      `Drawings ki wajah se closing capital zero se neeche chali gayi (${rs(bs.closingCapital)}). Opening capital + naya paisa + profit sirf ${rs(bs.closingCapital + a.drawings)} hai.`,
     );
   }
 
   const bsFilled = a.fixedAssets + a.debtors + a.cashAndBank + a.creditors + a.termLoan > 0;
   if (bsFilled && a.openingCapital <= 0 && a.capitalIntroduced <= 0) {
-    warn("actual.openingCapital", "No capital is shown. Enter the owner's capital at the start of the year from last year's balance sheet.");
+    warn("actual.openingCapital", "Koi capital nahi bhari. Pichhle saal ki balance sheet se saal ki shuruat ki capital bharein.");
   }
 
   if (a.sales > 0 && a.debtors > a.sales) {
-    warn("actual.debtors", `Debtors (${rs(a.debtors)}) are more than the whole year's sales (${rs(a.sales)}).`);
+    warn("actual.debtors", `Debtors (${rs(a.debtors)}) poore saal ki sales (${rs(a.sales)}) se zyada hain.`);
   }
   const bought = a.purchases + a.directExpenses;
   if (bought > 0 && a.creditors > bought) {
-    warn("actual.creditors", `Creditors (${rs(a.creditors)}) are more than the whole year's purchases (${rs(bought)}).`);
+    warn("actual.creditors", `Creditors (${rs(a.creditors)}) poore saal ki purchases (${rs(bought)}) se zyada hain.`);
   }
 
   if (Math.abs(bs.difference) > TALLY_TOLERANCE) {
     const neededCash = a.cashAndBank + bs.difference;
     const side =
       bs.difference > 0
-        ? `Liabilities (${rs(bs.totalLiabilities)}) are ${rs(bs.difference)} more than assets (${rs(bs.totalAssets)}).`
-        : `Assets (${rs(bs.totalAssets)}) are ${rs(-bs.difference)} more than liabilities (${rs(bs.totalLiabilities)}).`;
+        ? `Liabilities (${rs(bs.totalLiabilities)}) assets (${rs(bs.totalAssets)}) se ${rs(bs.difference)} zyada hain.`
+        : `Assets (${rs(bs.totalAssets)}) liabilities (${rs(bs.totalLiabilities)}) se ${rs(-bs.difference)} zyada hain.`;
     const unreadable = (Object.entries(actualText) as [keyof ActualFigures, string][]).filter(([, text]) => !isValidNumberText(text));
     error(
       "actual.cashAndBank",
       unreadable.length
-        ? `${side} ${FIELD_LABELS[`actual.${unreadable[0][0]}`]} is not a valid number and counts as 0 until it is fixed, so correct that first.`
+        ? `${side} ${FIELD_LABELS[`actual.${unreadable[0][0]}`]} mein sahi number nahi hai, theek hone tak wo 0 gina jaayega. Pehle use theek karein.`
         : neededCash >= 0
-        ? `${side} If every other figure is right, cash and bank should be ${rs(neededCash)}. Otherwise check capital, loans, creditors, fixed assets and debtors.`
-        : `${side} Even nil cash would not close the gap, so a liability is missing or an asset is overstated. Check capital, loans, creditors, fixed assets and debtors.`,
+        ? `${side} Agar baaki sab figure sahi hain, to cash and bank ${rs(neededCash)} hona chahiye. Warna capital, loans, creditors, fixed assets aur debtors check karein.`
+        : `${side} Cash zero karne par bhi farak khatam nahi hoga, yaani koi liability chhoot gayi hai ya koi asset zyada bhara hai. Capital, loans, creditors, fixed assets aur debtors check karein.`,
     );
   }
 }
@@ -286,57 +286,57 @@ function checkProjection({ hasActual, projectionText, actualText, details }: Che
   const blank = (key: keyof ProjectionAssumptions) => projectionText[key].replace(/,/g, "").trim() === "";
 
   if (!hasActual && (blank("year1Sales") || p("year1Sales") <= 0)) {
-    error("projection.year1Sales", "A new business has no past figures, so enter the expected sales for the first year.");
+    error("projection.year1Sales", "Naye business ke pichhle figure nahi hote, isliye pehle saal ki expected sales bharein.");
   }
 
   const growth = p("salesGrowthPct");
-  if (growth > 100) error("projection.salesGrowthPct", `${growth}% growth means sales more than double every year. Enter a realistic rate.`);
-  else if (growth > 30) warn("projection.salesGrowthPct", `${growth}% growth every year is high for a bank file; banks usually question more than 25 to 30%.`);
+  if (growth > 100) error("projection.salesGrowthPct", `${growth}% growth ka matlab hai sales har saal double se zyada. Realistic rate bharein.`);
+  else if (growth > 30) warn("projection.salesGrowthPct", `Har saal ${growth}% growth bank file ke liye zyada hai; 25 se 30% se upar par bank aksar sawaal karta hai.`);
 
   if (!blank("materialCostPct")) {
     const cost = p("materialCostPct");
-    if (cost >= 100) error("projection.materialCostPct", `Cost of sales at ${cost}% of sales means a loss on every sale. It must be below 100%.`);
-    else if (cost < 20) warn("projection.materialCostPct", `Cost of sales at ${cost}% leaves an ${100 - cost}% gross margin, which is rare. Check the figure.`);
+    if (cost >= 100) error("projection.materialCostPct", `Cost of sales ${cost}% matlab har sale par ghaata. Ye 100% se kam hona chahiye.`);
+    else if (cost < 20) warn("projection.materialCostPct", `Cost of sales ${cost}% se gross margin ${100 - cost}% bachta hai, jo bahut kam dekhne ko milta hai. Figure check karein.`);
   }
 
-  if (p("expenseGrowthPct") > 100) error("projection.expenseGrowthPct", "Expense growth above 100% a year is not realistic.");
-  if (p("depreciationPct") > 100) error("projection.depreciationPct", "A depreciation rate cannot be more than 100%.");
-  else if (p("depreciationPct") > 40) warn("projection.depreciationPct", "Income-tax depreciation rates are 10 to 40% WDV. Check the rate.");
-  if (p("taxPct") > 100) error("projection.taxPct", "Tax cannot be more than 100% of profit.");
-  else if (p("taxPct") > 40) warn("projection.taxPct", "Indian income-tax rates do not go above about 40% including surcharge and cess.");
+  if (p("expenseGrowthPct") > 100) error("projection.expenseGrowthPct", "Kharche har saal 100% se zyada badhna realistic nahi hai.");
+  if (p("depreciationPct") > 100) error("projection.depreciationPct", "Depreciation ka rate 100% se zyada nahi ho sakta.");
+  else if (p("depreciationPct") > 40) warn("projection.depreciationPct", "Income tax ke depreciation rate 10 se 40% WDV hote hain. Rate check karein.");
+  if (p("taxPct") > 100) error("projection.taxPct", "Tax profit ke 100% se zyada nahi ho sakta.");
+  else if (p("taxPct") > 40) warn("projection.taxPct", "India mein income tax surcharge aur cess milakar bhi lagbhag 40% se upar nahi jaata.");
 
   const newLoan = p("newTermLoan");
   if (newLoan > 0) {
     const tenure = p("loanTenureYears");
-    if (tenure < 1) error("projection.loanTenureYears", "Enter the loan tenure in years (1 or more), so the repayment can be worked out.");
-    else if (!Number.isInteger(tenure)) error("projection.loanTenureYears", "Enter the tenure in whole years, e.g. 5.");
-    else if (tenure > 30) warn("projection.loanTenureYears", "A business term loan longer than 30 years is unusual. Check the tenure.");
+    if (tenure < 1) error("projection.loanTenureYears", "Loan ki tenure saalon mein bharein (1 ya zyada), taaki kisht nikal sake.");
+    else if (!Number.isInteger(tenure)) error("projection.loanTenureYears", "Tenure poore saalon mein bharein, jaise 5.");
+    else if (tenure > 30) warn("projection.loanTenureYears", "30 saal se lamba business term loan aam nahi hai. Tenure check karein.");
 
     const rate = p("loanInterestPct");
-    if (rate <= 0) warn("projection.loanInterestPct", "A new loan is shown with no interest rate. Enter the bank's rate.");
-    else if (rate > 30) warn("projection.loanInterestPct", `${rate}% a year is far above bank rates. Check the figure.`);
+    if (rate <= 0) warn("projection.loanInterestPct", "Naya loan bhara hai par byaaj ka rate nahi. Bank ka rate bharein.");
+    else if (rate > 30) warn("projection.loanInterestPct", `${rate}% saal bank ke rate se bahut zyada hai. Figure check karein.`);
 
     const assets = p("newFixedAssets");
     if (assets > 0 && newLoan > assets) {
-      warn("projection.newTermLoan", `The loan (${rs(newLoan)}) is more than the cost of the new assets (${rs(assets)}). Banks usually fund up to 75 to 80% of the cost.`);
+      warn("projection.newTermLoan", `Loan (${rs(newLoan)}) naye assets ki keemat (${rs(assets)}) se zyada hai. Bank aam taur par keemat ka 75 se 80% hi deta hai.`);
     }
 
     const applied = value(details.loanAmount);
     if (applied > 0 && Math.abs(applied - newLoan) > TALLY_TOLERANCE) {
-      warn("projection.newTermLoan", `The loan applied for is ${rs(applied)} but the projection uses ${rs(newLoan)}. Make them the same unless part is working capital.`);
+      warn("projection.newTermLoan", `Apply kiya loan ${rs(applied)} hai par projection mein ${rs(newLoan)} hai. Dono same rakhein, jab tak kuch hissa working capital ka na ho.`);
     }
   }
 
   if (hasActual) {
     const outstanding = value(actualText.termLoan);
     const repaid = p("existingLoanRepaymentPerYear");
-    if (repaid > 0 && outstanding <= 0) warn("projection.existingLoanRepaymentPerYear", "A repayment is entered but no term loan is outstanding in the actual balance sheet.");
+    if (repaid > 0 && outstanding <= 0) warn("projection.existingLoanRepaymentPerYear", "Repayment bhara hai par actual balance sheet mein koi term loan baaki nahi hai.");
     else if (outstanding > 0 && repaid > outstanding) {
-      warn("projection.existingLoanRepaymentPerYear", `The yearly repayment is more than the whole loan outstanding (${rs(outstanding)}).`);
+      warn("projection.existingLoanRepaymentPerYear", `Saal ka repayment poore baaki loan (${rs(outstanding)}) se zyada hai.`);
     }
   }
 
   for (const key of ["debtorDays", "creditorDays", "stockDays"] as const) {
-    if (!blank(key) && p(key) > 365) error(`projection.${key}`, "That is more than a year (365 days). Check the figure.");
+    if (!blank(key) && p(key) > 365) error(`projection.${key}`, "Ye ek saal (365 din) se zyada hai. Figure check karein.");
   }
 }

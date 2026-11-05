@@ -195,6 +195,9 @@ export type Statements = {
 /** Differences smaller than this are rounding, not a mistake. */
 export const TALLY_TOLERANCE = 1;
 
+/** Opening words of the "does not tally" warning, so a screen can recognise it. */
+export const NOT_TALLY_WARNING_PREFIX = "Actual saal ki balance sheet tally nahi ho rahi";
+
 const DAYS = 365;
 
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -606,7 +609,7 @@ export function buildStatements(figures: BalanceSheetFigures): Statements {
     periods.push(actual);
     if (Math.abs(actual.bs.difference) > TALLY_TOLERANCE) {
       warnings.push(
-        `The actual year does not tally: ${actual.bs.difference > 0 ? "liabilities exceed assets" : "assets exceed liabilities"} by Rs. ${formatAmount(Math.abs(actual.bs.difference))}. Correct the figures before marking the sheet final.`,
+        `${NOT_TALLY_WARNING_PREFIX}: ${actual.bs.difference > 0 ? "liabilities assets se" : "assets liabilities se"} Rs. ${formatAmount(Math.abs(actual.bs.difference))} zyada hain. Final karne se pehle figures theek karein.`,
       );
     }
     start = {
@@ -634,7 +637,7 @@ export function buildStatements(figures: BalanceSheetFigures): Statements {
       otherCurrentAssets: 0,
       otherCurrentLiabilities: 0,
     };
-    if (assumptions.year1Sales <= 0) warnings.push("Enter the expected sales for the first projected year.");
+    if (assumptions.year1Sales <= 0) warnings.push("Pehle projected saal ki expected sales bharein.");
   }
 
   const projected = projectedPeriods(figures, assumptions, start);
@@ -643,16 +646,16 @@ export function buildStatements(figures: BalanceSheetFigures): Statements {
   const overdraftYears = projected.filter((period) => period.bs.bankOverdraft > 0).map((period) => fyLabel(period.fyStart));
   if (overdraftYears.length) {
     warnings.push(
-      `Funds fall short in ${overdraftYears.join(", ")}; the gap is shown as a bank overdraft. Increase capital or the loan, or review the assumptions.`,
+      `${overdraftYears.join(", ")} mein paisa kam pad raha hai; ye kami bank overdraft ki tarah dikhayi gayi hai. Capital ya loan badhayein, ya assumptions dobara dekhein.`,
     );
   }
   const losses = projected.filter((period) => period.pl.netProfit < 0).map((period) => fyLabel(period.fyStart));
-  if (losses.length) warnings.push(`A net loss is projected in ${losses.join(", ")}.`);
+  if (losses.length) warnings.push(`${losses.join(", ")} mein net loss dikh raha hai.`);
 
   const dscrs = projected.map((period) => period.ratios.dscr).filter((value): value is number => value !== null);
   const averageDscr = dscrs.length ? Math.round((dscrs.reduce((sum, value) => sum + value, 0) / dscrs.length) * 100) / 100 : null;
   if (averageDscr !== null && averageDscr < 1.25) {
-    warnings.push(`Average DSCR is ${averageDscr.toFixed(2)}. Most banks look for at least 1.25.`);
+    warnings.push(`Average DSCR ${averageDscr.toFixed(2)} hai. Zyaadatar bank kam se kam 1.25 dekhte hain.`);
   }
 
   const actual = periods.find((period) => period.kind === "actual");

@@ -14,6 +14,7 @@ import {
   emptyActual,
   formatAmount,
   fyLabel,
+  NOT_TALLY_WARNING_PREFIX,
   type ActualFigures,
   type Constitution,
   type ProjectionAssumptions,
@@ -404,8 +405,8 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
     if (blocking.length) {
       setError(
         blocking.length === 1
-          ? `Fix the mistake in "${FIELD_LABELS[blocking[0]]}" first.`
-          : `Fix the ${blocking.length} mistakes marked in red first, starting with "${FIELD_LABELS[blocking[0]]}".`,
+          ? `Pehle "${FIELD_LABELS[blocking[0]]}" wali galti theek karein.`
+          : `Pehle laal box wali ${blocking.length} galtiyan theek karein, "${FIELD_LABELS[blocking[0]]}" se shuru karke.`,
       );
       jumpTo(blocking[0]);
       return;
@@ -438,13 +439,13 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
       });
       const result = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
       if (!response.ok || !result.id) {
-        setError(result.message ?? "The balance sheet could not be saved.");
+        setError(result.message ?? "Balance sheet save nahi ho payi. Dobara koshish karein.");
         return;
       }
       router.push(`/admin/balance-sheets/${result.id}`);
       router.refresh();
     } catch {
-      setError("No connection. Please try again.");
+      setError("Internet connection nahi hai. Dobara koshish karein.");
     } finally {
       setSaving(null);
     }
@@ -653,15 +654,15 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
               role="status"
             >
               {statements.tallies ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
-              {statements.tallies ? "Balance sheet tallies" : `Does not tally by Rs. ${formatAmount(Math.abs(actualPeriod?.bs.difference ?? 0))}`}
+              {statements.tallies ? "Balance sheet tally ho gayi" : `Tally nahi hui: Rs. ${formatAmount(Math.abs(actualPeriod?.bs.difference ?? 0))} ka farak hai`}
             </p>
             {errorList.length || warningList.length ? (
               <div className="mt-3">
                 <p className={cn("text-[13px] font-bold", errorList.length ? STATUS_TONE_TEXT.danger : STATUS_TONE_TEXT.warning)}>
                   {errorList.length
-                    ? `${errorList.length} ${errorList.length === 1 ? "mistake" : "mistakes"} to fix`
-                    : `${warningList.length} ${warningList.length === 1 ? "figure" : "figures"} to check`}
-                  {errorList.length && warningList.length ? `, ${warningList.length} to check` : ""}
+                    ? `${errorList.length} ${errorList.length === 1 ? "galti" : "galtiyan"} theek karni hain`
+                    : `${warningList.length} figure check karne hain`}
+                  {errorList.length && warningList.length ? `, ${warningList.length} check karne hain` : ""}
                 </p>
                 <ul className="mt-1.5 max-h-64 space-y-1 overflow-y-auto pr-1">
                   {[...errorList, ...warningList].map((issue) => (
@@ -678,7 +679,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                         )}
                         <span>
                           <span className="font-semibold text-ds-text-primary">{FIELD_LABELS[issue.key]}</span>
-                          <span className="sr-only">{issue.level === "error" ? " (mistake)" : " (check)"}</span>
+                          <span className="sr-only">{issue.level === "error" ? " (galti)" : " (check karein)"}</span>
                         </span>
                       </button>
                     </li>
@@ -708,9 +709,9 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
               <dt className="text-ds-text-muted">Average DSCR</dt>
               <dd className="text-right font-semibold tabular-nums">{statements.averageDscr?.toFixed(2) ?? "-"}</dd>
             </dl>
-            {statements.warnings.some((warning) => !warning.startsWith("The actual year does not tally")) ? (
+            {statements.warnings.some((warning) => !warning.startsWith(NOT_TALLY_WARNING_PREFIX)) ? (
               <ul className="mt-3 space-y-1.5 text-[12.5px] leading-snug text-ds-text-secondary">
-                {statements.warnings.filter((warning) => !warning.startsWith("The actual year does not tally")).map((warning) => (
+                {statements.warnings.filter((warning) => !warning.startsWith(NOT_TALLY_WARNING_PREFIX)).map((warning) => (
                   <li key={warning} className="flex gap-1.5">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ds-warning" aria-hidden="true" />
                     {warning}
@@ -733,7 +734,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
               Save draft
             </AdminButton>
             <p className="text-[12px] leading-snug text-ds-text-muted">
-              A draft prints with a DRAFT watermark. Final is available once the actual year tallies and no box is red.
+              Draft par DRAFT watermark chhapta hai. Final tab hoga jab actual saal tally ho jaaye aur koi box laal na rahe.
             </p>
           </AdminCard>
         </aside>
