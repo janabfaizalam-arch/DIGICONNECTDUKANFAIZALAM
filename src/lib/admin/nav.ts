@@ -37,6 +37,7 @@ import {
   ClipboardList,
   Contact,
   FileSpreadsheet,
+  Landmark,
   FileText,
   Gauge,
   Globe,
@@ -359,6 +360,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         icon: FileSpreadsheet,
       },
       {
+        href: "/admin/balance-sheets",
+        label: "Balance Sheets",
+        description: "Bank-ready balance sheets and P&L for a customer's loan file",
+        icon: Landmark,
+      },
+      {
         href: "/admin/wallet",
         label: "Wallet & Cashback",
         description: "Customer wallet balances and the cashback you owe",
@@ -650,6 +657,7 @@ export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
   { href: "/admin/services/itr", reachedFrom: "/admin/services — the ITR service's page content" },
   { href: "/admin/articles/new", reachedFrom: "/admin/articles" },
   { href: "/admin/offline-invoices/new", reachedFrom: "/admin/offline-invoices" },
+  { href: "/admin/balance-sheets/new", reachedFrom: "/admin/balance-sheets" },
   { href: "/admin/services/new", reachedFrom: "/admin/services" },
   { href: "/admin/services/new-v5", reachedFrom: "/admin/services" },
   { href: "/admin/service-builder/create", reachedFrom: "/admin/service-builder" },

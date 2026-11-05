@@ -1,0 +1,158 @@
+import { z } from "zod";
+
+import { CONSTITUTIONS, type BalanceSheetFigures, type Constitution } from "@/lib/balance-sheets/engine";
+
+/**
+ * The shape of a balance sheet record, validated the same way in the admin
+ * form and in the API route. The server never trusts the browser's copy: it
+ * parses the request body with this schema before anything is stored.
+ */
+
+const amount = z.coerce.number().finite().min(0, "Amount cannot be negative").max(1e12, "Amount is too large");
+const optionalAmount = z.union([z.null(), amount]);
+const pct = (max: number) => z.coerce.number().finite().min(0).max(max);
+const optionalPct = (max: number) => z.union([z.null(), pct(max)]);
+const optionalDays = z.union([z.null(), z.coerce.number().finite().min(0).max(730)]);
+const text = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => value || null)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null);
+
+const constitutionValues = CONSTITUTIONS.map((entry) => entry.value) as [Constitution, ...Constitution[]];
+
+export const actualSchema = z.object({
+  sales: amount,
+  otherIncome: amount,
+  openingStock: amount,
+  purchases: amount,
+  directExpenses: amount,
+  closingStock: amount,
+  salaries: amount,
+  rent: amount,
+  adminExpenses: amount,
+  otherExpenses: amount,
+  interest: amount,
+  depreciation: amount,
+  tax: amount,
+  openingCapital: amount,
+  capitalIntroduced: amount,
+  drawings: amount,
+  fixedAssets: amount,
+  investments: amount,
+  debtors: amount,
+  cashAndBank: amount,
+  otherCurrentAssets: amount,
+  termLoan: amount,
+  unsecuredLoans: amount,
+  creditors: amount,
+  otherCurrentLiabilities: amount,
+});
+
+export const projectionSchema = z.object({
+  years: z.coerce.number().int().min(1).max(5),
+  year1Sales: optionalAmount,
+  salesGrowthPct: pct(200),
+  materialCostPct: optionalPct(100),
+  indirectExpensesYear1: optionalAmount,
+  expenseGrowthPct: pct(200),
+  otherIncomePerYear: optionalAmount,
+  depreciationPct: pct(100),
+  taxPct: pct(60),
+  drawingsPerYear: amount,
+  capitalIntroducedYear1: amount,
+  newFixedAssets: amount,
+  newTermLoan: amount,
+  loanInterestPct: pct(40),
+  loanTenureYears: z.coerce.number().int().min(1).max(30),
+  existingLoanRepaymentPerYear: amount,
+  existingLoanInterestPct: pct(40),
+  debtorDays: optionalDays,
+  creditorDays: optionalDays,
+  stockDays: optionalDays,
+});
+
+export const balanceSheetSchema = z.object({
+  businessName: z.string().trim().min(2, "Enter the business name").max(160),
+  ownerName: z.string().trim().min(2, "Enter the owner's name").max(160),
+  constitution: z.enum(constitutionValues),
+  natureOfBusiness: text(200),
+  pan: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((value) => value === "" || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value), "PAN should look like ABCDE1234F")
+    .transform((value) => value || null)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+  gstin: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((value) => value === "" || /^[0-9]{2}[A-Z0-9]{13}$/.test(value), "GSTIN should be 15 characters")
+    .transform((value) => value || null)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+  udyamNumber: text(40),
+  address: text(400),
+  city: text(80),
+  state: text(80),
+  pincode: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^[1-9][0-9]{5}$/.test(value), "Pincode should be 6 digits")
+    .transform((value) => value || null)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+  mobile: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^[6-9][0-9]{9}$/.test(value), "Mobile should be 10 digits")
+    .transform((value) => value || null)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+  email: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || z.email().safeParse(value).success, "Enter a valid email")
+    .transform((value) => value || null)
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
+  bankName: text(120),
+  loanPurpose: text(300),
+  loanAmount: z.union([z.null(), z.literal("").transform(() => null), amount]).optional().transform((value) => value ?? null),
+  baseYear: z.coerce.number().int().min(2000).max(2100),
+  hasActual: z.boolean(),
+  actual: actualSchema,
+  projection: projectionSchema,
+  status: z.enum(["draft", "final"]).default("draft"),
+});
+
+export type BalanceSheetInput = z.infer<typeof balanceSheetSchema>;
+
+export function figuresOf(input: Pick<BalanceSheetInput, "baseYear" | "hasActual" | "constitution" | "actual" | "projection">): BalanceSheetFigures {
+  return {
+    baseYear: input.baseYear,
+    hasActual: input.hasActual,
+    constitution: input.constitution,
+    actual: input.actual,
+    projection: input.projection,
+  };
+}
+
+/** The first problem in a failed parse, worded for a person. */
+export function firstIssue(error: z.ZodError) {
+  const issue = error.issues[0];
+  if (!issue) return "Please check the form.";
+  const field = issue.path.join(" › ");
+  return field ? `${field}: ${issue.message}` : issue.message;
+}
