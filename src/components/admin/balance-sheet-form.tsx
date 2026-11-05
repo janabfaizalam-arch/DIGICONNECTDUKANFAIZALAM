@@ -19,7 +19,7 @@ import {
   type ProjectionAssumptions,
 } from "@/lib/balance-sheets/engine";
 import { STATUS_TONE_CLASS, STATUS_TONE_TEXT } from "@/lib/admin/status-tone";
-import { FIELD_GUIDE, IMPORTANCE_LABEL, type GuideKey, type Importance } from "@/lib/balance-sheets/field-guide";
+import { FIELD_GUIDE, GUIDE_HEADINGS, IMPORTANCE_LABEL, type GuideKey, type Importance } from "@/lib/balance-sheets/field-guide";
 import { checkBalanceSheet, FIELD_LABELS, FIELD_ORDER, type CheckResult, type DetailKey, type FieldKey } from "@/lib/balance-sheets/checks";
 import { cn } from "@/lib/utils";
 
@@ -279,15 +279,15 @@ function Field({
             </span>
           </span>
           <span className="mt-2 block">
-            <span className="font-semibold text-ds-text-primary">What to enter: </span>
+            <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.what}: </span>
             {guide.what}
           </span>
           <span className="mt-1.5 block">
-            <span className="font-semibold text-ds-text-primary">Where to find it: </span>
+            <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.where}: </span>
             {guide.where}
           </span>
           <span className="mt-1.5 block">
-            <span className="font-semibold text-ds-text-primary">Why it matters: </span>
+            <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.why}: </span>
             {guide.why}
           </span>
         </div>
@@ -455,7 +455,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex flex-col gap-6">
           <AdminCard>
-            <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank. Rest the pointer on any box, or tap into it, to see what to enter and where to find it.">
+            <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank. Kisi bhi box par cursor rokein ya tap karein, wahan kya bharna hai aur kahan milega, ye dikh jaayega.">
               <Grid>
                 <Field field="businessName" label="Business / firm name" required>
                   <AdminInput value={draft.businessName} onChange={(event) => set("businessName", event.target.value)} placeholder="Shree Ganesh Traders" />
