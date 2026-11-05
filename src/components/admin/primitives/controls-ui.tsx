@@ -114,9 +114,17 @@ const FIELD_SIZE: Record<ControlSize, string> = {
   lg: "h-ds-control-lg px-3.5 text-sm",
 };
 
-/** Invalid borders are red *and* announced — colour alone is not a signal. */
+/**
+ * Invalid fields are red *and* announced — colour alone is not a signal.
+ *
+ * The red is a ring plus a tint, not only a border: the unlayered
+ * `* { border-color }` reset in globals.css outranks Tailwind's border
+ * utilities, so `border-ds-danger` alone rendered grey (see status-tone.ts).
+ */
 const invalidClasses = (invalid?: boolean) =>
-  invalid ? "border-ds-danger" : "border-ds-border hover:border-ds-border-strong";
+  invalid
+    ? "border-ds-danger bg-ds-danger-soft ring-2 ring-ds-danger"
+    : "border-ds-border hover:border-ds-border-strong";
 
 export type AdminInputProps = InputHTMLAttributes<HTMLInputElement> & {
   inputSize?: ControlSize;

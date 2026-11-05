@@ -1,8 +1,8 @@
 "use client";
 
-import { cloneElement, useId, useMemo, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { cloneElement, createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 import { AdminButton, AdminField, AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/primitives/controls-ui";
 import { AdminCard, AdminSection } from "@/components/admin/primitives/layout";
@@ -18,7 +18,9 @@ import {
   type Constitution,
   type ProjectionAssumptions,
 } from "@/lib/balance-sheets/engine";
-import { STATUS_TONE_CLASS } from "@/lib/admin/status-tone";
+import { STATUS_TONE_CLASS, STATUS_TONE_TEXT } from "@/lib/admin/status-tone";
+import { FIELD_GUIDE, IMPORTANCE_LABEL, type GuideKey, type Importance } from "@/lib/balance-sheets/field-guide";
+import { checkBalanceSheet, FIELD_LABELS, FIELD_ORDER, type CheckResult, type DetailKey, type FieldKey } from "@/lib/balance-sheets/checks";
 import { cn } from "@/lib/utils";
 
 /**
@@ -145,20 +147,157 @@ function figuresFrom(draft: Draft) {
   };
 }
 
+/** The live check results, so each field can find its own mistake. */
+const ChecksContext = createContext<{ result: CheckResult; touch: (key: DetailKey) => void } | null>(null);
+
+const DETAIL_KEYS = new Set<FieldKey>(["businessName", "ownerName", "pan", "gstin", "mobile", "pincode", "email", "loanAmount"]);
+
+/** A stable DOM id per field, so the summary can jump straight to the box. */
+export const fieldDomId = (key: FieldKey | GuideKey) => `bs-${key.replace(".", "-")}`;
+
+type ControlProps = {
+  id?: string;
+  "aria-describedby"?: string;
+  invalid?: boolean;
+  className?: string;
+  onBlur?: (event: never) => void;
+  onFocus?: (event: never) => void;
+  onKeyDown?: (event: never) => void;
+};
+
+const IMPORTANCE_TONE: Record<Importance, "danger" | "warning" | "neutral"> = {
+  required: "danger",
+  important: "warning",
+  optional: "neutral",
+};
+
+/** How long the pointer has to rest on a box before its guide opens. */
+const HOVER_DELAY_MS = 450;
+
 /**
- * AdminField with its label tied to the control: a stable id from useId goes on
- * both, so clicking the label focuses the field and screen readers announce it.
+ * AdminField with its label tied to the control, the field's mistake shown
+ * right under it (an error turns the box red, a warning puts an amber note),
+ * and a guide card saying what to enter, where to find it, why it matters and
+ * whether it can be left blank.
+ *
+ * The card opens when the pointer rests on the field or the box gets focus
+ * (so a tap on a phone opens it too), and closes on typing, Escape, blur or
+ * the pointer leaving. Its text is always in the DOM and tied to the input
+ * with aria-describedby, so a screen reader hears it without hovering.
  */
-function Field({ children, help, ...props }: Omit<ComponentProps<typeof AdminField>, "htmlFor" | "children"> & { children: ReactElement<{ id?: string; "aria-describedby"?: string }> }) {
-  const id = useId();
+function Field({
+  children,
+  help,
+  field,
+  guide: guideKey,
+  ...props
+}: Omit<ComponentProps<typeof AdminField>, "htmlFor" | "children" | "error"> & {
+  field?: FieldKey;
+  guide?: GuideKey;
+  children: ReactElement<ControlProps>;
+}) {
+  const generated = useId();
+  const checks = useContext(ChecksContext);
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => (timer.current ? clearTimeout(timer.current) : undefined), []);
+
+  const domKey = field ?? guideKey;
+  const id = domKey ? fieldDomId(domKey) : generated;
+  const issue = field ? checks?.result.issues[field] : undefined;
+  const isError = issue?.level === "error";
+  const isWarning = issue?.level === "warning";
+  const guide = FIELD_GUIDE[(guideKey ?? field) as GuideKey] as (typeof FIELD_GUIDE)[GuideKey] | undefined;
+  const guideId = `${id}-guide`;
+  const describedBy =
+    [isError ? `${id}-error` : isWarning ? `${id}-warning` : help ? `${id}-help` : null, guide ? guideId : null].filter(Boolean).join(" ") || undefined;
+
+  const cancelTimer = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  const close = () => {
+    cancelTimer();
+    setOpen(false);
+  };
+
+  const control = cloneElement(children, {
+    id,
+    "aria-describedby": describedBy,
+    invalid: isError || undefined,
+    className: cn(children.props.className, isWarning && "ring-2 ring-ds-warning"),
+    onFocus: (event: never) => {
+      children.props.onFocus?.(event);
+      if (guide) setOpen(true);
+    },
+    onBlur: (event: never) => {
+      children.props.onBlur?.(event);
+      close();
+      if (field && DETAIL_KEYS.has(field)) checks?.touch(field as DetailKey);
+    },
+    onKeyDown: (event: never) => {
+      children.props.onKeyDown?.(event);
+      const key = (event as unknown as KeyboardEvent).key;
+      // Typing means the admin knows what to enter; get out of the way.
+      if (key === "Escape" || key.length === 1 || key === "Backspace" || key === "Delete") close();
+    },
+  });
+
   return (
-    <AdminField {...props} help={help} htmlFor={id}>
-      {cloneElement(children, { id, "aria-describedby": help ? `${id}-help` : undefined })}
-    </AdminField>
+    <div
+      className="relative"
+      onMouseEnter={() => {
+        if (!guide) return;
+        cancelTimer();
+        timer.current = setTimeout(() => setOpen(true), HOVER_DELAY_MS);
+      }}
+      onMouseLeave={close}
+    >
+      <AdminField {...props} help={isWarning ? undefined : help} error={isError ? issue.message : undefined} htmlFor={id}>
+        {control}
+      </AdminField>
+      {isWarning ? (
+        <p id={`${id}-warning`} className={cn("mt-1.5 flex gap-1 text-xs font-semibold", STATUS_TONE_TEXT.warning)}>
+          <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {issue.message}
+        </p>
+      ) : null}
+      {guide ? (
+        <div
+          id={guideId}
+          role="tooltip"
+          hidden={!open}
+          className="absolute left-0 top-full z-30 mt-1.5 w-full min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] rounded-ds-md border border-ds-border bg-ds-surface p-3 text-xs leading-snug text-ds-text-secondary shadow-ds-lg"
+        >
+          <span className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1 font-bold text-ds-text-primary">
+              <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {props.label.replace(/ \((?:Rs\.|[^)]*)\)$/, "")}
+            </span>
+            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", STATUS_TONE_CLASS[IMPORTANCE_TONE[guide.importance]])}>
+              {IMPORTANCE_LABEL[guide.importance]}
+            </span>
+          </span>
+          <span className="mt-2 block">
+            <span className="font-semibold text-ds-text-primary">What to enter: </span>
+            {guide.what}
+          </span>
+          <span className="mt-1.5 block">
+            <span className="font-semibold text-ds-text-primary">Where to find it: </span>
+            {guide.where}
+          </span>
+          <span className="mt-1.5 block">
+            <span className="font-semibold text-ds-text-primary">Why it matters: </span>
+            {guide.why}
+          </span>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 function MoneyInput({
+  field,
   label,
   value,
   onChange,
@@ -166,6 +305,7 @@ function MoneyInput({
   placeholder,
   suffix,
 }: {
+  field?: FieldKey;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -174,7 +314,7 @@ function MoneyInput({
   suffix?: string;
 }) {
   return (
-    <Field label={suffix ? `${label} (${suffix})` : `${label} (Rs.)`} help={help}>
+    <Field field={field} label={suffix ? `${label} (${suffix})` : `${label} (Rs.)`} help={help}>
       <AdminInput
         inputMode="decimal"
         value={value}
@@ -195,9 +335,48 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
   const [draft, setDraft] = useState<Draft>(() => initialDraft(initial));
   const [saving, setSaving] = useState<"draft" | "final" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showRequired, setShowRequired] = useState(false);
+  const [touched, setTouched] = useState<ReadonlySet<DetailKey>>(() => new Set());
 
   const figures = useMemo(() => figuresFrom(draft), [draft]);
   const statements = useMemo(() => buildStatements(figures), [figures]);
+  const checkInput = (forceRequired: boolean) => ({
+    details: {
+      businessName: draft.businessName,
+      ownerName: draft.ownerName,
+      pan: draft.pan,
+      gstin: draft.gstin,
+      mobile: draft.mobile,
+      pincode: draft.pincode,
+      email: draft.email,
+      loanAmount: draft.loanAmount,
+    },
+    hasActual: draft.hasActual,
+    actualText: draft.actual,
+    projectionText: draft.projection,
+    statements,
+    showRequired: showRequired || forceRequired,
+    touched,
+  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- checkInput only reads the values listed
+  const checks = useMemo(() => checkBalanceSheet(checkInput(false)), [draft, statements, showRequired, touched]);
+  const checksContext = useMemo(
+    () => ({ result: checks, touch: (key: DetailKey) => setTouched((current) => (current.has(key) ? current : new Set([...current, key]))) }),
+    [checks],
+  );
+  const issueList = FIELD_ORDER.flatMap((key) => {
+    const issue = checks.issues[key];
+    return issue ? [{ key, ...issue }] : [];
+  });
+  const errorList = issueList.filter((issue) => issue.level === "error");
+  const warningList = issueList.filter((issue) => issue.level === "warning");
+
+  const jumpTo = (key: FieldKey) => {
+    const element = document.getElementById(fieldDomId(key));
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    element.focus({ preventScroll: true });
+  };
   const derived = useMemo(() => effectiveAssumptions({ ...figures, projection: { ...figures.projection, materialCostPct: null, debtorDays: null, creditorDays: null, stockDays: null, indirectExpensesYear1: null, otherIncomePerYear: null, year1Sales: null } }), [figures]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
@@ -212,8 +391,26 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
   const yearOptions = Array.from({ length: 8 }, (_, index) => lastCompletedFy() + 1 - index);
 
   async function save(status: "draft" | "final") {
-    setSaving(status);
     setError(null);
+    setShowRequired(true);
+    // Check again with "required" switched on, since the state update above
+    // has not rendered yet. A final copy needs every error fixed; a draft only
+    // needs what the server itself would refuse (names, PAN, mobile ...).
+    const now = checkBalanceSheet(checkInput(true));
+    const blocking = FIELD_ORDER.filter((key) => {
+      const issue = now.issues[key];
+      return issue?.level === "error" && (status === "final" || DETAIL_KEYS.has(key));
+    });
+    if (blocking.length) {
+      setError(
+        blocking.length === 1
+          ? `Fix the mistake in "${FIELD_LABELS[blocking[0]]}" first.`
+          : `Fix the ${blocking.length} mistakes marked in red first, starting with "${FIELD_LABELS[blocking[0]]}".`,
+      );
+      jumpTo(blocking[0]);
+      return;
+    }
+    setSaving(status);
     const body = {
       businessName: draft.businessName,
       ownerName: draft.ownerName,
@@ -254,257 +451,293 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-      <div className="flex flex-col gap-6">
-        <AdminCard>
-          <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank.">
-            <Grid>
-              <Field label="Business / firm name" required>
-                <AdminInput value={draft.businessName} onChange={(event) => set("businessName", event.target.value)} placeholder="Shree Ganesh Traders" />
+    <ChecksContext.Provider value={checksContext}>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div className="flex flex-col gap-6">
+          <AdminCard>
+            <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank. Rest the pointer on any box, or tap into it, to see what to enter and where to find it.">
+              <Grid>
+                <Field field="businessName" label="Business / firm name" required>
+                  <AdminInput value={draft.businessName} onChange={(event) => set("businessName", event.target.value)} placeholder="Shree Ganesh Traders" />
+                </Field>
+                <Field field="ownerName" label={draft.constitution === "proprietorship" ? "Proprietor's name" : "Partners / directors"} required>
+                  <AdminInput value={draft.ownerName} onChange={(event) => set("ownerName", event.target.value)} />
+                </Field>
+                <Field guide="constitution" label="Constitution">
+                  <AdminSelect value={draft.constitution} onChange={(event) => set("constitution", event.target.value as Constitution)}>
+                    {CONSTITUTIONS.map((entry) => (
+                      <option key={entry.value} value={entry.value}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </Field>
+                <Field guide="natureOfBusiness" label="Nature of business">
+                  <AdminInput value={draft.natureOfBusiness} onChange={(event) => set("natureOfBusiness", event.target.value)} placeholder="Wholesale trading of grocery" />
+                </Field>
+                <Field field="pan" label="PAN">
+                  <AdminInput value={draft.pan} maxLength={10} onChange={(event) => set("pan", event.target.value.toUpperCase())} placeholder="ABCDE1234F" />
+                </Field>
+                <Field field="gstin" label="GSTIN">
+                  <AdminInput value={draft.gstin} maxLength={15} onChange={(event) => set("gstin", event.target.value.toUpperCase())} />
+                </Field>
+                <Field guide="udyamNumber" label="Udyam registration no.">
+                  <AdminInput value={draft.udyamNumber} onChange={(event) => set("udyamNumber", event.target.value.toUpperCase())} />
+                </Field>
+                <Field field="mobile" label="Mobile">
+                  <AdminInput value={draft.mobile} inputMode="numeric" maxLength={10} onChange={(event) => set("mobile", event.target.value.replace(/\D/g, ""))} />
+                </Field>
+                <Field field="email" label="Email">
+                  <AdminInput value={draft.email} type="email" onChange={(event) => set("email", event.target.value)} />
+                </Field>
+              </Grid>
+              <Field guide="address" label="Business address">
+                <AdminTextarea value={draft.address} rows={2} onChange={(event) => set("address", event.target.value)} />
               </Field>
-              <Field label={draft.constitution === "proprietorship" ? "Proprietor's name" : "Partners / directors"} required>
-                <AdminInput value={draft.ownerName} onChange={(event) => set("ownerName", event.target.value)} />
-              </Field>
-              <Field label="Constitution">
-                <AdminSelect value={draft.constitution} onChange={(event) => set("constitution", event.target.value as Constitution)}>
-                  {CONSTITUTIONS.map((entry) => (
-                    <option key={entry.value} value={entry.value}>
-                      {entry.label}
-                    </option>
+              <Grid>
+                <Field guide="city" label="City">
+                  <AdminInput value={draft.city} onChange={(event) => set("city", event.target.value)} />
+                </Field>
+                <Field guide="state" label="State">
+                  <AdminInput value={draft.state} onChange={(event) => set("state", event.target.value)} />
+                </Field>
+                <Field field="pincode" label="Pincode">
+                  <AdminInput value={draft.pincode} inputMode="numeric" maxLength={6} onChange={(event) => set("pincode", event.target.value.replace(/\D/g, ""))} />
+                </Field>
+                <Field guide="bankName" label="Bank and branch">
+                  <AdminInput value={draft.bankName} onChange={(event) => set("bankName", event.target.value)} placeholder="State Bank of India, Orai" />
+                </Field>
+                <Field guide="loanPurpose" label="Purpose of loan">
+                  <AdminInput value={draft.loanPurpose} onChange={(event) => set("loanPurpose", event.target.value)} placeholder="Working capital / machinery" />
+                </Field>
+                <MoneyInput field="loanAmount" label="Loan amount applied for" value={draft.loanAmount} onChange={(value) => set("loanAmount", value)} />
+              </Grid>
+            </AdminSection>
+          </AdminCard>
+
+          <AdminCard>
+            <AdminSection title="2. Period">
+              <Grid>
+                <Field guide="baseYear" label="Last completed financial year" help={`Projections start from ${fyLabel(baseYear + 1)}.`}>
+                  <AdminSelect value={draft.baseYear} onChange={(event) => set("baseYear", event.target.value)}>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {fyLabel(year)}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </Field>
+                <Field field="projection.years" label="Years to project">
+                  <AdminSelect value={draft.projection.years} onChange={(event) => setProjection("years")(event.target.value)}>
+                    {[1, 2, 3, 4, 5].map((years) => (
+                      <option key={years} value={years}>
+                        {years} {years === 1 ? "year" : "years"}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </Field>
+                <Field guide="hasActual" label="Figures for the last year">
+                  <AdminSelect value={draft.hasActual ? "yes" : "no"} onChange={(event) => set("hasActual", event.target.value === "yes")}>
+                    <option value="yes">Available — include the actual year</option>
+                    <option value="no">New business — projections only</option>
+                  </AdminSelect>
+                </Field>
+              </Grid>
+            </AdminSection>
+          </AdminCard>
+
+          {draft.hasActual ? (
+            <>
+              <AdminCard>
+                <AdminSection title={`3. Trading and P&L — ${fyLabel(baseYear)} (actual)`} description="From the customer's books, ITR or bank statement.">
+                  <Grid>
+                    <MoneyInput field="actual.sales" label="Sales / turnover" value={draft.actual.sales} onChange={setActual("sales")} />
+                    <MoneyInput field="actual.otherIncome" label="Other income" value={draft.actual.otherIncome} onChange={setActual("otherIncome")} />
+                    <MoneyInput field="actual.openingStock" label="Opening stock" value={draft.actual.openingStock} onChange={setActual("openingStock")} />
+                    <MoneyInput field="actual.purchases" label="Purchases" value={draft.actual.purchases} onChange={setActual("purchases")} />
+                    <MoneyInput field="actual.directExpenses" label="Direct expenses" value={draft.actual.directExpenses} onChange={setActual("directExpenses")} help="Wages, power, freight on purchases" />
+                    <MoneyInput field="actual.closingStock" label="Closing stock" value={draft.actual.closingStock} onChange={setActual("closingStock")} />
+                    <MoneyInput field="actual.salaries" label="Salaries and wages" value={draft.actual.salaries} onChange={setActual("salaries")} />
+                    <MoneyInput field="actual.rent" label="Rent" value={draft.actual.rent} onChange={setActual("rent")} />
+                    <MoneyInput field="actual.adminExpenses" label="Administrative expenses" value={draft.actual.adminExpenses} onChange={setActual("adminExpenses")} help="Electricity, phone, office" />
+                    <MoneyInput field="actual.otherExpenses" label="Other expenses" value={draft.actual.otherExpenses} onChange={setActual("otherExpenses")} />
+                    <MoneyInput field="actual.interest" label="Interest on loans" value={draft.actual.interest} onChange={setActual("interest")} />
+                    <MoneyInput field="actual.depreciation" label="Depreciation" value={draft.actual.depreciation} onChange={setActual("depreciation")} />
+                    <MoneyInput field="actual.tax" label="Income tax" value={draft.actual.tax} onChange={setActual("tax")} />
+                  </Grid>
+                </AdminSection>
+              </AdminCard>
+
+              <AdminCard>
+                <AdminSection title={`4. Balance sheet — as at ${`31st March ${baseYear + 1}`}`} description="Closing stock is taken from the P&L above. Closing capital is worked out for you.">
+                  <Grid>
+                    <MoneyInput field="actual.openingCapital" label="Opening capital" value={draft.actual.openingCapital} onChange={setActual("openingCapital")} />
+                    <MoneyInput field="actual.capitalIntroduced" label="Capital introduced" value={draft.actual.capitalIntroduced} onChange={setActual("capitalIntroduced")} />
+                    <MoneyInput field="actual.drawings" label="Drawings" value={draft.actual.drawings} onChange={setActual("drawings")} />
+                    <MoneyInput field="actual.termLoan" label="Term loan outstanding" value={draft.actual.termLoan} onChange={setActual("termLoan")} />
+                    <MoneyInput field="actual.unsecuredLoans" label="Unsecured loans" value={draft.actual.unsecuredLoans} onChange={setActual("unsecuredLoans")} help="From friends, relatives" />
+                    <MoneyInput field="actual.creditors" label="Sundry creditors" value={draft.actual.creditors} onChange={setActual("creditors")} />
+                    <MoneyInput field="actual.otherCurrentLiabilities" label="Other current liabilities" value={draft.actual.otherCurrentLiabilities} onChange={setActual("otherCurrentLiabilities")} />
+                    <MoneyInput field="actual.fixedAssets" label="Fixed assets (net block)" value={draft.actual.fixedAssets} onChange={setActual("fixedAssets")} />
+                    <MoneyInput field="actual.investments" label="Investments" value={draft.actual.investments} onChange={setActual("investments")} />
+                    <MoneyInput field="actual.debtors" label="Sundry debtors" value={draft.actual.debtors} onChange={setActual("debtors")} />
+                    <MoneyInput field="actual.cashAndBank" label="Cash and bank balances" value={draft.actual.cashAndBank} onChange={setActual("cashAndBank")} />
+                    <MoneyInput field="actual.otherCurrentAssets" label="Other current assets" value={draft.actual.otherCurrentAssets} onChange={setActual("otherCurrentAssets")} help="Advances, deposits" />
+                  </Grid>
+                </AdminSection>
+              </AdminCard>
+            </>
+          ) : null}
+
+          <AdminCard>
+            <AdminSection
+              title={`${draft.hasActual ? "5" : "3"}. Projections`}
+              description={draft.hasActual ? "Leave a field blank to use the customer's own ratio from the actual year (shown in grey)." : "Estimates for the new business."}
+            >
+              <Grid>
+                <MoneyInput
+                  field="projection.year1Sales"
+                  label="Sales in the first projected year"
+                  value={draft.projection.year1Sales}
+                  onChange={setProjection("year1Sales")}
+                  placeholder={draft.hasActual ? formatAmount(derived.year1Sales) : "Required"}
+                />
+                <MoneyInput field="projection.salesGrowthPct" label="Sales growth per year" suffix="%" value={draft.projection.salesGrowthPct} onChange={setProjection("salesGrowthPct")} />
+                <MoneyInput
+                  field="projection.materialCostPct"
+                  label="Cost of sales"
+                  suffix="% of sales"
+                  value={draft.projection.materialCostPct}
+                  onChange={setProjection("materialCostPct")}
+                  placeholder={draft.hasActual ? String(derived.materialCostPct) : "70"}
+                />
+                <MoneyInput
+                  field="projection.indirectExpensesYear1"
+                  label="Indirect expenses, first year"
+                  value={draft.projection.indirectExpensesYear1}
+                  onChange={setProjection("indirectExpensesYear1")}
+                  placeholder={draft.hasActual ? formatAmount(derived.indirectExpensesYear1) : "0"}
+                  help="Salaries, rent, office and other"
+                />
+                <MoneyInput field="projection.expenseGrowthPct" label="Expense growth per year" suffix="%" value={draft.projection.expenseGrowthPct} onChange={setProjection("expenseGrowthPct")} />
+                <MoneyInput field="projection.depreciationPct" label="Depreciation rate" suffix="% WDV" value={draft.projection.depreciationPct} onChange={setProjection("depreciationPct")} />
+                <MoneyInput field="projection.taxPct" label="Income tax" suffix="% of profit" value={draft.projection.taxPct} onChange={setProjection("taxPct")} />
+                <MoneyInput field="projection.drawingsPerYear" label="Drawings per year" value={draft.projection.drawingsPerYear} onChange={setProjection("drawingsPerYear")} />
+                <MoneyInput field="projection.capitalIntroducedYear1" label="Own capital introduced, first year" value={draft.projection.capitalIntroducedYear1} onChange={setProjection("capitalIntroducedYear1")} />
+                <MoneyInput field="projection.newFixedAssets" label="New fixed assets / machinery" value={draft.projection.newFixedAssets} onChange={setProjection("newFixedAssets")} />
+                <MoneyInput field="projection.newTermLoan" label="New term loan" value={draft.projection.newTermLoan} onChange={setProjection("newTermLoan")} />
+                <MoneyInput field="projection.loanInterestPct" label="Loan interest rate" suffix="% p.a." value={draft.projection.loanInterestPct} onChange={setProjection("loanInterestPct")} />
+                <MoneyInput field="projection.loanTenureYears" label="Loan tenure" suffix="years" value={draft.projection.loanTenureYears} onChange={setProjection("loanTenureYears")} />
+                {draft.hasActual ? (
+                  <>
+                    <MoneyInput field="projection.existingLoanRepaymentPerYear" label="Existing loan repaid per year" value={draft.projection.existingLoanRepaymentPerYear} onChange={setProjection("existingLoanRepaymentPerYear")} />
+                    <MoneyInput field="projection.existingLoanInterestPct" label="Existing loan interest" suffix="% p.a." value={draft.projection.existingLoanInterestPct} onChange={setProjection("existingLoanInterestPct")} />
+                  </>
+                ) : null}
+                <MoneyInput field="projection.debtorDays" label="Debtors" suffix="days of sales" value={draft.projection.debtorDays} onChange={setProjection("debtorDays")} placeholder={String(draft.hasActual ? derived.debtorDays : 30)} />
+                <MoneyInput field="projection.stockDays" label="Stock" suffix="days" value={draft.projection.stockDays} onChange={setProjection("stockDays")} placeholder={String(draft.hasActual ? derived.stockDays : 30)} />
+                <MoneyInput field="projection.creditorDays" label="Creditors" suffix="days" value={draft.projection.creditorDays} onChange={setProjection("creditorDays")} placeholder={String(draft.hasActual ? derived.creditorDays : 30)} />
+              </Grid>
+            </AdminSection>
+          </AdminCard>
+        </div>
+
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-20" aria-label="Summary">
+          <AdminCard>
+            <h2 className="text-[15px] font-bold text-ds-text-primary">Summary</h2>
+            <p
+              className={cn(
+                "mt-3 flex items-start gap-2 rounded-ds-md px-3 py-2 text-[13px] font-semibold",
+                STATUS_TONE_CLASS[statements.tallies ? "success" : "danger"],
+              )}
+              role="status"
+            >
+              {statements.tallies ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
+              {statements.tallies ? "Balance sheet tallies" : `Does not tally by Rs. ${formatAmount(Math.abs(actualPeriod?.bs.difference ?? 0))}`}
+            </p>
+            {errorList.length || warningList.length ? (
+              <div className="mt-3">
+                <p className={cn("text-[13px] font-bold", errorList.length ? STATUS_TONE_TEXT.danger : STATUS_TONE_TEXT.warning)}>
+                  {errorList.length
+                    ? `${errorList.length} ${errorList.length === 1 ? "mistake" : "mistakes"} to fix`
+                    : `${warningList.length} ${warningList.length === 1 ? "figure" : "figures"} to check`}
+                  {errorList.length && warningList.length ? `, ${warningList.length} to check` : ""}
+                </p>
+                <ul className="mt-1.5 max-h-64 space-y-1 overflow-y-auto pr-1">
+                  {[...errorList, ...warningList].map((issue) => (
+                    <li key={issue.key}>
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(issue.key)}
+                        className="flex w-full items-start gap-1.5 rounded-ds-sm px-1 py-0.5 text-left text-[12.5px] leading-snug text-ds-text-secondary hover:bg-ds-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus"
+                      >
+                        {issue.level === "error" ? (
+                          <AlertCircle className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", STATUS_TONE_TEXT.danger)} aria-hidden="true" />
+                        ) : (
+                          <AlertTriangle className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", STATUS_TONE_TEXT.warning)} aria-hidden="true" />
+                        )}
+                        <span>
+                          <span className="font-semibold text-ds-text-primary">{FIELD_LABELS[issue.key]}</span>
+                          <span className="sr-only">{issue.level === "error" ? " (mistake)" : " (check)"}</span>
+                        </span>
+                      </button>
+                    </li>
                   ))}
-                </AdminSelect>
-              </Field>
-              <Field label="Nature of business">
-                <AdminInput value={draft.natureOfBusiness} onChange={(event) => set("natureOfBusiness", event.target.value)} placeholder="Wholesale trading of grocery" />
-              </Field>
-              <Field label="PAN">
-                <AdminInput value={draft.pan} maxLength={10} onChange={(event) => set("pan", event.target.value.toUpperCase())} placeholder="ABCDE1234F" />
-              </Field>
-              <Field label="GSTIN">
-                <AdminInput value={draft.gstin} maxLength={15} onChange={(event) => set("gstin", event.target.value.toUpperCase())} />
-              </Field>
-              <Field label="Udyam registration no.">
-                <AdminInput value={draft.udyamNumber} onChange={(event) => set("udyamNumber", event.target.value.toUpperCase())} />
-              </Field>
-              <Field label="Mobile">
-                <AdminInput value={draft.mobile} inputMode="numeric" maxLength={10} onChange={(event) => set("mobile", event.target.value.replace(/\D/g, ""))} />
-              </Field>
-              <Field label="Email">
-                <AdminInput value={draft.email} type="email" onChange={(event) => set("email", event.target.value)} />
-              </Field>
-            </Grid>
-            <Field label="Business address">
-              <AdminTextarea value={draft.address} rows={2} onChange={(event) => set("address", event.target.value)} />
-            </Field>
-            <Grid>
-              <Field label="City">
-                <AdminInput value={draft.city} onChange={(event) => set("city", event.target.value)} />
-              </Field>
-              <Field label="State">
-                <AdminInput value={draft.state} onChange={(event) => set("state", event.target.value)} />
-              </Field>
-              <Field label="Pincode">
-                <AdminInput value={draft.pincode} inputMode="numeric" maxLength={6} onChange={(event) => set("pincode", event.target.value.replace(/\D/g, ""))} />
-              </Field>
-              <Field label="Bank and branch">
-                <AdminInput value={draft.bankName} onChange={(event) => set("bankName", event.target.value)} placeholder="State Bank of India, Orai" />
-              </Field>
-              <Field label="Purpose of loan">
-                <AdminInput value={draft.loanPurpose} onChange={(event) => set("loanPurpose", event.target.value)} placeholder="Working capital / machinery" />
-              </Field>
-              <MoneyInput label="Loan amount applied for" value={draft.loanAmount} onChange={(value) => set("loanAmount", value)} />
-            </Grid>
-          </AdminSection>
-        </AdminCard>
-
-        <AdminCard>
-          <AdminSection title="2. Period">
-            <Grid>
-              <Field label="Last completed financial year" help={`Projections start from ${fyLabel(baseYear + 1)}.`}>
-                <AdminSelect value={draft.baseYear} onChange={(event) => set("baseYear", event.target.value)}>
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {fyLabel(year)}
-                    </option>
-                  ))}
-                </AdminSelect>
-              </Field>
-              <Field label="Years to project">
-                <AdminSelect value={draft.projection.years} onChange={(event) => setProjection("years")(event.target.value)}>
-                  {[1, 2, 3, 4, 5].map((years) => (
-                    <option key={years} value={years}>
-                      {years} {years === 1 ? "year" : "years"}
-                    </option>
-                  ))}
-                </AdminSelect>
-              </Field>
-              <Field label="Figures for the last year">
-                <AdminSelect value={draft.hasActual ? "yes" : "no"} onChange={(event) => set("hasActual", event.target.value === "yes")}>
-                  <option value="yes">Available — include the actual year</option>
-                  <option value="no">New business — projections only</option>
-                </AdminSelect>
-              </Field>
-            </Grid>
-          </AdminSection>
-        </AdminCard>
-
-        {draft.hasActual ? (
-          <>
-            <AdminCard>
-              <AdminSection title={`3. Trading and P&L — ${fyLabel(baseYear)} (actual)`} description="From the customer's books, ITR or bank statement.">
-                <Grid>
-                  <MoneyInput label="Sales / turnover" value={draft.actual.sales} onChange={setActual("sales")} />
-                  <MoneyInput label="Other income" value={draft.actual.otherIncome} onChange={setActual("otherIncome")} />
-                  <MoneyInput label="Opening stock" value={draft.actual.openingStock} onChange={setActual("openingStock")} />
-                  <MoneyInput label="Purchases" value={draft.actual.purchases} onChange={setActual("purchases")} />
-                  <MoneyInput label="Direct expenses" value={draft.actual.directExpenses} onChange={setActual("directExpenses")} help="Wages, power, freight on purchases" />
-                  <MoneyInput label="Closing stock" value={draft.actual.closingStock} onChange={setActual("closingStock")} />
-                  <MoneyInput label="Salaries and wages" value={draft.actual.salaries} onChange={setActual("salaries")} />
-                  <MoneyInput label="Rent" value={draft.actual.rent} onChange={setActual("rent")} />
-                  <MoneyInput label="Administrative expenses" value={draft.actual.adminExpenses} onChange={setActual("adminExpenses")} help="Electricity, phone, office" />
-                  <MoneyInput label="Other expenses" value={draft.actual.otherExpenses} onChange={setActual("otherExpenses")} />
-                  <MoneyInput label="Interest on loans" value={draft.actual.interest} onChange={setActual("interest")} />
-                  <MoneyInput label="Depreciation" value={draft.actual.depreciation} onChange={setActual("depreciation")} />
-                  <MoneyInput label="Income tax" value={draft.actual.tax} onChange={setActual("tax")} />
-                </Grid>
-              </AdminSection>
-            </AdminCard>
-
-            <AdminCard>
-              <AdminSection title={`4. Balance sheet — as at ${`31st March ${baseYear + 1}`}`} description="Closing stock is taken from the P&L above. Closing capital is worked out for you.">
-                <Grid>
-                  <MoneyInput label="Opening capital" value={draft.actual.openingCapital} onChange={setActual("openingCapital")} />
-                  <MoneyInput label="Capital introduced" value={draft.actual.capitalIntroduced} onChange={setActual("capitalIntroduced")} />
-                  <MoneyInput label="Drawings" value={draft.actual.drawings} onChange={setActual("drawings")} />
-                  <MoneyInput label="Term loan outstanding" value={draft.actual.termLoan} onChange={setActual("termLoan")} />
-                  <MoneyInput label="Unsecured loans" value={draft.actual.unsecuredLoans} onChange={setActual("unsecuredLoans")} help="From friends, relatives" />
-                  <MoneyInput label="Sundry creditors" value={draft.actual.creditors} onChange={setActual("creditors")} />
-                  <MoneyInput label="Other current liabilities" value={draft.actual.otherCurrentLiabilities} onChange={setActual("otherCurrentLiabilities")} />
-                  <MoneyInput label="Fixed assets (net block)" value={draft.actual.fixedAssets} onChange={setActual("fixedAssets")} />
-                  <MoneyInput label="Investments" value={draft.actual.investments} onChange={setActual("investments")} />
-                  <MoneyInput label="Sundry debtors" value={draft.actual.debtors} onChange={setActual("debtors")} />
-                  <MoneyInput label="Cash and bank balances" value={draft.actual.cashAndBank} onChange={setActual("cashAndBank")} />
-                  <MoneyInput label="Other current assets" value={draft.actual.otherCurrentAssets} onChange={setActual("otherCurrentAssets")} help="Advances, deposits" />
-                </Grid>
-              </AdminSection>
-            </AdminCard>
-          </>
-        ) : null}
-
-        <AdminCard>
-          <AdminSection
-            title={`${draft.hasActual ? "5" : "3"}. Projections`}
-            description={draft.hasActual ? "Leave a field blank to use the customer's own ratio from the actual year (shown in grey)." : "Estimates for the new business."}
-          >
-            <Grid>
-              <MoneyInput
-                label="Sales in the first projected year"
-                value={draft.projection.year1Sales}
-                onChange={setProjection("year1Sales")}
-                placeholder={draft.hasActual ? formatAmount(derived.year1Sales) : "Required"}
-              />
-              <MoneyInput label="Sales growth per year" suffix="%" value={draft.projection.salesGrowthPct} onChange={setProjection("salesGrowthPct")} />
-              <MoneyInput
-                label="Cost of sales"
-                suffix="% of sales"
-                value={draft.projection.materialCostPct}
-                onChange={setProjection("materialCostPct")}
-                placeholder={draft.hasActual ? String(derived.materialCostPct) : "70"}
-              />
-              <MoneyInput
-                label="Indirect expenses, first year"
-                value={draft.projection.indirectExpensesYear1}
-                onChange={setProjection("indirectExpensesYear1")}
-                placeholder={draft.hasActual ? formatAmount(derived.indirectExpensesYear1) : "0"}
-                help="Salaries, rent, office and other"
-              />
-              <MoneyInput label="Expense growth per year" suffix="%" value={draft.projection.expenseGrowthPct} onChange={setProjection("expenseGrowthPct")} />
-              <MoneyInput label="Depreciation rate" suffix="% WDV" value={draft.projection.depreciationPct} onChange={setProjection("depreciationPct")} />
-              <MoneyInput label="Income tax" suffix="% of profit" value={draft.projection.taxPct} onChange={setProjection("taxPct")} />
-              <MoneyInput label="Drawings per year" value={draft.projection.drawingsPerYear} onChange={setProjection("drawingsPerYear")} />
-              <MoneyInput label="Own capital introduced, first year" value={draft.projection.capitalIntroducedYear1} onChange={setProjection("capitalIntroducedYear1")} />
-              <MoneyInput label="New fixed assets / machinery" value={draft.projection.newFixedAssets} onChange={setProjection("newFixedAssets")} />
-              <MoneyInput label="New term loan" value={draft.projection.newTermLoan} onChange={setProjection("newTermLoan")} />
-              <MoneyInput label="Loan interest rate" suffix="% p.a." value={draft.projection.loanInterestPct} onChange={setProjection("loanInterestPct")} />
-              <MoneyInput label="Loan tenure" suffix="years" value={draft.projection.loanTenureYears} onChange={setProjection("loanTenureYears")} />
-              {draft.hasActual ? (
+                </ul>
+              </div>
+            ) : null}
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
+              {actualPeriod ? (
                 <>
-                  <MoneyInput label="Existing loan repaid per year" value={draft.projection.existingLoanRepaymentPerYear} onChange={setProjection("existingLoanRepaymentPerYear")} />
-                  <MoneyInput label="Existing loan interest" suffix="% p.a." value={draft.projection.existingLoanInterestPct} onChange={setProjection("existingLoanInterestPct")} />
+                  <dt className="text-ds-text-muted">Total liabilities</dt>
+                  <dd className="text-right font-semibold tabular-nums">{formatAmount(actualPeriod.bs.totalLiabilities)}</dd>
+                  <dt className="text-ds-text-muted">Total assets</dt>
+                  <dd className="text-right font-semibold tabular-nums">{formatAmount(actualPeriod.bs.totalAssets)}</dd>
+                  <dt className="text-ds-text-muted">Net profit {fyLabel(baseYear).replace("FY ", "")}</dt>
+                  <dd className="text-right font-semibold tabular-nums">{formatAmount(actualPeriod.pl.netProfit)}</dd>
                 </>
               ) : null}
-              <MoneyInput label="Debtors" suffix="days of sales" value={draft.projection.debtorDays} onChange={setProjection("debtorDays")} placeholder={String(draft.hasActual ? derived.debtorDays : 30)} />
-              <MoneyInput label="Stock" suffix="days" value={draft.projection.stockDays} onChange={setProjection("stockDays")} placeholder={String(draft.hasActual ? derived.stockDays : 30)} />
-              <MoneyInput label="Creditors" suffix="days" value={draft.projection.creditorDays} onChange={setProjection("creditorDays")} placeholder={String(draft.hasActual ? derived.creditorDays : 30)} />
-            </Grid>
-          </AdminSection>
-        </AdminCard>
-      </div>
-
-      <aside className="flex flex-col gap-4 lg:sticky lg:top-20" aria-label="Summary">
-        <AdminCard>
-          <h2 className="text-[15px] font-bold text-ds-text-primary">Summary</h2>
-          <p
-            className={cn(
-              "mt-3 flex items-start gap-2 rounded-ds-md px-3 py-2 text-[13px] font-semibold",
-              STATUS_TONE_CLASS[statements.tallies ? "success" : "danger"],
-            )}
-            role="status"
-          >
-            {statements.tallies ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
-            {statements.tallies ? "Balance sheet tallies" : `Does not tally by Rs. ${formatAmount(actualPeriod?.bs.difference ?? 0)}`}
-          </p>
-          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
-            {actualPeriod ? (
-              <>
-                <dt className="text-ds-text-muted">Total liabilities</dt>
-                <dd className="text-right font-semibold tabular-nums">{formatAmount(actualPeriod.bs.totalLiabilities)}</dd>
-                <dt className="text-ds-text-muted">Total assets</dt>
-                <dd className="text-right font-semibold tabular-nums">{formatAmount(actualPeriod.bs.totalAssets)}</dd>
-                <dt className="text-ds-text-muted">Net profit {fyLabel(baseYear).replace("FY ", "")}</dt>
-                <dd className="text-right font-semibold tabular-nums">{formatAmount(actualPeriod.pl.netProfit)}</dd>
-              </>
+              {projected[0] ? (
+                <>
+                  <dt className="text-ds-text-muted">Sales {fyLabel(projected[0].fyStart).replace("FY ", "")}</dt>
+                  <dd className="text-right font-semibold tabular-nums">{formatAmount(projected[0].pl.sales)}</dd>
+                  <dt className="text-ds-text-muted">Net profit {fyLabel(projected[0].fyStart).replace("FY ", "")}</dt>
+                  <dd className="text-right font-semibold tabular-nums">{formatAmount(projected[0].pl.netProfit)}</dd>
+                </>
+              ) : null}
+              <dt className="text-ds-text-muted">Average DSCR</dt>
+              <dd className="text-right font-semibold tabular-nums">{statements.averageDscr?.toFixed(2) ?? "-"}</dd>
+            </dl>
+            {statements.warnings.some((warning) => !warning.startsWith("The actual year does not tally")) ? (
+              <ul className="mt-3 space-y-1.5 text-[12.5px] leading-snug text-ds-text-secondary">
+                {statements.warnings.filter((warning) => !warning.startsWith("The actual year does not tally")).map((warning) => (
+                  <li key={warning} className="flex gap-1.5">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ds-warning" aria-hidden="true" />
+                    {warning}
+                  </li>
+                ))}
+              </ul>
             ) : null}
-            {projected[0] ? (
-              <>
-                <dt className="text-ds-text-muted">Sales {fyLabel(projected[0].fyStart).replace("FY ", "")}</dt>
-                <dd className="text-right font-semibold tabular-nums">{formatAmount(projected[0].pl.sales)}</dd>
-                <dt className="text-ds-text-muted">Net profit {fyLabel(projected[0].fyStart).replace("FY ", "")}</dt>
-                <dd className="text-right font-semibold tabular-nums">{formatAmount(projected[0].pl.netProfit)}</dd>
-              </>
-            ) : null}
-            <dt className="text-ds-text-muted">Average DSCR</dt>
-            <dd className="text-right font-semibold tabular-nums">{statements.averageDscr?.toFixed(2) ?? "-"}</dd>
-          </dl>
-          {statements.warnings.length ? (
-            <ul className="mt-3 space-y-1.5 text-[12.5px] leading-snug text-ds-text-secondary">
-              {statements.warnings.map((warning) => (
-                <li key={warning} className="flex gap-1.5">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ds-warning" aria-hidden="true" />
-                  {warning}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </AdminCard>
+          </AdminCard>
 
-        <AdminCard className="flex flex-col gap-2">
-          {error ? (
-            <p role="alert" className="text-[13px] font-semibold text-ds-danger">
-              {error}
+          <AdminCard className="flex flex-col gap-2">
+            {error ? (
+              <p role="alert" className="text-[13px] font-semibold text-ds-danger">
+                {error}
+              </p>
+            ) : null}
+            <AdminButton variant="primary" size="lg" loading={saving === "final"} disabled={saving !== null || !statements.tallies || checks.errorCount > 0} onClick={() => save("final")}>
+              Save as final
+            </AdminButton>
+            <AdminButton variant="secondary" size="lg" loading={saving === "draft"} disabled={saving !== null} onClick={() => save("draft")}>
+              Save draft
+            </AdminButton>
+            <p className="text-[12px] leading-snug text-ds-text-muted">
+              A draft prints with a DRAFT watermark. Final is available once the actual year tallies and no box is red.
             </p>
-          ) : null}
-          <AdminButton variant="primary" size="lg" loading={saving === "final"} disabled={saving !== null || !statements.tallies} onClick={() => save("final")}>
-            Save as final
-          </AdminButton>
-          <AdminButton variant="secondary" size="lg" loading={saving === "draft"} disabled={saving !== null} onClick={() => save("draft")}>
-            Save draft
-          </AdminButton>
-          <p className="text-[12px] leading-snug text-ds-text-muted">
-            A draft prints with a DRAFT watermark. Final is available once the actual year tallies.
-          </p>
-        </AdminCard>
-      </aside>
-    </div>
+          </AdminCard>
+        </aside>
+      </div>
+    </ChecksContext.Provider>
   );
 }
