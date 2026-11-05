@@ -92,7 +92,7 @@ describe("number format", () => {
   });
 
   it("marks the box with the broken figure", () => {
-    expect(run({ actual: { rent: "60.000.00" } }).issues["actual.rent"]).toMatchObject({ level: "error", message: expect.stringMatching(/valid number/) });
+    expect(run({ actual: { rent: "60.000.00" } }).issues["actual.rent"]).toMatchObject({ level: "error", message: expect.stringMatching(/sahi number nahi/) });
   });
 });
 
@@ -100,24 +100,24 @@ describe("balance sheet does not tally", () => {
   it("puts the error on cash and says what cash should be", () => {
     const issue = run({ actual: { cashAndBank: 140_000 } }).issues["actual.cashAndBank"];
     expect(issue?.level).toBe("error");
-    expect(issue?.message).toMatch(/Liabilities .* are Rs\. 10,000\.00 more than assets/);
-    expect(issue?.message).toMatch(/cash and bank should be Rs\. 1,50,000\.00/);
+    expect(issue?.message).toMatch(/Liabilities .* se Rs\. 10,000\.00 zyada hain/);
+    expect(issue?.message).toMatch(/cash and bank Rs\. 1,50,000\.00 hona chahiye/);
   });
 
   it("explains the other direction too", () => {
     const issue = run({ actual: { debtors: 260_000 } }).issues["actual.cashAndBank"];
-    expect(issue?.message).toMatch(/Assets .* are Rs\. 10,000\.00 more than liabilities/);
-    expect(issue?.message).toMatch(/should be Rs\. 1,40,000\.00/);
+    expect(issue?.message).toMatch(/Assets .* se Rs\. 10,000\.00 zyada hain/);
+    expect(issue?.message).toMatch(/Rs\. 1,40,000\.00 hona chahiye/);
   });
 
   it("does not suggest a cash figure while another box is unreadable", () => {
     const message = run({ actual: { rent: "60.000.00" } }).issues["actual.cashAndBank"]?.message ?? "";
-    expect(message).toMatch(/Rent is not a valid number and counts as 0/);
-    expect(message).not.toMatch(/should be/);
+    expect(message).toMatch(/Rent mein sahi number nahi hai, theek hone tak wo 0 gina jaayega/);
+    expect(message).not.toMatch(/hona chahiye/);
   });
 
   it("says when even nil cash cannot close the gap", () => {
-    expect(run({ actual: { debtors: 600_000 } }).issues["actual.cashAndBank"]?.message).toMatch(/Even nil cash/);
+    expect(run({ actual: { debtors: 600_000 } }).issues["actual.cashAndBank"]?.message).toMatch(/Cash zero karne par bhi/);
   });
 });
 
@@ -129,8 +129,8 @@ describe("figures that cannot be right", () => {
   });
 
   it("tax above the profit, and tax on a loss", () => {
-    expect(run({ actual: { tax: 250_000, cashAndBank: 0 } }).issues["actual.tax"]?.message).toMatch(/more than the profit before tax \(Rs\. 2,00,000\.00\)/);
-    expect(run({ actual: { sales: 1_000_000, tax: 1000 } }).issues["actual.tax"]?.message).toMatch(/no profit before tax/);
+    expect(run({ actual: { tax: 250_000, cashAndBank: 0 } }).issues["actual.tax"]?.message).toMatch(/profit before tax \(Rs\. 2,00,000\.00\) se zyada hai/);
+    expect(run({ actual: { sales: 1_000_000, tax: 1000 } }).issues["actual.tax"]?.message).toMatch(/profit before tax nahi hai/);
   });
 
   it("drawings that make capital negative", () => {
@@ -145,7 +145,7 @@ describe("figures that cannot be right", () => {
 describe("figures a bank will ask about", () => {
   it("interest with no loan, and a loan with no interest", () => {
     expect(run({ actual: { termLoan: 0, otherCurrentLiabilities: 250_000 } }).issues["actual.interest"]?.level).toBe("warning");
-    expect(run({ actual: { interest: 0, otherExpenses: 50_000 } }).issues["actual.interest"]?.message).toMatch(/no interest/);
+    expect(run({ actual: { interest: 0, otherExpenses: 50_000 } }).issues["actual.interest"]?.message).toMatch(/koi byaaj nahi/);
   });
 
   it("debtors above a year's sales", () => {
@@ -156,14 +156,14 @@ describe("figures a bank will ask about", () => {
 describe("customer details", () => {
   it("PAN and GSTIN format, and a GSTIN of a different PAN", () => {
     expect(run({ details: { pan: "ABCD1234F" } }).issues.pan?.level).toBe("error");
-    expect(run({ details: { gstin: "09ABCDE1234F" } }).issues.gstin?.message).toMatch(/15 characters/);
-    expect(run({ details: { gstin: "09PQRST6789K1Z5" } }).issues.gstin?.message).toMatch(/belongs to PAN PQRST6789K/);
+    expect(run({ details: { gstin: "09ABCDE1234F" } }).issues.gstin?.message).toMatch(/15 character ka hota hai/);
+    expect(run({ details: { gstin: "09PQRST6789K1Z5" } }).issues.gstin?.message).toMatch(/PAN PQRST6789K ka hai/);
   });
 
   it("mobile and pincode say what is wrong", () => {
-    expect(run({ details: { mobile: "98765" } }).issues.mobile?.message).toMatch(/5 digits; it needs 10/);
-    expect(run({ details: { mobile: "1234567890" } }).issues.mobile?.message).toMatch(/starts with 6, 7, 8 or 9/);
-    expect(run({ details: { pincode: "28500" } }).issues.pincode?.message).toMatch(/needs 6/);
+    expect(run({ details: { mobile: "98765" } }).issues.mobile?.message).toMatch(/5 digit hain, 10 chahiye/);
+    expect(run({ details: { mobile: "1234567890" } }).issues.mobile?.message).toMatch(/6, 7, 8 ya 9 se shuru/);
+    expect(run({ details: { pincode: "28500" } }).issues.pincode?.message).toMatch(/6 chahiye/);
   });
 
   it("waits for a save attempt before calling a name missing", () => {
@@ -183,7 +183,7 @@ describe("projections", () => {
 
   it("loan applied for differs from the projected loan", () => {
     const result = run({ projection: { newTermLoan: 500_000, newFixedAssets: 700_000 }, details: { loanAmount: "600000" } });
-    expect(result.issues["projection.newTermLoan"]?.message).toMatch(/applied for is Rs\. 6,00,000\.00/);
+    expect(result.issues["projection.newTermLoan"]?.message).toMatch(/Apply kiya loan Rs\. 6,00,000\.00 hai/);
   });
 
   it("a new business needs first-year sales", () => {

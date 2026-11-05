@@ -94,7 +94,7 @@ function inputToRow(input: BalanceSheetInput) {
 export function finalBlocker(input: BalanceSheetInput) {
   if (input.status !== "final") return null;
   const statements = buildStatements(figuresOf(input));
-  return statements.tallies ? null : "The actual year does not tally, so this sheet cannot be marked final. Save it as a draft and correct the figures.";
+  return statements.tallies ? null : "Actual saal ki balance sheet tally nahi ho rahi, isliye ise final nahi kar sakte. Draft save karein aur figures theek karein.";
 }
 
 export async function listBalanceSheets({ query = "", status = "all" }: { query?: string; status?: string } = {}) {
@@ -140,7 +140,7 @@ export async function getBalanceSheet(id: string) {
 
 export async function createBalanceSheet(input: BalanceSheetInput, userId: string) {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return { ok: false as const, message: "The database is not configured on this server." };
+  if (!supabase) return { ok: false as const, message: "Is server par database set nahi hai." };
   const { data, error } = await supabase
     .from("balance_sheets")
     .insert({ ...inputToRow(input), created_by: userId, updated_by: userId })
@@ -148,14 +148,14 @@ export async function createBalanceSheet(input: BalanceSheetInput, userId: strin
     .single();
   if (error || !data) {
     console.error("[balance-sheets] create failed", error?.message);
-    return { ok: false as const, message: "The balance sheet could not be saved." };
+    return { ok: false as const, message: "Balance sheet save nahi ho payi. Dobara koshish karein." };
   }
   return { ok: true as const, id: String(data.id) };
 }
 
 export async function updateBalanceSheet(id: string, input: BalanceSheetInput, userId: string) {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return { ok: false as const, message: "The database is not configured on this server." };
+  if (!supabase) return { ok: false as const, message: "Is server par database set nahi hai." };
   const { data, error } = await supabase
     .from("balance_sheets")
     .update({ ...inputToRow(input), updated_by: userId })
@@ -164,7 +164,7 @@ export async function updateBalanceSheet(id: string, input: BalanceSheetInput, u
     .maybeSingle();
   if (error) {
     console.error("[balance-sheets] update failed", error.message);
-    return { ok: false as const, message: "The balance sheet could not be saved." };
+    return { ok: false as const, message: "Balance sheet save nahi ho payi. Dobara koshish karein." };
   }
   if (!data) return { ok: false as const, message: "Balance sheet not found." };
   return { ok: true as const, id };

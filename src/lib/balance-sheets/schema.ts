@@ -8,7 +8,7 @@ import { CONSTITUTIONS, type BalanceSheetFigures, type Constitution } from "@/li
  * parses the request body with this schema before anything is stored.
  */
 
-const amount = z.coerce.number().finite().min(0, "Amount cannot be negative").max(1e12, "Amount is too large");
+const amount = z.coerce.number().finite().min(0, "Amount minus mein nahi ho sakta").max(1e12, "Amount bahut bada hai");
 const optionalAmount = z.union([z.null(), amount]);
 const pct = (max: number) => z.coerce.number().finite().min(0).max(max);
 const optionalPct = (max: number) => z.union([z.null(), pct(max)]);
@@ -77,15 +77,15 @@ export const projectionSchema = z.object({
 });
 
 export const balanceSheetSchema = z.object({
-  businessName: z.string().trim().min(2, "Enter the business name").max(160),
-  ownerName: z.string().trim().min(2, "Enter the owner's name").max(160),
+  businessName: z.string().trim().min(2, "Business ka naam bharein").max(160),
+  ownerName: z.string().trim().min(2, "Owner ka naam bharein").max(160),
   constitution: z.enum(constitutionValues),
   natureOfBusiness: text(200),
   pan: z
     .string()
     .trim()
     .toUpperCase()
-    .refine((value) => value === "" || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value), "PAN should look like ABCDE1234F")
+    .refine((value) => value === "" || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value), "PAN aisa hona chahiye: ABCDE1234F")
     .transform((value) => value || null)
     .nullable()
     .optional()
@@ -94,7 +94,7 @@ export const balanceSheetSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .refine((value) => value === "" || /^[0-9]{2}[A-Z0-9]{13}$/.test(value), "GSTIN should be 15 characters")
+    .refine((value) => value === "" || /^[0-9]{2}[A-Z0-9]{13}$/.test(value), "GSTIN 15 character ka hona chahiye")
     .transform((value) => value || null)
     .nullable()
     .optional()
@@ -106,7 +106,7 @@ export const balanceSheetSchema = z.object({
   pincode: z
     .string()
     .trim()
-    .refine((value) => value === "" || /^[1-9][0-9]{5}$/.test(value), "Pincode should be 6 digits")
+    .refine((value) => value === "" || /^[1-9][0-9]{5}$/.test(value), "Pincode 6 digit ka hona chahiye")
     .transform((value) => value || null)
     .nullable()
     .optional()
@@ -114,7 +114,7 @@ export const balanceSheetSchema = z.object({
   mobile: z
     .string()
     .trim()
-    .refine((value) => value === "" || /^[6-9][0-9]{9}$/.test(value), "Mobile should be 10 digits")
+    .refine((value) => value === "" || /^[6-9][0-9]{9}$/.test(value), "Mobile 10 digit ka hona chahiye")
     .transform((value) => value || null)
     .nullable()
     .optional()
@@ -122,7 +122,7 @@ export const balanceSheetSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((value) => value === "" || z.email().safeParse(value).success, "Enter a valid email")
+    .refine((value) => value === "" || z.email().safeParse(value).success, "Sahi email bharein")
     .transform((value) => value || null)
     .nullable()
     .optional()
@@ -152,7 +152,7 @@ export function figuresOf(input: Pick<BalanceSheetInput, "baseYear" | "hasActual
 /** The first problem in a failed parse, worded for a person. */
 export function firstIssue(error: z.ZodError) {
   const issue = error.issues[0];
-  if (!issue) return "Please check the form.";
+  if (!issue) return "Form check karein.";
   const field = issue.path.join(" › ");
   return field ? `${field}: ${issue.message}` : issue.message;
 }

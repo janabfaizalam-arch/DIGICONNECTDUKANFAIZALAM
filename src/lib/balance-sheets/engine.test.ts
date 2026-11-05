@@ -70,7 +70,7 @@ describe("actual year", () => {
     expect(statements.periods[0].bs.cashAndBank).toBe(140_000);
     expect(statements.periods[0].bs.difference).toBe(10_000);
     expect(statements.tallies).toBe(false);
-    expect(statements.warnings.join(" ")).toMatch(/does not tally/);
+    expect(statements.warnings.join(" ")).toMatch(/tally nahi ho rahi/);
   });
 });
 
