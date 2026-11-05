@@ -1,8 +1,8 @@
 "use client";
 
-import { cloneElement, createContext, useContext, useId, useMemo, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { cloneElement, createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 import { AdminButton, AdminField, AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/primitives/controls-ui";
 import { AdminCard, AdminSection } from "@/components/admin/primitives/layout";
@@ -19,6 +19,7 @@ import {
   type ProjectionAssumptions,
 } from "@/lib/balance-sheets/engine";
 import { STATUS_TONE_CLASS, STATUS_TONE_TEXT } from "@/lib/admin/status-tone";
+import { FIELD_GUIDE, IMPORTANCE_LABEL, type GuideKey, type Importance } from "@/lib/balance-sheets/field-guide";
 import { checkBalanceSheet, FIELD_LABELS, FIELD_ORDER, type CheckResult, type DetailKey, type FieldKey } from "@/lib/balance-sheets/checks";
 import { cn } from "@/lib/utils";
 
@@ -152,41 +153,106 @@ const ChecksContext = createContext<{ result: CheckResult; touch: (key: DetailKe
 const DETAIL_KEYS = new Set<FieldKey>(["businessName", "ownerName", "pan", "gstin", "mobile", "pincode", "email", "loanAmount"]);
 
 /** A stable DOM id per field, so the summary can jump straight to the box. */
-export const fieldDomId = (key: FieldKey) => `bs-${key.replace(".", "-")}`;
+export const fieldDomId = (key: FieldKey | GuideKey) => `bs-${key.replace(".", "-")}`;
 
-type ControlProps = { id?: string; "aria-describedby"?: string; invalid?: boolean; className?: string; onBlur?: (event: never) => void };
+type ControlProps = {
+  id?: string;
+  "aria-describedby"?: string;
+  invalid?: boolean;
+  className?: string;
+  onBlur?: (event: never) => void;
+  onFocus?: (event: never) => void;
+  onKeyDown?: (event: never) => void;
+};
+
+const IMPORTANCE_TONE: Record<Importance, "danger" | "warning" | "neutral"> = {
+  required: "danger",
+  important: "warning",
+  optional: "neutral",
+};
+
+/** How long the pointer has to rest on a box before its guide opens. */
+const HOVER_DELAY_MS = 450;
 
 /**
- * AdminField with its label tied to the control, and the field's mistake shown
- * right under it: an error turns the box red, a warning puts an amber note.
+ * AdminField with its label tied to the control, the field's mistake shown
+ * right under it (an error turns the box red, a warning puts an amber note),
+ * and a guide card saying what to enter, where to find it, why it matters and
+ * whether it can be left blank.
+ *
+ * The card opens when the pointer rests on the field or the box gets focus
+ * (so a tap on a phone opens it too), and closes on typing, Escape, blur or
+ * the pointer leaving. Its text is always in the DOM and tied to the input
+ * with aria-describedby, so a screen reader hears it without hovering.
  */
 function Field({
   children,
   help,
   field,
+  guide: guideKey,
   ...props
-}: Omit<ComponentProps<typeof AdminField>, "htmlFor" | "children" | "error"> & { field?: FieldKey; children: ReactElement<ControlProps> }) {
+}: Omit<ComponentProps<typeof AdminField>, "htmlFor" | "children" | "error"> & {
+  field?: FieldKey;
+  guide?: GuideKey;
+  children: ReactElement<ControlProps>;
+}) {
   const generated = useId();
   const checks = useContext(ChecksContext);
-  const id = field ? fieldDomId(field) : generated;
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => (timer.current ? clearTimeout(timer.current) : undefined), []);
+
+  const domKey = field ?? guideKey;
+  const id = domKey ? fieldDomId(domKey) : generated;
   const issue = field ? checks?.result.issues[field] : undefined;
   const isError = issue?.level === "error";
   const isWarning = issue?.level === "warning";
-  const describedBy = isError ? `${id}-error` : isWarning ? `${id}-warning` : help ? `${id}-help` : undefined;
+  const guide = FIELD_GUIDE[(guideKey ?? field) as GuideKey] as (typeof FIELD_GUIDE)[GuideKey] | undefined;
+  const guideId = `${id}-guide`;
+  const describedBy =
+    [isError ? `${id}-error` : isWarning ? `${id}-warning` : help ? `${id}-help` : null, guide ? guideId : null].filter(Boolean).join(" ") || undefined;
+
+  const cancelTimer = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  const close = () => {
+    cancelTimer();
+    setOpen(false);
+  };
 
   const control = cloneElement(children, {
     id,
     "aria-describedby": describedBy,
     invalid: isError || undefined,
     className: cn(children.props.className, isWarning && "ring-2 ring-ds-warning"),
+    onFocus: (event: never) => {
+      children.props.onFocus?.(event);
+      if (guide) setOpen(true);
+    },
     onBlur: (event: never) => {
       children.props.onBlur?.(event);
+      close();
       if (field && DETAIL_KEYS.has(field)) checks?.touch(field as DetailKey);
+    },
+    onKeyDown: (event: never) => {
+      children.props.onKeyDown?.(event);
+      const key = (event as unknown as KeyboardEvent).key;
+      // Typing means the admin knows what to enter; get out of the way.
+      if (key === "Escape" || key.length === 1 || key === "Backspace" || key === "Delete") close();
     },
   });
 
   return (
-    <div>
+    <div
+      className="relative"
+      onMouseEnter={() => {
+        if (!guide) return;
+        cancelTimer();
+        timer.current = setTimeout(() => setOpen(true), HOVER_DELAY_MS);
+      }}
+      onMouseLeave={close}
+    >
       <AdminField {...props} help={isWarning ? undefined : help} error={isError ? issue.message : undefined} htmlFor={id}>
         {control}
       </AdminField>
@@ -195,6 +261,36 @@ function Field({
           <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {issue.message}
         </p>
+      ) : null}
+      {guide ? (
+        <div
+          id={guideId}
+          role="tooltip"
+          hidden={!open}
+          className="absolute left-0 top-full z-30 mt-1.5 w-full min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] rounded-ds-md border border-ds-border bg-ds-surface p-3 text-xs leading-snug text-ds-text-secondary shadow-ds-lg"
+        >
+          <span className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1 font-bold text-ds-text-primary">
+              <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {props.label.replace(/ \((?:Rs\.|[^)]*)\)$/, "")}
+            </span>
+            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", STATUS_TONE_CLASS[IMPORTANCE_TONE[guide.importance]])}>
+              {IMPORTANCE_LABEL[guide.importance]}
+            </span>
+          </span>
+          <span className="mt-2 block">
+            <span className="font-semibold text-ds-text-primary">What to enter: </span>
+            {guide.what}
+          </span>
+          <span className="mt-1.5 block">
+            <span className="font-semibold text-ds-text-primary">Where to find it: </span>
+            {guide.where}
+          </span>
+          <span className="mt-1.5 block">
+            <span className="font-semibold text-ds-text-primary">Why it matters: </span>
+            {guide.why}
+          </span>
+        </div>
       ) : null}
     </div>
   );
@@ -359,7 +455,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex flex-col gap-6">
           <AdminCard>
-            <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank.">
+            <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank. Rest the pointer on any box, or tap into it, to see what to enter and where to find it.">
               <Grid>
                 <Field field="businessName" label="Business / firm name" required>
                   <AdminInput value={draft.businessName} onChange={(event) => set("businessName", event.target.value)} placeholder="Shree Ganesh Traders" />
@@ -367,7 +463,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                 <Field field="ownerName" label={draft.constitution === "proprietorship" ? "Proprietor's name" : "Partners / directors"} required>
                   <AdminInput value={draft.ownerName} onChange={(event) => set("ownerName", event.target.value)} />
                 </Field>
-                <Field label="Constitution">
+                <Field guide="constitution" label="Constitution">
                   <AdminSelect value={draft.constitution} onChange={(event) => set("constitution", event.target.value as Constitution)}>
                     {CONSTITUTIONS.map((entry) => (
                       <option key={entry.value} value={entry.value}>
@@ -376,7 +472,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                     ))}
                   </AdminSelect>
                 </Field>
-                <Field label="Nature of business">
+                <Field guide="natureOfBusiness" label="Nature of business">
                   <AdminInput value={draft.natureOfBusiness} onChange={(event) => set("natureOfBusiness", event.target.value)} placeholder="Wholesale trading of grocery" />
                 </Field>
                 <Field field="pan" label="PAN">
@@ -385,7 +481,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                 <Field field="gstin" label="GSTIN">
                   <AdminInput value={draft.gstin} maxLength={15} onChange={(event) => set("gstin", event.target.value.toUpperCase())} />
                 </Field>
-                <Field label="Udyam registration no.">
+                <Field guide="udyamNumber" label="Udyam registration no.">
                   <AdminInput value={draft.udyamNumber} onChange={(event) => set("udyamNumber", event.target.value.toUpperCase())} />
                 </Field>
                 <Field field="mobile" label="Mobile">
@@ -395,23 +491,23 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                   <AdminInput value={draft.email} type="email" onChange={(event) => set("email", event.target.value)} />
                 </Field>
               </Grid>
-              <Field label="Business address">
+              <Field guide="address" label="Business address">
                 <AdminTextarea value={draft.address} rows={2} onChange={(event) => set("address", event.target.value)} />
               </Field>
               <Grid>
-                <Field label="City">
+                <Field guide="city" label="City">
                   <AdminInput value={draft.city} onChange={(event) => set("city", event.target.value)} />
                 </Field>
-                <Field label="State">
+                <Field guide="state" label="State">
                   <AdminInput value={draft.state} onChange={(event) => set("state", event.target.value)} />
                 </Field>
                 <Field field="pincode" label="Pincode">
                   <AdminInput value={draft.pincode} inputMode="numeric" maxLength={6} onChange={(event) => set("pincode", event.target.value.replace(/\D/g, ""))} />
                 </Field>
-                <Field label="Bank and branch">
+                <Field guide="bankName" label="Bank and branch">
                   <AdminInput value={draft.bankName} onChange={(event) => set("bankName", event.target.value)} placeholder="State Bank of India, Orai" />
                 </Field>
-                <Field label="Purpose of loan">
+                <Field guide="loanPurpose" label="Purpose of loan">
                   <AdminInput value={draft.loanPurpose} onChange={(event) => set("loanPurpose", event.target.value)} placeholder="Working capital / machinery" />
                 </Field>
                 <MoneyInput field="loanAmount" label="Loan amount applied for" value={draft.loanAmount} onChange={(value) => set("loanAmount", value)} />
@@ -422,7 +518,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
           <AdminCard>
             <AdminSection title="2. Period">
               <Grid>
-                <Field label="Last completed financial year" help={`Projections start from ${fyLabel(baseYear + 1)}.`}>
+                <Field guide="baseYear" label="Last completed financial year" help={`Projections start from ${fyLabel(baseYear + 1)}.`}>
                   <AdminSelect value={draft.baseYear} onChange={(event) => set("baseYear", event.target.value)}>
                     {yearOptions.map((year) => (
                       <option key={year} value={year}>
@@ -431,7 +527,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                     ))}
                   </AdminSelect>
                 </Field>
-                <Field label="Years to project">
+                <Field field="projection.years" label="Years to project">
                   <AdminSelect value={draft.projection.years} onChange={(event) => setProjection("years")(event.target.value)}>
                     {[1, 2, 3, 4, 5].map((years) => (
                       <option key={years} value={years}>
@@ -440,7 +536,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                     ))}
                   </AdminSelect>
                 </Field>
-                <Field label="Figures for the last year">
+                <Field guide="hasActual" label="Figures for the last year">
                   <AdminSelect value={draft.hasActual ? "yes" : "no"} onChange={(event) => set("hasActual", event.target.value === "yes")}>
                     <option value="yes">Available — include the actual year</option>
                     <option value="no">New business — projections only</option>
