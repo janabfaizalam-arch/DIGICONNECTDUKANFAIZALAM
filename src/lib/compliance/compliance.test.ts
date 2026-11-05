@@ -117,3 +117,61 @@ describe("API route inventory", () => {
     expect(rows.filter((r) => r.risk === "review").map((r) => r.route)).toEqual([]);
   });
 });
+
+describe("SECURITY DEFINER functions", () => {
+  // PostgreSQL lets PUBLIC execute every new function, and Supabase exposes
+  // them at /rest/v1/rpc/<name> to anyone with the anon key. A definer function
+  // runs as its owner, past RLS, so each one must either be revoked from
+  // public/anon or be on this reviewed list of read-only, caller-safe helpers.
+  const CALLABLE_BY_DESIGN = new Set([
+    "is_admin_role",
+    "is_active_approved_agent",
+    "current_app_role",
+    "is_agent_role",
+    "is_agent_or_admin",
+    "is_admin_from_db",
+    "get_public_insurance_quotation",
+  ]);
+
+  it("are not left callable by anon", () => {
+    const sql = readdirSync(join(root, "supabase/migrations"))
+      .filter((f: string) => f.endsWith(".sql"))
+      .sort()
+      .map((f: string) => read(`supabase/migrations/${f}`))
+      .join("\n");
+
+    // Replay creates and drops in migration order, so a function a later
+    // migration dropped does not count.
+    const definers = new Set<string>();
+    const eventRe =
+      /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?"?([a-z_0-9]+)"?\s*\(([\s\S]*?)\$(\w*)\$[\s\S]*?\$\3\$([^;]*);|drop\s+function\s+(?:if\s+exists\s+)?(?:public\.)?"?([a-z_0-9]+)"?/gi;
+    for (const m of sql.matchAll(eventRe)) {
+      if (m[5]) {
+        definers.delete(m[5].toLowerCase());
+        continue;
+      }
+      const name = m[1].toLowerCase();
+      if (/security\s+definer/i.test(m[2]) || /security\s+definer/i.test(m[4])) definers.add(name);
+      else definers.delete(name);
+    }
+
+    const locked = new Set<string>();
+    for (const m of sql.matchAll(/revoke\s+(?:all|execute)\s+on\s+function\s+(?:public\.)?([a-z_0-9]+)[^;]*from[^;]*\b(public|anon)\b/gi)) {
+      locked.add(m[1].toLowerCase());
+    }
+    const lockdown = read("supabase/migrations/20261105140000_lock_down_definer_functions.sql");
+    for (const m of lockdown.matchAll(/^\s+'([a-z_0-9]+)',?$/gm)) locked.add(m[1]);
+    locked.add("claim_customer_applications");
+
+    expect(definers.size).toBeGreaterThan(20);
+    const open = [...definers].filter((name) => !locked.has(name) && !CALLABLE_BY_DESIGN.has(name)).sort();
+    expect(open).toEqual([]);
+  });
+
+  it("include the money-moving wallet functions in the lockdown", () => {
+    const lockdown = read("supabase/migrations/20261105140000_lock_down_definer_functions.sql");
+    for (const name of ["admin_adjust_wallet", "admin_adjust_reward_wallet", "post_reward_wallet_transaction", "credit_reward_points", "redeem_wallet_balance", "reverse_reward_wallet_transaction"]) {
+      expect(lockdown).toContain(`'${name}'`);
+    }
+  });
+});
