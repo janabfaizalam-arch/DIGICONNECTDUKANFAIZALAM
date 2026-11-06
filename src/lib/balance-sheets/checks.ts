@@ -1,4 +1,5 @@
 import { formatAmount, TALLY_TOLERANCE, type ActualFigures, type ProjectionAssumptions, type Statements } from "@/lib/balance-sheets/engine";
+import { mudraCategory, schemeTerms } from "@/lib/balance-sheets/schemes";
 
 /**
  * Field-by-field checks for the balance sheet form.
@@ -95,7 +96,20 @@ export const FIELD_LABELS: Record<FieldKey, string> = {
   "projection.debtorDays": "Debtors (days)",
   "projection.creditorDays": "Creditors (days)",
   "projection.stockDays": "Stock (days)",
+  "projection.scheme": "Loan yojana",
+  "projection.schemeSector": "Sector",
+  "projection.schemeArea": "Area",
+  "projection.schemeCategory": "Category",
+  "projection.workingCapitalNeed": "Working capital requirement",
+  "projection.ccLimit": "CC / working capital limit",
+  "projection.ccInterestPct": "CC interest rate",
+  "projection.subsidyAmount": "Margin money / capital subsidy",
+  "projection.interestSubventionPct": "Interest subvention",
+  "projection.interestSubventionYears": "Interest subvention years",
 };
+
+/** Projection boxes that hold a choice, not a number. */
+export const CHOICE_PROJECTION_KEYS = new Set<keyof ProjectionAssumptions>(["scheme", "schemeSector", "schemeArea", "schemeCategory"]);
 
 /** The order fields appear in on the form, so the summary reads top to bottom. */
 export const FIELD_ORDER = Object.keys(FIELD_LABELS) as FieldKey[];
@@ -131,6 +145,7 @@ export function checkBalanceSheet(input: CheckInput): CheckResult {
   checkNumberFormat(input, error);
   if (input.hasActual) checkActual(input, error, warn);
   checkProjection(input, error, warn);
+  checkScheme(input, error, warn);
 
   const all = Object.values(issues) as FieldIssue[];
   return {
@@ -190,6 +205,7 @@ function checkNumberFormat({ hasActual, actualText, projectionText }: CheckInput
     }
   }
   for (const [key, text] of Object.entries(projectionText)) {
+    if (CHOICE_PROJECTION_KEYS.has(key as keyof ProjectionAssumptions)) continue;
     if (!isValidNumberText(text)) error(`projection.${key as keyof ProjectionAssumptions}`, message);
   }
 }
@@ -322,7 +338,8 @@ function checkProjection({ hasActual, projectionText, actualText, details }: Che
     }
 
     const applied = value(details.loanAmount);
-    if (applied > 0 && Math.abs(applied - newLoan) > TALLY_TOLERANCE) {
+    // With a CC limit as well, the scheme check compares against term + CC.
+    if (applied > 0 && value(projectionText.ccLimit) <= 0 && Math.abs(applied - newLoan) > TALLY_TOLERANCE) {
       warn("projection.newTermLoan", `Apply kiya loan ${rs(applied)} hai par projection mein ${rs(newLoan)} hai. Dono same rakhein, jab tak kuch hissa working capital ka na ho.`);
     }
   }
@@ -338,5 +355,77 @@ function checkProjection({ hasActual, projectionText, actualText, details }: Che
 
   for (const key of ["debtorDays", "creditorDays", "stockDays"] as const) {
     if (!blank(key) && p(key) > 365) error(`projection.${key}`, "Ye ek saal (365 din) se zyada hai. Figure check karein.");
+  }
+}
+
+/**
+ * Loan structure and scheme limits. Scheme figures are defaults that banks
+ * apply with their own circulars, so going past a scheme limit is a warning
+ * the admin should look at, not a block; a project that does not add up
+ * (means of finance short of the cost) is an error.
+ */
+function checkScheme({ projectionText, details }: CheckInput, error: Report, warn: Report) {
+  const p = (key: keyof ProjectionAssumptions) => value(projectionText[key]);
+  const fixedAssets = p("newFixedAssets");
+  const workingCapital = p("workingCapitalNeed");
+  const termLoan = p("newTermLoan");
+  const ccLimit = p("ccLimit");
+  const own = p("capitalIntroducedYear1");
+  const cost = fixedAssets + workingCapital;
+  const means = own + termLoan + ccLimit;
+  const bankLoan = termLoan + ccLimit;
+
+  if (ccLimit > 0 && p("ccInterestPct") <= 0) warn("projection.ccInterestPct", "CC limit bhari hai par byaaj ka rate nahi. Bank ka CC rate bharein.");
+  if (p("interestSubventionPct") > 0 && p("interestSubventionYears") <= 0) {
+    error("projection.interestSubventionYears", "Byaaj mein chhoot ka percent bhara hai par kitne saal, ye nahi. Saal bharein.");
+  }
+
+  if (cost > 0 && Math.abs(means - cost) > TALLY_TOLERANCE) {
+    const short = means < cost;
+    (short ? error : warn)(
+      "projection.workingCapitalNeed",
+      short
+        ? `Project cost ${rs(cost)} hai par means of finance (own contribution + term loan + CC) sirf ${rs(means)}. ${rs(cost - means)} ka intezaam dikhayein.`
+        : `Means of finance ${rs(means)} project cost ${rs(cost)} se ${rs(means - cost)} zyada hai. Loan ya own contribution check karein.`,
+    );
+  }
+
+  const applied = value(details.loanAmount);
+  if (applied > 0 && ccLimit > 0 && Math.abs(applied - bankLoan) > TALLY_TOLERANCE) {
+    warn("loanAmount", `Apply kiya loan ${rs(applied)} hai, par term loan + CC milakar ${rs(bankLoan)} hai.`);
+  }
+
+  const scheme = projectionText.scheme as ProjectionAssumptions["scheme"];
+  const terms = schemeTerms(scheme, {
+    sector: projectionText.schemeSector as ProjectionAssumptions["schemeSector"],
+    area: projectionText.schemeArea as ProjectionAssumptions["schemeArea"],
+    category: projectionText.schemeCategory as ProjectionAssumptions["schemeCategory"],
+  });
+  if (!terms || scheme === "none" || scheme === "other") return;
+
+  if (terms.maxProjectCost !== null && cost > terms.maxProjectCost + TALLY_TOLERANCE) {
+    warn("projection.newFixedAssets", `${terms.label} mein project cost ${rs(terms.maxProjectCost)} tak hi hoti hai; yahan ${rs(cost)} hai.`);
+  }
+  if (terms.maxLoan !== null && bankLoan > terms.maxLoan + TALLY_TOLERANCE) {
+    warn("projection.newTermLoan", `${terms.label} mein loan ${rs(terms.maxLoan)} tak hi milta hai; yahan term loan + CC ${rs(bankLoan)} hai.`);
+  }
+  if (scheme === "mudra" && bankLoan > 0) {
+    const category = mudraCategory(bankLoan);
+    if (category?.name === "Tarun Plus") {
+      warn("projection.newTermLoan", "Ye Tarun Plus category ka loan hai (10 se 20 lakh), jo sirf pehle Tarun loan samay par chukane walon ko milta hai.");
+    }
+  }
+  if (terms.needsComposite && (termLoan <= 0 || ccLimit <= 0)) {
+    warn("projection.ccLimit", `${terms.label} mein composite loan hota hai: term loan aur CC (working capital) dono bharein.`);
+  }
+  if (cost > 0) {
+    const required = (cost * terms.ownContributionPct) / 100;
+    if (own + TALLY_TOLERANCE < required) {
+      warn("projection.capitalIntroducedYear1", `${terms.label} mein own contribution project cost ka ${terms.ownContributionPct}% (${rs(required)}) hona chahiye; yahan ${rs(own)} hai.`);
+    }
+    const maxSubsidy = Math.min((cost * terms.subsidyPct) / 100, terms.subsidyCap ?? Number.POSITIVE_INFINITY);
+    if (p("subsidyAmount") > maxSubsidy + TALLY_TOLERANCE) {
+      warn("projection.subsidyAmount", `${terms.label} ke hisaab se subsidy zyada se zyada ${rs(maxSubsidy)} banti hai; yahan ${rs(p("subsidyAmount"))} hai.`);
+    }
   }
 }

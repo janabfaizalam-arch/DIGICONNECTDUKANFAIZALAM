@@ -74,6 +74,18 @@ export const projectionSchema = z.object({
   debtorDays: optionalDays,
   creditorDays: optionalDays,
   stockDays: optionalDays,
+  // Loan scheme fields came later; defaults keep older saved sheets and
+  // callers valid.
+  scheme: z.enum(["none", "cmyuva", "mysy", "pmegp", "mudra", "other"]).default("none"),
+  schemeSector: z.enum(["manufacturing", "service", "trading"]).default("manufacturing"),
+  schemeArea: z.enum(["urban", "rural"]).default("urban"),
+  schemeCategory: z.enum(["general", "special"]).default("general"),
+  workingCapitalNeed: amount.default(0),
+  ccLimit: amount.default(0),
+  ccInterestPct: pct(40).default(10),
+  subsidyAmount: amount.default(0),
+  interestSubventionPct: pct(100).default(0),
+  interestSubventionYears: z.coerce.number().int().min(0).max(10).default(0),
 });
 
 export const balanceSheetSchema = z.object({

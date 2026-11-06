@@ -1,7 +1,6 @@
 "use client";
 
 import { cloneElement, createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 import { AdminButton, AdminField, AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/primitives/controls-ui";
@@ -17,11 +16,21 @@ import {
   NOT_TALLY_WARNING_PREFIX,
   type ActualFigures,
   type Constitution,
+  type ProjectFinance,
   type ProjectionAssumptions,
 } from "@/lib/balance-sheets/engine";
 import { STATUS_TONE_CLASS, STATUS_TONE_TEXT } from "@/lib/admin/status-tone";
+import {
+  AREA_OPTIONS,
+  CATEGORY_OPTIONS,
+  SCHEME_OPTIONS,
+  SECTOR_OPTIONS,
+  mudraCategory,
+  schemeSuggestion,
+  termsFor,
+} from "@/lib/balance-sheets/schemes";
 import { FIELD_GUIDE, GUIDE_HEADINGS, IMPORTANCE_LABEL, type GuideKey, type Importance } from "@/lib/balance-sheets/field-guide";
-import { checkBalanceSheet, FIELD_LABELS, FIELD_ORDER, type CheckResult, type DetailKey, type FieldKey } from "@/lib/balance-sheets/checks";
+import { CHOICE_PROJECTION_KEYS, checkBalanceSheet, FIELD_LABELS, FIELD_ORDER, type CheckResult, type DetailKey, type FieldKey } from "@/lib/balance-sheets/checks";
 import { cn } from "@/lib/utils";
 
 /**
@@ -136,9 +145,13 @@ function figuresFrom(draft: Draft) {
   const projection = Object.fromEntries(
     Object.entries(draft.projection).map(([key, value]) => [
       key,
-      NULLABLE_PROJECTION.has(key as keyof ProjectionAssumptions) ? toNullable(value) : toNumber(value),
+      CHOICE_PROJECTION_KEYS.has(key as keyof ProjectionAssumptions)
+        ? value
+        : NULLABLE_PROJECTION.has(key as keyof ProjectionAssumptions)
+          ? toNullable(value)
+          : toNumber(value),
     ]),
-  ) as ProjectionAssumptions;
+  ) as unknown as ProjectionAssumptions;
   return {
     baseYear: Number(draft.baseYear) || lastCompletedFy(),
     hasActual: draft.hasActual,
@@ -327,12 +340,64 @@ function MoneyInput({
   );
 }
 
+/** Project cost and means of finance, live, the way a DPR lays it out. */
+function MeansOfFinance({ finance, mudra }: { finance: ProjectFinance; mudra: boolean }) {
+  const category = mudra ? mudraCategory(finance.termLoan + finance.ccLimit) : null;
+  const rows: [string, number][] = [
+    ["Fixed assets / machinery", finance.fixedAssets],
+    ["Working capital", finance.workingCapital],
+  ];
+  const means: [string, number][] = [
+    ["Own contribution", finance.ownContribution],
+    ["Term loan", finance.termLoan],
+    ["CC / working capital limit", finance.ccLimit],
+  ];
+  const balanced = Math.abs(finance.gap) <= 1;
+  return (
+    <div className="overflow-x-auto rounded-ds-md border border-ds-border" data-testid="means-of-finance">
+      <table className="w-full min-w-[420px] border-collapse text-[13px]">
+        <caption className="border-b border-ds-border px-3 py-2 text-left font-bold text-ds-text-primary">Project cost aur means of finance (Rs.)</caption>
+        <tbody>
+          <tr className="bg-ds-surface-sunken">
+            <th scope="col" className="px-3 py-1.5 text-left font-bold">Project cost</th>
+            <th scope="col" className="px-3 py-1.5 text-right font-bold">Amount</th>
+            <th scope="col" className="px-3 py-1.5 text-left font-bold">Means of finance</th>
+            <th scope="col" className="px-3 py-1.5 text-right font-bold">Amount</th>
+          </tr>
+          {[0, 1, 2].map((index) => (
+            <tr key={index}>
+              <td className="px-3 py-1">{rows[index]?.[0] ?? ""}</td>
+              <td className="px-3 py-1 text-right tabular-nums">{rows[index] ? formatAmount(rows[index][1]) : ""}</td>
+              <td className="px-3 py-1">{means[index][0]}</td>
+              <td className="px-3 py-1 text-right tabular-nums">{formatAmount(means[index][1])}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-ds-border font-bold">
+            <td className="px-3 py-1.5">Total</td>
+            <td className="px-3 py-1.5 text-right tabular-nums">{formatAmount(finance.totalCost)}</td>
+            <td className="px-3 py-1.5">Total</td>
+            <td className="px-3 py-1.5 text-right tabular-nums">{formatAmount(finance.totalMeans)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className={cn("border-t border-ds-border px-3 py-2 text-[12.5px] font-semibold", balanced ? STATUS_TONE_TEXT.success : STATUS_TONE_TEXT.danger)}>
+        {balanced
+          ? "Means of finance project cost ke barabar hai."
+          : finance.gap < 0
+            ? `Means of finance Rs. ${formatAmount(-finance.gap)} kam hai.`
+            : `Means of finance Rs. ${formatAmount(finance.gap)} zyada hai.`}
+        {finance.subsidy > 0 ? ` Back-ended subsidy Rs. ${formatAmount(finance.subsidy)} bank ke paas TDR mein rahegi.` : ""}
+        {category ? ` Mudra category: ${category.name}.` : ""}
+      </p>
+    </div>
+  );
+}
+
 function Grid({ children }: { children: ReactNode }) {
   return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
 }
 
 export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: BalanceSheetFormInitial }) {
-  const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => initialDraft(initial));
   const [saving, setSaving] = useState<"draft" | "final" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -385,6 +450,32 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
     setDraft((current) => ({ ...current, actual: { ...current.actual, [key]: value } }));
   const setProjection = (key: keyof ProjectionAssumptions) => (value: string) =>
     setDraft((current) => ({ ...current, projection: { ...current.projection, [key]: value } }));
+
+  const terms = termsFor(figures.projection);
+  const projectCost = toNumber(draft.projection.newFixedAssets) + toNumber(draft.projection.workingCapitalNeed);
+  const [schemeApplied, setSchemeApplied] = useState(false);
+  function applyScheme() {
+    if (!terms) return;
+    const plan = schemeSuggestion(terms, {
+      fixedAssets: toNumber(draft.projection.newFixedAssets),
+      workingCapital: toNumber(draft.projection.workingCapitalNeed),
+    });
+    setDraft((current) => ({
+      ...current,
+      projection: {
+        ...current.projection,
+        capitalIntroducedYear1: String(plan.ownContribution),
+        subsidyAmount: String(plan.subsidy),
+        newTermLoan: String(plan.termLoan),
+        ccLimit: String(plan.ccLimit),
+        loanTenureYears: String(terms.defaultTenureYears),
+        interestSubventionPct: String(terms.interestSubventionPct),
+        interestSubventionYears: String(terms.interestSubventionYears),
+      },
+      loanAmount: current.loanAmount.trim() ? current.loanAmount : String(plan.bankLoan),
+    }));
+    setSchemeApplied(true);
+  }
 
   const actualPeriod = statements.periods.find((period) => period.kind === "actual");
   const projected = statements.periods.filter((period) => period.kind === "projected");
@@ -440,13 +531,18 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
       const result = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
       if (!response.ok || !result.id) {
         setError(result.message ?? "Balance sheet save nahi ho payi. Dobara koshish karein.");
+        setSaving(null);
         return;
       }
-      router.push(`/admin/balance-sheets/${result.id}`);
-      router.refresh();
+      // A full page load, not router.push: the soft navigation to the
+      // detail page was occasionally aborted mid-flight (about one save in
+      // six in browser tests), leaving the admin on a saved form with no
+      // sign it had saved. The detail page renders fresh on every request.
+      // Buttons stay disabled while the next page loads, so a second click
+      // cannot save the sheet twice.
+      window.location.assign(`/admin/balance-sheets/${result.id}`);
     } catch {
       setError("Internet connection nahi hai. Dobara koshish karein.");
-    } finally {
       setSaving(null);
     }
   }
@@ -592,7 +688,105 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
 
           <AdminCard>
             <AdminSection
-              title={`${draft.hasActual ? "5" : "3"}. Projections`}
+              title={`${draft.hasActual ? "5" : "3"}. Loan yojana aur project cost`}
+              description="Yojana chunein, phir machine aur working capital bharein. 'Yojana ke hisaab se bharein' se own contribution, subsidy aur loan ka batwara khud bhar jaata hai."
+            >
+              <Grid>
+                <Field field="projection.scheme" label="Loan yojana">
+                  <AdminSelect value={draft.projection.scheme} onChange={(event) => setProjection("scheme")(event.target.value)}>
+                    {SCHEME_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </Field>
+                {terms?.asks.sector ? (
+                  <Field field="projection.schemeSector" label="Sector">
+                    <AdminSelect value={draft.projection.schemeSector} onChange={(event) => setProjection("schemeSector")(event.target.value)}>
+                      {SECTOR_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </AdminSelect>
+                  </Field>
+                ) : null}
+                {terms?.asks.area ? (
+                  <Field field="projection.schemeArea" label="Area">
+                    <AdminSelect value={draft.projection.schemeArea} onChange={(event) => setProjection("schemeArea")(event.target.value)}>
+                      {AREA_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </AdminSelect>
+                  </Field>
+                ) : null}
+                {terms?.asks.category ? (
+                  <Field field="projection.schemeCategory" label="Category">
+                    <AdminSelect value={draft.projection.schemeCategory} onChange={(event) => setProjection("schemeCategory")(event.target.value)}>
+                      {CATEGORY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </AdminSelect>
+                  </Field>
+                ) : null}
+              </Grid>
+
+              {terms && draft.projection.scheme !== "none" ? (
+                <div className="rounded-ds-md bg-ds-surface-sunken p-3 text-[13px] leading-snug text-ds-text-secondary" data-testid="scheme-terms">
+                  <p className="font-bold text-ds-text-primary">{terms.label}: {terms.summary}</p>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-5">
+                    {terms.notes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-1.5 text-[12px] text-ds-text-muted">Ye default figures hain; final shartein bank ya yojana ke portal se confirm karein.</p>
+                </div>
+              ) : null}
+
+              <Grid>
+                <MoneyInput field="projection.newFixedAssets" label="New fixed assets / machinery" value={draft.projection.newFixedAssets} onChange={setProjection("newFixedAssets")} />
+                <MoneyInput field="projection.workingCapitalNeed" label="Working capital requirement" value={draft.projection.workingCapitalNeed} onChange={setProjection("workingCapitalNeed")} help="Ek cycle ka maal, stock aur udhaar" />
+                <MoneyInput field="projection.capitalIntroducedYear1" label="Own contribution (own capital), first year" value={draft.projection.capitalIntroducedYear1} onChange={setProjection("capitalIntroducedYear1")} />
+              </Grid>
+
+              {terms ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <AdminButton variant="secondary" onClick={applyScheme} disabled={projectCost <= 0}>
+                    Yojana ke hisaab se bharein
+                  </AdminButton>
+                  <p className="text-[12.5px] text-ds-text-muted" role="status">
+                    {schemeApplied
+                      ? "Own contribution, subsidy, term loan, CC aur byaaj ki chhoot yojana ke hisaab se bhar diye. Zaroorat ho to badlein."
+                      : projectCost <= 0
+                        ? "Pehle machine aur working capital bharein."
+                        : `Project cost ${formatAmount(projectCost)} par own contribution, subsidy aur loan bharega.`}
+                  </p>
+                </div>
+              ) : null}
+
+              <Grid>
+                <MoneyInput field="projection.newTermLoan" label="New term loan" value={draft.projection.newTermLoan} onChange={setProjection("newTermLoan")} />
+                <MoneyInput field="projection.loanInterestPct" label="Term loan interest rate" suffix="% p.a." value={draft.projection.loanInterestPct} onChange={setProjection("loanInterestPct")} />
+                <MoneyInput field="projection.loanTenureYears" label="Loan tenure" suffix="years" value={draft.projection.loanTenureYears} onChange={setProjection("loanTenureYears")} />
+                <MoneyInput field="projection.ccLimit" label="CC / working capital limit" value={draft.projection.ccLimit} onChange={setProjection("ccLimit")} />
+                <MoneyInput field="projection.ccInterestPct" label="CC interest rate" suffix="% p.a." value={draft.projection.ccInterestPct} onChange={setProjection("ccInterestPct")} />
+                <MoneyInput field="projection.subsidyAmount" label="Margin money / capital subsidy" value={draft.projection.subsidyAmount} onChange={setProjection("subsidyAmount")} />
+                <MoneyInput field="projection.interestSubventionPct" label="Interest subvention" suffix="% of interest" value={draft.projection.interestSubventionPct} onChange={setProjection("interestSubventionPct")} />
+                <MoneyInput field="projection.interestSubventionYears" label="Interest subvention" suffix="years" value={draft.projection.interestSubventionYears} onChange={setProjection("interestSubventionYears")} />
+              </Grid>
+
+              {statements.projectFinance ? <MeansOfFinance finance={statements.projectFinance} mudra={draft.projection.scheme === "mudra"} /> : null}
+            </AdminSection>
+          </AdminCard>
+
+          <AdminCard>
+            <AdminSection
+              title={`${draft.hasActual ? "6" : "4"}. Projections`}
               description={draft.hasActual ? "Leave a field blank to use the customer's own ratio from the actual year (shown in grey)." : "Estimates for the new business."}
             >
               <Grid>
@@ -624,11 +818,6 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
                 <MoneyInput field="projection.depreciationPct" label="Depreciation rate" suffix="% WDV" value={draft.projection.depreciationPct} onChange={setProjection("depreciationPct")} />
                 <MoneyInput field="projection.taxPct" label="Income tax" suffix="% of profit" value={draft.projection.taxPct} onChange={setProjection("taxPct")} />
                 <MoneyInput field="projection.drawingsPerYear" label="Drawings per year" value={draft.projection.drawingsPerYear} onChange={setProjection("drawingsPerYear")} />
-                <MoneyInput field="projection.capitalIntroducedYear1" label="Own capital introduced, first year" value={draft.projection.capitalIntroducedYear1} onChange={setProjection("capitalIntroducedYear1")} />
-                <MoneyInput field="projection.newFixedAssets" label="New fixed assets / machinery" value={draft.projection.newFixedAssets} onChange={setProjection("newFixedAssets")} />
-                <MoneyInput field="projection.newTermLoan" label="New term loan" value={draft.projection.newTermLoan} onChange={setProjection("newTermLoan")} />
-                <MoneyInput field="projection.loanInterestPct" label="Loan interest rate" suffix="% p.a." value={draft.projection.loanInterestPct} onChange={setProjection("loanInterestPct")} />
-                <MoneyInput field="projection.loanTenureYears" label="Loan tenure" suffix="years" value={draft.projection.loanTenureYears} onChange={setProjection("loanTenureYears")} />
                 {draft.hasActual ? (
                   <>
                     <MoneyInput field="projection.existingLoanRepaymentPerYear" label="Existing loan repaid per year" value={draft.projection.existingLoanRepaymentPerYear} onChange={setProjection("existingLoanRepaymentPerYear")} />

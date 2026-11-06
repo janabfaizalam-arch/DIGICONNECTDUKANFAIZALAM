@@ -203,3 +203,47 @@ describe("labels", () => {
     for (const key of Object.keys(defaultProjection())) expect(FIELD_LABELS).toHaveProperty(`projection.${key}`);
   });
 });
+
+describe("loan structure and schemes", () => {
+  const project = { newFixedAssets: 800_000, workingCapitalNeed: 200_000, capitalIntroducedYear1: 100_000, newTermLoan: 720_000, ccLimit: 180_000 };
+
+  it("is quiet when means of finance equal the project cost", () => {
+    const result = run({ projection: { ...project, scheme: "pmegp", schemeArea: "rural", subsidyAmount: 250_000 } });
+    expect(Object.keys(result.issues).filter((key) => key.startsWith("projection."))).toEqual([]);
+  });
+
+  it("flags a project the means of finance do not cover", () => {
+    const issue = run({ projection: { ...project, newTermLoan: 600_000 } }).issues["projection.workingCapitalNeed"];
+    expect(issue?.level).toBe("error");
+    expect(issue?.message).toMatch(/Rs\. 1,20,000\.00 ka intezaam/);
+  });
+
+  it("does not treat the scheme choice as a broken number", () => {
+    expect(run({ projection: { scheme: "cmyuva", schemeSector: "service" } }).issues["projection.scheme"]).toBeUndefined();
+  });
+
+  it("warns past a scheme's project cost and loan limits", () => {
+    const big = { newFixedAssets: 6_000_000, workingCapitalNeed: 0, capitalIntroducedYear1: 600_000, newTermLoan: 5_400_000, ccLimit: 0 };
+    expect(run({ projection: { ...big, scheme: "pmegp" } }).issues["projection.newFixedAssets"]?.message).toMatch(/PMEGP mein project cost Rs\. 50,00,000\.00 tak/);
+    expect(run({ projection: { ...big, scheme: "mudra" } }).issues["projection.newTermLoan"]?.message).toMatch(/PM Mudra mein loan Rs\. 20,00,000\.00 tak/);
+  });
+
+  it("asks for both parts of a CM-YUVA composite loan", () => {
+    const termOnly = { newFixedAssets: 400_000, workingCapitalNeed: 0, capitalIntroducedYear1: 40_000, newTermLoan: 360_000, ccLimit: 0 };
+    expect(run({ projection: { ...termOnly, scheme: "cmyuva" } }).issues["projection.ccLimit"]?.message).toMatch(/composite loan/);
+  });
+
+  it("warns when own contribution is below the scheme's share, and subsidy above it", () => {
+    const result = run({ projection: { ...project, capitalIntroducedYear1: 50_000, newTermLoan: 770_000, scheme: "pmegp", subsidyAmount: 400_000 } });
+    expect(result.issues["projection.capitalIntroducedYear1"]?.message).toMatch(/10% \(Rs\. 1,00,000\.00\)/);
+    expect(result.issues["projection.subsidyAmount"]?.message).toMatch(/zyada se zyada Rs\. 1,50,000\.00/);
+  });
+
+  it("compares the loan applied for with term loan + CC", () => {
+    expect(run({ projection: project, details: { loanAmount: "1000000" } }).issues.loanAmount?.message).toMatch(/term loan \+ CC milakar Rs\. 9,00,000\.00/);
+  });
+
+  it("needs years for an interest subvention", () => {
+    expect(run({ projection: { interestSubventionPct: 100, interestSubventionYears: 0 } }).issues["projection.interestSubventionYears"]?.level).toBe("error");
+  });
+});
