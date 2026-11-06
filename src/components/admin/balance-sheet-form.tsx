@@ -1,8 +1,9 @@
 "use client";
 
 import { cloneElement, createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, Sparkles } from "lucide-react";
 
+import { BalanceSheetAutofill, type AutofillItem } from "@/components/admin/balance-sheet-autofill";
 import { AdminButton, AdminField, AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/primitives/controls-ui";
 import { AdminCard, AdminSection } from "@/components/admin/primitives/layout";
 import {
@@ -162,7 +163,13 @@ function figuresFrom(draft: Draft) {
 }
 
 /** The live check results, so each field can find its own mistake. */
-const ChecksContext = createContext<{ result: CheckResult; touch: (key: DetailKey) => void } | null>(null);
+const ChecksContext = createContext<{
+  result: CheckResult;
+  touch: (key: DetailKey) => void;
+  /** Boxes filled from a document, with where from; cleared when the admin edits the box. */
+  autofilled: ReadonlyMap<string, string>;
+  clearAutofill: (key: string) => void;
+} | null>(null);
 
 const DETAIL_KEYS = new Set<FieldKey>(["businessName", "ownerName", "pan", "gstin", "mobile", "pincode", "email", "loanAmount"]);
 
@@ -170,6 +177,7 @@ const DETAIL_KEYS = new Set<FieldKey>(["businessName", "ownerName", "pan", "gsti
 export const fieldDomId = (key: FieldKey | GuideKey) => `bs-${key.replace(".", "-")}`;
 
 type ControlProps = {
+  onInput?: (event: never) => void;
   id?: string;
   "aria-describedby"?: string;
   invalid?: boolean;
@@ -235,9 +243,14 @@ function Field({
     setOpen(false);
   };
 
+  const filledFrom = domKey ? checks?.autofilled.get(domKey) : undefined;
   const control = cloneElement(children, {
     id,
-    "aria-describedby": describedBy,
+    "aria-describedby": [describedBy, filledFrom ? `${id}-filled` : null].filter(Boolean).join(" ") || undefined,
+    onInput: (event: never) => {
+      children.props.onInput?.(event);
+      if (filledFrom && domKey) checks?.clearAutofill(domKey);
+    },
     invalid: isError || undefined,
     className: cn(children.props.className, isWarning && "ring-2 ring-ds-warning"),
     onFocus: (event: never) => {
@@ -270,6 +283,12 @@ function Field({
       <AdminField {...props} help={isWarning ? undefined : help} error={isError ? issue.message : undefined} htmlFor={id}>
         {control}
       </AdminField>
+      {filledFrom ? (
+        <p id={`${id}-filled`} className={cn("mt-1 flex gap-1 text-xs font-semibold", STATUS_TONE_TEXT.info)}>
+          <Sparkles className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          Document se bhara: {filledFrom}. Ek baar check karein.
+        </p>
+      ) : null}
       {isWarning ? (
         <p id={`${id}-warning`} className={cn("mt-1.5 flex gap-1 text-xs font-semibold", STATUS_TONE_TEXT.warning)}>
           <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -426,10 +445,59 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
   });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- checkInput only reads the values listed
   const checks = useMemo(() => checkBalanceSheet(checkInput(false)), [draft, statements, showRequired, touched]);
+  const [autofilled, setAutofilled] = useState<ReadonlyMap<string, string>>(() => new Map());
   const checksContext = useMemo(
-    () => ({ result: checks, touch: (key: DetailKey) => setTouched((current) => (current.has(key) ? current : new Set([...current, key]))) }),
-    [checks],
+    () => ({
+      result: checks,
+      touch: (key: DetailKey) => setTouched((current) => (current.has(key) ? current : new Set([...current, key]))),
+      autofilled,
+      clearAutofill: (key: string) =>
+        setAutofilled((current) => {
+          if (!current.has(key)) return current;
+          const next = new Map(current);
+          next.delete(key);
+          return next;
+        }),
+    }),
+    [checks, autofilled],
   );
+
+  /** The text a box holds now, for the review table's "Abhi form mein" column. */
+  const currentValue = (field: string) => {
+    if (field.startsWith("actual.")) return draft.actual[field.slice(7) as keyof ActualFigures] ?? "";
+    if (field.startsWith("projection.")) return draft.projection[field.slice(11) as keyof ProjectionAssumptions] ?? "";
+    const value = (draft as unknown as Record<string, unknown>)[field];
+    return typeof value === "string" ? value : "";
+  };
+
+  function applyAutofill(items: AutofillItem[]) {
+    setDraft((current) => {
+      const next: Draft = { ...current, actual: { ...current.actual }, projection: { ...current.projection } };
+      for (const { field, value } of items) {
+        if (field.startsWith("actual.")) {
+          next.actual[field.slice(7) as keyof ActualFigures] = value;
+          next.hasActual = true;
+        } else if (field.startsWith("projection.")) {
+          next.projection[field.slice(11) as keyof ProjectionAssumptions] = value;
+        } else if (field === "baseYear") {
+          // Only years the select offers; anything else would leave it blank.
+          const year = Number(value);
+          if (year <= lastCompletedFy() + 1 && year >= lastCompletedFy() - 6) next.baseYear = value;
+        } else if (field in next && typeof (next as unknown as Record<string, unknown>)[field] === "string") {
+          (next as unknown as Record<string, string>)[field] = value;
+        }
+      }
+      return next;
+    });
+    setAutofilled((current) => {
+      const next = new Map(current);
+      for (const { field, value, source } of items) {
+        if (field === "baseYear" && !(Number(value) <= lastCompletedFy() + 1 && Number(value) >= lastCompletedFy() - 6)) continue;
+        next.set(field, source);
+      }
+      return next;
+    });
+  }
   const issueList = FIELD_ORDER.flatMap((key) => {
     const issue = checks.issues[key];
     return issue ? [{ key, ...issue }] : [];
@@ -551,6 +619,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
     <ChecksContext.Provider value={checksContext}>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex flex-col gap-6">
+          <BalanceSheetAutofill currentValue={currentValue} onApply={applyAutofill} />
           <AdminCard>
             <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank. Kisi bhi box par cursor rokein ya tap karein, wahan kya bharna hai aur kahan milega, ye dikh jaayega.">
               <Grid>

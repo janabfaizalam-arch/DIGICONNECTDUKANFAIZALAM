@@ -285,3 +285,76 @@ export async function editPhoto(input: {
     clearTimeout(timer);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Reading documents (balance sheet auto-fill)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Text model for reading documents. Pinned with GEMINI_TEXT_MODEL, else a
+ * stable Flash model; if Google retires it and names a replacement in the
+ * error, the call is retried once with that name.
+ */
+const READ_MODEL_DEFAULT = "gemini-2.5-flash";
+const READ_TIMEOUT_MS = 55_000;
+
+export type DocumentPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+function replacementModel(message: string): string | null {
+  if (!/NOT_FOUND|no longer available|not found|404/i.test(message)) return null;
+  return message.match(/use\s+(?:models\/)?(gemini-[\w.-]*\w)/i)?.[1] ?? null;
+}
+
+/**
+ * Send document text or files with an instruction and get JSON back in the
+ * given shape. The caller validates the JSON; nothing here trusts it.
+ */
+export async function readDocumentsAsJson(input: {
+  parts: DocumentPart[];
+  instruction: string;
+  responseSchema: unknown;
+}): Promise<unknown> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new GeminiError("not_configured", "Gemini is not configured on this deployment.");
+
+  const ai = new GoogleGenAI({ apiKey });
+  let model = process.env.GEMINI_TEXT_MODEL?.trim() || READ_MODEL_DEFAULT;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [...input.parts, { text: input.instruction }] }],
+        config: {
+          abortSignal: controller.signal,
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseSchema: input.responseSchema as never,
+        },
+      });
+
+      const blocked = response.promptFeedback?.blockReason;
+      if (blocked) throw new GeminiError("blocked", `Prompt blocked: ${blocked}`);
+      const text = response.text ?? "";
+      if (!text.trim()) throw new GeminiError("upstream", "Gemini returned no text.");
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new GeminiError("upstream", "Gemini returned text that is not JSON.");
+      }
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      const next = attempt === 0 ? replacementModel(message) : null;
+      if (next && next !== model) {
+        model = next;
+        continue;
+      }
+      throw caught;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new GeminiError("model_unavailable", "No model accepted the request.");
+}
