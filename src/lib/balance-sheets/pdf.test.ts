@@ -57,11 +57,41 @@ export function sampleRecord(overrides: Partial<BalanceSheetRecord> = {}): Balan
 }
 
 describe("balance sheet PDF", () => {
-  it("renders a five-page PDF: cover, P&L, balance sheet, ratios, notes", async () => {
+  const pages = (pdf: Buffer) => (pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length;
+
+  it("adds a project cost page when there is a new project: six pages", async () => {
     const pdf = await renderBalanceSheetPdf(sampleRecord());
-    const text = pdf.toString("latin1");
-    expect(text.startsWith("%PDF")).toBe(true);
-    expect((text.match(/\/Type \/Page\b/g) ?? []).length).toBe(5);
+    expect(pdf.toString("latin1").startsWith("%PDF")).toBe(true);
+    expect(pages(pdf)).toBe(6);
+  });
+
+  it("keeps five pages without a new project: cover, P&L, balance sheet, ratios, notes", async () => {
+    const pdf = await renderBalanceSheetPdf(
+      sampleRecord({ projection: { ...defaultProjection(), years: 5, drawingsPerYear: 120_000 } }),
+    );
+    expect(pages(pdf)).toBe(5);
+  });
+
+  it("renders a PMEGP composite loan with subsidy and interest subvention", async () => {
+    const pdf = await renderBalanceSheetPdf(
+      sampleRecord({
+        projection: {
+          ...defaultProjection(),
+          years: 5,
+          scheme: "pmegp",
+          schemeArea: "rural",
+          newFixedAssets: 800_000,
+          workingCapitalNeed: 200_000,
+          capitalIntroducedYear1: 100_000,
+          newTermLoan: 720_000,
+          ccLimit: 180_000,
+          subsidyAmount: 250_000,
+          interestSubventionPct: 50,
+          interestSubventionYears: 3,
+        },
+      }),
+    );
+    expect(pages(pdf)).toBe(6);
   });
 
   it("renders a new business with no actual year", async () => {

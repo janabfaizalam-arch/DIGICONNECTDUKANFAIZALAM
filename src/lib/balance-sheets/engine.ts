@@ -71,6 +71,12 @@ export type ActualFigures = {
  * ratio, the debtor, creditor and stock days and the expense base are all
  * read off the customer's own books unless the admin overrides them.
  */
+/** Government loan schemes the form has presets for. See schemes.ts. */
+export type SchemeId = "none" | "cmyuva" | "mysy" | "pmegp" | "mudra" | "other";
+export type SchemeSector = "manufacturing" | "service" | "trading";
+export type SchemeArea = "urban" | "rural";
+export type SchemeCategory = "general" | "special";
+
 export type ProjectionAssumptions = {
   years: number;
   year1Sales: number | null;
@@ -92,6 +98,21 @@ export type ProjectionAssumptions = {
   debtorDays: number | null;
   creditorDays: number | null;
   stockDays: number | null;
+  /** Loan scheme and the facts about the borrower its terms depend on. */
+  scheme: SchemeId;
+  schemeSector: SchemeSector;
+  schemeArea: SchemeArea;
+  schemeCategory: SchemeCategory;
+  /** Working capital the project needs for one operating cycle (part of project cost). */
+  workingCapitalNeed: number;
+  /** Cash credit (CC) / working capital limit from the bank. Revolving: fully drawn every year. */
+  ccLimit: number;
+  ccInterestPct: number;
+  /** Back-ended capital / margin money subsidy, held by the bank as a deposit during lock-in. */
+  subsidyAmount: number;
+  /** Share of interest on the new loans (term and CC) paid by the government, and for how many years. */
+  interestSubventionPct: number;
+  interestSubventionYears: number;
 };
 
 export type BalanceSheetFigures = {
@@ -118,6 +139,8 @@ export type ProfitAndLoss = {
   otherExpenses: number;
   depreciation: number;
   interest: number;
+  /** Interest paid by the government under the scheme; reduces the interest cost. */
+  interestSubvention: number;
   profitBeforeTax: number;
   tax: number;
   netProfit: number;
@@ -129,7 +152,11 @@ export type BalanceSheet = {
   netProfit: number;
   drawings: number;
   closingCapital: number;
+  /** Back-ended scheme subsidy shown under owners' funds during lock-in. */
+  subsidyReserve: number;
   termLoan: number;
+  /** Cash credit / working capital limit from the bank. */
+  ccLoan: number;
   unsecuredLoans: number;
   creditors: number;
   otherCurrentLiabilities: number;
@@ -141,6 +168,8 @@ export type BalanceSheet = {
   debtors: number;
   cashAndBank: number;
   otherCurrentAssets: number;
+  /** The same subsidy, kept by the bank as a term deposit (TDR) during lock-in. */
+  subsidyDeposit: number;
   totalAssets: number;
   /** Liabilities minus assets. Always 0 for a projected year. */
   difference: number;
@@ -183,9 +212,24 @@ export type EffectiveAssumptions = {
   derived: string[];
 };
 
+/** Project cost and how it is paid for, as a DPR shows it. Null when there is no new project. */
+export type ProjectFinance = {
+  fixedAssets: number;
+  workingCapital: number;
+  totalCost: number;
+  ownContribution: number;
+  termLoan: number;
+  ccLimit: number;
+  totalMeans: number;
+  /** Means minus cost. Positive: more money than the project needs. */
+  gap: number;
+  subsidy: number;
+};
+
 export type Statements = {
   periods: Period[];
   assumptions: EffectiveAssumptions;
+  projectFinance: ProjectFinance | null;
   /** True when the actual year (if any) tallies to the rupee. */
   tallies: boolean;
   averageDscr: number | null;
@@ -271,6 +315,16 @@ export function defaultProjection(): ProjectionAssumptions {
     debtorDays: null,
     creditorDays: null,
     stockDays: null,
+    scheme: "none",
+    schemeSector: "manufacturing",
+    schemeArea: "urban",
+    schemeCategory: "general",
+    workingCapitalNeed: 0,
+    ccLimit: 0,
+    ccInterestPct: 10,
+    subsidyAmount: 0,
+    interestSubventionPct: 0,
+    interestSubventionYears: 0,
   };
 }
 
@@ -308,6 +362,7 @@ function actualPeriod(figures: BalanceSheetFigures): Period {
     otherExpenses: round(num(a.otherExpenses)),
     depreciation: round(num(a.depreciation)),
     interest: round(num(a.interest)),
+    interestSubvention: 0,
     profitBeforeTax: round(profitBeforeTax),
     tax: round(num(a.tax)),
     netProfit: round(netProfit),
@@ -330,7 +385,9 @@ function actualPeriod(figures: BalanceSheetFigures): Period {
     netProfit: round(netProfit),
     drawings: round(num(a.drawings)),
     closingCapital: round(closingCapital),
+    subsidyReserve: 0,
     termLoan: round(num(a.termLoan)),
+    ccLoan: 0,
     unsecuredLoans: round(num(a.unsecuredLoans)),
     creditors: round(num(a.creditors)),
     otherCurrentLiabilities: round(num(a.otherCurrentLiabilities)),
@@ -342,6 +399,7 @@ function actualPeriod(figures: BalanceSheetFigures): Period {
     debtors: round(num(a.debtors)),
     cashAndBank: round(num(a.cashAndBank)),
     otherCurrentAssets: round(num(a.otherCurrentAssets)),
+    subsidyDeposit: 0,
     totalAssets: round(totalAssets),
     difference: round(totalLiabilities - totalAssets),
   };
@@ -470,14 +528,22 @@ function projectedPeriods(figures: BalanceSheetFigures, assumptions: EffectiveAs
     const capex = index === 0 ? num(p.newFixedAssets) : 0;
     const depreciation = (carry.fixedAssets + capex) * (assumptions.depreciationPct / 100);
 
-    const termLoanInterest =
-      carry.newLoan * (num(p.loanInterestPct) / 100) + carry.existingLoan * (num(p.existingLoanInterestPct) / 100);
+    const newLoanInterest = carry.newLoan * (num(p.loanInterestPct) / 100);
+    const termLoanInterest = newLoanInterest + carry.existingLoan * (num(p.existingLoanInterestPct) / 100);
+    const ccLoan = num(p.ccLimit);
+    const ccInterest = ccLoan * (num(p.ccInterestPct) / 100);
+    const interest = termLoanInterest + ccInterest;
+    // Subvention covers the new facilities only, for the years the scheme says.
+    const subventionPct = Math.min(100, Math.max(0, num(p.interestSubventionPct)));
+    const interestSubvention =
+      index < Math.round(num(p.interestSubventionYears)) ? (newLoanInterest + ccInterest) * (subventionPct / 100) : 0;
+    const subsidy = num(p.subsidyAmount);
     const newRepayment = Math.min(carry.newLoan, newLoanInstalment);
     const existingRepayment = Math.min(carry.existingLoan, num(p.existingLoanRepaymentPerYear));
 
     const grossProfit = sales - costOfSales;
     const profitBeforeTax =
-      grossProfit + assumptions.otherIncomePerYear - indirect - depreciation - termLoanInterest;
+      grossProfit + assumptions.otherIncomePerYear - indirect - depreciation - interest + interestSubvention;
     const tax = Math.max(0, profitBeforeTax) * (assumptions.taxPct / 100);
     const netProfit = profitBeforeTax - tax;
 
@@ -491,8 +557,8 @@ function projectedPeriods(figures: BalanceSheetFigures, assumptions: EffectiveAs
     const fixedAssets = carry.fixedAssets + capex - depreciation;
 
     const fundsAvailable =
-      closingCapital + termLoan + carry.unsecuredLoans + creditors + carry.otherCurrentLiabilities;
-    const fundsUsed = fixedAssets + carry.investments + closingStock + debtors + carry.otherCurrentAssets;
+      closingCapital + subsidy + termLoan + ccLoan + carry.unsecuredLoans + creditors + carry.otherCurrentLiabilities;
+    const fundsUsed = fixedAssets + carry.investments + closingStock + debtors + carry.otherCurrentAssets + subsidy;
     const surplus = fundsAvailable - fundsUsed;
     const cashAndBank = Math.max(0, surplus);
     const bankOverdraft = Math.max(0, -surplus);
@@ -511,7 +577,8 @@ function projectedPeriods(figures: BalanceSheetFigures, assumptions: EffectiveAs
       adminExpenses: round(adminExpenses),
       otherExpenses: round(otherExpenses),
       depreciation: round(depreciation),
-      interest: round(termLoanInterest),
+      interest: round(interest),
+      interestSubvention: round(interestSubvention),
       profitBeforeTax: round(profitBeforeTax),
       tax: round(tax),
       netProfit: round(netProfit),
@@ -525,7 +592,9 @@ function projectedPeriods(figures: BalanceSheetFigures, assumptions: EffectiveAs
       netProfit: round(netProfit),
       drawings: round(num(p.drawingsPerYear)),
       closingCapital: round(closingCapital),
+      subsidyReserve: round(subsidy),
       termLoan: round(termLoan),
+      ccLoan: round(ccLoan),
       unsecuredLoans: round(carry.unsecuredLoans),
       creditors: round(creditors),
       otherCurrentLiabilities: round(carry.otherCurrentLiabilities),
@@ -537,6 +606,7 @@ function projectedPeriods(figures: BalanceSheetFigures, assumptions: EffectiveAs
       debtors: round(debtors),
       cashAndBank: round(cashAndBank),
       otherCurrentAssets: round(carry.otherCurrentAssets),
+      subsidyDeposit: round(subsidy),
       totalAssets: round(totalAssets),
       difference: 0,
     };
@@ -577,8 +647,8 @@ function ratiosFor(
   debt: { termLoanInterest: number; principalRepayment: number } | null,
 ): Ratios {
   const currentAssets = bs.closingStock + bs.debtors + bs.cashAndBank + bs.otherCurrentAssets;
-  const currentLiabilities = bs.creditors + bs.otherCurrentLiabilities + bs.bankOverdraft;
-  const borrowings = bs.termLoan + bs.unsecuredLoans + bs.bankOverdraft;
+  const currentLiabilities = bs.creditors + bs.otherCurrentLiabilities + bs.bankOverdraft + bs.ccLoan;
+  const borrowings = bs.termLoan + bs.ccLoan + bs.unsecuredLoans + bs.bankOverdraft;
   const service = debt ? debt.termLoanInterest + debt.principalRepayment : 0;
   const cashAccrual = pl.netProfit + pl.depreciation + (debt?.termLoanInterest ?? 0);
 
@@ -661,7 +731,35 @@ export function buildStatements(figures: BalanceSheetFigures): Statements {
   const actual = periods.find((period) => period.kind === "actual");
   const tallies = !actual || Math.abs(actual.bs.difference) <= TALLY_TOLERANCE;
 
-  return { periods, assumptions, tallies, averageDscr, warnings };
+  return { periods, assumptions, projectFinance: projectFinanceOf(figures.projection), tallies, averageDscr, warnings };
+}
+
+/**
+ * Project cost and means of finance for the new project: machinery and
+ * one cycle of working capital, paid for by the owner's contribution, the
+ * term loan and the CC limit. The back-ended subsidy is reported but is not
+ * a source of funds on day one: the bank holds it until the lock-in ends.
+ */
+export function projectFinanceOf(p: ProjectionAssumptions): ProjectFinance | null {
+  const fixedAssets = num(p.newFixedAssets);
+  const workingCapital = num(p.workingCapitalNeed);
+  const termLoan = num(p.newTermLoan);
+  const ccLimit = num(p.ccLimit);
+  if (fixedAssets + workingCapital + termLoan + ccLimit <= 0) return null;
+  const ownContribution = num(p.capitalIntroducedYear1);
+  const totalCost = fixedAssets + workingCapital;
+  const totalMeans = ownContribution + termLoan + ccLimit;
+  return {
+    fixedAssets: round(fixedAssets),
+    workingCapital: round(workingCapital),
+    totalCost: round(totalCost),
+    ownContribution: round(ownContribution),
+    termLoan: round(termLoan),
+    ccLimit: round(ccLimit),
+    totalMeans: round(totalMeans),
+    gap: round(totalMeans - totalCost),
+    subsidy: round(num(p.subsidyAmount)),
+  };
 }
 
 /** Indian digit grouping, two decimals: 12,34,567.00 */

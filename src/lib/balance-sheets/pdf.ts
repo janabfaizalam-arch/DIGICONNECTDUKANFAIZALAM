@@ -11,7 +11,8 @@ import {
   type Period,
   type Statements,
 } from "@/lib/balance-sheets/engine";
-import { amount, balanceSheetRows, profitAndLossRows, ratioRows, type Row } from "@/lib/balance-sheets/rows";
+import { amount, balanceSheetRows, profitAndLossRows, projectFinanceRows, ratioRows, type Row } from "@/lib/balance-sheets/rows";
+import { SCHEME_OPTIONS, mudraCategory } from "@/lib/balance-sheets/schemes";
 import { figuresOf } from "@/lib/balance-sheets/schema";
 import type { BalanceSheetRecord } from "@/lib/balance-sheets/store";
 
@@ -30,6 +31,19 @@ const SHADE = "#efefef";
 const FONT = "Times-Roman";
 const BOLD = "Times-Bold";
 const ITALIC = "Times-Italic";
+
+/** Full scheme name for the printed file, or null for an ordinary bank loan. */
+function schemeName(record: BalanceSheetRecord) {
+  const scheme = record.projection.scheme;
+  if (!scheme || scheme === "none") return null;
+  if (scheme === "other") return "Government scheme";
+  const name = SCHEME_OPTIONS.find((option) => option.value === scheme)?.label ?? null;
+  if (scheme === "mudra" && name) {
+    const category = mudraCategory(record.projection.newTermLoan + record.projection.ccLimit);
+    return category ? `${name.replace(/ \(.*\)$/, "")} - ${category.name}` : name;
+  }
+  return name;
+}
 
 function pdfBuffer(doc: PDFKit.PDFDocument) {
   return new Promise<Buffer>((resolve, reject) => {
@@ -61,7 +75,17 @@ function drawTable(doc: PDFKit.PDFDocument, periods: Period[], rows: Row[], top:
   const width = doc.page.width - PAGE.margin * 2;
   const labelWidth = Math.min(260, width * 0.34);
   const colWidth = (width - labelWidth) / periods.length;
-  const rowHeight = 15;
+  // Fit the whole statement on one page: a CC limit, a subsidy and its
+  // deposit add lines, and a statement split across pages reads badly. Rows
+  // shrink from 15pt towards 11pt (and the type with them) only as needed.
+  const lines = rows.filter((row) => row.kind !== "gap").length;
+  const gaps = rows.length - lines;
+  const totals = rows.filter((row) => row.kind === "line" && row.rule === "total").length;
+  const room = doc.page.height - PAGE.margin - 26 - (top + 30);
+  const rowHeight = Math.max(11, Math.min(15, (room - totals * 3) / (lines + gaps / 3)));
+  const gapHeight = rowHeight / 3;
+  const size = rowHeight >= 14 ? 9.5 : rowHeight >= 12.5 ? 9 : 8.5;
+  const pad = (rowHeight - size) / 2 + 0.5;
   let y = top;
 
   // Column headings.
@@ -78,12 +102,12 @@ function drawTable(doc: PDFKit.PDFDocument, periods: Period[], rows: Row[], top:
   const bodyTop = y;
   for (const row of rows) {
     if (row.kind === "gap") {
-      y += 5;
+      y += gapHeight;
       continue;
     }
     if (row.kind === "heading") {
       doc.rect(left, y, width, rowHeight).fill(SHADE);
-      doc.fillColor(INK).font(BOLD).fontSize(9.5).text(row.label, left + 6, y + 3.5, { width: labelWidth });
+      doc.fillColor(INK).font(BOLD).fontSize(size).text(row.label, left + 6, y + pad, { width: labelWidth, lineBreak: false });
       y += rowHeight;
       continue;
     }
@@ -91,10 +115,14 @@ function drawTable(doc: PDFKit.PDFDocument, periods: Period[], rows: Row[], top:
       doc.lineWidth(0.6).strokeColor(RULE).moveTo(left + labelWidth, y).lineTo(left + width, y).stroke();
     }
     const font = row.bold ? BOLD : FONT;
-    doc.fillColor(INK).font(font).fontSize(9.5).text(row.label, left + 6 + (row.indent ?? 0) * 12, y + 3.5, { width: labelWidth - 12 - (row.indent ?? 0) * 12 });
+    doc.fillColor(INK).font(font).fontSize(size).text(row.label, left + 6 + (row.indent ?? 0) * 12, y + pad, {
+      width: labelWidth - 12 - (row.indent ?? 0) * 12,
+      lineBreak: false,
+      ellipsis: true,
+    });
     row.values.forEach((value, index) => {
       const x = left + labelWidth + index * colWidth;
-      doc.font(font).fontSize(9.5).text(amount(value), x + 4, y + 3.5, { width: colWidth - 10, align: "right" });
+      doc.font(font).fontSize(size).text(amount(value), x + 4, y + pad, { width: colWidth - 10, align: "right", lineBreak: false });
     });
     y += rowHeight;
     if (row.rule === "total") {
@@ -157,6 +185,8 @@ function coverPage(doc: PDFKit.PDFDocument, record: BalanceSheetRecord, statemen
     ["Purpose of loan", record.loanPurpose ?? "-"],
     ["Loan amount applied for", record.loanAmount ? `Rs. ${formatAmount(record.loanAmount)}` : "-"],
   ];
+  const scheme = schemeName(record);
+  if (scheme) details.push(["Loan scheme", scheme]);
 
   const tableWidth = 470;
   const left = (doc.page.width - tableWidth) / 2;
@@ -172,10 +202,15 @@ function coverPage(doc: PDFKit.PDFDocument, record: BalanceSheetRecord, statemen
 
   y += 22;
   doc.font(BOLD).fontSize(10.5).text("Contents", left, y);
-  doc.font(FONT).fontSize(10).text("1.  Trading and Profit & Loss Account", left + 12, doc.y + 4);
-  doc.text("2.  Balance Sheet", left + 12);
-  doc.text("3.  Key Ratios and Debt Service Coverage", left + 12);
-  doc.text("4.  Notes and Assumptions", left + 12);
+  const contents = [
+    ...(statements.projectFinance ? ["Project Cost and Means of Finance"] : []),
+    "Trading and Profit & Loss Account",
+    "Balance Sheet",
+    "Key Ratios and Debt Service Coverage",
+    "Notes and Assumptions",
+  ];
+  doc.font(FONT).fontSize(10);
+  contents.forEach((item, index) => doc.text(`${index + 1}.  ${item}`, left + 12, index === 0 ? doc.y + 4 : undefined));
 }
 
 function notesPage(doc: PDFKit.PDFDocument, record: BalanceSheetRecord, statements: Statements, top: number) {
@@ -200,6 +235,21 @@ function notesPage(doc: PDFKit.PDFDocument, record: BalanceSheetRecord, statemen
     if (p.newTermLoan > 0) {
       notes.push(
         `A term loan of Rs. ${formatAmount(p.newTermLoan)} is assumed at ${p.loanInterestPct}% per annum, repayable in ${p.loanTenureYears} equal annual instalments. Interest is calculated on the opening balance of each year.`,
+      );
+    }
+    if (p.ccLimit > 0) {
+      notes.push(
+        `A cash credit / working capital limit of Rs. ${formatAmount(p.ccLimit)} is assumed at ${p.ccInterestPct}% per annum. Being a running limit, it is taken as fully utilised in every projected year; its interest is charged to the Profit & Loss Account and it is excluded from debt service in the DSCR.`,
+      );
+    }
+    if (p.interestSubventionPct > 0 && p.interestSubventionYears > 0) {
+      notes.push(
+        `Interest subvention of ${p.interestSubventionPct}% of the interest on the new facilities is taken for the first ${p.interestSubventionYears} year(s)${schemeName(record) ? ` under ${schemeName(record)}` : ""}, and is shown as a deduction from interest.`,
+      );
+    }
+    if (p.subsidyAmount > 0) {
+      notes.push(
+        `Margin money / capital subsidy of Rs. ${formatAmount(p.subsidyAmount)}${schemeName(record) ? ` under ${schemeName(record)}` : ""} is back-ended. It is shown as a capital subsidy with an equal deposit (TDR) held by the bank during the lock-in period, and does not add to the funds available for the project.`,
       );
     }
     if (p.newFixedAssets > 0) notes.push(`Fixed assets of Rs. ${formatAmount(p.newFixedAssets)} are proposed to be acquired in the first projected year.`);
@@ -235,6 +285,67 @@ function notesPage(doc: PDFKit.PDFDocument, record: BalanceSheetRecord, statemen
       y += 12;
     });
   });
+}
+
+function projectFinancePage(doc: PDFKit.PDFDocument, record: BalanceSheetRecord, statements: Statements, top: number) {
+  const finance = statements.projectFinance;
+  if (!finance) return;
+  const table = projectFinanceRows(finance);
+  const left = PAGE.margin;
+  const width = doc.page.width - PAGE.margin * 2;
+  const half = width / 2;
+  const amountWidth = 120;
+  let y = top;
+
+  doc.lineWidth(0.8).strokeColor(RULE);
+  doc.rect(left, y, width, 22).fillAndStroke(SHADE, RULE);
+  doc.fillColor(INK).font(BOLD).fontSize(10);
+  doc.text("Cost of project", left + 6, y + 7, { width: half - amountWidth - 12 });
+  doc.text("Amount (Rs.)", left + half - amountWidth, y + 7, { width: amountWidth - 6, align: "right" });
+  doc.text("Means of finance", left + half + 6, y + 7, { width: half - amountWidth - 12 });
+  doc.text("Amount (Rs.)", left + width - amountWidth, y + 7, { width: amountWidth - 6, align: "right" });
+  y += 22;
+
+  const lines = Math.max(table.cost.length, table.means.length);
+  for (let index = 0; index < lines; index += 1) {
+    doc.rect(left, y, width, 18).stroke();
+    doc.moveTo(left + half, y).lineTo(left + half, y + 18).stroke();
+    doc.font(FONT).fontSize(10);
+    const cost = table.cost[index];
+    const means = table.means[index];
+    if (cost) {
+      doc.text(cost[0], left + 6, y + 5, { width: half - amountWidth - 12 });
+      doc.text(amount(cost[1]), left + half - amountWidth, y + 5, { width: amountWidth - 6, align: "right" });
+    }
+    if (means) {
+      doc.text(means[0], left + half + 6, y + 5, { width: half - amountWidth - 12 });
+      doc.text(amount(means[1]), left + width - amountWidth, y + 5, { width: amountWidth - 6, align: "right" });
+    }
+    y += 18;
+  }
+  doc.rect(left, y, width, 20).stroke();
+  doc.moveTo(left + half, y).lineTo(left + half, y + 20).stroke();
+  doc.font(BOLD).fontSize(10);
+  doc.text("Total", left + 6, y + 6);
+  doc.text(amount(table.totalCost), left + half - amountWidth, y + 6, { width: amountWidth - 6, align: "right" });
+  doc.text("Total", left + half + 6, y + 6);
+  doc.text(amount(table.totalMeans), left + width - amountWidth, y + 6, { width: amountWidth - 6, align: "right" });
+  y += 34;
+
+  const p = record.projection;
+  const facts: string[] = [];
+  if (p.newTermLoan > 0) facts.push(`Term loan: Rs. ${formatAmount(p.newTermLoan)} at ${p.loanInterestPct}% per annum, repayable in ${p.loanTenureYears} years.`);
+  if (p.ccLimit > 0) facts.push(`Cash credit / working capital limit: Rs. ${formatAmount(p.ccLimit)} at ${p.ccInterestPct}% per annum.`);
+  if (finance.totalCost > 0) {
+    facts.push(`Promoter's contribution: ${((finance.ownContribution / finance.totalCost) * 100).toFixed(2)}% of the project cost.`);
+  }
+  if (table.subsidy > 0) facts.push(`Margin money / capital subsidy (back-ended): Rs. ${formatAmount(table.subsidy)}, to be held by the bank during the lock-in period.`);
+  if (p.interestSubventionPct > 0 && p.interestSubventionYears > 0) {
+    facts.push(`Interest subvention: ${p.interestSubventionPct}% of interest for ${p.interestSubventionYears} year(s).`);
+  }
+  doc.font(FONT).fontSize(10).fillColor(INK);
+  doc.y = y;
+  facts.forEach((fact) => doc.text(fact, left + 4, doc.y + 3, { width: width - 8 }));
 }
 
 function decoratePages(doc: PDFKit.PDFDocument, record: BalanceSheetRecord) {
@@ -273,6 +384,11 @@ export async function renderBalanceSheetPdf(record: BalanceSheetRecord) {
   const asAt = periods.length === 1 ? `As at ${periods[0].yearEnd}` : `As at ${periods[0].yearEnd} to ${periods[periods.length - 1].yearEnd}`;
 
   coverPage(doc, record, statements);
+
+  if (statements.projectFinance) {
+    doc.addPage();
+    projectFinancePage(doc, record, statements, pageTitle(doc, record, "PROJECT COST AND MEANS OF FINANCE", schemeName(record) ?? "Proposed project"));
+  }
 
   doc.addPage();
   drawTable(doc, periods, profitAndLossRows(periods), pageTitle(doc, record, "TRADING AND PROFIT & LOSS ACCOUNT", span));

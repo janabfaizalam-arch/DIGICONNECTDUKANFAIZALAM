@@ -9,7 +9,8 @@ import { AdminCard, AdminSection, PageContainer } from "@/components/admin/primi
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { STATUS_TONE_CLASS } from "@/lib/admin/status-tone";
 import { CONSTITUTIONS, buildStatements, capitalHeading, formatAmount } from "@/lib/balance-sheets/engine";
-import { balanceSheetRows, profitAndLossRows, ratioRows } from "@/lib/balance-sheets/rows";
+import { balanceSheetRows, profitAndLossRows, projectFinanceRows, ratioRows } from "@/lib/balance-sheets/rows";
+import { SCHEME_OPTIONS } from "@/lib/balance-sheets/schemes";
 import { figuresOf } from "@/lib/balance-sheets/schema";
 import { getBalanceSheet } from "@/lib/balance-sheets/store";
 import { cn } from "@/lib/utils";
@@ -99,6 +100,7 @@ export default async function BalanceSheetDetailPage({ params }: { params: Promi
         </AdminSection>
       </AdminCard>
 
+      {statements.projectFinance ? <ProjectFinanceTable finance={projectFinanceRows(statements.projectFinance)} scheme={sheet.projection.scheme} /> : null}
       <BalanceSheetStatement title="Trading and Profit & Loss Account" periods={periods} rows={profitAndLossRows(periods)} />
       <BalanceSheetStatement title="Balance Sheet" periods={periods} rows={balanceSheetRows(periods, capitalHeading(sheet.constitution))} />
 
@@ -134,5 +136,48 @@ export default async function BalanceSheetDetailPage({ params }: { params: Promi
         </table>
       </div>
     </PageContainer>
+  );
+}
+
+function ProjectFinanceTable({ finance, scheme }: { finance: ReturnType<typeof projectFinanceRows>; scheme: string }) {
+  const schemeLabel = scheme !== "none" ? SCHEME_OPTIONS.find((option) => option.value === scheme)?.label : null;
+  const lines = Math.max(finance.cost.length, finance.means.length);
+  return (
+    <div className="overflow-x-auto touch-pan-y rounded-ds-xl border border-ds-border bg-ds-surface">
+      <table className="w-full min-w-[640px] border-collapse text-[13px]">
+        <caption className="border-b border-ds-border px-4 py-3 text-left text-[14px] font-bold text-ds-text-primary">
+          Project cost and means of finance{schemeLabel ? ` · ${schemeLabel}` : ""}
+        </caption>
+        <thead>
+          <tr className="bg-ds-surface-sunken">
+            <th scope="col" className="px-4 py-2 text-left font-bold">Cost of project</th>
+            <th scope="col" className="px-3 py-2 text-right font-bold">Rs.</th>
+            <th scope="col" className="px-4 py-2 text-left font-bold">Means of finance</th>
+            <th scope="col" className="px-3 py-2 text-right font-bold">Rs.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: lines }, (_, index) => (
+            <tr key={index}>
+              <td className="px-4 py-1.5">{finance.cost[index]?.[0] ?? ""}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{finance.cost[index] ? formatAmount(finance.cost[index][1]) : ""}</td>
+              <td className="px-4 py-1.5">{finance.means[index]?.[0] ?? ""}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{finance.means[index] ? formatAmount(finance.means[index][1]) : ""}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-ds-border font-bold">
+            <td className="px-4 py-2">Total</td>
+            <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{formatAmount(finance.totalCost)}</td>
+            <td className="px-4 py-2">Total</td>
+            <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{formatAmount(finance.totalMeans)}</td>
+          </tr>
+        </tbody>
+      </table>
+      {finance.subsidy > 0 ? (
+        <p className="border-t border-ds-border px-4 py-2 text-[12.5px] text-ds-text-secondary">
+          Back-ended subsidy Rs. {formatAmount(finance.subsidy)} bank ke paas TDR mein rahegi (balance sheet mein dono taraf).
+        </p>
+      ) : null}
+    </div>
   );
 }

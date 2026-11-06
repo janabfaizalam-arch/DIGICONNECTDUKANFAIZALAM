@@ -1,4 +1,4 @@
-import { formatAmount, type Period, type Statements } from "@/lib/balance-sheets/engine";
+import { formatAmount, type Period, type ProjectFinance, type Statements } from "@/lib/balance-sheets/engine";
 
 /**
  * The lines of each statement, in order, shared by the printed PDF and the
@@ -19,7 +19,8 @@ export const amount = (value: number | null) => {
 
 export function profitAndLossRows(periods: Period[]): Row[] {
   const v = (pick: (period: Period) => number) => periods.map(pick);
-  return [
+  const subvention = periods.some((period) => Math.abs(period.pl.interestSubvention) > 0.005);
+  const rows: Row[] = [
     { kind: "heading", label: "I. INCOME" },
     { kind: "line", label: "Sales / Turnover", values: v((p) => p.pl.sales), indent: 1 },
     { kind: "line", label: "Other income", values: v((p) => p.pl.otherIncome), indent: 1 },
@@ -41,10 +42,15 @@ export function profitAndLossRows(periods: Period[]): Row[] {
     { kind: "line", label: "Other expenses", values: v((p) => p.pl.otherExpenses), indent: 1 },
     { kind: "line", label: "Depreciation", values: v((p) => p.pl.depreciation), indent: 1 },
     { kind: "line", label: "Interest on loans", values: v((p) => p.pl.interest), indent: 1 },
+    ...(subvention
+      ? ([{ kind: "line", label: "Less: Interest subvention under scheme", values: v((p) => -p.pl.interestSubvention), indent: 1 }] as Row[])
+      : []),
     {
       kind: "line",
       label: "Total Indirect Expenses",
-      values: v((p) => p.pl.salaries + p.pl.rent + p.pl.adminExpenses + p.pl.otherExpenses + p.pl.depreciation + p.pl.interest),
+      values: v(
+        (p) => p.pl.salaries + p.pl.rent + p.pl.adminExpenses + p.pl.otherExpenses + p.pl.depreciation + p.pl.interest - p.pl.interestSubvention,
+      ),
       bold: true,
       rule: "above",
     },
@@ -53,6 +59,7 @@ export function profitAndLossRows(periods: Period[]): Row[] {
     { kind: "line", label: "Less: Provision for income tax", values: v((p) => -p.pl.tax), indent: 1 },
     { kind: "line", label: "NET PROFIT AFTER TAX", values: v((p) => p.pl.netProfit), bold: true, rule: "total" },
   ];
+  return rows;
 }
 
 export function balanceSheetRows(periods: Period[], heading: string): Row[] {
@@ -66,10 +73,18 @@ export function balanceSheetRows(periods: Period[], heading: string): Row[] {
     { kind: "line", label: "Add: Net profit for the year", values: v((p) => p.bs.netProfit), indent: 1 },
     { kind: "line", label: "Less: Drawings", values: v((p) => -p.bs.drawings), indent: 1 },
     { kind: "line", label: "Closing balance", values: v((p) => p.bs.closingCapital), bold: true, rule: "above" },
+  ];
+  if (any((p) => p.bs.subsidyReserve)) {
+    rows.push({ kind: "line", label: "Capital subsidy under scheme (back-ended)", values: v((p) => p.bs.subsidyReserve), bold: true });
+  }
+  rows.push(
     { kind: "gap" },
     { kind: "line", label: "Secured loans", values: periods.map(() => null), bold: true },
     { kind: "line", label: "Term loan from bank", values: v((p) => p.bs.termLoan), indent: 1 },
-  ];
+  );
+  if (any((p) => p.bs.ccLoan)) {
+    rows.push({ kind: "line", label: "Cash credit / working capital limit from bank", values: v((p) => p.bs.ccLoan), indent: 1 });
+  }
   if (any((p) => p.bs.bankOverdraft)) {
     rows.push({ kind: "line", label: "Bank overdraft / working capital limit", values: v((p) => p.bs.bankOverdraft), indent: 1 });
   }
@@ -90,8 +105,11 @@ export function balanceSheetRows(periods: Period[], heading: string): Row[] {
     { kind: "line", label: "Sundry debtors", values: v((p) => p.bs.debtors), indent: 1 },
     { kind: "line", label: "Cash and bank balances", values: v((p) => p.bs.cashAndBank), indent: 1 },
     { kind: "line", label: "Other current assets, loans and advances", values: v((p) => p.bs.otherCurrentAssets), indent: 1 },
-    { kind: "line", label: "TOTAL ASSETS", values: v((p) => p.bs.totalAssets), bold: true, rule: "total" },
   );
+  if (any((p) => p.bs.subsidyDeposit)) {
+    rows.push({ kind: "line", label: "Subsidy deposit (TDR) with bank", values: v((p) => p.bs.subsidyDeposit), indent: 1 });
+  }
+  rows.push({ kind: "line", label: "TOTAL ASSETS", values: v((p) => p.bs.totalAssets), bold: true, rule: "total" });
   if (any((p) => p.bs.difference)) {
     rows.push({ kind: "line", label: "Difference (to be reconciled)", values: v((p) => p.bs.difference), bold: true });
   }
@@ -111,3 +129,17 @@ export function ratioRows(periods: Period[], statements: Statements): { label: s
   ];
 }
 
+
+/** Project cost and means of finance as two columns of label / amount pairs. */
+export function projectFinanceRows(finance: ProjectFinance) {
+  const cost: [string, number][] = [
+    ["Fixed assets / plant and machinery", finance.fixedAssets],
+    ["Working capital (one operating cycle)", finance.workingCapital],
+  ];
+  const means: [string, number][] = [
+    ["Own contribution (promoter's margin)", finance.ownContribution],
+    ["Term loan from bank", finance.termLoan],
+    ["Cash credit / working capital limit", finance.ccLimit],
+  ];
+  return { cost, means, totalCost: finance.totalCost, totalMeans: finance.totalMeans, subsidy: finance.subsidy };
+}
