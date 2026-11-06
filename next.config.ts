@@ -127,7 +127,16 @@ const nextConfig: NextConfig = {
   // runtime; bundled, those paths break and every PDF route fails.
   // pdf-parse bundles pdf.js and starts its worker from its own folder, which
   // the bundler would move.
-  serverExternalPackages: ["argon2", "pdfkit", "pdf-parse"],
+  // @napi-rs/canvas is native (pdf.js needs its DOMMatrix); see pdf-text.ts.
+  serverExternalPackages: ["argon2", "pdfkit", "pdf-parse", "@napi-rs/canvas"],
+  outputFileTracingIncludes: {
+    // The canvas package picks its native binary at runtime; make sure the
+    // Linux build travels with the document-reading route.
+    "/api/admin/balance-sheets/extract": [
+      "./node_modules/@napi-rs/**",
+      "./node_modules/.pnpm/@napi-rs+canvas*/**",
+    ],
+  },
   images: {
     // An explicit list, never "**" — see src/lib/security/image-hosts.ts.
     remotePatterns: remoteImagePatterns(),

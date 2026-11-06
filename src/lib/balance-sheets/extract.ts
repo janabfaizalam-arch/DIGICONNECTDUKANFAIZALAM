@@ -1,7 +1,6 @@
 import "server-only";
 
-import { PDFParse } from "pdf-parse";
-
+import { loadPdfParse } from "@/lib/balance-sheets/pdf-text";
 import { GeminiError, classify, readDocumentsAsJson, redactSecrets, type DocumentPart, type GeminiFailure } from "@/lib/ai/gemini";
 import {
   DOC_TYPES,
@@ -55,6 +54,7 @@ function kindOf(upload: Upload): "pdf" | "text" | "image" | null {
 }
 
 async function pdfText(bytes: Uint8Array, password: string | undefined) {
+  const { PDFParse } = await loadPdfParse();
   const parser = new PDFParse({ data: bytes, password: password || undefined });
   try {
     const result = await parser.getText();
