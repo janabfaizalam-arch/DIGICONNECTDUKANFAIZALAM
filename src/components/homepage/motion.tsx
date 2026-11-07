@@ -46,15 +46,20 @@ export function Reveal({
 }) {
   const reduced = useReducedMotion();
 
-  if (reduced) return <div className={className}>{children}</div>;
-
+  /*
+    The same element on server and client, whatever the motion setting. The
+    server cannot know the preference, so it always writes the hidden start
+    state; swapping in a plain div on the client left that inline
+    `opacity: 0` behind (React does not patch attributes during hydration)
+    and the band never appeared. Reduced motion now means "no travel".
+  */
   return (
     <m.div
       className={className}
       initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "0px 0px -12% 0px" }}
-      transition={{ duration: 0.55, delay, ease: EASE }}
+      transition={reduced ? { duration: 0 } : { duration: 0.55, delay, ease: EASE }}
     >
       {children}
     </m.div>
@@ -66,12 +71,19 @@ const STAGGER_PARENT: Variants = {
   shown: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
 };
 
+const STAGGER_PARENT_INSTANT: Variants = { hidden: {}, shown: {} };
+
 /** The elements these wrappers are allowed to become. */
 type Tag = "div" | "ul" | "ol" | "li";
 
 const STAGGER_CHILD: Variants = {
   hidden: { opacity: 0, y: 16, scale: 0.985 },
   shown: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.42, ease: EASE } },
+};
+
+const STAGGER_CHILD_INSTANT: Variants = {
+  hidden: STAGGER_CHILD.hidden,
+  shown: { opacity: 1, y: 0, scale: 1, transition: { duration: 0 } },
 };
 
 /**
@@ -94,15 +106,13 @@ export function Stagger({
   as?: Tag;
 }) {
   const reduced = useReducedMotion();
-  const Static = as;
   const Motion = m[as];
 
-  if (reduced) return <Static className={className}>{children}</Static>;
-
+  // Same element on server and client — see Reveal.
   return (
     <Motion
       className={className}
-      variants={STAGGER_PARENT}
+      variants={reduced ? STAGGER_PARENT_INSTANT : STAGGER_PARENT}
       initial="hidden"
       whileInView="shown"
       viewport={{ once: true, margin: "0px 0px -10% 0px" }}
@@ -122,13 +132,10 @@ export function StaggerItem({
   as?: Tag;
 }) {
   const reduced = useReducedMotion();
-  const Static = as;
   const Motion = m[as];
 
-  if (reduced) return <Static className={className}>{children}</Static>;
-
   return (
-    <Motion className={className} variants={STAGGER_CHILD}>
+    <Motion className={className} variants={reduced ? STAGGER_CHILD_INSTANT : STAGGER_CHILD}>
       {children}
     </Motion>
   );
