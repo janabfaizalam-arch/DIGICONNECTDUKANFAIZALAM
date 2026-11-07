@@ -1,0 +1,7 @@
+# Runtime state written on the host — keep it out of the repo.
+content/post-log.jsonl
+media/*
+!media/.gitkeep
+memory/*
+!memory/.gitkeep
+.env
