@@ -7,6 +7,7 @@ import { getFooterSocialLinks } from "@/lib/homepage/social";
 import { getHomepageTestimonials } from "@/lib/homepage/testimonials";
 import { getPublicServices } from "@/lib/services";
 import { cachePublicRead, HOMEPAGE_TAGS } from "@/lib/homepage/cache";
+import { getPublicCatalogue } from "@/lib/digital-plans/store";
 
 /**
  * The cached reads, kept in a module of their own.
@@ -61,4 +62,11 @@ export const getCachedFooterSocialLinks = cachePublicRead(
   () => getFooterSocialLinks(),
   "social-links",
   HOMEPAGE_TAGS.social,
+);
+
+/** RNOS Digital packages and add-ons, cleared by the packages admin on every save. */
+export const getCachedDigitalCatalogue = cachePublicRead(
+  () => getPublicCatalogue(),
+  "digital-catalogue",
+  HOMEPAGE_TAGS.digitalPlans,
 );

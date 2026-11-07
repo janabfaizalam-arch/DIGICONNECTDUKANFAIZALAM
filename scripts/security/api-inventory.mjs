@@ -61,6 +61,8 @@ const REVIEWED_PUBLIC = {
   "crm/event": "lead scoring; rate-limited, event allowlist, cannot overwrite names",
   "insurance-quotation/[token]/accept": "unguessable token is the credential; rate-limited",
   lead: "public enquiry form; rate-limited, file type/size checked",
+  "digital-plans/enquiry": "RNOS Digital package enquiry; rate-limited, zod-validated, honeypot, prices read from DB not client, creates no subscription or payment",
+  "digital-plans/quote/[token]": "unguessable token is the credential; rate-limited, only flips a quoted enquiry to approved/declined once",
   "partner-applications": "DC Partner sign-up; rate-limited, grants nothing until approved",
   "print/jobs/create": "walk-up print counter; rate-limited, price computed server-side",
   "print/jobs/upload": "walk-up print counter; rate-limited, file validated",

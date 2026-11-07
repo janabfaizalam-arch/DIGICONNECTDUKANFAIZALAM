@@ -65,6 +65,8 @@ import {
   WalletCards,
   Workflow,
   HardHat,
+  Package,
+  FileSignature,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -196,6 +198,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         icon: TrendingUp,
       },
       {
+        href: "/admin/digital-enquiries",
+        label: "Package Enquiries",
+        description: "Get Started requests for RNOS Digital plans, quotations and approvals",
+        icon: FileSignature,
+      },
+      {
         href: "/admin/leads/pipeline",
         label: "Pipeline Board",
         description: "The same leads as columns you can drag between",
@@ -256,6 +264,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "Service Builder",
         description: "Build a new service end to end in one flow",
         icon: Sparkles,
+      },
+      {
+        href: "/admin/digital-plans",
+        label: "RNOS Digital Packages",
+        description: "Monthly plans, prices, features and add-ons shown on /packages",
+        icon: Package,
       },
     ],
   },
@@ -658,6 +672,8 @@ export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
   { href: "/admin/articles/new", reachedFrom: "/admin/articles" },
   { href: "/admin/offline-invoices/new", reachedFrom: "/admin/offline-invoices" },
   { href: "/admin/balance-sheets/new", reachedFrom: "/admin/balance-sheets" },
+  { href: "/admin/digital-plans/new", reachedFrom: "/admin/digital-plans" },
+  { href: "/admin/digital-plans/addons", reachedFrom: "/admin/digital-plans" },
   { href: "/admin/services/new", reachedFrom: "/admin/services" },
   { href: "/admin/services/new-v5", reachedFrom: "/admin/services" },
   { href: "/admin/service-builder/create", reachedFrom: "/admin/service-builder" },

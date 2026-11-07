@@ -6,13 +6,14 @@ export type AdminNotificationType =
   | "payment_pending"
   | "insurance_quotation"
   | "document_uploaded"
-  | "final_document_pending";
+  | "final_document_pending"
+  | "digital_enquiry";
 
 export type CreateAdminNotificationInput = {
   type: AdminNotificationType;
   title: string;
   message: string;
-  relatedType?: "lead" | "application" | "insurance_quotation" | "payment" | "document";
+  relatedType?: "lead" | "application" | "insurance_quotation" | "payment" | "document" | "digital_enquiry";
   relatedId?: string | null;
 };
 
