@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { DEFAULT_PLANS } from "@/lib/digital-plans/defaults";
 import { PROJECTS } from "@/lib/portfolio/content";
 import { serviceCategories, servicesData } from "@/lib/services-data";
 
@@ -25,6 +26,8 @@ const STATIC: Array<{ path: string; changeFrequency: Entry["changeFrequency"]; p
   { path: "/featured-services", changeFrequency: "weekly", priority: 0.6 },
   { path: "/about", changeFrequency: "yearly", priority: 0.5 },
   { path: "/portfolio", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/packages", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/digital-services", changeFrequency: "monthly", priority: 0.7 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.6 },
   { path: "/digi-partner", changeFrequency: "monthly", priority: 0.7 },
   { path: "/print", changeFrequency: "monthly", priority: 0.7 },
@@ -49,6 +52,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency,
     priority,
   }));
+
+  for (const plan of DEFAULT_PLANS) {
+    entries.push({ url: `${siteUrl}/packages/${plan.slug}`, lastModified: now, changeFrequency: "weekly", priority: 0.6 });
+  }
 
   for (const project of PROJECTS) {
     entries.push({ url: `${siteUrl}/portfolio/${project.slug}`, lastModified: now, changeFrequency: "monthly", priority: 0.5 });

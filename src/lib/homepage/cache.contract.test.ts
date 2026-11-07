@@ -22,6 +22,7 @@ const CACHED = [
   "getCachedHomepageTestimonials",
   "getCachedHomepageReels",
   "getCachedFooterSocialLinks",
+  "getCachedDigitalCatalogue",
 ] as const;
 
 describe("public marketing content is read from cache", () => {
@@ -77,6 +78,7 @@ describe("public marketing content is read from cache", () => {
     ["src/app/api/admin/homepage-slides/route.ts", "slides"],
     ["src/app/api/admin/homepage-slides/[id]/route.ts", "slides"],
     ["src/lib/service-admin.ts", "services"],
+    ["src/lib/digital-plans/revalidate.ts", "digitalPlans"],
   ];
 
   for (const [file, tag] of WRITERS) {

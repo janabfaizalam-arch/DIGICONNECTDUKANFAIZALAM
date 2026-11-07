@@ -29,6 +29,7 @@ export const HOMEPAGE_TAGS = {
   testimonials: "public:homepage-testimonials",
   reels: "public:homepage-reels",
   social: "public:social-links",
+  digitalPlans: "public:digital-plans",
 } as const;
 
 export type HomepageTag = (typeof HOMEPAGE_TAGS)[keyof typeof HOMEPAGE_TAGS];

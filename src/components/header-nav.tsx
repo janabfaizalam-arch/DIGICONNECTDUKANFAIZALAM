@@ -83,11 +83,11 @@ export function HeaderNav({ isHome, isLoggedIn }: { isHome: boolean; isLoggedIn:
   }, [open]);
 
   const linkClass =
-    "rounded-lg px-2.5 py-2 text-[11px] font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 xl:px-3 xl:text-xs";
+    "whitespace-nowrap rounded-lg px-2.5 py-2 text-[11px] font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 xl:text-xs";
 
   const triggerClass = (key: MenuKey) =>
     cn(
-      "inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-[11px] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 xl:px-3 xl:text-xs",
+      "inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-2 text-[11px] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 xl:text-xs",
       open === key ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
     );
 
@@ -113,12 +113,18 @@ export function HeaderNav({ isHome, isLoggedIn }: { isHome: boolean; isLoggedIn:
           </button>
         </div>
 
-        <Link href={isHome ? "#categories" : "/services"} className={linkClass}>
+        {/* Categories and Help give way first on a narrow desktop: the Services
+            menu and the footer reach the same places. */}
+        <Link href={isHome ? "#categories" : "/services"} className={cn(linkClass, "hidden xl:block")}>
           Categories
         </Link>
 
         <Link href="/portfolio" className={linkClass} onPointerEnter={hoverClose}>
           Portfolio
+        </Link>
+
+        <Link href="/packages" className={linkClass} onPointerEnter={hoverClose}>
+          Packages
         </Link>
 
         {/* Schemes — compact menu */}
@@ -146,7 +152,7 @@ export function HeaderNav({ isHome, isLoggedIn }: { isHome: boolean; isLoggedIn:
         <Link href="/track-application" className={linkClass} onPointerEnter={hoverClose}>
           Track
         </Link>
-        <Link href={isHome ? "#support" : "/#support"} className={linkClass} onPointerEnter={hoverClose}>
+        <Link href={isHome ? "#support" : "/#support"} className={cn(linkClass, "hidden xl:block")} onPointerEnter={hoverClose}>
           Help
         </Link>
         {!isLoggedIn ? (

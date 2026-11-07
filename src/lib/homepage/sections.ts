@@ -39,6 +39,7 @@ export type HomepageSectionId =
   | "become_partner"
   | "support"
   | "portfolio"
+  | "digital_plans"
   | "about";
 
 export type HomepageSectionSpec = {
@@ -193,6 +194,12 @@ export const HOMEPAGE_SECTIONS: HomepageSectionSpec[] = [
     label: "RNOS Digital portfolio",
     blurb: "Explore What We Create — four website concepts and a link to the full portfolio",
     editHref: null,
+  },
+  {
+    id: "digital_plans",
+    label: "Digital Solutions & Plans",
+    blurb: "Three RNOS Digital plans with monthly prices and a link to all packages",
+    editHref: "/admin/digital-plans",
   },
   {
     id: "about",

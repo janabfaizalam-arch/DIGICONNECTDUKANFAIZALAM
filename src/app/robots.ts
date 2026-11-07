@@ -32,6 +32,7 @@ export default function robots(): MetadataRoute.Robots {
           "/notifications/",
           "/invoice/",
           "/pay/",
+          "/packages/quote/",
           "/print/station",
           "/reset-password",
           "/forgot-password",

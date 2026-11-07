@@ -36,6 +36,7 @@ function relatedHref(notification: AdminNotification) {
   if (notification.related_type === "insurance_quotation") return "/admin/insurance-quotations";
   if (notification.related_type === "payment") return "/admin/payments";
   if (notification.related_type === "document") return `/admin/applications/${notification.related_id}`;
+  if (notification.related_type === "digital_enquiry") return `/admin/digital-enquiries/${notification.related_id}`;
 
   return "/admin";
 }

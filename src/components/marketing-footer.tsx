@@ -35,6 +35,7 @@ const servicesLinks = [
 const companyLinks = [
   { label: "About Us", href: "/about", external: false },
   { label: "RNOS Digital Portfolio", href: "/portfolio", external: false },
+  { label: "Digital Packages & Pricing", href: "/packages", external: false },
   { label: "RNOS India (rnos.in)", href: "https://www.rnos.in", external: true },
   { label: "Become a DC Partner", href: "/digi-partner", external: false },
   { label: "DC Partner Login", href: "/ap/login", external: false },
@@ -204,6 +205,8 @@ export function MarketingFooter({
             {dedupeLinks([
               { label: "All services", href: "/services" },
               { label: "Portfolio", href: "/portfolio" },
+              { label: "Packages", href: "/packages" },
+              { label: "Digital services", href: "/digital-services" },
               { label: "Government schemes", href: "/#schemes" },
               { label: "Knowledge Center", href: "/#blog" },
               { label: "Become a DC Partner", href: "/digi-partner" },
