@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { PROJECTS } from "@/lib/portfolio/content";
 import { serviceCategories, servicesData } from "@/lib/services-data";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.rnos.in";
@@ -23,6 +24,7 @@ const STATIC: Array<{ path: string; changeFrequency: Entry["changeFrequency"]; p
   { path: "/services", changeFrequency: "weekly", priority: 0.9 },
   { path: "/featured-services", changeFrequency: "weekly", priority: 0.6 },
   { path: "/about", changeFrequency: "yearly", priority: 0.5 },
+  { path: "/portfolio", changeFrequency: "monthly", priority: 0.7 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.6 },
   { path: "/digi-partner", changeFrequency: "monthly", priority: 0.7 },
   { path: "/print", changeFrequency: "monthly", priority: 0.7 },
@@ -47,6 +49,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency,
     priority,
   }));
+
+  for (const project of PROJECTS) {
+    entries.push({ url: `${siteUrl}/portfolio/${project.slug}`, lastModified: now, changeFrequency: "monthly", priority: 0.5 });
+  }
 
   for (const category of serviceCategories) {
     entries.push({

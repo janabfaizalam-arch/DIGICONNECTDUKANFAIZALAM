@@ -20,6 +20,7 @@ import { FaqAccordion } from "@/components/homepage/faq-accordion";
 import { BecomeDigiPartner } from "@/components/homepage/become-digi-partner";
 import { SupportCenter } from "@/components/homepage/support-center";
 import { AboutRnos } from "@/components/homepage/about-rnos";
+import { PortfolioShowcase } from "@/components/homepage/portfolio-showcase";
 
 import { MotionRoot, Reveal } from "@/components/homepage/motion";
 import { HomepageContactActions } from "@/components/homepage-contact-actions";
@@ -156,6 +157,7 @@ export default async function Home({
     faq: <FaqAccordion items={faqs.map((f) => ({ question: f.question, answer: f.answer }))} />,
     become_partner: <BecomeDigiPartner />,
     support: <SupportCenter />,
+    portfolio: <PortfolioShowcase />,
     about: <AboutRnos />,
   };
 

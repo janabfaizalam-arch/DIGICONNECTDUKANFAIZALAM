@@ -117,6 +117,10 @@ export function HeaderNav({ isHome, isLoggedIn }: { isHome: boolean; isLoggedIn:
           Categories
         </Link>
 
+        <Link href="/portfolio" className={linkClass} onPointerEnter={hoverClose}>
+          Portfolio
+        </Link>
+
         {/* Schemes — compact menu */}
         <div onPointerEnter={hoverOpen("schemes")}>
           <button
