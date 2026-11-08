@@ -380,6 +380,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         icon: Landmark,
       },
       {
+        href: "/admin/project-reports",
+        label: "Project Reports (DPR)",
+        description: "Bank-ready DPR for a new project: cost, finance, projections, DSCR, break-even",
+        icon: ClipboardList,
+      },
+      {
         href: "/admin/wallet",
         label: "Wallet & Cashback",
         description: "Customer wallet balances and the cashback you owe",
@@ -672,6 +678,7 @@ export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
   { href: "/admin/articles/new", reachedFrom: "/admin/articles" },
   { href: "/admin/offline-invoices/new", reachedFrom: "/admin/offline-invoices" },
   { href: "/admin/balance-sheets/new", reachedFrom: "/admin/balance-sheets" },
+  { href: "/admin/project-reports/new", reachedFrom: "/admin/project-reports" },
   { href: "/admin/digital-plans/new", reachedFrom: "/admin/digital-plans" },
   { href: "/admin/digital-plans/addons", reachedFrom: "/admin/digital-plans" },
   { href: "/admin/services/new", reachedFrom: "/admin/services" },
