@@ -31,6 +31,7 @@ const promoterSchema = z.object({
 });
 
 export const dprInputSchema = z.object({
+  templateId: z.union([z.null(), z.string().max(40)]).default(null),
   businessName: z.string().trim().min(2, "Business ka naam bharein").max(160),
   constitution: z.enum(CONSTITUTIONS.map((c) => c.value) as [Constitution, ...Constitution[]]),
   activity: text(300),

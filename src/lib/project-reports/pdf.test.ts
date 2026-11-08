@@ -34,32 +34,47 @@ describe("DPR PDF", () => {
     if (process.env.DPR_PDF_OUT) writeFileSync(process.env.DPR_PDF_OUT, pdf);
     const { text, pages } = await textOf(pdf);
     // No blank pages: the footer must not push content onto new pages.
-    expect(pages).toBeGreaterThanOrEqual(6);
-    expect(pages).toBeLessThanOrEqual(9);
+    expect(pages).toBeGreaterThanOrEqual(15);
+    expect(pages).toBeLessThanOrEqual(26);
     for (const heading of [
       "DETAILED PROJECT REPORT",
-      "PROJECT AT A GLANCE",
+      "Project at a Glance",
       "INTRODUCTION",
       "PROMOTER PROFILE",
-      "COST OF PROJECT",
+      "Cost of Project",
       "MEANS OF FINANCE",
       "ASSESSMENT OF WORKING CAPITAL",
-      "PROJECTED PROFITABILITY STATEMENT",
-      "PROJECTED BALANCE SHEET",
-      "DEPRECIATION SCHEDULE",
-      "REPAYMENT SCHEDULE OF TERM LOAN",
-      "DEBT SERVICE COVERAGE RATIO",
+      "CALCULATION OF ESTIMATED SALARY",
+      "TERM LOAN REPAYMENT SCHEDULE",
+      "CALCULATION OF DEPRECIATION OF FIXED ASSETS",
+      "RAW MATERIALS & CONSUMABLES",
+      "Cost of Production and Profitability",
+      "Projected Balance Sheet",
+      "Cash Flow Statement",
+      "CALCULATION OF DEBT SERVICE COVERAGE RATIO",
+      "CALCULATION OF CURRENT RATIO",
       "BREAK-EVEN ANALYSIS",
       "SWOT ANALYSIS",
       "DECLARATION",
+      "Table of Contents",
+      "Executive Summary",
+      "MARKETING STRATEGY",
+      "MACHINERY AND TECHNOLOGY",
+      "STATUTORY APPROVALS AND LICENCES",
+      "SENSITIVITY ANALYSIS",
+      "KEY FINANCIAL RATIOS",
+      "Month-wise Repayment Schedule",
+      "Basis of Projections",
     ]) {
       expect(text, heading).toContain(heading);
     }
     expect(text).toContain("Shree Ram Flour Mill");
     expect(text).toContain("PMEGP");
     expect(text).toContain("Atta chakki 20 HP with motor");
-    expect(text).toContain("54,00,000.00");
+    expect(text).toContain("54.00"); // year I sales, Rs. lakh
+    expect(text).toContain("90,00,000.00"); // sales at 100% capacity, rupees
     expect(text).toContain("not included in the cost of project");
+    expect(text).toContain("Amount in Rs. lakh");
   });
 
   it("uses the admin's own text for a section", async () => {

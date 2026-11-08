@@ -9,6 +9,7 @@ import type { DprInput } from "./engine";
 export function sampleDpr(now = new Date()): DprInput {
   return {
     ...emptyDpr(now),
+    templateId: "flour-mill",
     businessName: "Shree Ram Flour Mill",
     activity: "manufacturing of wheat flour (atta)",
     address: "Village Kusmilia",

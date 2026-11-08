@@ -97,6 +97,13 @@ describe("projections", () => {
     for (const y of report.years) expect(Math.abs(y.totalAssets - y.totalLiabilities)).toBeLessThan(0.05);
   });
 
+  it("cash flow closes at the balance sheet's cash every year", () => {
+    for (const [i, cf] of report.cashFlow.entries()) {
+      expect(cf.closingCash).toBeCloseTo(report.years[i].cash, 0);
+      if (i > 0) expect(cf.openingCash).toBeCloseTo(report.cashFlow[i - 1].closingCash, 1);
+    }
+  });
+
   it("depreciates WDV by asset class and writes off preliminary over 5 years", () => {
     const machinery = report.depreciation.find((d) => d.kind === "machinery")!;
     expect(machinery.ratePct).toBe(15);

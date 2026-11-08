@@ -49,6 +49,8 @@ export type Promoter = {
 };
 
 export type DprInput = {
+  /** The project template this DPR was started from, for its written sections. */
+  templateId: string | null;
   businessName: string;
   constitution: Constitution;
   activity: string;
@@ -118,11 +120,18 @@ export type DprInput = {
 };
 
 export const NARRATIVE_KEYS = [
+  "summary",
   "introduction",
   "promoters",
   "project",
   "market",
+  "marketing",
   "process",
+  "machinery",
+  "rawMaterialSource",
+  "licences",
+  "risks",
+  "employment",
   "swot",
   "implementation",
   "conclusion",
@@ -224,8 +233,26 @@ export type BreakEven = {
   cashBepCapacityPct: number | null;
 };
 
+/** Year-wise cash flow: where the cash in the balance sheet comes from. */
+export type CashFlowRow = {
+  fyStart: number;
+  label: string;
+  openingCash: number;
+  netProfit: number;
+  depreciation: number;
+  increaseInCreditors: number;
+  totalInflow: number;
+  principalRepaid: number;
+  drawings: number;
+  increaseInStock: number;
+  increaseInDebtors: number;
+  totalOutflow: number;
+  closingCash: number;
+};
+
 export type DprReport = {
   cost: ProjectCost;
+  cashFlow: CashFlowRow[];
   workingCapital: WorkingCapital;
   means: MeansOfFinance;
   years: YearRow[];
@@ -539,6 +566,7 @@ export function buildDpr(input: DprInput): DprReport {
 
   return {
     cost,
+    cashFlow: cashFlowOf(input, cost, means, rows),
     workingCapital,
     means,
     years: rows,
@@ -553,6 +581,45 @@ export function buildDpr(input: DprInput): DprReport {
     installedCapacityValue,
     warnings: warningsFor(input, { cost, means, rows, averageDscr, scheme }),
   };
+}
+
+/**
+ * Cash flow by year. Day-zero cash is what the means of finance leave after
+ * paying for the fixed assets and preliminary expenses — the working
+ * capital money. Each year adds cash profit and supplier credit and pays
+ * out instalments, drawings and the growth in stock and debtors; the closing
+ * figure is the cash in that year's balance sheet.
+ */
+function cashFlowOf(input: DprInput, cost: ProjectCost, means: MeansOfFinance, rows: YearRow[]): CashFlowRow[] {
+  let opening = means.total - cost.fixedCapital - cost.preliminary;
+  let prev = { creditors: 0, stock: 0, debtors: 0 };
+  return rows.map((row) => {
+    const increaseInCreditors = row.creditors - prev.creditors;
+    const increaseInStock = row.stock - prev.stock;
+    const increaseInDebtors = row.debtorsBalance - prev.debtors;
+    const depreciation = row.depreciation + row.preliminaryWrittenOff;
+    const inflow = row.netProfit + depreciation + increaseInCreditors;
+    const outflow = row.principalRepaid + pos(input.drawingsPerYear) + increaseInStock + increaseInDebtors;
+    const closing = opening + inflow - outflow;
+    const out: CashFlowRow = {
+      fyStart: row.fyStart,
+      label: row.label,
+      openingCash: round(opening),
+      netProfit: row.netProfit,
+      depreciation: round(depreciation),
+      increaseInCreditors: round(increaseInCreditors),
+      totalInflow: round(inflow),
+      principalRepaid: row.principalRepaid,
+      drawings: round(pos(input.drawingsPerYear)),
+      increaseInStock: round(increaseInStock),
+      increaseInDebtors: round(increaseInDebtors),
+      totalOutflow: round(outflow),
+      closingCash: round(closing),
+    };
+    opening = closing;
+    prev = { creditors: row.creditors, stock: row.stock, debtors: row.debtorsBalance };
+    return out;
+  });
 }
 
 /**
@@ -617,4 +684,56 @@ function warningsFor(
   }
   if (!input.promoters.some((p) => p.name.trim())) out.push("Promoter ka naam bharein.");
   return out;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Annexures
+   ───────────────────────────────────────────────────────────────────────── */
+
+export type SensitivityCase = { label: string; averageDscr: number | null; minimumDscr: number | null; firstYearProfit: number; breakEvenPct: number | null };
+
+/**
+ * How the project holds up if things go worse than planned: selling prices
+ * 10% lower, raw material 10% dearer, or both. Banks read this to judge the
+ * margin of safety.
+ */
+export function sensitivityOf(input: DprInput): SensitivityCase[] {
+  const run = (label: string, change: (i: DprInput) => DprInput): SensitivityCase => {
+    const r = buildDpr(change(input));
+    return { label, averageDscr: r.averageDscr, minimumDscr: r.minimumDscr, firstYearProfit: r.years[0]?.netProfit ?? 0, breakEvenPct: r.breakEven?.bepCapacityPct ?? null };
+  };
+  // The stresses banks usually ask for: lower volumes, dearer running costs, a rate rise.
+  const lowerVolume = (i: DprInput) => ({ ...i, utilisationPct: i.utilisationPct.map((u) => u * 0.9) });
+  const dearerCosts = (i: DprInput) => ({
+    ...i,
+    staff: i.staff.map((s) => ({ ...s, monthlySalary: s.monthlySalary * 1.1 })),
+    overheads: i.overheads.map((o) => ({ ...o, monthly: o.monthly * 1.1 })),
+  });
+  const higherRate = (i: DprInput) => ({ ...i, termLoanInterestPct: i.termLoanInterestPct + 1, ccInterestPct: i.ccInterestPct + 1 });
+  return [
+    run("Base case (as projected)", (i) => i),
+    run("Sales volume 10% lower", lowerVolume),
+    run("Wages and overheads 10% higher", dearerCosts),
+    run("Interest rate 1% higher", higherRate),
+    run("Lower volume and higher costs together", (i) => dearerCosts(lowerVolume(i))),
+  ];
+}
+
+export type MonthlyRow = { month: number; opening: number; interest: number; principal: number; instalment: number; closing: number };
+
+/** Month-by-month term loan schedule, as banks attach to the sanction. */
+export function monthlySchedule(input: DprInput, loan: number): MonthlyRow[] {
+  const months = Math.max(1, Math.round(pos(input.tenureYears) * 12));
+  const moratorium = Math.min(months - 1, Math.max(0, Math.round(pos(input.moratoriumMonths))));
+  const principalPerMonth = loan / (months - moratorium);
+  const rate = pos(input.termLoanInterestPct) / 100 / 12;
+  const rows: MonthlyRow[] = [];
+  let balance = loan;
+  for (let month = 1; month <= months && balance > 0.004; month += 1) {
+    const interest = balance * rate;
+    const principal = month > moratorium ? Math.min(balance, principalPerMonth) : 0;
+    rows.push({ month, opening: round(balance), interest: round(interest), principal: round(principal), instalment: round(interest + principal), closing: round(balance - principal) });
+    balance -= principal;
+  }
+  return rows;
 }
