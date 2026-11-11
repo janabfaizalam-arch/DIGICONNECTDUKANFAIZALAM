@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { emptyDpr } from "./defaults";
 import { buildDpr, type DprInput } from "./engine";
 import type { ProjectReportPayload } from "./schema";
+import { finalBlockerFor } from "./validation";
 
 /** Reads and writes for DPRs. Callers must have checked the admin role. */
 
@@ -68,13 +69,9 @@ function payloadToRow(payload: ProjectReportPayload) {
   };
 }
 
-/** A report can be final only when its means of finance add up to the project cost. */
+/** A report can be final only when its means of finance add up to the project cost and every statement reconciles. */
 export function finalBlocker(payload: ProjectReportPayload) {
-  if (payload.status !== "final") return null;
-  const report = buildDpr(payload.input);
-  if (Math.abs(report.means.gap) > 1) return "Means of finance project cost ke barabar nahi hai, isliye final nahi kar sakte. Draft save karein aur loan amounts theek karein.";
-  if (report.years[0]?.sales <= 0) return "Sales projection khaali hai. Products aur capacity bharein.";
-  return null;
+  return finalBlockerFor(payload);
 }
 
 export async function listProjectReports({ query = "", status = "all" }: { query?: string; status?: string } = {}) {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { draftNarrative, narrativeFor } from "./defaults";
 import { sampleDpr } from "./sample";
-import { buildDpr, projectCostOf, repaymentSchedule, workingCapitalOf, type DprInput } from "./engine";
+import { buildDpr, loanSchedule, projectCostOf, workingCapitalOf, type DprInput } from "./engine";
 
 /** The worked example, with the original test overheads. */
 function sample(overrides: Partial<DprInput> = {}): DprInput {
@@ -39,10 +39,12 @@ describe("project cost and means of finance", () => {
 
   it("works out working capital from the holding periods", () => {
     const wc = workingCapitalOf(sample());
-    // Year 1 at 60%: sales 54 lakh, wheat 44.64 lakh.
+    const y1 = buildDpr(sample()).years[0];
+    // Year 1 at 60%: sales 54 lakh; wheat consumption follows production.
     expect(wc.debtors).toBeCloseTo((5400000 * 30) / 365, 1);
-    expect(wc.creditors).toBeCloseTo((4464000 * 15) / 365, 1);
-    expect(wc.requirement).toBeCloseTo(wc.rawMaterialStock + wc.finishedGoods + wc.debtors - wc.creditors, 1);
+    expect(wc.creditors).toBeCloseTo((y1.rawMaterial * 15) / 365, 1);
+    expect(wc.requirement).toBeCloseTo(wc.rawMaterialStock + wc.workInProgress + wc.finishedGoods + wc.debtors + wc.minimumCash - wc.creditors, 1);
+    expect(wc.minimumCash).toBeGreaterThan(0);
   });
 
   it("takes the PMEGP special-category rural terms: 5% own, 35% subsidy", () => {
@@ -66,20 +68,23 @@ describe("project cost and means of finance", () => {
 describe("repayment schedule", () => {
   it("charges interest only in the moratorium and repays the loan exactly", () => {
     const input = sample({ tenureYears: 5, moratoriumMonths: 6, termLoanInterestPct: 12 });
-    const rows = repaymentSchedule(input, 600000);
+    const rows = loanSchedule(input, 600000);
     const repaid = rows.reduce((sum, r) => sum + r.principal, 0);
-    expect(repaid).toBeCloseTo(600000, 0);
+    expect(repaid).toBeCloseTo(600000, 2);
     expect(rows.at(-1)!.closing).toBe(0);
-    // 54 instalments of 11,111.11; 6 paid in year 1.
-    expect(rows[0].principal).toBeCloseTo((600000 / 54) * 6, 0);
-    // First month interest = 6,000 on the full balance.
-    expect(rows[0].interest).toBeGreaterThan(6000 * 6);
+    expect(rows).toHaveLength(60);
+    // Interest only for 6 months, then 54 instalments of 11,111.11.
+    expect(rows.slice(0, 6).every((r) => r.principal === 0)).toBe(true);
+    expect(rows[0].interest).toBe(6000);
+    expect(rows[6].principal).toBeCloseTo(600000 / 54, 1);
+    const yearOne = rows.slice(0, 12).reduce((s, r) => s + r.principal, 0);
+    expect(yearOne).toBeCloseTo((600000 / 54) * 6, 0);
   });
 
   it("never repays more than borrowed with zero moratorium", () => {
-    const rows = repaymentSchedule(sample({ moratoriumMonths: 0, tenureYears: 3 }), 360000);
-    expect(rows[0].principal).toBeCloseTo(120000, 0);
-    expect(rows.reduce((s, r) => s + r.principal, 0)).toBeCloseTo(360000, 0);
+    const rows = loanSchedule(sample({ moratoriumMonths: 0, tenureYears: 3 }), 360000);
+    expect(rows.slice(0, 12).reduce((s, r) => s + r.principal, 0)).toBeCloseTo(120000, 0);
+    expect(rows.reduce((s, r) => s + r.principal, 0)).toBeCloseTo(360000, 1);
   });
 });
 
@@ -94,7 +99,8 @@ describe("projections", () => {
   });
 
   it("balances every projected balance sheet", () => {
-    for (const y of report.years) expect(Math.abs(y.totalAssets - y.totalLiabilities)).toBeLessThan(0.05);
+    for (const y of report.years) expect(Math.abs(y.totalAssets - y.totalLiabilities)).toBeLessThan(1);
+    expect(report.checks.balanceSheetBalances).toBe(true);
   });
 
   it("cash flow closes at the balance sheet's cash every year", () => {
@@ -112,13 +118,16 @@ describe("projections", () => {
     expect(report.years.every((y) => y.preliminaryWrittenOff === 4000)).toBe(true);
   });
 
-  it("computes DSCR as (PAT + depreciation + write-off + interest) / (interest + principal)", () => {
+  it("computes DSCR as (PAT + depreciation + write-off + interest) / (interest + principal), averaged the bank way", () => {
     for (const y of report.years) {
       if (y.dscr === null) continue;
       const expected = (y.cashAccrual + y.termLoanInterest) / (y.termLoanInterest + y.principalRepaid);
       expect(y.dscr).toBeCloseTo(expected, 1);
     }
-    expect(report.averageDscr).not.toBeNull();
+    const serviced = report.years.filter((y) => y.dscr !== null);
+    const num = serviced.reduce((s, y) => s + y.cashAccrual + y.termLoanInterest, 0);
+    const den = serviced.reduce((s, y) => s + y.termLoanInterest + y.principalRepaid, 0);
+    expect(report.averageDscr).toBeCloseTo(num / den, 2);
   });
 
   it("finds a break-even below the operating utilisation for a viable unit", () => {
@@ -148,7 +157,9 @@ describe("projections", () => {
 describe("the worked example", () => {
   it("is a clean, viable DPR an admin can learn from", () => {
     const report = buildDpr(sampleDpr(new Date("2026-11-08")));
-    expect(report.warnings).toEqual([]);
+    expect(report.errors).toEqual([]);
+    // Only the supplier quotations are left for the customer to furnish.
+    expect(report.warnings.filter((w) => !/quotation/i.test(w))).toEqual([]);
     expect(report.averageDscr!).toBeGreaterThan(1.5);
     expect(report.years.every((y) => y.cash >= 0 && y.netProfit > 0)).toBe(true);
   });

@@ -2,6 +2,7 @@ import type { SchemeId, SchemeSector } from "@/lib/balance-sheets/engine";
 
 import { GROUP_LABELS, type ActivityGroup } from "./activities";
 import type { DprInput } from "./engine";
+import { SCHEME_CATALOG } from "./scheme-catalog";
 import { TEMPLATES, templateById, type ProjectTemplate } from "./templates";
 
 /**
@@ -26,51 +27,19 @@ export type SchemeRule = {
   documents: string[];
   /** One line on what the scheme does not fund. */
   excludes: string;
+  /** Template groups the scheme is limited to (PMFME: food), or null. */
+  onlyGroups: string[] | null;
 };
 
 const ALL: SchemeSector[] = ["manufacturing", "service", "trading"];
 
-export const SCHEME_RULES: Record<SchemeId, SchemeRule> = {
-  pmegp: {
-    sectors: ["manufacturing", "service"],
-    age: { min: 18, max: null },
-    education: "Manufacturing mein Rs. 10 lakh se aur service mein Rs. 5 lakh se bade project ke liye kam se kam 8th pass.",
-    educationEn: "Class VIII pass for projects above Rs. 10 lakh (manufacturing) / Rs. 5 lakh (service)",
-    documents: [
-      "EDP (Entrepreneurship Development Programme) training certificate",
-      "PMEGP portal application (KVIC / KVIB / DIC) with applicant ID",
-      "Caste / special category certificate (for higher subsidy)",
-      "Rural area certificate from the gram pradhan / tehsil (for rural rate)",
-    ],
-    excludes: "Sirf khareed-bikri (trading), meat, nasha (beedi, pan, gutkha, sharab), kheti-baadi aur sarkar dwara band kaam PMEGP mein nahi hote.",
-  },
-  mysy: {
-    sectors: ["manufacturing", "service"],
-    age: { min: 18, max: 40 },
-    education: "High school (10th) pass.",
-    educationEn: "High school (Class X) pass",
-    documents: ["MYSY application on the UP MSME / Udyami Launchpad portal", "High school marksheet / certificate", "UP domicile certificate", "Caste / special category certificate, where applicable"],
-    excludes: "MYSY mein udyog (Rs. 25 lakh tak) aur service (Rs. 10 lakh tak) project aate hain; sirf trading nahi.",
-  },
-  cmyuva: {
-    sectors: ALL,
-    age: { min: 21, max: 40 },
-    education: "Kam se kam 8th pass; skill / training certificate ho to behtar.",
-    educationEn: "At least Class VIII pass; skill training preferred",
-    documents: ["CM-YUVA application on the UP MSME portal", "Skill / training certificate (if any)", "UP domicile certificate", "Declaration that no earlier government-scheme loan was taken"],
-    excludes: "Tambaku, gutkha, pan masala, sharab, cold drink (aerated drinks), patakhe aur 40 micron se patli plastic thaili CM-YUVA mein nahi.",
-  },
-  mudra: {
-    sectors: ALL,
-    age: { min: 18, max: null },
-    education: null,
-    educationEn: null,
-    documents: ["Mudra loan application form (Shishu / Kishore / Tarun / Tarun Plus)", "Quotations of machinery / stock to be bought", "Proof of business address"],
-    excludes: "Mudra non-farm aay wale kaam ke liye hai: manufacturing, trading aur service.",
-  },
-  none: { sectors: ALL, age: { min: 18, max: null }, education: null, educationEn: null, documents: [], excludes: "" },
-  other: { sectors: ALL, age: { min: 18, max: null }, education: null, educationEn: null, documents: [], excludes: "" },
-};
+/** The eligibility side of each scheme, read from the versioned catalog. */
+export const SCHEME_RULES = Object.fromEntries(
+  Object.values(SCHEME_CATALOG).map((c) => [
+    c.id,
+    { sectors: c.sectors, age: { min: c.age.min, max: c.age.max }, education: c.education?.hi ?? null, educationEn: c.education?.en ?? null, documents: c.documents, excludes: c.excludes, onlyGroups: c.onlyGroups },
+  ]),
+) as Record<SchemeId, SchemeRule>;
 
 export const SECTOR_LABEL: Record<SchemeSector, string> = {
   manufacturing: "Manufacturing (udyog)",
@@ -83,7 +52,8 @@ export function sectorsFor(scheme: SchemeId): SchemeSector[] {
 }
 
 export function isEligible(template: ProjectTemplate, scheme: SchemeId) {
-  return sectorsFor(scheme).includes(template.sector) && !template.notFor.includes(scheme);
+  const only = SCHEME_RULES[scheme]?.onlyGroups;
+  return sectorsFor(scheme).includes(template.sector) && !template.notFor.includes(scheme) && (!only || only.includes(template.group));
 }
 
 /** The businesses a scheme funds, grouped the way the form lists them. */
@@ -99,7 +69,7 @@ export function templatesFor(scheme: SchemeId, sector: SchemeSector | "all" = "a
     .map((group) => ({ group, label: GROUP_LABELS[group], templates: [...groups.get(group)!].sort((a, b) => a.label.localeCompare(b.label)) }));
 }
 
-const SCHEME_NAME: Record<SchemeId, string> = { pmegp: "PMEGP", mysy: "MYSY", cmyuva: "CM-YUVA", mudra: "Mudra", none: "Bank loan", other: "Yojana" };
+const SCHEME_NAME = Object.fromEntries(Object.values(SCHEME_CATALOG).map((c) => [c.id, c.short])) as Record<SchemeId, string>;
 
 /** What would stop the scheme accepting this project, in Hinglish. Empty when it fits. */
 export function eligibilityIssues(input: DprInput): string[] {
@@ -109,7 +79,8 @@ export function eligibilityIssues(input: DprInput): string[] {
   const out: string[] = [];
   if (!rule.sectors.includes(input.sector)) out.push(`${name} mein ${SECTOR_LABEL[input.sector].toLowerCase()} project nahi hota. Yojana ya kaam badlein.`);
   const template = templateById(input.templateId);
-  if (template?.notFor.includes(input.scheme)) out.push(`"${template.label}" ${name} mein nahi aata. ${rule.excludes}`);
+  if (template && (template.notFor.includes(input.scheme) || (rule.onlyGroups && !rule.onlyGroups.includes(template.group)))) out.push(`"${template.label}" ${name} mein nahi aata. ${rule.excludes}`);
+  if (template && template.sector !== input.sector) out.push(`Kaam "${template.label}" ${SECTOR_LABEL[template.sector].toLowerCase()} hai, lekin sector ${SECTOR_LABEL[input.sector].toLowerCase()} chuna hai. Sector theek karein.`);
   const lead = input.promoters.find((p) => p.name.trim());
   if (lead?.age) {
     if (lead.age < rule.age.min) out.push(`${name} mein promoter ki umr kam se kam ${rule.age.min} saal honi chahiye (abhi ${lead.age}).`);

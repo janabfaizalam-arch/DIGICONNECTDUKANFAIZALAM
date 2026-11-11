@@ -41,6 +41,7 @@ import {
   defaultDepreciationRate,
   fyLabel,
   itemAmount,
+  missingCostHeads,
   schemeFor,
   type AssetKind,
   type DprInput,
@@ -61,6 +62,8 @@ import {
   type DprGuideKey,
   type Importance,
 } from "@/lib/project-reports/field-guide";
+import { complianceFor } from "@/lib/project-reports/compliance";
+import { withEstimatedCosts } from "@/lib/project-reports/estimates";
 import { sampleDpr } from "@/lib/project-reports/sample";
 import {
   applyTemplate,
@@ -77,9 +80,21 @@ import { cn } from "@/lib/utils";
 
 const rs = (value: number) => `Rs. ${formatAmount(value)}`;
 
-const PROMOTER_CATEGORIES = ["General", "OBC", "SC", "ST", "Minority", "Women", "Ex-serviceman", "Divyang"];
+const PROMOTER_CATEGORIES = [
+  "General",
+  "OBC",
+  "SC",
+  "ST",
+  "Minority",
+  "Women",
+  "Ex-serviceman",
+  "Divyang",
+];
 
-function firstEligible(schemeId: DprInput["scheme"], sector: "all" | DprInput["sector"]) {
+function firstEligible(
+  schemeId: DprInput["scheme"],
+  sector: "all" | DprInput["sector"],
+) {
   return templatesFor(schemeId, sector)[0]?.templates[0]?.id ?? TEMPLATES[0].id;
 }
 
@@ -137,7 +152,10 @@ function NumberBox({
   );
 }
 
-const IMPORTANCE_TONE: Record<Importance, "danger" | "warning" | "neutral" | "info"> = {
+const IMPORTANCE_TONE: Record<
+  Importance,
+  "danger" | "warning" | "neutral" | "info"
+> = {
   required: "danger",
   important: "warning",
   optional: "neutral",
@@ -156,7 +174,10 @@ const HOVER_DELAY_MS = 450;
 function useGuide() {
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => (timer.current ? clearTimeout(timer.current) : undefined), []);
+  useEffect(
+    () => () => (timer.current ? clearTimeout(timer.current) : undefined),
+    [],
+  );
   const cancel = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
@@ -172,7 +193,12 @@ function useGuide() {
         }
       },
       onKeyDown: (event: React.KeyboardEvent) => {
-        if (event.key === "Escape" || event.key.length === 1 || event.key === "Backspace") setOpen(false);
+        if (
+          event.key === "Escape" ||
+          event.key.length === 1 ||
+          event.key === "Backspace"
+        )
+          setOpen(false);
       },
       onMouseEnter: () => {
         cancel();
@@ -180,13 +206,24 @@ function useGuide() {
       },
       onMouseLeave: (event: React.MouseEvent<HTMLElement>) => {
         cancel();
-        if (!event.currentTarget.contains(document.activeElement)) setOpen(false);
+        if (!event.currentTarget.contains(document.activeElement))
+          setOpen(false);
       },
     },
   };
 }
 
-function GuideCard({ guide, title, open, className }: { guide: DprGuideKey; title: string; open: boolean; className?: string }) {
+function GuideCard({
+  guide,
+  title,
+  open,
+  className,
+}: {
+  guide: DprGuideKey;
+  title: string;
+  open: boolean;
+  className?: string;
+}) {
   const entry = DPR_GUIDE[guide];
   return (
     <div
@@ -203,20 +240,31 @@ function GuideCard({ guide, title, open, className }: { guide: DprGuideKey; titl
           <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {title.replace(/ \*$/, "")}
         </span>
-        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", STATUS_TONE_CLASS[IMPORTANCE_TONE[entry.importance]])}>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold",
+            STATUS_TONE_CLASS[IMPORTANCE_TONE[entry.importance]],
+          )}
+        >
           {IMPORTANCE_LABEL[entry.importance]}
         </span>
       </span>
       <span className="mt-2 block">
-        <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.what}: </span>
+        <span className="font-semibold text-ds-text-primary">
+          {GUIDE_HEADINGS.what}:{" "}
+        </span>
         {entry.what}
       </span>
       <span className="mt-1.5 block">
-        <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.where}: </span>
+        <span className="font-semibold text-ds-text-primary">
+          {GUIDE_HEADINGS.where}:{" "}
+        </span>
         {entry.where}
       </span>
       <span className="mt-1.5 block">
-        <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.why}: </span>
+        <span className="font-semibold text-ds-text-primary">
+          {GUIDE_HEADINGS.why}:{" "}
+        </span>
         {entry.why}
       </span>
     </div>
@@ -240,11 +288,22 @@ function Field({
   return (
     <div className={cn("relative", className)} {...(guide ? handlers : {})}>
       <label className="block space-y-1.5">
-        <span className="block text-xs font-bold text-ds-text-secondary">{label}</span>
+        <span className="block text-xs font-bold text-ds-text-secondary">
+          {label}
+        </span>
         {children}
-        {help ? <span className="block text-xs text-ds-text-muted">{help}</span> : null}
+        {help ? (
+          <span className="block text-xs text-ds-text-muted">{help}</span>
+        ) : null}
       </label>
-      {guide ? <GuideCard guide={guide} title={label} open={open} className="left-0 top-full mt-1.5" /> : null}
+      {guide ? (
+        <GuideCard
+          guide={guide}
+          title={label}
+          open={open}
+          className="left-0 top-full mt-1.5"
+        />
+      ) : null}
     </div>
   );
 }
@@ -265,19 +324,35 @@ function Section({
 }) {
   const { open, handlers } = useGuide();
   return (
-    <AdminCard>
-      <div className="relative flex items-start gap-3" {...(guide ? handlers : {})}>
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ds-primary text-xs font-bold text-ds-text-inverted">
-          {step}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-bold text-ds-text-primary">{title}</h2>
-          {hint ? <p className="mt-0.5 text-[13px] text-ds-text-muted">{hint}</p> : null}
-          <div className="mt-4 space-y-4">{children}</div>
+    <div id={`step-${step}`} className="scroll-mt-24">
+      <AdminCard>
+        <div
+          className="relative flex items-start gap-3"
+          {...(guide ? handlers : {})}
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ds-primary text-xs font-bold text-ds-text-inverted">
+            {step}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-bold text-ds-text-primary">
+              {title}
+            </h2>
+            {hint ? (
+              <p className="mt-0.5 text-[13px] text-ds-text-muted">{hint}</p>
+            ) : null}
+            <div className="mt-4 space-y-4">{children}</div>
+          </div>
+          {guide ? (
+            <GuideCard
+              guide={guide}
+              title={title}
+              open={open}
+              className="right-0 top-0"
+            />
+          ) : null}
         </div>
-        {guide ? <GuideCard guide={guide} title={title} open={open} className="right-0 top-0" /> : null}
-      </div>
-    </AdminCard>
+      </AdminCard>
+    </div>
   );
 }
 
@@ -336,7 +411,9 @@ export function ProjectReportForm({
   const [quickTemplate, setQuickTemplate] = useState(
     initial.templateId ?? firstEligible(initial.scheme, "all"),
   );
-  const [quickSector, setQuickSector] = useState<"all" | DprInput["sector"]>("all");
+  const [quickSector, setQuickSector] = useState<"all" | DprInput["sector"]>(
+    "all",
+  );
   const [quickCostLakh, setQuickCostLakh] = useState<number | null>(
     initial.templateId ? null : 10,
   );
@@ -420,26 +497,147 @@ export function ProjectReportForm({
 
   const rule = SCHEME_RULES[input.scheme];
   const allowedSectors = sectorsFor(input.scheme);
-  const eligibleGroups = useMemo(() => templatesFor(input.scheme, quickSector), [input.scheme, quickSector]);
-  const eligibleCount = eligibleGroups.reduce((sum, g) => sum + g.templates.length, 0);
-  const quickScheme = schemeFor({ ...input, sector: templateById(quickTemplate)?.sector ?? input.sector });
-  const costLimitLakh = input.scheme !== "none" && quickScheme?.maxProjectCost ? quickScheme.maxProjectCost / 100000 : null;
+  const eligibleGroups = useMemo(
+    () => templatesFor(input.scheme, quickSector),
+    [input.scheme, quickSector],
+  );
+  const eligibleCount = eligibleGroups.reduce(
+    (sum, g) => sum + g.templates.length,
+    0,
+  );
+  const quickScheme = schemeFor({
+    ...input,
+    sector: templateById(quickTemplate)?.sector ?? input.sector,
+  });
+  const costLimitLakh =
+    input.scheme !== "none" && quickScheme?.maxProjectCost
+      ? quickScheme.maxProjectCost / 100000
+      : null;
   const eligibility = useMemo(() => eligibilityIssues(input), [input]);
+  const missingCosts = useMemo(() => missingCostHeads(input), [input]);
+  const leadPromoter = input.promoters[0];
+  const pendingQuotes = input.capitalItems.filter(
+    (i) =>
+      !["land", "preliminary", "licences", "deposit"].includes(i.kind) &&
+      itemAmount(i) > 0 &&
+      !(i.supplier ?? "").trim(),
+  ).length;
+  const steps: { label: string; target: number; done: boolean }[] = [
+    {
+      label: "Promoter details",
+      target: 1,
+      done: Boolean(
+        leadPromoter?.name.trim() &&
+        leadPromoter.qualification.trim() &&
+        leadPromoter.experience.trim(),
+      ),
+    },
+    {
+      label: "Business details",
+      target: 1,
+      done: Boolean(input.businessName.trim() && input.activity.trim()),
+    },
+    {
+      label: "Project location",
+      target: 1,
+      done: Boolean(input.district.trim() && input.address.trim()),
+    },
+    { label: "Constitution", target: 1, done: Boolean(input.constitution) },
+    {
+      label: "Industry aur products",
+      target: 4,
+      done: input.products.length > 0,
+    },
+    {
+      label: "Machinery aur equipment",
+      target: 3,
+      done: report.cost.fixedCapital > 0 && pendingQuotes === 0,
+    },
+    {
+      label: "Raw material",
+      target: 5,
+      done: input.sector !== "manufacturing" || input.rawMaterials.length > 0,
+    },
+    {
+      label: "Production capacity",
+      target: 4,
+      done: input.products.some((p) => p.capacity > 0),
+    },
+    {
+      label: "Sales aur pricing",
+      target: 4,
+      done: (report.years[0]?.sales ?? 0) > 0,
+    },
+    { label: "Employees aur salary", target: 6, done: input.staff.length > 0 },
+    { label: "Rent aur kharche", target: 6, done: missingCosts.length === 0 },
+    {
+      label: "Project cost",
+      target: 3,
+      done: report.cost.total > 0 && report.checks.costReconciles,
+    },
+    {
+      label: "Means of finance",
+      target: 2,
+      done: report.checks.meansReconcile,
+    },
+    {
+      label: "Loan details",
+      target: 2,
+      done: report.checks.loanReconciles && report.means.termLoan > 0,
+    },
+    { label: "Government scheme", target: 2, done: eligibility.length === 0 },
+    { label: "Licences aur compliance", target: 9, done: true },
+    {
+      label: "Financial projections",
+      target: 7,
+      done:
+        report.checks.balanceSheetBalances && report.checks.cashFlowReconciles,
+    },
+    {
+      label: "Final review",
+      target: 9,
+      done: report.errors.length === 0 && eligibility.length === 0,
+    },
+  ];
+  const goTo = (step: number) => {
+    setDetailsOpen(true);
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`step-${step}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
+  const compliance = useMemo(
+    () => complianceFor(input, report),
+    [input, report],
+  );
 
   /** Keep the business picked only if the new scheme / sector funds it; else take the first that it does. */
-  function keepEligible(schemeId: DprInput["scheme"], sector: typeof quickSector) {
+  function keepEligible(
+    schemeId: DprInput["scheme"],
+    sector: typeof quickSector,
+  ) {
     const current = templateById(quickTemplate);
-    if (current && isEligible(current, schemeId) && (sector === "all" || current.sector === sector)) return;
+    if (
+      current &&
+      isEligible(current, schemeId) &&
+      (sector === "all" || current.sector === sector)
+    )
+      return;
     setQuickTemplate(firstEligible(schemeId, sector));
   }
   function changeScheme(next: DprInput["scheme"]) {
     set("scheme", next);
-    const sector = quickSector !== "all" && !sectorsFor(next).includes(quickSector) ? "all" : quickSector;
+    const sector =
+      quickSector !== "all" && !sectorsFor(next).includes(quickSector)
+        ? "all"
+        : quickSector;
     setQuickSector(sector);
     keepEligible(next, sector);
     // Smaller schemes have a lower project cost limit; bring the default within it.
     const limit = schemeFor({ ...input, scheme: next })?.maxProjectCost;
-    if (limit && quickCostLakh && quickCostLakh * 100000 > limit) setQuickCostLakh(limit / 100000);
+    if (limit && quickCostLakh && quickCostLakh * 100000 > limit)
+      setQuickCostLakh(limit / 100000);
   }
   function changeSector(next: typeof quickSector) {
     setQuickSector(next);
@@ -451,7 +649,9 @@ export function ProjectReportForm({
       ...current,
       category: next === "General" ? "general" : "special",
       promoters: current.promoters.length
-        ? current.promoters.map((p, i) => (i === 0 ? { ...p, socialCategory: next } : p))
+        ? current.promoters.map((p, i) =>
+            i === 0 ? { ...p, socialCategory: next } : p,
+          )
         : [{ ...(emptyPromoter() as Promoter), socialCategory: next }],
     }));
   }
@@ -515,17 +715,29 @@ export function ProjectReportForm({
               <Rocket className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-[15px] font-bold text-ds-text-primary">Quick DPR: sirf basic details</h2>
+              <h2 className="text-[15px] font-bold text-ds-text-primary">
+                Quick DPR: sirf basic details
+              </h2>
               <p className="mt-0.5 text-[13px] text-ds-text-muted">
-                Yojana chuniye, phir kaam. Sirf wahi business dikhenge jo us yojana mein loan ke layak hain. Machinery, capacity, raw material, staff, kharche,
-                market, process, licence, risk aur SWOT apne aap bhar jaayenge, aur 18–20 page ki bank-ready DPR banegi. Kisi bhi box par jaate hi
-                batayega ki kya bharna hai, kahan se milega aur kyon.
+                Yojana chuniye, phir kaam. Sirf wahi business dikhenge jo us
+                yojana mein loan ke layak hain. Machinery, capacity, raw
+                material, staff, kharche, market, process, licence, risk aur
+                SWOT apne aap bhar jaayenge, aur 18–20 page ki bank-ready DPR
+                banegi. Kisi bhi box par jaate hi batayega ki kya bharna hai,
+                kahan se milega aur kyon.
               </p>
-              <p className="mt-1 text-xs font-semibold text-ds-text-secondary">* wale box zaroori hain. Baaki khaali chhod sakte hain.</p>
+              <p className="mt-1 text-xs font-semibold text-ds-text-secondary">
+                * wale box zaroori hain. Baaki khaali chhod sakte hain.
+              </p>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field guide="scheme" label="Yojana *">
-                  <AdminSelect value={input.scheme} onChange={(e) => changeScheme(e.target.value as DprInput["scheme"])}>
+                  <AdminSelect
+                    value={input.scheme}
+                    onChange={(e) =>
+                      changeScheme(e.target.value as DprInput["scheme"])
+                    }
+                  >
                     {SCHEME_OPTIONS.map((s) => (
                       <option key={s.value} value={s.value}>
                         {s.label}
@@ -534,8 +746,19 @@ export function ProjectReportForm({
                   </AdminSelect>
                 </Field>
                 <Field guide="sector" label="Kaam ka prakaar *">
-                  <AdminSelect value={quickSector} onChange={(e) => changeSector(e.target.value as typeof quickSector)}>
-                    <option value="all">Sab ({allowedSectors.map((x) => SECTOR_LABEL[x].split(" (")[0]).join(", ")})</option>
+                  <AdminSelect
+                    value={quickSector}
+                    onChange={(e) =>
+                      changeSector(e.target.value as typeof quickSector)
+                    }
+                  >
+                    <option value="all">
+                      Sab (
+                      {allowedSectors
+                        .map((x) => SECTOR_LABEL[x].split(" (")[0])
+                        .join(", ")}
+                      )
+                    </option>
                     {allowedSectors.map((x) => (
                       <option key={x} value={x}>
                         {SECTOR_LABEL[x]}
@@ -549,7 +772,10 @@ export function ProjectReportForm({
                   help={`${eligibleCount} business is yojana mein milte hain`}
                   className="md:col-span-2"
                 >
-                  <AdminSelect value={quickTemplate} onChange={(e) => setQuickTemplate(e.target.value)}>
+                  <AdminSelect
+                    value={quickTemplate}
+                    onChange={(e) => setQuickTemplate(e.target.value)}
+                  >
                     {eligibleGroups.map((group) => (
                       <optgroup key={group.group} label={group.label}>
                         {group.templates.map((t) => (
@@ -564,12 +790,15 @@ export function ProjectReportForm({
 
                 {rule && input.scheme !== "none" && input.scheme !== "other" ? (
                   <div className="rounded-ds-lg border border-ds-border bg-ds-surface-sunken p-3 text-xs leading-relaxed text-ds-text-secondary md:col-span-2">
-                    <p className="font-bold text-ds-text-primary">{scheme?.label ?? "Yojana"} ki shartein</p>
+                    <p className="font-bold text-ds-text-primary">
+                      {scheme?.label ?? "Yojana"} ki shartein
+                    </p>
                     <ul className="mt-1 list-disc space-y-0.5 pl-4">
                       {scheme?.summary ? <li>{scheme.summary}</li> : null}
                       <li>
                         Umr: {rule.age.min}
-                        {rule.age.max ? `–${rule.age.max}` : "+"} saal{rule.education ? `. Padhai: ${rule.education}` : "."}
+                        {rule.age.max ? `–${rule.age.max}` : "+"} saal
+                        {rule.education ? `. Padhai: ${rule.education}` : "."}
                       </li>
                       {rule.excludes ? <li>{rule.excludes}</li> : null}
                     </ul>
@@ -579,25 +808,54 @@ export function ProjectReportForm({
                 <Field
                   guide="projectCost"
                   label="Project cost (Rs. lakh) *"
-                  help={costLimitLakh ? `Is yojana mein zyada se zyada Rs. ${costLimitLakh} lakh` : "Machinery + working capital milakar, jaise 10"}
+                  help={
+                    costLimitLakh
+                      ? `Is yojana mein zyada se zyada Rs. ${costLimitLakh} lakh`
+                      : "Machinery + working capital milakar, jaise 10"
+                  }
                 >
-                  <NumberBox label="Project cost (Rs. lakh) *" nullable value={quickCostLakh} onChange={setQuickCostLakh} suffix="lakh" />
+                  <NumberBox
+                    label="Project cost (Rs. lakh) *"
+                    nullable
+                    value={quickCostLakh}
+                    onChange={setQuickCostLakh}
+                    suffix="lakh"
+                  />
                 </Field>
                 <Field guide="businessName" label="Business ka naam *">
-                  <AdminInput value={input.businessName} onChange={(e) => set("businessName", e.target.value)} />
+                  <AdminInput
+                    value={input.businessName}
+                    onChange={(e) => set("businessName", e.target.value)}
+                  />
                 </Field>
                 <Field guide="promoterName" label="Promoter ka naam *">
-                  <AdminInput value={lead.name} onChange={(e) => setLead({ name: e.target.value })} />
+                  <AdminInput
+                    value={lead.name}
+                    onChange={(e) => setLead({ name: e.target.value })}
+                  />
                 </Field>
                 <Field guide="fatherName" label="Pita / pati">
-                  <AdminInput value={lead.fatherName} onChange={(e) => setLead({ fatherName: e.target.value })} />
+                  <AdminInput
+                    value={lead.fatherName}
+                    onChange={(e) => setLead({ fatherName: e.target.value })}
+                  />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field guide="age" label="Promoter ki umr">
-                    <NumberBox label="Promoter ki umr" nullable value={lead.age} onChange={(v) => setLead({ age: v === null ? null : Math.round(v) })} />
+                    <NumberBox
+                      label="Promoter ki umr"
+                      nullable
+                      value={lead.age}
+                      onChange={(v) =>
+                        setLead({ age: v === null ? null : Math.round(v) })
+                      }
+                    />
                   </Field>
                   <Field guide="socialCategory" label="Promoter category">
-                    <AdminSelect value={lead.socialCategory} onChange={(e) => changeSocialCategory(e.target.value)}>
+                    <AdminSelect
+                      value={lead.socialCategory}
+                      onChange={(e) => changeSocialCategory(e.target.value)}
+                    >
                       {PROMOTER_CATEGORIES.map((c) => (
                         <option key={c}>{c}</option>
                       ))}
@@ -605,11 +863,19 @@ export function ProjectReportForm({
                   </Field>
                 </div>
                 <Field guide="district" label="District *">
-                  <AdminInput value={input.district} onChange={(e) => set("district", e.target.value)} />
+                  <AdminInput
+                    value={input.district}
+                    onChange={(e) => set("district", e.target.value)}
+                  />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field guide="area" label="Area">
-                    <AdminSelect value={input.area} onChange={(e) => set("area", e.target.value as DprInput["area"])}>
+                    <AdminSelect
+                      value={input.area}
+                      onChange={(e) =>
+                        set("area", e.target.value as DprInput["area"])
+                      }
+                    >
                       {AREA_OPTIONS.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.label}
@@ -618,7 +884,12 @@ export function ProjectReportForm({
                     </AdminSelect>
                   </Field>
                   <Field guide="category" label="Yojana category">
-                    <AdminSelect value={input.category} onChange={(e) => set("category", e.target.value as DprInput["category"])}>
+                    <AdminSelect
+                      value={input.category}
+                      onChange={(e) =>
+                        set("category", e.target.value as DprInput["category"])
+                      }
+                    >
                       {CATEGORY_OPTIONS.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.value === "general" ? "General" : "Special"}
@@ -628,21 +899,68 @@ export function ProjectReportForm({
                   </Field>
                 </div>
                 <Field guide="bankName" label="Bank">
-                  <AdminInput value={input.bankName} placeholder="Jaise: Bank of Baroda" onChange={(e) => set("bankName", e.target.value)} />
+                  <AdminInput
+                    value={input.bankName}
+                    placeholder="Jaise: Bank of Baroda"
+                    onChange={(e) => set("bankName", e.target.value)}
+                  />
                 </Field>
                 <Field guide="bankBranch" label="Branch">
-                  <AdminInput value={input.bankBranch} placeholder="Jaise: Orai" onChange={(e) => set("bankBranch", e.target.value)} />
+                  <AdminInput
+                    value={input.bankBranch}
+                    placeholder="Jaise: Orai"
+                    onChange={(e) => set("bankBranch", e.target.value)}
+                  />
                 </Field>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <AdminButton type="button" onClick={buildQuick}>
-                  <Sparkles className="h-4 w-4" aria-hidden="true" /> DPR taiyaar karein
+                  <Sparkles className="h-4 w-4" aria-hidden="true" /> DPR
+                  taiyaar karein
                 </AdminButton>
-                <span className="text-xs text-ds-text-muted">Upar bhari details (naam, promoter, yojana) nahi badlengi; baaki sab apne aap bharega.</span>
+                <span className="text-xs text-ds-text-muted">
+                  Upar bhari details (naam, promoter, yojana) nahi badlengi;
+                  baaki sab apne aap bharega.
+                </span>
               </div>
             </div>
           </div>
         </AdminCard>
+
+        <nav
+          aria-label="DPR ke 18 kadam"
+          className="rounded-ds-xl border border-ds-border bg-ds-surface p-3"
+        >
+          <p className="mb-2 text-xs font-bold text-ds-text-secondary">
+            18 kadam: {steps.filter((x) => x.done).length} poore. Kisi par click
+            karke wahan jaayein.
+          </p>
+          <ol className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {steps.map((step, index) => (
+              <li key={step.label}>
+                <button
+                  type="button"
+                  onClick={() => goTo(step.target)}
+                  className="flex w-full items-center gap-2 rounded-ds-md px-2 py-1.5 text-left text-xs hover:bg-ds-surface-sunken"
+                >
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                      step.done
+                        ? STATUS_TONE_CLASS.success
+                        : STATUS_TONE_CLASS.warning,
+                    )}
+                  >
+                    {step.done ? "✓" : index + 1}
+                  </span>
+                  <span className="font-semibold text-ds-text-primary">
+                    {step.label}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
 
         <button
           type="button"
@@ -866,7 +1184,11 @@ export function ProjectReportForm({
                       }
                     />
                   </Field>
-                  <Field guide="experience" label="Experience" className="md:col-span-2">
+                  <Field
+                    guide="experience"
+                    label="Experience"
+                    className="md:col-span-2"
+                  >
                     <AdminInput
                       value={p.experience}
                       placeholder="Jaise: 5 years of experience in a flour mill"
@@ -1061,15 +1383,82 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field guide="taxPct" label="Tax (net profit par)">
+              <Field
+                guide="taxRegime"
+                label="Income tax"
+                help={
+                  input.taxRegime === "manual"
+                    ? undefined
+                    : "Constitution aur slab se apne aap"
+                }
+              >
+                <AdminSelect
+                  value={input.taxRegime}
+                  onChange={(e) =>
+                    set("taxRegime", e.target.value as DprInput["taxRegime"])
+                  }
+                >
+                  <option value="new">New regime (115BAC)</option>
+                  <option value="old">Old regime</option>
+                  <option value="manual">Khud % likhein</option>
+                </AdminSelect>
+              </Field>
+              {input.taxRegime === "manual" ? (
+                <Field guide="taxPct" label="Tax (net profit par)">
+                  <NumberBox
+                    label="Tax percent"
+                    value={input.taxPct}
+                    onChange={(v) => set("taxPct", v ?? 0)}
+                    suffix="%"
+                  />
+                </Field>
+              ) : null}
+              <Field guide="repaymentMethod" label="Kisht ka tarika">
+                <AdminSelect
+                  value={input.repaymentMethod}
+                  onChange={(e) =>
+                    set(
+                      "repaymentMethod",
+                      e.target.value as DprInput["repaymentMethod"],
+                    )
+                  }
+                >
+                  <option value="equal_principal">
+                    Barabar principal + byaaj
+                  </option>
+                  <option value="emi">EMI</option>
+                </AdminSelect>
+              </Field>
+              <Field guide="repaymentFrequency" label="Kisht kab">
+                <AdminSelect
+                  value={input.repaymentFrequency}
+                  onChange={(e) =>
+                    set(
+                      "repaymentFrequency",
+                      e.target.value as DprInput["repaymentFrequency"],
+                    )
+                  }
+                >
+                  <option value="monthly">Har mahine</option>
+                  <option value="quarterly">Har teen mahine</option>
+                </AdminSelect>
+              </Field>
+              <Field
+                guide="otherFunding"
+                label="Dusra funding (unsecured)"
+                help="Parivar / dost se loan, agar hai"
+              >
                 <NumberBox
-                  label="Tax percent"
-                  value={input.taxPct}
-                  onChange={(v) => set("taxPct", v ?? 0)}
-                  suffix="%"
+                  label="Other funding"
+                  value={input.otherFunding}
+                  onChange={(v) => set("otherFunding", v ?? 0)}
                 />
               </Field>
-              <Field guide="tenureYears" label="Loan avadhi (saal)" help="Moratorium milakar">
+              <Field
+                guide="tenureYears"
+                label="Loan avadhi (saal)"
+                help="Moratorium milakar"
+              >
                 <NumberBox
                   label="Loan avadhi"
                   value={input.tenureYears}
@@ -1077,7 +1466,11 @@ export function ProjectReportForm({
                   suffix="saal"
                 />
               </Field>
-              <Field guide="moratoriumMonths" label="Moratorium (mahine)" help="Sirf byaaj, kisht nahi">
+              <Field
+                guide="moratoriumMonths"
+                label="Moratorium (mahine)"
+                help="Sirf byaaj, kisht nahi"
+              >
                 <NumberBox
                   label="Moratorium"
                   value={input.moratoriumMonths}
@@ -1121,7 +1514,11 @@ export function ProjectReportForm({
                   onChange={(v) => set("subsidyOverride", v)}
                 />
               </Field>
-              <Field guide="interestSubventionPct" label="Byaaj chhoot %" help="Khaali = yojana se">
+              <Field
+                guide="interestSubventionPct"
+                label="Byaaj chhoot %"
+                help="Khaali = yojana se"
+              >
                 <NumberBox
                   label="Byaaj chhoot"
                   nullable
@@ -1130,7 +1527,11 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field guide="interestSubventionYears" label="Chhoot kitne saal" help="Khaali = yojana se">
+              <Field
+                guide="interestSubventionYears"
+                label="Chhoot kitne saal"
+                help="Khaali = yojana se"
+              >
                 <NumberBox
                   label="Chhoot saal"
                   nullable
@@ -1159,7 +1560,8 @@ export function ProjectReportForm({
 
           <Section
             step={3}
-            title="Project cost: machinery aur capital items" guide="capitalItem"
+            title="Project cost: machinery aur capital items"
+            guide="capitalItem"
             hint="Har machine / item alag line mein. Zameen PMEGP aur MYSY mein project cost mein nahi gini jaati."
           >
             <div className="space-y-2">
@@ -1216,6 +1618,32 @@ export function ProjectReportForm({
                     label={item.description || "Item"}
                     onRemove={() => removeAt("capitalItems", index)}
                   />
+                  {!["land", "preliminary", "licences", "deposit"].includes(
+                    item.kind,
+                  ) ? (
+                    <div className="grid gap-2 sm:grid-cols-2 md:col-span-6">
+                      <AdminInput
+                        aria-label="Supplier"
+                        placeholder="Supplier ka naam (quotation wala)"
+                        value={item.supplier ?? ""}
+                        onChange={(e) =>
+                          updateAt("capitalItems", index, {
+                            supplier: e.target.value,
+                          })
+                        }
+                      />
+                      <AdminInput
+                        aria-label="Quotation no. / tareekh"
+                        placeholder="Quotation no. / tareekh"
+                        value={item.quotationRef ?? ""}
+                        onChange={(e) =>
+                          updateAt("capitalItems", index, {
+                            quotationRef: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  ) : null}
                 </div>
               ))}
               <AddButton
@@ -1244,7 +1672,43 @@ export function ProjectReportForm({
                 />
                 Zameen project cost mein shamil karein
               </label>
-              <Field guide="preliminaryWriteOffYears" label="Preliminary kharch kitne saal mein write-off">
+              <Field
+                guide="contingencyPct"
+                label="Contingency %"
+                help="Machine / building par, aam taur par 0–5%"
+              >
+                <NumberBox
+                  label="Contingency"
+                  value={input.contingencyPct}
+                  onChange={(v) => set("contingencyPct", v ?? 0)}
+                  suffix="%"
+                />
+              </Field>
+              <Field
+                guide="depreciationMethod"
+                label="Depreciation ka tarika"
+                help={`Abhi: ${report.depreciationMethod}`}
+              >
+                <AdminSelect
+                  value={input.depreciationMethod}
+                  onChange={(e) =>
+                    set(
+                      "depreciationMethod",
+                      e.target.value as DprInput["depreciationMethod"],
+                    )
+                  }
+                >
+                  <option value="auto">
+                    Auto (proprietor / firm WDV, company SLM)
+                  </option>
+                  <option value="wdv">WDV (Income-tax rates)</option>
+                  <option value="slm">SLM (Companies Act life)</option>
+                </AdminSelect>
+              </Field>
+              <Field
+                guide="preliminaryWriteOffYears"
+                label="Preliminary kharch kitne saal mein write-off"
+              >
                 <NumberBox
                   label="Write-off saal"
                   value={input.preliminaryWriteOffYears}
@@ -1264,7 +1728,10 @@ export function ProjectReportForm({
               </summary>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 {ASSET_KINDS.filter(
-                  (k) => k.value !== "land" && k.value !== "preliminary",
+                  (k) =>
+                    !["land", "preliminary", "licences", "deposit"].includes(
+                      k.value,
+                    ),
                 ).map((k) => (
                   <Field key={k.value} label={k.label}>
                     <NumberBox
@@ -1289,14 +1756,15 @@ export function ProjectReportForm({
 
           <Section
             step={4}
-            title="Products / services aur capacity" guide="product"
-            hint="Capacity = 100% chalne par saal bhar mein kitna banega ya kitni service dega. Sales = capacity × utilisation × rate."
+            title="Products / services aur capacity"
+            guide="product"
+            hint="Capacity = 100% chalne par saal bhar mein kitna banega. Process loss = banate waqt barbaad; rejection = wapas / kharab. Sales = (capacity × utilisation − loss − rejection) × rate."
           >
             <div className="space-y-2">
               {input.products.map((p, index) => (
                 <div
                   key={index}
-                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_7rem_9rem_9rem_auto] md:items-center"
+                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_6rem_8rem_8rem_6rem_6rem_auto] md:items-center"
                 >
                   <AdminInput
                     aria-label="Product ka naam"
@@ -1330,6 +1798,24 @@ export function ProjectReportForm({
                     }
                     placeholder="Rate"
                   />
+                  <NumberBox
+                    label="Process loss %"
+                    value={p.processLossPct ?? 0}
+                    onChange={(v) =>
+                      updateAt("products", index, { processLossPct: v ?? 0 })
+                    }
+                    placeholder="Loss"
+                    suffix="%"
+                  />
+                  <NumberBox
+                    label="Rejection %"
+                    value={p.rejectionPct ?? 0}
+                    onChange={(v) =>
+                      updateAt("products", index, { rejectionPct: v ?? 0 })
+                    }
+                    placeholder="Reject"
+                    suffix="%"
+                  />
                   <RowButtons
                     label={p.name || "Product"}
                     onRemove={() => removeAt("products", index)}
@@ -1353,7 +1839,11 @@ export function ProjectReportForm({
               </p>
               <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {Array.from({ length: years }, (_, index) => (
-                  <Field key={index} guide="utilisation" label={fyLabel(input.startFy + index)}>
+                  <Field
+                    key={index}
+                    guide="utilisation"
+                    label={fyLabel(input.startFy + index)}
+                  >
                     <NumberBox
                       label={`Utilisation ${fyLabel(input.startFy + index)}`}
                       value={
@@ -1391,7 +1881,10 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field guide="costGrowthPct" label="Salary aur kharche badhotri / saal">
+              <Field
+                guide="costGrowthPct"
+                label="Salary aur kharche badhotri / saal"
+              >
                 <NumberBox
                   label="Cost growth"
                   value={input.costGrowthPct}
@@ -1404,14 +1897,15 @@ export function ProjectReportForm({
 
           <Section
             step={5}
-            title="Raw material (100% capacity par saal bhar ka)" guide="rawMaterial"
-            hint="Service project mein raw material na ho to khaali chhod dein."
+            title="Raw material (100% capacity par saal bhar ka)"
+            guide="rawMaterial"
+            hint="Material ko product se jodein (per unit kitna lagta hai) taaki utpadan aur kachcha maal hamesha mel khaayein. Service project mein raw material na ho to khaali chhod dein."
           >
             <div className="space-y-2">
               {input.rawMaterials.map((m, index) => (
                 <div
                   key={index}
-                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_7rem_9rem_9rem_auto] md:items-center"
+                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_6rem_8rem_8rem_auto] md:items-center"
                 >
                   <AdminInput
                     aria-label="Material ka naam"
@@ -1429,14 +1923,30 @@ export function ProjectReportForm({
                       updateAt("rawMaterials", index, { unit: e.target.value })
                     }
                   />
-                  <NumberBox
-                    label="Quantity per year"
-                    value={m.quantity}
-                    onChange={(v) =>
-                      updateAt("rawMaterials", index, { quantity: v ?? 0 })
-                    }
-                    placeholder="Qty / saal"
-                  />
+                  {m.productIndex !== null &&
+                  m.productIndex !== undefined &&
+                  input.products[m.productIndex] ? (
+                    <p
+                      className="text-right text-xs tabular-nums text-ds-text-muted"
+                      aria-label="Quantity per year"
+                    >
+                      {formatAmount(
+                        (input.products[m.productIndex].capacity || 0) *
+                          (m.perUnit || 0) *
+                          (1 + (m.lossPct || 0) / 100),
+                      )}{" "}
+                      / saal
+                    </p>
+                  ) : (
+                    <NumberBox
+                      label="Quantity per year"
+                      value={m.quantity}
+                      onChange={(v) =>
+                        updateAt("rawMaterials", index, { quantity: v ?? 0 })
+                      }
+                      placeholder="Qty / saal"
+                    />
+                  )}
                   <NumberBox
                     label="Rate"
                     value={m.rate}
@@ -1449,6 +1959,56 @@ export function ProjectReportForm({
                     label={m.name || "Material"}
                     onRemove={() => removeAt("rawMaterials", index)}
                   />
+                  <div className="grid gap-2 sm:grid-cols-3 md:col-span-5">
+                    <AdminSelect
+                      aria-label="Kis product ke liye"
+                      value={
+                        m.productIndex === null || m.productIndex === undefined
+                          ? ""
+                          : String(m.productIndex)
+                      }
+                      onChange={(e) =>
+                        updateAt("rawMaterials", index, {
+                          productIndex:
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
+                          perUnit:
+                            m.perUnit ?? (e.target.value === "" ? null : 1),
+                        })
+                      }
+                    >
+                      <option value="">Saal bhar ka andaaza (link nahi)</option>
+                      {input.products.map((p, i) => (
+                        <option key={i} value={i}>
+                          Har {p.unit || "unit"} {p.name || `product ${i + 1}`}{" "}
+                          par
+                        </option>
+                      ))}
+                    </AdminSelect>
+                    {m.productIndex !== null && m.productIndex !== undefined ? (
+                      <>
+                        <NumberBox
+                          label="Per unit consumption"
+                          value={m.perUnit ?? null}
+                          nullable
+                          onChange={(v) =>
+                            updateAt("rawMaterials", index, { perUnit: v })
+                          }
+                          placeholder="Per unit"
+                        />
+                        <NumberBox
+                          label="Material loss %"
+                          value={m.lossPct ?? 0}
+                          onChange={(v) =>
+                            updateAt("rawMaterials", index, { lossPct: v ?? 0 })
+                          }
+                          placeholder="Loss"
+                          suffix="%"
+                        />
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               ))}
               <AddButton
@@ -1466,7 +2026,8 @@ export function ProjectReportForm({
 
           <Section
             step={6}
-            title="Staff aur kharche" guide="staff"
+            title="Staff aur kharche"
+            guide="staff"
             hint="Direct = utpadan / service mein seedha laga hua (operator, karigar). Indirect = office staff. 'Output ke saath badhe' wale kharche 100% capacity ke hisaab se bharein."
           >
             <div className="space-y-2">
@@ -1534,19 +2095,35 @@ export function ProjectReportForm({
                   key={index}
                   className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_9rem_9rem_9rem_auto] md:items-center"
                 >
-                  <AdminInput
-                    aria-label="Kharcha"
-                    placeholder="Kharcha"
-                    value={o.name}
-                    onChange={(e) =>
-                      updateAt("overheads", index, { name: e.target.value })
-                    }
-                  />
+                  <div className="flex items-center gap-2">
+                    <AdminInput
+                      aria-label="Kharcha"
+                      placeholder="Kharcha"
+                      value={o.name}
+                      onChange={(e) =>
+                        updateAt("overheads", index, { name: e.target.value })
+                      }
+                    />
+                    {o.estimated ? (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold",
+                          STATUS_TONE_CLASS.warning,
+                        )}
+                        title="Andaaza; asli figure bharein"
+                      >
+                        Estimate
+                      </span>
+                    ) : null}
+                  </div>
                   <NumberBox
                     label="Per month"
                     value={o.monthly}
                     onChange={(v) =>
-                      updateAt("overheads", index, { monthly: v ?? 0 })
+                      updateAt("overheads", index, {
+                        monthly: v ?? 0,
+                        estimated: false,
+                      })
                     }
                     placeholder="Per mahina"
                   />
@@ -1591,6 +2168,42 @@ export function ProjectReportForm({
                 Kharcha jodein
               </AddButton>
             </div>
+            {missingCosts.length ? (
+              <div
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-3 rounded-ds-lg px-3 py-2 text-sm",
+                  STATUS_TONE_CLASS.warning,
+                )}
+              >
+                <span>
+                  Ye kharche nahi bhare:{" "}
+                  {missingCosts.map((c) => c.label).join(", ")}.
+                </span>
+                <AdminButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setInput((current) => withEstimatedCosts(current))
+                  }
+                >
+                  Missing kharche estimate se bharein
+                </AdminButton>
+              </div>
+            ) : null}
+            <Field
+              guide="employerContributionPct"
+              label="Employer EPF / ESI %"
+              help="Khaali = staff sankhya ke hisaab se apne aap (ESI 10+, EPF 20+)"
+            >
+              <NumberBox
+                label="Employer contribution"
+                nullable
+                value={input.employerContributionPct}
+                onChange={(v) => set("employerContributionPct", v)}
+                suffix="%"
+              />
+            </Field>
           </Section>
 
           <Section
@@ -1598,12 +2211,20 @@ export function ProjectReportForm({
             title="Working capital"
             hint="Kitne din ka maal stock mein rahega, grahak kitne din mein paisa denge, supplier kitne din ka udhaar denge."
           >
-            <div className="grid gap-4 sm:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-3">
               <Field guide="rawMaterialDays" label="Raw material stock">
                 <NumberBox
                   label="Raw material days"
                   value={input.rawMaterialDays}
                   onChange={(v) => set("rawMaterialDays", v ?? 0)}
+                  suffix="din"
+                />
+              </Field>
+              <Field guide="workInProgressDays" label="Ban raha maal (WIP)">
+                <NumberBox
+                  label="WIP days"
+                  value={input.workInProgressDays}
+                  onChange={(v) => set("workInProgressDays", v ?? 0)}
                   suffix="din"
                 />
               </Field>
@@ -1631,6 +2252,14 @@ export function ProjectReportForm({
                   suffix="din"
                 />
               </Field>
+              <Field guide="minimumCashDays" label="Kam se kam cash">
+                <NumberBox
+                  label="Minimum cash days"
+                  value={input.minimumCashDays}
+                  onChange={(v) => set("minimumCashDays", v ?? 0)}
+                  suffix="din"
+                />
+              </Field>
             </div>
             <p className="text-sm text-ds-text-secondary">
               Working capital zaroorat:{" "}
@@ -1643,7 +2272,8 @@ export function ProjectReportForm({
 
           <Section
             step={8}
-            title="Report ka text" guide="narrative"
+            title="Report ka text"
+            guide="narrative"
             hint="Har section ka text figures se apne aap ban jaata hai. Badalna ho to yahan likhein; khaali chhodne par auto text chhapega."
           >
             {NARRATIVE_KEYS.map((key) => (
@@ -1695,6 +2325,122 @@ export function ProjectReportForm({
               </div>
             ))}
           </Section>
+          <Section
+            step={9}
+            title="Licences, compliance aur final review"
+            hint="Is project ke liye zaroori approvals, report ki jaanch aur kya abhi baaki hai."
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-bold text-ds-text-secondary">
+                  Zaroori approvals
+                </p>
+                <ul className="space-y-1 text-xs text-ds-text-secondary">
+                  {compliance
+                    .filter((c) => c.level === "mandatory")
+                    .map((c) => (
+                      <li key={c.name} className="flex gap-1.5">
+                        <span aria-hidden="true">•</span>
+                        <span>
+                          <strong className="text-ds-text-primary">
+                            {c.name}
+                          </strong>{" "}
+                          — {c.authority}
+                          {c.status === "verification_required"
+                            ? " (confirm karein)"
+                            : ""}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+                <p className="mb-1 mt-3 text-xs font-bold text-ds-text-secondary">
+                  Shart ke saath (conditional)
+                </p>
+                <ul className="space-y-1 text-xs text-ds-text-secondary">
+                  {compliance
+                    .filter((c) => c.level === "conditional")
+                    .map((c) => (
+                      <li key={c.name} className="flex gap-1.5">
+                        <span aria-hidden="true">•</span>
+                        <span>
+                          <strong className="text-ds-text-primary">
+                            {c.name}
+                          </strong>{" "}
+                          — {c.basis}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-bold text-ds-text-secondary">
+                  Report ki jaanch
+                </p>
+                <ul className="space-y-1 text-xs" aria-label="Report ki jaanch">
+                  {(
+                    [
+                      [
+                        "Project cost = sab heads ka jod",
+                        report.checks.costReconciles,
+                      ],
+                      [
+                        "Means of finance = project cost",
+                        report.checks.meansReconcile,
+                      ],
+                      [
+                        "Loan avadhi ke ant tak zero",
+                        report.checks.loanReconciles,
+                      ],
+                      [
+                        "Balance sheet tally",
+                        report.checks.balanceSheetBalances,
+                      ],
+                      [
+                        "Cash flow = balance sheet cash",
+                        report.checks.cashFlowReconciles,
+                      ],
+                    ] as [string, boolean][]
+                  ).map(([label, ok]) => (
+                    <li
+                      key={label}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-ds-md px-2 py-1 font-semibold",
+                        ok
+                          ? STATUS_TONE_CLASS.success
+                          : STATUS_TONE_CLASS.danger,
+                      )}
+                    >
+                      {ok ? (
+                        <CheckCircle2
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <AlertTriangle
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
+                      )}
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+                {report.dataGaps.length ? (
+                  <>
+                    <p className="mb-1 mt-3 text-xs font-bold text-ds-text-secondary">
+                      Report mein &quot;confirm karna baaki&quot; ke roop mein
+                      chhapega
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-4 text-xs text-ds-text-secondary">
+                      {report.dataGaps.map((g) => (
+                        <li key={g}>{g}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </Section>
         </div>
 
         <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-3 rounded-ds-xl border border-ds-border bg-ds-surface/95 p-3 shadow-ds-md backdrop-blur">
@@ -1737,7 +2483,13 @@ export function ProjectReportForm({
   );
 }
 
-function LiveSummary({ report, extraWarnings = [] }: { report: ReturnType<typeof buildDpr>; extraWarnings?: string[] }) {
+function LiveSummary({
+  report,
+  extraWarnings = [],
+}: {
+  report: ReturnType<typeof buildDpr>;
+  extraWarnings?: string[];
+}) {
   const y1 = report.years[0];
   const warnings = [...extraWarnings, ...report.warnings];
   const rows: [string, string, boolean?][] = [

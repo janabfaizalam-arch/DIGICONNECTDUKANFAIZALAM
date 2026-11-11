@@ -34,48 +34,62 @@ describe("DPR PDF", () => {
     if (process.env.DPR_PDF_OUT) writeFileSync(process.env.DPR_PDF_OUT, pdf);
     const { text, pages } = await textOf(pdf);
     // No blank pages: the footer must not push content onto new pages.
-    expect(pages).toBeGreaterThanOrEqual(15);
-    expect(pages).toBeLessThanOrEqual(28);
+    expect(pages).toBeGreaterThanOrEqual(20);
+    expect(pages).toBeLessThanOrEqual(34);
+    // The 28 sections a bank expects, in the report's own words.
     for (const heading of [
       "DETAILED PROJECT REPORT",
-      "Project at a Glance",
-      "INTRODUCTION",
-      "PROMOTER PROFILE",
-      "Cost of Project",
-      "MEANS OF FINANCE",
-      "ASSESSMENT OF WORKING CAPITAL",
-      "CALCULATION OF ESTIMATED SALARY",
-      "TERM LOAN REPAYMENT SCHEDULE",
-      "CALCULATION OF DEPRECIATION OF FIXED ASSETS",
-      "RAW MATERIALS & CONSUMABLES",
-      "Cost of Production and Profitability",
-      "Projected Balance Sheet",
-      "Cash Flow Statement",
-      "CALCULATION OF DEBT SERVICE COVERAGE RATIO",
-      "CALCULATION OF CURRENT RATIO",
-      "BREAK-EVEN ANALYSIS",
-      "SWOT ANALYSIS",
-      "DECLARATION",
       "Table of Contents",
       "Executive Summary",
-      "MARKETING STRATEGY",
-      "MACHINERY AND TECHNOLOGY",
-      "STATUTORY APPROVALS AND LICENCES",
-      "SENSITIVITY ANALYSIS",
-      "KEY FINANCIAL RATIOS",
+      "Internal consistency checks",
+      "Project at a Glance",
+      "Promoter Profile",
+      "Scheme Eligibility — PMEGP",
+      "Scheme rules used and their verification status",
+      "Project Profile",
+      "Market Analysis",
+      "Manufacturing / Service Process",
+      "Machinery and Equipment",
+      "Production, Sales and Raw Material",
+      "Production and saleable quantity",
+      "Statutory Compliance and Licences",
+      "Mandatory approvals",
+      "Project Cost",
+      "Means of Finance",
+      "Treatment of the government subsidy",
+      "Working Capital Assessment",
+      "Employees and Salary",
+      "Loan Repayment Schedule",
+      "Depreciation Schedule",
+      "Projected Profit and Loss",
+      "Computation of income tax",
+      "Projected Balance Sheet",
+      "Cash Flow Statement",
+      "Operating activities",
+      "Investing activities",
+      "Financing activities",
+      "DSCR, Current Ratio and Key Ratios",
+      "Break-even Analysis",
+      "Sensitivity Analysis",
+      "Risk Analysis and SWOT",
+      "Implementation Schedule",
+      "Conclusion and Declaration",
       "Month-wise Repayment Schedule",
       "Basis of Projections",
-      "Scheme Eligibility and Compliance",
+      "Assumptions to be Confirmed and Data Gaps",
       "Documents Checklist",
       "EDP (Entrepreneurship Development Programme) training certificate",
+      "Quotation pending",
+      "not a CA certification",
     ]) {
-      expect(text, heading).toContain(heading);
+      expect(text.toLowerCase(), heading).toContain(heading.toLowerCase());
     }
+    expect(text).not.toContain("NOT RECONCILED");
     expect(text).toContain("Shree Ram Flour Mill");
     expect(text).toContain("PMEGP");
     expect(text).toContain("Atta chakki 20 HP with motor");
     expect(text).toContain("54.00"); // year I sales, Rs. lakh
-    expect(text).toContain("90,00,000.00"); // sales at 100% capacity, rupees
+    expect(text).toContain("Wheat flour (atta) (quintal) 3,000 1,800"); // capacity and year-I production
     expect(text).toContain("not included in the cost of project");
     expect(text).toContain("Amount in Rs. lakh");
   });

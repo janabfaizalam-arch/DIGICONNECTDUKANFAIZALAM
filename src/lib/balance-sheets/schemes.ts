@@ -37,6 +37,13 @@ export type SchemeTerms = {
   asks: { sector: boolean; area: boolean; category: boolean };
   /** Points the admin should know, in Hinglish. */
   notes: string[];
+  /**
+   * Back-ended subsidy: years it stays in a TDR before it is adjusted against
+   * the term loan (0 = credited at once / no subsidy), and whether the bank
+   * charges no interest on the loan equal to it meanwhile.
+   */
+  lockInYears: number;
+  interestFreeOnSubsidy: boolean;
 };
 
 export const SCHEME_OPTIONS: { value: SchemeId; label: string }[] = [
@@ -44,6 +51,7 @@ export const SCHEME_OPTIONS: { value: SchemeId; label: string }[] = [
   { value: "cmyuva", label: "CM-YUVA (Mukhyamantri Yuva Udyami Vikas Abhiyan, UP)" },
   { value: "mysy", label: "MYSY (Mukhyamantri Yuva Swarozgar Yojana, UP)" },
   { value: "pmegp", label: "PMEGP (Prime Minister's Employment Generation Programme)" },
+  { value: "pmfme", label: "PMFME (PM Formalisation of Micro Food Processing Enterprises)" },
   { value: "mudra", label: "PM Mudra (Shishu / Kishore / Tarun / Tarun Plus)" },
   { value: "other", label: "Koi aur yojana" },
 ];
@@ -99,6 +107,8 @@ export function schemeTerms(id: SchemeId, borrower: Borrower): SchemeTerms | nul
         interestSubventionYears: 4,
         defaultTenureYears: 4,
         needsComposite: true,
+        lockInYears: 2,
+        interestFreeOnSubsidy: false,
         asks: { sector: false, area: false, category: false },
         notes: [
           "Loan composite hona chahiye: term loan aur working capital (CC) dono.",
@@ -124,6 +134,8 @@ export function schemeTerms(id: SchemeId, borrower: Borrower): SchemeTerms | nul
         interestSubventionYears: 0,
         defaultTenureYears: 5,
         needsComposite: false,
+        lockInYears: 2,
+        interestFreeOnSubsidy: false,
         asks: { sector: true, area: false, category: true },
         notes: [
           "Project cost = machine / capital kharcha (zameen chhod kar) + ek cycle ka working capital.",
@@ -149,6 +161,8 @@ export function schemeTerms(id: SchemeId, borrower: Borrower): SchemeTerms | nul
         interestSubventionYears: 0,
         defaultTenureYears: 5,
         needsComposite: false,
+        lockInYears: 3,
+        interestFreeOnSubsidy: true,
         asks: { sector: true, area: true, category: true },
         notes: [
           "Subsidy: General urban 15%, rural 25%; special category urban 25%, rural 35%.",
@@ -158,6 +172,30 @@ export function schemeTerms(id: SchemeId, borrower: Borrower): SchemeTerms | nul
         ],
       };
     }
+
+    case "pmfme":
+      return {
+        id,
+        label: "PMFME",
+        summary: "Food processing micro unit: eligible project cost ka 35% credit-linked subsidy, zyada se zyada Rs. 10 lakh.",
+        maxProjectCost: null,
+        maxLoan: null,
+        ownContributionPct: 10,
+        subsidyPct: 35,
+        subsidyCap: 10 * LAKH,
+        interestSubventionPct: 0,
+        interestSubventionYears: 0,
+        defaultTenureYears: 6,
+        needsComposite: false,
+        lockInYears: 3,
+        interestFreeOnSubsidy: false,
+        asks: { sector: false, area: false, category: false },
+        notes: [
+          "Sirf food processing (khadya prasanskaran) ke micro unit; naya ya chalu dono.",
+          "Subsidy credit-linked hai: bank loan ke saath hi milti hai, kam se kam 10% apna paisa.",
+          "Yojana 2020-21 se 2025-26 tak ke liye thi; aage badhi hai ya nahi, PMFME portal se confirm karein.",
+        ],
+      };
 
     case "mudra":
       return {
@@ -173,6 +211,8 @@ export function schemeTerms(id: SchemeId, borrower: Borrower): SchemeTerms | nul
         interestSubventionYears: 0,
         defaultTenureYears: 5,
         needsComposite: false,
+        lockInYears: 0,
+        interestFreeOnSubsidy: false,
         asks: { sector: false, area: false, category: false },
         notes: [
           "Koi subsidy nahi; loan term loan, CC/OD ya dono ho sakta hai.",
@@ -195,6 +235,8 @@ export function schemeTerms(id: SchemeId, borrower: Borrower): SchemeTerms | nul
         interestSubventionYears: 0,
         defaultTenureYears: 5,
         needsComposite: false,
+        lockInYears: 0,
+        interestFreeOnSubsidy: false,
         asks: { sector: false, area: false, category: false },
         notes: ["Yojana ke guideline ke hisaab se neeche ke box bharein."],
       };
